@@ -54,7 +54,7 @@ export class OdooMenuService {
     return withOdooAuth(async (client: OdooClient) => {
       const domain = [['active', '=', true]];
       if (categoryId) {
-        domain.push(['category_id', '=', categoryId]);
+        domain.push(['category_id', '=', String(categoryId)]);
       }
 
       const result = await client.searchRead(
