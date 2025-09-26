@@ -162,7 +162,7 @@ export default function ProfilePage() {
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
             <div className="relative">
               <div className="w-24 h-24 rounded-full gradient-primary flex items-center justify-center text-white text-3xl font-bold shadow-lg">
-                {user.name.charAt(0).toUpperCase()}
+                {user.name?.charAt(0)?.toUpperCase() || 'U'}
               </div>
               <div className={`absolute -bottom-1 -right-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
                 {getRoleDisplay(user.role)}

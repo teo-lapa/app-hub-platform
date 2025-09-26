@@ -64,10 +64,10 @@ export function Header() {
                   className="glass-strong p-2 rounded-xl flex items-center gap-2 hover:bg-white/20 dark:hover:bg-black/20 transition-all"
                 >
                   <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold">
-                    {user.name.charAt(0).toUpperCase()}
+                    {user.name?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div className="hidden md:block text-left">
-                    <div className="text-sm font-medium">{user.name}</div>
+                    <div className="text-sm font-medium">{user.name || 'User'}</div>
                     <div className="text-xs text-muted-foreground capitalize">
                       {user.role?.replace('_', ' ')}
                     </div>
@@ -82,7 +82,7 @@ export function Header() {
                     className="absolute right-0 mt-2 w-48 glass-strong rounded-xl border border-white/20 overflow-hidden shadow-xl z-50"
                   >
                     <div className="p-3 border-b border-white/10">
-                      <div className="font-medium">{user.name}</div>
+                      <div className="font-medium">{user.name || 'User'}</div>
                       <div className="text-sm text-muted-foreground">{user.email}</div>
                       <div className="text-xs text-muted-foreground mt-1 capitalize px-2 py-1 rounded-full bg-blue-500/20 text-blue-400 inline-block">
                         {user.role?.replace('_', ' ')}
