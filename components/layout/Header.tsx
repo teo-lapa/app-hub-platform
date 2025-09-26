@@ -1,9 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useAuthStore } from '@/stores/authStore';
-import { useAppStore } from '@/stores/appStore';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useAuthStore } from '@/lib/store/authStore';
+import { useAppStore } from '@/lib/store/appStore';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { LapaLogo } from '@/components/ui/LapaLogo';
 import { Search, LogOut, User, Menu } from 'lucide-react';
 import { useState } from 'react';
 
@@ -21,20 +22,7 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="flex items-center gap-3"
-          >
-            <div className="text-2xl">🚀</div>
-            <div>
-              <h1 className="text-xl font-bold gradient-primary bg-clip-text text-transparent">
-                App Hub
-              </h1>
-              <p className="text-xs text-muted-foreground -mt-1">
-                La tua piattaforma di app
-              </p>
-            </div>
-          </motion.div>
+          <LapaLogo size="lg" showText={true} />
 
           {/* Search Bar */}
           <div className="flex-1 max-w-md mx-8">

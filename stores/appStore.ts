@@ -1,12 +1,13 @@
 import { create } from 'zustand';
-import { AppStore, App } from '@/types';
-import { mockApps } from '@/data/apps';
+import { AppStore, App } from '@/lib/types';
+import { mockApps } from '@/lib/data/apps';
 
 export const useAppStore = create<AppStore>((set, get) => ({
   apps: mockApps,
   filteredApps: mockApps,
   selectedCategory: 'Tutti',
   searchQuery: '',
+  showUpgradeModal: false,
 
   setApps: (apps: App[]) => {
     set({ apps });
@@ -21,6 +22,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setSearchQuery: (query: string) => {
     set({ searchQuery: query });
     get().filterApps();
+  },
+
+  setShowUpgradeModal: (show: boolean) => {
+    set({ showUpgradeModal: show });
   },
 
   filterApps: () => {

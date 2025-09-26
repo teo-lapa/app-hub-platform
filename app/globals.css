@@ -108,3 +108,104 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
 }
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  /* Touch-friendly tap targets */
+  .btn-mobile {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 16px;
+  }
+
+  /* Larger text for mobile readability */
+  .text-mobile-sm {
+    font-size: 16px;
+  }
+
+  /* Improved spacing for mobile */
+  .container-mobile {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  /* Safe area handling for iOS */
+  .safe-area-inset-top {
+    padding-top: max(env(safe-area-inset-top), 16px);
+  }
+
+  .safe-area-inset-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  }
+
+  /* Mobile navigation */
+  .mobile-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .mobile-nav {
+    background: rgba(0, 0, 0, 0.95);
+  }
+
+  /* Swipe gestures */
+  .swipe-enabled {
+    touch-action: pan-y;
+  }
+
+  /* Mobile card layouts */
+  .mobile-card {
+    border-radius: 16px;
+    margin: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Pull-to-refresh */
+  .pull-to-refresh {
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .tablet-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+
+  .tablet-sidebar {
+    width: 280px;
+  }
+}
+
+/* PWA-specific styles */
+@media all and (display-mode: standalone) {
+  /* Hide URL bar area when installed as PWA */
+  .pwa-hidden {
+    display: none;
+  }
+
+  /* Full-screen experience */
+  .pwa-fullscreen {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height */
+  }
+
+  /* Status bar handling */
+  .status-bar-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Dark mode improvements for mobile */
+@media (prefers-color-scheme: dark) {
+  .mobile-card {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+}

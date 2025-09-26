@@ -2,10 +2,9 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { App, UserRole } from '@/types';
-import { useAuthStore } from '@/stores/authStore';
-import { useUIStore } from '@/stores/uiStore';
-import { canAccessApp } from '@/lib/auth';
+import { App, UserRole } from '@/lib/types';
+import { useAuthStore } from '@/lib/store/authStore';
+import { useAppStore } from '@/lib/store/appStore';
 import { Lock, Star, Sparkles, Clock } from 'lucide-react';
 
 interface AppCardProps {
@@ -16,33 +15,39 @@ interface AppCardProps {
 export function AppCard({ app, index }: AppCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const { user, isAuthenticated } = useAuthStore();
-  const { setShowUpgradeModal, setSelectedApp } = useUIStore();
+  const { setShowUpgradeModal } = useAppStore();
 
-  const userRole: UserRole = user?.role || 'visitor';
-  const hasAccess = canAccessApp(userRole, app.requiredRole);
+  const userRole = user?.role || 'visitor';
+  const hasAccess =
+    app.requiredAccess === 'visitor' ||
+    (app.requiredAccess === 'free_user' && ['free_user', 'pro_user', 'admin'].includes(userRole)) ||
+    (app.requiredAccess === 'pro_user' && ['pro_user', 'admin'].includes(userRole)) ||
+    (app.requiredAccess === 'admin' && userRole === 'admin');
 
   const handleClick = () => {
-    if (app.badge === 'COMING_SOON') {
+    if (app.isNew && app.route === '#') {
       return;
     }
 
     if (!hasAccess) {
-      setSelectedApp(app);
       setShowUpgradeModal(true);
       return;
     }
 
-    // Simula navigazione all'app
-    window.location.href = app.url;
+    if (app.route) {
+      window.location.href = app.route;
+    }
   };
 
   const getBadgeColor = () => {
-    switch (app.badge) {
-      case 'FREE':
+    switch (app.requiredAccess) {
+      case 'visitor':
         return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'PRO':
+      case 'free_user':
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'pro_user':
         return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-      case 'COMING_SOON':
+      case 'admin':
         return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       default:
         return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
@@ -50,15 +55,17 @@ export function AppCard({ app, index }: AppCardProps) {
   };
 
   const getBadgeText = () => {
-    switch (app.badge) {
-      case 'FREE':
+    switch (app.requiredAccess) {
+      case 'visitor':
         return 'GRATIS';
-      case 'PRO':
+      case 'free_user':
+        return 'FREE';
+      case 'pro_user':
         return 'PRO';
-      case 'COMING_SOON':
-        return 'PROSSIMAMENTE';
+      case 'admin':
+        return 'ADMIN';
       default:
-        return app.badge;
+        return 'FREE';
     }
   };
 
@@ -72,10 +79,10 @@ export function AppCard({ app, index }: AppCardProps) {
       onHoverEnd={() => setIsHovered(false)}
       onClick={handleClick}
       className={`relative group cursor-pointer ${
-        app.badge === 'COMING_SOON' ? 'cursor-not-allowed opacity-75' : ''
+        (!app.route || app.route === '#') ? 'cursor-not-allowed opacity-75' : ''
       }`}
     >
-      <div className="glass-strong rounded-2xl p-6 h-full border transition-all duration-300 hover:border-white/30 dark:hover:border-white/20 hover:shadow-xl hover:shadow-blue-500/10">
+      <div className="glass-strong rounded-2xl p-6 h-full border transition-all duration-300 hover:border-white/30 dark:hover:border-white/20 hover:shadow-xl hover:shadow-blue-500/10 mobile-card md:glass-strong md:rounded-2xl">
         {/* Badge Status */}
         <div className="flex items-center justify-between mb-4">
           <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getBadgeColor()}`}>
@@ -92,7 +99,7 @@ export function AppCard({ app, index }: AppCardProps) {
                 <Sparkles className="w-4 h-4 text-yellow-400" />
               </motion.div>
             )}
-            {app.isPopular && (
+            {app.featured && (
               <Star className="w-4 h-4 text-orange-400 fill-current" />
             )}
           </div>
@@ -120,7 +127,7 @@ export function AppCard({ app, index }: AppCardProps) {
         </div>
 
         {/* Indicatore di accesso */}
-        {!hasAccess && app.badge !== 'COMING_SOON' && (
+        {!hasAccess && app.route && app.route !== '#' && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: isHovered ? 1 : 0.7 }}
@@ -133,7 +140,7 @@ export function AppCard({ app, index }: AppCardProps) {
         )}
 
         {/* Indicatore Coming Soon */}
-        {app.badge === 'COMING_SOON' && (
+        {(!app.route || app.route === '#') && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: isHovered ? 1 : 0.7 }}

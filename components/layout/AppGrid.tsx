@@ -1,8 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useAppStore } from '@/stores/appStore';
-import { useAuthStore } from '@/stores/authStore';
+import { useAppStore } from '@/lib/store/appStore';
+import { useAuthStore } from '@/lib/store/authStore';
 import { AppCard } from '@/components/ui/AppCard';
 import { Search, Package } from 'lucide-react';
 
@@ -101,7 +101,7 @@ export function AppGrid() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        className="grid grid-cols-1 tablet-grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"
       >
         {filteredApps.map((app, index) => (
           <AppCard key={app.id} app={app} index={index} />
