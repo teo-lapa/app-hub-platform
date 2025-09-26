@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/lib/store/authStore';
+import { UserRole } from '@/lib/types';
 import { User, Mail, Shield, Calendar, Edit2, Save, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 

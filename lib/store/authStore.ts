@@ -13,6 +13,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     console.log('🔄 AuthStore: Starting login process for:', email);
 
     try {
+      // Prima prova con autenticazione Odoo
+      const odooResponse = await fetch('/api/auth/odoo-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (odooResponse.ok) {
+        const data: ApiResponse<{ user: User; token: string }> = await odooResponse.json();
+        console.log('✅ AuthStore: Odoo login successful:', data.data?.user?.name);
+
+        set({
+          user: data.data?.user || null,
+          isAuthenticated: true,
+          isLoading: false,
+          token: data.data?.token || null,
+        });
+
+        toast.success(data.message || 'Login Odoo effettuato con successo!');
+        return;
+      }
+
+      // Se Odoo fallisce, prova con autenticazione locale
+      console.log('🔄 AuthStore: Odoo login failed, trying local authentication');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -21,9 +47,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         body: JSON.stringify({ email, password }),
       });
 
-      console.log('🌐 AuthStore: Login response status:', response.status);
+      console.log('🌐 AuthStore: Local login response status:', response.status);
       const data: ApiResponse<{ user: User; token: string }> = await response.json();
-      console.log('📋 AuthStore: Login response data:', { success: data.success, user: data.data?.user?.name, error: data.error });
+      console.log('📋 AuthStore: Local login response data:', { success: data.success, user: data.data?.user?.name, error: data.error });
 
       if (data.success) {
         set({
@@ -32,7 +58,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
           token: data.data?.token || null,
         });
-        console.log('✅ AuthStore: Login successful, user authenticated:', data.data?.user?.name);
+        console.log('✅ AuthStore: Local login successful, user authenticated:', data.data?.user?.name);
         toast.success(data.message || 'Login effettuato con successo!');
       } else {
         set({ isLoading: false });

@@ -29,8 +29,9 @@ export function MobileAppCard({ app, index }: MobileAppCardProps) {
 
     const hasAccess =
       requiredRole === 'visitor' ||
-      (requiredRole === 'free_user' && ['free_user', 'pro_user', 'admin'].includes(userRole)) ||
-      (requiredRole === 'pro_user' && ['pro_user', 'admin'].includes(userRole)) ||
+      (requiredRole === 'cliente_gratuito' && ['cliente_gratuito', 'cliente_premium', 'dipendente', 'admin'].includes(userRole)) ||
+      (requiredRole === 'cliente_premium' && ['cliente_premium', 'dipendente', 'admin'].includes(userRole)) ||
+      (requiredRole === 'dipendente' && ['dipendente', 'admin'].includes(userRole)) ||
       (requiredRole === 'admin' && userRole === 'admin');
 
     if (!hasAccess) {
@@ -43,7 +44,7 @@ export function MobileAppCard({ app, index }: MobileAppCardProps) {
     }
   };
 
-  const isLocked = user ? !['pro_user', 'admin'].includes(user.role) && app.requiredRole === 'pro_user' : app.requiredRole !== 'visitor';
+  const isLocked = user ? !['cliente_premium', 'dipendente', 'admin'].includes(user.role) && ['cliente_premium', 'dipendente', 'admin'].includes(app.requiredRole) : app.requiredRole !== 'visitor';
 
   return (
     <motion.div
@@ -116,15 +117,18 @@ export function MobileAppCard({ app, index }: MobileAppCardProps) {
             <span className={`text-xs px-2 py-1 rounded-full font-medium ${
               app.requiredRole === 'visitor'
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                : app.requiredRole === 'free_user'
+                : app.requiredRole === 'cliente_gratuito'
                 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                : app.requiredRole === 'pro_user'
+                : app.requiredRole === 'cliente_premium'
                 ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                : app.requiredRole === 'dipendente'
+                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
                 : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
             }`}>
-              {app.requiredRole === 'visitor' && 'Gratis'}
-              {app.requiredRole === 'free_user' && 'Free'}
-              {app.requiredRole === 'pro_user' && 'Pro'}
+              {app.requiredRole === 'visitor' && 'Pubblico'}
+              {app.requiredRole === 'cliente_gratuito' && 'Gratuito'}
+              {app.requiredRole === 'cliente_premium' && 'Premium'}
+              {app.requiredRole === 'dipendente' && 'Staff'}
               {app.requiredRole === 'admin' && 'Admin'}
             </span>
           </div>
@@ -153,7 +157,7 @@ export function MobileAppCard({ app, index }: MobileAppCardProps) {
               className="bg-white/90 dark:bg-black/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-lg"
             >
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Sblocca con Pro
+                Sblocca con Premium
               </span>
             </motion.div>
           </div>

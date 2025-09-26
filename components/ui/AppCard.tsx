@@ -20,8 +20,9 @@ export function AppCard({ app, index }: AppCardProps) {
   const userRole = user?.role || 'visitor';
   const hasAccess =
     app.requiredRole === 'visitor' ||
-    (app.requiredRole === 'free_user' && ['free_user', 'pro_user', 'admin'].includes(userRole)) ||
-    (app.requiredRole === 'pro_user' && ['pro_user', 'admin'].includes(userRole)) ||
+    (app.requiredRole === 'cliente_gratuito' && ['cliente_gratuito', 'cliente_premium', 'dipendente', 'admin'].includes(userRole)) ||
+    (app.requiredRole === 'cliente_premium' && ['cliente_premium', 'dipendente', 'admin'].includes(userRole)) ||
+    (app.requiredRole === 'dipendente' && ['dipendente', 'admin'].includes(userRole)) ||
     (app.requiredRole === 'admin' && userRole === 'admin');
 
   const handleClick = () => {
@@ -43,10 +44,12 @@ export function AppCard({ app, index }: AppCardProps) {
     switch (app.requiredRole) {
       case 'visitor':
         return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'free_user':
+      case 'cliente_gratuito':
         return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'pro_user':
+      case 'cliente_premium':
         return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+      case 'dipendente':
+        return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
       case 'admin':
         return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       default:
@@ -57,15 +60,17 @@ export function AppCard({ app, index }: AppCardProps) {
   const getBadgeText = () => {
     switch (app.requiredRole) {
       case 'visitor':
-        return 'GRATIS';
-      case 'free_user':
-        return 'FREE';
-      case 'pro_user':
-        return 'PRO';
+        return 'PUBBLICO';
+      case 'cliente_gratuito':
+        return 'GRATUITO';
+      case 'cliente_premium':
+        return 'PREMIUM';
+      case 'dipendente':
+        return 'STAFF';
       case 'admin':
         return 'ADMIN';
       default:
-        return 'FREE';
+        return 'GRATUITO';
     }
   };
 
