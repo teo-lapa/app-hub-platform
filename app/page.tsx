@@ -239,7 +239,7 @@ export default function HomePage() {
       {/* Mobile Header - shown only on mobile */}
       <div className="md:hidden">
         <MobileHeader
-          title={user ? `Ciao, ${user.name.split(' ')[0]}!` : undefined}
+          title={user?.name ? `Ciao, ${user.name.split(' ')[0]}!` : undefined}
           showLogo={!user}
         />
       </div>
