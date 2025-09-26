@@ -9,6 +9,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (email: string, password: string) => {
     set({ isLoading: true });
+    console.log('🔄 AuthStore: Starting login process for:', email);
+
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -18,7 +20,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('🌐 AuthStore: Login response status:', response.status);
       const data: ApiResponse<{ user: User; token: string }> = await response.json();
+      console.log('📋 AuthStore: Login response data:', { success: data.success, user: data.data?.user?.name, error: data.error });
 
       if (data.success) {
         set({
@@ -26,15 +30,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isAuthenticated: true,
           isLoading: false,
         });
+        console.log('✅ AuthStore: Login successful, user authenticated:', data.data?.user?.name);
         toast.success(data.message || 'Login effettuato con successo!');
       } else {
         set({ isLoading: false });
+        console.log('❌ AuthStore: Login failed:', data.error);
         toast.error(data.error || 'Errore durante il login');
         throw new Error(data.error || 'Login failed');
       }
     } catch (error) {
       set({ isLoading: false });
-      console.error('Login error:', error);
+      console.error('💥 AuthStore: Login error:', error);
       throw error;
     }
   },

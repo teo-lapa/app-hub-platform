@@ -69,24 +69,39 @@ export const comparePassword = async (password: string, hash: string): Promise<b
 };
 
 export const authenticateUser = async (email: string, password: string): Promise<User | null> => {
+  console.log('🔍 Auth: Looking for user with email:', email);
   const user = mockUsers.find(u => u.email === email);
-  if (!user) return null;
+
+  if (!user) {
+    console.log('❌ Auth: User not found for email:', email);
+    return null;
+  }
+
+  console.log('👤 Auth: Found user:', user.name, 'Role:', user.role);
 
   let isValidPassword = false;
 
   // Check for demo accounts with plain text passwords
   if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+    console.log('🔒 Auth: Using bcrypt for hashed password');
     // Hashed password - use bcrypt
     isValidPassword = await comparePassword(password, user.password);
   } else {
+    console.log('🔓 Auth: Using plain text comparison for demo account');
     // Plain text password for demo accounts
     isValidPassword = password === user.password;
   }
 
-  if (!isValidPassword) return null;
+  console.log('🔐 Auth: Password validation result:', isValidPassword);
+
+  if (!isValidPassword) {
+    console.log('❌ Auth: Invalid password for:', email);
+    return null;
+  }
 
   // Aggiorna ultimo login
   user.lastLogin = new Date();
+  console.log('✅ Auth: Authentication successful for:', user.name);
 
   const { password: _, ...userWithoutPassword } = user;
   return userWithoutPassword;

@@ -17,9 +17,13 @@ export function LoginForm({ onToggleMode }: LoginFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔐 Attempting login with:', { email, password: password ? '***' : 'empty' });
+
     try {
       await login(email, password);
+      console.log('✅ Login successful, user should be redirected');
     } catch (error) {
+      console.error('❌ Login error:', error);
       // Errore gestito dal store
     }
   };
