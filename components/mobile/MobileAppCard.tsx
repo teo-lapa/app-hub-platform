@@ -25,25 +25,25 @@ export function MobileAppCard({ app, index }: MobileAppCardProps) {
 
     // Check access permissions
     const userRole = user.role;
-    const requiredAccess = app.requiredAccess;
+    const requiredRole = app.requiredRole;
 
     const hasAccess =
-      requiredAccess === 'visitor' ||
-      (requiredAccess === 'free_user' && ['free_user', 'pro_user', 'admin'].includes(userRole)) ||
-      (requiredAccess === 'pro_user' && ['pro_user', 'admin'].includes(userRole)) ||
-      (requiredAccess === 'admin' && userRole === 'admin');
+      requiredRole === 'visitor' ||
+      (requiredRole === 'free_user' && ['free_user', 'pro_user', 'admin'].includes(userRole)) ||
+      (requiredRole === 'pro_user' && ['pro_user', 'admin'].includes(userRole)) ||
+      (requiredRole === 'admin' && userRole === 'admin');
 
     if (!hasAccess) {
       setShowUpgradeModal(true);
       return;
     }
 
-    if (app.route) {
-      router.push(app.route);
+    if (app.url) {
+      router.push(app.url);
     }
   };
 
-  const isLocked = user ? !['pro_user', 'admin'].includes(user.role) && app.requiredAccess === 'pro_user' : app.requiredAccess !== 'visitor';
+  const isLocked = user ? !['pro_user', 'admin'].includes(user.role) && app.requiredRole === 'pro_user' : app.requiredRole !== 'visitor';
 
   return (
     <motion.div
@@ -69,7 +69,7 @@ export function MobileAppCard({ app, index }: MobileAppCardProps) {
           <div className="flex items-center gap-3">
             <motion.div
               whileHover={{ rotate: 5 }}
-              className={`w-12 h-12 rounded-xl flex items-center justify-center text-white text-2xl shadow-lg ${app.color} ${isLocked ? 'grayscale' : ''}`}
+              className={`w-12 h-12 rounded-xl flex items-center justify-center text-white text-2xl shadow-lg bg-gradient-to-br from-blue-500 to-purple-600 ${isLocked ? 'grayscale' : ''}`}
             >
               {app.icon}
             </motion.div>
@@ -91,7 +91,7 @@ export function MobileAppCard({ app, index }: MobileAppCardProps) {
                 <Lock className="w-3 h-3 text-gray-500" />
               </div>
             )}
-            {app.featured && !isLocked && (
+            {app.isPopular && !isLocked && (
               <div className="p-1 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
                 <Star className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
               </div>
@@ -114,18 +114,18 @@ export function MobileAppCard({ app, index }: MobileAppCardProps) {
           <div className="flex items-center gap-2">
             {/* Access level indicator */}
             <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-              app.requiredAccess === 'visitor'
+              app.requiredRole === 'visitor'
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                : app.requiredAccess === 'free_user'
+                : app.requiredRole === 'free_user'
                 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                : app.requiredAccess === 'pro_user'
+                : app.requiredRole === 'pro_user'
                 ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                 : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
             }`}>
-              {app.requiredAccess === 'visitor' && 'Gratis'}
-              {app.requiredAccess === 'free_user' && 'Free'}
-              {app.requiredAccess === 'pro_user' && 'Pro'}
-              {app.requiredAccess === 'admin' && 'Admin'}
+              {app.requiredRole === 'visitor' && 'Gratis'}
+              {app.requiredRole === 'free_user' && 'Free'}
+              {app.requiredRole === 'pro_user' && 'Pro'}
+              {app.requiredRole === 'admin' && 'Admin'}
             </span>
           </div>
 

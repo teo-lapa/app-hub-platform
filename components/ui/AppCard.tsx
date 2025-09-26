@@ -19,13 +19,13 @@ export function AppCard({ app, index }: AppCardProps) {
 
   const userRole = user?.role || 'visitor';
   const hasAccess =
-    app.requiredAccess === 'visitor' ||
-    (app.requiredAccess === 'free_user' && ['free_user', 'pro_user', 'admin'].includes(userRole)) ||
-    (app.requiredAccess === 'pro_user' && ['pro_user', 'admin'].includes(userRole)) ||
-    (app.requiredAccess === 'admin' && userRole === 'admin');
+    app.requiredRole === 'visitor' ||
+    (app.requiredRole === 'free_user' && ['free_user', 'pro_user', 'admin'].includes(userRole)) ||
+    (app.requiredRole === 'pro_user' && ['pro_user', 'admin'].includes(userRole)) ||
+    (app.requiredRole === 'admin' && userRole === 'admin');
 
   const handleClick = () => {
-    if (app.isNew && app.route === '#') {
+    if (app.isNew && app.url === '#') {
       return;
     }
 
@@ -34,13 +34,13 @@ export function AppCard({ app, index }: AppCardProps) {
       return;
     }
 
-    if (app.route) {
-      window.location.href = app.route;
+    if (app.url) {
+      window.location.href = app.url;
     }
   };
 
   const getBadgeColor = () => {
-    switch (app.requiredAccess) {
+    switch (app.requiredRole) {
       case 'visitor':
         return 'bg-green-500/20 text-green-400 border-green-500/30';
       case 'free_user':
@@ -55,7 +55,7 @@ export function AppCard({ app, index }: AppCardProps) {
   };
 
   const getBadgeText = () => {
-    switch (app.requiredAccess) {
+    switch (app.requiredRole) {
       case 'visitor':
         return 'GRATIS';
       case 'free_user':
@@ -79,7 +79,7 @@ export function AppCard({ app, index }: AppCardProps) {
       onHoverEnd={() => setIsHovered(false)}
       onClick={handleClick}
       className={`relative group cursor-pointer ${
-        (!app.route || app.route === '#') ? 'cursor-not-allowed opacity-75' : ''
+        (!app.url || app.url === '#') ? 'cursor-not-allowed opacity-75' : ''
       }`}
     >
       <div className="glass-strong rounded-2xl p-6 h-full border transition-all duration-300 hover:border-white/30 dark:hover:border-white/20 hover:shadow-xl hover:shadow-blue-500/10 mobile-card md:glass-strong md:rounded-2xl">
@@ -99,7 +99,7 @@ export function AppCard({ app, index }: AppCardProps) {
                 <Sparkles className="w-4 h-4 text-yellow-400" />
               </motion.div>
             )}
-            {app.featured && (
+            {app.isPopular && (
               <Star className="w-4 h-4 text-orange-400 fill-current" />
             )}
           </div>
@@ -127,7 +127,7 @@ export function AppCard({ app, index }: AppCardProps) {
         </div>
 
         {/* Indicatore di accesso */}
-        {!hasAccess && app.route && app.route !== '#' && (
+        {!hasAccess && app.url && app.url !== '#' && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: isHovered ? 1 : 0.7 }}
@@ -140,7 +140,7 @@ export function AppCard({ app, index }: AppCardProps) {
         )}
 
         {/* Indicatore Coming Soon */}
-        {(!app.route || app.route === '#') && (
+        {(!app.url || app.url === '#') && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: isHovered ? 1 : 0.7 }}

@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useAppStore } from '@/lib/store/appStore';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { LapaLogo } from '@/components/ui/LapaLogo';
 import { Search, LogOut, User, Menu } from 'lucide-react';
 import { useState } from 'react';

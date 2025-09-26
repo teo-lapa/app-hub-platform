@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft, MoreVertical } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { LapaLogo } from '@/components/ui/LapaLogo';
 
 interface MobileHeaderProps {

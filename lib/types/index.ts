@@ -42,9 +42,11 @@ export interface AppStore {
   filteredApps: App[];
   selectedCategory: string;
   searchQuery: string;
+  showUpgradeModal: boolean;
   setApps: (apps: App[]) => void;
   setCategory: (category: string) => void;
   setSearchQuery: (query: string) => void;
+  setShowUpgradeModal: (show: boolean) => void;
   filterApps: () => void;
 }
 
