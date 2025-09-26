@@ -67,6 +67,9 @@ export async function POST(request: NextRequest) {
       {
         email: user.email,
         userId: user.id,
+        name: user.name,
+        azienda: user.azienda,
+        role: user.role,
         odooUid: odooUser.id,
         sessionId: session.session_id
       },

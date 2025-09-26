@@ -162,7 +162,18 @@
   /* Smooth scroll per mobile */
   body {
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
+  }
+
+  /* Fix scroll mobile */
+  .pwa-fullscreen {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (max-width: 768px) {
+    body {
+      touch-action: manipulation;
+    }
   }
 
   /* Mobile card layouts */
