@@ -1,4 +1,4 @@
-export type UserRole = 'visitor' | 'free_user' | 'pro_user' | 'admin';
+export type UserRole = 'visitor' | 'cliente_gratuito' | 'cliente_premium' | 'dipendente' | 'admin';
 
 export type AppStatus = 'FREE' | 'PRO' | 'COMING_SOON';
 
@@ -8,8 +8,19 @@ export interface User {
   name: string;
   role: UserRole;
   avatar?: string;
+  telefono?: string;
+  azienda?: string;
+  indirizzo?: string;
+  citta?: string;
+  cap?: string;
+  partitaIva?: string;
+  codiceCliente?: string;
+  note?: string;
+  abilitato: boolean;
+  appPermessi: string[]; // Array di ID delle app accessibili
   createdAt: Date;
   lastLogin?: Date;
+  updatedAt: Date;
 }
 
 export interface App {
@@ -31,11 +42,32 @@ export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  token: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
-  updateProfile: (data: { name: string; email: string; password?: string }) => Promise<void>;
+  updateProfile: (data: {
+    name: string;
+    email: string;
+    password?: string;
+    telefono?: string;
+    azienda?: string;
+    indirizzo?: string;
+    citta?: string;
+    cap?: string;
+    partitaIva?: string;
+    codiceCliente?: string;
+    note?: string;
+    role?: UserRole;
+    abilitato?: boolean;
+    appPermessi?: string[];
+  }) => Promise<void>;
   checkAuth: () => Promise<void>;
+  // Funzioni admin
+  getAllUsers: () => Promise<User[]>;
+  createUserAsAdmin: (userData: any) => Promise<User>;
+  updateUserAsAdmin: (id: string, updates: any) => Promise<User>;
+  deleteUserAsAdmin: (id: string) => Promise<void>;
 }
 
 export interface AppStore {

@@ -14,6 +14,17 @@ export default function ProfilePage() {
     name: '',
     email: '',
     password: '',
+    telefono: '',
+    azienda: '',
+    indirizzo: '',
+    citta: '',
+    cap: '',
+    partitaIva: '',
+    codiceCliente: '',
+    note: '',
+    role: 'cliente_gratuito' as UserRole,
+    abilitato: true,
+    appPermessi: [] as string[],
   });
 
   useEffect(() => {
@@ -25,15 +36,41 @@ export default function ProfilePage() {
       name: user.name,
       email: user.email,
       password: '',
+      telefono: user.telefono || '',
+      azienda: user.azienda || '',
+      indirizzo: user.indirizzo || '',
+      citta: user.citta || '',
+      cap: user.cap || '',
+      partitaIva: user.partitaIva || '',
+      codiceCliente: user.codiceCliente || '',
+      note: user.note || '',
+      role: user.role,
+      abilitato: user.abilitato,
+      appPermessi: user.appPermessi || [],
     });
   }, [user, router]);
 
   const handleSave = async () => {
     try {
-      const updateData: { name: string; email: string; password?: string } = {
+      const updateData: any = {
         name: formData.name,
         email: formData.email,
+        telefono: formData.telefono,
+        azienda: formData.azienda,
+        indirizzo: formData.indirizzo,
+        citta: formData.citta,
+        cap: formData.cap,
+        partitaIva: formData.partitaIva,
+        codiceCliente: formData.codiceCliente,
+        note: formData.note,
       };
+
+      // Solo admin può modificare ruolo e permessi
+      if (user?.role === 'admin') {
+        updateData.role = formData.role;
+        updateData.abilitato = formData.abilitato;
+        updateData.appPermessi = formData.appPermessi;
+      }
 
       // Solo se la password è stata inserita
       if (formData.password.trim()) {
@@ -49,11 +86,24 @@ export default function ProfilePage() {
   };
 
   const handleCancel = () => {
-    setFormData({
-      name: user?.name || '',
-      email: user?.email || '',
-      password: '',
-    });
+    if (user) {
+      setFormData({
+        name: user.name,
+        email: user.email,
+        password: '',
+        telefono: user.telefono || '',
+        azienda: user.azienda || '',
+        indirizzo: user.indirizzo || '',
+        citta: user.citta || '',
+        cap: user.cap || '',
+        partitaIva: user.partitaIva || '',
+        codiceCliente: user.codiceCliente || '',
+        note: user.note || '',
+        role: user.role,
+        abilitato: user.abilitato,
+        appPermessi: user.appPermessi || [],
+      });
+    }
     setIsEditing(false);
   };
 
@@ -64,8 +114,9 @@ export default function ProfilePage() {
   const getRoleDisplay = (role: string) => {
     const roleMap = {
       'visitor': 'Visitatore',
-      'free_user': 'Utente Gratuito',
-      'pro_user': 'Utente Pro',
+      'cliente_gratuito': 'Cliente Gratuito',
+      'cliente_premium': 'Cliente Premium',
+      'dipendente': 'Dipendente',
       'admin': 'Amministratore'
     };
     return roleMap[role as keyof typeof roleMap] || role;
@@ -74,8 +125,9 @@ export default function ProfilePage() {
   const getRoleColor = (role: string) => {
     const colorMap = {
       'visitor': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-      'free_user': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-      'pro_user': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+      'cliente_gratuito': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+      'cliente_premium': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+      'dipendente': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
       'admin': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
     };
     return colorMap[role as keyof typeof colorMap] || colorMap.visitor;

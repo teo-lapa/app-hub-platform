@@ -1,31 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
-
-// Mock database - in production usare un vero database
-const users = new Map();
+import { updateUser, getUserByEmail, verifyToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password } = await request.json();
+    // Verifica il token dall'header o cookie
+    const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
+                  request.cookies.get('token')?.value;
 
-    // In un'app reale, qui otterresti l'ID utente dal token JWT
-    // Per ora simulo l'aggiornamento
-    console.log('Updating profile with:', { name, email, hasPassword: !!password });
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: 'Token di autenticazione richiesto' },
+        { status: 401 }
+      );
+    }
 
-    // Simula l'aggiornamento dell'utente
-    const updatedUser = {
-      id: 'mock-user-id',
-      name,
-      email,
-      role: 'free_user',
-      createdAt: new Date('2023-01-01'),
-      lastLogin: new Date(),
-    };
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json(
+        { success: false, error: 'Token non valido' },
+        { status: 401 }
+      );
+    }
 
-    // Se c'è una password, aggiorna anche quella (hashata)
-    if (password) {
-      const hashedPassword = await bcrypt.hash(password, 12);
-      console.log('Password updated (hashed)');
+    const updateData = await request.json();
+    console.log('Profile update request for user:', decoded.id, 'Data:', Object.keys(updateData));
+
+    // Solo gli admin possono modificare ruoli e permessi
+    const currentUser = await getUserByEmail(decoded.email);
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, error: 'Utente non trovato' },
+        { status: 404 }
+      );
+    }
+
+    // Controlla se l'utente può modificare i campi amministrativi
+    if ((updateData.role || updateData.abilitato !== undefined || updateData.appPermessi) &&
+        currentUser.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: 'Non hai i permessi per modificare questi campi' },
+        { status: 403 }
+      );
+    }
+
+    // Aggiorna l'utente
+    const updatedUser = await updateUser(decoded.id, updateData);
+
+    if (!updatedUser) {
+      return NextResponse.json(
+        { success: false, error: 'Errore durante l\'aggiornamento' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
@@ -36,10 +61,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Profile update error:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Errore durante l\'aggiornamento del profilo'
-      },
+      { success: false, error: 'Errore interno del server' },
       { status: 500 }
     );
   }

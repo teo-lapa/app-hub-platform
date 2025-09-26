@@ -6,6 +6,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: false,
+  token: null,
 
   login: async (email: string, password: string) => {
     set({ isLoading: true });
@@ -29,6 +30,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           user: data.data?.user || null,
           isAuthenticated: true,
           isLoading: false,
+          token: data.data?.token || null,
         });
         console.log('✅ AuthStore: Login successful, user authenticated:', data.data?.user?.name);
         toast.success(data.message || 'Login effettuato con successo!');
@@ -87,6 +89,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: null,
         isAuthenticated: false,
         isLoading: false,
+        token: null,
       });
 
       toast.success('Logout effettuato con successo!');
@@ -104,10 +107,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateProfile: async (data: { name: string; email: string; password?: string }) => {
     set({ isLoading: true });
     try {
+      const { token } = get();
       const response = await fetch('/api/auth/update-profile', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify(data),
       });
@@ -149,6 +154,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           user: null,
           isAuthenticated: false,
           isLoading: false,
+          token: null,
         });
       }
     } catch (error) {
@@ -157,7 +163,102 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: null,
         isAuthenticated: false,
         isLoading: false,
+        token: null,
       });
     }
+  },
+
+  // Funzioni admin
+  getAllUsers: async () => {
+    const { token } = get();
+    if (!token) {
+      throw new Error('Token non disponibile');
+    }
+
+    const response = await fetch('/api/admin/users', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data: ApiResponse<{ users: User[] }> = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Errore nel recupero utenti');
+    }
+
+    return data.data?.users || [];
+  },
+
+  createUserAsAdmin: async (userData: any) => {
+    const { token } = get();
+    if (!token) {
+      throw new Error('Token non disponibile');
+    }
+
+    const response = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(userData),
+    });
+
+    const data: ApiResponse<{ user: User }> = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Errore nella creazione utente');
+    }
+
+    toast.success(data.message || 'Utente creato con successo!');
+    return data.data?.user!;
+  },
+
+  updateUserAsAdmin: async (id: string, updates: any) => {
+    const { token } = get();
+    if (!token) {
+      throw new Error('Token non disponibile');
+    }
+
+    const response = await fetch(`/api/admin/users/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(updates),
+    });
+
+    const data: ApiResponse<{ user: User }> = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Errore nell\'aggiornamento utente');
+    }
+
+    toast.success(data.message || 'Utente aggiornato con successo!');
+    return data.data?.user!;
+  },
+
+  deleteUserAsAdmin: async (id: string) => {
+    const { token } = get();
+    if (!token) {
+      throw new Error('Token non disponibile');
+    }
+
+    const response = await fetch(`/api/admin/users/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data: ApiResponse = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Errore nell\'eliminazione utente');
+    }
+
+    toast.success(data.message || 'Utente eliminato con successo!');
   },
 }));
