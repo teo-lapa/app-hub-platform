@@ -149,7 +149,7 @@ export function UpgradeModal() {
               {user && (
                 <div className="mt-6 pt-4 border-t border-white/10 text-center">
                   <p className="text-xs text-muted-foreground">
-                    Accesso come: <strong>{user.name}</strong> (Piano {user.role.replace('_', ' ').toUpperCase()})
+                    Accesso come: <strong>{user.name}</strong> (Piano {user.role?.replace('_', ' ').toUpperCase()})
                   </p>
                 </div>
               )}

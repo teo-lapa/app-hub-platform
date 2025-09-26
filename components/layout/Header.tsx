@@ -69,7 +69,7 @@ export function Header() {
                   <div className="hidden md:block text-left">
                     <div className="text-sm font-medium">{user.name}</div>
                     <div className="text-xs text-muted-foreground capitalize">
-                      {user.role.replace('_', ' ')}
+                      {user.role?.replace('_', ' ')}
                     </div>
                   </div>
                 </motion.button>
@@ -85,7 +85,7 @@ export function Header() {
                       <div className="font-medium">{user.name}</div>
                       <div className="text-sm text-muted-foreground">{user.email}</div>
                       <div className="text-xs text-muted-foreground mt-1 capitalize px-2 py-1 rounded-full bg-blue-500/20 text-blue-400 inline-block">
-                        {user.role.replace('_', ' ')}
+                        {user.role?.replace('_', ' ')}
                       </div>
                     </div>
                     <div className="p-1">

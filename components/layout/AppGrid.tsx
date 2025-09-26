@@ -73,7 +73,7 @@ export function AppGrid() {
             <div className="glass-strong px-4 py-2 rounded-xl">
               <span className="text-sm">
                 Piano: <span className="font-semibold capitalize text-blue-400">
-                  {user.role.replace('_', ' ')}
+                  {user.role?.replace('_', ' ')}
                 </span>
               </span>
             </div>

@@ -273,7 +273,7 @@ export default function HomePage() {
               <p className="text-muted-foreground max-w-2xl mx-auto text-mobile-sm md:text-base">
                 Benvenuto nella piattaforma LAPA - fornitore alimentare per ristoranti.
                 Il tuo piano <span className="font-semibold capitalize text-red-400">
-                  {user?.role.replace('_', ' ')}
+                  {user?.role?.replace('_', ' ')}
                 </span> ti dà accesso alle funzionalità dedicate.
               </p>
             </div>
