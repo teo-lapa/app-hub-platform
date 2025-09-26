@@ -159,6 +159,12 @@
     touch-action: pan-y;
   }
 
+  /* Smooth scroll per mobile */
+  body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
   /* Mobile card layouts */
   .mobile-card {
     border-radius: 16px;

@@ -52,7 +52,7 @@ export default function HomePage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen relative overflow-hidden">
+      <div className="min-h-screen relative overflow-x-hidden">
         {/* Animated Background Elements */}
         <div className="absolute inset-0">
           <motion.div
