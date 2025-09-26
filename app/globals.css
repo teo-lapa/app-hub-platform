@@ -199,8 +199,8 @@
 
   /* Full-screen experience */
   .pwa-fullscreen {
-    height: 100vh;
-    height: 100dvh; /* Dynamic viewport height */
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height */
   }
 
   /* Status bar handling */

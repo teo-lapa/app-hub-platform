@@ -23,6 +23,29 @@ export default function HomePage() {
     checkAuth();
   }, [checkAuth]);
 
+  // Ricarica dati quando l'app torna in focus
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 App in focus, ricaricando dati utente...');
+      checkAuth();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('🔄 App visibile, ricaricando dati utente...');
+        checkAuth();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [checkAuth]);
+
   const toggleAuthMode = () => {
     setAuthMode(authMode === 'login' ? 'register' : 'login');
   };
