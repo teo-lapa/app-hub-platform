@@ -24,11 +24,13 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <LapaLogo size="lg" showText={true} />
+          <div className="flex-shrink-0">
+            <LapaLogo size="lg" showText={true} />
+          </div>
 
-          {/* Search Bar */}
-          <div className="flex-1 max-w-md mx-8">
-            <div className="relative">
+          {/* Search Bar - Hidden on mobile */}
+          <div className="hidden md:flex flex-1 max-w-md mx-8">
+            <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
@@ -41,13 +43,13 @@ export function Header() {
           </div>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-3">
-            {/* Pricing Link */}
+          <div className="flex items-center gap-1 md:gap-3">
+            {/* Pricing Link - Hidden on mobile */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => window.open('/pricing', '_self')}
-              className="glass-strong px-4 py-2 rounded-xl hover:bg-white/20 dark:hover:bg-black/20 transition-colors text-sm font-medium"
+              className="hidden sm:flex glass-strong px-4 py-2 rounded-xl hover:bg-white/20 dark:hover:bg-black/20 transition-colors text-sm font-medium"
             >
               Prezzi
             </motion.button>
