@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { UIState, App } from '@/types';
+import { UIState, App } from '@/lib/types';
 
 export const useUIStore = create<UIState>((set) => ({
   theme: 'system',

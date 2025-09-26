@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OdooMenuService } from '@/lib/odoo/services/menuService';
-import { ApiResponse } from '@/types';
+import { ApiResponse } from '@/lib/types';
 
 // GET /api/odoo/menu - Ottieni tutti gli item del menu
 export async function GET(request: NextRequest) {

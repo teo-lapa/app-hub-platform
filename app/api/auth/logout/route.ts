@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ApiResponse } from '@/types';
+import { ApiResponse } from '@/lib/types';
 
 export async function POST() {
   const response = NextResponse.json<ApiResponse>({

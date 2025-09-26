@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/lib/store/authStore';
 import { Mail, Lock, Eye, EyeOff, User, UserPlus } from 'lucide-react';
 
 interface RegisterFormProps {

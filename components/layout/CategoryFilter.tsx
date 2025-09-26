@@ -1,8 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useAppStore } from '@/stores/appStore';
-import { categories } from '@/data/apps';
+import { useAppStore } from '@/lib/store/appStore';
+import { categories } from '@/lib/data/apps';
 
 export function CategoryFilter() {
   const { selectedCategory, setCategory } = useAppStore();

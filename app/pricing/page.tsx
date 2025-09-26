@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { Check, X, Star, Crown, Zap, ArrowLeft, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/lib/store/authStore';
 
 interface PricingTier {
   id: string;

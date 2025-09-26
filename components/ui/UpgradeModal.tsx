@@ -1,8 +1,8 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useUIStore } from '@/stores/uiStore';
-import { useAuthStore } from '@/stores/authStore';
+import { useUIStore } from '@/lib/store/uiStore';
+import { useAuthStore } from '@/lib/store/authStore';
 import { X, Crown, Check, Zap } from 'lucide-react';
 
 export function UpgradeModal() {

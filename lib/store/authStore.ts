@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AuthState, User, ApiResponse } from '@/types';
+import { AuthState, User, ApiResponse } from '@/lib/types';
 import toast from 'react-hot-toast';
 
 export const useAuthStore = create<AuthState>((set, get) => ({

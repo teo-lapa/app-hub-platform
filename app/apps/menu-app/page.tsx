@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { ArrowLeft, Search, Filter, Star, Leaf, Wheat, Flame } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { MenuItem, MenuCategory, menuCategories, menuItems, getItemsByCategory, searchItems } from '@/data/menuData';
+import { MenuItem, MenuCategory, menuCategories, menuItems, getItemsByCategory, searchItems } from '@/lib/data/menuData';
 
 // Helper function to format prices in euros
 const formatPrice = (price: number): string => `€${price.toFixed(2)}`;

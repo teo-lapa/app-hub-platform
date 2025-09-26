@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, getUserById } from '@/lib/auth';
-import { ApiResponse } from '@/types';
+import { ApiResponse } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
   try {
