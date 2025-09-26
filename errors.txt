@@ -1,14 +1,71 @@
-/icons/icon-144x144.png:1  Failed to load resource: the server responded with a status of 404 ()
-(indice):1 Error while trying to use the following icon from the Manifest: https://app-hub-platform.vercel.app/icons/icon-144x144.png (Download error or resource isn't a valid image)
-472-30d7ff8ed6e5f594.js:1 TypeError: Cannot read properties of undefined (reading 'split')
-    at K (page-bc75dbffc6a39f11.js:1:28592)
-    at rb (fd9d1056-5e443a6408ad033e.js:1:40329)
-    at lA (fd9d1056-5e443a6408ad033e.js:1:59077)
-    at iU (fd9d1056-5e443a6408ad033e.js:1:117013)
-    at o2 (fd9d1056-5e443a6408ad033e.js:1:94369)
-    at fd9d1056-5e443a6408ad033e.js:1:94191
-    at o1 (fd9d1056-5e443a6408ad033e.js:1:94198)
-    at oV (fd9d1056-5e443a6408ad033e.js:1:91685)
-    at n1 (fd9d1056-5e443a6408ad033e.js:1:37342)
-    at n3 (fd9d1056-5e443a6408ad033e.js:1:38076)
+layout-42803d9c51066436.js:16 📱 PWA: Install prompt available
+(indice):1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+page-bc75dbffc6a39f11.js:1 🔐 Attempting login with: Object
+652-1e5a09f282cf75bf.js:1 🔄 AuthStore: Starting login process for: admin@apphub.com
+/api/auth/odoo-login:1  Failed to load resource: the server responded with a status of 401 ()
+652-1e5a09f282cf75bf.js:1 🔄 AuthStore: Odoo login failed, trying local authentication
+/api/auth/login:1  Failed to load resource: the server responded with a status of 401 ()
+652-1e5a09f282cf75bf.js:1 🌐 AuthStore: Local login response status: 401
+652-1e5a09f282cf75bf.js:1 📋 AuthStore: Local login response data: Object
+652-1e5a09f282cf75bf.js:1 ❌ AuthStore: Login failed: Credenziali non valide
+472-30d7ff8ed6e5f594.js:1 💥 AuthStore: Login error: Error: Credenziali non valide
+    at login (652-1e5a09f282cf75bf.js:1:7242)
+    at async p (page-bc75dbffc6a39f11.js:1:13379)
+push.811.window.console.error @ 472-30d7ff8ed6e5f594.js:1
+472-30d7ff8ed6e5f594.js:1 ❌ Login error: Error: Credenziali non valide
+    at login (652-1e5a09f282cf75bf.js:1:7242)
+    at async p (page-bc75dbffc6a39f11.js:1:13379)
+push.811.window.console.error @ 472-30d7ff8ed6e5f594.js:1
+page-bc75dbffc6a39f11.js:1 🔐 Attempting login with: Object
+652-1e5a09f282cf75bf.js:1 🔄 AuthStore: Starting login process for: paul@lapa.ch
+/api/auth/odoo-login:1  Failed to load resource: the server responded with a status of 401 ()
+652-1e5a09f282cf75bf.js:1 🔄 AuthStore: Odoo login failed, trying local authentication
+/api/auth/login:1  Failed to load resource: the server responded with a status of 401 ()
+652-1e5a09f282cf75bf.js:1 🌐 AuthStore: Local login response status: 401
+652-1e5a09f282cf75bf.js:1 📋 AuthStore: Local login response data: Object
+652-1e5a09f282cf75bf.js:1 ❌ AuthStore: Login failed: Credenziali non valide
+472-30d7ff8ed6e5f594.js:1 💥 AuthStore: Login error: Error: Credenziali non valide
+    at login (652-1e5a09f282cf75bf.js:1:7242)
+    at async p (page-bc75dbffc6a39f11.js:1:13379)
+push.811.window.console.error @ 472-30d7ff8ed6e5f594.js:1
+472-30d7ff8ed6e5f594.js:1 ❌ Login error: Error: Credenziali non valide
+    at login (652-1e5a09f282cf75bf.js:1:7242)
+    at async p (page-bc75dbffc6a39f11.js:1:13379)
+push.811.window.console.error @ 472-30d7ff8ed6e5f594.js:1
+layout-42803d9c51066436.js:16 📱 PWA: Showing install prompt
+layout-42803d9c51066436.js:16 📱 PWA: Showing install prompt
+layout-42803d9c51066436.js:16 📱 PWA: User accepted the install prompt
+layout-42803d9c51066436.js:16 📱 PWA: User accepted the install prompt
+layout-42803d9c51066436.js:16 ✅ PWA: App installed successfully
+page-bc75dbffc6a39f11.js:1 🔐 Attempting login with: Object
+652-1e5a09f282cf75bf.js:1 🔄 AuthStore: Starting login process for: paul@lapa.ch
+/api/auth/odoo-login:1  Failed to load resource: the server responded with a status of 401 ()
+652-1e5a09f282cf75bf.js:1 🔄 AuthStore: Odoo login failed, trying local authentication
+/api/auth/login:1  Failed to load resource: the server responded with a status of 401 ()
+652-1e5a09f282cf75bf.js:1 🌐 AuthStore: Local login response status: 401
+652-1e5a09f282cf75bf.js:1 📋 AuthStore: Local login response data: Object
+652-1e5a09f282cf75bf.js:1 ❌ AuthStore: Login failed: Credenziali non valide
+472-30d7ff8ed6e5f594.js:1 💥 AuthStore: Login error: Error: Credenziali non valide
+    at login (652-1e5a09f282cf75bf.js:1:7242)
+    at async p (page-bc75dbffc6a39f11.js:1:13379)
+push.811.window.console.error @ 472-30d7ff8ed6e5f594.js:1
+472-30d7ff8ed6e5f594.js:1 ❌ Login error: Error: Credenziali non valide
+    at login (652-1e5a09f282cf75bf.js:1:7242)
+    at async p (page-bc75dbffc6a39f11.js:1:13379)
+push.811.window.console.error @ 472-30d7ff8ed6e5f594.js:1
+page-bc75dbffc6a39f11.js:1 🔐 Attempting login with: Object
+652-1e5a09f282cf75bf.js:1 🔄 AuthStore: Starting login process for: paul@lapa.ch
+/api/auth/odoo-login:1  Failed to load resource: the server responded with a status of 401 ()
+652-1e5a09f282cf75bf.js:1 🔄 AuthStore: Odoo login failed, trying local authentication
+/api/auth/login:1  Failed to load resource: the server responded with a status of 401 ()
+652-1e5a09f282cf75bf.js:1 🌐 AuthStore: Local login response status: 401
+652-1e5a09f282cf75bf.js:1 📋 AuthStore: Local login response data: Object
+652-1e5a09f282cf75bf.js:1 ❌ AuthStore: Login failed: Credenziali non valide
+472-30d7ff8ed6e5f594.js:1 💥 AuthStore: Login error: Error: Credenziali non valide
+    at login (652-1e5a09f282cf75bf.js:1:7242)
+    at async p (page-bc75dbffc6a39f11.js:1:13379)
+push.811.window.console.error @ 472-30d7ff8ed6e5f594.js:1
+472-30d7ff8ed6e5f594.js:1 ❌ Login error: Error: Credenziali non valide
+    at login (652-1e5a09f282cf75bf.js:1:7242)
+    at async p (page-bc75dbffc6a39f11.js:1:13379)
 push.811.window.console.error @ 472-30d7ff8ed6e5f594.js:1

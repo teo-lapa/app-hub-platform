@@ -27,6 +27,8 @@ export class OdooClient {
 
   async authenticate(login: string, password: string): Promise<OdooSession | null> {
     try {
+      console.log('🔐 Tentativo login Odoo:', login, 'su', this.url);
+
       const response = await fetch(`${this.url}/web/session/authenticate`, {
         method: 'POST',
         headers: {
@@ -43,16 +45,27 @@ export class OdooClient {
         })
       });
 
+      console.log('📡 Risposta Odoo status:', response.status);
+
+      if (!response.ok) {
+        console.error('❌ Errore HTTP Odoo:', response.status, response.statusText);
+        return null;
+      }
+
       const data = await response.json();
+      console.log('📋 Dati risposta Odoo:', data);
 
       if (data.error) {
-        console.error('Odoo authentication error:', data.error);
+        console.error('❌ Errore Odoo:', data.error);
         return null;
       }
 
       if (!data.result || !data.result.uid) {
+        console.error('❌ Nessun UID ricevuto da Odoo');
         return null;
       }
+
+      console.log('✅ Login Odoo riuscito! UID:', data.result.uid);
 
       return {
         uid: data.result.uid,
@@ -62,7 +75,7 @@ export class OdooClient {
         password
       };
     } catch (error) {
-      console.error('Odoo authentication error:', error);
+      console.error('💥 Errore connessione Odoo:', error);
       return null;
     }
   }

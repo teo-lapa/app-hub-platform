@@ -164,16 +164,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   checkAuth: async () => {
-    // Skip auth check in production per debugging
-    if (process.env.NODE_ENV === 'production') {
-      set({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        token: null,
-      });
-      return;
-    }
 
     set({ isLoading: true });
     try {
