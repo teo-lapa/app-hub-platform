@@ -4,14 +4,14 @@ import { User, UserRole } from '@/types';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 
-// Mock users database
+// Mock users database - using plain text passwords for demo accounts
 const mockUsers: (User & { password: string })[] = [
   {
     id: '1',
     email: 'admin@apphub.com',
     name: 'Admin User',
     role: 'admin',
-    password: '$2a$10$rOoVtN5oF.8sG1vI4.F4lOYgF7wJ1OqF7wJ1OqF7wJ1OqF7wJ1Oq', // password: admin123
+    password: 'admin123', // Demo account with plain text password
     createdAt: new Date('2023-01-01'),
     lastLogin: new Date(),
   },
@@ -20,7 +20,7 @@ const mockUsers: (User & { password: string })[] = [
     email: 'pro@apphub.com',
     name: 'Pro User',
     role: 'pro_user',
-    password: '$2a$10$rOoVtN5oF.8sG1vI4.F4lOYgF7wJ1OqF7wJ1OqF7wJ1OqF7wJ1Oq', // password: pro123
+    password: 'pro123', // Demo account with plain text password
     createdAt: new Date('2023-02-15'),
     lastLogin: new Date(),
   },
@@ -29,7 +29,7 @@ const mockUsers: (User & { password: string })[] = [
     email: 'free@apphub.com',
     name: 'Free User',
     role: 'free_user',
-    password: '$2a$10$rOoVtN5oF.8sG1vI4.F4lOYgF7wJ1OqF7wJ1OqF7wJ1OqF7wJ1Oq', // password: free123
+    password: 'free123', // Demo account with plain text password
     createdAt: new Date('2023-03-10'),
     lastLogin: new Date(),
   },
@@ -72,7 +72,17 @@ export const authenticateUser = async (email: string, password: string): Promise
   const user = mockUsers.find(u => u.email === email);
   if (!user) return null;
 
-  const isValidPassword = await comparePassword(password, user.password);
+  let isValidPassword = false;
+
+  // Check for demo accounts with plain text passwords
+  if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+    // Hashed password - use bcrypt
+    isValidPassword = await comparePassword(password, user.password);
+  } else {
+    // Plain text password for demo accounts
+    isValidPassword = password === user.password;
+  }
+
   if (!isValidPassword) return null;
 
   // Aggiorna ultimo login
