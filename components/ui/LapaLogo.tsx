@@ -32,7 +32,7 @@ export function LapaLogo({ size = 'md', showText = true, className = '' }: LapaL
         className="relative flex-shrink-0"
       >
         <Image
-          src="/lapa-logo.jpeg"
+          src="/logo-lapa-ai.png"
           alt="LAPA Logo"
           width={width}
           height={height}

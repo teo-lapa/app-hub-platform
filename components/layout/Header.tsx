@@ -7,11 +7,13 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { LapaLogo } from '@/components/ui/LapaLogo';
 import { Search, LogOut, User, Menu } from 'lucide-react';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export function Header() {
   const { user, logout } = useAuthStore();
   const { searchQuery, setSearchQuery } = useAppStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const router = useRouter();
 
   return (
     <motion.header
@@ -90,7 +92,7 @@ export function Header() {
                       <button
                         onClick={() => {
                           setShowUserMenu(false);
-                          // Aggiungi navigazione al profilo
+                          router.push('/profile');
                         }}
                         className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-sm"
                       >

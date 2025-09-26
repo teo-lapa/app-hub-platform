@@ -1,0 +1,242 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useAuthStore } from '@/lib/store/authStore';
+import { User, Mail, Shield, Calendar, Edit2, Save, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+export default function ProfilePage() {
+  const { user, logout } = useAuthStore();
+  const router = useRouter();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+  });
+
+  useEffect(() => {
+    if (!user) {
+      router.push('/auth');
+      return;
+    }
+    setFormData({
+      name: user.name,
+      email: user.email,
+    });
+  }, [user, router]);
+
+  const handleSave = () => {
+    // Qui andrà la logica per salvare i dati
+    console.log('Saving profile data:', formData);
+    setIsEditing(false);
+    // TODO: Implementare API call per aggiornare profilo
+  };
+
+  const handleCancel = () => {
+    setFormData({
+      name: user?.name || '',
+      email: user?.email || '',
+    });
+    setIsEditing(false);
+  };
+
+  if (!user) {
+    return null;
+  }
+
+  const getRoleDisplay = (role: string) => {
+    const roleMap = {
+      'visitor': 'Visitatore',
+      'free_user': 'Utente Gratuito',
+      'pro_user': 'Utente Pro',
+      'admin': 'Amministratore'
+    };
+    return roleMap[role as keyof typeof roleMap] || role;
+  };
+
+  const getRoleColor = (role: string) => {
+    const colorMap = {
+      'visitor': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+      'free_user': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+      'pro_user': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+      'admin': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+    };
+    return colorMap[role as keyof typeof colorMap] || colorMap.visitor;
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Il Mio Profilo
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Gestisci le informazioni del tuo account
+          </p>
+        </motion.div>
+
+        {/* Profile Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="glass-strong rounded-2xl p-8 border border-white/20"
+        >
+          {/* Avatar e Info Base */}
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full gradient-primary flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <div className={`absolute -bottom-1 -right-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
+                {getRoleDisplay(user.role)}
+              </div>
+            </div>
+
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {user.name}
+                </h2>
+                {!isEditing && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIsEditing(true)}
+                    className="p-2 rounded-lg hover:bg-white/10 dark:hover:bg-white/5 transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  </motion.button>
+                )}
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                {user.email}
+              </p>
+            </div>
+          </div>
+
+          {/* Form di Modifica */}
+          {isEditing ? (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="space-y-6"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nome
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full glass px-4 py-3 rounded-xl border border-white/20 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    placeholder="Il tuo nome"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full glass px-4 py-3 rounded-xl border border-white/20 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    placeholder="La tua email"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleSave}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Salva Modifiche
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleCancel}
+                  className="px-6 py-3 glass-strong border border-white/20 hover:bg-white/10 rounded-xl font-medium transition-colors flex items-center gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Annulla
+                </motion.button>
+              </div>
+            </motion.div>
+          ) : (
+            /* Informazioni Account */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="glass p-4 rounded-xl border border-white/10">
+                <div className="flex items-center gap-3 mb-2">
+                  <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Nome Completo</h3>
+                </div>
+                <p className="text-gray-600 dark:text-gray-400">{user.name}</p>
+              </div>
+
+              <div className="glass p-4 rounded-xl border border-white/10">
+                <div className="flex items-center gap-3 mb-2">
+                  <Mail className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Email</h3>
+                </div>
+                <p className="text-gray-600 dark:text-gray-400">{user.email}</p>
+              </div>
+
+              <div className="glass p-4 rounded-xl border border-white/10">
+                <div className="flex items-center gap-3 mb-2">
+                  <Shield className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Ruolo</h3>
+                </div>
+                <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getRoleColor(user.role)}`}>
+                  {getRoleDisplay(user.role)}
+                </span>
+              </div>
+
+              <div className="glass p-4 rounded-xl border border-white/10">
+                <div className="flex items-center gap-3 mb-2">
+                  <Calendar className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Membro dal</h3>
+                </div>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {new Date(user.createdAt).toLocaleDateString('it-IT', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Azioni */}
+          <div className="mt-8 pt-6 border-t border-white/10">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={logout}
+              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors"
+            >
+              Logout
+            </motion.button>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
