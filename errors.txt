@@ -1,112 +1,44 @@
-18:46:12.862 Running build in Washington, D.C., USA (East) – iad1
-18:46:12.863 Build machine configuration: 2 cores, 8 GB
-18:46:12.875 Cloning github.com/teo-lapa/app-hub-platform (Branch: main, Commit: 61934f9)
-18:46:12.883 Skipping build cache, deployment was triggered without cache.
-18:46:13.267 Cloning completed: 392.000ms
-18:46:13.553 Running "vercel build"
-18:46:13.938 Vercel CLI 48.1.6
-18:46:14.258 Running "install" command: `npm install`...
-18:46:16.950 npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
-18:46:17.604 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
-18:46:17.854 npm warn deprecated glob@7.1.7: Glob versions prior to v9 are no longer supported
-18:46:18.640 npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
-18:46:18.682 npm warn deprecated @humanwhocodes/config-array@0.11.14: Use @eslint/config-array instead
-18:46:20.500 npm warn deprecated eslint@8.54.0: This version is no longer supported. Please see https://eslint.org/version-support for other options.
-18:46:27.097 
-18:46:27.097 added 419 packages, and audited 420 packages in 12s
-18:46:27.098 
-18:46:27.098 150 packages are looking for funding
-18:46:27.098   run `npm fund` for details
-18:46:27.166 
-18:46:27.167 1 critical severity vulnerability
-18:46:27.167 
-18:46:27.168 To address all issues, run:
-18:46:27.168   npm audit fix --force
-18:46:27.168 
-18:46:27.168 Run `npm audit` for details.
-18:46:27.233 Detected Next.js version: 14.0.3
-18:46:27.235 Running "npm run build"
-18:46:27.346 
-18:46:27.346 > app-hub-platform@1.0.0 build
-18:46:27.346 > next build
-18:46:27.346 
-18:46:27.877 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-18:46:27.878 This information is used to shape Next.js' roadmap and prioritize features.
-18:46:27.878 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-18:46:27.878 https://nextjs.org/telemetry
-18:46:27.878 
-18:46:27.960    ▲ Next.js 14.0.3
-18:46:27.961 
-18:46:27.961    Creating an optimized production build ...
-18:46:39.989  ✓ Compiled successfully
-18:46:39.990    Linting and checking validity of types ...
-18:46:46.977    Collecting page data ...
-18:46:48.152    Generating static pages (0/17) ...
-18:46:48.354 
-   Generating static pages (4/17) 
-18:46:48.464 
-   Generating static pages (8/17) 
-18:46:48.520  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:48.520 
-18:46:48.520  ⚠ metadata.metadataBase is not set for resolving social open graph or twitter images, using "https://app-hub-platform-8fwlqhemv-teo-lapas-projects.vercel.app". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
-18:46:48.563  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:48.705  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:48.801  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:48.803 
-   Generating static pages (12/17) 
-18:46:48.827  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:48.827  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:49.111  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:49.111  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:49.269  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:49.269  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:49.292  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:49.293  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:49.389  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:49.389  ⚠ Unsupported metadata viewport is configured in metadata export. Please move it to viewport export instead.
-18:46:49.471 
- ✓ Generating static pages (17/17) 
-18:46:49.626    Finalizing page optimization ...
-18:46:49.627    Collecting build traces ...
-18:46:56.140 
-18:46:56.152 Route (app)                              Size     First Load JS
-18:46:56.152 ┌ ○ /                                    11.7 kB         147 kB
-18:46:56.152 ├ ○ /_not-found                          870 B          84.8 kB
-18:46:56.153 ├ ○ /admin                               4.92 kB         140 kB
-18:46:56.153 ├ λ /api/admin/users                     0 B                0 B
-18:46:56.154 ├ λ /api/admin/users/[id]                0 B                0 B
-18:46:56.154 ├ λ /api/auth/login                      0 B                0 B
-18:46:56.154 ├ λ /api/auth/logout                     0 B                0 B
-18:46:56.154 ├ λ /api/auth/me                         0 B                0 B
-18:46:56.154 ├ λ /api/auth/odoo-login                 0 B                0 B
-18:46:56.154 ├ λ /api/auth/register                   0 B                0 B
-18:46:56.154 ├ λ /api/auth/update-profile             0 B                0 B
-18:46:56.154 ├ λ /api/odoo/menu                       0 B                0 B
-18:46:56.155 ├ λ /api/odoo/menu/[id]                  0 B                0 B
-18:46:56.155 ├ ○ /apps/menu                           2.05 kB         120 kB
-18:46:56.155 ├ ○ /apps/menu-app                       7.59 kB         126 kB
-18:46:56.155 ├ ○ /pricing                             6.44 kB         131 kB
-18:46:56.155 └ ○ /profile                             4.33 kB         129 kB
-18:46:56.155 + First Load JS shared by all            83.9 kB
-18:46:56.155   ├ chunks/472-30d7ff8ed6e5f594.js       28.8 kB
-18:46:56.155   ├ chunks/fd9d1056-5e443a6408ad033e.js  53.3 kB
-18:46:56.155   ├ chunks/main-app-892c3dff08e9cd4c.js  219 B
-18:46:56.155   └ chunks/webpack-1d0e46d58976a7ff.js   1.68 kB
-18:46:56.155 
-18:46:56.155 
-18:46:56.155 ƒ Middleware                             28 kB
-18:46:56.155 
-18:46:56.156 ○  (Static)   prerendered as static content
-18:46:56.156 λ  (Dynamic)  server-rendered on demand using Node.js
-18:46:56.156 
-18:46:56.270 Traced Next.js server files in: 27.759ms
-18:46:56.349 WARNING: Unable to find source file for page /_not-found with extensions: tsx, ts, jsx, js, this can cause functions config from `vercel.json` to not be applied
-18:46:56.393 Created all serverless functions in: 122.943ms
-18:46:56.449 Collected static files (public/, static/, .next/static): 5.316ms
-18:46:56.588 Build Completed in /vercel/output [42s]
-18:46:56.738 Deploying outputs...
-18:47:05.234 Deployment completed
-18:47:06.102 Creating build cache...
-18:47:16.754 Created build cache: 10.655s
-18:47:16.755 Uploading build cache [130.60 MB]
-18:47:18.648 Build cache uploaded: 1.893s
+19:35:27.665 Running build in Washington, D.C., USA (East) – iad1
+19:35:27.665 Build machine configuration: 2 cores, 8 GB
+19:35:27.679 Cloning github.com/teo-lapa/app-hub-platform (Branch: main, Commit: 0767e75)
+19:35:28.415 Cloning completed: 736.000ms
+19:35:28.726 Restored build cache from previous deployment (5Lmqe51vxi3abHyHvyYkYrqWR8jb)
+19:35:29.181 Running "vercel build"
+19:35:29.567 Vercel CLI 48.1.6
+19:35:31.038 Running "install" command: `npm install`...
+19:35:34.235 
+19:35:34.236 up to date, audited 420 packages in 3s
+19:35:34.236 
+19:35:34.236 150 packages are looking for funding
+19:35:34.237   run `npm fund` for details
+19:35:34.303 
+19:35:34.304 1 critical severity vulnerability
+19:35:34.304 
+19:35:34.304 To address all issues, run:
+19:35:34.304   npm audit fix --force
+19:35:34.305 
+19:35:34.305 Run `npm audit` for details.
+19:35:34.336 Detected Next.js version: 14.0.3
+19:35:34.337 Running "npm run build"
+19:35:34.447 
+19:35:34.447 > app-hub-platform@1.0.0 build
+19:35:34.447 > next build
+19:35:34.447 
+19:35:35.099    ▲ Next.js 14.0.3
+19:35:35.099 
+19:35:35.100    Creating an optimized production build ...
+19:35:40.469  ✓ Compiled successfully
+19:35:40.470    Linting and checking validity of types ...
+19:35:44.990 Failed to compile.
+19:35:44.991 
+19:35:44.991 ./app/api/auth/me/route.ts:21:11
+19:35:44.991 Type error: This condition will always return true since this 'Promise<import("/vercel/path0/lib/types/index").User | null>' is always defined.
+19:35:44.991 
+19:35:44.992 [0m [90m 19 |[39m     [36mif[39m (decoded) {[0m
+19:35:44.992 [0m [90m 20 |[39m       [36mconst[39m user [33m=[39m getUserById(decoded[33m.[39mid)[33m;[39m[0m
+19:35:44.992 [0m[31m[1m>[22m[39m[90m 21 |[39m       [36mif[39m (user) {[0m
+19:35:44.992 [0m [90m    |[39m           [31m[1m^[22m[39m[0m
+19:35:44.992 [0m [90m 22 |[39m         [36mreturn[39m [33mNextResponse[39m[33m.[39mjson[33m<[39m[33mApiResponse[39m[33m>[39m({[0m
+19:35:44.992 [0m [90m 23 |[39m           success[33m:[39m [36mtrue[39m[33m,[39m[0m
+19:35:44.992 [0m [90m 24 |[39m           data[33m:[39m { user }[33m,[39m[0m
+19:35:45.058 Error: Command "npm run build" exited with 1

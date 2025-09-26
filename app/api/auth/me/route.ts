@@ -15,15 +15,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Prova prima con JWT standard per utenti locali
-    const decoded = verifyToken(token);
-    if (decoded) {
-      const user = getUserById(decoded.id);
-      if (user) {
-        return NextResponse.json<ApiResponse>({
-          success: true,
-          data: { user },
-        });
+    try {
+      const decoded = verifyToken(token);
+      if (decoded) {
+        const user = await getUserById(decoded.id);
+        if (user) {
+          return NextResponse.json<ApiResponse>({
+            success: true,
+            data: { user },
+          });
+        }
       }
+    } catch (localError) {
+      // Ignora errori per utenti locali, prova con Odoo
+      console.log('Local user not found, trying Odoo...');
     }
 
     // Se non trova con verifyToken, prova con jwt.verify diretto per utenti Odoo
