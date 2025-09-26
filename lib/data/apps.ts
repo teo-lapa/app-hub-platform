@@ -78,6 +78,20 @@ export const mockApps: App[] = [
     createdAt: new Date('2023-08-01'),
     updatedAt: new Date('2023-12-25'),
   },
+  {
+    id: '7',
+    name: 'Gestione Inventario',
+    description: 'Scanner QR/Barcode per ubicazioni e prodotti. Gestione inventario completa con conteggi e trasferimenti.',
+    icon: '📍',
+    badge: 'FREE',
+    category: 'Business',
+    url: '/inventario',
+    requiredRole: 'cliente_gratuito',
+    isPopular: true,
+    isNew: true,
+    createdAt: new Date('2024-01-15'),
+    updatedAt: new Date('2024-01-15'),
+  },
 ];
 
 export const categories = [
