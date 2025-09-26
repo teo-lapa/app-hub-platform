@@ -7,6 +7,9 @@ import { ArrowLeft, Search, Filter, Star, Leaf, Wheat, Flame } from 'lucide-reac
 import { useRouter } from 'next/navigation';
 import { MenuItem, MenuCategory, menuCategories, menuItems, getItemsByCategory, searchItems } from '@/data/menuData';
 
+// Helper function to format prices in euros
+const formatPrice = (price: number): string => `€${price.toFixed(2)}`;
+
 export default function MenuApp() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -36,8 +39,6 @@ export default function MenuApp() {
 
     setFilteredItems(items);
   }, [selectedCategory, searchQuery, dietaryFilters]);
-
-  const formatPrice = (price: number) => `€${price.toFixed(2)}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50 dark:from-gray-900 dark:via-orange-900 dark:to-red-900">
