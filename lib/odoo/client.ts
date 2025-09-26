@@ -6,6 +6,7 @@ export interface OdooUser {
   company_id: number;
   company_name: string;
   active: boolean;
+  isAdmin?: boolean;
 }
 
 export interface OdooSession {
@@ -25,7 +26,7 @@ export class OdooClient {
     this.db = db;
   }
 
-  async authenticate(login: string, password: string): Promise<OdooSession | null> {
+  async authenticate(login: string, password: string): Promise<{ session: OdooSession; authResult: any } | null> {
     try {
       console.log('🔐 Tentativo login Odoo:', login, 'su', this.url);
 
@@ -53,7 +54,7 @@ export class OdooClient {
       }
 
       const data = await response.json();
-      console.log('📋 Dati risposta Odoo:', data);
+      console.log('📋 Dati risposta Odoo (UID):', data.result?.uid);
 
       if (data.error) {
         console.error('❌ Errore Odoo:', data.error);
@@ -67,12 +68,17 @@ export class OdooClient {
 
       console.log('✅ Login Odoo riuscito! UID:', data.result.uid);
 
-      return {
+      const session = {
         uid: data.result.uid,
         session_id: data.result.session_id || `${data.result.uid}_${Date.now()}`,
         db: this.db,
         login,
         password
+      };
+
+      return {
+        session,
+        authResult: data.result
       };
     } catch (error) {
       console.error('💥 Errore connessione Odoo:', error);
@@ -80,8 +86,30 @@ export class OdooClient {
     }
   }
 
-  async getUserInfo(session: OdooSession): Promise<OdooUser | null> {
+  async getUserInfo(session: OdooSession, authResult?: any): Promise<OdooUser | null> {
     try {
+      // Se abbiamo dati dalla sessione di autenticazione, usali
+      if (authResult && authResult.name && authResult.username) {
+        console.log('🔄 Using auth result data for user info');
+
+        const companyData = authResult.user_companies?.allowed_companies || {};
+        const currentCompanyId = authResult.user_companies?.current_company || 1;
+        const currentCompany = companyData[currentCompanyId];
+
+        return {
+          id: session.uid,
+          name: authResult.name,
+          email: authResult.username,
+          groups: [], // I gruppi li mapperemo dopo o useremo is_admin
+          company_id: currentCompanyId,
+          company_name: currentCompany?.name || 'LAPA - finest italian food GmbH',
+          active: true,
+          isAdmin: authResult.is_admin || false
+        };
+      }
+
+      // Fallback al metodo originale
+      console.log('🔄 Fetching user info via API');
       const response = await fetch(`${this.url}/web/dataset/call_kw/res.users/read`, {
         method: 'POST',
         headers: {
@@ -210,11 +238,22 @@ export class OdooClient {
     }
   }
 
-  mapGroupsToRole(groups: string[]): string {
+  mapGroupsToRole(groups: string[], isAdmin: boolean = false): string {
+    // Se l'utente è admin Odoo, mappa ad admin dell'app
+    if (isAdmin) {
+      return 'admin';
+    }
+
     const groupMappings = {
       'Administration / Settings': 'admin',
-      'Human Resources / Employee': 'dipendente',
       'Administration / Access Rights': 'admin',
+      'Human Resources / Employee': 'dipendente',
+      'Human Resources / Officer': 'dipendente',
+      'Sales / User': 'dipendente',
+      'Sales / Manager': 'admin',
+      'Accounting / Billing': 'dipendente',
+      'Accounting / Accountant': 'dipendente',
+      'Inventory / User': 'dipendente',
       'Contact Creation': 'cliente_premium',
       'Portal': 'cliente_gratuito',
       'Public': 'visitor'
@@ -228,7 +267,8 @@ export class OdooClient {
       }
     }
 
-    return 'cliente_gratuito';
+    // Default per utenti interni non specificati
+    return 'dipendente';
   }
 
   getAppPermissions(groups: string[]): string[] {

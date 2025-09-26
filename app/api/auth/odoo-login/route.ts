@@ -17,17 +17,19 @@ export async function POST(request: NextRequest) {
     const odooClient = createOdooClient();
 
     // Autenticare con Odoo
-    const session = await odooClient.authenticate(email, password);
+    const authData = await odooClient.authenticate(email, password);
 
-    if (!session) {
+    if (!authData) {
       return NextResponse.json(
         { success: false, error: 'Credenziali non valide' },
         { status: 401 }
       );
     }
 
+    const { session, authResult } = authData;
+
     // Ottenere informazioni utente da Odoo
-    const odooUser = await odooClient.getUserInfo(session);
+    const odooUser = await odooClient.getUserInfo(session, authResult);
 
     if (!odooUser) {
       return NextResponse.json(
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Mappare i dati Odoo al formato dell'applicazione
-    const appRole = odooClient.mapGroupsToRole(odooUser.groups);
+    const appRole = odooClient.mapGroupsToRole(odooUser.groups, odooUser.isAdmin);
     const appPermissions = odooClient.getAppPermissions(odooUser.groups);
 
     const user: User = {
