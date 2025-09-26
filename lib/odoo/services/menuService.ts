@@ -123,6 +123,10 @@ export class OdooMenuService {
         throw new Error(`Failed to create menu item: ${result.error}`);
       }
 
+      if (result.data === undefined) {
+        throw new Error('Failed to create menu item: No ID returned from server');
+      }
+
       return result.data;
     });
   }
@@ -152,6 +156,10 @@ export class OdooMenuService {
         throw new Error(`Failed to update menu item: ${result.error}`);
       }
 
+      if (result.data === undefined) {
+        throw new Error('Failed to update menu item: No result returned from server');
+      }
+
       return result.data;
     });
   }
@@ -168,6 +176,10 @@ export class OdooMenuService {
 
       if (!result.success) {
         throw new Error(`Failed to deactivate menu item: ${result.error}`);
+      }
+
+      if (result.data === undefined) {
+        throw new Error('Failed to deactivate menu item: No result returned from server');
       }
 
       return result.data;
