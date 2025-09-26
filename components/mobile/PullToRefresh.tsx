@@ -49,35 +49,17 @@ export function PullToRefresh({
   return (
     <div
       ref={containerRef}
-      className={`pull-to-refresh relative overflow-hidden ${className}`}
+      className={`pull-to-refresh relative ${className}`}
+      style={{
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-y',
+        overscrollBehaviorY: 'contain'
+      }}
     >
-      <motion.div
-        drag="y"
-        dragConstraints={{ top: 0, bottom: threshold }}
-        dragElastic={0.2}
-        onDragEnd={handleDragEnd}
-        style={{ y }}
-        className="relative"
-      >
-        {/* Pull indicator */}
-        <div className="absolute top-0 left-0 right-0 z-10 flex justify-center">
-          <motion.div
-            style={{ opacity, scale }}
-            className="flex items-center gap-2 px-4 py-2 bg-white/90 dark:bg-black/90 backdrop-blur-sm rounded-full shadow-lg"
-          >
-            <motion.div style={{ rotate }}>
-              <RefreshCw
-                className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
-              />
-            </motion.div>
-            <span className="text-sm font-medium">
-              {isRefreshing ? 'Aggiornamento...' : 'Trascina per aggiornare'}
-            </span>
-          </motion.div>
-        </div>
-
+      <div className="relative">
         {children}
-      </motion.div>
+      </div>
     </div>
   );
 }

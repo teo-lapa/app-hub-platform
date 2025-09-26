@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: 'Piattaforma LAPA per grossisti alimentari. Gestisci ordini ristoranti, clienti e dipendenti.',
   keywords: 'LAPA, grossista, fornitore ristoranti, italian food, ordini, clienti, dipendenti, PWA',
   authors: [{ name: 'LAPA Team' }],
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover',
+  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
   robots: 'index, follow',
   manifest: '/manifest.json',
   appleWebApp: {

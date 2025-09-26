@@ -265,9 +265,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="pwa-fullscreen flex flex-col">
+    <div className="min-h-screen min-h-[100dvh] flex flex-col overflow-x-hidden">
       {/* Mobile Header - shown only on mobile */}
-      <div className="md:hidden">
+      <div className="md:hidden flex-shrink-0">
         <MobileHeader
           title={user?.name ? `Ciao, ${user.name.split(' ')[0]}!` : undefined}
           showLogo={!user}
@@ -275,13 +275,13 @@ export default function HomePage() {
       </div>
 
       {/* Desktop Header - hidden on mobile */}
-      <div className="hidden md:block">
+      <div className="hidden md:block flex-shrink-0">
         <Header />
       </div>
 
       {/* Main Content with Pull-to-Refresh */}
-      <PullToRefresh onRefresh={handleRefresh} className="flex-1">
-        <main className="container-mobile md:max-w-7xl md:mx-auto md:px-4 md:sm:px-6 md:lg:px-8 py-4 md:py-8 pb-20 md:pb-8">
+      <PullToRefresh onRefresh={handleRefresh} className="flex-1 overflow-y-auto">
+        <main className="container-mobile md:max-w-7xl md:mx-auto md:px-4 md:sm:px-6 md:lg:px-8 py-4 md:py-8 pb-20 md:pb-8 min-h-full">
           {/* Welcome Banner */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -315,7 +315,7 @@ export default function HomePage() {
       </PullToRefresh>
 
       {/* Mobile Navigation - shown only on mobile */}
-      <div className="md:hidden">
+      <div className="md:hidden flex-shrink-0">
         <MobileNavigation />
       </div>
 

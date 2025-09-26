@@ -16,27 +16,72 @@ interface BeforeInstallPromptEvent extends Event {
 export function InstallButton() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    // Check if the app is already installed using multiple methods
+    const checkIfInstalled = () => {
+      // Method 1: Check display mode
+      const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+
+      // Method 2: Check if window.navigator.standalone is true (iOS)
+      const isIOSStandalone = (window.navigator as any).standalone === true;
+
+      // Method 3: Check if the app was launched from home screen
+      const isLaunchedFromHomeScreen = document.referrer === '' && window.location.protocol === 'https:';
+
+      // Method 4: Check user agent for installed PWA indicators
+      const hasInstalledIndicators = navigator.userAgent.includes('wv') || // WebView
+                                   document.documentElement.classList.contains('pwa-installed') ||
+                                   localStorage.getItem('pwa-installed') === 'true';
+
+      const installed = isStandalone || isIOSStandalone || hasInstalledIndicators;
+      setIsInstalled(installed);
+
+      if (installed) {
+        setShowInstallButton(false);
+        localStorage.setItem('pwa-installed', 'true');
+      }
+
+      return installed;
+    };
+
+    // Check immediately
+    if (checkIfInstalled()) {
+      return;
+    }
+
     const handler = (e: Event) => {
       // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
       // Save the event so it can be triggered later
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setShowInstallButton(true);
+
+      // Only show if not already installed
+      if (!isInstalled) {
+        setShowInstallButton(true);
+      }
+    };
+
+    const appInstalledHandler = () => {
+      console.log('PWA app installed successfully');
+      setIsInstalled(true);
+      setShowInstallButton(false);
+      localStorage.setItem('pwa-installed', 'true');
     };
 
     window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', appInstalledHandler);
 
-    // Check if the app is already installed
-    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
-      setShowInstallButton(false);
-    }
+    // Periodic check for installation status
+    const intervalId = setInterval(checkIfInstalled, 5000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', appInstalledHandler);
+      clearInterval(intervalId);
     };
-  }, []);
+  }, [isInstalled]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
@@ -53,6 +98,8 @@ export function InstallButton() {
 
     if (outcome === 'accepted') {
       console.log('User accepted the install prompt');
+      setIsInstalled(true);
+      localStorage.setItem('pwa-installed', 'true');
     } else {
       console.log('User dismissed the install prompt');
     }
@@ -62,9 +109,9 @@ export function InstallButton() {
     setShowInstallButton(false);
   };
 
-  // Always show the button on mobile devices or when PWA prompt is available
+  // Only show if not installed and either prompt is available or on mobile
   const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const shouldShow = showInstallButton || isMobile;
+  const shouldShow = !isInstalled && (showInstallButton || (isMobile && !isInstalled));
 
   if (!shouldShow) {
     return null;
