@@ -115,26 +115,6 @@ export function LoginForm({ onToggleMode }: LoginFormProps) {
           </motion.button>
         </form>
 
-        {/* Demo Accounts */}
-        <div className="mt-6 p-4 glass rounded-xl border border-blue-500/20">
-          <p className="text-xs text-center text-muted-foreground mb-3">
-            Account demo disponibili:
-          </p>
-          <div className="grid grid-cols-1 gap-2 text-xs">
-            <div className="flex justify-between">
-              <span>Admin:</span>
-              <span className="text-blue-400">admin@apphub.com / admin123</span>
-            </div>
-            <div className="flex justify-between">
-              <span>PRO:</span>
-              <span className="text-purple-400">pro@apphub.com / pro123</span>
-            </div>
-            <div className="flex justify-between">
-              <span>FREE:</span>
-              <span className="text-green-400">free@apphub.com / free123</span>
-            </div>
-          </div>
-        </div>
 
         {/* Toggle to Register */}
         <div className="mt-6 text-center">

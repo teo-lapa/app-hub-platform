@@ -32,8 +32,9 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
+  updateProfile: (data: { name: string; email: string; password?: string }) => Promise<void>;
   checkAuth: () => Promise<void>;
 }
 

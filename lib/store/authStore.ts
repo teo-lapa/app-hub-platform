@@ -90,9 +90,45 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
 
       toast.success('Logout effettuato con successo!');
+
+      // Reindirizza alla home page
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Errore durante il logout');
+    }
+  },
+
+  updateProfile: async (data: { name: string; email: string; password?: string }) => {
+    set({ isLoading: true });
+    try {
+      const response = await fetch('/api/auth/update-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result: ApiResponse<{ user: User }> = await response.json();
+
+      if (result.success && result.data?.user) {
+        set({
+          user: result.data.user,
+          isLoading: false,
+        });
+        toast.success('Profilo aggiornato con successo!');
+      } else {
+        set({ isLoading: false });
+        toast.error(result.error || 'Errore durante l\'aggiornamento del profilo');
+        throw new Error(result.error || 'Update failed');
+      }
+    } catch (error) {
+      set({ isLoading: false });
+      console.error('Profile update error:', error);
+      throw error;
     }
   },
 

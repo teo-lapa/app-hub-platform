@@ -12,6 +12,7 @@ import { UpgradeModal } from '@/components/ui/UpgradeModal';
 import { MobileNavigation } from '@/components/mobile/MobileNavigation';
 import { MobileHeader } from '@/components/mobile/MobileHeader';
 import { PullToRefresh } from '@/components/mobile/PullToRefresh';
+import { InstallButton } from '@/components/ui/InstallButton';
 
 export default function HomePage() {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
@@ -289,6 +290,7 @@ export default function HomePage() {
       </div>
 
       <UpgradeModal />
+      <InstallButton />
     </div>
   );
 }

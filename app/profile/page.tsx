@@ -7,12 +7,13 @@ import { User, Mail, Shield, Calendar, Edit2, Save, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, updateProfile, isLoading } = useAuthStore();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
   });
 
   useEffect(() => {
@@ -23,20 +24,35 @@ export default function ProfilePage() {
     setFormData({
       name: user.name,
       email: user.email,
+      password: '',
     });
   }, [user, router]);
 
-  const handleSave = () => {
-    // Qui andrà la logica per salvare i dati
-    console.log('Saving profile data:', formData);
-    setIsEditing(false);
-    // TODO: Implementare API call per aggiornare profilo
+  const handleSave = async () => {
+    try {
+      const updateData: { name: string; email: string; password?: string } = {
+        name: formData.name,
+        email: formData.email,
+      };
+
+      // Solo se la password è stata inserita
+      if (formData.password.trim()) {
+        updateData.password = formData.password;
+      }
+
+      await updateProfile(updateData);
+      setIsEditing(false);
+      setFormData({ ...formData, password: '' }); // Reset password field
+    } catch (error) {
+      console.error('Error saving profile:', error);
+    }
   };
 
   const handleCancel = () => {
     setFormData({
       name: user?.name || '',
       email: user?.email || '',
+      password: '',
     });
     setIsEditing(false);
   };
@@ -156,6 +172,19 @@ export default function ProfilePage() {
                     placeholder="La tua email"
                   />
                 </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nuova Password (opzionale)
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full glass px-4 py-3 rounded-xl border border-white/20 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    placeholder="Lascia vuoto per non modificare"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-3">
@@ -163,10 +192,11 @@ export default function ProfilePage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleSave}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+                  disabled={isLoading}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  Salva Modifiche
+                  {isLoading ? 'Salvando...' : 'Salva Modifiche'}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
