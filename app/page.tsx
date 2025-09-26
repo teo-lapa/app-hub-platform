@@ -23,7 +23,7 @@ export default function HomePage() {
     checkAuth();
   }, [checkAuth]);
 
-  // Ricarica dati quando l'app torna in focus
+  // Ricarica dati quando l'app torna in focus o viene ricaricata
   useEffect(() => {
     const handleFocus = () => {
       console.log('🔄 App in focus, ricaricando dati utente...');
@@ -37,11 +37,18 @@ export default function HomePage() {
       }
     };
 
+    const handlePageShow = () => {
+      console.log('🔄 Pagina mostrata, ricaricando dati utente...');
+      checkAuth();
+    };
+
     window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handlePageShow);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('pageshow', handlePageShow);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [checkAuth]);

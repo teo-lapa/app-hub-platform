@@ -107,10 +107,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-      });
-
+      // Pulisce subito lo stato locale anche se l'API fallisce
       set({
         user: null,
         isAuthenticated: false,
@@ -118,7 +115,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         token: null,
       });
 
-      toast.success('Logout effettuato con successo!');
+      // Prova a chiamare l'API di logout
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        toast.success('Logout effettuato con successo!');
+      } else {
+        console.warn('Logout API failed, but local state cleared');
+        toast.success('Logout completato');
+      }
 
       // Reindirizza alla home page
       if (typeof window !== 'undefined') {
@@ -126,7 +133,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     } catch (error) {
       console.error('Logout error:', error);
-      toast.error('Errore durante il logout');
+      // Anche se c'è un errore, mantieni lo stato pulito
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        token: null,
+      });
+      toast.success('Logout completato');
+
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     }
   },
 

@@ -7,8 +7,15 @@ export async function POST() {
     message: 'Logout effettuato con successo',
   });
 
-  // Rimuove il cookie JWT
+  // Rimuove tutti i cookie di autenticazione
   response.cookies.set('token', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 0,
+  });
+
+  response.cookies.set('odoo_session', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
