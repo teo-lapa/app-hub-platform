@@ -23,6 +23,11 @@ const publicRoutes = [
 ];
 
 export async function middleware(request: NextRequest) {
+  // Skip middleware in production per debugging
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.next();
+  }
+
   const { pathname } = request.nextUrl;
 
   // Controlla se è una route protetta
