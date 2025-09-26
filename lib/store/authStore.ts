@@ -164,9 +164,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   checkAuth: async () => {
+    // Skip auth check in production per debugging
+    if (process.env.NODE_ENV === 'production') {
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        token: null,
+      });
+      return;
+    }
+
     set({ isLoading: true });
     try {
       const response = await fetch('/api/auth/me');
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
       const data: ApiResponse<{ user: User }> = await response.json();
 
       if (data.success && data.data?.user) {
