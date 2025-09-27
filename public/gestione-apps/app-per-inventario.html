@@ -1394,6 +1394,7 @@
 
       try {
         showLoading();
+        console.log('🔍 Cercando ubicazione:', locationCode);
 
         // Usa la API che funziona (stesse credenziali del catalogo)
         const response = await fetch('/api/inventory/location', {
@@ -1406,11 +1407,14 @@
           })
         });
 
+        console.log('📡 Risposta fetch:', response.status, response.statusText);
+
         if (!response.ok) {
           throw new Error(`Errore HTTP: ${response.status}`);
         }
 
         const data = await response.json();
+        console.log('📦 Dati ricevuti:', data);
 
         if (!data.success) {
           throw new Error(data.error || 'Errore nella ricerca ubicazione');
@@ -1436,7 +1440,10 @@
         showNotification(`✅ Ubicazione: ${location.name} (${inventory.length} prodotti)`, 'success');
 
       } catch (error) {
-        console.error('Errore scan ubicazione:', error);
+        console.error('❌ ERRORE COMPLETO scan ubicazione:', error);
+        console.error('❌ Tipo errore:', error.name);
+        console.error('❌ Messaggio:', error.message);
+        console.error('❌ Stack:', error.stack);
         showNotification('Errore: ' + error.message, 'error');
       } finally {
         hideLoading();
