@@ -2,6 +2,8 @@ export type UserRole = 'visitor' | 'cliente_gratuito' | 'cliente_premium' | 'dip
 
 export type AppStatus = 'FREE' | 'PRO' | 'COMING_SOON' | 'AZIENDALE';
 
+export type AppControlStatus = 'pending' | 'approved' | 'rejected' | 'in_review';
+
 export interface User {
   id: string;
   email: string;
@@ -34,6 +36,7 @@ export interface App {
   requiredRole: UserRole;
   isNew?: boolean;
   isPopular?: boolean;
+  controlStatus?: AppControlStatus;
   createdAt: Date;
   updatedAt: Date;
 }

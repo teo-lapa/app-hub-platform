@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     const location = locationData.result[0];
     console.log(`📍 Ubicazione trovata: ${location.name}`);
 
-    // STEP 3: Cerca prodotti in questa ubicazione
+    // STEP 3: Cerca prodotti in questa ubicazione (inclusi quelli con quantità 0)
     const inventoryResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
@@ -127,13 +127,12 @@ export async function POST(request: NextRequest) {
           method: 'search_read',
           args: [
             [
-              ['location_id', '=', location.id],
-              ['quantity', '>', 0]
+              ['location_id', '=', location.id]
             ]
           ],
           kwargs: {
             fields: ['product_id', 'quantity', 'reserved_quantity', 'lot_id'],
-            limit: 50
+            limit: 100
           }
         },
         id: Math.random()
@@ -146,12 +145,55 @@ export async function POST(request: NextRequest) {
       throw new Error(inventoryData.error.message || 'Errore ricerca inventario');
     }
 
-    console.log(`📦 Trovati ${inventoryData.result.length} prodotti nell'ubicazione`);
+    let products = inventoryData.result || [];
+    console.log(`📦 Trovati ${products.length} record inventario nell'ubicazione`);
+
+    // Se non ci sono prodotti, cerca alcuni prodotti del catalogo per gestione inventario
+    if (products.length === 0) {
+      console.log('🔍 Nessun inventario esistente, carico prodotti del catalogo per gestione...');
+
+      const catalogResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'product.product',
+            method: 'search_read',
+            args: [
+              [['active', '=', true], ['type', '=', 'product']]
+            ],
+            kwargs: {
+              fields: ['id', 'name', 'default_code', 'barcode'],
+              limit: 20,
+              order: 'name ASC'
+            }
+          },
+          id: Math.random()
+        })
+      });
+
+      const catalogData = await catalogResponse.json();
+      if (catalogData.result) {
+        products = catalogData.result.map((product: any) => ({
+          product_id: [product.id, product.name],
+          quantity: 0,
+          reserved_quantity: 0,
+          lot_id: false,
+          _catalog_item: true
+        }));
+        console.log(`📋 Caricati ${products.length} prodotti del catalogo per gestione inventario`);
+      }
+    }
 
     return NextResponse.json({
       success: true,
       location: location,
-      inventory: inventoryData.result || [],
+      inventory: products,
       method: 'authenticated_session'
     });
 
