@@ -13,32 +13,74 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🔍 Ricerca ubicazione:', locationCode);
+    console.log('🌐 ODOO_URL:', process.env.ODOO_URL);
+    console.log('🗂️ ODOO_DB:', process.env.ODOO_DB);
 
     const odooClient = createOdooClient();
 
-    // Utilizza la sessione Odoo dal cookie
-    const sessionCookie = request.cookies.get('odoo_session')?.value;
-    if (!sessionCookie) {
-      return NextResponse.json(
-        { success: false, error: 'Sessione Odoo non trovata' },
-        { status: 401 }
-      );
+    // APPROCCIO DIRETTO: Usa username/password come fa l'HTML
+    const odooUrl = process.env.ODOO_URL!;
+    const odooDb = process.env.ODOO_DB!;
+
+    // Prima autentica con credenziali
+    const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          db: odooDb,
+          login: 'paul@lapa.ch', // Usa le credenziali che funzionano
+          password: 'paul' // Password dell'HTML
+        }
+      })
+    });
+
+    const authData = await authResponse.json();
+    console.log('🔐 Auth Response:', authData.result?.uid ? 'Login OK' : 'Login FAILED');
+
+    if (!authData.result?.uid) {
+      throw new Error('Autenticazione Odoo fallita');
     }
 
-    const session = JSON.parse(decodeURIComponent(sessionCookie));
+    // Estrai session_id dai cookie di risposta
+    const setCookie = authResponse.headers.get('set-cookie');
+    console.log('🍪 Set-Cookie:', setCookie);
 
-    // Cerca ubicazione per codice o barcode
-    const locations = await odooClient.callKw(
-      'stock.location',
-      'search_read',
-      [
-        [['|'], ['barcode', '=', locationCode], ['name', 'ilike', locationCode]],
-        ['id', 'name', 'complete_name', 'barcode']
-      ],
-      { limit: 1 },
-      session
-    );
+    // Ora fai la chiamata con la sessione autentica
+    const response = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': setCookie || '',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.location',
+          method: 'search_read',
+          args: [
+            [['|'], ['barcode', '=', locationCode], ['name', 'ilike', locationCode]],
+            ['id', 'name', 'complete_name', 'barcode']
+          ],
+          kwargs: { limit: 1 }
+        }
+      })
+    });
 
+    const data = await response.json();
+    console.log('📍 Risposta Odoo:', data);
+
+    if (data.error) {
+      console.error('❌ Errore Odoo:', data.error);
+      throw new Error(data.error.message || 'Errore Odoo');
+    }
+
+    const locations = data.result;
     console.log('📍 Ubicazioni trovate:', locations);
 
     if (!locations || locations.length === 0) {

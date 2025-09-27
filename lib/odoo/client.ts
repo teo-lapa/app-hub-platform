@@ -331,12 +331,13 @@ export class OdooClient {
 
       console.log('🔄 Odoo callKw:', model, method, 'args:', args);
 
-      const response = await fetch(`${this.url}/web/dataset/call_kw/${model}/${method}`, {
+      // Usa approccio diretto come l'HTML originale
+      const response = await fetch(`${this.url}/web/dataset/call_kw`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Cookie': `session_id=${session.session_id}`,
         },
+        credentials: 'include', // Usa i cookie del browser
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'call',
@@ -344,7 +345,8 @@ export class OdooClient {
             model,
             method,
             args,
-            kwargs
+            kwargs,
+            context: session.user_context || {}
           }
         })
       });

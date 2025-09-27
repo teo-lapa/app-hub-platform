@@ -4,9 +4,33 @@ import { join } from 'path';
 
 export async function GET(request: NextRequest) {
   try {
-    // Read the original HTML file
-    const htmlPath = join(process.cwd(), '..', 'gestione app generale', 'app-per-inventario', 'app-per-inventario.html');
-    const htmlContent = await readFile(htmlPath, 'utf-8');
+    console.log('🔍 Tentativo di leggere HTML app...');
+
+    // Try multiple paths
+    const possiblePaths = [
+      join(process.cwd(), '..', 'gestione app generale', 'app-per-inventario', 'app-per-inventario.html'),
+      join(process.cwd(), 'gestione app generale', 'app-per-inventario', 'app-per-inventario.html'),
+      join(process.cwd(), '..', '..', 'gestione app generale', 'app-per-inventario', 'app-per-inventario.html')
+    ];
+
+    let htmlContent = '';
+    let foundPath = '';
+
+    for (const path of possiblePaths) {
+      try {
+        console.log('🔍 Provo path:', path);
+        htmlContent = await readFile(path, 'utf-8');
+        foundPath = path;
+        console.log('✅ HTML trovato in:', foundPath);
+        break;
+      } catch (e) {
+        console.log('❌ Non trovato in:', path);
+      }
+    }
+
+    if (!htmlContent) {
+      throw new Error('HTML file not found in any location');
+    }
 
     // Modify the HTML to use the correct Odoo URL from our environment
     const modifiedHtml = htmlContent.replace(

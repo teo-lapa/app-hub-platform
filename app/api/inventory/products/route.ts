@@ -7,51 +7,101 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 Ricerca prodotti:', { productIds, searchQuery });
 
-    const odooClient = createOdooClient();
+    // APPROCCIO DIRETTO: Usa username/password come fa l'HTML
+    const odooUrl = process.env.ODOO_URL!;
+    const odooDb = process.env.ODOO_DB!;
 
-    // Utilizza la sessione Odoo dal cookie
-    const sessionCookie = request.cookies.get('odoo_session')?.value;
-    if (!sessionCookie) {
-      return NextResponse.json(
-        { success: false, error: 'Sessione Odoo non trovata' },
-        { status: 401 }
-      );
+    // Prima autentica con credenziali
+    const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          db: odooDb,
+          login: 'paul@lapa.ch',
+          password: 'paul'
+        }
+      })
+    });
+
+    const authData = await authResponse.json();
+    console.log('🔐 Auth Response:', authData.result?.uid ? 'Login OK' : 'Login FAILED');
+
+    if (!authData.result?.uid) {
+      throw new Error('Autenticazione Odoo fallita');
     }
 
-    const session = JSON.parse(decodeURIComponent(sessionCookie));
+    // Estrai session_id dai cookie di risposta
+    const setCookie = authResponse.headers.get('set-cookie');
 
     let products = [];
 
     if (productIds && Array.isArray(productIds)) {
       // Cerca prodotti per ID specifici
-      products = await odooClient.callKw(
-        'product.product',
-        'search_read',
-        [
-          [['id', 'in', productIds]],
-          ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id']
-        ],
-        {},
-        session
-      );
+      const response = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': setCookie || '',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'product.product',
+            method: 'search_read',
+            args: [
+              [['id', 'in', productIds]],
+              ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id']
+            ],
+            kwargs: {}
+          }
+        })
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error.message || 'Errore Odoo');
+      }
+      products = data.result;
     } else if (searchQuery) {
       // Cerca prodotti per query
-      products = await odooClient.callKw(
-        'product.product',
-        'search_read',
-        [
-          [
-            '|', '|', '|',
-            ['name', 'ilike', searchQuery],
-            ['default_code', 'ilike', searchQuery],
-            ['barcode', '=', searchQuery],
-            ['barcode', 'ilike', searchQuery]
-          ],
-          ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id']
-        ],
-        { limit: 20 },
-        session
-      );
+      const response = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': setCookie || '',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'product.product',
+            method: 'search_read',
+            args: [
+              [
+                '|', '|', '|',
+                ['name', 'ilike', searchQuery],
+                ['default_code', 'ilike', searchQuery],
+                ['barcode', '=', searchQuery],
+                ['barcode', 'ilike', searchQuery]
+              ],
+              ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id']
+            ],
+            kwargs: { limit: 20 }
+          }
+        })
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error.message || 'Errore Odoo');
+      }
+      products = data.result;
     }
 
     console.log(`📦 Trovati ${products.length} prodotti`);
