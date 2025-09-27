@@ -1,6 +1,6 @@
 export type UserRole = 'visitor' | 'cliente_gratuito' | 'cliente_premium' | 'dipendente' | 'admin';
 
-export type AppStatus = 'FREE' | 'PRO' | 'COMING_SOON';
+export type AppStatus = 'FREE' | 'PRO' | 'COMING_SOON' | 'AZIENDALE';
 
 export interface User {
   id: string;
