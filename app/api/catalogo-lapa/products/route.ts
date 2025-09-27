@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
     });
 
     const authData = await authResponse.json();
+    console.log('🔍 Risposta autenticazione completa:', JSON.stringify(authData, null, 2));
 
     if (authData.error) {
       console.error('❌ Errore autenticazione:', authData.error);
@@ -49,9 +50,17 @@ export async function POST(request: NextRequest) {
     }
 
     const odooUid = authData.result.uid;
-    const sessionId = authData.result.session_id;
 
-    console.log(`✅ Autenticato con successo! UID: ${odooUid}, Session: ${sessionId}`);
+    // Estraiamo il session_id dai headers
+    const setCookieHeader = authResponse.headers.get('set-cookie');
+    let sessionId = null;
+
+    if (setCookieHeader) {
+      const sessionMatch = setCookieHeader.match(/session_id=([^;]+)/);
+      sessionId = sessionMatch ? sessionMatch[1] : null;
+    }
+
+    console.log(`✅ Autenticato con successo! UID: ${odooUid}, Session ID: ${sessionId}`);
 
     // STEP 2: Carica prodotti usando la sessione autenticata
     try {
@@ -71,7 +80,6 @@ export async function POST(request: NextRequest) {
         ];
       }
 
-      try {
       // Conta totale prodotti
       const countResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
         method: 'POST',
