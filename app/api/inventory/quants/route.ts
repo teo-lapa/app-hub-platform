@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
           throw new Error(quantsData.error?.message || 'Errore nel caricamento quants');
         }
 
-      } catch (sessionError) {
+      } catch (sessionError: any) {
         console.error('❌ Errore caricamento quants:', sessionError);
 
         return NextResponse.json({
