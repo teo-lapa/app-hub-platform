@@ -137,7 +137,7 @@ export const mockApps: App[] = [
     icon: '📦',
     badge: 'AZIENDALE',
     category: 'Business',
-    url: '/api/gestione-apps/app-per-inventario',
+    url: '/gestione-apps/app-per-inventario.html',
     requiredRole: 'cliente_gratuito',
     isPopular: true,
     controlStatus: 'in_review',
