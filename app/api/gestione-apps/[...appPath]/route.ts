@@ -145,6 +145,85 @@ export async function GET(
           🏠
         </button>
       </div>
+
+      <!-- Autenticazione automatica Odoo -->
+      <script>
+        // Override della funzione checkConnection per autenticazione automatica
+        window.originalCheckConnection = window.checkConnection;
+
+        async function autoAuthenticate() {
+          try {
+            console.log('🔑 Autenticazione automatica in corso...');
+
+            // Stesso sistema del catalogo - autenticazione diretta
+            const authResponse = await fetch('/web/session/authenticate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'call',
+                params: {
+                  db: 'lapadevadmin-lapa-v2-staging-2406-24063382',
+                  login: 'paul@lapa.ch',
+                  password: 'lapa201180'
+                },
+                id: 1
+              })
+            });
+
+            const authData = await authResponse.json();
+
+            if (authData.result && authData.result.uid) {
+              console.log('✅ Autenticazione automatica riuscita');
+
+              // Aggiorna lo stato della connessione se la funzione esiste
+              if (window.updateConnectionStatus) {
+                window.updateConnectionStatus('connected', 'Connesso automaticamente');
+              }
+
+              return true;
+            } else {
+              console.error('❌ Autenticazione automatica fallita');
+              return false;
+            }
+          } catch (error) {
+            console.error('❌ Errore autenticazione automatica:', error);
+            return false;
+          }
+        }
+
+        // Override checkConnection per usare autenticazione automatica
+        window.checkConnection = async function() {
+          try {
+            // Prima prova controllo sessione normale
+            const sessionResponse = await fetch('/web/session/get_session_info');
+            if (sessionResponse.ok) {
+              const sessionData = await sessionResponse.json();
+              if (sessionData.result && sessionData.result.uid && sessionData.result.uid !== false) {
+                if (window.updateConnectionStatus) {
+                  window.updateConnectionStatus('connected', sessionData.result.name || 'Connesso');
+                }
+                return true;
+              }
+            }
+
+            // Se non connesso, prova autenticazione automatica
+            console.log('🔄 Sessione non attiva, tentativo autenticazione automatica...');
+            return await autoAuthenticate();
+
+          } catch (error) {
+            console.error('❌ Errore controllo connessione:', error);
+
+            // Fallback: prova autenticazione automatica
+            return await autoAuthenticate();
+          }
+        };
+
+        // Esegui autenticazione automatica all'avvio
+        document.addEventListener('DOMContentLoaded', function() {
+          setTimeout(autoAuthenticate, 1000);
+        });
+      </script>
     `;
 
     // Inserisci l'header dopo il tag body di apertura
