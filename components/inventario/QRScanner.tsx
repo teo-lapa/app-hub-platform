@@ -76,12 +76,12 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
   const toggleTorch = async () => {
     if (stream) {
       const track = stream.getVideoTracks()[0];
-      const capabilities = track.getCapabilities();
+      const capabilities = track.getCapabilities() as any;
 
       if (capabilities.torch) {
         try {
           await track.applyConstraints({
-            advanced: [{ torch: !torchEnabled }]
+            advanced: [{ torch: !torchEnabled } as any]
           });
           setTorchEnabled(!torchEnabled);
         } catch (err) {

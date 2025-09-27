@@ -9,9 +9,10 @@ import { QRScanner } from '@/components/inventario/QRScanner';
 import { Calculator as CalculatorComponent } from '@/components/inventario/Calculator';
 import { ProductSearch } from '@/components/inventario/ProductSearch';
 import { getInventoryClient } from '@/lib/odoo/inventoryClient';
+import { Location, Product, BasicProduct, AppState, InventoryConfig } from '@/lib/types/inventory';
 
 // Configurazione app inventario
-const CONFIG = {
+const CONFIG: InventoryConfig = {
   bufferLocation: {
     id: 8,
     name: 'WH/Stock/Buffer'
@@ -19,43 +20,6 @@ const CONFIG = {
   refreshInterval: 30000,
   defaultUOM: 'PZ'
 };
-
-// Tipi TypeScript
-interface Location {
-  id: number;
-  name: string;
-  complete_name?: string;
-  barcode?: string;
-}
-
-interface Product {
-  id: number;
-  name: string;
-  code: string;
-  image?: string | null;
-  uom: string;
-  uom_id?: number;
-  totalQty: number;
-  lots: any[];
-  lastCountDate?: string | null;
-  lastCountUser?: string | null;
-  inventoryQuantity?: number | null;
-  inventoryDiff?: number | null;
-  isCounted: boolean;
-  isCountedRecent: boolean;
-}
-
-interface AppState {
-  currentLocation: Location | null;
-  products: Product[];
-  selectedProduct: Product | null;
-  selectedLot: any | null;
-  scannerActive: boolean;
-  scannerMode: 'location' | 'product';
-  searchMode: 'location' | 'warehouse';
-  transferProduct: Product | null;
-  currentUser: any | null;
-}
 
 export default function InventarioPage() {
   const router = useRouter();
@@ -246,7 +210,7 @@ export default function InventarioPage() {
     setCountedQuantity(value);
   };
 
-  const handleProductSelect = (product: Product) => {
+  const handleProductSelect = (product: BasicProduct) => {
     // Implementa logica per aggiungere prodotto all'ubicazione
     showNotification(`Prodotto ${product.name} selezionato per l'ubicazione`, 'info');
   };

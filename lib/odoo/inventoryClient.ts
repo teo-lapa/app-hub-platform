@@ -90,8 +90,11 @@ export class InventoryOdooClient {
   }
 
   async searchRead(model: string, domain: any[], fields: string[], limit: number | false = false): Promise<any[]> {
-    const args = [domain, fields];
-    if (limit) args.push(0, limit);
+    const args: any[] = [domain, fields];
+    if (limit) {
+      args.push(0);
+      args.push(limit);
+    }
     return await this.rpc(model, 'search_read', args);
   }
 

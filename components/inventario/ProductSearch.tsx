@@ -4,26 +4,18 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Package, Plus } from 'lucide-react';
 import { getInventoryClient } from '@/lib/odoo/inventoryClient';
-
-interface Product {
-  id: number;
-  name: string;
-  code: string;
-  barcode?: string;
-  image?: string | null;
-  uom: string;
-}
+import { BasicProduct } from '@/lib/types/inventory';
 
 interface ProductSearchProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectProduct: (product: Product) => void;
+  onSelectProduct: (product: BasicProduct) => void;
   currentLocationName?: string;
 }
 
 export function ProductSearch({ isOpen, onClose, onSelectProduct, currentLocationName }: ProductSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [searchResults, setSearchResults] = useState<BasicProduct[]>([]);
   const [loading, setLoading] = useState(false);
 
   const inventoryClient = getInventoryClient();
@@ -60,7 +52,7 @@ export function ProductSearch({ isOpen, onClose, onSelectProduct, currentLocatio
     }
   };
 
-  const handleSelectProduct = (product: Product) => {
+  const handleSelectProduct = (product: BasicProduct) => {
     onSelectProduct(product);
     setSearchQuery('');
     setSearchResults([]);

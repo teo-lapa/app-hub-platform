@@ -1,44 +1,46 @@
-19:35:27.665 Running build in Washington, D.C., USA (East) – iad1
-19:35:27.665 Build machine configuration: 2 cores, 8 GB
-19:35:27.679 Cloning github.com/teo-lapa/app-hub-platform (Branch: main, Commit: 0767e75)
-19:35:28.415 Cloning completed: 736.000ms
-19:35:28.726 Restored build cache from previous deployment (5Lmqe51vxi3abHyHvyYkYrqWR8jb)
-19:35:29.181 Running "vercel build"
-19:35:29.567 Vercel CLI 48.1.6
-19:35:31.038 Running "install" command: `npm install`...
-19:35:34.235 
-19:35:34.236 up to date, audited 420 packages in 3s
-19:35:34.236 
-19:35:34.236 150 packages are looking for funding
-19:35:34.237   run `npm fund` for details
-19:35:34.303 
-19:35:34.304 1 critical severity vulnerability
-19:35:34.304 
-19:35:34.304 To address all issues, run:
-19:35:34.304   npm audit fix --force
-19:35:34.305 
-19:35:34.305 Run `npm audit` for details.
-19:35:34.336 Detected Next.js version: 14.0.3
-19:35:34.337 Running "npm run build"
-19:35:34.447 
-19:35:34.447 > app-hub-platform@1.0.0 build
-19:35:34.447 > next build
-19:35:34.447 
-19:35:35.099    ▲ Next.js 14.0.3
-19:35:35.099 
-19:35:35.100    Creating an optimized production build ...
-19:35:40.469  ✓ Compiled successfully
-19:35:40.470    Linting and checking validity of types ...
-19:35:44.990 Failed to compile.
-19:35:44.991 
-19:35:44.991 ./app/api/auth/me/route.ts:21:11
-19:35:44.991 Type error: This condition will always return true since this 'Promise<import("/vercel/path0/lib/types/index").User | null>' is always defined.
-19:35:44.991 
-19:35:44.992 [0m [90m 19 |[39m     [36mif[39m (decoded) {[0m
-19:35:44.992 [0m [90m 20 |[39m       [36mconst[39m user [33m=[39m getUserById(decoded[33m.[39mid)[33m;[39m[0m
-19:35:44.992 [0m[31m[1m>[22m[39m[90m 21 |[39m       [36mif[39m (user) {[0m
-19:35:44.992 [0m [90m    |[39m           [31m[1m^[22m[39m[0m
-19:35:44.992 [0m [90m 22 |[39m         [36mreturn[39m [33mNextResponse[39m[33m.[39mjson[33m<[39m[33mApiResponse[39m[33m>[39m({[0m
-19:35:44.992 [0m [90m 23 |[39m           success[33m:[39m [36mtrue[39m[33m,[39m[0m
-19:35:44.992 [0m [90m 24 |[39m           data[33m:[39m { user }[33m,[39m[0m
-19:35:45.058 Error: Command "npm run build" exited with 1
+01:17:57.673 Running build in Washington, D.C., USA (East) – iad1
+01:17:57.674 Build machine configuration: 2 cores, 8 GB
+01:17:57.694 Cloning github.com/teo-lapa/app-hub-platform (Branch: main, Commit: 26f4413)
+01:17:58.422 Cloning completed: 728.000ms
+01:17:59.205 Restored build cache from previous deployment (qWaPnE7R5LiyzZ2BWQeoa7fRhJVx)
+01:17:59.691 Running "vercel build"
+01:18:00.201 Vercel CLI 48.1.6
+01:18:00.536 Running "install" command: `npm install`...
+01:18:04.721 
+01:18:04.722 up to date, audited 420 packages in 4s
+01:18:04.722 
+01:18:04.723 150 packages are looking for funding
+01:18:04.723   run `npm fund` for details
+01:18:04.787 
+01:18:04.787 1 critical severity vulnerability
+01:18:04.787 
+01:18:04.788 To address all issues, run:
+01:18:04.788   npm audit fix --force
+01:18:04.788 
+01:18:04.788 Run `npm audit` for details.
+01:18:04.817 Detected Next.js version: 14.0.3
+01:18:04.818 Running "npm run build"
+01:18:04.926 
+01:18:04.926 > app-hub-platform@1.0.0 build
+01:18:04.926 > next build
+01:18:04.926 
+01:18:05.559    ▲ Next.js 14.0.3
+01:18:05.560 
+01:18:05.560    Creating an optimized production build ...
+01:18:11.747  ✓ Compiled successfully
+01:18:11.747    Linting and checking validity of types ...
+01:18:17.005 Failed to compile.
+01:18:17.006 
+01:18:17.006 ./app/inventario/page.tsx:573:9
+01:18:17.006 Type error: Type '(product: Product) => void' is not assignable to type '(product: Product) => void'. Two different types with this name exist, but they are unrelated.
+01:18:17.006   Types of parameters 'product' and 'product' are incompatible.
+01:18:17.006     Type 'Product' is missing the following properties from type 'Product': totalQty, lots, isCounted, isCountedRecent
+01:18:17.006 
+01:18:17.006 [0m [90m 571 |[39m         isOpen[33m=[39m{showSearchPanel}[0m
+01:18:17.006 [0m [90m 572 |[39m         onClose[33m=[39m{() [33m=>[39m setShowSearchPanel([36mfalse[39m)}[0m
+01:18:17.006 [0m[31m[1m>[22m[39m[90m 573 |[39m         onSelectProduct[33m=[39m{handleProductSelect}[0m
+01:18:17.006 [0m [90m     |[39m         [31m[1m^[22m[39m[0m
+01:18:17.007 [0m [90m 574 |[39m         currentLocationName[33m=[39m{appState[33m.[39mcurrentLocation[33m?[39m[33m.[39mname}[0m
+01:18:17.007 [0m [90m 575 |[39m       [33m/[39m[33m>[39m[0m
+01:18:17.007 [0m [90m 576 |[39m     [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m[0m
+01:18:17.113 Error: Command "npm run build" exited with 1
