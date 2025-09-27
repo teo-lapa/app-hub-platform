@@ -14,6 +14,11 @@ export async function POST(request: NextRequest) {
     const token = request.cookies.get('token')?.value;
     const odooSessionCookie = request.cookies.get('odoo_session')?.value;
 
+    // Debug: stampa tutti i cookie disponibili
+    console.log('🍪 Cookie disponibili:', request.cookies.getAll().map(c => c.name));
+    console.log('🔑 Token trovato:', !!token);
+    console.log('🔑 Odoo session trovata:', !!odooSessionCookie);
+
     if (!token) {
       return NextResponse.json({
         success: false,
