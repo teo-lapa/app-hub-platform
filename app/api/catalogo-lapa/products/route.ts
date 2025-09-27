@@ -10,20 +10,18 @@ export async function POST(request: NextRequest) {
     const odooUrl = process.env.ODOO_URL!;
     const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
 
-    // STEP 1: Verifica autenticazione utente
+    // STEP 1: Verifica autenticazione utente (stesso pattern di /auth/me)
     const token = request.cookies.get('token')?.value;
     const odooSessionCookie = request.cookies.get('odoo_session')?.value;
 
-    // Debug: stampa tutti i cookie disponibili
     console.log('🍪 Cookie disponibili:', request.cookies.getAll().map(c => c.name));
     console.log('🔑 Token trovato:', !!token);
-    console.log('🔑 Odoo session trovata:', !!odooSessionCookie);
 
     if (!token) {
       return NextResponse.json({
         success: false,
-        error: 'Utente non autenticato. Effettua il login per vedere i prodotti.',
-        details: 'Token di sessione mancante'
+        error: 'Token di accesso non trovato',
+        details: 'Utente non autenticato'
       }, { status: 401 });
     }
 
@@ -31,27 +29,33 @@ export async function POST(request: NextRequest) {
     let odooSession = null;
     let userEmail = null;
 
+    // Usa ESATTAMENTE la stessa logica di /auth/me che funziona
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
     try {
-      // Decodifica JWT per info utente
-      const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-      const decoded: any = jwt.verify(token, jwtSecret);
+      const jwtDecoded = jwt.verify(token, jwtSecret) as any;
 
-      odooUid = decoded.odooUid;
-      userEmail = decoded.email;
+      if (jwtDecoded && jwtDecoded.email) {
+        console.log('🔍 JWT decoded for user:', jwtDecoded.email);
 
-      console.log(`🔐 Utente autenticato: ${userEmail} (UID: ${odooUid})`);
+        odooUid = jwtDecoded.odooUid || jwtDecoded.userId;
+        userEmail = jwtDecoded.email;
 
-      // Recupera sessione Odoo dai cookie
-      if (odooSessionCookie) {
-        odooSession = JSON.parse(odooSessionCookie);
-        console.log('🍪 Sessione Odoo recuperata dai cookie');
+        console.log(`🔐 Utente autenticato: ${userEmail} (UID: ${odooUid})`);
+
+        // Recupera sessione Odoo dai cookie
+        if (odooSessionCookie) {
+          odooSession = JSON.parse(odooSessionCookie);
+          console.log('🍪 Sessione Odoo recuperata dai cookie');
+        }
+      } else {
+        throw new Error('Token JWT non contiene dati utente validi');
       }
     } catch (jwtError) {
       console.error('❌ Errore JWT:', jwtError);
       return NextResponse.json({
         success: false,
-        error: 'Sessione scaduta. Effettua nuovamente il login.',
-        details: 'Token JWT non valido'
+        error: 'Token non valido',
+        details: 'JWT verification failed'
       }, { status: 401 });
     }
 
