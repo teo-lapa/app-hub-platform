@@ -135,6 +135,15 @@ export class InventoryOdooClient {
       const data = await response.json();
 
       if (!data.success) {
+        // Gestione sessione scaduta
+        if (response.status === 401 || data.error === 'Odoo Session Expired') {
+          // Rimuovi cookie sessione scaduto
+          document.cookie = 'odoo_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
+          // Redirect al login
+          window.location.href = '/';
+          return null;
+        }
         throw new Error(data.error);
       }
 

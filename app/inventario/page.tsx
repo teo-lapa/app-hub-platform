@@ -106,6 +106,13 @@ export default function InventarioPage() {
 
     } catch (error: any) {
       console.error('Errore scan ubicazione:', error);
+
+      if (error.message === 'Odoo Session Expired') {
+        showNotification('🔐 Sessione scaduta. Reindirizzamento al login...', 'error');
+        // Il redirect viene gestito automaticamente dal client
+        return;
+      }
+
       showNotification('Errore: ' + error.message, 'error');
     } finally {
       setLoading(false);
