@@ -8,6 +8,7 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { QRScanner } from '@/components/inventario/QRScanner';
 import { Calculator as CalculatorComponent } from '@/components/inventario/Calculator';
 import { ProductSearch } from '@/components/inventario/ProductSearch';
+import { BufferTransfer } from '@/components/inventario/BufferTransfer';
 import { getInventoryClient } from '@/lib/odoo/inventoryClient';
 import { Location, Product, BasicProduct, AppState, InventoryConfig } from '@/lib/types/inventory';
 
@@ -43,6 +44,7 @@ export default function InventarioPage() {
   const [showBottomPanel, setShowBottomPanel] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showBufferTransfer, setShowBufferTransfer] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
@@ -332,6 +334,13 @@ export default function InventarioPage() {
               <Search className="w-4 h-4" />
               <span className="hidden sm:inline">Aggiungi</span>
             </button>
+            <button
+              onClick={() => setShowBufferTransfer(true)}
+              className="glass-strong px-4 py-3 rounded-xl hover:bg-white/20 transition-colors flex items-center gap-2 bg-blue-600/20 border border-blue-500/30"
+            >
+              <Package className="w-4 h-4" />
+              <span className="hidden sm:inline">Buffer</span>
+            </button>
           </div>
         </div>
 
@@ -543,6 +552,19 @@ export default function InventarioPage() {
         onClose={() => setShowSearchPanel(false)}
         onSelectProduct={handleProductSelect}
         currentLocationName={appState.currentLocation?.name}
+      />
+
+      {/* Buffer Transfer */}
+      <BufferTransfer
+        isOpen={showBufferTransfer}
+        onClose={() => setShowBufferTransfer(false)}
+        currentLocation={appState.currentLocation}
+        onTransferComplete={() => {
+          // Ricarica i prodotti dell'ubicazione dopo il trasferimento
+          if (appState.currentLocation) {
+            loadLocationProducts(appState.currentLocation.id);
+          }
+        }}
       />
     </div>
   );

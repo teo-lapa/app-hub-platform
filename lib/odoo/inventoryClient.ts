@@ -229,6 +229,80 @@ export class InventoryOdooClient {
     }
   }
 
+  // Cerca prodotti disponibili nel buffer per trasferimento
+  async searchBufferProducts(query: string): Promise<any[]> {
+    try {
+      const response = await fetch('/api/inventory/buffer-search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ searchQuery: query })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        // Gestione sessione scaduta
+        if (response.status === 401 || data.error === 'Odoo Session Expired') {
+          document.cookie = 'odoo_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          window.location.href = '/';
+          return [];
+        }
+        throw new Error(data.error);
+      }
+
+      return data.data;
+    } catch (error) {
+      console.error('Errore ricerca buffer:', error);
+      throw error;
+    }
+  }
+
+  // Trasferisce prodotto dal buffer allo scaffale
+  async transferFromBuffer(
+    productId: number,
+    destLocationId: number,
+    quantity: number,
+    lotNumber?: string,
+    expiryDate?: string
+  ): Promise<boolean> {
+    try {
+      const response = await fetch('/api/inventory/transfer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          productId,
+          destLocationId,
+          quantity,
+          lotNumber,
+          expiryDate
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        // Gestione sessione scaduta
+        if (response.status === 401 || data.error === 'Odoo Session Expired') {
+          document.cookie = 'odoo_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          window.location.href = '/';
+          return false;
+        }
+        throw new Error(data.error);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Errore trasferimento:', error);
+      throw error;
+    }
+  }
+
   // Ottieni lotti di un prodotto
   async getProductLots(productId: number): Promise<OdooLot[]> {
     try {
