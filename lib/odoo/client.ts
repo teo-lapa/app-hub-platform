@@ -346,7 +346,7 @@ export class OdooClient {
             method,
             args,
             kwargs,
-            context: session.user_context || {}
+            context: {}
           }
         })
       });

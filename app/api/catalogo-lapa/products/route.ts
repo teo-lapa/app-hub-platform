@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         } else {
           console.log(`❌ Auth fallita per ${cred.username}:`, authData.error?.message || 'UID non valido');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.log(`💥 Errore auth ${cred.username}:`, error.message);
       }
     }
@@ -79,11 +79,11 @@ export async function POST(request: NextRequest) {
       const offset = (page - 1) * limit;
 
       // Costruisco il domain per la ricerca
-      let domain = [['sale_ok', '=', true]]; // Solo prodotti vendibili
+      let domain: any[] = [['sale_ok', '=', true]]; // Solo prodotti vendibili
 
       if (search && search.trim()) {
         domain = [
-          '&', ['sale_ok', '=', true],
+          ['sale_ok', '=', true],
           '|', '|', '|',
           ['name', 'ilike', search],
           ['default_code', 'ilike', search],

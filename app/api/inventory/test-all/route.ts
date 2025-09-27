@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       result: data.result,
       speed: 'fast'
     });
-  } catch (e) {
+  } catch (e: any) {
     results.tests.push({
       name: 'Database List',
       status: 'ERROR',
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       user: data.result?.username || 'none',
       uid: data.result?.uid || null
     });
-  } catch (e) {
+  } catch (e: any) {
     results.tests.push({
       name: 'Session Info',
       status: 'ERROR',
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       method: data.method,
       responseTime: '< 1s'
     });
-  } catch (e) {
+  } catch (e: any) {
     results.tests.push({
       name: 'Location API',
       status: 'ERROR',
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
       method: data.method,
       products: data.data?.length || 0
     });
-  } catch (e) {
+  } catch (e: any) {
     results.tests.push({
       name: 'Products API',
       status: 'ERROR',
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
       status: html.includes('Gestione Ubicazioni') ? 'PASS' : 'FAIL',
       size: `${Math.round(html.length / 1024)}KB`
     });
-  } catch (e) {
+  } catch (e: any) {
     results.tests.push({
       name: 'HTML App',
       status: 'ERROR',
