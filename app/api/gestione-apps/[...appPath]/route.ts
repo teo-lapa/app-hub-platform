@@ -93,19 +93,21 @@ export async function GET(
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
       ">
         <button onclick="window.location.href='/'" style="
-          background: rgba(59, 130, 246, 0.1);
-          border: 1px solid rgba(59, 130, 246, 0.3);
-          color: #3b82f6;
-          padding: 8px 16px;
-          border-radius: 6px;
+          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+          border: none;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 8px;
           font-size: 14px;
+          font-weight: 600;
           cursor: pointer;
           display: flex;
           align-items: center;
           gap: 8px;
           transition: all 0.2s;
-        " onmouseover="this.style.background='rgba(59, 130, 246, 0.2)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.1)'">
-          ← Home Platform
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
+          🏠 Torna alla Homepage
         </button>
         <div style="margin-left: 20px; color: #f1f5f9; font-weight: 500;">
           📱 ${appName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
@@ -115,6 +117,34 @@ export async function GET(
         </div>
       </div>
       <div style="height: 60px;"></div>
+
+      <!-- Pulsante mobile fisso sempre visibile -->
+      <div id="mobile-home-button" style="
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 10000;
+        display: block;
+      ">
+        <button onclick="window.location.href='/'" style="
+          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+          border: none;
+          color: white;
+          padding: 16px;
+          border-radius: 50%;
+          font-size: 20px;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+          transition: all 0.2s;
+          width: 60px;
+          height: 60px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        " onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 16px rgba(59, 130, 246, 0.6)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)'" title="Torna alla Homepage">
+          🏠
+        </button>
+      </div>
     `;
 
     // Inserisci l'header dopo il tag body di apertura
