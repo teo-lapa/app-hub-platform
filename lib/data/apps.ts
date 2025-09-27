@@ -92,6 +92,20 @@ export const mockApps: App[] = [
     createdAt: new Date('2024-01-15'),
     updatedAt: new Date('2024-01-15'),
   },
+  {
+    id: '8',
+    name: 'Catalogo LAPA',
+    description: 'Catalogo prodotti completo con ricerca avanzata. Visualizza tutti i prodotti del database Odoo con immagini, prezzi e disponibilità.',
+    icon: '📦',
+    badge: 'FREE',
+    category: 'Business',
+    url: '/catalogo-lapa',
+    requiredRole: 'cliente_gratuito',
+    isPopular: true,
+    isNew: true,
+    createdAt: new Date('2024-01-15'),
+    updatedAt: new Date('2024-01-15'),
+  },
 ];
 
 export const categories = [
