@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Package, Barcode, Tag, Eye } from 'lucide-react';
+import { Search, Package, Barcode, Tag, Eye, ArrowLeft, Home } from 'lucide-react';
+import Link from 'next/link';
 
 interface Product {
   id: number;
@@ -96,13 +97,25 @@ export default function CatalogoLapaPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="bg-gradient-to-r from-emerald-500 to-blue-500 p-3 rounded-xl">
-                  <Package className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-white">Catalogo LAPA</h1>
-                  <p className="text-slate-300">Finest Italian Food - Prodotti Premium</p>
+              <div className="flex items-center space-x-4">
+                {/* Pulsante Indietro */}
+                <Link
+                  href="/"
+                  className="flex items-center space-x-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg border border-slate-600 transition-colors group"
+                >
+                  <ArrowLeft className="h-5 w-5 text-slate-300 group-hover:text-white" />
+                  <Home className="h-5 w-5 text-slate-300 group-hover:text-white" />
+                  <span className="text-slate-300 group-hover:text-white font-medium">Home</span>
+                </Link>
+
+                <div className="flex items-center space-x-3">
+                  <div className="bg-gradient-to-r from-emerald-500 to-blue-500 p-3 rounded-xl">
+                    <Package className="h-8 w-8 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-white">Catalogo LAPA</h1>
+                    <p className="text-slate-300">Finest Italian Food - Prodotti Premium</p>
+                  </div>
                 </div>
               </div>
 
@@ -335,6 +348,16 @@ export default function CatalogoLapaPage() {
             </p>
           </div>
         )}
+      </div>
+
+      {/* Pulsante Home Mobile - sempre visibile */}
+      <div className="fixed bottom-6 right-6 md:hidden z-50">
+        <Link
+          href="/"
+          className="flex items-center justify-center w-14 h-14 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-full shadow-lg transition-all duration-300 transform hover:scale-110"
+        >
+          <Home className="h-6 w-6" />
+        </Link>
       </div>
     </div>
   );
