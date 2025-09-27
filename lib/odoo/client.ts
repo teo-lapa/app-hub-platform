@@ -321,13 +321,52 @@ export class OdooClient {
     model: string,
     method: string,
     args: any[] = [],
-    kwargs: Record<string, any> = {}
-  ): Promise<{ success: boolean; data?: any; error?: string }> {
-    // Per ora ritorna successo con null, implementazione placeholder
-    return {
-      success: true,
-      data: null
-    };
+    kwargs: Record<string, any> = {},
+    session?: OdooSession
+  ): Promise<any> {
+    try {
+      if (!session) {
+        throw new Error('Sessione Odoo richiesta per callKw');
+      }
+
+      console.log('🔄 Odoo callKw:', model, method, 'args:', args);
+
+      const response = await fetch(`${this.url}/web/dataset/call_kw/${model}/${method}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${session.session_id}`,
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model,
+            method,
+            args,
+            kwargs
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.error) {
+        console.error('❌ Errore Odoo callKw:', data.error);
+        throw new Error(data.error.message || 'Errore chiamata Odoo');
+      }
+
+      console.log('✅ Odoo callKw risultato:', data.result);
+      return data.result;
+
+    } catch (error: any) {
+      console.error('💥 Errore callKw:', error);
+      throw error;
+    }
   }
 
   async read(
