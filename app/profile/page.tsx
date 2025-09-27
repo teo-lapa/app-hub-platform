@@ -6,6 +6,7 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { UserRole } from '@/lib/types';
 import { User, Mail, Shield, Calendar, Edit2, Save, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
 
 export default function ProfilePage() {
   const { user, logout, updateProfile, isLoading } = useAuthStore();
@@ -135,21 +136,17 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Header */}
+      <AppHeader
+        title="Il Mio Profilo"
+        subtitle="Gestisci le informazioni del tuo account"
+        icon={<User className="h-8 w-8 text-white" />}
+        showHomeButton={true}
+        showBackButton={false}
+      />
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Il Mio Profilo
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Gestisci le informazioni del tuo account
-          </p>
-        </motion.div>
 
         {/* Profile Card */}
         <motion.div
@@ -320,6 +317,9 @@ export default function ProfilePage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Mobile Home Button */}
+      <MobileHomeButton />
     </div>
   );
 }
