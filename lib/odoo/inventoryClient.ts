@@ -48,45 +48,67 @@ export class InventoryOdooClient {
   }
 
   async rpc(model: string, method: string, args: any[]) {
-    // Utilizza la sessione Odoo corrente dall'auth store
-    const token = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('odoo_session='))
-      ?.split('=')[1];
+    try {
+      // Utilizza la sessione Odoo corrente dall'auth store
+      const token = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('odoo_session='))
+        ?.split('=')[1];
 
-    if (!token) {
-      throw new Error('Sessione Odoo non trovata');
-    }
+      if (!token) {
+        throw new Error('Sessione Odoo non trovata');
+      }
 
-    const session = JSON.parse(decodeURIComponent(token));
+      const session = JSON.parse(decodeURIComponent(token));
 
-    // Chiamata RPC tramite web/dataset/call_kw
-    const response = await fetch('/web/dataset/call_kw', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': session.csrf_token || ''
-      },
-      credentials: 'include',
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model: model,
-          method: method,
-          args: args,
-          kwargs: {},
-          context: session.user_context || {}
+      // URL completo per l'endpoint Odoo
+      const odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
+      const endpoint = `${odooUrl}/web/dataset/call_kw`;
+
+      console.log(`🔧 RPC Call: ${model}.${method}`, args);
+
+      // Chiamata RPC tramite web/dataset/call_kw
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': session.csrf_token || '',
+          'Cookie': document.cookie
         },
-        id: Math.floor(Math.random() * 1000000000)
-      })
-    });
+        credentials: 'include',
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: model,
+            method: method,
+            args: args,
+            kwargs: {},
+            context: session.user_context || {}
+          },
+          id: Math.floor(Math.random() * 1000000000)
+        })
+      });
 
-    const data = await response.json();
-    if (data.error) {
-      throw new Error(data.error.data?.message || data.error.message || 'Errore RPC');
+      console.log(`📡 RPC Response Status: ${response.status}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log(`📋 RPC Result:`, data);
+
+      if (data.error) {
+        console.error('RPC Error:', data.error);
+        throw new Error(data.error.data?.message || data.error.message || 'Errore RPC');
+      }
+
+      return data.result;
+    } catch (error) {
+      console.error('RPC Error:', error);
+      throw error;
     }
-    return data.result;
   }
 
   async searchRead(model: string, domain: any[], fields: string[], limit: number | false = false): Promise<any[]> {
@@ -101,14 +123,22 @@ export class InventoryOdooClient {
   // Cerca ubicazione per codice o barcode
   async findLocation(locationCode: string): Promise<OdooLocation | null> {
     try {
-      const locations = await this.searchRead(
-        'stock.location',
-        ['|', ['barcode', '=', locationCode], ['name', 'ilike', locationCode]],
-        ['id', 'name', 'complete_name', 'barcode'],
-        1
-      );
+      const response = await fetch('/api/inventory/location', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ locationCode })
+      });
 
-      return locations.length > 0 ? locations[0] : null;
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error);
+      }
+
+      return data.data;
     } catch (error) {
       console.error('Errore ricerca ubicazione:', error);
       throw error;
@@ -118,26 +148,22 @@ export class InventoryOdooClient {
   // Ottieni quants di un'ubicazione
   async getLocationQuants(locationId: number): Promise<OdooQuant[]> {
     try {
-      return await this.searchRead(
-        'stock.quant',
-        [
-          ['location_id', '=', locationId],
-          ['quantity', '>', 0]
-        ],
-        [
-          'id',
-          'product_id',
-          'quantity',
-          'lot_id',
-          'inventory_quantity',
-          'inventory_date',
-          'inventory_diff_quantity',
-          'user_id',
-          'package_id',
-          'product_uom_id',
-          'location_id'
-        ]
-      );
+      const response = await fetch('/api/inventory/quants', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ locationId })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error);
+      }
+
+      return data.data;
     } catch (error) {
       console.error('Errore caricamento quants:', error);
       throw error;
@@ -147,14 +173,22 @@ export class InventoryOdooClient {
   // Ottieni dettagli prodotto
   async getProduct(productId: number): Promise<OdooProduct | null> {
     try {
-      const products = await this.searchRead(
-        'product.product',
-        [['id', '=', productId]],
-        ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id'],
-        1
-      );
+      const response = await fetch('/api/inventory/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ productIds: [productId] })
+      });
 
-      return products.length > 0 ? products[0] : null;
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error);
+      }
+
+      return data.data.length > 0 ? data.data[0] : null;
     } catch (error) {
       console.error('Errore caricamento prodotto:', error);
       throw error;
@@ -164,18 +198,22 @@ export class InventoryOdooClient {
   // Cerca prodotti per nome, codice o barcode
   async searchProducts(query: string, limit: number = 20): Promise<OdooProduct[]> {
     try {
-      return await this.searchRead(
-        'product.product',
-        [
-          '|', '|', '|',
-          ['name', 'ilike', query],
-          ['default_code', 'ilike', query],
-          ['barcode', '=', query],
-          ['barcode', 'ilike', query]
-        ],
-        ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id'],
-        limit
-      );
+      const response = await fetch('/api/inventory/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ searchQuery: query })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error);
+      }
+
+      return data.data;
     } catch (error) {
       console.error('Errore ricerca prodotti:', error);
       throw error;
