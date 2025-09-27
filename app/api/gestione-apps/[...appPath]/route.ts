@@ -153,41 +153,31 @@ export async function GET(
 
         async function autoAuthenticate() {
           try {
-            console.log('🔑 Autenticazione automatica in corso...');
+            console.log('🔑 Autenticazione unificata in corso...');
 
-            // Stesso sistema del catalogo - autenticazione diretta
-            const authResponse = await fetch('/web/session/authenticate', {
+            // Usa il nuovo sistema di autenticazione unificata
+            const authResponse = await fetch('/api/auth/unified-odoo', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'call',
-                params: {
-                  db: 'lapadevadmin-lapa-v2-staging-2406-24063382',
-                  login: 'paul@lapa.ch',
-                  password: 'lapa201180'
-                },
-                id: 1
-              })
+              headers: { 'Content-Type': 'application/json' }
             });
 
             const authData = await authResponse.json();
 
-            if (authData.result && authData.result.uid) {
-              console.log('✅ Autenticazione automatica riuscita');
+            if (authData.success && authData.data && authData.data.uid) {
+              console.log('✅ Autenticazione unificata riuscita');
 
               // Aggiorna lo stato della connessione se la funzione esiste
               if (window.updateConnectionStatus) {
-                window.updateConnectionStatus('connected', 'Connesso automaticamente');
+                window.updateConnectionStatus('connected', 'Connesso con sistema unificato');
               }
 
               return true;
             } else {
-              console.error('❌ Autenticazione automatica fallita');
+              console.error('❌ Autenticazione unificata fallita:', authData.error);
               return false;
             }
           } catch (error) {
-            console.error('❌ Errore autenticazione automatica:', error);
+            console.error('❌ Errore autenticazione unificata:', error);
             return false;
           }
         }
