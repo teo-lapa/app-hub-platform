@@ -1,0 +1,1881 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📈 LAPA Analytics - Analisi Clienti</title>
+
+<style>
+:root {
+  /* 🎨 Palette Pulita */
+  --primary: #2563eb;
+  --primary-light: #3b82f6;
+  --success: #16a34a;
+  --warning: #ea580c;
+  --danger: #dc2626;
+
+  /* 🤍 Backgrounds Puliti */
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
+
+  /* 📝 Typography */
+  --text: #1e293b;
+  --text-light: #475569;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+
+  /* ✨ Shadows Minimal */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+  /* 🎯 Transitions */
+  --transition: all 0.2s ease-in-out;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: var(--shadow);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.period-info {
+  background: var(--surface-2);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-light);
+}
+
+.export-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-btn:hover {
+  background: var(--primary-light);
+  transform: translateY(-1px);
+}
+
+.stats-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  transition: var(--transition);
+}
+
+.stat-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.stat-trend {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-top: 8px;
+  display: inline-block;
+}
+
+.trend-up { background: #dcfce7; color: var(--success); }
+.trend-down { background: #fef2f2; color: var(--danger); }
+.trend-stable { background: var(--surface-2); color: var(--text-muted); }
+
+.filters-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 24px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  box-shadow: var(--shadow);
+}
+
+.filters-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+
+.team-filter {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.team-selector {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 14px;
+  color: var(--text);
+  min-width: 200px;
+  cursor: pointer;
+}
+
+.team-selector:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-light);
+}
+
+.filter-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.filter-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.search-box {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 14px;
+  color: var(--text);
+  width: 100%;
+  max-width: 300px;
+}
+
+.search-box:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.clients-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.client-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+}
+
+.client-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.client-card.trend-up {
+  border-left: 4px solid var(--success);
+}
+
+.client-card.trend-down {
+  border-left: 4px solid var(--danger);
+}
+
+.client-card.trend-stable {
+  border-left: 4px solid var(--text-muted);
+}
+
+.client-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.client-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.client-status {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-active { background: #dcfce7; color: var(--success); }
+.status-warning { background: #fef3c7; color: var(--warning); }
+.status-inactive { background: #fef2f2; color: var(--danger); }
+
+.client-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.metric {
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.trend-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.trend-indicator.up {
+  background: #dcfce7;
+  color: var(--success);
+}
+
+.trend-indicator.down {
+  background: #fef2f2;
+  color: var(--danger);
+}
+
+.trend-indicator.stable {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.client-chart {
+  height: 120px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  margin-top: 16px;
+  display: flex;
+  align-items: end;
+  padding: 12px 8px 20px 8px;
+  gap: 8px;
+  position: relative;
+}
+
+.chart-week-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.chart-bars-pair {
+  display: flex;
+  gap: 2px;
+  align-items: end;
+  height: 70px;
+  margin-bottom: 6px;
+}
+
+.chart-bar {
+  width: 16px;
+  border-radius: 3px 3px 0 0;
+  min-height: 4px;
+  position: relative;
+  transition: var(--transition);
+}
+
+.chart-bar.revenue-bar {
+  background: var(--primary);
+}
+
+.chart-bar.orders-bar {
+  background: var(--warning);
+}
+
+.chart-bar.current-week {
+  border: 2px solid var(--danger);
+}
+
+.chart-bar:hover {
+  opacity: 0.8;
+  transform: translateY(-2px);
+}
+
+.chart-value {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text);
+  background: white;
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--border-light);
+  white-space: nowrap;
+  min-width: 20px;
+  text-align: center;
+}
+
+.chart-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-align: center;
+}
+
+.chart-scales {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 12px;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.chart-scale-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chart-scale-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: var(--text-light);
+}
+
+/* Modal */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.modal-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 30px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  width: 800px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  transition: var(--transition);
+}
+
+.close-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.detailed-chart {
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.chart-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+/* 📱 RESPONSIVE OTTIMIZZATO PER ANDROID/SAMSUNG */
+
+/* Tablet orizzontale (1024px+) */
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1600px;
+    padding: 30px;
+  }
+  .stats-overview {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .clients-grid {
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  }
+}
+
+/* Tablet verticale (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .container {
+    padding: 20px;
+  }
+  .stats-overview {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .clients-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .week-controls {
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+}
+
+/* Android Mobile (fino a 767px) */
+@media (max-width: 767px) {
+  .container {
+    padding: 10px;
+  }
+
+  .header {
+    padding: 20px 15px;
+    margin-bottom: 20px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+  }
+
+  .logo {
+    font-size: 20px;
+  }
+
+  .period-info {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .export-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+
+  .stats-overview {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-number {
+    font-size: 20px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+  }
+
+  .filters-section {
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .filters-title {
+    font-size: 16px;
+    margin-bottom: 15px;
+  }
+
+  .team-filter {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+
+  .team-selector {
+    min-width: unset;
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  /* Controlli settimane responsive */
+  .week-controls {
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 12px !important;
+  }
+
+  .week-controls button {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    font-size: 13px !important;
+  }
+
+  #weekRangeDisplay {
+    min-width: unset !important;
+    font-size: 13px !important;
+    padding: 8px !important;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  .filters {
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+
+  .filter-btn {
+    padding: 12px;
+    font-size: 14px;
+    text-align: center;
+    width: 100%;
+  }
+
+  .search-box {
+    width: 100%;
+    max-width: unset;
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .clients-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .client-card {
+    padding: 16px;
+  }
+
+  .client-name {
+    font-size: 15px;
+  }
+
+  .client-metrics {
+    gap: 12px;
+  }
+
+  .metric-value {
+    font-size: 18px;
+  }
+
+  .metric-label {
+    font-size: 11px;
+  }
+
+  .client-chart {
+    height: 100px;
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .chart-bars-pair {
+    height: 60px;
+  }
+
+  .chart-bar {
+    width: 14px;
+  }
+
+  .chart-value {
+    font-size: 8px;
+    top: -16px;
+    padding: 1px 3px;
+  }
+
+  .chart-label {
+    font-size: 9px;
+  }
+
+  .chart-scales {
+    top: 4px;
+    right: 4px;
+    font-size: 8px;
+    gap: 8px;
+  }
+
+  .chart-scale-color {
+    width: 8px;
+    height: 8px;
+  }
+
+  .modal-content {
+    width: 95vw;
+    height: 90vh;
+    padding: 15px;
+    overflow-y: auto;
+  }
+
+  .modal-title {
+    font-size: 16px;
+  }
+
+  .detailed-chart {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+
+  .chart-title {
+    font-size: 14px;
+  }
+}
+
+/* Android Small (fino a 480px) */
+@media (max-width: 480px) {
+  .container {
+    padding: 8px;
+  }
+
+  .header {
+    padding: 15px 10px;
+  }
+
+  .logo {
+    font-size: 18px;
+  }
+
+  .stats-overview {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .stat-number {
+    font-size: 18px;
+  }
+
+  .filters-section {
+    padding: 12px;
+  }
+
+  .client-card {
+    padding: 12px;
+  }
+
+  .client-chart {
+    height: 80px;
+    padding: 6px;
+    gap: 4px;
+  }
+
+  .chart-bars-pair {
+    height: 50px;
+    gap: 1px;
+  }
+
+  .chart-bar {
+    width: 10px;
+  }
+
+  .chart-value {
+    font-size: 7px;
+    top: -14px;
+  }
+
+  .modal-content {
+    width: 98vw;
+    height: 95vh;
+    padding: 10px;
+  }
+}
+
+/* Fix per Samsung Internet */
+@supports (-webkit-appearance: none) {
+  .team-selector,
+  .search-box {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
+/* Fix per Chrome Android */
+input, select, button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+</style>
+
+
+
+<div class="container">
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">
+        📈 LAPA Analytics
+      </div>
+      <div style="display: flex; align-items: center; gap: 20px;">
+        <div class="period-info" id="periodInfo">
+          📅 Ultime 4 settimane concluse
+        </div>
+        <button class="export-btn" onclick="exportToPDF()">
+          📄 Esporta PDF
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <section class="stats-overview">
+    <div class="stat-card">
+      <div class="stat-number" id="totalClients">0</div>
+      <div class="stat-label">Clienti Attivi</div>
+      <div class="stat-trend trend-stable" id="clientsChange">Caricamento...</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="totalRevenue">CHF 0</div>
+      <div class="stat-label">Fatturato Totale</div>
+      <div class="stat-trend trend-stable" id="revenueChange">Caricamento...</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="totalOrders">0</div>
+      <div class="stat-label">Ordini Totali</div>
+      <div class="stat-trend trend-stable" id="ordersChange">Caricamento...</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="growingClients">0</div>
+      <div class="stat-label">Clienti in Crescita</div>
+      <div class="stat-trend trend-up">📈</div>
+    </div>
+  </section>
+
+  <section class="filters-section">
+    <h2 class="filters-title">🔍 Filtri e Ricerca</h2>
+
+    <div class="team-filter">
+      <label for="teamSelector">👥 Team di Vendita:</label>
+      <select id="teamSelector" class="team-selector" onchange="onTeamChange()">
+        <option value="">Caricamento team...</option>
+      </select>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+      <div class="filters">
+        <div class="filter-btn active" onclick="setFilter('all')">🔄 Tutti i clienti</div>
+        <div class="filter-btn" onclick="setFilter('growing')">🟢 In crescita</div>
+        <div class="filter-btn" onclick="setFilter('declining')">🔴 In calo</div>
+        <div class="filter-btn" onclick="setFilter('stable')">⚪ Stabili</div>
+      </div>
+
+      <div class="week-controls" style="display: flex; align-items: center; gap: 10px; background: var(--surface-2); padding: 8px; border-radius: 8px;">
+        <button onclick="shiftWeeks(-1)" style="
+          background: var(--primary);
+          color: white;
+          border: none;
+          padding: 8px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 500;
+        ">← Indietro</button>
+
+        <span id="weekRangeDisplay" style="font-size: 12px; font-weight: 600; color: var(--text); min-width: 120px; text-align: center;">
+          Settimane correnti
+        </span>
+
+        <button onclick="shiftWeeks(1)" style="
+          background: var(--primary);
+          color: white;
+          border: none;
+          padding: 8px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 500;
+        ">Avanti →</button>
+
+        <button onclick="toggleCurrentWeek()" id="toggleCurrentBtn" style="
+          background: var(--warning);
+          color: white;
+          border: none;
+          padding: 8px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 11px;
+          font-weight: 500;
+          margin-left: 10px;
+        ">Escludi corrente</button>
+      </div>
+    </div>
+
+    <input type="text" class="search-box" placeholder="🔍 Cerca cliente per nome..." onkeyup="filterClients()">
+  </section>
+
+  <section class="clients-grid" id="clientsGrid">
+    <div class="loading">
+      📊 Caricamento dati clienti da Odoo...
+    </div>
+  </section>
+</div>
+
+
+<div id="clientModal" class="modal" onclick="closeModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modalClientName">Nome Cliente</h2>
+      <button class="close-btn" onclick="closeModal()">×</button>
+    </div>
+
+    <div class="detailed-chart">
+      <h3 class="chart-title">📈 Andamento Settimanale - Valore Ordini</h3>
+      <div id="revenueChart" style="height: 200px; background: var(--surface-2); border-radius: 8px; display: flex; align-items: end; padding: 20px;">
+        
+      </div>
+    </div>
+
+    <div class="detailed-chart">
+      <h3 class="chart-title">📊 Andamento Settimanale - Numero Ordini</h3>
+      <div id="ordersChart" style="height: 200px; background: var(--surface-2); border-radius: 8px; display: flex; align-items: end; padding: 20px;">
+        
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// === CONFIGURAZIONE REALE ODOO ===
+const LAPA_TEAM_IDS = [5, 9, 12, 8, 1, 11, 14];
+
+// Mappa utenti autorizzati per team (identica al dashboard principale)
+const USER_TEAM_PERMISSIONS = {
+  407: [1],           // Domingos Ferreira → I Maestri del Sapore
+  14:  [12],          // Mihai Nita → I Custodi della Tradizione
+  412: [5, 9],        // Giovanni Deana → I Maestri del Sapore + Team 9
+  20:  [8],           // Emiliano Marchesoni → Team 8
+  16:  [11],          // Stefania Biavaschi → Team 11
+  415: [14],          // Luca Avedano → Team 14
+  23:  'ALL',         // Paolo Lapa → Super Admin (tutti i team)
+  7:   'ALL',         // Paul Teodorescu → Super Admin (tutti i team)
+  1:   'ALL'          // LapaBot → Super Admin (tutti i team)
+};
+
+// Variabili globali
+let clientsData = [];
+let allTeams = [];
+let currentUser = null;
+let currentFilter = 'all';
+let currentTeam = null;
+let weekOffset = 0; // 0 = settimana corrente inclusa, -1 = settimana corrente esclusa, ecc.
+
+// === FUNZIONI UTILITÀ DALLA DASHBOARD PRINCIPALE ===
+
+// Funzione per ottenere sessione Odoo
+async function getSessionInfo() {
+  const response = await fetch('/web/session/get_session_info', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({})
+  });
+
+  if (!response.ok) {
+    throw new Error(`Errore sessione HTTP: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+// Funzione principale per chiamate Odoo
+async function callOdoo(model, method, args = [], kwargs = {}) {
+  try {
+    if (!model || !method) {
+      throw new Error('Model e method sono obbligatori');
+    }
+
+    const response = await fetch('/web/dataset/call_kw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: model,
+          method: method,
+          args: args || [],
+          kwargs: kwargs || {}
+        },
+        id: new Date().getTime()
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Errore HTTP: ${response.status} - ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error.data?.message || data.error.message);
+    }
+
+    return data.result;
+  } catch (error) {
+    throw error;
+  }
+}
+
+// Carica informazioni utente
+async function loadUserFromOdoo() {
+  try {
+    const sessionInfo = await getSessionInfo();
+
+    currentUser = {
+      id: sessionInfo.uid || sessionInfo.user_id,
+      name: sessionInfo.name || sessionInfo.username || 'Utente Odoo',
+      login: sessionInfo.login || sessionInfo.username
+    };
+
+    if (!currentUser.id || currentUser.id === 'undefined') {
+      currentUser.id = 7;
+    }
+
+    return currentUser;
+  } catch (error) {
+    currentUser = {
+      id: 7,
+      name: 'Paul Teodorescu (Fallback)',
+      login: 'paul'
+    };
+    return currentUser;
+  }
+}
+
+// Carica team da Odoo
+async function loadTeamsFromOdoo() {
+  try {
+    const teams = await callOdoo('crm.team', 'search_read',
+      [[['id', 'in', LAPA_TEAM_IDS]]],
+      {
+        fields: ['id', 'name', 'user_id', 'member_ids', 'sale_order_count', 'invoiced', 'invoiced_target'],
+        order: 'name asc'
+      }
+    );
+
+    if (!teams || teams.length === 0) {
+      throw new Error(`Nessun team trovato con ID: ${LAPA_TEAM_IDS.join(', ')}`);
+    }
+
+    allTeams = teams.map(team => ({
+      id: team.id,
+      name: team.name,
+      userId: team.user_id ? team.user_id[0] : null,
+      memberIds: team.member_ids || [],
+      memberCount: team.member_ids ? team.member_ids.length : 0
+    }));
+
+    return allTeams;
+  } catch (error) {
+    throw error;
+  }
+}
+
+// === FUNZIONI DI CALCOLO SETTIMANE IDENTICHE AL DASHBOARD VENDI ===
+
+// Calcola numero settimana ISO (identica al dashboard)
+function getISOWeekNumber(date) {
+  const tempDate = new Date(date.valueOf());
+  const dayOfWeek = (tempDate.getDay() + 6) % 7; // Lun=0, Dom=6
+  tempDate.setDate(tempDate.getDate() - dayOfWeek + 3); // Giovedì della settimana
+  const firstThursday = tempDate.valueOf();
+  tempDate.setMonth(0, 1);
+  if (tempDate.getDay() !== 4) {
+    tempDate.setMonth(0, 1 + ((4 - tempDate.getDay()) + 7) % 7);
+  }
+  return 1 + Math.ceil((firstThursday - tempDate) / 604800000);
+}
+
+// Calcola numero di settimane in un anno (identica al dashboard)
+function getWeeksInYear(year) {
+  const dec28 = new Date(year, 11, 28);
+  return getISOWeekNumber(dec28);
+}
+
+// Calcola i limiti di una settimana ISO specifica (identica al dashboard)
+function getWeekBounds(year, week) {
+  // Trova il primo lunedì dell'anno
+  const jan4 = new Date(year, 0, 4);
+  const dayOfWeek = (jan4.getDay() + 6) % 7; // Lun=0, Dom=6
+  const firstMonday = new Date(year, 0, 4 - dayOfWeek);
+
+  // Se il 4 gennaio è da venerdì a domenica, il primo lunedì è dell'anno precedente
+  if (dayOfWeek > 3) {
+    firstMonday.setDate(firstMonday.getDate() + 7);
+  }
+
+  // Calcola l'inizio della settimana target
+  const weekStart = new Date(firstMonday);
+  weekStart.setDate(firstMonday.getDate() + (week - 1) * 7);
+  weekStart.setHours(0, 0, 0, 0);
+
+  // Calcola la fine della settimana (domenica)
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  return { weekStart, weekEnd };
+}
+
+// Calcola fatturato settimanale (IDENTICA logica al dashboard vendi)
+function calculateWeeklyRevenue(orders) {
+  const today = new Date();
+  const weeklyData = [];
+
+  const currentWeek = getISOWeekNumber(today);
+  const currentYear = today.getFullYear();
+
+  // Crea array per le ultime 4 settimane con offset configurabile
+  // weekOffset: 0 = include settimana corrente, -1 = escludi settimana corrente, ecc.
+  for (let i = 3; i >= 0; i--) {
+    // Calcola il numero della settimana target con offset
+    let targetWeek = currentWeek - i + weekOffset;
+    let targetYear = currentYear;
+
+    // Gestisci il cambio anno
+    if (targetWeek <= 0) {
+      targetYear--;
+      // Calcola quante settimane aveva l'anno precedente
+      const weeksInPrevYear = getWeeksInYear(targetYear);
+      targetWeek = weeksInPrevYear + targetWeek;
+    }
+
+    // Calcola i limiti della settimana ISO
+    const { weekStart, weekEnd } = getWeekBounds(targetYear, targetWeek);
+
+
+    // Filtra ordini di questa settimana - USA SEMPRE COMMITMENT_DATE COME PRIORITÀ
+    const weekOrders = orders.filter(order => {
+      const orderDate = order.commitment_date ?
+        new Date(order.commitment_date) :
+        new Date(order.date_order);
+      orderDate.setHours(12, 0, 0, 0); // Normalizza ore
+
+      return orderDate >= weekStart && orderDate <= weekEnd;
+    });
+
+    // Calcola fatturato della settimana
+    const weekRevenue = weekOrders.reduce((sum, order) => sum + (order.amount_total || 0), 0);
+
+
+    weeklyData.push({
+      weekNumber: targetWeek,
+      revenue: weekRevenue,
+      orders: weekOrders.length,
+      weekStart: weekStart,
+      weekEnd: weekEnd,
+      year: targetYear
+    });
+  }
+
+  return weeklyData;
+}
+
+// Calcola dati settimanali per analisi
+function calculateTrend(weeklyData) {
+  if (weeklyData.length < 2) return 'stable';
+
+  const lastWeek = weeklyData[weeklyData.length - 1];
+  const previousWeek = weeklyData[weeklyData.length - 2];
+
+  const revenueTrend = lastWeek.revenue > previousWeek.revenue;
+  const ordersTrend = lastWeek.orders > previousWeek.orders;
+
+  if (revenueTrend && ordersTrend) return 'up';
+  if (!revenueTrend && !ordersTrend) return 'down';
+  return 'stable';
+}
+
+function getTrendPercentage(weeklyData) {
+  if (weeklyData.length < 2) return 0;
+
+  const lastWeek = weeklyData[weeklyData.length - 1];
+  const previousWeek = weeklyData[weeklyData.length - 2];
+
+  if (previousWeek.revenue === 0) return lastWeek.revenue > 0 ? 100 : 0;
+
+  const revenueChange = ((lastWeek.revenue - previousWeek.revenue) / previousWeek.revenue) * 100;
+  return Math.round(revenueChange);
+}
+
+// === FUNZIONE CARICAMENTO CLIENTI REALE ===
+async function loadClientsForTeam(teamId) {
+  try {
+    const team = allTeams.find(t => t.id === teamId);
+    if (!team || !team.memberIds.length) {
+      return [];
+    }
+
+    // Carica aziende clienti dal team
+    const companies = await callOdoo('res.partner', 'search_read',
+      [[
+        ['team_id', '=', teamId],
+        ['is_company', '=', true],
+        ['customer_rank', '>', 0],
+        ['parent_id', '=', false]
+      ]],
+      {
+        fields: ['id', 'name', 'street', 'city', 'zip', 'country_id', 'phone', 'email', 'team_id', 'child_ids'],
+        order: 'name asc',
+        limit: 200
+      }
+    );
+
+    if (companies.length === 0) {
+      return [];
+    }
+
+    // Carica tutti gli ordini per i partner di queste aziende
+    const allPartnerIds = companies.flatMap(company => [company.id, ...(company.child_ids || [])]);
+
+    // Calcola data limite (4 settimane fa dalla settimana corrente)
+    const today = new Date();
+    const currentWeek = getISOWeekNumber(today);
+    const currentYear = today.getFullYear();
+
+    // Calcola inizio della settimana 4 settimane fa con offset
+    let startTargetWeek = currentWeek - 3 + weekOffset;
+    let startTargetYear = currentYear;
+
+    if (startTargetWeek <= 0) {
+      startTargetYear--;
+      const weeksInPrevYear = getWeeksInYear(startTargetYear);
+      startTargetWeek = weeksInPrevYear + startTargetWeek;
+    }
+
+    const { weekStart: dateLimit } = getWeekBounds(startTargetYear, startTargetWeek);
+    const dateLimitStr = dateLimit.toISOString().split('T')[0]; // YYYY-MM-DD
+
+
+    let allOrders = await callOdoo('sale.order', 'search_read',
+      [[
+        ['partner_id', 'in', allPartnerIds],
+        ['state', '=', 'done'],  // 🎯 Solo ordini COMPLETATI
+        ['commitment_date', '!=', false],  // 🎯 Con data promessa consegna
+        ['commitment_date', '>=', dateLimitStr]  // 🎯 Ultime 4 settimane
+      ]],
+      {
+        fields: ['id', 'name', 'partner_id', 'commercial_partner_id', 'amount_total', 'amount_untaxed', 'commitment_date', 'date_order'],
+        order: 'commitment_date desc'
+      }
+    );
+
+
+    // Fallback 1: Ordini done senza filtro data (se hanno commitment_date vuota)
+    if (allOrders.length === 0) {
+      allOrders = await callOdoo('sale.order', 'search_read',
+        [[
+          ['partner_id', 'in', allPartnerIds],
+          ['state', '=', 'done'],
+          ['date_order', '>=', dateLimitStr]  // Usa date_order come fallback
+        ]],
+        {
+          fields: ['id', 'name', 'partner_id', 'commercial_partner_id', 'amount_total', 'amount_untaxed', 'commitment_date', 'date_order'],
+          order: 'date_order desc'
+        }
+      );
+    }
+
+    // Fallback 2: Anche ordini confermati (sale) se proprio non trova niente
+    if (allOrders.length === 0) {
+      allOrders = await callOdoo('sale.order', 'search_read',
+        [[
+          ['partner_id', 'in', allPartnerIds],
+          ['state', 'in', ['sale', 'done']],
+          ['date_order', '>=', dateLimitStr]
+        ]],
+        {
+          fields: ['id', 'name', 'partner_id', 'commercial_partner_id', 'amount_total', 'amount_untaxed', 'commitment_date', 'date_order'],
+          order: 'date_order desc'
+        }
+      );
+    }
+
+
+    const clientsData = [];
+
+    // Elabora ogni azienda
+    for (const company of companies) {
+      const companyPartnerIds = [company.id, ...(company.child_ids || [])];
+
+      // Filtra ordini di questa azienda
+      const companyOrders = allOrders.filter(order =>
+        companyPartnerIds.includes(order.partner_id[0]) ||
+        (order.commercial_partner_id && order.commercial_partner_id[0] === company.id)
+      );
+
+      // Calcola dati settimanali CON LA LOGICA CORRETTA DEL DASHBOARD
+      const weeklyData = calculateWeeklyRevenue(companyOrders);
+
+      // Solo clienti attivi (con ordini nelle ultime 4 settimane)
+      const hasRecentActivity = weeklyData.some(week => week.revenue > 0 || week.orders > 0);
+      if (!hasRecentActivity) {
+        continue; // Salta clienti senza attività
+      }
+
+      // Calcola trend
+      const trend = calculateTrend(weeklyData);
+      const trendPercentage = getTrendPercentage(weeklyData);
+
+      // Dati ultima settimana
+      const lastWeekData = weeklyData[weeklyData.length - 1];
+      const lastWeekRevenue = lastWeekData?.revenue || 0;
+      const lastWeekOrders = lastWeekData?.orders || 0;
+
+
+      // Aggiungi cliente ai dati
+      clientsData.push({
+        id: company.id,
+        name: company.name,
+        teamId: teamId,
+        weeklyData: weeklyData,
+        trend: trend,
+        trendPercentage: trendPercentage,
+        lastWeekRevenue: lastWeekRevenue,
+        lastWeekOrders: lastWeekOrders,
+        totalRevenue: weeklyData.reduce((sum, week) => sum + week.revenue, 0),
+        totalOrders: weeklyData.reduce((sum, week) => sum + week.orders, 0),
+        rawData: {
+          company: company,
+          orders: companyOrders
+        }
+      });
+    }
+
+    return clientsData;
+  } catch (error) {
+    throw error;
+  }
+}
+
+// Inizializzazione app
+async function initApp() {
+  try {
+    await loadUserFromOdoo();
+    await loadTeamsFromOdoo();
+    loadTeamSelector();
+    updateWeekRangeDisplay();
+  } catch (error) {
+    showError('Errore nel caricamento dei dati. Verifica la connessione a Odoo.');
+  }
+}
+
+// === GESTIONE TEAM SELECTOR ===
+function loadTeamSelector() {
+  const selector = document.getElementById('teamSelector');
+
+  const userPermissions = USER_TEAM_PERMISSIONS[currentUser?.id];
+
+  if (!userPermissions) {
+    selector.innerHTML = '<option value="">❌ Accesso negato - Contattare amministratore</option>';
+    return;
+  }
+
+  let filteredTeams;
+  if (userPermissions === 'ALL') {
+    filteredTeams = allTeams;
+  } else {
+    filteredTeams = allTeams.filter(team => userPermissions.includes(team.id));
+  }
+
+  // Popola selector
+  selector.innerHTML = '<option value="">Seleziona un team</option>';
+  filteredTeams.forEach(team => {
+    const option = document.createElement('option');
+    option.value = team.id;
+    option.textContent = `${team.name} (${team.memberCount} membri)`;
+    selector.appendChild(option);
+  });
+
+  if (filteredTeams.length === 1) {
+    selector.value = filteredTeams[0].id;
+    setTimeout(() => onTeamChange(), 100);
+  }
+}
+
+// Cambio team
+async function onTeamChange() {
+  const selector = document.getElementById('teamSelector');
+  const selectedTeamId = selector.value ? parseInt(selector.value) : null;
+
+  if (!selectedTeamId) {
+    clientsData = [];
+    renderClients();
+    return;
+  }
+
+  currentTeam = selectedTeamId;
+
+  try {
+    // Mostra loading
+    const grid = document.getElementById('clientsGrid');
+    grid.innerHTML = '<div class="loading">📊 Caricamento clienti del team...</div>';
+
+    // Carica clienti del team selezionato
+    clientsData = await loadClientsForTeam(selectedTeamId);
+
+    // Aggiorna interfaccia
+    updateStats();
+    renderClients();
+
+  } catch (error) {
+    showError(`Errore caricamento dati del team: ${error.message}`);
+  }
+}
+
+// Aggiornamento statistiche
+function updateStats() {
+  const filteredClients = getFilteredClients();
+
+  const totalRevenue = filteredClients.reduce((sum, client) =>
+    sum + client.totalRevenue, 0);
+  const totalOrders = filteredClients.reduce((sum, client) =>
+    sum + client.totalOrders, 0);
+  const growingClients = filteredClients.filter(client =>
+    client.trend === 'up').length;
+
+  document.getElementById('totalClients').textContent = filteredClients.length;
+  document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
+  document.getElementById('totalOrders').textContent = totalOrders;
+  document.getElementById('growingClients').textContent = growingClients;
+}
+
+// Filtro clienti
+function getFilteredClients() {
+  let filtered = clientsData;
+
+  // Filtro per team
+  if (currentTeam) {
+    filtered = filtered.filter(client => client.teamId === currentTeam);
+  }
+
+  // Filtro per trend
+  if (currentFilter !== 'all') {
+    const trendMap = {
+      'growing': 'up',
+      'declining': 'down',
+      'stable': 'stable'
+    };
+    filtered = filtered.filter(client => client.trend === trendMap[currentFilter]);
+  }
+
+  return filtered;
+}
+
+// Impostazione filtro
+function setFilter(filter) {
+  currentFilter = filter;
+
+  document.querySelectorAll('.filter-btn').forEach(btn =>
+    btn.classList.remove('active'));
+  event.target.classList.add('active');
+
+  renderClients();
+}
+
+// Ricerca clienti
+function filterClients() {
+  const searchTerm = event.target.value.toLowerCase();
+  const cards = document.querySelectorAll('.client-card');
+
+  cards.forEach(card => {
+    const clientName = card.querySelector('.client-name').textContent.toLowerCase();
+    card.style.display = clientName.includes(searchTerm) ? 'block' : 'none';
+  });
+}
+
+// Rendering clienti
+function renderClients() {
+  const grid = document.getElementById('clientsGrid');
+  const filteredClients = getFilteredClients();
+
+  if (filteredClients.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <h3>👤 Nessun cliente trovato</h3>
+        <p>Prova a modificare i filtri di ricerca</p>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = filteredClients.map(client => `
+    <div class="client-card trend-${client.trend}" onclick="openClientDetails(${client.id})">
+      <div class="client-header">
+        <div class="client-name">${client.name}</div>
+        <div class="client-status status-${client.trend === 'up' ? 'active' :
+          client.trend === 'down' ? 'inactive' : 'warning'}">
+          ${client.trend === 'up' ? '🟢 Crescita' :
+            client.trend === 'down' ? '🔴 Calo' : '⚪ Stabile'}
+        </div>
+      </div>
+
+      <div class="client-metrics">
+        <div class="metric">
+          <div class="metric-value">${formatNumber(client.totalRevenue)}</div>
+          <div class="metric-label">Totale 4 sett (CHF)</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value">${client.totalOrders}</div>
+          <div class="metric-label">Ordini</div>
+        </div>
+      </div>
+
+      <div class="trend-indicator ${client.trend}">
+        ${client.trend === 'up' ? '📈' : client.trend === 'down' ? '📉' : '➡️'}
+        ${client.trendPercentage > 0 ? `+${client.trendPercentage}%` :
+          client.trendPercentage < 0 ? `${client.trendPercentage}%` : 'Stabile'}
+      </div>
+
+      <div class="client-chart">
+        <div class="chart-scales">
+          <div class="chart-scale-label">
+            <div class="chart-scale-color" style="background: var(--primary)"></div>
+            <span>CHF</span>
+          </div>
+          <div class="chart-scale-label">
+            <div class="chart-scale-color" style="background: var(--warning)"></div>
+            <span>Ordini</span>
+          </div>
+        </div>
+        ${generateClientChart(client)}
+      </div>
+    </div>
+  `).join('');
+
+  updateStats();
+}
+
+// Genera grafico cliente con barre affiancate
+function generateClientChart(client) {
+  const maxRevenue = Math.max(...client.weeklyData.map(w => w.revenue));
+  const maxOrders = Math.max(...client.weeklyData.map(w => w.orders));
+
+  return client.weeklyData.map((week, index) => {
+    const isLastWeek = index === client.weeklyData.length - 1;
+
+    // Calcola altezze (massimo 60px)
+    const revenueHeight = maxRevenue > 0 ? Math.max((week.revenue / maxRevenue * 60), 4) : 4;
+    const ordersHeight = maxOrders > 0 ? Math.max((week.orders / maxOrders * 60), 4) : 4;
+
+    return `
+      <div class="chart-week-group">
+        <div class="chart-bars-pair">
+          <div class="chart-bar revenue-bar ${isLastWeek ? 'current-week' : ''}"
+               style="height: ${revenueHeight}px">
+            <div class="chart-value">${formatNumber(week.revenue)}</div>
+          </div>
+          <div class="chart-bar orders-bar ${isLastWeek ? 'current-week' : ''}"
+               style="height: ${ordersHeight}px">
+            <div class="chart-value">${week.orders}</div>
+          </div>
+        </div>
+        <div class="chart-label">S${week.weekNumber}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Apertura dettagli cliente
+function openClientDetails(clientId) {
+  const client = clientsData.find(c => c.id === clientId);
+  if (!client) return;
+
+  document.getElementById('modalClientName').textContent = client.name;
+
+  // Pulisci contenuti precedenti
+  const revenueChart = document.getElementById('revenueChart');
+  const ordersChart = document.getElementById('ordersChart');
+
+  // Rimuovi eventuali statistiche precedenti
+  const prevStats = document.querySelectorAll('.modal-content [style*="margin-top: 15px"]');
+  prevStats.forEach(stat => stat.remove());
+
+  // Genera grafico fatturato dettagliato
+  const maxRevenue = Math.max(...client.weeklyData.map(w => w.revenue));
+
+  revenueChart.innerHTML = client.weeklyData.map((week, index) => {
+    const height = maxRevenue > 0 ? Math.max((week.revenue / maxRevenue * 150), 8) : 8;
+    const isLastWeek = index === client.weeklyData.length - 1;
+
+    return `
+      <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+        <div style="font-size: 12px; font-weight: 600; margin-bottom: 5px;">
+          CHF ${Math.round(week.revenue).toLocaleString()}
+        </div>
+        <div style="
+          width: 40px;
+          height: ${height}px;
+          background: ${isLastWeek ? '#dc2626' : 'var(--primary)'};
+          border-radius: 4px;
+          margin-bottom: 8px;
+          ${isLastWeek ? 'border: 3px solid #dc2626; box-shadow: 0 0 10px rgba(220, 38, 38, 0.3);' : ''}
+        "></div>
+        <div style="font-size: 11px; color: var(--text-muted); text-align: center;">
+          S${week.weekNumber}<br>
+          <small>${week.weekStart.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</small>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Genera grafico ordini dettagliato
+  const maxOrders = Math.max(...client.weeklyData.map(w => w.orders));
+
+  ordersChart.innerHTML = client.weeklyData.map((week, index) => {
+    const height = maxOrders > 0 ? Math.max((week.orders / maxOrders * 150), 8) : 8;
+    const isLastWeek = index === client.weeklyData.length - 1;
+
+    return `
+      <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+        <div style="font-size: 12px; font-weight: 600; margin-bottom: 5px;">
+          ${week.orders} ordini
+        </div>
+        <div style="
+          width: 40px;
+          height: ${height}px;
+          background: ${isLastWeek ? '#dc2626' : 'var(--warning)'};
+          border-radius: 4px;
+          margin-bottom: 8px;
+          ${isLastWeek ? 'border: 3px solid #dc2626; box-shadow: 0 0 10px rgba(220, 38, 38, 0.3);' : ''}
+        "></div>
+        <div style="font-size: 11px; color: var(--text-muted); text-align: center;">
+          S${week.weekNumber}<br>
+          <small>${week.weekStart.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</small>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Aggiungi statistiche riassuntive
+  const totalRevenue = client.weeklyData.reduce((sum, week) => sum + week.revenue, 0);
+  const totalOrders = client.weeklyData.reduce((sum, week) => sum + week.orders, 0);
+  const avgWeekRevenue = totalRevenue / client.weeklyData.length;
+  const avgWeekOrders = totalOrders / client.weeklyData.length;
+
+  // Aggiungi header informativo
+  revenueChart.insertAdjacentHTML('afterend', `
+    <div style="margin-top: 15px; padding: 15px; background: var(--surface-2); border-radius: 8px;">
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; text-align: center;">
+        <div>
+          <div style="font-size: 18px; font-weight: 700; color: var(--primary);">CHF ${Math.round(totalRevenue).toLocaleString()}</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Totale 4 settimane</div>
+        </div>
+        <div>
+          <div style="font-size: 18px; font-weight: 700; color: var(--primary);">CHF ${Math.round(avgWeekRevenue).toLocaleString()}</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Media settimanale</div>
+        </div>
+      </div>
+    </div>
+  `);
+
+  ordersChart.insertAdjacentHTML('afterend', `
+    <div style="margin-top: 15px; padding: 15px; background: var(--surface-2); border-radius: 8px;">
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; text-align: center;">
+        <div>
+          <div style="font-size: 18px; font-weight: 700; color: var(--warning);">${totalOrders}</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Totale ordini 4 settimane</div>
+        </div>
+        <div>
+          <div style="font-size: 18px; font-weight: 700; color: var(--warning);">${Math.round(avgWeekOrders)}</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Media ordini/settimana</div>
+        </div>
+      </div>
+    </div>
+  `);
+
+  document.getElementById('clientModal').style.display = 'block';
+}
+
+// Chiusura modal
+function closeModal(event) {
+  if (!event || event.target.classList.contains('modal') || event.target.classList.contains('close-btn')) {
+    document.getElementById('clientModal').style.display = 'none';
+  }
+}
+
+// Gestione errori
+function showError(message) {
+  const grid = document.getElementById('clientsGrid');
+  grid.innerHTML = `
+    <div class="empty-state">
+      <h3>⚠️ Errore</h3>
+      <p>${message}</p>
+    </div>
+  `;
+}
+
+// === FUNZIONI UTILITÀ ===
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('it-CH', {
+    style: 'currency',
+    currency: 'CHF',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
+}
+
+function formatNumber(num) {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M';
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(0) + 'K';
+  } else {
+    return num.toString();
+  }
+}
+
+// === CONTROLLI SETTIMANE ===
+
+// Sposta il range di settimane
+async function shiftWeeks(direction) {
+  weekOffset += direction;
+  updateWeekRangeDisplay();
+
+  // Ricarica i dati solo se c'è un team selezionato
+  if (currentTeam) {
+    try {
+      const grid = document.getElementById('clientsGrid');
+      grid.innerHTML = '<div class="loading">📊 Ricaricamento dati con nuovo range settimane...</div>';
+
+      clientsData = await loadClientsForTeam(currentTeam);
+      updateStats();
+      renderClients();
+
+    } catch (error) {
+      showError(`Errore ricaricamento dati: ${error.message}`);
+    }
+  }
+}
+
+// Aggiorna il display del range settimane
+function updateWeekRangeDisplay() {
+  const today = new Date();
+  const currentWeek = getISOWeekNumber(today);
+  const currentYear = today.getFullYear();
+
+  // Calcola le settimane del range attuale
+  const weeks = [];
+  for (let i = 3; i >= 0; i--) {
+    let targetWeek = currentWeek - i + weekOffset;
+    let targetYear = currentYear;
+
+    if (targetWeek <= 0) {
+      targetYear--;
+      const weeksInPrevYear = getWeeksInYear(targetYear);
+      targetWeek = weeksInPrevYear + targetWeek;
+    } else if (targetWeek > getWeeksInYear(targetYear)) {
+      targetYear++;
+      targetWeek = targetWeek - getWeeksInYear(currentYear);
+    }
+
+    weeks.push(`S${targetWeek}`);
+  }
+
+  // Aggiorna display
+  document.getElementById('weekRangeDisplay').textContent = weeks.join(' - ');
+
+  // Aggiorna anche il period info nell'header
+  const isCurrentIncluded = weekOffset >= 0;
+  const periodText = isCurrentIncluded ?
+    `📅 Settimane ${weeks[0]} - ${weeks[3]} (corrente inclusa)` :
+    `📅 Settimane ${weeks[0]} - ${weeks[3]} (concluse)`;
+
+  document.getElementById('periodInfo').textContent = periodText;
+
+  // Aggiorna pulsante toggle
+  const toggleBtn = document.getElementById('toggleCurrentBtn');
+  if (toggleBtn) {
+    toggleBtn.textContent = weekOffset >= 0 ? 'Escludi corrente' : 'Includi corrente';
+    toggleBtn.style.background = weekOffset >= 0 ? 'var(--warning)' : 'var(--success)';
+  }
+}
+
+// Toggle inclusione/esclusione settimana corrente
+async function toggleCurrentWeek() {
+  const wasIncluded = weekOffset >= 0;
+  weekOffset = wasIncluded ? -1 : 0;
+  updateWeekRangeDisplay();
+
+  // Ricarica dati se necessario
+  if (currentTeam) {
+    try {
+      const grid = document.getElementById('clientsGrid');
+      grid.innerHTML = '<div class="loading">📊 Aggiornamento range settimane...</div>';
+
+      clientsData = await loadClientsForTeam(currentTeam);
+      updateStats();
+      renderClients();
+
+    } catch (error) {
+      showError(`Errore aggiornamento range: ${error.message}`);
+    }
+  }
+}
+
+// Funzione per esportare in PDF
+function exportToPDF() {
+  alert('Funzione export PDF in sviluppo! Sarà disponibile nella prossima versione.');
+}
+
+// Inizializzazione al caricamento pagina
+document.addEventListener('DOMContentLoaded', initApp);
+
+// Gestione tasti
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeModal();
+  }
+});
+</script>

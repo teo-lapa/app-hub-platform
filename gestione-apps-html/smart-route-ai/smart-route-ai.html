@@ -1,0 +1,2553 @@
+<meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🚚 Smart Route AI - Ottimizzazione Percorsi con Odoo</title>
+  
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #4338ca;
+      --secondary: #06b6d4;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --dark: #1f2937;
+      --light: #f9fafb;
+      --border: #e5e7eb;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --radius: 12px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: var(--primary);
+      color: white;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      font-size: 14px;
+    }
+
+    .connection-status.connected {
+      background: var(--success);
+    }
+
+    .connection-status.disconnected {
+      background: var(--danger);
+    }
+
+    .stats-bar {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.9;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      height: calc(100vh - 200px);
+    }
+
+    .sidebar {
+      background: var(--light);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .section {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: var(--secondary);
+      color: white;
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-warning {
+      background: var(--warning);
+      color: white;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn-group .btn {
+      flex: 1;
+    }
+
+    .input-group {
+      margin-bottom: 16px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--dark);
+      margin-bottom: 6px;
+    }
+
+    .input-group input,
+    .input-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .input-group input:focus,
+    .input-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .date-range {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .capacity-display {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .capacity-value {
+      font-size: 32px;
+      font-weight: 700;
+    }
+
+    .capacity-unit {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .capacity-formula {
+      font-size: 11px;
+      opacity: 0.8;
+      margin-top: 4px;
+    }
+
+    .vehicle-list {
+      max-height: 250px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px;
+    }
+
+    .vehicle-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      margin-bottom: 4px;
+      background: var(--light);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .vehicle-item:hover {
+      background: #e5e7eb;
+    }
+
+    .vehicle-item.selected {
+      background: #dbeafe;
+      border: 1px solid var(--primary);
+    }
+
+    .vehicle-checkbox {
+      margin-right: 8px;
+    }
+
+    .vehicle-info {
+      flex: 1;
+    }
+
+    .vehicle-name {
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .vehicle-details {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .vehicle-capacity {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: var(--secondary);
+      color: white;
+    }
+
+    .map-container {
+      position: relative;
+      height: 100%;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    .map-controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .manual-mode-panel {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 1001;
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      display: none;
+      max-width: 250px;
+    }
+
+    .manual-mode-panel.active {
+      display: block;
+    }
+
+    .manual-mode-title {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .route-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .route-option {
+      padding: 8px 12px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .route-option:hover {
+      border-color: var(--primary);
+      background: #f0f9ff;
+    }
+
+    .route-option.selected {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .route-option.unassigned {
+      background: var(--danger);
+      color: white;
+      border-color: var(--danger);
+    }
+
+    .picking-popup {
+      min-width: 250px;
+    }
+
+    .picking-popup-header {
+      font-weight: 600;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .picking-popup-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .popup-action-btn {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 4px;
+      background: var(--primary);
+      color: white;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .popup-action-btn:hover {
+      background: var(--primary-dark);
+    }
+
+    .popup-action-btn.danger {
+      background: var(--danger);
+    }
+
+    .popup-action-btn.warning {
+      background: var(--warning);
+    }
+
+    .manual-mode-active {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .algorithm-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .algorithm-btn {
+      padding: 8px 16px;
+      border: 2px solid var(--border);
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .algorithm-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .orders-summary {
+      background: var(--light);
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 12px;
+    }
+
+    .order-stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-size: 14px;
+    }
+
+    .order-stat-label {
+      color: #6b7280;
+    }
+
+    .order-stat-value {
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .route-list {
+      margin-top: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .route-item {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .route-item:hover {
+      border-color: var(--primary);
+      box-shadow: var(--shadow);
+    }
+
+    .route-item.active {
+      border-color: var(--primary);
+      background: #f0f9ff;
+    }
+
+    .route-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .route-name {
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .route-badge {
+      background: var(--primary);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .route-stats {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .route-stat {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .batch-creation {
+      background: #f0f9ff;
+      border: 2px solid var(--primary);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .batch-title {
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .loading-overlay.active {
+      display: flex;
+    }
+
+    .loading-spinner {
+      background: white;
+      padding: 32px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--dark);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      display: none;
+      align-items: center;
+      gap: 12px;
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
+      max-width: 400px;
+    }
+
+    .toast.show {
+      display: flex;
+    }
+
+    .toast.success {
+      background: var(--success);
+    }
+
+    .toast.error {
+      background: var(--danger);
+    }
+
+    .toast.warning {
+      background: var(--warning);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .debug-panel {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.9);
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      max-width: 400px;
+      max-height: 300px;
+      overflow-y: auto;
+      display: none;
+      z-index: 10000;
+    }
+
+    .debug-panel.active {
+      display: block;
+    }
+
+    .debug-entry {
+      margin-bottom: 4px;
+      padding: 2px;
+    }
+
+    .debug-entry.error {
+      color: #f00;
+    }
+
+    .debug-entry.success {
+      color: #0f0;
+    }
+
+    .debug-entry.info {
+      color: #0ff;
+    }
+
+    .debug-entry.warning {
+      color: #ff0;
+    }
+  </style>
+
+
+
+<div class="container">
+  <div class="header">
+    <h1>
+      <span>🚚</span>
+      Smart Route AI
+    </h1>
+    
+    <div class="connection-status disconnected" id="connectionStatus">
+      <span id="connectionIcon">⚠️</span>
+      <span id="connectionText">Non connesso</span>
+    </div>
+    
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-value" id="totalOrders">0</div>
+        <div class="stat-label">Ordini</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="totalWeight">0</div>
+        <div class="stat-label">Peso (kg)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="totalVehicles">0</div>
+        <div class="stat-label">Veicoli</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="optimizationTime">-</div>
+        <div class="stat-label">Tempo Ottim.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="sidebar">
+
+      
+      <div class="section">
+        <div class="section-title">
+          <span>⚖️</span> Capacità Dinamica
+        </div>
+        <div class="capacity-display">
+          <div class="capacity-value" id="dynamicCapacity">0</div>
+          <div class="capacity-unit">kg per veicolo</div>
+          <div class="capacity-formula">(Peso totale ÷ Veicoli) + 10%</div>
+        </div>
+        <div class="input-group">
+          <label>Override Manuale</label>
+          <input type="number" id="capacityInput" placeholder="Inserisci capacità personalizzata">
+        </div>
+        <button class="btn btn-warning" onclick="updateCapacity()" style="width: 100%">
+          <span>✏️</span> Modifica Capacità
+        </button>
+      </div>
+
+      
+      <div class="section">
+        <div class="section-title">
+          <span>📥</span> Importa WH/PICK
+        </div>
+        <div class="input-group">
+          <label>Filtro Date</label>
+          <div class="date-range">
+            <input type="date" id="dateFrom">
+            <input type="date" id="dateTo">
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="importPickings()">
+            <span>📦</span> Importa
+          </button>
+          <button class="btn btn-warning" onclick="refreshPickings()">
+            <span>🔄</span> Aggiorna
+          </button>
+        </div>
+        <div class="orders-summary" style="margin-top: 12px">
+          <div class="order-stat">
+            <span class="order-stat-label">WH/PICK trovati:</span>
+            <span class="order-stat-value" id="foundPickings">0</span>
+          </div>
+          <div class="order-stat">
+            <span class="order-stat-label">Con coordinate:</span>
+            <span class="order-stat-value" id="withCoordinates">0</span>
+          </div>
+        </div>
+      </div>
+
+      
+      <div class="section">
+        <div class="section-title">
+          <span>🚛</span> Flotta Veicoli
+        </div>
+        <div class="vehicle-list" id="vehicleList">
+          
+        </div>
+        <button class="btn btn-success" onclick="loadVehicles()" style="width: 100%; margin-top: 12px">
+          <span>🔄</span> Carica Veicoli
+        </button>
+      </div>
+
+      
+      <div class="section">
+        <div class="section-title">
+          <span>🎯</span> Ottimizzazione
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="optimizeRoutes()" id="optimizeBtn">
+            <span>⚡</span> Ottimizza
+          </button>
+          <button class="btn btn-danger" onclick="clearRoutes()">
+            <span>🗑️</span> Pulisci
+          </button>
+        </div>
+        <div class="orders-summary">
+          <div class="order-stat">
+            <span class="order-stat-label">Non assegnati:</span>
+            <span class="order-stat-value" id="unassignedOrders">0</span>
+          </div>
+          <div class="order-stat">
+            <span class="order-stat-label">Percorsi creati:</span>
+            <span class="order-stat-value" id="createdRoutes">0</span>
+          </div>
+          <div class="order-stat">
+            <span class="order-stat-label">Efficienza media:</span>
+            <span class="order-stat-value" id="efficiency">-</span>
+          </div>
+        </div>
+      </div>
+
+      
+      <div class="section">
+        <div class="section-title">
+          <span>📋</span> Crea Batch in Odoo
+        </div>
+        <div class="batch-creation" id="batchCreation" style="display: none;">
+          <div class="batch-title">Batch pronti per la creazione</div>
+          <div id="batchSummary"></div>
+          <button class="btn btn-success" onclick="createBatches()" style="width: 100%; margin-top: 12px">
+            <span>✅</span> Crea Batch e Assegna
+          </button>
+        </div>
+        <div style="padding: 20px; text-align: center; color: #6b7280;" id="batchPlaceholder">
+          Ottimizza i percorsi prima di creare i batch
+        </div>
+      </div>
+
+      
+      <div class="section">
+        <div class="section-title">
+          <span>🗺️</span> Percorsi Ottimizzati
+        </div>
+        <div class="route-list" id="routeList">
+          
+        </div>
+      </div>
+    </div>
+
+    <div class="map-container">
+      <div class="map-controls">
+        <div class="algorithm-selector">
+          <button class="algorithm-btn active" onclick="selectAlgorithm('geographic')" data-algo="geographic">
+            📍 Geografico
+          </button>
+          <button class="algorithm-btn" onclick="selectAlgorithm('clarke-wright')" data-algo="clarke-wright">
+            🔗 Clarke-Wright
+          </button>
+          <button class="algorithm-btn" onclick="selectAlgorithm('nearest')" data-algo="nearest">
+            📏 Nearest Neighbor
+          </button>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-success" onclick="toggleManualMode()" id="manualModeBtn">
+            <span>✋</span> Manuale
+          </button>
+          <button class="btn btn-warning" onclick="toggleDebug()">
+            <span>🐛</span> Debug
+          </button>
+        </div>
+      </div>
+      
+      
+      <div class="manual-mode-panel" id="manualModePanel">
+        <div class="manual-mode-title" style="cursor: pointer" onclick="toggleManualPanel()">
+          <span>✋</span> Modalità Manuale
+          <span id="manualPanelToggle" style="margin-left: auto">▼</span>
+        </div>
+        <div id="manualPanelContent">
+          <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+            Clicca su un picking per modificarlo
+          </p>
+          <div class="route-selector" id="routeSelector">
+            
+          </div>
+          <button class="btn btn-danger" onclick="toggleManualMode()" style="width: 100%; margin-top: 12px">
+            <span>❌</span> Chiudi Manuale
+          </button>
+        </div>
+      </div>
+      
+      <div id="map"></div>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner">
+    <div class="spinner"></div>
+    <div id="loadingText">Ottimizzazione in corso...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="debug-panel" id="debugPanel"></div>
+
+<script>
+// ============= CONFIGURAZIONE =============
+const CONFIG = {
+  VEHICLE_CATEGORY: "Mezzi di trasporto refrigerati",
+  DEPOT: {
+    lat: 47.5168872,
+    lng: 8.5971149,
+    name: "LAPA - Industriestrasse 18, 8424 Embrach"
+  },
+  SPEED_KMH: 35,
+  DEFAULT_CAPACITY: 1500,
+  MAX_DISTANCE_RATIO: 2.0,
+  DEBUG: true  // Attivato per vedere gli errori
+};
+
+// ============= STATO GLOBALE =============
+let state = {
+  odooConnected: false,
+  sessionId: null,
+  userId: null,
+  pickings: [],
+  vehicles: [],
+  selectedVehicles: [],
+  routes: [],
+  markers: [],
+  routeLayers: [],
+  selectedAlgorithm: 'geographic',
+  dynamicCapacity: CONFIG.DEFAULT_CAPACITY,
+  map: null,
+  depotMarker: null,
+  manualMode: false,
+  selectedRouteForAssignment: null,
+  unassignedPickings: []
+};
+
+// ============= INIZIALIZZAZIONE MAPPA =============
+function initMap() {
+  state.map = L.map('map').setView([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], 12);
+  
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(state.map);
+  
+  // Marker deposito LAPA
+  state.depotMarker = L.marker([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], {
+    icon: L.divIcon({
+      className: 'depot-marker',
+      html: '<div style="background: #ef4444; color: white; padding: 8px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 20px;">🏭</div>'
+    })
+  }).addTo(state.map).bindPopup(`<b>${CONFIG.DEPOT.name}</b>`);
+}
+
+// ============= CONNESSIONE ODOO AUTOMATICA =============
+async function checkOdooConnection() {
+  try {
+    const sessionInfo = await getSessionInfo();
+    
+    if (sessionInfo && sessionInfo.uid) {
+      state.odooConnected = true;
+      state.sessionId = sessionInfo.session_id;
+      state.userId = sessionInfo.uid;
+      updateConnectionStatus(true);
+      
+      // Carica automaticamente i veicoli
+      await loadVehicles();
+      
+      // Set today's date as default
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('dateFrom').value = today;
+      document.getElementById('dateTo').value = today;
+      
+      debugLog('Connesso a Odoo automaticamente', 'success');
+    } else {
+      updateConnectionStatus(false);
+      debugLog('Non connesso a Odoo', 'warning');
+    }
+  } catch (error) {
+    updateConnectionStatus(false);
+    debugLog(`Errore verifica connessione: ${error.message}`, 'error');
+  }
+}
+
+// ============= RPC FUNCTIONS =============
+async function getSessionInfo() {
+  try {
+    const response = await fetch('/web/session/get_session_info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "call",
+        params: {},
+        id: Math.floor(Math.random() * 1e9)
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.result) {
+      state.sessionId = data.result.session_id;
+      state.userId = data.result.uid;
+      debugLog(`Sessione Odoo: User ID ${state.userId}`, 'success');
+      return data.result;
+    }
+  } catch (error) {
+    throw new Error('Impossibile ottenere info sessione');
+  }
+}
+
+async function callKw(model, method, args, kwargs = {}) {
+  const payload = {
+    jsonrpc: "2.0",
+    method: "call",
+    params: {
+      model: model,
+      method: method,
+      args: args,
+      kwargs: Object.assign({}, kwargs)
+    },
+    id: Math.floor(Math.random() * 1e9)
+  };
+  
+  debugLog(`RPC Call: ${model}.${method}`, 'info');
+  
+  try {
+    const response = await fetch('/web/dataset/call_kw', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      debugLog(`RPC Error Details: ${JSON.stringify(data.error)}`, 'error');
+      const errorMsg = data.error.data?.message || data.error.message || 'RPC Error';
+      throw new Error(errorMsg);
+    }
+    
+    return data.result;
+  } catch (error) {
+    debugLog(`RPC Error: ${error.message}`, 'error');
+    throw error;
+  }
+}
+
+async function searchRead(model, domain, fields, limit = 1000) {
+  return callKw(model, 'search_read', [], {
+    domain: domain || [],
+    fields: fields || [],
+    limit: limit,
+    offset: 0,
+    order: false
+  });
+}
+
+// ============= CARICA VEICOLI =============
+async function loadVehicles() {
+  try {
+    debugLog('Caricamento flotta veicoli...', 'info');
+    showLoading(true, 'Caricamento veicoli...');
+    
+    // Prima prova con fleet.vehicle.model.category
+    let vehicles = [];
+    
+    // Cerca categoria veicoli
+    const categories = await searchRead(
+      'fleet.vehicle.model.category',
+      [['name', 'ilike', CONFIG.VEHICLE_CATEGORY]],
+      ['id', 'name'],
+      10
+    );
+    
+    let vehicleDomain = [];
+    
+    if (categories && categories.length > 0) {
+      // Cerca veicoli per categoria
+      vehicleDomain = [['model_id.category_id', '=', categories[0].id]];
+    } else {
+      // Prova con i tag
+      const tags = await searchRead(
+        'fleet.vehicle.tag',
+        [['name', 'ilike', CONFIG.VEHICLE_CATEGORY]],
+        ['id', 'name'],
+        10
+      );
+      
+      if (tags && tags.length > 0) {
+        vehicleDomain = [['tag_ids', 'in', [tags[0].id]]];
+      }
+    }
+    
+    // Carica veicoli
+    if (vehicleDomain.length > 0) {
+      vehicles = await searchRead(
+        'fleet.vehicle',
+        vehicleDomain,
+        ['id', 'name', 'license_plate', 'model_id', 'driver_id', 'tag_ids'],
+        100
+      );
+    }
+    
+    // Se non trova veicoli, carica tutti i veicoli disponibili CON AUTISTA
+    if (vehicles.length === 0) {
+      vehicles = await searchRead(
+        'fleet.vehicle',
+        [['driver_id', '!=', false]],  // Solo veicoli con autista assegnato
+        ['id', 'name', 'license_plate', 'model_id', 'driver_id'],
+        20
+      );
+    }
+    
+    // Filtra solo veicoli con autista assegnato e cerca hr.employee
+    state.vehicles = [];
+    
+    for (const v of vehicles.filter(v => v.driver_id && v.driver_id[0])) {
+      let employeeId = null;
+      
+      // Cerca hr.employee collegato al res.partner del driver
+      try {
+        const employees = await searchRead(
+          'hr.employee',
+          [['work_contact_id', '=', v.driver_id[0]]],  // work_contact_id è il partner collegato
+          ['id', 'name'],
+          1
+        );
+        
+        if (employees.length > 0) {
+          employeeId = employees[0].id;
+          debugLog(`Trovato employee ${employees[0].name} per driver ${v.driver_id[1]}`, 'success');
+        } else {
+          debugLog(`Nessun employee trovato per driver ${v.driver_id[1]}`, 'warning');
+          continue;  // Salta questo veicolo se non ha un employee
+        }
+      } catch (err) {
+        debugLog(`Errore ricerca employee per ${v.driver_id[1]}: ${err.message}`, 'error');
+        continue;
+      }
+      
+      // Estrai solo il modello base (es. "Iveco" invece di "Iveco Daily 35S14")
+      let shortName = v.name.split(' ')[0];
+      if (shortName.length > 10) shortName = shortName.substring(0, 10);
+      
+      // Estrai solo nome e cognome dell'autista (rimuove il nome azienda all'inizio)
+      let driverName = v.driver_id[1];
+      
+      // Se formato è "AZIENDA, Nome Cognome" prendi solo dopo la virgola
+      if (driverName.includes(',')) {
+        const parts = driverName.split(',');
+        // Prendi la parte dopo la virgola (il nome del dipendente)
+        driverName = parts[1] ? parts[1].trim() : parts[0].trim();
+      }
+      
+      state.vehicles.push({
+        id: v.id,
+        name: `${shortName} ${v.license_plate || ''}`.trim(),  // Nome corto + targa
+        fullName: v.name,  // Nome completo originale
+        plate: v.license_plate || 'N/D',
+        driver: driverName,  // Solo nome e cognome
+        driverId: v.driver_id[0],  // res.partner ID
+        employeeId: employeeId,  // hr.employee ID
+        capacity: state.dynamicCapacity,
+        selected: false
+      });
+    }
+    
+    debugLog(`Caricati ${state.vehicles.length} veicoli`, 'success');
+    updateVehicleList();
+    updateStats();
+    
+  } catch (error) {
+    debugLog(`Errore caricamento veicoli: ${error.message}`, 'error');
+    showToast('Errore caricamento veicoli', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ============= IMPORTA PICKING =============
+async function importPickings() {
+  const dateFrom = document.getElementById('dateFrom').value;
+  const dateTo = document.getElementById('dateTo').value;
+  
+  if (!dateFrom || !dateTo) {
+    showToast('Seleziona le date', 'warning');
+    return;
+  }
+  
+  showLoading(true, 'Importazione WH/PICK...');
+  
+  try {
+    const domain = [
+      ['name', 'like', 'WH/PICK'],
+      ['scheduled_date', '>=', dateFrom + ' 00:00:00'],
+      ['scheduled_date', '<=', dateTo + ' 23:59:59'],
+      ['state', 'in', ['assigned', 'confirmed', 'waiting']]
+    ];
+    
+    const fields = [
+      'id', 'name', 'partner_id', 'scheduled_date', 
+      'weight', 'picking_type_id', 'state',
+      'move_ids', 'user_id', 'driver_id', 'vehicle_id'
+    ];
+    
+    const pickings = await searchRead('stock.picking', domain, fields, 2000);
+    
+    debugLog(`Trovati ${pickings.length} WH/PICK`, 'info');
+    
+    // Processa pickings e cerca coordinate
+    state.pickings = [];
+    let withCoords = 0;
+    
+    for (const picking of pickings) {
+      const partnerId = picking.partner_id ? picking.partner_id[0] : null;
+      
+      if (partnerId) {
+        // Cerca coordinate del partner
+        const partners = await searchRead(
+          'res.partner',
+          [['id', '=', partnerId]],
+          ['id', 'name', 'street', 'city', 'partner_latitude', 'partner_longitude'],
+          1
+        );
+        
+        if (partners.length > 0) {
+          const partner = partners[0];
+          let lat = partner.partner_latitude || null;
+          let lng = partner.partner_longitude || null;
+          
+          // Se non ha coordinate, genera coordinate casuali vicino al deposito per test
+          if (!lat || !lng) {
+            lat = CONFIG.DEPOT.lat + (Math.random() - 0.5) * 0.3;
+            lng = CONFIG.DEPOT.lng + (Math.random() - 0.5) * 0.3;
+          } else {
+            withCoords++;
+          }
+          
+          state.pickings.push({
+            id: picking.id,
+            name: picking.name,
+            partnerId: partnerId,
+            partnerName: partner.name,
+            address: `${partner.street || ''} ${partner.city || ''}`.trim(),
+            lat: lat,
+            lng: lng,
+            weight: picking.weight || Math.floor(Math.random() * 200) + 50,
+            scheduledDate: picking.scheduled_date,
+            state: picking.state
+          });
+        }
+      }
+    }
+    
+    document.getElementById('foundPickings').textContent = state.pickings.length;
+    document.getElementById('withCoordinates').textContent = withCoords;
+    
+    displayPickings();
+    calculateDynamicCapacity();
+    
+    showToast(`Importati ${state.pickings.length} picking`, 'success');
+    
+  } catch (error) {
+    debugLog(`Errore importazione: ${error.message}`, 'error');
+    showToast('Errore importazione picking', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ============= CALCOLA CAPACITÀ DINAMICA =============
+function calculateDynamicCapacity() {
+  const selectedCount = state.selectedVehicles.length || state.vehicles.length || 1;
+  
+  if (state.pickings.length === 0) {
+    state.dynamicCapacity = CONFIG.DEFAULT_CAPACITY;
+  } else {
+    const totalWeight = state.pickings.reduce((sum, p) => sum + p.weight, 0);
+    // Formula: (Peso totale / Veicoli selezionati) + 10% margine
+    state.dynamicCapacity = Math.ceil((totalWeight / selectedCount) * 1.1);
+  }
+  
+  document.getElementById('dynamicCapacity').textContent = state.dynamicCapacity;
+  
+  // Aggiorna capacità veicoli
+  state.vehicles.forEach(v => {
+    v.capacity = state.dynamicCapacity;
+  });
+  
+  updateVehicleList();
+}
+
+// ============= AGGIORNA CAPACITÀ MANUALE =============
+function updateCapacity() {
+  const input = document.getElementById('capacityInput');
+  const newCapacity = parseFloat(input.value);
+  
+  if (isNaN(newCapacity) || newCapacity <= 0) {
+    showToast('Inserisci una capacità valida', 'error');
+    return;
+  }
+  
+  state.dynamicCapacity = newCapacity;
+  document.getElementById('dynamicCapacity').textContent = state.dynamicCapacity;
+  
+  state.vehicles.forEach(v => {
+    v.capacity = state.dynamicCapacity;
+  });
+  
+  updateVehicleList();
+  input.value = '';
+  showToast(`Capacità aggiornata a ${state.dynamicCapacity} kg`, 'success');
+}
+
+// ============= DISPLAY PICKINGS =============
+function displayPickings() {
+  // Clear existing markers
+  state.markers.forEach(marker => state.map.removeLayer(marker));
+  state.markers = [];
+  
+  state.pickings.forEach((picking, index) => {
+    const marker = L.marker([picking.lat, picking.lng], {
+      icon: L.divIcon({
+        className: 'picking-marker',
+        html: `<div style="background: #4f46e5; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${index + 1}</div>`
+      })
+    });
+    
+    marker.bindPopup(`
+      <b>${picking.name}</b><br>
+      <b>${picking.partnerName}</b><br>
+      ${picking.address}<br>
+      Peso: ${picking.weight} kg<br>
+      Data: ${new Date(picking.scheduledDate).toLocaleDateString('it-IT')}
+    `);
+    
+    marker.addTo(state.map);
+    state.markers.push(marker);
+  });
+  
+  // Fit map to show all markers
+  if (state.pickings.length > 0) {
+    const group = L.featureGroup([...state.markers, state.depotMarker]);
+    state.map.fitBounds(group.getBounds().pad(0.1));
+  }
+}
+
+// ============= OTTIMIZZAZIONE PERCORSI =============
+async function optimizeRoutes() {
+  if (state.pickings.length === 0) {
+    showToast('Nessun picking da ottimizzare', 'error');
+    return;
+  }
+  
+  const selected = state.vehicles.filter(v => v.selected);
+  if (selected.length === 0) {
+    showToast('Seleziona almeno un veicolo', 'error');
+    return;
+  }
+  
+  showLoading(true, 'Ottimizzazione percorsi...');
+  const startTime = Date.now();
+  
+  try {
+    clearRoutesFromMap();
+    
+    // Esegui algoritmo selezionato
+    switch (state.selectedAlgorithm) {
+      case 'geographic':
+        state.routes = await geographicClustering();
+        break;
+      case 'clarke-wright':
+        state.routes = await clarkeWrightAlgorithm();
+        break;
+      case 'nearest':
+        state.routes = await nearestNeighborAlgorithm();
+        break;
+    }
+    
+    // Reset nomi usati per nuova ottimizzazione
+    usedRouteNames.clear();
+    
+    // Aggiungi nomi geografici ai percorsi
+    state.routes.forEach((route, index) => {
+      route.geoName = generateGeographicName(route.pickings, index);
+    });
+    
+    displayRoutes();
+    
+    const endTime = Date.now();
+    const optimizationTime = ((endTime - startTime) / 1000).toFixed(2);
+    document.getElementById('optimizationTime').textContent = `${optimizationTime}s`;
+    
+    // Show batch creation section
+    if (state.routes.length > 0) {
+      document.getElementById('batchPlaceholder').style.display = 'none';
+      document.getElementById('batchCreation').style.display = 'block';
+      updateBatchSummary();
+    }
+    
+    showToast(`Ottimizzazione completata in ${optimizationTime}s`, 'success');
+    
+  } catch (error) {
+    debugLog(`Errore ottimizzazione: ${error.message}`, 'error');
+    showToast('Errore durante ottimizzazione', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ============= ALGORITMI OTTIMIZZAZIONE =============
+async function geographicClustering() {
+  const clusters = [];
+  const unassigned = [...state.pickings];
+  const selectedVehicles = state.vehicles.filter(v => v.selected);
+  
+  for (const vehicle of selectedVehicles) {
+    if (unassigned.length === 0) break;
+    
+    const cluster = {
+      vehicle: vehicle,
+      pickings: [],
+      totalWeight: 0,
+      totalDistance: 0
+    };
+    
+    // Trova centroide degli ordini rimanenti
+    const centroid = calculateCentroid(unassigned);
+    
+    // Ordina per distanza dal centroide
+    unassigned.sort((a, b) => {
+      const distA = calculateDistance(centroid, a);
+      const distB = calculateDistance(centroid, b);
+      return distA - distB;
+    });
+    
+    // Assegna ordini al cluster rispettando la capacità
+    for (let i = unassigned.length - 1; i >= 0; i--) {
+      const picking = unassigned[i];
+      if (cluster.totalWeight + picking.weight <= vehicle.capacity) {
+        cluster.pickings.push(picking);
+        cluster.totalWeight += picking.weight;
+        unassigned.splice(i, 1);
+      }
+    }
+    
+    if (cluster.pickings.length > 0) {
+      // Ottimizza sequenza nel cluster
+      cluster.pickings = optimizeSequence(cluster.pickings);
+      cluster.totalDistance = calculateRouteDistance([CONFIG.DEPOT, ...cluster.pickings, CONFIG.DEPOT]);
+      clusters.push(cluster);
+    }
+  }
+  
+  return clusters;
+}
+
+async function clarkeWrightAlgorithm() {
+  const routes = [];
+  const selectedVehicles = state.vehicles.filter(v => v.selected);
+  
+  // Inizializza route con singoli ordini
+  state.pickings.forEach(picking => {
+    routes.push({
+      pickings: [picking],
+      totalWeight: picking.weight,
+      totalDistance: calculateDistance(CONFIG.DEPOT, picking) * 2
+    });
+  });
+  
+  // Calcola risparmi per tutte le coppie
+  const savings = [];
+  for (let i = 0; i < state.pickings.length; i++) {
+    for (let j = i + 1; j < state.pickings.length; j++) {
+      const saving = calculateDistance(CONFIG.DEPOT, state.pickings[i]) + 
+                     calculateDistance(CONFIG.DEPOT, state.pickings[j]) - 
+                     calculateDistance(state.pickings[i], state.pickings[j]);
+      savings.push({
+        i: i,
+        j: j,
+        saving: saving
+      });
+    }
+  }
+  
+  // Ordina risparmi in ordine decrescente
+  savings.sort((a, b) => b.saving - a.saving);
+  
+  // Unisci route basandosi sui risparmi
+  for (const s of savings) {
+    const route1 = routes.find(r => r.pickings.includes(state.pickings[s.i]));
+    const route2 = routes.find(r => r.pickings.includes(state.pickings[s.j]));
+    
+    if (route1 && route2 && route1 !== route2) {
+      const combinedWeight = route1.totalWeight + route2.totalWeight;
+      
+      if (combinedWeight <= state.dynamicCapacity) {
+        // Unisci route
+        route1.pickings.push(...route2.pickings);
+        route1.totalWeight = combinedWeight;
+        route1.pickings = optimizeSequence(route1.pickings);
+        route1.totalDistance = calculateRouteDistance([CONFIG.DEPOT, ...route1.pickings, CONFIG.DEPOT]);
+        
+        // Rimuovi route unita
+        const index = routes.indexOf(route2);
+        routes.splice(index, 1);
+      }
+    }
+  }
+  
+  // Assegna veicoli alle route
+  const finalRoutes = [];
+  for (let i = 0; i < Math.min(routes.length, selectedVehicles.length); i++) {
+    finalRoutes.push({
+      vehicle: selectedVehicles[i],
+      ...routes[i]
+    });
+  }
+  
+  return finalRoutes;
+}
+
+async function nearestNeighborAlgorithm() {
+  const routes = [];
+  const unassigned = [...state.pickings];
+  const selectedVehicles = state.vehicles.filter(v => v.selected);
+  
+  for (const vehicle of selectedVehicles) {
+    if (unassigned.length === 0) break;
+    
+    const route = {
+      vehicle: vehicle,
+      pickings: [],
+      totalWeight: 0,
+      totalDistance: 0
+    };
+    
+    let current = CONFIG.DEPOT;
+    
+    while (unassigned.length > 0 && route.totalWeight < vehicle.capacity) {
+      let nearest = null;
+      let minDist = Infinity;
+      let nearestIndex = -1;
+      
+      for (let i = 0; i < unassigned.length; i++) {
+        const picking = unassigned[i];
+        if (route.totalWeight + picking.weight <= vehicle.capacity) {
+          const dist = calculateDistance(current, picking);
+          if (dist < minDist) {
+            minDist = dist;
+            nearest = picking;
+            nearestIndex = i;
+          }
+        }
+      }
+      
+      if (nearest) {
+        route.pickings.push(nearest);
+        route.totalWeight += nearest.weight;
+        unassigned.splice(nearestIndex, 1);
+        current = nearest;
+      } else {
+        break;
+      }
+    }
+    
+    if (route.pickings.length > 0) {
+      route.totalDistance = calculateRouteDistance([CONFIG.DEPOT, ...route.pickings, CONFIG.DEPOT]);
+      routes.push(route);
+    }
+  }
+  
+  return routes;
+}
+
+// ============= GENERA NOME GEOGRAFICO PER ROUTE =============
+// Traccia nomi già usati per evitare duplicati
+let usedRouteNames = new Set();
+
+function generateGeographicName(pickings, routeIndex) {
+  if (pickings.length === 0) return 'Vuoto';
+  
+  // Estrai i nomi delle città/zone dalle address
+  const cities = {};
+  let avgLat = 0, avgLng = 0;
+  
+  pickings.forEach(p => {
+    avgLat += p.lat || 0;
+    avgLng += p.lng || 0;
+    
+    if (p.address) {
+      // Cerca pattern comuni: città, zona, CAP
+      let city = '';
+      
+      // Prova a estrarre città dall'indirizzo (es. "Via Roma 1, Zurigo" -> "Zurigo")
+      const parts = p.address.split(',');
+      if (parts.length > 1) {
+        city = parts[parts.length - 1].trim();
+      }
+      
+      // Se non trova città, prova con il CAP svizzero (4 cifre)
+      if (!city) {
+        const capMatch = p.address.match(/\b([1-9]\d{3})\b/);
+        if (capMatch) {
+          const cap = capMatch[1];
+          // Mappa CAP a zone conosciute
+          if (cap >= '4000' && cap <= '4999') city = 'Basilea';
+          else if (cap >= '8000' && cap <= '8099') city = 'Zurigo';
+          else if (cap >= '8100' && cap <= '8199') city = 'Winterthur';
+          else if (cap >= '3000' && cap <= '3999') city = 'Berna';
+          else if (cap >= '1200' && cap <= '1299') city = 'Ginevra';
+          else if (cap >= '6900' && cap <= '6999') city = 'Lugano';
+          else if (cap >= '5000' && cap <= '5999') city = 'Argovia';
+        }
+      }
+      
+      // Se ancora non trova, usa coordinate per determinare zona
+      if (!city && p.lat && p.lng) {
+        // Distanza approssimativa da punti noti
+        if (p.lat > 47.5 && p.lng < 8.0) city = 'Basilea';
+        else if (p.lat > 47.3 && p.lat < 47.5 && p.lng > 8.3) city = 'Zurigo';
+        else if (p.lat < 46.5) city = 'Ticino';
+        else if (p.lng < 7.0) city = 'Romandia';
+      }
+      
+      if (city) {
+        cities[city] = (cities[city] || 0) + 1;
+      }
+    }
+  });
+  
+  // Calcola posizione media per determinare direzione
+  avgLat = avgLat / pickings.length;
+  avgLng = avgLng / pickings.length;
+  
+  // Trova la città predominante
+  const sortedCities = Object.entries(cities)
+    .sort((a, b) => b[1] - a[1]);
+  
+  if (sortedCities.length === 0) {
+    return `Zona ${routeIndex + 1}`;  // Fallback
+  }
+  
+  let baseName = sortedCities[0][0];
+  let finalName = baseName;
+  
+  // Se il nome base è già usato, aggiungi un suffisso basato sulla posizione
+  if (usedRouteNames.has(baseName)) {
+    // Determina direzione cardinale o zona specifica
+    const suffixes = [];
+    
+    // Per Zurigo, usa zone specifiche
+    if (baseName === 'Zurigo') {
+      if (avgLng > 8.6) suffixes.push('Est');
+      else if (avgLng < 8.5) suffixes.push('Ovest');
+      else if (avgLat > 47.4) suffixes.push('Nord');
+      else if (avgLat < 47.35) suffixes.push('Lago');
+      else suffixes.push('Centro');
+    } 
+    // Per altre città, usa direzioni cardinali
+    else {
+      const centerLat = CONFIG.DEPOT.lat;
+      const centerLng = CONFIG.DEPOT.lng;
+      
+      if (avgLat > centerLat + 0.05) suffixes.push('Nord');
+      else if (avgLat < centerLat - 0.05) suffixes.push('Sud');
+      
+      if (avgLng > centerLng + 0.05) suffixes.push('Est');
+      else if (avgLng < centerLng - 0.05) suffixes.push('Ovest');
+      
+      if (suffixes.length === 0) suffixes.push('Centro');
+    }
+    
+    // Prova con i suffissi
+    for (const suffix of suffixes) {
+      const testName = `${baseName} ${suffix}`;
+      if (!usedRouteNames.has(testName)) {
+        finalName = testName;
+        break;
+      }
+    }
+    
+    // Se ancora duplicato, aggiungi numero
+    if (usedRouteNames.has(finalName)) {
+      let counter = 2;
+      while (usedRouteNames.has(`${baseName} ${counter}`)) {
+        counter++;
+      }
+      finalName = `${baseName} ${counter}`;
+    }
+  }
+  
+  usedRouteNames.add(finalName);
+  return finalName;
+}
+
+// ============= CREA BATCH IN ODOO =============
+async function createBatches() {
+  if (state.routes.length === 0) {
+    showToast('Nessun percorso da creare', 'error');
+    return;
+  }
+  
+  showLoading(true, 'Creazione batch in Odoo...');
+  
+  try {
+    const createdBatches = [];
+    
+    for (let i = 0; i < state.routes.length; i++) {
+      const route = state.routes[i];
+      const pickingIds = route.pickings.map(p => p.id);
+      
+      // Genera nome geografico per il batch
+      const geoName = generateGeographicName(route.pickings);
+      const batchName = `${geoName} - ${new Date().toLocaleDateString('it-IT')}`;
+      
+      // Crea batch con campi custom per autista e veicolo
+      const batchData = {
+        name: batchName,
+        picking_ids: [[6, 0, pickingIds]],
+        x_studio_autista_del_giro: route.vehicle.employeeId,  // hr.employee ID
+        x_studio_auto_del_giro: route.vehicle.id  // fleet.vehicle ID
+      };
+      
+      // Aggiungi user_id solo se è l'utente corrente
+      if (state.userId) {
+        batchData.user_id = state.userId;
+      }
+      
+      debugLog(`Creazione batch "${batchName}" con autista ${route.vehicle.driver} e veicolo ${route.vehicle.name}`, 'info');
+      
+      const batchId = await callKw('stock.picking.batch', 'create', [[batchData]], {});
+      
+      createdBatches.push({
+        id: batchId,
+        name: batchData.name,
+        vehicle: route.vehicle.name,
+        pickings: pickingIds.length
+      });
+      
+      debugLog(`Batch ${batchData.name} creato con ${pickingIds.length} picking`, 'success');
+      
+      // Assegna driver E veicolo ai picking del batch
+      if (route.vehicle.employeeId && route.vehicle.id) {
+        debugLog(`Assegnazione driver ${route.vehicle.driver} e veicolo ${route.vehicle.name} ai picking...`, 'info');
+        
+        for (const pickingId of pickingIds) {
+          try {
+            await callKw('stock.picking', 'write', [[pickingId], {
+              driver_id: route.vehicle.employeeId,  // hr.employee ID (campo custom)
+              vehicle_id: route.vehicle.id           // fleet.vehicle ID (campo custom)
+            }], {});
+            
+            debugLog(`✓ Picking ${pickingId} aggiornato con driver e veicolo`, 'success');
+          } catch (err) {
+            debugLog(`✗ Errore aggiornamento picking ${pickingId}: ${err.message}`, 'error');
+          }
+        }
+      }
+    }
+    
+    showToast(`Creati ${createdBatches.length} batch in Odoo`, 'success');
+    
+    // Reset after batch creation
+    setTimeout(() => {
+      if (confirm('Batch creati con successo! Vuoi pulire e ricominciare?')) {
+        clearRoutes();
+        state.pickings = [];
+        displayPickings();
+      }
+    }, 1000);
+    
+  } catch (error) {
+    debugLog(`Errore creazione batch: ${error.message}`, 'error');
+    showToast('Errore creazione batch', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ============= UTILITY FUNCTIONS =============
+function calculateCentroid(points) {
+  const sum = points.reduce((acc, p) => ({
+    lat: acc.lat + p.lat,
+    lng: acc.lng + p.lng
+  }), { lat: 0, lng: 0 });
+  
+  return {
+    lat: sum.lat / points.length,
+    lng: sum.lng / points.length
+  };
+}
+
+function calculateDistance(p1, p2) {
+  const R = 6371; // Earth radius in km
+  const dLat = (p2.lat - p1.lat) * Math.PI / 180;
+  const dLng = (p2.lng - p1.lng) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function calculateRouteDistance(points) {
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    total += calculateDistance(points[i], points[i + 1]);
+  }
+  return total;
+}
+
+function optimizeSequence(pickings) {
+  if (pickings.length <= 1) return pickings;
+  
+  const optimized = [];
+  const remaining = [...pickings];
+  let current = CONFIG.DEPOT;
+  
+  while (remaining.length > 0) {
+    let nearest = null;
+    let minDist = Infinity;
+    
+    for (const picking of remaining) {
+      const dist = calculateDistance(current, picking);
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = picking;
+      }
+    }
+    
+    optimized.push(nearest);
+    remaining.splice(remaining.indexOf(nearest), 1);
+    current = nearest;
+  }
+  
+  return optimized;
+}
+
+// ============= UI FUNCTIONS =============
+function updateVehicleList() {
+  const vehicleList = document.getElementById('vehicleList');
+  
+  if (state.vehicles.length === 0) {
+    vehicleList.innerHTML = '<div style="padding: 20px; text-align: center; color: #6b7280;">Nessun veicolo disponibile</div>';
+    return;
+  }
+  
+  vehicleList.innerHTML = '';
+  
+  state.vehicles.forEach(vehicle => {
+    const vehicleItem = document.createElement('div');
+    vehicleItem.className = `vehicle-item ${vehicle.selected ? 'selected' : ''}`;
+    
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'vehicle-checkbox';
+    checkbox.checked = vehicle.selected;
+    checkbox.onchange = (e) => {
+      e.stopPropagation();
+      toggleVehicle(vehicle.id);
+    };
+    
+    const vehicleInfo = document.createElement('div');
+    vehicleInfo.className = 'vehicle-info';
+    vehicleInfo.innerHTML = `
+      <div class="vehicle-name">${vehicle.name}</div>
+      <div class="vehicle-details">${vehicle.driver}</div>
+    `;
+    vehicleInfo.onclick = () => toggleVehicle(vehicle.id);
+    
+    const vehicleCapacity = document.createElement('div');
+    vehicleCapacity.className = 'vehicle-capacity';
+    vehicleCapacity.textContent = `${vehicle.capacity} kg`;
+    
+    vehicleItem.appendChild(checkbox);
+    vehicleItem.appendChild(vehicleInfo);
+    vehicleItem.appendChild(vehicleCapacity);
+    
+    vehicleList.appendChild(vehicleItem);
+  });
+}
+
+function toggleVehicle(vehicleId) {
+  const vehicle = state.vehicles.find(v => v.id === vehicleId);
+  if (vehicle) {
+    vehicle.selected = !vehicle.selected;
+    state.selectedVehicles = state.vehicles.filter(v => v.selected);
+    debugLog(`Veicolo ${vehicle.name} ${vehicle.selected ? 'selezionato' : 'deselezionato'}. Totale selezionati: ${state.selectedVehicles.length}`, 'info');
+    updateVehicleList();
+    calculateDynamicCapacity();
+  }
+}
+
+function displayRoutes() {
+  clearRoutesFromMap();
+  
+  const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+  
+  state.routes.forEach((route, index) => {
+    const color = colors[index % colors.length];
+    
+    // Crea polyline del percorso
+    const points = [
+      [CONFIG.DEPOT.lat, CONFIG.DEPOT.lng],
+      ...route.pickings.map(p => [p.lat, p.lng]),
+      [CONFIG.DEPOT.lat, CONFIG.DEPOT.lng]
+    ];
+    
+    const polyline = L.polyline(points, {
+      color: color,
+      weight: 3,
+      opacity: 0.7
+    }).addTo(state.map);
+    
+    state.routeLayers.push(polyline);
+    
+    // Aggiorna markers per questo percorso
+    route.pickings.forEach((picking, pickingIndex) => {
+      const markerIndex = state.pickings.indexOf(picking);
+      if (markerIndex !== -1 && state.markers[markerIndex]) {
+        const marker = state.markers[markerIndex];
+        state.map.removeLayer(marker);
+        
+        const newMarker = L.marker([picking.lat, picking.lng], {
+          icon: L.divIcon({
+            className: 'route-marker',
+            html: `<div style="background: ${color}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${pickingIndex + 1}</div>`
+          })
+        });
+        
+        newMarker.bindPopup(`
+          <b>Percorso ${index + 1} - Stop ${pickingIndex + 1}</b><br>
+          <b>${picking.name}</b><br>
+          ${picking.partnerName}<br>
+          ${picking.address}<br>
+          Peso: ${picking.weight} kg
+        `);
+        
+        newMarker.addTo(state.map);
+        state.markers[markerIndex] = newMarker;
+      }
+    });
+  });
+  
+  updateRouteList();
+  updateStats();
+}
+
+function clearRoutesFromMap() {
+  state.routeLayers.forEach(layer => state.map.removeLayer(layer));
+  state.routeLayers = [];
+}
+
+function updateRouteList() {
+  const routeList = document.getElementById('routeList');
+  routeList.innerHTML = '';
+  
+  const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+  
+  state.routes.forEach((route, index) => {
+    const efficiency = ((route.totalWeight / route.vehicle.capacity) * 100).toFixed(1);
+    const color = colors[index % colors.length];
+    
+    const routeItem = document.createElement('div');
+    routeItem.className = 'route-item';
+    routeItem.style.borderLeft = `4px solid ${color}`;
+    routeItem.innerHTML = `
+      <div class="route-header">
+        <span class="route-name" style="display: flex; align-items: center; gap: 8px;">
+          <span style="width: 16px; height: 16px; background: ${color}; border-radius: 50%;"></span>
+          ${route.geoName || `Percorso ${index + 1}`}
+        </span>
+        <span class="route-badge">${route.vehicle.name}</span>
+      </div>
+      <div style="font-size: 12px; color: #6b7280; margin: 4px 0;">
+        👤 ${route.vehicle.driver}
+      </div>
+      <div class="route-stats">
+        <div class="route-stat">
+          📦 ${route.pickings.length}
+        </div>
+        <div class="route-stat">
+          ⚖️ ${Math.round(route.totalWeight)} kg
+        </div>
+        <div class="route-stat">
+          📏 ${route.totalDistance.toFixed(1)} km
+        </div>
+        <div class="route-stat">
+          ⚡ ${efficiency}%
+        </div>
+      </div>
+    `;
+    
+    routeItem.onclick = () => highlightRoute(index);
+    routeList.appendChild(routeItem);
+  });
+}
+
+function highlightRoute(index) {
+  document.querySelectorAll('.route-item').forEach((item, i) => {
+    item.classList.toggle('active', i === index);
+  });
+  
+  if (state.routes[index] && state.routes[index].pickings.length > 0) {
+    const bounds = L.latLngBounds([
+      [CONFIG.DEPOT.lat, CONFIG.DEPOT.lng],
+      ...state.routes[index].pickings.map(p => [p.lat, p.lng])
+    ]);
+    state.map.fitBounds(bounds.pad(0.1));
+  }
+}
+
+function updateBatchSummary() {
+  const summary = document.getElementById('batchSummary');
+  summary.innerHTML = `
+    <div style="margin-bottom: 8px;">
+      <strong>${state.routes.length}</strong> batch da creare
+    </div>
+    ${state.routes.map((route, i) => `
+      <div style="padding: 4px 0; font-size: 13px;">
+        • Veicolo ${route.vehicle.name}: ${route.pickings.length} picking
+      </div>
+    `).join('')}
+  `;
+}
+
+function clearRoutes() {
+  state.routes = [];
+  clearRoutesFromMap();
+  displayPickings();
+  updateRouteList();
+  updateStats();
+  document.getElementById('batchCreation').style.display = 'none';
+  document.getElementById('batchPlaceholder').style.display = 'block';
+  showToast('Percorsi eliminati', 'success');
+}
+
+function exportRoutes() {
+  if (state.routes.length === 0) {
+    showToast('Nessun percorso da esportare', 'error');
+    return;
+  }
+  
+  const exportData = {
+    timestamp: new Date().toISOString(),
+    depot: CONFIG.DEPOT,
+    algorithm: state.selectedAlgorithm,
+    statistics: {
+      totalPickings: state.pickings.length,
+      totalWeight: state.pickings.reduce((sum, p) => sum + p.weight, 0),
+      totalVehicles: state.selectedVehicles.length,
+      activeRoutes: state.routes.length
+    },
+    routes: state.routes.map((route, index) => ({
+      id: index + 1,
+      vehicle: {
+        name: route.vehicle.name,
+        plate: route.vehicle.plate,
+        driver: route.vehicle.driver,
+        capacity: route.vehicle.capacity
+      },
+      pickings: route.pickings.map(p => ({
+        name: p.name,
+        partner: p.partnerName,
+        address: p.address,
+        weight: p.weight,
+        coordinates: { lat: p.lat, lng: p.lng }
+      })),
+      totalWeight: route.totalWeight,
+      totalDistance: route.totalDistance,
+      efficiency: ((route.totalWeight / route.vehicle.capacity) * 100).toFixed(1) + '%'
+    }))
+  };
+  
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `routes_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  showToast('Percorsi esportati', 'success');
+}
+
+function updateStats() {
+  document.getElementById('totalOrders').textContent = state.pickings.length;
+  document.getElementById('totalWeight').textContent = state.pickings.reduce((sum, p) => sum + p.weight, 0);
+  document.getElementById('totalVehicles').textContent = state.selectedVehicles.length;
+  
+  const assignedPickings = state.routes.reduce((sum, r) => sum + r.pickings.length, 0);
+  document.getElementById('unassignedOrders').textContent = state.pickings.length - assignedPickings;
+  document.getElementById('createdRoutes').textContent = state.routes.length;
+  
+  if (state.routes.length > 0) {
+    const avgEfficiency = state.routes.reduce((sum, r) => 
+      sum + (r.totalWeight / r.vehicle.capacity), 0) / state.routes.length;
+    document.getElementById('efficiency').textContent = (avgEfficiency * 100).toFixed(1) + '%';
+  } else {
+    document.getElementById('efficiency').textContent = '-';
+  }
+}
+
+function selectAlgorithm(algorithm) {
+  state.selectedAlgorithm = algorithm;
+  
+  document.querySelectorAll('.algorithm-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  document.querySelector(`[data-algo="${algorithm}"]`).classList.add('active');
+}
+
+function updateConnectionStatus(connected) {
+  const status = document.getElementById('connectionStatus');
+  const icon = document.getElementById('connectionIcon');
+  const text = document.getElementById('connectionText');
+  
+  if (connected) {
+    status.className = 'connection-status connected';
+    icon.textContent = '✅';
+    text.textContent = 'Connesso a Odoo';
+  } else {
+    status.className = 'connection-status disconnected';
+    icon.textContent = '⚠️';
+    text.textContent = 'Non connesso';
+  }
+}
+
+function showLoading(show, text = 'Caricamento...') {
+  const overlay = document.getElementById('loadingOverlay');
+  const loadingText = document.getElementById('loadingText');
+  
+  loadingText.textContent = text;
+  overlay.classList.toggle('active', show);
+}
+
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = `toast show ${type}`;
+  
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
+
+function refreshPickings() {
+  if (state.pickings.length > 0) {
+    displayPickings();
+    calculateDynamicCapacity();
+    showToast('Vista aggiornata', 'success');
+  } else {
+    importPickings();
+  }
+}
+
+// ============= MANUAL MODE FUNCTIONS =============
+function toggleManualMode() {
+  state.manualMode = !state.manualMode;
+  const panel = document.getElementById('manualModePanel');
+  const btn = document.getElementById('manualModeBtn');
+  const mapControls = document.querySelector('.map-controls');
+  
+  if (state.manualMode) {
+    panel.classList.add('active');
+    btn.classList.add('manual-mode-active');
+    
+    // Hide sidebar and map controls
+    document.querySelector('.sidebar').style.display = 'none';
+    document.querySelector('.map-container').style.gridColumn = '1 / -1';
+    mapControls.style.display = 'none';  // Nascondi controlli mappa
+    
+    // Setup manual mode
+    setupManualMode();
+    showToast('Modalità manuale attivata - Clicca sui picking per modificarli', 'success');
+  } else {
+    panel.classList.remove('active');
+    btn.classList.remove('manual-mode-active');
+    
+    // Show sidebar and map controls
+    document.querySelector('.sidebar').style.display = 'block';
+    document.querySelector('.map-container').style.gridColumn = '2';
+    mapControls.style.display = 'block';  // Mostra controlli mappa
+    
+    // Cleanup manual mode
+    cleanupManualMode();
+    showToast('Modalità manuale disattivata', 'info');
+  }
+}
+
+function setupManualMode() {
+  // Update route selector
+  const selector = document.getElementById('routeSelector');
+  selector.innerHTML = '';
+  
+  const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+  
+  // Add option for each route
+  state.routes.forEach((route, index) => {
+    const color = colors[index % colors.length];
+    const option = document.createElement('div');
+    option.className = 'route-option';
+    option.style.borderLeft = `4px solid ${color}`;
+    option.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="width: 20px; height: 20px; background: ${color}; border-radius: 50%;"></div>
+        <div style="flex: 1;">
+          <div style="font-weight: 600;">${route.geoName || `Percorso ${index + 1}`}</div>
+          <div style="font-size: 12px; color: #6b7280;">
+            ${route.vehicle.name}
+          </div>
+          <div style="font-size: 11px; color: #6b7280;">
+            👤 ${route.vehicle.driver} • 📦 ${route.pickings.length}
+          </div>
+        </div>
+      </div>
+    `;
+    option.onclick = () => selectRouteForAssignment(index);
+    selector.appendChild(option);
+  });
+  
+  // Add unassigned option
+  const unassignedOption = document.createElement('div');
+  unassignedOption.className = 'route-option unassigned';
+  unassignedOption.innerHTML = `
+    <div style="font-weight: 600;">❌ Rimuovi dal percorso</div>
+    <div style="font-size: 12px;">Togli il picking dal giro</div>
+  `;
+  unassignedOption.onclick = () => selectRouteForAssignment(-1);
+  selector.appendChild(unassignedOption);
+  
+  // Make markers interactive
+  updateMarkersForManualMode();
+}
+
+function toggleManualPanel() {
+  const content = document.getElementById('manualPanelContent');
+  const toggle = document.getElementById('manualPanelToggle');
+  
+  if (content.style.display === 'none') {
+    content.style.display = 'block';
+    toggle.textContent = '▼';
+  } else {
+    content.style.display = 'none';
+    toggle.textContent = '▶';
+  }
+}
+
+function cleanupManualMode() {
+  state.selectedRouteForAssignment = null;
+  displayRoutes();  // Redraw normal routes
+}
+
+function selectRouteForAssignment(routeIndex) {
+  state.selectedRouteForAssignment = routeIndex;
+  
+  // Update UI
+  document.querySelectorAll('.route-option').forEach((el, i) => {
+    el.classList.toggle('selected', i === routeIndex);
+  });
+  
+  if (routeIndex === -1) {
+    showToast('Clicca su un picking per rimuoverlo dal percorso', 'warning');
+  } else {
+    showToast(`Clicca su un picking per assegnarlo al Percorso ${routeIndex + 1}`, 'info');
+  }
+}
+
+function updateMarkersForManualMode() {
+  // Clear existing markers
+  state.markers.forEach(marker => state.map.removeLayer(marker));
+  state.markers = [];
+  
+  const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+  
+  // Create interactive markers for all pickings
+  state.routes.forEach((route, routeIndex) => {
+    const color = colors[routeIndex % colors.length];
+    
+    route.pickings.forEach((picking, pickingIndex) => {
+      const marker = L.marker([picking.lat, picking.lng], {
+        icon: L.divIcon({
+          className: 'route-marker',
+          html: `<div style="background: ${color}; color: white; padding: 6px 10px; border-radius: 6px; font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer; border: 2px solid white;">${pickingIndex + 1}</div>`
+        })
+      });
+      
+      // Create custom popup with actions
+      const popupContent = `
+        <div class="picking-popup">
+          <div class="picking-popup-header">
+            ${picking.name}
+          </div>
+          <div>
+            <strong>${picking.partnerName}</strong><br>
+            ${picking.address}<br>
+            Peso: ${picking.weight} kg<br>
+            Percorso attuale: ${routeIndex + 1}
+          </div>
+          <div class="picking-popup-actions">
+            ${state.routes.map((r, i) => 
+              i !== routeIndex ? 
+              `<button class="popup-action-btn" onclick="movePickingToRoute('${picking.id}', ${routeIndex}, ${i})">
+                ➡️ Sposta a Percorso ${i + 1}
+              </button>` : ''
+            ).join('')}
+            <button class="popup-action-btn warning" onclick="swapPickings('${picking.id}', ${routeIndex})">
+              🔄 Scambia con altro picking
+            </button>
+            <button class="popup-action-btn danger" onclick="removePickingFromRoute('${picking.id}', ${routeIndex})">
+              ❌ Rimuovi dal percorso
+            </button>
+          </div>
+        </div>
+      `;
+      
+      marker.bindPopup(popupContent, { maxWidth: 300 });
+      
+      // Add click handler
+      marker.on('click', function() {
+        if (state.selectedRouteForAssignment !== null && state.selectedRouteForAssignment !== routeIndex) {
+          // Move to selected route
+          if (state.selectedRouteForAssignment === -1) {
+            removePickingFromRoute(picking.id, routeIndex);
+          } else {
+            movePickingToRoute(picking.id, routeIndex, state.selectedRouteForAssignment);
+          }
+        }
+      });
+      
+      marker.addTo(state.map);
+      state.markers.push(marker);
+    });
+  });
+  
+  // Also show unassigned pickings if any
+  state.unassignedPickings.forEach((picking, index) => {
+    const marker = L.marker([picking.lat, picking.lng], {
+      icon: L.divIcon({
+        className: 'unassigned-marker',
+        html: `<div style="background: #6b7280; color: white; padding: 6px 10px; border-radius: 6px; font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer; border: 2px solid white;">U${index + 1}</div>`
+      })
+    });
+    
+    const popupContent = `
+      <div class="picking-popup">
+        <div class="picking-popup-header">
+          ${picking.name} (Non assegnato)
+        </div>
+        <div>
+          <strong>${picking.partnerName}</strong><br>
+          ${picking.address}<br>
+          Peso: ${picking.weight} kg
+        </div>
+        <div class="picking-popup-actions">
+          ${state.routes.map((r, i) => 
+            `<button class="popup-action-btn" onclick="addPickingToRoute('${picking.id}', ${i})">
+              ➕ Aggiungi a Percorso ${i + 1}
+            </button>`
+          ).join('')}
+        </div>
+      </div>
+    `;
+    
+    marker.bindPopup(popupContent, { maxWidth: 300 });
+    
+    marker.on('click', function() {
+      if (state.selectedRouteForAssignment !== null && state.selectedRouteForAssignment !== -1) {
+        addPickingToRoute(picking.id, state.selectedRouteForAssignment);
+      }
+    });
+    
+    marker.addTo(state.map);
+    state.markers.push(marker);
+  });
+}
+
+function movePickingToRoute(pickingId, fromRoute, toRoute) {
+  const picking = state.routes[fromRoute].pickings.find(p => p.id == pickingId);
+  if (!picking) return;
+  
+  // Check capacity but only warn, don't block
+  const newWeight = state.routes[toRoute].totalWeight + picking.weight;
+  if (newWeight > state.routes[toRoute].vehicle.capacity) {
+    const overweight = newWeight - state.routes[toRoute].vehicle.capacity;
+    showToast(`⚠️ ATTENZIONE: Capacità superata di ${overweight.toFixed(0)} kg! (${newWeight}/${state.routes[toRoute].vehicle.capacity} kg)`, 'warning');
+    // Continue anyway - manual mode gives full control
+  }
+  
+  // Remove from old route
+  const index = state.routes[fromRoute].pickings.findIndex(p => p.id == pickingId);
+  state.routes[fromRoute].pickings.splice(index, 1);
+  state.routes[fromRoute].totalWeight -= picking.weight;
+  
+  // Add to new route
+  state.routes[toRoute].pickings.push(picking);
+  state.routes[toRoute].totalWeight += picking.weight;
+  
+  // Recalculate distances
+  state.routes[fromRoute].pickings = optimizeSequence(state.routes[fromRoute].pickings);
+  state.routes[fromRoute].totalDistance = calculateRouteDistance([CONFIG.DEPOT, ...state.routes[fromRoute].pickings, CONFIG.DEPOT]);
+  
+  state.routes[toRoute].pickings = optimizeSequence(state.routes[toRoute].pickings);
+  state.routes[toRoute].totalDistance = calculateRouteDistance([CONFIG.DEPOT, ...state.routes[toRoute].pickings, CONFIG.DEPOT]);
+  
+  // Update display
+  updateMarkersForManualMode();
+  updateRouteList();
+  displayRouteLayers();
+  
+  showToast(`Picking spostato al Percorso ${toRoute + 1}`, 'success');
+}
+
+function removePickingFromRoute(pickingId, routeIndex) {
+  const picking = state.routes[routeIndex].pickings.find(p => p.id == pickingId);
+  if (!picking) return;
+  
+  // Remove from route
+  const index = state.routes[routeIndex].pickings.findIndex(p => p.id == pickingId);
+  state.routes[routeIndex].pickings.splice(index, 1);
+  state.routes[routeIndex].totalWeight -= picking.weight;
+  
+  // Add to unassigned
+  state.unassignedPickings.push(picking);
+  
+  // Recalculate
+  state.routes[routeIndex].pickings = optimizeSequence(state.routes[routeIndex].pickings);
+  state.routes[routeIndex].totalDistance = calculateRouteDistance([CONFIG.DEPOT, ...state.routes[routeIndex].pickings, CONFIG.DEPOT]);
+  
+  // Update display
+  updateMarkersForManualMode();
+  updateRouteList();
+  displayRouteLayers();
+  
+  showToast(`Picking rimosso dal percorso`, 'warning');
+}
+
+function addPickingToRoute(pickingId, routeIndex) {
+  const picking = state.unassignedPickings.find(p => p.id == pickingId);
+  if (!picking) return;
+  
+  // Check capacity but only warn, don't block
+  const newWeight = state.routes[routeIndex].totalWeight + picking.weight;
+  if (newWeight > state.routes[routeIndex].vehicle.capacity) {
+    const overweight = newWeight - state.routes[routeIndex].vehicle.capacity;
+    showToast(`⚠️ ATTENZIONE: Capacità superata di ${overweight.toFixed(0)} kg! (${newWeight}/${state.routes[routeIndex].vehicle.capacity} kg)`, 'warning');
+    // Continue anyway - manual mode gives full control
+  }
+  
+  // Remove from unassigned
+  const index = state.unassignedPickings.findIndex(p => p.id == pickingId);
+  state.unassignedPickings.splice(index, 1);
+  
+  // Add to route
+  state.routes[routeIndex].pickings.push(picking);
+  state.routes[routeIndex].totalWeight += picking.weight;
+  
+  // Recalculate
+  state.routes[routeIndex].pickings = optimizeSequence(state.routes[routeIndex].pickings);
+  state.routes[routeIndex].totalDistance = calculateRouteDistance([CONFIG.DEPOT, ...state.routes[routeIndex].pickings, CONFIG.DEPOT]);
+  
+  // Update display
+  updateMarkersForManualMode();
+  updateRouteList();
+  displayRouteLayers();
+  
+  showToast(`Picking aggiunto al Percorso ${routeIndex + 1}`, 'success');
+}
+
+function swapPickings(pickingId, routeIndex) {
+  showToast('Clicca su un altro picking per scambiarlo', 'info');
+  // TODO: Implement swap functionality
+}
+
+function displayRouteLayers() {
+  // Clear existing route layers
+  state.routeLayers.forEach(layer => state.map.removeLayer(layer));
+  state.routeLayers = [];
+  
+  const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+  
+  state.routes.forEach((route, index) => {
+    if (route.pickings.length === 0) return;
+    
+    const color = colors[index % colors.length];
+    
+    const points = [
+      [CONFIG.DEPOT.lat, CONFIG.DEPOT.lng],
+      ...route.pickings.map(p => [p.lat, p.lng]),
+      [CONFIG.DEPOT.lat, CONFIG.DEPOT.lng]
+    ];
+    
+    const polyline = L.polyline(points, {
+      color: color,
+      weight: 3,
+      opacity: 0.7
+    }).addTo(state.map);
+    
+    state.routeLayers.push(polyline);
+  });
+}
+
+// ============= DEBUG FUNCTIONS =============
+function toggleDebug() {
+  CONFIG.DEBUG = !CONFIG.DEBUG;
+  const panel = document.getElementById('debugPanel');
+  panel.classList.toggle('active', CONFIG.DEBUG);
+  
+  if (CONFIG.DEBUG) {
+    showToast('Debug attivato', 'warning');
+  } else {
+    showToast('Debug disattivato', 'info');
+  }
+}
+
+function debugLog(message, type = 'info') {
+  if (!CONFIG.DEBUG) return;
+  
+  const panel = document.getElementById('debugPanel');
+  const entry = document.createElement('div');
+  entry.className = `debug-entry ${type}`;
+  entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+  
+  panel.insertBefore(entry, panel.firstChild);
+  
+  // Keep only last 50 entries
+  while (panel.children.length > 50) {
+    panel.removeChild(panel.lastChild);
+  }
+  
+  console.log(`[${type.toUpperCase()}]`, message);
+}
+
+// ============= INIZIALIZZAZIONE =============
+window.addEventListener('DOMContentLoaded', async () => {
+  initMap();
+  
+  // Mostra debug panel
+  document.getElementById('debugPanel').classList.add('active');
+  
+  // Connessione automatica a Odoo
+  await checkOdooConnection();
+  
+  updateStats();
+  debugLog('Smart Route AI inizializzato', 'success');
+});
+</script>

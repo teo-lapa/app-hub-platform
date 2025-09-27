@@ -1,0 +1,1661 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestione Inventario Super Utente – Odoo 17</title>
+<style>
+  /* ===== Design tokens ===== */
+  :root{
+    --bg:#0b1220; --card:#0f172a; --muted:#8aa0b6; --text:#e6eef5; --border:#1f2937;
+    --accent:#22c55e; --accent2:#3b82f6; --danger:#ef4444; --ok:#16a34a; --warning:#f59e0b;
+  }
+  [data-theme="light"]{
+    --bg:#f6f8fc; --card:#ffffff; --muted:#5b6a7f; --text:#0a1628; --border:#e6eaf3;
+    --accent:#0ea5e9; --accent2:#7c3aed;
+  }
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,Segoe UI,Arial}
+  *{box-sizing:border-box}
+
+  /* Hide Odoo chrome if embedded in Website */
+  header, footer, .navbar, #oe_main_menu_navbar, .o_footer, .o_footer_copyright{display:none!important}
+
+  .wrap{max-width:1200px;margin:20px auto;padding:0 16px 40px}
+  .topbar{position:sticky;top:0;z-index:5;margin:0 -16px 16px;padding:14px 20px;display:flex;gap:12px;align-items:center;
+          background:color-mix(in oklab, var(--bg) 80%, transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+  .title{font-weight:800;font-size:22px;letter-spacing:.2px;margin-right:auto}
+  
+  /* Tablet touch optimizations */
+  @media (min-width: 768px) and (max-width: 1024px) {
+    .wrap{padding:0 20px 40px}
+    .topbar{padding:16px 24px}
+    .title{font-size:24px}
+    input[type="text"], input[type="number"]{padding:14px 16px;font-size:16px}
+    .row{grid-template-columns:140px 1fr;gap:12px}
+    .row label{font-size:14px}
+  }
+  
+  .connection-status{display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 8px;border-radius:8px}
+  .connection-status.connected{background:color-mix(in oklab, var(--ok) 20%, transparent);color:var(--ok)}
+  .connection-status.disconnected{background:color-mix(in oklab, var(--danger) 20%, transparent);color:var(--danger)}
+  .connection-status.checking{background:color-mix(in oklab, var(--warning) 20%, transparent);color:var(--warning)}
+  
+  .btn{border:0;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;transition:.15s}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+  .btn.green{background:var(--accent);color:#04110a}
+  .btn.blue{background:var(--accent2);color:#eef2ff}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+  .btn.slim{padding:8px 12px;border-radius:10px;font-size:12px}
+  .btn.danger{background:var(--danger);color:#fff}
+  
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(3,minmax(280px,1fr))}
+  @media (max-width:1200px){.grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:800px){.grid{grid-template-columns:1fr}}
+  
+  /* Samsung Tablet 10.1" specific optimizations */
+  @media screen and (min-device-width: 768px) and (max-device-width: 1024px) and (-webkit-min-device-pixel-ratio: 1) {
+    .wrap{max-width:100%;padding:0 24px 40px}
+    .grid{gap:24px;padding:0 8px}
+    .card{padding:20px;border-radius:20px;min-height:220px}
+    .btn{min-height:48px;padding:14px 20px;font-size:16px;border-radius:14px}
+    .btn.slim{min-height:44px;padding:12px 16px;font-size:15px}
+    input[type="text"], input[type="number"]{min-height:48px;padding:16px 18px;font-size:17px;border-radius:12px}
+    .topbar{padding:18px 24px}
+    .title{font-size:26px}
+  }
+  
+  /* Touch device optimizations */
+  @media (hover: none) and (pointer: coarse) {
+    .btn:hover{transform:none}
+    .btn:active{transform:scale(0.98)}
+    input:focus{box-shadow:0 0 0 4px color-mix(in oklab, var(--accent2) 25%, transparent)}
+  }
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 16px 14px;box-shadow:0 10px 30px rgba(0,0,0,.08);position:relative;min-height:200px}
+  .card.loading{opacity:0.7}
+  .card.loading::after{content:'';position:absolute;top:50%;left:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  
+  .row{display:grid;gap:10px;grid-template-columns:120px 1fr}
+  .row label{color:var(--muted);font-size:12px;align-self:center}
+  input[type="text"], input[type="number"]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+        background:color-mix(in oklab, var(--bg) 92%, white 8%); color:var(--text);font-weight:600;transition:.15s}
+  input[readonly]{background:color-mix(in oklab, var(--bg) 95%, var(--muted) 5%);cursor:not-allowed;color:var(--muted)}
+  input:focus{border-color:var(--accent2);outline:none;box-shadow:0 0 0 3px color-mix(in oklab, var(--accent2) 20%, transparent)}
+  input.scanning{border-color:var(--accent);animation:pulse 1.5s infinite}
+  @keyframes pulse{0%,100%{border-color:var(--accent)}50%{border-color:var(--accent2)}}
+  
+  .muted{color:var(--muted)}
+  .ok{color:var(--ok)} .err{color:var(--danger)} .warning{color:var(--warning)}
+  .pill{display:inline-flex;align-items:center;gap:8px;background:color-mix(in oklab, var(--bg) 85%, white 15%);
+        border:1px solid var(--border);padding:6px 10px;border-radius:999px;color:var(--muted);font-size:12px}
+  .flex{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .status{min-height:20px;font-size:13px;display:flex;align-items:center;gap:6px}
+
+  /* Camera overlay */
+  #camWrap{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50}
+  #cam{width:min(92vw,720px);border-radius:12px;background:#000;overflow:hidden;border:2px solid #fff;box-shadow:0 20px 40px rgba(0,0,0,.5)}
+  #video{width:100%;height:auto;display:block}
+  #camBar{display:flex;gap:10px;justify-content:space-between;align-items:center;color:#fff;padding:12px 14px;background:rgba(0,0,0,.7)}
+  #camBar .left{display:flex;align-items:center;gap:8px}
+  #camBar .right{display:flex;gap:8px}
+  .scan-overlay{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center}
+  .scan-line{width:200px;height:200px;border:2px solid var(--accent);border-radius:12px;position:relative}
+  .scan-line::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);animation:scanLine 2s linear infinite}
+  @keyframes scanLine{0%{top:0;opacity:1}50%{opacity:0.5}100%{top:100%;opacity:1}}
+
+  .toast{position:fixed;right:16px;bottom:16px;background:var(--card);color:var(--text);border:1px solid var(--border);
+         padding:12px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;transform:translateY(6px);transition:.3s;z-index:100}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.success{border-left:4px solid var(--ok)}
+  .toast.error{border-left:4px solid var(--danger)}
+  .toast.warning{border-left:4px solid var(--warning)}
+  .toast.info{border-left:4px solid var(--accent2)}
+
+  /* Auto-scanner indicator */
+  .auto-scan-indicator{position:fixed;top:20px;right:20px;background:var(--accent);color:#04110a;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:bold;opacity:0;transform:translateY(-10px);transition:.3s;z-index:40}
+  .auto-scan-indicator.show{opacity:1;transform:translateY(0)}
+
+  /* Scanner help text */
+  .scanner-help{
+    position:absolute;
+    bottom:60px;
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,0.8);
+    color:white;
+    padding:8px 12px;
+    border-radius:8px;
+    font-size:12px;
+    text-align:center;
+    max-width:300px;
+  }
+
+  /* Search Section */
+  .search-section {
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:20px;
+    margin-bottom:24px;
+  }
+  
+  .search-tabs {
+    display:flex;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  
+  .tab-btn {
+    flex:1;
+    padding:10px;
+    border:1px solid var(--border);
+    background:var(--bg);
+    color:var(--muted);
+    border-radius:8px;
+    cursor:pointer;
+    transition:all 0.2s;
+    font-weight:600;
+  }
+  
+  .tab-btn.active {
+    background:var(--accent2);
+    color:#fff;
+    border-color:var(--accent2);
+  }
+  
+  .search-input-wrapper {
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  
+  /* Product List */
+  .products-list {
+    display:grid;
+    gap:12px;
+  }
+  
+  .product-item {
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    cursor:pointer;
+    transition:all 0.2s;
+    position:relative;
+  }
+  
+  .product-item:hover {
+    border-color:var(--accent2);
+    transform:translateX(4px);
+    box-shadow:0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  .product-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:start;
+    margin-bottom:12px;
+  }
+  
+  .product-name {
+    font-weight:bold;
+    font-size:16px;
+    color:var(--accent2);
+  }
+  
+  .product-qty {
+    background:var(--accent);
+    color:#04110a;
+    padding:4px 8px;
+    border-radius:6px;
+    font-size:14px;
+    font-weight:bold;
+  }
+  
+  .product-details {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+    gap:8px;
+    font-size:13px;
+  }
+  
+  .product-detail {
+    display:flex;
+    gap:6px;
+  }
+  
+  .product-detail label {
+    color:var(--muted);
+  }
+  
+  .product-detail span {
+    color:var(--text);
+    font-weight:600;
+  }
+
+  /* Product Edit Modal */
+  #productModal {
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.9);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:200;
+  }
+  
+  .modal-content {
+    background:var(--card);
+    border:2px solid var(--accent);
+    border-radius:16px;
+    padding:24px;
+    width:90%;
+    max-width:600px;
+    max-height:85vh;
+    overflow-y:auto;
+  }
+  
+  .modal-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+  }
+  
+  .modal-title {
+    font-size:20px;
+    font-weight:bold;
+    color:var(--accent2);
+  }
+  
+  .modal-body {
+    display:grid;
+    gap:16px;
+  }
+  
+  .form-group {
+    display:grid;
+    gap:6px;
+  }
+  
+  .form-group label {
+    color:var(--muted);
+    font-size:12px;
+    font-weight:600;
+    text-transform:uppercase;
+  }
+  
+  .form-group input, .form-group select {
+    padding:10px 12px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--bg);
+    color:var(--text);
+    font-size:14px;
+  }
+  
+  .form-group input:focus, .form-group select:focus {
+    outline:none;
+    border-color:var(--accent2);
+    box-shadow:0 0 0 3px color-mix(in oklab, var(--accent2) 20%, transparent);
+  }
+  
+  .modal-footer {
+    display:flex;
+    gap:12px;
+    justify-content:flex-end;
+    margin-top:20px;
+    padding-top:20px;
+    border-top:1px solid var(--border);
+  }
+
+  /* Empty State */
+  .empty-state {
+    text-align:center;
+    padding:40px;
+    color:var(--muted);
+  }
+  
+  .empty-state-icon {
+    font-size:48px;
+    margin-bottom:16px;
+    opacity:0.5;
+  }
+  
+  .empty-state-text {
+    font-size:16px;
+  }
+
+  /* Lot List in Product Modal */
+  .lots-section {
+    margin-top:16px;
+    padding-top:16px;
+    border-top:1px solid var(--border);
+  }
+  
+  .lots-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:12px;
+  }
+  
+  .lots-title {
+    font-weight:bold;
+    color:var(--accent);
+  }
+  
+  .lot-item {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:8px 12px;
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:8px;
+    margin-bottom:8px;
+  }
+  
+  .lot-name {
+    font-weight:600;
+    color:var(--text);
+  }
+  
+  .lot-qty {
+    background:var(--accent2);
+    color:#fff;
+    padding:2px 6px;
+    border-radius:4px;
+    font-size:12px;
+  }
+  
+  .lot-qty-input {
+    width:80px;
+    padding:4px 6px;
+    border:1px solid var(--accent2);
+    border-radius:4px;
+    font-size:12px;
+    font-weight:bold;
+    background:var(--bg);
+    color:var(--text);
+    text-align:center;
+  }
+  
+  .lot-exp {
+    color:var(--warning);
+    font-size:12px;
+  }
+</style>
+
+<div class="wrap">
+  <div class="topbar">
+    <div class="title">🛡️ Gestione Inventario - Super Utente</div>
+    <div id="connectionStatus" class="connection-status checking">
+      <span id="connectionDot">⚪</span>
+      <span id="connectionText">Verifica connessione...</span>
+    </div>
+    <button id="theme" class="btn ghost" type="button">🌙 Scuro</button>
+    <button id="btnStart" class="btn green" type="button">F9 Avvia scanner</button>
+  </div>
+
+  
+  <div class="search-section">
+    <div class="search-tabs">
+      <button class="tab-btn active" id="tabLocation" onclick="switchTab('location')">📍 Ricerca per Ubicazione</button>
+      <button class="tab-btn" id="tabProduct" onclick="switchTab('product')">📦 Ricerca per Prodotto</button>
+    </div>
+    
+    <div id="searchLocation" class="search-panel">
+      <div class="search-input-wrapper">
+        <input type="text" id="location_search" placeholder="Scansiona o inserisci ubicazione (es: SECCO-A01)" autocomplete="off" style="flex:1;">
+        <button class="btn blue" onclick="searchLocation()">🔍 Cerca</button>
+        <button class="btn ghost slim" onclick="scanFor('location')">📷 Scan</button>
+      </div>
+      <div class="status" id="location_status"></div>
+    </div>
+    
+    <div id="searchProduct" class="search-panel" style="display:none;">
+      <div class="search-input-wrapper">
+        <input type="text" id="product_search" placeholder="Scansiona barcode o inserisci codice prodotto" autocomplete="off" style="flex:1;">
+        <button class="btn blue" onclick="searchProductByCode()">🔍 Cerca</button>
+        <button class="btn ghost slim" onclick="scanFor('product')">📷 Scan</button>
+      </div>
+      <div style="margin-top:10px;">
+        <button class="btn ghost" onclick="showProductSearchModal()">📋 Ricerca Manuale Prodotto</button>
+      </div>
+      <div class="status" id="product_status"></div>
+    </div>
+  </div>
+
+  
+  <div id="resultsSection" style="display:none;">
+    <div class="card">
+      <h3 id="resultsTitle" style="margin:0 0 16px;color:var(--accent);display:flex;align-items:center;gap:8px;">
+        <span id="resultIcon">📍</span>
+        <span id="resultName">Risultati</span>
+        <span id="resultCount" class="pill" style="margin-left:auto;"></span>
+      </h3>
+      
+      <div id="productsList" class="products-list">
+        
+      </div>
+      
+      <div id="emptyState" class="empty-state" style="display:none;">
+        <div class="empty-state-icon">📦</div>
+        <div class="empty-state-text">Nessun prodotto trovato</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div id="productModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">📦 Modifica Prodotto</div>
+      <button class="btn danger slim" onclick="closeProductModal()">✕</button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Nome Prodotto</label>
+        <input type="text" id="edit_name" placeholder="Nome del prodotto">
+      </div>
+      
+      <div class="form-group">
+        <label>Codice Interno</label>
+        <input type="text" id="edit_default_code" placeholder="Codice interno">
+      </div>
+      
+      <div class="form-group">
+        <label>Codice a Barre</label>
+        <input type="text" id="edit_barcode" placeholder="EAN / Barcode">
+      </div>
+      
+      <div class="form-group">
+        <label>Giacenza Totale (solo lettura)</label>
+        <input type="number" id="edit_qty" readonly="" style="background:var(--bg);color:var(--muted);">
+      </div>
+      
+      <div class="form-group">
+        <label>Unità di Misura</label>
+        <input type="text" id="edit_uom" readonly="" style="background:var(--bg);color:var(--muted);">
+      </div>
+      
+      <div class="form-group">
+        <label>Tipo Tracking</label>
+        <input type="text" id="edit_tracking" readonly="" style="background:var(--bg);color:var(--muted);">
+      </div>
+      
+      <div class="lots-section" id="lotsSection" style="display:none;">
+        <div class="lots-header">
+          <span class="lots-title">🏷️ Lotti Disponibili</span>
+        </div>
+        <div id="lotsList">
+          
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn ghost" onclick="closeProductModal()">Annulla</button>
+      <button class="btn green" onclick="saveProduct()">💾 Salva Modifiche</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="productSearchModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;max-width:600px;max-height:80vh;overflow:auto">
+    <h3 style="margin:0 0 16px;color:var(--accent2)">🔍 Ricerca Manuale Prodotto</h3>
+    <div style="margin-bottom:16px;">
+      <input id="productManualSearchInput" type="text" placeholder="Cerca per nome, codice, descrizione..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);">
+    </div>
+    <div id="productManualSearchResults" style="max-height:400px;overflow:auto;margin-bottom:16px;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn ghost" onclick="closeProductSearchModal()">❌ Chiudi</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="camWrap">
+  <div id="cam">
+    <div id="camBar">
+      <div class="left">
+        <span>📷 Scanner attivo</span>
+        <span id="scanTarget" class="muted"></span>
+      </div>
+      <div class="right">
+        <button class="btn slim" onclick="flip()">↺ Flip</button>
+        <button class="btn slim" onclick="stopScanner()">❌ Chiudi</button>
+      </div>
+    </div>
+    <video id="video" playsinline=""></video>
+    <div class="scan-overlay">
+      <div class="scan-line"></div>
+    </div>
+    <div class="scanner-help">
+      📱 Posiziona il codice nel riquadro verde<br>
+      💡 Assicurati che ci sia buona illuminazione
+    </div>
+  </div>
+</div>
+
+<div id="autoScanIndicator" class="auto-scan-indicator">🔍 Ricerca automatica...</div>
+<div id="toast" class="toast"></div>
+
+<script>
+/* ===== Configurazione e Variabili Globali ===== */
+const CONFIG = {
+  AUTO_SCAN_DELAY: 500,
+  SCAN_TIMEOUT: 30000,
+  CONNECTION_CHECK_INTERVAL: 60000,
+  BARCODE_GUN_DETECT_CHARS: 10
+};
+
+let autoScanTimeouts = {};
+let connectionCheckInterval = null;
+let lastInputTime = {};
+let isScanning = false;
+let currentTarget = null;
+let stream = null;
+let facing = 'environment';
+let detectorSupported = ('BarcodeDetector' in window);
+let detector = null;
+let scanTimeout = null;
+let toastTimer = null;
+let currentEditProductId = null;
+let currentLocationId = null;
+let currentSearchMode = 'location';
+let productSearchTimeout = null;
+
+/* ===== Funzioni di Utilità Base ===== */
+function csrf(){ 
+  try{ 
+    if(window.odoo?.csrf_token) return window.odoo.csrf_token;
+    if(window.parent && window.parent.odoo?.csrf_token) return window.parent.odoo.csrf_token;
+    const m=document.cookie.match(/(?:^|;)\s*csrf_token=([^;]+)/); 
+    if(m) return decodeURIComponent(m[1]);
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if(meta) return meta.getAttribute('content');
+  }catch(e){
+    console.warn('CSRF token retrieval error:', e);
+  } 
+  return null; 
+}
+
+function toast(msg, type='info'){ 
+  const t=document.getElementById('toast'); 
+  t.textContent=msg; 
+  t.className=`toast ${type} show`; 
+  clearTimeout(toastTimer); 
+  toastTimer=setTimeout(()=>t.classList.remove('show'), type==='error'?3000:2000); 
+}
+
+function showAutoScanIndicator(){
+  const indicator = document.getElementById('autoScanIndicator');
+  indicator.classList.add('show');
+  setTimeout(() => indicator.classList.remove('show'), 1500);
+}
+
+/* ===== Tema ===== */
+function initTheme(){ 
+  const html=document.documentElement; 
+  const saved=localStorage.getItem('lapa_theme'); 
+  if(saved) html.setAttribute('data-theme',saved); 
+  updateThemeBtn(); 
+}
+
+function toggleTheme(){ 
+  const html=document.documentElement; 
+  const next=html.getAttribute('data-theme')==='light'?'dark':'light'; 
+  html.setAttribute('data-theme',next); 
+  localStorage.setItem('lapa_theme',next); 
+  updateThemeBtn(); 
+}
+
+function updateThemeBtn(){ 
+  const btn=document.getElementById('theme'); 
+  if(btn) {
+    btn.textContent = (document.documentElement.getAttribute('data-theme')==='light') ? '☀️ Chiaro' : '🌙 Scuro'; 
+  }
+}
+
+/* ===== Connessione Odoo ===== */
+function updateConnectionStatus(status, text){
+  const statusEl = document.getElementById('connectionStatus');
+  const dotEl = document.getElementById('connectionDot');
+  const textEl = document.getElementById('connectionText');
+  
+  if(statusEl) statusEl.className = `connection-status ${status}`;
+  if(textEl) textEl.textContent = text;
+  
+  if(dotEl) {
+    switch(status){
+      case 'connected': dotEl.textContent = '🟢'; break;
+      case 'disconnected': dotEl.textContent = '🔴'; break;
+      case 'checking': dotEl.textContent = '🟡'; break;
+    }
+  }
+}
+
+async function checkConnection(){
+  try {
+    updateConnectionStatus('checking', 'Verifica connessione...');
+    
+    try {
+      const sessionResponse = await fetch('/web/session/get_session_info', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({})
+      });
+      
+      if(sessionResponse.ok){
+        const sessionData = await sessionResponse.json();
+        if(sessionData.result && sessionData.result.uid && sessionData.result.uid !== false){
+          updateConnectionStatus('connected', `Connesso: ${sessionData.result.name || sessionData.result.uid}`);
+          return true;
+        }
+      }
+    } catch(sessionError) {
+      console.warn('Session check failed:', sessionError);
+    }
+    
+    updateConnectionStatus('disconnected', 'Non connesso a Odoo - Accedi prima!');
+    return false;
+  } catch(e){
+    console.error('Connection check error:', e);
+    updateConnectionStatus('disconnected', 'Errore verifica connessione');
+    return false;
+  }
+}
+
+/* ===== RPC Functions ===== */
+async function rpc(model,method,args=[],kwargs={}){
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
+  }; 
+  
+  const token = csrf(); 
+  if(token) headers['X-CSRFToken'] = token;
+  
+  const requestData = {
+    jsonrpc: '2.0',
+    method: 'call',
+    params: {
+      model: model,
+      method: method,
+      args: args,
+      kwargs: kwargs
+    },
+    id: Date.now()
+  };
+  
+  try {
+    const res = await fetch(`/web/dataset/call_kw/${model}/${method}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: headers,
+      body: JSON.stringify(requestData)
+    });
+    
+    if(!res.ok) {
+      let errorText = `HTTP ${res.status}: ${res.statusText}`;
+      try {
+        const errorBody = await res.text();
+        if(errorBody) errorText += ` - ${errorBody}`;
+      } catch(e) {}
+      throw new Error(errorText);
+    }
+    
+    const data = await res.json(); 
+    
+    if(data.error){ 
+      console.error('RPC Error Details:', data.error);
+      let errorMsg = 'Errore RPC sconosciuto';
+      
+      if(data.error.data && data.error.data.message) {
+        errorMsg = data.error.data.message;
+      } else if(data.error.message) {
+        errorMsg = data.error.message;
+      }
+      
+      throw new Error(errorMsg); 
+    } 
+    
+    return data.result;
+  } catch(e) {
+    console.error('RPC Error:', e);
+    throw e;
+  }
+}
+
+async function searchRead(model,domain,fields=[],limit=0,order=""){ 
+  return rpc(model,'search_read',[domain],{fields,limit,order}); 
+}
+
+/* ===== Tab Management ===== */
+function switchTab(tab) {
+  currentSearchMode = tab;
+  
+  // Update tab buttons
+  document.getElementById('tabLocation').classList.toggle('active', tab === 'location');
+  document.getElementById('tabProduct').classList.toggle('active', tab === 'product');
+  
+  // Show/hide panels
+  document.getElementById('searchLocation').style.display = tab === 'location' ? 'block' : 'none';
+  document.getElementById('searchProduct').style.display = tab === 'product' ? 'block' : 'none';
+  
+  // Clear previous results
+  document.getElementById('resultsSection').style.display = 'none';
+  
+  // Focus appropriate input
+  if(tab === 'location') {
+    document.getElementById('location_search').focus();
+  } else {
+    document.getElementById('product_search').focus();
+  }
+}
+
+/* ===== Location Search ===== */
+async function searchLocation() {
+  const input = document.getElementById('location_search');
+  const value = input.value.trim();
+  const statusEl = document.getElementById('location_status');
+  
+  if(!value) {
+    toast('Inserisci un\'ubicazione', 'warning');
+    return;
+  }
+  
+  statusEl.textContent = '🔍 Ricerca ubicazione...';
+  statusEl.className = 'status';
+  
+  try {
+    // Search location - SOLO UBICAZIONI INTERNE
+    let locations = await searchRead('stock.location', [
+      ['usage', '=', 'internal'],  // SOLO UBICAZIONI INTERNE
+      '|', '|',
+      ['barcode', '=', value],
+      ['complete_name', 'ilike', value],
+      ['name', 'ilike', value]
+    ], ['id', 'name', 'complete_name', 'barcode', 'usage'], 1);
+    
+    if(locations.length === 0) {
+      statusEl.textContent = '❌ Ubicazione non trovata';
+      statusEl.className = 'status err';
+      toast('Ubicazione non trovata', 'error');
+      return;
+    }
+    
+    const location = locations[0];
+    currentLocationId = location.id;
+    
+    statusEl.textContent = `✅ Trovata: ${location.complete_name}`;
+    statusEl.className = 'status ok';
+    
+    // Load products in this location
+    await loadProductsInLocation(location);
+    
+  } catch(e) {
+    console.error('Errore ricerca ubicazione:', e);
+    statusEl.textContent = `❌ Errore: ${e.message}`;
+    statusEl.className = 'status err';
+    toast('Errore ricerca ubicazione', 'error');
+  }
+}
+
+async function loadProductsInLocation(location) {
+  const resultsSection = document.getElementById('resultsSection');
+  const productsList = document.getElementById('productsList');
+  const emptyState = document.getElementById('emptyState');
+  
+  resultsSection.style.display = 'block';
+  document.getElementById('resultIcon').textContent = '📍';
+  document.getElementById('resultName').textContent = location.complete_name;
+  
+  productsList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">🔍 Caricamento prodotti...</div>';
+  
+  try {
+    // Get all quants in this location with stock
+    const quants = await searchRead('stock.quant', [
+      ['location_id', '=', location.id],
+      ['quantity', '>', 0]
+    ], ['product_id', 'lot_id', 'quantity', 'reserved_quantity', 'available_quantity'], 0, 'product_id');
+    
+    if(quants.length === 0) {
+      productsList.style.display = 'none';
+      emptyState.style.display = 'block';
+      document.getElementById('resultCount').textContent = '0 prodotti';
+      return;
+    }
+    
+    // Group by product
+    const productsMap = {};
+    for(const quant of quants) {
+      const prodId = quant.product_id[0];
+      if(!productsMap[prodId]) {
+        productsMap[prodId] = {
+          id: prodId,
+          name: quant.product_id[1],
+          total_qty: 0,
+          available_qty: 0,
+          reserved_qty: 0,
+          lots: []
+        };
+      }
+      productsMap[prodId].total_qty += quant.quantity;
+      productsMap[prodId].available_qty += quant.available_quantity || 0;
+      productsMap[prodId].reserved_qty += quant.reserved_quantity || 0;
+      
+      if(quant.lot_id) {
+        productsMap[prodId].lots.push({
+          id: quant.lot_id[0],
+          name: quant.lot_id[1],
+          qty: quant.quantity,
+          quantId: quant.id,
+          locationId: location.id
+        });
+      }
+    }
+    
+    const products = Object.values(productsMap);
+    
+    // Get additional product info
+    const productIds = products.map(p => p.id);
+    const productDetails = await searchRead('product.product', [
+      ['id', 'in', productIds]
+    ], ['id', 'display_name', 'default_code', 'barcode', 'uom_id', 'tracking']);
+    
+    // Merge details
+    const detailsMap = {};
+    productDetails.forEach(p => detailsMap[p.id] = p);
+    
+    products.forEach(p => {
+      const details = detailsMap[p.id];
+      if(details) {
+        p.display_name = details.display_name;
+        p.default_code = details.default_code;
+        p.barcode = details.barcode;
+        p.uom_id = details.uom_id;
+        p.tracking = details.tracking;
+      }
+    });
+    
+    // Display products
+    displayProducts(products);
+    
+    document.getElementById('resultCount').textContent = `${products.length} prodotti`;
+    emptyState.style.display = 'none';
+    productsList.style.display = 'grid';
+    
+  } catch(e) {
+    console.error('Errore caricamento prodotti:', e);
+    productsList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);">❌ Errore caricamento prodotti</div>';
+    toast('Errore caricamento prodotti', 'error');
+  }
+}
+
+/* ===== Product Search ===== */
+async function searchProductByCode() {
+  const input = document.getElementById('product_search');
+  const code = input.value.trim();
+  const statusEl = document.getElementById('product_status');
+  
+  if(!code) {
+    toast('Inserisci un codice prodotto', 'warning');
+    return;
+  }
+  
+  statusEl.textContent = '🔍 Ricerca prodotto con codice...';
+  statusEl.className = 'status';
+  
+  try {
+    // Search by exact barcode first
+    let products = await searchRead('product.product', [
+      ['barcode', '=', code]
+    ], ['id', 'display_name', 'default_code', 'barcode', 'uom_id', 'tracking'], 1);
+    
+    if(products.length === 0) {
+      // Try by default_code if barcode not found
+      products = await searchRead('product.product', [
+        ['default_code', '=', code]
+      ], ['id', 'display_name', 'default_code', 'barcode', 'uom_id', 'tracking'], 1);
+    }
+    
+    if(products.length === 0) {
+      statusEl.textContent = '❌ Prodotto non trovato con questo codice';
+      statusEl.className = 'status err';
+      toast('Prodotto non trovato', 'error');
+      return;
+    }
+    
+    const product = products[0];
+    
+    // Get stock info for this product (SOLO UBICAZIONI INTERNE)
+    const quants = await searchRead('stock.quant', [
+      ['product_id', '=', product.id],
+      ['quantity', '>', 0],
+      ['location_id.usage', '=', 'internal']
+    ], ['quantity', 'location_id', 'lot_id']);
+    
+    product.total_qty = quants.reduce((sum, q) => sum + q.quantity, 0);
+    product.locations = [...new Set(quants.map(q => q.location_id[1]))];
+    product.lots = quants.filter(q => q.lot_id).map(q => ({
+      id: q.lot_id[0],
+      name: q.lot_id[1],
+      qty: q.quantity,
+      location: q.location_id[1],
+      quantId: q.id,
+      locationId: q.location_id[0]
+    }));
+    
+    // Display single product result
+    const resultsSection = document.getElementById('resultsSection');
+    resultsSection.style.display = 'block';
+    document.getElementById('resultIcon').textContent = '📦';
+    document.getElementById('resultName').textContent = 'Dettagli prodotto';
+    document.getElementById('resultCount').textContent = `${product.total_qty || 0} pz totali`;
+    
+    displayProducts([product]);
+    
+    statusEl.textContent = `✅ Prodotto trovato`;
+    statusEl.className = 'status ok';
+    
+  } catch(e) {
+    console.error('Errore ricerca prodotto:', e);
+    statusEl.textContent = `❌ Errore: ${e.message}`;
+    statusEl.className = 'status err';
+    toast('Errore ricerca prodotto', 'error');
+  }
+}
+
+/* ===== Product Search Modal ===== */
+function showProductSearchModal() {
+  document.getElementById('productSearchModal').style.display = 'flex';
+  const input = document.getElementById('productManualSearchInput');
+  input.focus();
+  input.value = '';
+  document.getElementById('productManualSearchResults').innerHTML = '';
+}
+
+function closeProductSearchModal() {
+  document.getElementById('productSearchModal').style.display = 'none';
+  if(productSearchTimeout) {
+    clearTimeout(productSearchTimeout);
+    productSearchTimeout = null;
+  }
+}
+
+async function searchProductsManual(query) {
+  if(!query || query.length < 2) {
+    document.getElementById('productManualSearchResults').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Digita almeno 2 caratteri per cercare...</div>';
+    return;
+  }
+  
+  document.getElementById('productManualSearchResults').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">🔍 Ricerca in corso...</div>';
+  
+  try {
+    const domain = [
+      '|', '|', 
+      ['name', 'ilike', query],
+      ['default_code', 'ilike', query],
+      ['barcode', 'ilike', query]
+    ];
+    
+    const fields = ['id','display_name','default_code','barcode','uom_id','tracking'];
+    const products = await searchRead('product.product', domain, fields, 20, 'name');
+    
+    console.log('🔍 Prodotti trovati nella ricerca manuale:', products);
+    
+    const resultsDiv = document.getElementById('productManualSearchResults');
+    
+    if(products.length === 0) {
+      resultsDiv.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">❌ Nessun prodotto trovato</div>';
+      return;
+    }
+    
+    resultsDiv.innerHTML = '';
+    products.forEach(product => {
+      const item = document.createElement('div');
+      item.style.cssText = `
+        padding: 12px; margin: 6px 0; background: var(--bg); 
+        border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+        transition: all 0.2s;
+      `;
+      
+      let uomDisplay = '';
+      if(product.uom_id) {
+        if(Array.isArray(product.uom_id) && product.uom_id.length >= 2) {
+          uomDisplay = product.uom_id[1];
+        } else {
+          uomDisplay = 'N/A';
+        }
+      }
+      
+      item.innerHTML = `
+        <div style="font-weight:bold;color:var(--accent2);margin-bottom:4px;">${product.display_name}</div>
+        <div style="font-size:12px;color:var(--muted);">
+          ${product.default_code ? `Codice: ${product.default_code}` : ''}
+          ${product.barcode ? ` | Barcode: ${product.barcode}` : ''}
+          ${uomDisplay ? ` | UoM: ${uomDisplay}` : ''}
+        </div>
+      `;
+      
+      item.addEventListener('click', () => selectProductFromManualSearch(product));
+      item.addEventListener('mouseenter', () => {
+        item.style.background = 'var(--accent2)';
+        item.style.color = '#fff';
+      });
+      item.addEventListener('mouseleave', () => {
+        item.style.background = 'var(--bg)';
+        item.style.color = 'var(--text)';
+      });
+      
+      resultsDiv.appendChild(item);
+    });
+    
+  } catch(e) {
+    console.error('Errore ricerca prodotti:', e);
+    document.getElementById('productManualSearchResults').innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);">❌ Errore ricerca: ' + e.message + '</div>';
+  }
+}
+
+async function selectProductFromManualSearch(product) {
+  console.log('✅ Prodotto selezionato manualmente:', product);
+  
+  closeProductSearchModal();
+  
+  const statusEl = document.getElementById('product_status');
+  statusEl.textContent = '🔍 Caricamento dettagli prodotto...';
+  statusEl.className = 'status';
+  
+  try {
+    // Get stock info for this product (SOLO UBICAZIONI INTERNE)
+    const quants = await searchRead('stock.quant', [
+      ['product_id', '=', product.id],
+      ['quantity', '>', 0],
+      ['location_id.usage', '=', 'internal']
+    ], ['quantity', 'location_id', 'lot_id']);
+    
+    product.total_qty = quants.reduce((sum, q) => sum + q.quantity, 0);
+    product.locations = [...new Set(quants.map(q => q.location_id[1]))];
+    product.lots = quants.filter(q => q.lot_id).map(q => ({
+      id: q.lot_id[0],
+      name: q.lot_id[1],
+      qty: q.quantity,
+      location: q.location_id[1],
+      quantId: q.id,
+      locationId: q.location_id[0]
+    }));
+    
+    // Display single product result
+    const resultsSection = document.getElementById('resultsSection');
+    resultsSection.style.display = 'block';
+    document.getElementById('resultIcon').textContent = '📦';
+    document.getElementById('resultName').textContent = 'Dettagli prodotto';
+    document.getElementById('resultCount').textContent = `${product.total_qty || 0} pz totali`;
+    
+    displayProducts([product]);
+    
+    document.getElementById('product_search').value = product.default_code || product.barcode || product.display_name;
+    
+    statusEl.textContent = `✅ Prodotto selezionato: ${product.display_name}`;
+    statusEl.className = 'status ok';
+    
+    toast('✅ Prodotto selezionato: ' + product.display_name, 'success');
+    
+  } catch(e) {
+    console.error('Errore caricamento dettagli:', e);
+    statusEl.textContent = `❌ Errore: ${e.message}`;
+    statusEl.className = 'status err';
+    toast('Errore caricamento prodotto', 'error');
+  }
+}
+
+/* ===== Display Products ===== */
+function displayProducts(products) {
+  const productsList = document.getElementById('productsList');
+  productsList.innerHTML = '';
+  
+  products.forEach(product => {
+    const item = document.createElement('div');
+    item.className = 'product-item';
+    item.onclick = () => openProductModal(product);
+    
+    const uomName = product.uom_id ? (Array.isArray(product.uom_id) ? product.uom_id[1] : 'pz') : 'pz';
+    
+    item.innerHTML = `
+      <div class="product-header">
+        <div class="product-name">${product.display_name || product.name}</div>
+        <div class="product-qty">${product.total_qty || 0} ${uomName}</div>
+      </div>
+      <div class="product-details">
+        ${product.default_code ? `
+          <div class="product-detail">
+            <label>Codice:</label>
+            <span>${product.default_code}</span>
+          </div>
+        ` : ''}
+        ${product.barcode ? `
+          <div class="product-detail">
+            <label>Barcode:</label>
+            <span>${product.barcode}</span>
+          </div>
+        ` : ''}
+        ${product.tracking && product.tracking !== 'none' ? `
+          <div class="product-detail">
+            <label>Tracking:</label>
+            <span>${product.tracking === 'lot' ? 'Lotti' : product.tracking === 'serial' ? 'Seriali' : product.tracking}</span>
+          </div>
+        ` : ''}
+        ${product.lots && product.lots.length > 0 ? `
+          <div class="product-detail">
+            <label>Lotti:</label>
+            <span>${product.lots.length} lotti</span>
+          </div>
+        ` : ''}
+        ${product.locations && product.locations.length > 0 && currentSearchMode === 'product' ? `
+          <div class="product-detail" style="grid-column: 1/-1;">
+            <label>Ubicazioni:</label>
+            <span style="font-size:12px;">${product.locations.slice(0,3).join(', ')}${product.locations.length > 3 ? '...' : ''}</span>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    
+    productsList.appendChild(item);
+  });
+}
+
+/* ===== Product Modal ===== */
+async function openProductModal(product) {
+  currentEditProductId = product.id;
+  
+  // Load full product details
+  try {
+    const fullProduct = await searchRead('product.product', [
+      ['id', '=', product.id]
+    ], ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'tracking']);
+    
+    if(fullProduct.length === 0) {
+      toast('Errore caricamento prodotto', 'error');
+      return;
+    }
+    
+    const prod = fullProduct[0];
+    
+    // Fill modal fields
+    document.getElementById('edit_name').value = prod.name || '';
+    document.getElementById('edit_default_code').value = prod.default_code || '';
+    document.getElementById('edit_barcode').value = prod.barcode || '';
+    document.getElementById('edit_qty').value = product.total_qty || 0;
+    document.getElementById('edit_uom').value = prod.uom_id ? prod.uom_id[1] : 'N/A';
+    
+    const trackingLabels = {
+      'none': 'Nessuno',
+      'lot': 'Lotti',
+      'serial': 'Numeri Seriali'
+    };
+    document.getElementById('edit_tracking').value = trackingLabels[prod.tracking] || prod.tracking || 'Nessuno';
+    
+    // Load lots if applicable
+    const lotsSection = document.getElementById('lotsSection');
+    const lotsList = document.getElementById('lotsList');
+    
+    if(product.lots && product.lots.length > 0) {
+      lotsSection.style.display = 'block';
+      lotsList.innerHTML = '';
+      
+      for(const lot of product.lots) {
+        // Get lot expiry if exists
+        const lotDetails = await searchRead('stock.lot', [
+          ['id', '=', lot.id]
+        ], ['name', 'expiration_date']);
+        
+        const lotItem = document.createElement('div');
+        lotItem.className = 'lot-item';
+        lotItem.innerHTML = `
+          <div>
+            <div class="lot-name">${lot.name}</div>
+            ${lotDetails[0]?.expiration_date ? `<div class="lot-exp">Scad: ${new Date(lotDetails[0].expiration_date).toLocaleDateString('it-IT')}</div>` : ''}
+            ${currentSearchMode === 'product' && lot.location ? `<div style="font-size:11px;color:var(--muted);">📍 ${lot.location}</div>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input type="number" class="lot-qty-input" 
+                   data-lot-id="${lot.id}" 
+                   data-location-id="${currentLocationId || ''}" 
+                   data-quant-id="${lot.quantId || ''}" 
+                   value="${lot.qty}" 
+                   step="0.01" 
+                   placeholder="Qt">
+            <span style="font-size:12px;color:var(--muted);">pz</span>
+          </div>
+        `;
+        lotsList.appendChild(lotItem);
+      }
+    } else {
+      lotsSection.style.display = 'none';
+    }
+    
+    // Show modal
+    document.getElementById('productModal').style.display = 'flex';
+    
+  } catch(e) {
+    console.error('Errore apertura modal prodotto:', e);
+    toast('Errore caricamento dettagli prodotto', 'error');
+  }
+}
+
+function closeProductModal() {
+  document.getElementById('productModal').style.display = 'none';
+  currentEditProductId = null;
+}
+
+async function saveProduct() {
+  if(!currentEditProductId) {
+    toast('Errore: ID prodotto mancante', 'error');
+    return;
+  }
+  
+  const newName = document.getElementById('edit_name').value;
+  const newQty = parseFloat(document.getElementById('edit_qty').value);
+  const updateData = {
+    name: newName,
+    default_code: document.getElementById('edit_default_code').value,
+    barcode: document.getElementById('edit_barcode').value
+  };
+  
+  // Validate barcode uniqueness if changed
+  if(updateData.barcode) {
+    try {
+      const existing = await searchRead('product.product', [
+        ['barcode', '=', updateData.barcode],
+        ['id', '!=', currentEditProductId]
+      ], ['id'], 1);
+      
+      if(existing.length > 0) {
+        toast('Errore: Barcode già esistente!', 'error');
+        return;
+      }
+    } catch(e) {
+      console.error('Errore validazione barcode:', e);
+    }
+  }
+  
+  try {
+    // Update product base data
+    await rpc('product.product', 'write', [[currentEditProductId], updateData]);
+    
+    // Update lot quantities if present
+    const lotInputs = document.querySelectorAll('.lot-qty-input');
+    for(const input of lotInputs) {
+      const lotId = parseInt(input.dataset.lotId);
+      const quantId = input.dataset.quantId;
+      const locationId = input.dataset.locationId || currentLocationId;
+      const lotQty = parseFloat(input.value);
+      
+      if(!isNaN(lotQty) && lotQty >= 0 && quantId) {
+        await updateLotQuantityDirect(quantId, lotQty);
+      }
+    }
+    
+    // Get product template ID for translation update
+    if(newName) {
+      try {
+        // Get the product template ID
+        const product = await searchRead('product.product', [
+          ['id', '=', currentEditProductId]
+        ], ['product_tmpl_id'], 1);
+        
+        if(product.length > 0 && product[0].product_tmpl_id) {
+          const templateId = Array.isArray(product[0].product_tmpl_id) 
+            ? product[0].product_tmpl_id[0] 
+            : product[0].product_tmpl_id;
+          
+          console.log('Template ID trovato:', templateId);
+          
+          // Try to update template name with Italian context
+          try {
+            await rpc('product.template', 'write', 
+              [[templateId], {name: newName}], 
+              {context: {lang: 'it_IT'}}
+            );
+            console.log('Nome template aggiornato in italiano');
+          } catch(e) {
+            console.log('Provo aggiornamento diretto traduzione...');
+            
+            // Try updating the translation directly
+            const translations = await searchRead('ir.translation', [
+              ['name', 'in', ['product.template,name', 'product.product,name']],
+              ['res_id', 'in', [templateId, currentEditProductId]],
+              ['lang', '=', 'it_IT']
+            ], ['id', 'name', 'res_id']);
+            
+            if(translations.length > 0) {
+              for(const trans of translations) {
+                try {
+                  await rpc('ir.translation', 'write', [[trans.id], {
+                    value: newName,
+                    state: 'translated'
+                  }]);
+                  console.log(`Traduzione aggiornata: ${trans.name} per res_id ${trans.res_id}`);
+                } catch(e) {
+                  console.log(`Errore aggiornamento traduzione ${trans.id}:`, e);
+                }
+              }
+            } else {
+              console.log('Nessuna traduzione italiana trovata da aggiornare');
+            }
+          }
+        }
+      } catch(e) {
+        console.log('Errore gestione traduzioni, ma prodotto salvato:', e);
+      }
+    }
+    
+    toast('✅ Prodotto aggiornato con successo!', 'success');
+    closeProductModal();
+    
+    // Refresh current view
+    if(currentSearchMode === 'location' && currentLocationId) {
+      const location = await searchRead('stock.location', [['id', '=', currentLocationId]], ['id', 'name', 'complete_name'], 1);
+      if(location.length > 0) {
+        await loadProductsInLocation(location[0]);
+      }
+    } else {
+      // Re-run last search
+      const searchValue = document.getElementById('product_search').value;
+      if(searchValue) {
+        await searchProductByCode();
+      }
+    }
+    
+  } catch(e) {
+    console.error('Errore salvataggio prodotto:', e);
+    toast(`Errore: ${e.message}`, 'error');
+  }
+}
+
+/* ===== Scanner Functions ===== */
+async function startScanner(){ 
+  if(stream) return; 
+  
+  isScanning = true;
+  
+  const wrap=document.getElementById('camWrap'); 
+  wrap.style.display='flex';
+  
+  scanTimeout = setTimeout(() => {
+    toast('Scanner chiuso per timeout', 'warning');
+    stopScanner();
+  }, CONFIG.SCAN_TIMEOUT);
+  
+  try{ 
+    if(detectorSupported && !detector){ 
+      const formats=['qr_code','code_128','ean_13','ean_8','upc_a','upc_e','data_matrix','pdf417']; 
+      detector=new BarcodeDetector({formats}); 
+    }
+    
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{
+        facingMode:{ideal:facing},
+        width:{ideal:1280},
+        height:{ideal:720}
+      }
+    }); 
+    
+    const v=document.getElementById('video'); 
+    v.srcObject=stream; 
+    await v.play(); 
+    
+    const targetNames = {location:'Ubicazione', product:'Prodotto'};
+    document.getElementById('scanTarget').textContent = `Scansiona: ${targetNames[currentTarget] || 'Codice'}`;
+    
+    loopScan(); 
+  }
+  catch(e){ 
+    console.error('Errore camera:', e);
+    toast('Camera non disponibile. Usa lettore USB o inserimento manuale', 'warning'); 
+    stopScanner(); 
+  } 
+}
+
+async function loopScan(){ 
+  if(!stream || !isScanning) return; 
+  
+  const v=document.getElementById('video'); 
+  try{ 
+    if(detector){ 
+      const codes=await detector.detect(v); 
+      if(codes && codes.length){ 
+        onScan(codes[0].rawValue); 
+        return;
+      } 
+    } 
+  }catch(e){
+    console.warn('Errore detection:', e);
+  }
+  
+  requestAnimationFrame(loopScan); 
+}
+
+function stopScanner(){ 
+  isScanning = false;
+  
+  const wrap=document.getElementById('camWrap'); 
+  wrap.style.display='none'; 
+  
+  const v=document.getElementById('video'); 
+  if(stream){ 
+    stream.getTracks().forEach(t=>t.stop()); 
+    stream=null; 
+  } 
+  v.srcObject=null; 
+  currentTarget=null; 
+  
+  if(scanTimeout) {
+    clearTimeout(scanTimeout);
+    scanTimeout = null;
+  }
+}
+
+function flip(){ 
+  facing = (facing==='environment'?'user':'environment'); 
+  stopScanner(); 
+  startScanner(); 
+}
+
+function scanFor(target){ 
+  currentTarget=target; 
+  startScanner(); 
+}
+
+function onScan(text){ 
+  stopScanner(); 
+  if(!text) return; 
+  
+  if(currentTarget === 'location') {
+    document.getElementById('location_search').value = text;
+    searchLocation();
+  } else if(currentTarget === 'product') {
+    document.getElementById('product_search').value = text;
+    searchProductByCode();
+  }
+  
+  toast('Scansionato con successo!', 'success'); 
+}
+
+/* ===== Auto Scan Detection ===== */
+function setupAutoScanDetection(){
+  // Location search input
+  const locationInput = document.getElementById('location_search');
+  
+  locationInput.addEventListener('input', (e) => {
+    const now = Date.now();
+    const value = e.target.value;
+    
+    if(autoScanTimeouts['location_search']) {
+      clearTimeout(autoScanTimeouts['location_search']);
+    }
+    
+    if(lastInputTime['location_search'] && (now - lastInputTime['location_search']) < 100 && value.length >= CONFIG.BARCODE_GUN_DETECT_CHARS) {
+      showAutoScanIndicator();
+      autoScanTimeouts['location_search'] = setTimeout(() => {
+        searchLocation();
+      }, 100);
+    }
+    
+    lastInputTime['location_search'] = now;
+  });
+  
+  locationInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') {
+      searchLocation();
+    }
+  });
+  
+  // Product search input - solo per barcode gun
+  const productInput = document.getElementById('product_search');
+  
+  productInput.addEventListener('input', (e) => {
+    const now = Date.now();
+    const value = e.target.value;
+    
+    // Check for barcode gun input
+    if(lastInputTime['product_search'] && (now - lastInputTime['product_search']) < 100 && value.length >= CONFIG.BARCODE_GUN_DETECT_CHARS) {
+      showAutoScanIndicator();
+      // Barcode gun detected - search immediately
+      if(autoScanTimeouts['product_search']) {
+        clearTimeout(autoScanTimeouts['product_search']);
+      }
+      autoScanTimeouts['product_search'] = setTimeout(() => {
+        searchProductByCode();
+      }, 100);
+    }
+    
+    lastInputTime['product_search'] = now;
+  });
+  
+  productInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') {
+      searchProductByCode();
+    }
+  });
+  
+  // Manual product search modal
+  const productSearchInput = document.getElementById('productManualSearchInput');
+  productSearchInput.addEventListener('input', (e) => {
+    if(productSearchTimeout) {
+      clearTimeout(productSearchTimeout);
+    }
+    productSearchTimeout = setTimeout(() => {
+      searchProductsManual(e.target.value.trim());
+    }, 300);
+  });
+  
+  productSearchInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape') {
+      closeProductSearchModal();
+    }
+  });
+}
+
+/* ===== Event Setup ===== */
+function setupEventListeners() {
+  document.getElementById('theme').addEventListener('click', toggleTheme);
+  document.getElementById('btnStart').addEventListener('click', startScanner);
+  
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'F9') { 
+      e.preventDefault(); 
+      startScanner(); 
+    }
+    if(e.key === 'F10' || e.key === 'Escape') { 
+      e.preventDefault();
+      if(isScanning) {
+        stopScanner();
+      } else if(document.getElementById('productModal').style.display === 'flex') {
+        closeProductModal();
+      } else if(document.getElementById('productSearchModal').style.display === 'flex') {
+        closeProductSearchModal();
+      }
+    }
+  });
+  
+  setupAutoScanDetection();
+}
+
+/* ===== Quantity Update Functions ===== */
+async function updateLotQuantityDirect(quantId, newQty) {
+  try {
+    // Aggiorna DIRETTAMENTE il quant specifico usando il suo ID
+    // Questo evita di creare nuovi record o modificare ubicazioni sbagliate
+    console.log(`📝 Aggiornamento diretto quant ID ${quantId} a quantità ${newQty}`);
+    
+    await rpc('stock.quant', 'write', [[parseInt(quantId)], {
+      quantity: newQty
+    }]);
+    
+    console.log(`✅ Quantità lotto aggiornata con successo`);
+    return true;
+  } catch(e) {
+    console.error(`Errore aggiornamento quant ${quantId}:`, e);
+    toast('⚠️ Errore aggiornamento quantità lotto: ' + e.message, 'error');
+    return false;
+  }
+}
+
+/* ===== Initialization ===== */
+document.addEventListener('DOMContentLoaded', async () => {
+  initTheme();
+  setupEventListeners();
+  
+  const isConnected = await checkConnection();
+  
+  if(isConnected) {
+    try {
+      // Test permissions
+      await searchRead('product.product', [], ['id'], 1);
+      toast('✅ Connessione verificata!', 'success');
+      
+    } catch(testError) {
+      console.error('Test RPC failed:', testError);
+      
+      if(testError.message.includes('Access Denied') || testError.message.includes('AccessError')) {
+        toast('⚠️ Permessi insufficienti', 'warning');
+        updateConnectionStatus('disconnected', 'Permessi insufficienti');
+      } else {
+        toast('⚠️ Errore test connessione: ' + testError.message, 'warning');
+      }
+    }
+  } else {
+    setTimeout(() => {
+      if(confirm('Non connesso a Odoo!\n\nVuoi aprire la pagina di login?')) {
+        window.open('/web/login', '_blank');
+      }
+    }, 2000);
+  }
+  
+  connectionCheckInterval = setInterval(checkConnection, CONFIG.CONNECTION_CHECK_INTERVAL);
+  
+  // Focus on location search by default
+  document.getElementById('location_search').focus();
+  
+  console.log('🛡️ Gestione Inventario Super Utente - Odoo 17 caricato!');
+  console.log('📊 CSRF Token:', csrf() ? 'Trovato' : 'Non trovato');
+  console.log('🏠 URL corrente:', window.location.href);
+});
+
+window.addEventListener('beforeunload', () => {
+  if(connectionCheckInterval) clearInterval(connectionCheckInterval);
+  stopScanner();
+});
+</script>

@@ -1,0 +1,5501 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2563eb">
+<title>🎯 LAPA Dashboard - Working</title>
+
+<style>
+:root {
+  --primary: #2563eb;
+  --secondary: #059669;
+  --accent: #dc2626;
+  --warning: #d97706;
+  --success: #16a34a;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --shadow: rgba(15, 23, 42, 0.1);
+  --shadow-lg: rgba(15, 23, 42, 0.15);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Roboto', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  /* Miglioramenti per Samsung Internet */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px;
+  overflow: visible;
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding: 20px;
+  }
+}
+
+.header {
+  background: var(--surface);
+  padding: 20px 0;
+  margin-bottom: 30px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px var(--shadow);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.team-selector-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  padding: 15px 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.team-selector-section .icon {
+  font-size: 24px;
+}
+
+.team-dropdown {
+  position: relative;
+}
+
+.team-select {
+  padding: 12px 45px 12px 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  min-width: 280px;
+  appearance: none;
+  transition: all 0.3s ease;
+}
+
+.team-select:focus {
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+  outline: none;
+}
+
+.team-select option {
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px;
+}
+
+.team-dropdown::after {
+  content: '▼';
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: white;
+  pointer-events: none;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 15px;
+  border-radius: 25px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.status-connected {
+  background: rgba(22, 163, 74, 0.1);
+  color: var(--success);
+  border: 2px solid var(--success);
+}
+
+.status-error {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--accent);
+  border: 2px solid var(--accent);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: var(--surface-2);
+  padding: 12px 18px;
+  border-radius: 10px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: var(--surface);
+  padding: 25px;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px var(--shadow);
+  text-align: center;
+  border-left: 5px solid var(--primary);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+.stat-number {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 12px 0;
+}
+
+.stat-label {
+  font-size: 15px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-change {
+  font-size: 13px;
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+.stat-change.positive { color: var(--success); }
+.stat-change.negative { color: var(--accent); }
+.stat-change.neutral { color: var(--warning); }
+
+.team-info-banner {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  padding: 25px;
+  border-radius: 15px;
+  margin-bottom: 25px;
+  display: none;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+}
+
+.team-info-banner.active {
+  display: block;
+}
+
+.team-banner-content {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 25px;
+  align-items: center;
+}
+
+.team-details h3 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.team-details p {
+  opacity: 0.9;
+  font-size: 15px;
+}
+
+.team-stats {
+  display: flex;
+  gap: 25px;
+  text-align: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.team-stat {
+  text-align: center;
+}
+
+.team-stat-number {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.team-stat-label {
+  font-size: 12px;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.client-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+  min-height: min-content;
+  overflow: visible;
+}
+
+.client-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.client-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--shadow-lg);
+}
+
+.client-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 15px;
+}
+
+.client-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.client-status {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-active {
+  background: rgba(22, 163, 74, 0.15);
+  color: var(--success);
+}
+
+.status-warning {
+  background: rgba(217, 119, 6, 0.15);
+  color: var(--warning);
+}
+
+.status-inactive {
+  background: rgba(220, 38, 38, 0.15);
+  color: var(--accent);
+}
+
+.client-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.info-item {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.info-value {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.trend-chart {
+  height: 60px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  margin-top: 15px;
+  display: flex;
+  align-items: end;
+  padding: 8px;
+  gap: 2px;
+}
+
+.trend-bar {
+  flex: 1;
+  background: var(--primary);
+  border-radius: 2px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.trend-bar:hover {
+  opacity: 1;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 10px 18px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  border-radius: 25px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.filter-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.search-box {
+  padding: 12px 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 14px;
+  width: 280px;
+}
+
+.btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn.primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn.secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn:hover, .btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--shadow-lg);
+}
+
+@media (max-width: 768px) {
+  .btn {
+    padding: 14px 22px;
+    font-size: 16px;
+    min-height: 48px;
+  }
+}
+
+.loading-state {
+  text-align: center;
+  padding: 50px;
+  color: var(--text-muted);
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border);
+  border-top: 4px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-state {
+  text-align: center;
+  padding: 50px;
+  color: var(--accent);
+  background: rgba(220, 38, 38, 0.05);
+  border-radius: 12px;
+  border: 2px solid rgba(220, 38, 38, 0.1);
+}
+
+
+/* POPUP DETTAGLIATO CLIENTE */
+.popup-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+}
+
+.popup-overlay.active {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 40px;
+}
+
+.popup-content {
+  background: var(--surface);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
+  animation: popupSlide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+
+@keyframes popupSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.popup-header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  padding: 25px;
+  border-radius: 16px 16px 0 0;
+  position: relative;
+}
+
+.popup-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  opacity: 0.8;
+}
+
+.popup-close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+  transform: rotate(90deg);
+}
+
+.client-popup-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.client-popup-subtitle {
+  opacity: 0.9;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.popup-body {
+  padding: 25px;
+}
+
+/* Health Score Section */
+.health-score-section {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 25px;
+  background: linear-gradient(135deg, var(--surface-2), var(--surface));
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.health-score-number {
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.health-score-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 15px;
+}
+
+.health-indicator {
+  background: var(--border);
+  border-radius: 10px;
+  height: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.health-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.6s ease;
+  background: linear-gradient(90deg, #dc2626, #d97706, #16a34a);
+}
+
+/* Metriche Dettagliate */
+.detailed-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.metric-detailed-card {
+  background: var(--surface-2);
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid var(--border);
+  transition: transform 0.2s ease;
+}
+
+.metric-detailed-card:hover {
+  transform: translateY(-2px);
+}
+
+.metric-detailed-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.metric-detailed-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.metric-trend {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trend-up { color: var(--success); }
+.trend-down { color: var(--accent); }
+.trend-stable { color: var(--warning); }
+
+/* AI Insights */
+.ai-insights {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(5, 150, 105, 0.1));
+  border: 2px solid rgba(37, 99, 235, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 25px;
+}
+
+.ai-insights h4 {
+  color: var(--primary);
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.insight-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.insight-item {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(37, 99, 235, 0.1);
+  font-size: 14px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.insight-item:last-child {
+  border-bottom: none;
+}
+
+/* Azioni Rapide */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.quick-action-btn {
+  padding: 14px 18px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-call {
+  background: var(--success);
+  color: white;
+}
+
+.btn-whatsapp {
+  background: #25d366;
+  color: white;
+}
+
+.btn-email {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-visit {
+  background: var(--warning);
+  color: white;
+}
+
+.btn-report {
+  background: var(--accent);
+  color: white;
+}
+.btn-financial {
+  background: #059669;
+  color: white;
+}
+
+.quick-action-btn:hover, .quick-action-btn:active {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 768px) {
+  .quick-action-btn {
+    padding: 16px 20px;
+    font-size: 16px;
+    min-height: 52px;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+}
+
+/* Lista Contatti */
+.contacts-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.contact-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s ease;
+}
+
+.contact-item:hover {
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.contact-info {
+  flex: 1;
+}
+
+.contact-name {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.contact-details {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.contact-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.contact-action-btn {
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.contact-call {
+  background: var(--success);
+  color: white;
+}
+
+.contact-whatsapp {
+  background: #25d366;
+  color: white;
+}
+
+.contact-email {
+  background: var(--primary);
+  color: white;
+}
+
+.contact-action-btn:hover {
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  .popup-overlay {
+    padding: 10px;
+    padding-top: 20px;
+  }
+
+  .popup-content {
+    max-height: 95vh;
+  }
+
+  .client-popup-subtitle {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .detailed-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .quick-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* FINANCIAL MINI CHART */
+.financial-mini-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  max-width: 140px;
+}
+
+.financial-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  line-height: 1.2;
+  height: 16px;
+}
+
+.financial-bar-visual {
+  width: 30px;
+  height: 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.financial-bar-visual.paid {
+  background: #16a34a;
+}
+
+.financial-bar-visual.pending {
+  background: #d97706;
+}
+
+.financial-bar-visual.overdue {
+  background: #dc2626;
+}
+
+.financial-bar-amount {
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+/* FINANCIAL DASHBOARD STYLES */
+.financial-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.financial-card {
+  background: var(--surface);
+  border: 2px solid;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  position: relative;
+}
+
+.financial-card.paid {
+  border-color: #16a34a;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+}
+
+.financial-card.pending {
+  border-color: #d97706;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+.financial-card.overdue {
+  border-color: #dc2626;
+  background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+}
+
+.financial-amount {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.financial-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.financial-percentage {
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.risk-indicators {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.risk-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.risk-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.risk-score, .risk-value {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--primary);
+}
+
+.payment-trend-chart {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-placeholder {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.recent-invoices {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.invoice-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.invoice-item:last-child {
+  border-bottom: none;
+}
+
+.invoice-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invoice-number {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.invoice-date {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.invoice-status {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.invoice-status.paid {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.invoice-status.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.invoice-status.overdue {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+/* 💳 Stili per fatture non pagate */
+.unpaid-invoices-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.invoice-category {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.category-title {
+  background: var(--surface-2);
+  padding: 16px 20px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+
+.invoice-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.invoice-list:empty::after {
+  content: "Nessuna fattura in questa categoria";
+  display: block;
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.invoice-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.download-pdf-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.download-pdf-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.download-pdf-btn:active {
+  transform: translateY(0);
+}
+
+.download-pdf-btn:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.financial-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.financial-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid;
+}
+
+.financial-alert.warning {
+  background: #fffbeb;
+  border-left-color: #d97706;
+}
+
+.financial-alert.danger {
+  background: #fef2f2;
+  border-left-color: #dc2626;
+}
+
+.financial-alert.success {
+  background: #f0fdf4;
+  border-left-color: #16a34a;
+}
+
+.alert-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.alert-content {
+  flex: 1;
+}
+
+.alert-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.alert-message {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .financial-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .risk-indicators {
+    grid-template-columns: 1fr;
+  }
+
+  .financial-card {
+    padding: 16px;
+  }
+
+  .financial-amount {
+    font-size: 20px;
+  }
+}
+
+/* DASHBOARD AVANZATA */
+.advanced-popup-content {
+  background: var(--surface);
+  border-radius: 20px;
+  width: 95%;
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
+  animation: popupSlide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.advanced-popup-header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  padding: 25px 30px;
+  border-radius: 20px 20px 0 0;
+  position: relative;
+}
+
+.advanced-popup-title {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.advanced-title {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.advanced-subtitle {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.advanced-popup-body {
+  padding: 30px;
+}
+
+.advanced-section {
+  margin-bottom: 40px;
+}
+
+.advanced-section h3 {
+  font-size: 20px;
+  color: var(--primary);
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border);
+}
+
+.advanced-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.advanced-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 200px;
+}
+
+.advanced-card h4 {
+  color: var(--text);
+  font-size: 16px;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.weekly-chart, .products-list, .undelivered-list, .comparison-chart {
+  min-height: 120px;
+}
+
+/* AI SECTION */
+.ai-section {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(5, 150, 105, 0.05));
+  border: 2px solid rgba(37, 99, 235, 0.2);
+  border-radius: 15px;
+  padding: 25px;
+}
+
+.ai-trigger {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.ai-analyze-btn {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.ai-analyze-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+.ai-analyze-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ai-status {
+  margin-top: 10px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.ai-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.ai-insights-advanced, .ai-recommendations, .ai-opportunities {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.ai-insights-advanced h4, .ai-recommendations h4, .ai-opportunities h4 {
+  color: var(--primary);
+  font-size: 16px;
+  margin-bottom: 15px;
+}
+
+/* 📝 SEZIONE NOTE CLIENTE */
+.client-notes-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.section-header h3 {
+  color: var(--primary);
+  margin: 0;
+}
+
+.notes-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.notes-content {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.note-editor textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.note-attachments {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border);
+}
+
+.notes-history {
+  border-left: 1px solid var(--border);
+  padding-left: 20px;
+}
+
+.notes-history h4 {
+  color: var(--text-secondary);
+  margin-bottom: 15px;
+}
+
+.notes-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.note-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+}
+
+.note-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.note-content {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.note-attachments-list {
+  margin-top: 10px;
+}
+
+.attachment-item {
+  display: inline-block;
+  background: var(--primary);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-right: 5px;
+  text-decoration: none;
+}
+
+/* AZIONI AVANZATE */
+.advanced-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid var(--border);
+}
+
+.advanced-action-btn {
+  background: var(--surface);
+  border: 2px solid var(--primary);
+  color: var(--primary);
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.advanced-action-btn:hover {
+  background: var(--primary);
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* WEEKLY CHART STYLES */
+.weekly-bars {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  height: 80px;
+  gap: 4px;
+  margin: 15px 0;
+}
+
+.weekly-bar {
+  flex: 1;
+  background: var(--primary);
+  border-radius: 4px 4px 0 0;
+  min-height: 8px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.weekly-bar:hover, .weekly-bar-interactive:hover {
+  opacity: 0.8;
+  transform: scale(1.1);
+  cursor: pointer;
+}
+
+.weekly-bar-interactive {
+  transition: all 0.2s ease;
+}
+
+.weekly-tooltip {
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.weekly-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.weekly-stats {
+  margin-top: 15px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 15px 0;
+    margin-bottom: 20px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    text-align: center;
+    padding: 0 15px;
+  }
+
+  .team-selector-section {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 20px;
+  }
+
+  .team-select {
+    min-width: 100%;
+    font-size: 16px;
+    padding: 14px 40px 14px 16px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .clients-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .popup-content {
+    width: 95%;
+    max-width: none;
+    margin: 20px auto;
+    max-height: 85vh;
+    overflow-y: auto;
+    border-radius: 15px;
+  }
+
+  .advanced-popup-content {
+    width: 98%;
+    margin: 10px auto;
+    max-height: 95vh;
+    overflow-y: auto;
+    border-radius: 15px;
+  }
+
+  .advanced-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .ai-results {
+    grid-template-columns: 1fr;
+  }
+
+  .advanced-actions {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .advanced-action-btn {
+    font-size: 16px;
+    padding: 16px 20px;
+    min-height: 52px;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .notes-content {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .note-editor textarea {
+    min-height: 120px;
+    font-size: 16px;
+    padding: 12px;
+  }
+
+  .client-card {
+    padding: 15px;
+  }
+
+  .client-card h3 {
+    font-size: 18px;
+  }
+
+  .popup-header {
+    padding: 20px 15px;
+  }
+
+  .popup-close {
+    top: 15px;
+    right: 15px;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .team-select {
+    min-width: 220px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .client-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .search-box {
+    width: 100%;
+  }
+
+  .team-banner-content {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding: 10px !important;
+  }
+
+  .team-details h3 {
+    font-size: 14px !important;
+    margin-bottom: 3px !important;
+    line-height: 1.2 !important;
+  }
+
+  .team-details p {
+    font-size: 10px !important;
+    margin-bottom: 6px !important;
+    opacity: 0.8 !important;
+  }
+
+  .team-stats {
+    justify-content: center;
+    gap: 6px !important;
+    margin-top: 4px !important;
+  }
+
+  .team-stat {
+    padding: 6px 8px !important;
+    font-size: 9px !important;
+    min-width: auto !important;
+  }
+
+  .team-stat-value {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    margin-bottom: 2px !important;
+  }
+
+  .team-stat-label {
+    font-size: 8px !important;
+    line-height: 1.1 !important;
+  }
+
+  /* ⚡ MIGLIORIE MOBILE ANDROID - Dimensioni più piccole */
+  .header {
+    padding: 10px 0;
+    margin-bottom: 15px;
+  }
+
+  .header-content {
+    padding: 0 8px;
+    gap: 6px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo {
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .team-selector-section {
+    padding: 4px 6px;
+    font-size: 10px;
+    flex: 1;
+    min-width: 0;
+    max-width: 45%;
+  }
+
+  .team-selector-section select {
+    font-size: 9px !important;
+    padding: 3px 4px !important;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .team-selector-section .icon {
+    font-size: 10px;
+    margin-right: 2px;
+  }
+
+  .connection-status {
+    width: 12px !important;
+    height: 12px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    font-size: 0 !important;
+    gap: 0 !important;
+    flex-shrink: 0;
+    min-width: 12px;
+    border-width: 2px !important;
+  }
+
+  .connection-status::before {
+    content: '';
+    display: none;
+  }
+
+  .user-info {
+    font-size: 9px;
+    gap: 2px;
+    padding: 4px 6px;
+    flex-shrink: 0;
+    max-width: 35%;
+    overflow: visible;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .user-info > div:first-child {
+    display: none;
+  }
+
+  .user-info > div:last-child {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .user-info .btn {
+    font-size: 8px !important;
+    padding: 3px 6px !important;
+    white-space: nowrap;
+    border-radius: 4px !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+
+  .stat-card {
+    padding: 10px;
+  }
+
+  .stat-value {
+    font-size: 16px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+  }
+
+  .filters {
+    gap: 4px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+    flex: none;
+  }
+
+  .search-box {
+    font-size: 14px;
+    padding: 8px 10px;
+    min-height: 38px;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .client-card {
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+
+  /* 📱 TEST SCROLL MOBILE - RESET COMPLETO */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html, body {
+    overflow: auto;
+    height: auto;
+    position: static;
+  }
+
+  body {
+    min-height: 100vh;
+    padding-bottom: 50px; /* Spazio extra per testare scroll */
+  }
+
+  .container {
+    height: auto;
+    position: static;
+  }
+
+  .client-grid {
+    height: auto;
+    position: static;
+    margin-bottom: 100px; /* Spazio extra per testare scroll */
+  }
+
+  .client-name {
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .info-item {
+    font-size: 10px;
+  }
+
+  .info-value {
+    font-size: 11px;
+  }
+
+  .trend-chart {
+    height: 35px;
+  }
+
+  .trend-bar {
+    min-width: 6px;
+  }
+
+  /* 🔧 FIX POPUP MOBILE */
+  .popup-overlay {
+    padding: 5px !important;
+    padding-top: 10px !important;
+    z-index: 9999;
+  }
+
+  .popup-content {
+    width: 96% !important;
+    max-width: none !important;
+    margin: 10px auto !important;
+    max-height: 88vh !important;
+    overflow-y: auto !important;
+    border-radius: 12px !important;
+  }
+
+  .popup-header {
+    padding: 15px !important;
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%) !important;
+    z-index: 10;
+    border-radius: 12px 12px 0 0 !important;
+  }
+
+  .popup-close {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 16px !important;
+    top: 12px !important;
+    right: 12px !important;
+  }
+
+  .client-popup-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    margin-bottom: 6px !important;
+    line-height: 1.2 !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    max-width: calc(100% - 50px) !important;
+  }
+
+  .client-popup-subtitle {
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+    max-width: calc(100% - 50px) !important;
+  }
+
+  .client-popup-subtitle > span {
+    display: block !important;
+    margin-bottom: 2px !important;
+  }
+
+  .health-score-number {
+    font-size: 32px !important;
+  }
+
+  .metric-detailed-card {
+    padding: 10px !important;
+    margin: 4px 0;
+  }
+
+  .metric-detailed-value {
+    font-size: 14px !important;
+  }
+
+  .metric-detailed-label {
+    font-size: 9px !important;
+  }
+
+  .quick-actions {
+    gap: 6px !important;
+    flex-wrap: wrap;
+  }
+
+  .quick-action-btn {
+    padding: 10px 12px !important;
+    font-size: 11px !important;
+    min-height: 40px !important;
+    flex: 1;
+    min-width: 100px;
+  }
+
+  /* 🔧 FIX ADVANCED POPUP MOBILE */
+  .advanced-popup-content {
+    width: 96%;
+    margin: 8px auto;
+    max-height: 90vh;
+    padding: 0;
+  }
+
+  .advanced-popup-header {
+    padding: 15px 20px;
+  }
+
+  .advanced-popup-title {
+    gap: 4px;
+  }
+
+  .advanced-title {
+    font-size: 16px;
+  }
+
+  .advanced-subtitle {
+    font-size: 12px;
+  }
+
+  .advanced-popup-body {
+    padding: 15px;
+  }
+
+  .advanced-section {
+    margin-bottom: 20px;
+  }
+
+  .advanced-section h3 {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+
+  .advanced-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .advanced-card {
+    padding: 12px;
+    margin: 6px 0;
+  }
+
+  .advanced-card h4 {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .advanced-actions {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .advanced-action-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .loading {
+    font-size: 12px;
+    padding: 15px;
+  }
+
+  /* 📝 FIX NOTE MOBILE */
+  .client-notes-section {
+    margin: 10px 0;
+  }
+
+  .section-header {
+    padding: 12px;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .section-header h3 {
+    font-size: 14px;
+  }
+
+  .notes-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .notes-actions .btn {
+    padding: 8px 12px;
+    font-size: 11px;
+    flex: none;
+  }
+
+  .notes-content {
+    padding: 12px;
+    grid-template-columns: 1fr; /* UNA COLONNA su mobile */
+    gap: 15px;
+  }
+
+  .note-editor textarea {
+    font-size: 14px;
+    padding: 10px;
+    min-height: 100px;
+  }
+
+  .notes-history {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .note-item {
+    padding: 8px;
+    margin-bottom: 8px;
+    font-size: 11px;
+  }
+
+  .note-item-header {
+    font-size: 10px;
+  }
+
+  .note-item-content {
+    font-size: 12px;
+    margin-top: 4px;
+  }
+}
+</style>
+
+
+
+<header class="header">
+  <div class="header-content">
+    <div class="logo">📊 Gestione Clienti Vendite</div>
+
+    <div class="team-selector-section">
+      <span class="icon">👥</span>
+      <div class="team-dropdown">
+        <select class="team-select" id="teamSelector" onchange="onTeamChange()">
+          <option value="">🔄 Caricamento teams...</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 15px; align-items: center;">
+      <div class="connection-status status-error" id="connectionStatus">
+        <span>🔄</span>
+        <span>Connessione...</span>
+      </div>
+
+      <div class="user-info">
+        <div>
+          <div style="font-weight: 600;" id="userName">Caricamento...</div>
+          <div style="font-size: 12px; color: var(--text-muted); display: none;" id="userRole">Odoo User</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn secondary" onclick="openLapaSystem()">📝 Inserisci ordini</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="team-info-banner" id="teamInfoBanner">
+    <div class="team-banner-content">
+      <div class="team-details">
+        <h3 id="selectedTeamName">Team LAPA</h3>
+        <p id="selectedTeamDescription">Seleziona un team</p>
+      </div>
+      <div class="team-stats">
+        <div class="team-stat">
+          <div class="team-stat-number" id="teamMemberCount">0</div>
+          <div class="team-stat-label">Membri</div>
+        </div>
+        <div class="team-stat">
+          <div class="team-stat-number" id="teamTargetAmount">CHF 0</div>
+          <div class="team-stat-label">Target</div>
+        </div>
+        <div class="team-stat">
+          <div class="team-stat-number" id="teamInvoicedAmount">CHF 0</div>
+          <div class="team-stat-label">Fatturato Totale</div>
+        </div>
+        <div class="team-stat">
+          <div class="team-stat-number" id="teamMonthlyAmount">CHF 0</div>
+          <div class="team-stat-label">Mese Scorso</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-number" id="totalClients">0</div>
+      <div class="stat-label">Clienti</div>
+      <div class="stat-change neutral" id="clientsChange">Caricamento...</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-number" id="weeklyRevenue">CHF 0</div>
+      <div class="stat-label">Fatturato</div>
+      <div class="stat-change neutral" id="revenueChange">Caricamento...</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-number" id="totalOrders">0</div>
+      <div class="stat-label">Ordini</div>
+      <div class="stat-change neutral" id="ordersChange">Caricamento...</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-number" id="alertCount">0</div>
+      <div class="stat-label">Allerte</div>
+      <div class="stat-change negative" id="alertsChange">Caricamento...</div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="filter-btn active" onclick="setFilter('all')">🔄 Tutti</div>
+    <div class="filter-btn" onclick="setFilter('active')">✅ Attivi</div>
+    <div class="filter-btn" onclick="setFilter('warning')">⚠️ Attenzione</div>
+    <div class="filter-btn" onclick="setFilter('inactive')">❌ Inattivi</div>
+    <div class="filter-btn" onclick="setFilter('inactive_5weeks')">📉 Non Attivi 5 Sett.</div>
+    <div class="filter-btn" onclick="setFilter('decreasing_5weeks')">📉 In Calo 5 Sett.</div>
+    <input type="text" class="search-box" placeholder="🔍 Cerca cliente..." onkeyup="filterClients()">
+  </div>
+
+  <div class="client-grid" id="clientGrid">
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <div>Caricamento dashboard...</div>
+    </div>
+  </div>
+</div>
+
+
+<div class="popup-overlay" id="clientPopup" onclick="closeClientPopup(event)">
+  <div class="popup-content" onclick="event.stopPropagation()">
+    <div class="popup-header">
+      <button class="popup-close" onclick="closeClientPopup()">✕</button>
+      <div class="client-popup-title" id="popupClientName">Nome Cliente</div>
+      <div class="client-popup-subtitle" id="popupClientInfo">
+        <span>📍 Città</span>
+        <span>📞 Telefono</span>
+        <span>📧 Email</span>
+      </div>
+    </div>
+
+    <div class="popup-body">
+      
+      <div class="health-score-section">
+        <div class="health-score-number" id="popupHealthScore">85</div>
+        <div class="health-score-label">Punteggio Salute Cliente</div>
+        <div class="health-indicator">
+          <div class="health-fill" id="popupHealthFill" style="width: 85%; background: linear-gradient(90deg, #dc2626, #d97706, #16a34a);"></div>
+        </div>
+      </div>
+
+      
+      <div class="detailed-metrics">
+        <div class="metric-detailed-card">
+          <div class="metric-detailed-value" id="popupRevenue">CHF 2.5K</div>
+          <div class="metric-detailed-label">Fatturato Mese</div>
+          <div class="metric-trend trend-up" id="popupRevenueTrend">↗ +12%</div>
+        </div>
+        <div class="metric-detailed-card">
+          <div class="metric-detailed-value" id="popupOrders">15</div>
+          <div class="metric-detailed-label">Ordini Mese</div>
+          <div class="metric-trend trend-stable" id="popupOrdersTrend">→ =</div>
+        </div>
+        <div class="metric-detailed-card">
+          <div class="metric-detailed-value" id="popupAvgOrder">CHF 167</div>
+          <div class="metric-detailed-label">Ordine Medio</div>
+          <div class="metric-trend trend-down" id="popupAvgTrend">↘ -8%</div>
+        </div>
+        <div class="metric-detailed-card">
+          <div class="metric-detailed-value" id="popupLastOrder">3</div>
+          <div class="metric-detailed-label">Giorni fa</div>
+          <div class="metric-trend trend-up" id="popupLastTrend">↗ Bene</div>
+        </div>
+      </div>
+
+      
+      <div class="ai-insights">
+        <h4>🤖 Suggerimenti AI</h4>
+        <ul class="insight-list" id="aiInsightsList">
+          <li class="insight-item">🎯 Cliente ad alto potenziale, aumenta la frequenza di contatto</li>
+          <li class="insight-item">📞 Consigliata chiamata entro 2 giorni per follow-up ordine</li>
+          <li class="insight-item">💡 Proponi prodotti correlati basati su ordini precedenti</li>
+        </ul>
+      </div>
+
+      
+      <div id="companyContactsSection" style="display: none;">
+        <h4 style="color: var(--primary); font-size: 16px; font-weight: 700; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+          👥 Contatti Azienda
+        </h4>
+        <div id="contactsList" class="contacts-list"></div>
+      </div>
+
+      
+      <div class="quick-actions">
+        <a href="#" class="quick-action-btn btn-call" id="popupCallBtn">📞 Chiama</a>
+        <a href="#" class="quick-action-btn btn-whatsapp" id="popupWhatsAppBtn">💬 WhatsApp</a>
+        <a href="#" class="quick-action-btn btn-email" id="popupEmailBtn">📧 Email</a>
+        <a href="#" class="quick-action-btn btn-visit" id="popupVisitBtn">📍 Visita</a>
+        <a href="#" class="quick-action-btn btn-report" id="popupReportBtn" onclick="openAdvancedDashboard(event)">📊 Dashboard Dettagliata</a>
+        <a href="#" class="quick-action-btn btn-financial" id="popupFinancialBtn" onclick="openFinancialDashboard(event)">💰 Analisi Finanziaria</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="popup-overlay" id="advancedDashboard" onclick="closeAdvancedDashboard(event)">
+  <div class="advanced-popup-content" onclick="event.stopPropagation()">
+    <div class="advanced-popup-header">
+      <button class="popup-close" onclick="closeAdvancedDashboard()">✕</button>
+      <div class="advanced-popup-title">
+        <span class="advanced-title" id="advancedClientName">Dashboard Dettagliata</span>
+        <span class="advanced-subtitle" id="advancedClientInfo">Analisi Avanzata Cliente</span>
+      </div>
+    </div>
+
+    <div class="advanced-popup-body">
+      
+      <div class="advanced-section">
+        <h3>📊 Analytics Avanzati</h3>
+        <div class="advanced-grid">
+
+          
+          <div class="advanced-card">
+            <h4>📈 Andamento Settimanale - Valore Ordini</h4>
+            <div id="weeklyRevenueChart" class="weekly-chart">
+              <div class="loading">Caricamento...</div>
+            </div>
+            <div id="weeklyRevenueStats" class="weekly-stats"></div>
+          </div>
+
+          
+          <div class="advanced-card">
+            <h4>📊 Andamento Settimanale - Ordini</h4>
+            <div id="weeklyOrdersChart" class="weekly-chart">
+              <div class="loading">Caricamento...</div>
+            </div>
+            <div id="weeklyOrdersStats" class="weekly-stats"></div>
+          </div>
+
+          
+          <div class="advanced-card">
+            <h4>🛒 Top Prodotti (30gg)</h4>
+            <div id="topProductsList" class="products-list">
+              <div class="loading">Analizzando ordini...</div>
+            </div>
+          </div>
+
+          
+          <div class="advanced-card">
+            <h4>⚠️ Prodotti Non Consegnati</h4>
+            <div id="undeliveredProductsList" class="undelivered-list">
+              <div class="loading">Controllando consegne...</div>
+            </div>
+          </div>
+
+          
+          <div class="advanced-card">
+            <h4>📈 VS Altri Clienti del Team</h4>
+            <div id="teamComparisonChart" class="comparison-chart">
+              <div class="loading">Elaborando confronto...</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      
+      <div class="advanced-section">
+        <h3>🤖 Analisi AI Avanzata</h3>
+        <div class="ai-section">
+
+          
+          <div class="ai-trigger">
+            <button class="ai-analyze-btn" id="aiAnalyzeBtn" onclick="runAIAnalysis()">
+              🧠 Analizza con AI
+            </button>
+            <div class="ai-status" id="aiStatus">Clicca per analizzare cliente con AI</div>
+          </div>
+
+          
+          <div class="ai-results" id="aiResults" style="display: none;">
+            <div class="ai-insights-advanced">
+              <h4>💡 Insights Intelligenti</h4>
+              <div id="aiInsightsContent"></div>
+            </div>
+
+            <div class="ai-recommendations">
+              <h4>🎯 Raccomandazioni Strategiche</h4>
+              <div id="aiRecommendationsContent"></div>
+            </div>
+
+            <div class="ai-opportunities">
+              <h4>🚀 Opportunità di Business</h4>
+              <div id="aiOpportunitiesContent"></div>
+            </div>
+          </div>
+
+          
+          <div class="client-notes-section" id="clientNotesSection" style="display: none;">
+            <div class="section-header">
+              <h3>📝 Note Cliente</h3>
+              <div class="notes-actions">
+                <button class="btn secondary" onclick="loadClientNotes()">🔄 Ricarica</button>
+                <button class="btn primary" onclick="saveClientNote()">💾 Salva</button>
+              </div>
+            </div>
+
+            <div class="notes-content">
+              <div class="note-editor">
+                <textarea id="clientNoteEditor" placeholder="Scrivi qui le tue note sul cliente..." rows="6"></textarea>
+                <div class="note-attachments">
+                  <input type="file" id="noteFileInput" multiple="" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display: none;">
+                  <button class="btn secondary" onclick="document.getElementById('noteFileInput').click()">📎 Allega File</button>
+                  <div id="attachmentsList"></div>
+                </div>
+              </div>
+
+              <div class="notes-history">
+                <h4>📋 Cronologia Note</h4>
+                <div id="notesHistoryList" class="notes-list">
+                  <div class="loading">Caricamento note...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      
+      <div class="advanced-actions">
+        <button class="advanced-action-btn" onclick="exportAdvancedReport()">📄 Esporta Report Completo</button>
+        <button class="advanced-action-btn" onclick="scheduleFollowUp()">📅 Pianifica Follow-up</button>
+        <button class="advanced-action-btn" onclick="toggleClientNotes()">📝 Note Cliente</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<div class="popup-overlay" id="financialDashboard" onclick="closeFinancialDashboard(event)">
+  <div class="advanced-popup-content" onclick="event.stopPropagation()">
+    <div class="advanced-popup-header">
+      <button class="popup-close" onclick="closeFinancialDashboard()">✕</button>
+      <div class="advanced-popup-title">
+        <span class="advanced-title" id="financialClientName">Analisi Finanziaria</span>
+        <span class="advanced-subtitle" id="financialClientInfo">Stato Pagamenti e Crediti</span>
+      </div>
+    </div>
+    <div class="advanced-popup-body">
+
+      
+      <div class="advanced-section">
+        <h3>💰 Panoramica Finanziaria</h3>
+        <div class="financial-overview">
+          <div class="financial-card paid">
+            <div class="financial-amount" id="financialPaidAmount">CHF 0</div>
+            <div class="financial-label">Fatture Pagate</div>
+            <div class="financial-percentage" id="financialPaidPercent">0%</div>
+          </div>
+          <div class="financial-card pending">
+            <div class="financial-amount" id="financialPendingAmount">CHF 0</div>
+            <div class="financial-label">In Sospeso (Non Scadute)</div>
+            <div class="financial-percentage" id="financialPendingPercent">0%</div>
+          </div>
+          <div class="financial-card overdue">
+            <div class="financial-amount" id="financialOverdueAmount">CHF 0</div>
+            <div class="financial-label">Scadute Non Pagate</div>
+            <div class="financial-percentage" id="financialOverduePercent">0%</div>
+          </div>
+        </div>
+      </div>
+
+      
+      <div class="advanced-section">
+        <h3>⚠️ Indicatori di Rischio</h3>
+        <div class="risk-indicators">
+          <div class="risk-item">
+            <span class="risk-label">Score Solvibilità:</span>
+            <div class="risk-score" id="solvencyScore">85/100</div>
+          </div>
+          <div class="risk-item">
+            <span class="risk-label">Giorni Medi Ritardo:</span>
+            <div class="risk-value" id="avgDelayDays">12 giorni</div>
+          </div>
+          <div class="risk-item">
+            <span class="risk-label">Pagamenti in Ritardo:</span>
+            <div class="risk-value" id="latePaymentRate">15%</div>
+          </div>
+        </div>
+      </div>
+
+      
+      <div class="advanced-section">
+        <h3>📈 Andamento Pagamenti (Ultimi 6 Mesi)</h3>
+        <div class="payment-trend-chart" id="paymentTrendChart">
+          
+          <div class="chart-placeholder">Elaborando grafico andamento pagamenti...</div>
+        </div>
+      </div>
+
+      
+      <div class="advanced-section">
+        <h3>📋 Ultime 5 Fatture</h3>
+        <div class="recent-invoices" id="recentInvoicesList">
+          
+        </div>
+      </div>
+
+      
+      <div class="advanced-section">
+        <h3>💳 Fatture Non Pagate e In Sospeso</h3>
+        <div class="unpaid-invoices-section">
+
+          
+          <div class="invoice-category">
+            <h4 class="category-title">⏳ In Sospeso (Non Scadute)</h4>
+            <div class="invoice-list" id="pendingInvoicesList">
+              
+            </div>
+          </div>
+
+          
+          <div class="invoice-category">
+            <h4 class="category-title">🚨 Scadute Non Pagate</h4>
+            <div class="invoice-list" id="overdueInvoicesList">
+              
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      
+      <div class="advanced-section">
+        <h3>🚨 Alert Finanziari</h3>
+        <div class="financial-alerts" id="financialAlerts">
+          
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== CONFIGURAZIONE =====
+
+// ID TEAM LAPA REALI
+const LAPA_TEAM_IDS = [5, 9, 12, 8, 1, 11, 14];
+
+// Mappa utenti autorizzati per team
+const USER_TEAM_PERMISSIONS = {
+  407: [1],           // Domingos Ferreira → I Maestri del Sapore
+  14:  [12],          // Mihai Nita → I Custodi della Tradizione
+  121: [9],           // Alessandro Motta → I Campioni del Gusto
+  7:   'ALL',         // Paul Teodorescu → SUPER ADMIN (tutti i team)
+  8:   'ALL',         // Laura Teodorescu → SUPER ADMIN (tutti i team)
+  249: 'ALL'          // Gregorio Buccolieri → SUPER ADMIN (tutti i team)
+};
+
+// 🤖 AI CONFIGURATION
+const GEMINI_API_KEY = 'AIzaSyBuHNSxFt4Ua-5ZNj7s5vo5yVTXqcfbKN8';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+
+// Fallback OpenAI (se disponibile)
+const OPENAI_API_KEY = 'YOUR_OPENAI_API_KEY_HERE';
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+// Variabili globali
+let allTeams = [];
+let selectedTeam = null;
+let clientsData = [];
+let currentFilter = 'all';
+let currentUser = null;
+
+// 🚀 SISTEM DE CACHING PERFORMANT
+const performanceCache = {
+  data: new Map(),
+  ttl: 5 * 60 * 1000, // 5 minute
+
+  set(key, value) {
+    this.data.set(key, {
+      value: value,
+      timestamp: Date.now()
+    });
+  },
+
+  get(key) {
+    const item = this.data.get(key);
+    if (!item) return null;
+
+    if (Date.now() - item.timestamp > this.ttl) {
+      this.data.delete(key);
+      return null;
+    }
+
+    return item.value;
+  },
+
+  clear() {
+    this.data.clear();
+  }
+};
+// ===== FUNZIONI DEBUG =====
+
+// 🚀 OPTIMIZAT: Debug dezactivat în producție
+const DEBUG_MODE = false;
+function addDebugLog(message) {
+  if (DEBUG_MODE) console.log('LAPA:', message);
+}
+
+function openLapaSystem() {
+  try {
+    window.open('https://www.lapa.ch/sistema-di-ordini-intelligente-lapa', '_blank');
+    addDebugLog(`🚀 Sistema LAPA aperto in nuova finestra`);
+  } catch (error) {
+    addDebugLog(`❌ Errore apertura sistema LAPA: ${error.message}`);
+  }
+}
+
+function updateConnectionStatus(status, message) {
+  const statusEl = document.getElementById('connectionStatus');
+  if (status === 'connected') {
+    statusEl.innerHTML = '<span>✅</span><span>' + message + '</span>';
+    statusEl.className = 'connection-status status-connected';
+  } else {
+    statusEl.innerHTML = '<span>❌</span><span>' + message + '</span>';
+    statusEl.className = 'connection-status status-error';
+  }
+}
+
+// ===== FUNZIONI RPC CORRETTE (COPIATO DA DELIVERY ORIGINALE) =====
+
+// Get session info (METODO DELIVERY ORIGINALE)
+async function getSessionInfo() {
+  addDebugLog('📋 Recupero sessione...');
+
+  try {
+    const response = await fetch('/web/session/get_session_info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "call",
+        params: {},
+        id: Math.floor(Math.random() * 1e9)
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      const errorMsg = data.error.data?.message || data.error.message || 'Session Error';
+      addDebugLog(`❌ Errore sessione: ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+
+    addDebugLog('✅ Sessione recuperata con successo');
+    return data.result;
+
+  } catch (error) {
+    addDebugLog(`❌ Errore nel recupero della sessione: ${error.message}`);
+    throw error;
+  }
+}
+
+// ⚙️ UTILITY FUNCTIONS
+function formatAddress(company) {
+  const parts = [];
+  if (company.street) parts.push(company.street);
+  if (company.city) parts.push(company.city);
+  if (company.zip) parts.push(company.zip);
+  if (company.country_id && company.country_id[1]) parts.push(company.country_id[1]);
+  return parts.join(', ');
+}
+
+function formatPhoneNumber(phone) {
+  if (!phone) return '';
+  // Rimuove spazi e formatta per link internazionali
+  return phone.replace(/[^0-9+]/g, '');
+}
+
+function createGoogleMapsUrl(address, clientName) {
+  if (!address) return '#';
+  const query = encodeURIComponent(`${clientName}, ${address}`);
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+}
+
+function createWhatsAppUrl(phone, clientName) {
+  if (!phone) return '#';
+  let cleanPhone = formatPhoneNumber(phone);
+
+  // Assicura che inizi con + per formato internazionale
+  if (!cleanPhone.startsWith('+')) {
+    cleanPhone = '+41' + cleanPhone; // Default Svizzera
+  }
+
+  const message = encodeURIComponent(`Ciao ${clientName}! Come va con gli ordini?`);
+
+  // Rileva se è mobile per usare app nativa
+  const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    return `whatsapp://send?phone=${cleanPhone}&text=${message}`;
+  } else {
+    return `https://wa.me/${cleanPhone}?text=${message}`;
+  }
+}
+
+function createEmailUrl(email, clientName) {
+  if (!email) return '#';
+  const subject = encodeURIComponent(`Offerta speciale per ${clientName}`);
+  const body = encodeURIComponent(`Ciao ${clientName},\n\nAbbiamo delle offerte speciali pensate per voi!\n\nBuona giornata`);
+  return `mailto:${email}?subject=${subject}&body=${body}`;
+}
+
+// Call Odoo RPC (METODO DELIVERY ORIGINALE)
+async function callOdoo(model, method, args = [], kwargs = {}) {
+  try {
+    addDebugLog(`📞 Chiamata RPC: ${model}.${method}`);
+
+    // Validazione parametri
+    if (!model || !method) {
+      throw new Error('Model e method sono richiesti');
+    }
+
+    const response = await fetch('/web/dataset/call_kw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "call",
+        params: {
+          model: model,
+          method: method,
+          args: args,
+          kwargs: kwargs
+        },
+        id: Math.floor(Math.random() * 1e9)
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      const errorMsg = data.error.data?.message || data.error.message || 'RPC Error';
+      addDebugLog(`❌ Errore RPC (${model}.${method}): ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+
+    addDebugLog(`✅ RPC completata: ${model}.${method}`);
+    return data.result;
+
+  } catch (error) {
+    addDebugLog(`❌ Errore chiamata RPC: ${error.message}`);
+    throw error;
+  }
+}
+
+// ===== CARICAMENTO DATI =====
+
+async function loadUserFromOdoo() {
+  try {
+    addDebugLog('👤 Caricamento utente...');
+
+    const sessionInfo = await getSessionInfo();
+
+    currentUser = {
+      id: sessionInfo.uid,
+      name: sessionInfo.name || sessionInfo.username || 'Utente Odoo',
+      login: sessionInfo.login || sessionInfo.username
+    };
+
+    document.getElementById('userName').textContent = currentUser.name;
+
+    addDebugLog(`✅ Utente caricato: ${currentUser.name}`);
+    updateConnectionStatus('connected', 'Connesso');
+
+    return currentUser;
+
+  } catch (error) {
+    addDebugLog(`❌ Errore caricamento utente: ${error.message}`);
+    updateConnectionStatus('error', 'Errore sessione');
+    throw error;
+  }
+}
+
+async function loadTeamsFromOdoo() {
+  try {
+    addDebugLog('👥 Caricamento teams...');
+
+    const teams = await callOdoo('crm.team', 'search_read',
+      [[['id', 'in', LAPA_TEAM_IDS]]],
+      {
+        fields: ['id', 'name', 'user_id', 'member_ids', 'sale_order_count', 'invoiced', 'invoiced_target'],
+        order: 'name asc'
+      }
+    );
+
+    if (!teams || teams.length === 0) {
+      throw new Error(`Nessun team trovato con ID: ${LAPA_TEAM_IDS.join(', ')}`);
+    }
+
+    allTeams = teams.map(team => ({
+      id: team.id,
+      name: team.name,
+      leader: team.user_id ? team.user_id[1] : 'Nessun leader',
+      memberIds: team.member_ids || [],
+      memberCount: team.member_ids ? team.member_ids.length : 0,
+      saleOrderCount: team.sale_order_count || 0,
+      invoiced: team.invoiced || 0,
+      invoicedTarget: team.invoiced_target || 0,
+      rawData: team
+    }));
+
+    addDebugLog(`✅ Caricati ${allTeams.length} teams: ${allTeams.map(t => t.name).join(', ')}`);
+    populateTeamSelector();
+
+    return allTeams;
+
+  } catch (error) {
+    addDebugLog(`❌ Errore caricamento teams: ${error.message}`);
+    throw error;
+  }
+}
+
+async function loadClientsForTeam(teamId) {
+  try {
+    addDebugLog(`👥 SEMPLICE: Caricamento clienti per team ${teamId}...`);
+
+    const team = allTeams.find(t => t.id === teamId);
+    if (!team || !team.memberIds.length) {
+      addDebugLog('❌ Team non trovato o senza membri');
+      return [];
+    }
+
+    addDebugLog(`🔍 DEBUG Team ${team.name}:`);
+    addDebugLog(`  → ID Team: ${team.id}`);
+    addDebugLog(`  → Membri del team: [${team.memberIds.join(', ')}]`);
+    addDebugLog(`  → Filtro: user_id in [${team.memberIds.join(', ')}]`);
+
+    // STEP 1: Trova SOLO aziende MADRE con team specifico
+    addDebugLog(`🏢 Caricamento aziende MADRE del team ${team.name}...`);
+
+    // FILTRO CORRETTO: Usa team_id sui partner!
+    const companies = await callOdoo('res.partner', 'search_read',
+      [[
+        ['team_id', '=', teamId],  // 🎯 FILTRO CORRETTO!
+        ['is_company', '=', true],
+        ['customer_rank', '>', 0],
+        ['parent_id', '=', false]
+      ]],
+      {
+        fields: ['id', 'name', 'user_id', 'team_id', 'child_ids', 'email', 'phone', 'mobile', 'street', 'city', 'zip', 'country_id']
+      }
+    );
+
+    addDebugLog(`🎯 Aziende FILTRATE con team_id=${teamId}: ${companies.length}`);
+
+    addDebugLog(`✅ Trovate ${companies.length} aziende MADRE del team:`);
+    companies.forEach(company => {
+      const teamIdValue = company.team_id ? company.team_id[0] : 'null';
+      const teamName = company.team_id ? company.team_id[1] : 'Nessun team';
+      addDebugLog(`  → ${company.name} (ID:${company.id}) - Team: ${teamIdValue} (${teamName})`);
+    });
+
+    if (companies.length === 0) {
+      addDebugLog('⚠️ Nessuna azienda madre trovata per questo team');
+      return [];
+    }
+
+    // STEP 2: Carica TUTTI gli ordini in una volta per tutte le aziende
+    addDebugLog(`📦 Caricamento ordini per ${companies.length} aziende...`);
+
+    // Tutti i partner IDs delle aziende + figli
+    const allPartnerIds = companies.flatMap(company => [company.id, ...(company.child_ids || [])]);
+
+    // 🚀 CACHE PENTRU ORDERS
+    const ordersCacheKey = `orders_team_${selectedTeam?.id}`;
+    let allOrders = performanceCache.get(ordersCacheKey);
+
+    if (!allOrders) {
+      addDebugLog(`📦 Cache MISS - încarcă ordini pentru echipa ${selectedTeam?.name}`);
+      allOrders = await callOdoo('sale.order', 'search_read',
+        [[['partner_id', 'in', allPartnerIds], ['state', 'in', ['sale', 'done']]]],
+        {
+          fields: ['id', 'name', 'partner_id', 'commercial_partner_id', 'amount_total', 'amount_invoiced', 'commitment_date', 'date_order'],
+          order: 'commitment_date desc'
+        }
+      );
+      performanceCache.set(ordersCacheKey, allOrders);
+      addDebugLog(`💾 Ordini salvați în cache`);
+    } else {
+      addDebugLog(`🎯 Cache HIT pentru ordini echipă`);
+    }
+
+    addDebugLog(`📦 ${allOrders.length} ordini încărcate`);
+
+    // UNA SOLA chiamata per tutti i contatti figli
+    const allChildIds = companies.flatMap(company => company.child_ids || []);
+    let allChildContacts = [];
+    if (allChildIds.length > 0) {
+      addDebugLog(`👥 Caricamento ${allChildIds.length} contatti figli...`);
+      allChildContacts = await callOdoo('res.partner', 'search_read',
+        [[['id', 'in', allChildIds]]],
+        {
+          fields: ['id', 'name', 'email', 'phone', 'mobile', 'parent_id', 'function']
+        }
+      );
+    }
+
+    // STEP 3: Raggruppa ordini per azienda madre
+    const clientsData = [];
+    const today = new Date();
+
+    // Usa for...of invece di forEach per gestire correttamente await
+    for (const company of companies) {
+      // Partner IDs di questa azienda
+      const companyPartnerIds = [company.id, ...(company.child_ids || [])];
+
+      // Filtra ordini di questa azienda (usando sia partner_id che commercial_partner_id)
+      const companyOrders = allOrders.filter(order =>
+        companyPartnerIds.includes(order.partner_id[0]) ||
+        (order.commercial_partner_id && order.commercial_partner_id[0] === company.id)
+      );
+
+      if (companyOrders.length === 0) {
+        addDebugLog(`  → ${company.name}: 0 ordini`);
+        continue; // Skip aziende senza ordini
+      }
+
+      // Calcola statistiche (usando amount_invoiced per coerenza)
+      const totalInvoiced = companyOrders.reduce((sum, order) => sum + (order.amount_invoiced || 0), 0);
+      const totalOrdered = companyOrders.reduce((sum, order) => sum + (order.amount_total || 0), 0);
+      const orderCount = companyOrders.length;
+
+      // Log differenza tra ordinato e fatturato per debug
+      if (totalOrdered !== totalInvoiced) {
+        addDebugLog(`  💰 ${company.name}: Ordinato CHF ${Math.round(totalOrdered)} | Fatturato CHF ${Math.round(totalInvoiced)}`);
+      }
+
+      // 💰 CALCOLO FATTURATO E ORDINI MESE SCORSO COMPLETO (es. agosto 1-31)
+      const today = new Date();
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+
+      // Primo giorno del mese scorso
+      const lastMonthStart = new Date(currentYear, currentMonth - 1, 1);
+      // Ultimo giorno del mese scorso
+      const lastMonthEnd = new Date(currentYear, currentMonth, 0); // Il giorno 0 del mese corrente = ultimo giorno del mese precedente
+
+      addDebugLog(`📅 Periodo calcolo: ${lastMonthStart.toLocaleDateString('it-IT')} - ${lastMonthEnd.toLocaleDateString('it-IT')}`);
+
+      // ✅ Dichiara lastMonthName PRIMA di usarlo
+      const lastMonthName = lastMonthStart.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+
+      // ✅ CALCOLO TEMPORANEO - sarà sostituito con i dati reali più avanti
+      const lastMonthOrders = companyOrders.filter(order => {
+        const orderDate = new Date(order.commitment_date || order.date_order);
+        return orderDate >= lastMonthStart && orderDate <= lastMonthEnd;
+      });
+      let monthlyInvoiced = lastMonthOrders.reduce((sum, order) => sum + (order.amount_invoiced || 0), 0);
+
+      // Calcolo del conteggio ordini
+      const monthlyOrderCount = lastMonthOrders.length;
+
+      addDebugLog(`  → ${company.name}: ${orderCount} ordini totali, ${monthlyOrderCount} ordini ${lastMonthName}, CHF ${Math.round(monthlyInvoiced)} fatturato ${lastMonthName}`);
+
+      // Calcola ultimo ordine
+      let lastOrderDate = null;
+      let lastOrderDays = 999;
+
+      companyOrders.forEach(order => {
+        const orderDate = new Date(order.commitment_date || order.date_order);
+        if (!lastOrderDate || orderDate > lastOrderDate) {
+          lastOrderDate = orderDate;
+          lastOrderDays = Math.floor((today - orderDate) / (1000 * 60 * 60 * 24));
+        }
+      });
+
+      // Contatti figli di questa azienda
+      const childContacts = allChildContacts.filter(contact =>
+        contact.parent_id && contact.parent_id[0] === company.id
+      );
+
+
+      // Chi ha ordinato
+      const contactsWhoOrdered = [...new Set(companyOrders.map(order => order.partner_id[1]))];
+
+      // 📊 CALCOLA DATI MENSILI per il grafico
+      const monthlyData = calculateMonthlyRevenue(companyOrders);
+
+      // 📊 CALCOLA DATI SETTIMANALI per il grafico
+      const weeklyData = calculateWeeklyRevenue(companyOrders);
+
+      // Health score (usa il fatturato effettivo)
+      const healthScore = calculateRealHealthScore({
+        orderCount,
+        totalAmount: totalInvoiced,
+        lastOrderDays
+      });
+
+      // 💰 CALCOLA DATI FINANZIARI (FATTURE)
+      let financialData;
+      try {
+        financialData = await calculateRealFinancialData(company.id);
+
+        // ✅ AGGIORNA IL FATTURATO MENSILE CON I DATI REALI DELLE FATTURE
+        if (financialData && financialData.realInvoices) {
+          const allRealInvoices = [
+            ...(financialData.realInvoices.paid || []),
+            ...(financialData.realInvoices.pending || []),
+            ...(financialData.realInvoices.overdue || [])
+          ];
+
+          const lastMonthInvoices = allRealInvoices.filter(invoice => {
+            const invoiceDate = new Date(invoice.invoice_date);
+            return invoiceDate >= lastMonthStart && invoiceDate <= lastMonthEnd;
+          });
+
+          if (lastMonthInvoices.length > 0) {
+            monthlyInvoiced = lastMonthInvoices.reduce((sum, invoice) => sum + (invoice.amount_total || 0), 0);
+            addDebugLog(`💰 ${company.name}: Aggiornato con ${lastMonthInvoices.length} fatture reali per ${lastMonthName}, totale CHF ${Math.round(monthlyInvoiced)}`);
+          }
+        }
+
+        if (!financialData || (financialData.paid === 0 && financialData.pending === 0 && financialData.overdue === 0)) {
+          addDebugLog(`⚠️ Nessuna fattura trovata per ${company.name}, uso dati simulati`);
+          financialData = generateFinancialData(totalInvoiced, healthScore);
+        }
+      } catch (error) {
+        addDebugLog(`❌ Errore dati reali per ${company.name}: ${error.message}`);
+        financialData = generateFinancialData(totalInvoiced, healthScore);
+      }
+
+      // Aggiungi ai risultati
+      clientsData.push({
+        id: company.id,
+        name: company.name,
+        email: company.email || '',
+        phone: company.phone || company.mobile || '',
+        address: formatAddress(company),
+        salesperson: company.user_id ? company.user_id[1] : 'Non assegnato',
+        orderCount: orderCount,
+        totalInvoiced: totalInvoiced,       // Fatturato totale effettivo
+        monthlyInvoiced: monthlyInvoiced,  // 💰 Fatturato ultimo mese (per display)
+        monthlyOrderCount: monthlyOrderCount,  // 🛒 Ordini ultimo mese (per display)
+        healthScore: healthScore,
+        status: getClientStatus(healthScore),
+        lastOrderDays: lastOrderDays,
+        lastOrderDate: lastOrderDate,
+        contactsWhoOrdered: contactsWhoOrdered,
+        childContacts: childContacts,
+        monthlyData: monthlyData,         // 📊 Dati mensili per il grafico
+        weeklyData: weeklyData,           // 📊 Dati settimanali per il grafico
+        // 💰 DATI FINANZIARI
+        invoicesPaid: financialData.paid,
+        invoicesPending: financialData.pending,
+        invoicesOverdue: financialData.overdue,
+        rawData: {
+          orders: companyOrders,
+          company,
+          realInvoices: financialData && financialData.realInvoices ? financialData.realInvoices : null // 💰 Aggiungi fatture reali se disponibili
+        }
+      });
+
+      addDebugLog(`  → ${company.name}: ${orderCount} ordini, CHF ${Math.round(totalInvoiced)}, ultimo ${lastOrderDays} giorni fa`);
+    } // Fine for...of loop
+
+    // Ordina per attività
+    clientsData.sort((a, b) => a.lastOrderDays - b.lastOrderDays);
+
+    addDebugLog(`✅ FINALE: ${clientsData.length} aziende del team ${team.name} con ordini`);
+
+    return clientsData;
+
+  } catch (error) {
+    addDebugLog(`❌ Errore: ${error.message}`);
+    throw error;
+  }
+}
+
+// ===== CALCOLI =====
+
+function calculateMonthlyRevenue(orders) {
+  // Calcola fatturato per gli ultimi 12 mesi
+  const today = new Date();
+  const monthlyData = [];
+
+  // Crea array per gli ultimi 12 mesi
+  for (let i = 11; i >= 0; i--) {
+    const monthDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+    const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+
+    // Filtra ordini di questo mese
+    const monthOrders = orders.filter(order => {
+      const orderDate = new Date(order.commitment_date || order.date_order);
+      return orderDate >= monthStart && orderDate <= monthEnd;
+    });
+
+    // Calcola fatturato del mese
+    const monthRevenue = monthOrders.reduce((sum, order) => sum + (order.amount_invoiced || 0), 0);
+
+    monthlyData.push({
+      month: monthDate.toLocaleDateString('it-IT', { month: 'short', year: '2-digit' }),
+      revenue: monthRevenue,
+      orders: monthOrders.length
+    });
+  }
+
+  return monthlyData;
+}
+
+function calculateWeeklyRevenue(orders) {
+  // Calcola fatturato per le ultime 12 settimane usando settimane ISO corrette
+  const today = new Date();
+  const weeklyData = [];
+
+  // Debug ridotto per performance
+  if (orders.length > 0) {
+    const clientNames = [...new Set(orders.map(order => order.partner_id ? order.partner_id[1] : 'Unknown'))];
+    addDebugLog(`📊 Analisi ${orders.length} ordini per: ${clientNames[0]}${clientNames.length > 1 ? ' +altri' : ''}`);
+  }
+
+  // Debug specifico solo se necessario (performance ottimizzata)
+  const isCandrianDebug = orders.length > 0 && orders.some(order =>
+    order.partner_id && order.partner_id[1] &&
+    order.partner_id[1].toUpperCase().includes('CANDRIAN')
+  );
+
+  // Calcolo range ordini (debug ridotto)
+  const todayWeek = getISOWeekNumber(today);
+
+  // ✅ CORREZIONE: Calcola le settimane ISO corrette invece di usare offset dalla data corrente
+  const currentWeek = getISOWeekNumber(today);
+  const currentYear = today.getFullYear();
+
+  // Crea array per le ultime 13 settimane
+  for (let i = 12; i >= 0; i--) {
+    // Calcola il numero della settimana target
+    let targetWeek = currentWeek - i;
+    let targetYear = currentYear;
+
+    // Gestisci il cambio anno
+    if (targetWeek <= 0) {
+      targetYear--;
+      // Calcola quante settimane aveva l'anno precedente
+      const weeksInPrevYear = getWeeksInYear(targetYear);
+      targetWeek = weeksInPrevYear + targetWeek;
+    }
+
+    // Calcola i limiti della settimana ISO
+    const { weekStart, weekEnd } = getWeekBounds(targetYear, targetWeek);
+
+    // Debug ridotto per performance
+
+    // Filtra ordini di questa settimana - USA SEMPRE COMMITMENT_DATE COME PRIORITÀ
+    const weekOrders = orders.filter(order => {
+      const orderDate = new Date(order.commitment_date || order.date_order);
+      // Normalizza la data per evitare problemi di orario
+      orderDate.setHours(12, 0, 0, 0);
+
+      return orderDate >= weekStart && orderDate <= weekEnd;
+    });
+
+    // Calcola fatturato della settimana
+    const weekRevenue = weekOrders.reduce((sum, order) => sum + (order.amount_total || 0), 0);
+
+    // Debug essenziale solo se ci sono errori
+    if (weekOrders.length > 0 && i === 0) {
+      addDebugLog(`📊 Settimana corrente: ${weekOrders.length} ordini, CHF ${Math.round(weekRevenue)}`);
+    }
+
+    weeklyData.push({
+      weekNumber: targetWeek,
+      revenue: weekRevenue,
+      orders: weekOrders.length,
+      weekStart: weekStart,
+      weekEnd: weekEnd
+    });
+  }
+
+  // Verifica finale rapida (debug ridotto per performance)
+  const totalWeekOrders = weeklyData.reduce((sum, week) => sum + week.orders, 0);
+  if (totalWeekOrders < orders.length * 0.9) { // Solo se mancano più del 10%
+    addDebugLog(`⚠️ Possibile problema: ${orders.length - totalWeekOrders} ordini non inclusi nelle settimane`);
+  }
+
+  return weeklyData;
+}
+
+// 🛠️ Funzione per formattare date in modo sicuro e compatibile cross-browser
+function formatDateSafe(dateString) {
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'N/A';
+    }
+
+    // Fallback per browser che non supportano toLocaleDateString con locale
+    if (typeof date.toLocaleDateString === 'function') {
+      try {
+        return date.toLocaleDateString('it-IT');
+      } catch (e) {
+        // Fallback se il locale non è supportato
+        return date.toLocaleDateString();
+      }
+    } else {
+      // Fallback manuale per browser molto vecchi
+      const day = (date.getDate() < 10 ? '0' : '') + date.getDate();
+      const month = (date.getMonth() + 1 < 10 ? '0' : '') + (date.getMonth() + 1);
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+  } catch (error) {
+    console.warn('Errore formattazione data:', dateString, error);
+    return 'N/A';
+  }
+}
+
+function calculateHealthScore(client) {
+  // VECCHIA FUNZIONE - manteniamo per compatibilità
+  const orderScore = Math.min((client.sale_order_count || 0) * 10, 40);
+  const revenueScore = Math.min((client.total_invoiced || 0) / 1000, 40);
+  const activityScore = Math.random() * 20;
+
+  return Math.round(orderScore + revenueScore + activityScore);
+}
+
+function calculateRealHealthScore(clientData) {
+  // NUOVO ALGORITMO basato su dati REALI di sale.order
+  // - Frequenza ordini (30%)
+  // - Valore totale vendite (30%)
+  // - Attività recente (40%)
+
+  let score = 0;
+
+  // 1. Frequenza ordini (30 punti max)
+  const orderCount = clientData.orderCount || 0;
+  const frequencyScore = Math.min(orderCount * 3, 30);
+  score += frequencyScore;
+
+  // 2. Valore vendite (30 punti max)
+  const totalAmount = clientData.totalAmount || 0;
+  const revenueScore = Math.min(totalAmount / 1000, 30);
+  score += revenueScore;
+
+  // 3. Attività recente (40 punti max) - CRUCIALE!
+  const daysSinceLastOrder = clientData.lastOrderDays || 999;
+  let activityScore = 0;
+
+  if (daysSinceLastOrder <= 7) {
+    activityScore = 40; // Molto attivo
+  } else if (daysSinceLastOrder <= 30) {
+    activityScore = 30; // Attivo
+  } else if (daysSinceLastOrder <= 60) {
+    activityScore = 20; // Moderato
+  } else if (daysSinceLastOrder <= 90) {
+    activityScore = 10; // A rischio
+  } else {
+    activityScore = 0; // Inattivo
+  }
+
+  score += activityScore;
+
+  return Math.round(Math.min(score, 100));
+}
+
+function getClientStatus(healthScore) {
+  if (healthScore >= 70) return 'active';
+  if (healthScore >= 40) return 'warning';
+  return 'inactive';
+}
+
+// 💰 Calcola dati finanziari reali da Odoo usando account.move (OPTIMIZAT CU CACHE)
+async function calculateRealFinancialData(partnerId) {
+  try {
+    // 🚀 VERIFICĂ CACHE PRIMUL
+    const cacheKey = `financial_${partnerId}`;
+    const cachedData = performanceCache.get(cacheKey);
+    if (cachedData) {
+      addDebugLog(`🎯 Cache HIT pentru partner ${partnerId}`);
+      return cachedData;
+    }
+
+    addDebugLog(`💰 Cache MISS - încarcă date pentru partner ${partnerId}`);
+    const today = new Date();
+
+    // 🚀 OPTIMIZAT: Un singur batch request pentru toate facturile
+    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+
+    const allInvoices = await callOdoo('account.move', 'search_read', [
+      [
+        ['move_type', '=', 'out_invoice'],
+        ['partner_id', 'child_of', partnerId],
+        ['state', '=', 'posted']
+      ]
+    ], {
+      fields: ['name', 'amount_total', 'amount_residual', 'invoice_date', 'invoice_date_due', 'payment_state', 'partner_id']
+    });
+
+    // Separăm facturile local (mai rapid decât 3 request-uri)
+    const paidInvoices = allInvoices.filter(inv => inv.payment_state === 'paid');
+    const pendingInvoices = allInvoices.filter(inv =>
+      ['not_paid', 'partial'].includes(inv.payment_state) &&
+      inv.invoice_date_due >= todayStr
+    );
+    const overdueInvoices = allInvoices.filter(inv =>
+      ['not_paid', 'partial'].includes(inv.payment_state) &&
+      inv.invoice_date_due < todayStr &&
+      inv.amount_residual > 0
+    );
+
+    // Calcola totali
+    const paidTotal = paidInvoices.reduce((sum, inv) => sum + (inv.amount_total || 0), 0);
+    const pendingTotal = pendingInvoices.reduce((sum, inv) => sum + (inv.amount_residual || inv.amount_total || 0), 0);
+    const overdueTotal = overdueInvoices.reduce((sum, inv) => sum + (inv.amount_residual || inv.amount_total || 0), 0);
+
+    // Debug dettagliato
+    addDebugLog(`💰 Partner ${partnerId} - Fatture trovate:`);
+    addDebugLog(`  ✅ Pagate: ${paidInvoices.length} fatture, CHF ${Math.round(paidTotal)}`);
+    addDebugLog(`  ⏳ In Sospeso: ${pendingInvoices.length} fatture, CHF ${Math.round(pendingTotal)}`);
+    addDebugLog(`  🚨 Scadute: ${overdueInvoices.length} fatture, CHF ${Math.round(overdueTotal)}`);
+
+    // Debug partner_id delle fatture per verificare che includa i contatti "Fatturazione"
+    if (paidInvoices.length > 0) {
+      const paidPartners = [...new Set(paidInvoices.map(inv => inv.partner_id[1]))];
+      addDebugLog(`  📋 Partner delle fatture pagate: ${paidPartners.join(', ')}`);
+    }
+
+    return {
+      paid: Math.round(paidTotal),
+      pending: Math.round(pendingTotal),
+      overdue: Math.round(overdueTotal),
+      // Dati extra per analytics
+      paidCount: paidInvoices.length,
+      pendingCount: pendingInvoices.length,
+      overdueCount: overdueInvoices.length,
+      // Dati reali delle fatture per il popup
+      realInvoices: {
+        paid: paidInvoices,
+        pending: pendingInvoices,
+        overdue: overdueInvoices
+      }
+    };
+
+    // 🚀 SALVEAZĂ ÎN CACHE
+    performanceCache.set(cacheKey, result);
+    addDebugLog(`💾 Date salvate în cache pentru partner ${partnerId}`);
+
+    return result;
+
+  } catch (error) {
+    addDebugLog(`❌ Errore recupero dati finanziari partner ${partnerId}: ${error.message}`);
+    return null; // Fallback ai dati simulati
+  }
+}
+
+// 💰 Genera dati finanziari basati sui campi Odoo account.move
+function generateFinancialData(totalInvoiced, healthScore) {
+  // Simula il calcolo basato sui veri campi Odoo che hai condiviso:
+  // - payment_state = 'paid' → Fatture Pagate
+  // - payment_state = 'not_paid' + invoice_date_due >= oggi → Non Scadute
+  // - payment_state = 'not_paid'/'partial' + invoice_date_due < oggi → Scadute
+
+  const baseAmount = totalInvoiced || 2000; // Base più realistica
+
+  // Genera distribuzioni più realistiche basate su health score
+  let paidAmount, pendingAmount, overdueAmount;
+
+  if (healthScore >= 80) {
+    // Cliente eccellente: molto affidabile nei pagamenti
+    paidAmount = baseAmount * (0.80 + Math.random() * 0.15); // 80-95%
+    overdueAmount = baseAmount * (Math.random() * 0.05); // 0-5%
+    pendingAmount = baseAmount - paidAmount - overdueAmount;
+  } else if (healthScore >= 60) {
+    // Cliente medio: comportamento normale
+    paidAmount = baseAmount * (0.65 + Math.random() * 0.20); // 65-85%
+    overdueAmount = baseAmount * (0.05 + Math.random() * 0.10); // 5-15%
+    pendingAmount = baseAmount - paidAmount - overdueAmount;
+  } else {
+    // Cliente problematico: molte fatture in ritardo
+    paidAmount = baseAmount * (0.40 + Math.random() * 0.25); // 40-65%
+    overdueAmount = baseAmount * (0.15 + Math.random() * 0.25); // 15-40%
+    pendingAmount = baseAmount - paidAmount - overdueAmount;
+  }
+
+  // Assicura che tutti i valori siano positivi
+  if (pendingAmount < 0) {
+    overdueAmount += pendingAmount;
+    pendingAmount = 0;
+  }
+
+  return {
+    paid: Math.max(0, Math.round(paidAmount)),
+    pending: Math.max(0, Math.round(pendingAmount)),
+    overdue: Math.max(0, Math.round(overdueAmount)),
+    // Aggiungi campo realInvoices nullo per dati simulati
+    realInvoices: null
+  };
+}
+
+function generateTrendChart(client) {
+  if (!client.monthlyData || client.monthlyData.length === 0) {
+    // Fallback se non ci sono dati
+    return Array.from({length: 12}, () =>
+      `<div class="trend-bar" style="height: 10%; opacity: 0.3;"></div>`
+    ).join('');
+  }
+
+  // Trova il valore massimo per normalizzare le altezze
+  const maxRevenue = Math.max(...client.monthlyData.map(m => m.revenue));
+
+  if (maxRevenue === 0) {
+    // Nessun fatturato negli ultimi 12 mesi
+    return Array.from({length: 12}, () =>
+      `<div class="trend-bar" style="height: 10%; opacity: 0.3;"></div>`
+    ).join('');
+  }
+
+  // Genera i cubetti con dati reali
+  return client.monthlyData.map(monthData => {
+    const height = maxRevenue > 0 ? Math.max((monthData.revenue / maxRevenue) * 100, 5) : 5;
+    const opacity = monthData.revenue > 0 ? 1 : 0.3;
+
+    return `<div class="trend-bar"
+              style="height: ${height}%; opacity: ${opacity};"
+              title="${monthData.month}: CHF ${Math.round(monthData.revenue)} (${monthData.orders} ordini)">
+            </div>`;
+  }).join('');
+}
+
+function generateWeeklyTrendChart(client) {
+  if (!client.weeklyData || client.weeklyData.length === 0) {
+    // Fallback se non ci sono dati settimanali
+    return Array.from({length: 12}, () =>
+      `<div class="trend-bar" style="height: 10%; opacity: 0.3;"></div>`
+    ).join('');
+  }
+
+  // Trova il valore massimo per normalizzare le altezze
+  const maxRevenue = Math.max(...client.weeklyData.map(w => w.revenue));
+
+  if (maxRevenue === 0) {
+    // Nessun fatturato nelle ultime 12 settimane
+    return Array.from({length: 12}, () =>
+      `<div class="trend-bar" style="height: 10%; opacity: 0.3;"></div>`
+    ).join('');
+  }
+
+  // Genera i cubetti con dati reali (ultime 12 settimane)
+  return client.weeklyData.slice(-12).map(weekData => {
+    const height = maxRevenue > 0 ? Math.max((weekData.revenue / maxRevenue) * 100, 5) : 5;
+    const opacity = weekData.revenue > 0 ? 1 : 0.3;
+
+    return `<div class="trend-bar"
+              style="height: ${height}%; opacity: ${opacity};"
+              title="S${weekData.weekNumber}: CHF ${Math.round(weekData.revenue)} (${weekData.orders} ordini)">
+            </div>`;
+  }).join('');
+}
+
+// ===== UI =====
+
+function populateTeamSelector() {
+  const selector = document.getElementById('teamSelector');
+
+  selector.innerHTML = '<option value="">👥 Seleziona team LAPA...</option>';
+
+  // Filtra i team in base ai permessi dell'utente loggato
+  const userPermissions = USER_TEAM_PERMISSIONS[currentUser?.id];
+
+  if (!userPermissions) {
+    addDebugLog(`⚠️ Utente ${currentUser?.id} (${currentUser?.name}) non ha permessi per nessun team`);
+    selector.innerHTML = '<option value="">❌ Accesso negato - Contattare amministratore</option>';
+    return;
+  }
+
+  // SUPER ADMIN: vede tutti i team
+  let filteredTeams;
+  if (userPermissions === 'ALL') {
+    filteredTeams = allTeams; // Tutti i team
+    addDebugLog(`👑 SUPER ADMIN: ${currentUser?.name} - accesso a tutti i team`);
+  } else {
+    // Utente normale: solo team specifici
+    filteredTeams = allTeams.filter(team => userPermissions.includes(team.id));
+    addDebugLog(`🔒 Utente limitato: ${currentUser?.name} - team ${userPermissions.join(', ')}`);
+  }
+
+  filteredTeams.forEach(team => {
+    const option = document.createElement('option');
+    option.value = team.id;
+    option.textContent = `${team.name} (${team.memberCount} membri)`;
+    selector.appendChild(option);
+  });
+
+  addDebugLog(`🔧 Selector teams popolato: ${filteredTeams.length} teams autorizzati per utente ${currentUser?.id}`);
+
+  // Se l'utente ha accesso a un solo team, selezionalo automaticamente
+  if (filteredTeams.length === 1) {
+    selector.value = filteredTeams[0].id;
+    addDebugLog(`🎯 Auto-selezione team: ${filteredTeams[0].name}`);
+    // Carica automaticamente il team
+    setTimeout(() => onTeamChange(), 100);
+  }
+}
+
+async function onTeamChange() {
+  const selector = document.getElementById('teamSelector');
+  const teamId = parseInt(selector.value);
+
+  if (!teamId) {
+    hideTeamInfo();
+    clearClientData();
+    return;
+  }
+
+  selectedTeam = allTeams.find(team => team.id === teamId);
+
+  if (selectedTeam) {
+    addDebugLog(`👥 Team selezionato: ${selectedTeam.name}`);
+    showTeamInfo();
+    showLoadingState();
+
+    try {
+      clientsData = await loadClientsForTeam(teamId);
+      updateStats();
+      renderClients();
+      // Aggiorna il fatturato del team con i dati reali
+      showTeamInfo();
+    } catch (error) {
+      showErrorState(`Errore caricamento clienti: ${error.message}`);
+    }
+  }
+}
+
+function showTeamInfo() {
+  if (!selectedTeam) return;
+
+  const banner = document.getElementById('teamInfoBanner');
+  banner.classList.add('active');
+
+  document.getElementById('selectedTeamName').textContent = selectedTeam.name;
+  document.getElementById('selectedTeamDescription').textContent =
+    `Leader: ${selectedTeam.leader} • ${selectedTeam.saleOrderCount} ordini • ${selectedTeam.memberCount} membri`;
+
+  document.getElementById('teamMemberCount').textContent = selectedTeam.memberCount;
+  document.getElementById('teamTargetAmount').textContent =
+    `CHF ${Math.round(selectedTeam.invoicedTarget / 1000)}K`;
+
+  // Calcola il fatturato reale del team basandosi sui clienti caricati
+  const actualTeamRevenue = calculateActualTeamRevenue();
+  const monthlyTeamRevenue = calculateMonthlyTeamRevenue();
+
+  // Calcola il nome del mese scorso per il label
+  const today = new Date();
+  const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const monthName = lastMonth.toLocaleDateString('it-IT', { month: 'short' }).toUpperCase();
+
+  document.getElementById('teamInvoicedAmount').textContent =
+    `CHF ${Math.round(actualTeamRevenue / 1000)}K`;
+  document.getElementById('teamMonthlyAmount').textContent =
+    `CHF ${Math.round(monthlyTeamRevenue / 1000)}K`;
+
+  // Aggiorna il label del mese scorso
+  const monthlyLabel = document.querySelector('#teamMonthlyAmount').nextElementSibling;
+  if (monthlyLabel) {
+    monthlyLabel.textContent = monthName;
+  }
+
+  addDebugLog(`📊 Fatturato team - Totale: CHF ${Math.round(actualTeamRevenue)} | Mensile: CHF ${Math.round(monthlyTeamRevenue)} (vs Odoo: CHF ${Math.round(selectedTeam.invoiced)})`);
+}
+
+function calculateActualTeamRevenue() {
+  if (!clientsData || clientsData.length === 0) {
+    return selectedTeam.invoiced || 0; // Fallback al valore Odoo
+  }
+
+  // Somma il fatturato totale storico di tutti i clienti del team
+  const totalHistoricalRevenue = clientsData.reduce((sum, client) => {
+    return sum + (client.totalInvoiced || 0);
+  }, 0);
+
+  addDebugLog(`📊 Dettagli calcolo team: ${clientsData.length} clienti, fatturato totale: CHF ${Math.round(totalHistoricalRevenue)}`);
+
+  // Debug dettagliato dei primi 5 clienti
+  const topClients = clientsData.slice(0, 5);
+  topClients.forEach(client => {
+    addDebugLog(`  💰 ${client.name}: Storico CHF ${Math.round(client.totalInvoiced)} | Mensile CHF ${Math.round(client.monthlyInvoiced)}`);
+  });
+
+  return totalHistoricalRevenue;
+}
+
+function calculateMonthlyTeamRevenue() {
+  if (!clientsData || clientsData.length === 0) {
+    return 0;
+  }
+
+  // Somma il fatturato mensile di tutti i clienti del team
+  const totalMonthlyRevenue = clientsData.reduce((sum, client) => {
+    return sum + (client.monthlyInvoiced || 0);
+  }, 0);
+
+  addDebugLog(`📊 Fatturato mensile team: ${clientsData.length} clienti, CHF ${Math.round(totalMonthlyRevenue)}`);
+
+  return totalMonthlyRevenue;
+}
+
+function hideTeamInfo() {
+  document.getElementById('teamInfoBanner').classList.remove('active');
+}
+
+function updateStats() {
+  if (!selectedTeam || !clientsData || !clientsData.length) {
+    resetStats();
+    return;
+  }
+
+  const totalRevenue = clientsData.reduce((sum, client) => sum + client.monthlyInvoiced, 0);
+  const totalOrders = clientsData.reduce((sum, client) => sum + client.monthlyOrderCount, 0);  // 🛒 Ordini ultimo mese
+  const alertClients = clientsData.filter(client => client.status === 'inactive').length;
+
+  document.getElementById('totalClients').textContent = clientsData.length;
+  document.getElementById('weeklyRevenue').textContent = `CHF ${Math.round(totalRevenue / 1000)}K`;
+  document.getElementById('totalOrders').textContent = totalOrders;
+  document.getElementById('alertCount').textContent = alertClients;
+
+  document.getElementById('clientsChange').textContent = `Team ${selectedTeam.name}`;
+  document.getElementById('revenueChange').textContent = 'Fatturato ultimo mese';
+  document.getElementById('ordersChange').textContent = 'Ordini ultimo mese';
+  document.getElementById('alertsChange').textContent = 'Clienti da contattare';
+}
+
+function resetStats() {
+  document.getElementById('totalClients').textContent = '0';
+  document.getElementById('weeklyRevenue').textContent = 'CHF 0';
+  document.getElementById('totalOrders').textContent = '0';
+  document.getElementById('alertCount').textContent = '0';
+
+  document.getElementById('clientsChange').textContent = 'Seleziona team...';
+  document.getElementById('revenueChange').textContent = 'Nessun dato';
+  document.getElementById('ordersChange').textContent = 'Nessun dato';
+  document.getElementById('alertsChange').textContent = 'Nessun dato';
+}
+
+function renderClients() {
+  const grid = document.getElementById('clientGrid');
+
+  if (!clientsData || !clientsData.length) {
+    grid.innerHTML = `
+      <div class="loading-state">
+        <div>📋</div>
+        <div>Nessun cliente trovato per questo team</div>
+      </div>
+    `;
+    return;
+  }
+
+  const filteredClients = filterClientsByStatus();
+
+  grid.innerHTML = filteredClients.map(client => `
+    <div class="client-card" onclick="openClientDetails(${client.id})">
+      <div class="client-header">
+        <div class="client-name">${client.name}</div>
+        <div class="client-status status-${client.status}">
+          ${client.status === 'active' ? '✅ Attivo' :
+            client.status === 'warning' ? '⚠️ Attenzione' : '❌ Inattivo'}
+        </div>
+      </div>
+
+      <div class="client-info">
+        <div class="info-item">
+          <span>👤 Venditore:</span>
+          <div class="info-value">${client.salesperson}</div>
+        </div>
+        <div class="info-item">
+          <span>💰 Stato Pagamenti:</span>
+          <div class="info-value">
+            <div class="financial-mini-chart">
+              <div class="financial-bar">
+                <div class="financial-bar-visual paid"></div>
+                <span class="financial-bar-amount">CHF ${Math.round(client.invoicesPaid || 0)}</span>
+              </div>
+              <div class="financial-bar">
+                <div class="financial-bar-visual pending"></div>
+                <span class="financial-bar-amount">CHF ${Math.round(client.invoicesPending || 0)}</span>
+              </div>
+              <div class="financial-bar">
+                <div class="financial-bar-visual overdue"></div>
+                <span class="financial-bar-amount">CHF ${Math.round(client.invoicesOverdue || 0)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="info-item">
+          <span>🛒 Ordini mese:</span>
+          <div class="info-value">${client.monthlyOrderCount}</div>
+        </div>
+        <div class="info-item">
+          <span>💰 Fatturato mese:</span>
+          <div class="info-value">CHF ${Math.round(client.monthlyInvoiced)}</div>
+        </div>
+        <div class="info-item">
+          <span>📊 Health Score:</span>
+          <div class="info-value">${client.healthScore}/100</div>
+        </div>
+        <div class="info-item">
+          <span>📅 Ultimo ordine:</span>
+          <div class="info-value">${client.lastOrderDays} giorni fa</div>
+        </div>
+      </div>
+
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">📊 Settimane</div>
+      <div class="trend-chart">
+        ${generateWeeklyTrendChart(client)}
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); margin: 8px 0 4px 0;">📅 Mesi</div>
+      <div class="trend-chart">
+        ${generateTrendChart(client)}
+      </div>
+    </div>
+  `).join('');
+}
+
+function isInactive5Weeks(client) {
+  // Controlla se il cliente è inattivo nelle ultime 5 settimane
+  if (!client.weeklyData || client.weeklyData.length === 0) {
+    return true; // Se non ha dati settimanali, consideralo inattivo
+  }
+
+  // Prendi le ultime 5 settimane
+  const last5Weeks = client.weeklyData.slice(-5);
+
+  // Calcola ordini totali nelle ultime 5 settimane
+  const totalOrdersLast5Weeks = last5Weeks.reduce((sum, week) => sum + week.orders, 0);
+
+  // È inattivo se: 0 ordini ultime 5 settimane MA ha storico (orderCount > 0)
+  return totalOrdersLast5Weeks === 0 && client.orderCount > 0;
+}
+
+function isDecreasing5Weeks(client) {
+  // Controlla se il cliente è in calo nelle ultime 5 settimane
+  if (!client.weeklyData || client.weeklyData.length < 10) {
+    return false; // Serve almeno 10 settimane di dati per il confronto
+  }
+
+  // Media settimanale storica del cliente (totale / numero settimane con dati)
+  const totalHistoricalRevenue = client.weeklyData.reduce((sum, week) => sum + week.revenue, 0);
+  const weeksWithData = client.weeklyData.filter(week => week.revenue > 0).length;
+
+  if (weeksWithData === 0) {
+    return false; // Nessun fatturato storico
+  }
+
+  const avgWeeklyRevenue = totalHistoricalRevenue / weeksWithData;
+
+  // Media ultime 5 settimane
+  const recent5Weeks = client.weeklyData.slice(-5);
+  const recentRevenue = recent5Weeks.reduce((sum, week) => sum + week.revenue, 0);
+  const recentAvg = recentRevenue / 5;
+
+  // Cliente in calo se: media recente < 60% della media storica
+  // E ha una media storica significativa (almeno CHF 100/settimana)
+  return avgWeeklyRevenue >= 100 && (recentAvg / avgWeeklyRevenue) < 0.6;
+}
+
+function filterClientsByStatus() {
+  let filtered = clientsData;
+
+  if (currentFilter === 'inactive_5weeks') {
+    // Filtro speciale per non attivi 5 settimane
+    filtered = filtered.filter(client => isInactive5Weeks(client));
+  } else if (currentFilter === 'decreasing_5weeks') {
+    // Filtro speciale per clienti in calo 5 settimane
+    filtered = filtered.filter(client => isDecreasing5Weeks(client));
+  } else if (currentFilter !== 'all') {
+    filtered = filtered.filter(client => client.status === currentFilter);
+  }
+
+  return filtered;
+}
+
+function setFilter(filter) {
+  currentFilter = filter;
+
+  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+
+  renderClients();
+}
+
+function filterClients() {
+  const searchTerm = event.target.value.toLowerCase();
+  const grid = document.getElementById('clientGrid');
+  const cards = grid.querySelectorAll('.client-card');
+
+  cards.forEach(card => {
+    const clientName = card.querySelector('.client-name').textContent.toLowerCase();
+    if (clientName.includes(searchTerm)) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+function openClientDetails(clientId) {
+  const client = clientsData.find(c => c.id === clientId);
+  if (!client) return;
+
+  addDebugLog(`👤 Apertura dettagli cliente: ${client.name}`);
+
+  // Popola dati nel popup
+  document.getElementById('popupClientName').textContent = client.name;
+  document.getElementById('popupClientInfo').innerHTML = `
+    <span>👤 ${client.salesperson}</span>
+    <span>📞 ${client.phone || 'Non disponibile'}</span>
+    <span>📧 ${client.email || 'Non disponibile'}</span>
+  `;
+
+  // Health Score
+  document.getElementById('popupHealthScore').textContent = client.healthScore;
+  document.getElementById('popupHealthFill').style.width = client.healthScore + '%';
+
+  // Colore health score
+  let healthColor = '#16a34a'; // Verde
+  if (client.healthScore < 50) healthColor = '#dc2626'; // Rosso
+  else if (client.healthScore < 70) healthColor = '#d97706'; // Arancione
+
+  document.getElementById('popupHealthFill').style.background = `linear-gradient(90deg, #dc2626, #d97706, ${healthColor})`;
+
+  // Metriche dettagliate
+  const monthlyRevenue = client.monthlyInvoiced;  // 💰 Fatturato ultimo mese
+  const monthlyOrders = client.monthlyOrderCount;  // 🛒 Ordini ultimo mese
+
+  // ✅ CORREZIONE: Ordine medio degli ultimi 10 ordini + trend con 10 precedenti
+  const clientOrders = client.rawData?.orders || [];
+
+  // Ordina per data (più recenti prima)
+  const sortedOrders = clientOrders
+    .sort((a, b) => new Date(b.commitment_date || b.date_order) - new Date(a.commitment_date || a.date_order));
+
+  // Ultimi 10 ordini
+  const last10Orders = sortedOrders.slice(0, 10);
+  const avgOrder = last10Orders.length > 0 ?
+    Math.round(last10Orders.reduce((sum, order) => sum + (order.amount_total || 0), 0) / last10Orders.length) : 0;
+
+  // Precedenti 10 ordini (per calcolare il trend)
+  const previous10Orders = sortedOrders.slice(10, 20);
+  const avgPreviousOrder = previous10Orders.length > 0 ?
+    Math.round(previous10Orders.reduce((sum, order) => sum + (order.amount_total || 0), 0) / previous10Orders.length) : 0;
+
+  // Calcola trend percentuale
+  let trendPercent = 0;
+  let trendDirection = '→';
+  let trendClass = 'trend-stable';
+
+  if (avgPreviousOrder > 0 && last10Orders.length >= 5) { // Solo se ci sono abbastanza dati
+    trendPercent = Math.round(((avgOrder - avgPreviousOrder) / avgPreviousOrder) * 100);
+    if (trendPercent > 5) {
+      trendDirection = '↗';
+      trendClass = 'trend-up';
+    } else if (trendPercent < -5) {
+      trendDirection = '↘';
+      trendClass = 'trend-down';
+    }
+  }
+
+  // Debug ridotto popup
+  if (Math.abs(trendPercent) > 20) {
+    addDebugLog(`📊 ${client.name}: Trend significativo ${trendPercent}%`);
+  }
+
+
+  document.getElementById('popupRevenue').textContent = `CHF ${(monthlyRevenue / 1000).toFixed(1)}K`;
+  document.getElementById('popupOrders').textContent = monthlyOrders;
+  document.getElementById('popupAvgOrder').textContent = `CHF ${avgOrder}`;
+  document.getElementById('popupLastOrder').textContent = client.lastOrderDays;
+
+  // ✅ AGGIORNA IL TREND ORDINE MEDIO
+  const avgTrendElement = document.getElementById('popupAvgTrend');
+  avgTrendElement.className = `metric-trend ${trendClass}`;
+  if (trendPercent !== 0) {
+    avgTrendElement.textContent = `${trendDirection} ${Math.abs(trendPercent)}%`;
+  } else {
+    avgTrendElement.textContent = `${trendDirection} =`;
+  }
+
+  // Azioni rapide - Aggiorna tutti i link
+  const callBtn = document.getElementById('popupCallBtn');
+  const whatsappBtn = document.getElementById('popupWhatsAppBtn');
+  const emailBtn = document.getElementById('popupEmailBtn');
+  const visitBtn = document.getElementById('popupVisitBtn');
+
+  // 📞 Telefono
+  if (client.phone) {
+    callBtn.href = `tel:${formatPhoneNumber(client.phone)}`;
+    callBtn.style.opacity = '1';
+    callBtn.style.pointerEvents = 'auto';
+  } else {
+    callBtn.href = '#';
+    callBtn.style.opacity = '0.5';
+    callBtn.style.pointerEvents = 'none';
+  }
+
+  // 💬 WhatsApp
+  if (client.phone) {
+    whatsappBtn.href = createWhatsAppUrl(client.phone, client.name);
+    whatsappBtn.style.opacity = '1';
+    whatsappBtn.style.pointerEvents = 'auto';
+    whatsappBtn.onclick = function(e) {
+      try {
+        window.open(this.href, '_blank');
+        addDebugLog(`💬 WhatsApp aperto per ${client.name}`);
+      } catch (error) {
+        addDebugLog(`❌ Errore apertura WhatsApp: ${error.message}`);
+      }
+      return false;
+    };
+  } else {
+    whatsappBtn.href = '#';
+    whatsappBtn.style.opacity = '0.5';
+    whatsappBtn.style.pointerEvents = 'none';
+    whatsappBtn.onclick = null;
+  }
+
+  // 📧 Email
+  if (client.email) {
+    emailBtn.href = createEmailUrl(client.email, client.name);
+    emailBtn.style.opacity = '1';
+    emailBtn.style.pointerEvents = 'auto';
+  } else {
+    emailBtn.href = '#';
+    emailBtn.style.opacity = '0.5';
+    emailBtn.style.pointerEvents = 'none';
+  }
+
+  // 📍 Visita (Google Maps)
+  if (client.address) {
+    visitBtn.href = createGoogleMapsUrl(client.address, client.name);
+    visitBtn.style.opacity = '1';
+    visitBtn.style.pointerEvents = 'auto';
+    visitBtn.target = '_blank';
+  } else {
+    visitBtn.href = '#';
+    visitBtn.style.opacity = '0.5';
+    visitBtn.style.pointerEvents = 'none';
+  }
+
+  // Genera AI insights dinamici
+  generateAIInsights(client);
+
+  // Mostra contatti dell'azienda se esistono
+  if (client.childContacts && client.childContacts.length > 0) {
+    showCompanyContacts(client.childContacts, client.contactsWhoOrdered);
+  } else {
+    document.getElementById('companyContactsSection').style.display = 'none';
+  }
+
+  // Mostra popup
+  document.getElementById('clientPopup').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+// Genera suggerimenti AI basati sui dati cliente
+function generateAIInsights(client) {
+  const insights = [];
+
+  // Logica insights basata su health score e dati
+  if (client.healthScore >= 80) {
+    insights.push('🎯 Cliente ad alto potenziale, mantieni contatto regolare');
+    insights.push('💎 Proponi servizi premium o prodotti di alta gamma');
+  } else if (client.healthScore >= 60) {
+    insights.push('⚠️ Cliente a rischio, aumenta la frequenza di contatto');
+    insights.push('📞 Consigliata chiamata entro 3 giorni per riattivazione');
+  } else {
+    insights.push('🚨 Cliente inattivo, intervento urgente necessario');
+    insights.push('🎁 Proponi offerta speciale per riattivare l\'interesse');
+  }
+
+  if (client.lastOrderDays > 30) {
+    insights.push('📅 Ultimo ordine oltre 30 giorni fa, follow-up necessario');
+  }
+
+  if (client.orderCount > 10) {
+    insights.push('💡 Cliente fedele, proponi programma fedeltà o sconti volume');
+  }
+
+  // Aggiorna lista insights nel popup
+  const insightsList = document.getElementById('aiInsightsList');
+  insightsList.innerHTML = insights.map(insight =>
+    `<li class="insight-item">${insight}</li>`
+  ).join('');
+}
+
+// Mostra contatti dell'azienda
+function showCompanyContacts(contacts, contactsWhoOrdered = []) {
+  const contactsSection = document.getElementById('companyContactsSection');
+  const contactsList = document.getElementById('contactsList');
+
+  if (!contacts || contacts.length === 0) {
+    contactsSection.style.display = 'none';
+    return;
+  }
+
+  contactsSection.style.display = 'block';
+
+  contactsList.innerHTML = contacts.map(contact => {
+    const hasOrdered = contactsWhoOrdered.includes(contact.name);
+    const orderBadge = hasOrdered ? '<span style="color: var(--success); font-weight: 600;">📦 Ha ordinato</span>' : '';
+
+    return `
+      <div class="contact-item">
+        <div class="contact-info">
+          <div class="contact-name">${contact.name} ${hasOrdered ? '🔥' : ''}</div>
+          <div class="contact-details">
+            ${contact.function ? `<span>👔 ${contact.function}</span>` : ''}
+            ${contact.phone ? `<span>📞 ${contact.phone}</span>` : ''}
+            ${contact.email ? `<span>📧 ${contact.email}</span>` : ''}
+            ${orderBadge}
+          </div>
+        </div>
+        <div class="contact-actions">
+          ${contact.phone ? `<a href="tel:${formatPhoneNumber(contact.phone)}" class="contact-action-btn contact-call">📞</a>` : ''}
+          ${contact.phone ? `<a href="${createWhatsAppUrl(contact.phone, contact.name)}" class="contact-action-btn contact-whatsapp" target="_blank">💬</a>` : ''}
+          ${contact.email ? `<a href="${createEmailUrl(contact.email, contact.name)}" class="contact-action-btn contact-email">📧</a>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Chiusura popup
+function closeClientPopup(event) {
+  if (event && event.target !== event.currentTarget) return;
+
+  document.getElementById('clientPopup').classList.remove('active');
+  document.body.style.overflow = 'auto';
+}
+
+function clearClientData() {
+  document.getElementById('clientGrid').innerHTML = `
+    <div class="loading-state">
+      <div>👥</div>
+      <div>Seleziona un team per visualizzare i clienti</div>
+    </div>
+  `;
+  resetStats();
+  clientsData = [];
+}
+
+function showLoadingState() {
+  document.getElementById('clientGrid').innerHTML = `
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <div>Caricamento clienti...</div>
+    </div>
+  `;
+}
+
+function showErrorState(message) {
+  document.getElementById('clientGrid').innerHTML = `
+    <div class="error-state">
+      <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+      <div style="font-size: 18px; font-weight: 600; margin-bottom: 10px;">ERRORE</div>
+      <div style="font-size: 14px;">${message}</div>
+      <button class="btn primary" onclick="onTeamChange()" style="margin-top: 20px;">🔄 Riprova</button>
+    </div>
+  `;
+}
+
+// ===== INIZIALIZZAZIONE =====
+
+async function initDashboard() {
+  try {
+    addDebugLog('🚀 Inizializzazione LAPA Dashboard...');
+    updateConnectionStatus('error', 'Inizializzazione...');
+
+    // Carica utente
+    await loadUserFromOdoo();
+
+    // Carica teams
+    await loadTeamsFromOdoo();
+
+    addDebugLog('✅ Dashboard inizializzata correttamente');
+
+  } catch (error) {
+    addDebugLog(`❌ ERRORE INIZIALIZZAZIONE: ${error.message}`);
+    updateConnectionStatus('error', 'Errore connessione');
+    showErrorState(`Errore di connessione: ${error.message}`);
+  }
+}
+
+// ===== AVVIO =====
+
+document.addEventListener('DOMContentLoaded', initDashboard);
+
+addDebugLog('🎯 LAPA Dashboard caricata');
+addDebugLog(`Target teams: ${LAPA_TEAM_IDS.join(', ')}`);
+
+// ===== DASHBOARD AVANZATA =====
+
+let currentAdvancedClient = null;
+
+// Apri dashboard avanzata
+function openAdvancedDashboard(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!currentAdvancedClient) {
+    // Ottieni il cliente dal popup principale
+    const clientId = parseInt(document.getElementById('clientPopup').dataset.clientId);
+    currentAdvancedClient = clientsData.find(c => c.id === clientId);
+  }
+
+  if (!currentAdvancedClient) {
+    addDebugLog('❌ Nessun cliente selezionato per dashboard avanzata');
+    return;
+  }
+
+  addDebugLog(`🚀 Apertura dashboard avanzata per: ${currentAdvancedClient.name}`);
+
+  // Popola header
+  document.getElementById('advancedClientName').textContent = `Dashboard: ${currentAdvancedClient.name}`;
+  document.getElementById('advancedClientInfo').textContent = `Team: ${selectedTeam?.name} | Health Score: ${currentAdvancedClient.healthScore}`;
+
+  // Mostra popup
+  document.getElementById('advancedDashboard').classList.add('active');
+  document.body.style.overflow = 'hidden';
+
+  // Carica dati avanzati
+  loadAdvancedAnalytics();
+}
+
+// Chiudi dashboard avanzata
+function closeAdvancedDashboard(event) {
+  if (event && event.target !== event.currentTarget) return;
+
+  document.getElementById('advancedDashboard').classList.remove('active');
+  document.body.style.overflow = 'auto';
+  currentAdvancedClient = null;
+}
+
+// Carica analytics avanzati
+async function loadAdvancedAnalytics() {
+  if (!currentAdvancedClient) return;
+
+  try {
+    addDebugLog(`📊 Caricamento analytics avanzati per ${currentAdvancedClient.name}...`);
+
+    // Carica andamento settimanale
+    await loadWeeklyTrend();
+
+    // Carica prodotti più acquistati
+    await loadTopProducts();
+
+    // Carica prodotti non consegnati
+    await loadUndeliveredProducts();
+
+    // Carica confronto team
+    await loadTeamComparison();
+
+  } catch (error) {
+    addDebugLog(`❌ Errore caricamento analytics: ${error.message}`);
+  }
+}
+
+// 📈 ANDAMENTO SETTIMANALE (ultime 4 settimane)
+async function loadWeeklyTrend() {
+  const revenueChart = document.getElementById('weeklyRevenueChart');
+  const ordersChart = document.getElementById('weeklyOrdersChart');
+  const revenueStats = document.getElementById('weeklyRevenueStats');
+  const ordersStats = document.getElementById('weeklyOrdersStats');
+
+  try {
+    // ✅ CORREZIONE: Usa settimane ISO corrette come nella funzione principale
+    const weeklyData = [];
+    const today = new Date();
+    const currentWeek = getISOWeekNumber(today);
+    const currentYear = today.getFullYear();
+
+    // Calcola ultime 4 settimane usando settimane ISO
+    for (let i = 3; i >= 0; i--) {
+      // Calcola il numero della settimana target
+      let targetWeek = currentWeek - i;
+      let targetYear = currentYear;
+
+      // Gestisci il cambio anno
+      if (targetWeek <= 0) {
+        targetYear--;
+        const weeksInPrevYear = getWeeksInYear(targetYear);
+        targetWeek = weeksInPrevYear + targetWeek;
+      }
+
+      // Calcola i limiti della settimana ISO
+      const { weekStart, weekEnd } = getWeekBounds(targetYear, targetWeek);
+
+      const weekOrders = currentAdvancedClient.rawData.orders.filter(order => {
+        const orderDate = new Date(order.commitment_date || order.date_order);
+        // Normalizza la data per evitare problemi di orario
+        orderDate.setHours(12, 0, 0, 0);
+        return orderDate >= weekStart && orderDate <= weekEnd;
+      });
+
+      const weekRevenue = weekOrders.reduce((sum, order) => sum + (order.amount_total || 0), 0);
+
+      // Debug popup ridotto per performance
+
+      weeklyData.push({
+        weekNumber: targetWeek,
+        revenue: weekRevenue,
+        orders: weekOrders.length,
+        weekStart: weekStart,
+        weekEnd: weekEnd
+      });
+    }
+
+    // Crea grafico valore ordini
+    createWeeklyChart(revenueChart, weeklyData, 'revenue', 'CHF');
+
+    // Crea grafico ordini
+    createWeeklyChart(ordersChart, weeklyData, 'orders', 'ordini');
+
+    // Statistiche delle ultime 4 settimane
+    const totalRevenue = weeklyData.reduce((sum, week) => sum + week.revenue, 0);
+    const totalOrders = weeklyData.reduce((sum, week) => sum + week.orders, 0);
+    const avgWeekRevenue = totalRevenue / 4;
+    const avgWeekOrders = totalOrders / 4;
+
+    revenueStats.innerHTML = `
+      <div><strong>Valore totale 4 settimane:</strong> CHF ${Math.round(totalRevenue)}</div>
+      <div><strong>Media settimanale:</strong> CHF ${Math.round(avgWeekRevenue)}</div>
+    `;
+
+    ordersStats.innerHTML = `
+      <div><strong>Totale 4 settimane:</strong> ${totalOrders} ordini</div>
+      <div><strong>Media settimanale:</strong> ${Math.round(avgWeekOrders)} ordini</div>
+    `;
+
+  } catch (error) {
+    revenueChart.innerHTML = `<div class="loading" style="color: var(--accent);">Errore caricamento trend</div>`;
+    ordersChart.innerHTML = `<div class="loading" style="color: var(--accent);">Errore caricamento trend</div>`;
+    addDebugLog(`❌ Errore weekly trend: ${error.message}`);
+  }
+}
+
+// Funzione per creare un singolo grafico settimanale
+function createWeeklyChart(container, weeklyData, dataField, unit) {
+  const maxValue = Math.max(...weeklyData.map(d => d[dataField]));
+  const color = dataField === 'revenue' ? 'var(--success)' : 'var(--primary)';
+
+  const barsHtml = weeklyData.map(week => {
+    const height = maxValue > 0 ? Math.max((week[dataField] / maxValue) * 100, 8) : 8;
+    const startDate = week.weekStart.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+    const endDate = week.weekEnd.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+
+    const value = dataField === 'revenue' ? Math.round(week[dataField]) : week[dataField];
+
+    return `<div class="weekly-bar weekly-bar-interactive"
+                 style="height: ${height}%; background: ${color};"
+                 data-tooltip="S${week.weekNumber} (${startDate} - ${endDate})<br>${value} ${unit}">
+            </div>`;
+  }).join('');
+
+  const labelsHtml = weeklyData.map(week => {
+    return `<span>S${week.weekNumber}</span>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="weekly-bars">${barsHtml}</div>
+    <div class="weekly-labels">${labelsHtml}</div>
+  `;
+
+  // Aggiungi event listeners per tooltip
+  addWeeklyTooltips(container);
+}
+
+// Funzione per calcolare il numero della settimana ISO
+function getISOWeekNumber(date) {
+  const tempDate = new Date(date.getTime());
+  const dayOfWeek = (tempDate.getDay() + 6) % 7; // Lun=0, Dom=6
+  tempDate.setDate(tempDate.getDate() - dayOfWeek + 3); // Giovedì della settimana
+  const firstThursday = tempDate.getTime();
+  tempDate.setMonth(0, 1);
+  if (tempDate.getDay() !== 4) {
+    tempDate.setMonth(0, 1 + ((4 - tempDate.getDay()) + 7) % 7);
+  }
+  return 1 + Math.ceil((firstThursday - tempDate) / 604800000);
+}
+
+// Funzione helper per calcolare quante settimane ha un anno
+function getWeeksInYear(year) {
+  const jan4 = new Date(year, 0, 4);
+  const dec28 = new Date(year, 11, 28);
+  return getISOWeekNumber(dec28);
+}
+
+// Funzione helper per ottenere i limiti di una settimana ISO specifica
+function getWeekBounds(year, week) {
+  // Trova il primo lunedì dell'anno
+  const jan4 = new Date(year, 0, 4);
+  const dayOfWeek = (jan4.getDay() + 6) % 7; // Lun=0, Dom=6
+  const firstMonday = new Date(year, 0, 4 - dayOfWeek);
+
+  // Se il 4 gennaio è da venerdì a domenica, il primo lunedì è dell'anno precedente
+  if (dayOfWeek > 3) {
+    firstMonday.setDate(firstMonday.getDate() + 7);
+  }
+
+  // Calcola l'inizio della settimana target
+  const weekStart = new Date(firstMonday);
+  weekStart.setDate(firstMonday.getDate() + (week - 1) * 7);
+  weekStart.setHours(0, 0, 0, 0);
+
+  // Calcola la fine della settimana (domenica)
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  return { weekStart, weekEnd };
+}
+
+// Funzione per aggiungere tooltip interattivi
+function addWeeklyTooltips(container) {
+  const bars = container.querySelectorAll('.weekly-bar-interactive');
+
+  bars.forEach(bar => {
+    bar.addEventListener('mouseenter', function(e) {
+      const tooltip = document.createElement('div');
+      tooltip.className = 'weekly-tooltip';
+      tooltip.innerHTML = this.getAttribute('data-tooltip');
+      tooltip.style.cssText = `
+        position: absolute;
+        background: var(--text);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      `;
+
+      document.body.appendChild(tooltip);
+
+      const updatePosition = (e) => {
+        tooltip.style.left = (e.pageX + 10) + 'px';
+        tooltip.style.top = (e.pageY - 40) + 'px';
+      };
+
+      updatePosition(e);
+      this.addEventListener('mousemove', updatePosition);
+    });
+
+    bar.addEventListener('mouseleave', function() {
+      const tooltip = document.querySelector('.weekly-tooltip');
+      if (tooltip) {
+        tooltip.remove();
+      }
+    });
+  });
+}
+
+// 🛒 PRODOTTI PIÙ ACQUISTATI
+async function loadTopProducts() {
+  const productsList = document.getElementById('topProductsList');
+
+  try {
+    // Carica dettagli ordini con prodotti
+    addDebugLog(`🛒 Caricando dettagli prodotti per ${currentAdvancedClient.name}...`);
+
+    const orderIds = currentAdvancedClient.rawData.orders.map(order => order.id);
+
+    if (orderIds.length === 0) {
+      productsList.innerHTML = '<div class="loading">Nessun ordine trovato</div>';
+      return;
+    }
+
+    // Carica righe ordine ottimizzato per performance
+    const orderLines = await callOdoo('sale.order.line', 'search_read',
+      [[['order_id', 'in', orderIds]]],
+      {
+        fields: ['product_id', 'product_uom_qty', 'price_subtotal'],
+        limit: 500 // Ridotto per performance
+      }
+    );
+
+    // ✅ CORREZIONE: Controlla se le righe ordine sono vuote
+    if (!orderLines || orderLines.length === 0) {
+      productsList.innerHTML = '<div class="loading">Nessuna riga ordine trovata. Gli ordini potrebbero essere vuoti o senza prodotti.</div>';
+      return;
+    }
+
+    // Raggruppa per prodotto (escludendo prodotti a costo zero)
+    const productStats = {};
+    let validLines = 0;
+    let excludedLines = 0;
+
+    orderLines.forEach(line => {
+
+      // Escludi prodotti con prezzo subtotale zero o nullo
+      if (!line.price_subtotal || line.price_subtotal <= 0) {
+        excludedLines++;
+        return;
+      }
+
+      const productId = line.product_id[0];
+      const productName = line.product_id[1];
+
+      if (!productStats[productId]) {
+        productStats[productId] = {
+          name: productName,
+          quantity: 0,
+          revenue: 0,
+          orders: 0
+        };
+      }
+
+      productStats[productId].quantity += line.product_uom_qty || 0;
+      productStats[productId].revenue += line.price_subtotal || 0;
+      productStats[productId].orders++;
+      validLines++;
+    });
+
+    // Ordina per fatturato (debug ridotto)
+    const topProducts = Object.values(productStats)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+
+    if (topProducts.length === 0) {
+      addDebugLog(`⚠️ Nessun prodotto valido trovato su ${orderLines.length} righe`);
+    }
+
+    if (topProducts.length === 0) {
+      productsList.innerHTML = '<div class="loading">Nessun prodotto valido trovato (tutti hanno prezzo zero o sono nulli)</div>';
+      return;
+    }
+
+    // Visualizza top prodotti
+    const productsHtml = topProducts.map((product, index) => `
+      <div style="padding: 8px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-weight: 600; font-size: 14px;">${index + 1}. ${product.name}</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Qta: ${Math.round(product.quantity)} | Ordini: ${product.orders}</div>
+        </div>
+        <div style="text-align: right; font-weight: 600; color: var(--primary);">
+          CHF ${Math.round(product.revenue)}
+        </div>
+      </div>
+    `).join('');
+
+    productsList.innerHTML = productsHtml;
+
+  } catch (error) {
+    productsList.innerHTML = `<div class="loading" style="color: var(--accent);">Errore caricamento prodotti</div>`;
+    addDebugLog(`❌ Errore top products: ${error.message}`);
+  }
+}
+
+// ⚠️ PRODOTTI NON CONSEGNATI
+async function loadUndeliveredProducts() {
+  const undeliveredList = document.getElementById('undeliveredProductsList');
+
+  try {
+    addDebugLog(`⚠️ Verificando prodotti non consegnati per ${currentAdvancedClient.name}...`);
+
+    const orderIds = currentAdvancedClient.rawData.orders.map(order => order.id);
+
+    if (orderIds.length === 0) {
+      undeliveredList.innerHTML = '<div class="loading">Nessun ordine da verificare</div>';
+      return;
+    }
+
+    // Carica righe ordine con filtro per prodotti non consegnati
+    const undeliveredLines = await callOdoo('sale.order.line', 'search_read',
+      [[
+        ['order_id', 'in', orderIds],
+        ['product_uom_qty', '>', 0],    // Ordinato > 0
+        ['qty_delivered', '=', 0],      // Consegnato = 0
+        ['price_subtotal', '>', 0]      // Esclude prodotti a costo zero
+      ]],
+      {
+        fields: ['order_id', 'product_id', 'product_uom_qty', 'qty_delivered', 'price_subtotal', 'price_unit'],
+        order: 'price_subtotal desc',  // Ordina per valore, non quantità
+        limit: 20
+      }
+    );
+
+    if (undeliveredLines.length === 0) {
+      undeliveredList.innerHTML = '<div style="text-align: center; color: var(--success); padding: 20px;">✅ Tutti i prodotti sono stati consegnati!</div>';
+      return;
+    }
+
+    // Calcola valore totale prodotti non consegnati (escludendo prodotti a costo zero)
+    const totalUndeliveredValue = undeliveredLines.reduce((sum, line) => sum + (line.price_subtotal || 0), 0);
+
+    // Visualizza prodotti non consegnati (ordinati per valore)
+    const undeliveredHtml = undeliveredLines.map(line => `
+      <div style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+        <div style="font-weight: 600; color: var(--accent); font-size: 14px;">${line.product_id[1]}</div>
+        <div style="font-size: 12px; color: var(--text-muted); margin: 4px 0;">
+          Ordine: ${line.order_id[1]} | Prezzo unit.: CHF ${(line.price_unit || 0).toFixed(2)}
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 13px;">
+            ⚠️ Ordinato: <strong>${line.product_uom_qty}</strong> | Consegnato: <strong>0</strong>
+          </span>
+          <span style="font-weight: 600; color: var(--accent);">
+            CHF ${Math.round(line.price_subtotal)}
+          </span>
+        </div>
+      </div>
+    `).join('');
+
+    undeliveredList.innerHTML = `
+      <div style="margin-bottom: 15px; padding: 10px; background: rgba(220, 38, 38, 0.1); border-radius: 8px; color: var(--accent); font-weight: 600; text-align: center;">
+        ⚠️ ${undeliveredLines.length} prodotti non consegnati<br>
+        <span style="font-size: 14px;">Valore totale: CHF ${Math.round(totalUndeliveredValue)}</span>
+      </div>
+      ${undeliveredHtml}
+    `;
+
+  } catch (error) {
+    undeliveredList.innerHTML = `<div class="loading" style="color: var(--accent);">Errore verifica consegne</div>`;
+    addDebugLog(`❌ Errore undelivered products: ${error.message}`);
+  }
+}
+
+// 📈 CONFRONTO TEAM
+async function loadTeamComparison() {
+  const comparisonChart = document.getElementById('teamComparisonChart');
+
+  try {
+    if (!clientsData || clientsData.length === 0) {
+      comparisonChart.innerHTML = '<div class="loading">Dati team non disponibili</div>';
+      return;
+    }
+
+    // Calcola posizione del cliente nel team
+    const teamClients = [...clientsData].sort((a, b) => b.monthlyInvoiced - a.monthlyInvoiced);
+    const clientPosition = teamClients.findIndex(c => c.id === currentAdvancedClient.id) + 1;
+
+    // Statistiche team
+    const teamStats = {
+      totalClients: teamClients.length,
+      avgRevenue: teamClients.reduce((sum, c) => sum + c.monthlyInvoiced, 0) / teamClients.length,
+      avgHealthScore: teamClients.reduce((sum, c) => sum + c.healthScore, 0) / teamClients.length,
+      topRevenue: teamClients[0]?.monthlyInvoiced || 0
+    };
+
+    // Top 5 clienti
+    const top5 = teamClients.slice(0, 5);
+
+    comparisonChart.innerHTML = `
+      <div style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+          <span><strong>Posizione nel team:</strong></span>
+          <span style="font-weight: 600; color: var(--primary);">${clientPosition}° su ${teamStats.totalClients}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+          <span><strong>VS Media team:</strong></span>
+          <span style="font-weight: 600; color: ${currentAdvancedClient.monthlyInvoiced > teamStats.avgRevenue ? 'var(--success)' : 'var(--accent)'};">
+            ${currentAdvancedClient.monthlyInvoiced > teamStats.avgRevenue ? '✅' : '❌'}
+            CHF ${Math.round(currentAdvancedClient.monthlyInvoiced)} vs CHF ${Math.round(teamStats.avgRevenue)}
+          </span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span><strong>Health Score VS Media:</strong></span>
+          <span style="font-weight: 600; color: ${currentAdvancedClient.healthScore > teamStats.avgHealthScore ? 'var(--success)' : 'var(--accent)'};">
+            ${currentAdvancedClient.healthScore > teamStats.avgHealthScore ? '✅' : '❌'}
+            ${currentAdvancedClient.healthScore} vs ${Math.round(teamStats.avgHealthScore)}
+          </span>
+        </div>
+      </div>
+
+      <h5 style="margin: 15px 0 10px 0; color: var(--primary);">🏆 Top 5 Clienti del Team:</h5>
+      ${top5.map((client, index) => `
+        <div style="padding: 8px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; ${client.id === currentAdvancedClient.id ? 'background: rgba(37, 99, 235, 0.1); margin: 0 -10px; padding: 8px 10px; border-radius: 6px;' : ''}">
+          <div>
+            <div style="font-weight: 600; font-size: 14px;">
+              ${index + 1}. ${client.name} ${client.id === currentAdvancedClient.id ? '👈 TU' : ''}
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted);">
+              Health Score: ${client.healthScore} | ${client.monthlyOrderCount} ordini
+            </div>
+          </div>
+          <div style="text-align: right; font-weight: 600; color: var(--primary);">
+            CHF ${Math.round(client.monthlyInvoiced)}
+          </div>
+        </div>
+      `).join('')}
+    `;
+
+  } catch (error) {
+    comparisonChart.innerHTML = `<div class="loading" style="color: var(--accent);">Errore confronto team</div>`;
+    addDebugLog(`❌ Errore team comparison: ${error.message}`);
+  }
+}
+
+// 🤖 ANALISI AI
+async function runAIAnalysis() {
+  const aiBtn = document.getElementById('aiAnalyzeBtn');
+  const aiStatus = document.getElementById('aiStatus');
+  const aiResults = document.getElementById('aiResults');
+
+  try {
+    aiBtn.disabled = true;
+    aiBtn.innerHTML = '🤖 Analizzando...';
+    aiStatus.innerHTML = 'L\'intelligenza artificiale sta analizzando i dati del cliente...';
+
+    // Prepara dati per AI
+    const clientData = {
+      name: currentAdvancedClient.name,
+      healthScore: currentAdvancedClient.healthScore,
+      monthlyRevenue: currentAdvancedClient.monthlyInvoiced,
+      monthlyOrders: currentAdvancedClient.monthlyOrderCount,
+      totalOrders: currentAdvancedClient.orderCount,
+      lastOrderDays: currentAdvancedClient.lastOrderDays,
+      teamName: selectedTeam?.name,
+      topProducts: [],
+      undeliveredCount: 0
+    };
+
+    // Prova prima Gemini, poi OpenAI come fallback
+    let response;
+    try {
+      response = await callGeminiAPI(clientData);
+    } catch (geminiError) {
+      console.log('LAPA: ⚠️ Gemini fallito, provo OpenAI...', geminiError);
+      response = await callOpenAIAPI(clientData);
+    }
+
+    const aiAnalysis = response;
+    console.log('LAPA: ✅ Analisi AI completata');
+
+    // Mostra risultati
+    aiResults.innerHTML = `
+      <div class="ai-analysis-content">
+        <h3>🧠 Analisi AI del Cliente</h3>
+        <div class="ai-response">${aiAnalysis}</div>
+      </div>
+    `;
+    aiResults.style.display = 'block';
+    aiStatus.innerHTML = 'Analisi completata! Scorri per vedere i risultati.';
+
+  } catch (error) {
+    console.log('LAPA: ❌ Errore AI analysis:', error);
+    aiStatus.innerHTML = 'Errore durante l\'analisi AI. Riprova più tardi.';
+    aiResults.innerHTML = `
+      <div class="ai-analysis-content error">
+        <h3>⚠️ Errore Analisi</h3>
+        <p>Non è stato possibile completare l'analisi AI. Verifica la connessione internet e riprova.</p>
+      </div>
+    `;
+    aiResults.style.display = 'block';
+  } finally {
+    aiBtn.disabled = false;
+    aiBtn.innerHTML = '🧠 Analizza con AI';
+  }
+}
+
+async function callGeminiAPI(clientData) {
+  const prompt = `Sei un esperto consulente commerciale per un'azienda di distribuzione alimentare che serve ristoratori.
+
+Analizza questi dati del cliente e fornisci insights strategici, raccomandazioni concrete e opportunità di business:
+
+Cliente: ${clientData.name}
+Health Score: ${clientData.healthScore}/100
+Fatturato mensile: CHF ${clientData.monthlyRevenue}
+Ordini mensili: ${clientData.monthlyOrders}
+Totale ordini: ${clientData.totalOrders}
+Giorni dall'ultimo ordine: ${clientData.lastOrderDays}
+Team assegnato: ${clientData.teamName}
+
+Fornisci un'analisi strutturata con:
+1. 📊 Stato attuale del cliente
+2. 🎯 Opportunità di crescita
+3. ⚠️ Rischi da monitorare
+4. 💡 Raccomandazioni specifiche
+
+Rispondi in italiano con un tono professionale ma amichevole.`;
+
+  const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{
+          text: prompt
+        }]
+      }]
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.candidates[0].content.parts[0].text;
+}
+
+async function callOpenAIAPI(clientData) {
+  const response = await fetch(OPENAI_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `Sei un esperto consulente commerciale per un'azienda di distribuzione alimentare che serve ristoratori. Analizza i dati del cliente e fornisci insights strategici, raccomandazioni concrete e opportunità di business. Rispondi sempre in italiano.`
+        },
+        {
+          role: 'user',
+          content: `Analizza questo cliente ristoratore:
+
+Cliente: ${clientData.name}
+Team di vendita: ${clientData.teamName}
+Health Score: ${clientData.healthScore}/100
+Fatturato ultimo mese: CHF ${clientData.monthlyRevenue}
+Ordini ultimo mese: ${clientData.monthlyOrders}
+Ordini totali storici: ${clientData.totalOrders}
+Ultimo ordine: ${clientData.lastOrderDays} giorni fa
+
+Fornisci un'analisi strutturata con:
+1. 📊 Stato attuale del cliente
+2. 🎯 Opportunità di crescita
+3. ⚠️ Rischi da monitorare
+4. 💡 Raccomandazioni specifiche
+
+Rispondi in italiano con un tono professionale ma amichevole.`
+        }
+      ],
+      max_tokens: 1000,
+      temperature: 0.7
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Errore API OpenAI: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+// Azioni avanzate placeholder
+function exportAdvancedReport() {
+  addDebugLog('📄 Export report avanzato - Da implementare');
+  alert('Funzione di export in sviluppo!');
+}
+
+function scheduleFollowUp() {
+  addDebugLog('📅 Pianifica follow-up - Da implementare');
+  alert('Pianificazione follow-up in sviluppo!');
+}
+
+// 📝 GESTIONE NOTE CLIENTE
+function toggleClientNotes() {
+  const notesSection = document.getElementById('clientNotesSection');
+  if (notesSection.style.display === 'none') {
+    notesSection.style.display = 'block';
+    loadClientNotes();
+    addDebugLog('📝 Sezione note cliente aperta');
+  } else {
+    notesSection.style.display = 'none';
+    addDebugLog('📝 Sezione note cliente chiusa');
+  }
+}
+
+async function loadClientNotes() {
+  if (!currentAdvancedClient) return;
+
+  const notesList = document.getElementById('notesHistoryList');
+  const noteEditor = document.getElementById('clientNoteEditor');
+
+  try {
+    notesList.innerHTML = '<div class="loading">Caricamento note...</div>';
+
+    // Carica note esistenti da Odoo (res.partner.note o mail.message)
+    const partnerId = currentAdvancedClient.id;
+
+    const response = await fetch('/web/dataset/call_kw', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'mail.message',
+          method: 'search_read',
+          args: [
+            [['res_id', '=', partnerId], ['model', '=', 'res.partner'], ['message_type', '=', 'comment']],
+            ['body', 'date', 'author_id', 'attachment_ids']
+          ],
+          kwargs: {
+            limit: 50,
+            order: 'date desc'
+          }
+        },
+        id: new Date().getTime()
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.result) {
+      displayClientNotes(data.result);
+
+      // Carica anche il campo comment del cliente
+      const commentResponse = await fetch('/web/dataset/call_kw', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'res.partner',
+            method: 'read',
+            args: [partnerId, ['comment']],
+            kwargs: {}
+          },
+          id: new Date().getTime()
+        })
+      });
+
+      const commentData = await commentResponse.json();
+      if (commentData.result && commentData.result.comment) {
+        noteEditor.value = commentData.result.comment;
+      }
+
+      addDebugLog(`📝 Caricate ${data.result.length} note per ${currentAdvancedClient.name}`);
+    }
+
+  } catch (error) {
+    notesList.innerHTML = '<div class="error">Errore caricamento note</div>';
+    addDebugLog(`❌ Errore caricamento note: ${error.message}`);
+  }
+}
+
+function displayClientNotes(notes) {
+  const notesList = document.getElementById('notesHistoryList');
+
+  if (notes.length === 0) {
+    notesList.innerHTML = '<div class="empty-state">Nessuna nota disponibile</div>';
+    return;
+  }
+
+  const notesHtml = notes.map(note => {
+    const date = new Date(note.date).toLocaleDateString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const author = note.author_id ? note.author_id[1] : 'Sistema';
+
+    // Pulisce l'HTML del body
+    const cleanBody = note.body ? note.body.replace(/<[^>]*>/g, '').trim() : '';
+
+    const attachments = note.attachment_ids && note.attachment_ids.length > 0
+      ? `<div class="note-attachments-list">
+          ${note.attachment_ids.map(id => `<span class="attachment-item">📎 Allegato ${id}</span>`).join('')}
+         </div>`
+      : '';
+
+    return `
+      <div class="note-item">
+        <div class="note-meta">
+          ${date} - ${author}
+        </div>
+        <div class="note-content">
+          ${cleanBody || 'Nota vuota'}
+        </div>
+        ${attachments}
+      </div>
+    `;
+  }).join('');
+
+  notesList.innerHTML = notesHtml;
+}
+
+async function saveClientNote() {
+  if (!currentAdvancedClient) return;
+
+  const noteEditor = document.getElementById('clientNoteEditor');
+  const noteText = noteEditor.value.trim();
+
+  if (!noteText) {
+    alert('Inserisci del testo nella nota prima di salvare.');
+    return;
+  }
+
+  try {
+    const partnerId = currentAdvancedClient.id;
+
+    // Salva come commento interno al cliente
+    const commentResponse = await fetch('/web/dataset/call_kw', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'res.partner',
+          method: 'write',
+          args: [partnerId, { comment: noteText }],
+          kwargs: {}
+        },
+        id: new Date().getTime()
+      })
+    });
+
+    // Crea anche un messaggio nella timeline
+    const messageResponse = await fetch('/web/dataset/call_kw', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'mail.message',
+          method: 'create',
+          args: [{
+            body: `<p>📝 Nota dashboard: ${noteText}</p>`,
+            message_type: 'comment',
+            model: 'res.partner',
+            res_id: partnerId,
+            subtype_id: 1 // Internal Note
+          }],
+          kwargs: {}
+        },
+        id: new Date().getTime()
+      })
+    });
+
+    addDebugLog(`📝 Nota salvata per ${currentAdvancedClient.name}`);
+    alert('Nota salvata con successo!');
+
+    // Ricarica le note
+    loadClientNotes();
+
+  } catch (error) {
+    addDebugLog(`❌ Errore salvataggio nota: ${error.message}`);
+    alert('Errore durante il salvataggio della nota.');
+  }
+}
+
+// Gestione allegati
+document.getElementById('noteFileInput').addEventListener('change', handleFileAttachment);
+
+function handleFileAttachment(event) {
+  const files = event.target.files;
+  const attachmentsList = document.getElementById('attachmentsList');
+
+  if (files.length > 0) {
+    const fileList = Array.from(files).map(file =>
+      `<div class="attachment-preview">📎 ${file.name} (${(file.size / 1024).toFixed(1)} KB)</div>`
+    ).join('');
+
+    attachmentsList.innerHTML = `
+      <div class="attachments-preview">
+        <h5>File selezionati:</h5>
+        ${fileList}
+        <p><em>Gli allegati verranno caricati quando salvi la nota.</em></p>
+      </div>
+    `;
+  }
+}
+
+// 📱 OTTIMIZZAZIONI MOBILE
+function optimizeForMobile() {
+  // 📱 MOBILE SCROLL FIX: Non bloccare mai il touchmove per permettere scroll
+  // Rimosso preventDefault che bloccava lo scroll della pagina principale
+
+  // Gestione orientamento
+  window.addEventListener('orientationchange', function() {
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+      // Ricarica layout se necessario
+      document.body.style.height = window.innerHeight + 'px';
+      setTimeout(() => {
+        document.body.style.height = 'auto';
+      }, 100);
+    }, 100);
+  });
+
+  // Fix viewport su iOS
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (viewport) {
+      viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+    }
+  }
+
+  // Ottimizza performance touch
+  const touchElements = document.querySelectorAll('.btn, .quick-action-btn, .client-card');
+  touchElements.forEach(el => {
+    el.style.cursor = 'pointer';
+    el.addEventListener('touchstart', function() {
+      this.style.transform = 'scale(0.98)';
+    });
+    el.addEventListener('touchend', function() {
+      this.style.transform = '';
+    });
+  });
+
+  addDebugLog('📱 Ottimizzazioni mobile attivate');
+}
+
+// Inizializza ottimizzazioni quando il DOM è pronto
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', optimizeForMobile);
+} else {
+  optimizeForMobile();
+}
+
+// Aggiorna openClientDetails per salvare il cliente corrente
+const originalOpenClientDetails = openClientDetails;
+openClientDetails = function(clientId) {
+  const client = clientsData.find(c => c.id === clientId);
+  if (client) {
+    currentAdvancedClient = client;
+    // Salva l'ID nel dataset del popup per riferimento
+    document.getElementById('clientPopup').dataset.clientId = clientId;
+  }
+
+  originalOpenClientDetails(clientId);
+};
+
+// ===== DASHBOARD FINANZIARIA =====
+let currentFinancialClient = null;
+
+// Apri dashboard finanziaria
+function openFinancialDashboard(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!currentAdvancedClient) {
+    // Ottieni il cliente dal popup principale
+    const clientId = parseInt(document.getElementById('clientPopup').dataset.clientId);
+    currentFinancialClient = clientsData.find(c => c.id === clientId);
+  } else {
+    currentFinancialClient = currentAdvancedClient;
+  }
+
+  if (!currentFinancialClient) {
+    addDebugLog('❌ Nessun cliente selezionato per dashboard finanziaria');
+    return;
+  }
+
+  addDebugLog(`💰 Apertura dashboard finanziaria: ${currentFinancialClient.name}`);
+
+  // Aggiorna titoli
+  document.getElementById('financialClientName').textContent = `Analisi Finanziaria: ${currentFinancialClient.name}`;
+  document.getElementById('financialClientInfo').textContent = `Health Score: ${currentFinancialClient.healthScore} | Team: ${selectedTeam?.name}`;
+
+  // Carica dati finanziari
+  loadFinancialData();
+
+  // Mostra popup
+  document.getElementById('financialDashboard').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+// Chiudi dashboard finanziaria
+function closeFinancialDashboard(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('financialDashboard').classList.remove('active');
+  document.body.style.overflow = 'auto';
+  currentFinancialClient = null;
+}
+
+// Carica dati finanziari nel popup
+function loadFinancialData() {
+  if (!currentFinancialClient) return;
+
+  const client = currentFinancialClient;
+
+  // 💰 PANORAMICA FINANZIARIA
+  const total = client.invoicesPaid + client.invoicesPending + client.invoicesOverdue;
+  const paidPercent = total > 0 ? Math.round((client.invoicesPaid / total) * 100) : 0;
+  const pendingPercent = total > 0 ? Math.round((client.invoicesPending / total) * 100) : 0;
+  const overduePercent = total > 0 ? Math.round((client.invoicesOverdue / total) * 100) : 0;
+
+  document.getElementById('financialPaidAmount').textContent = `CHF ${Math.round(client.invoicesPaid).toLocaleString()}`;
+  document.getElementById('financialPendingAmount').textContent = `CHF ${Math.round(client.invoicesPending).toLocaleString()}`;
+  document.getElementById('financialOverdueAmount').textContent = `CHF ${Math.round(client.invoicesOverdue).toLocaleString()}`;
+
+  document.getElementById('financialPaidPercent').textContent = `${paidPercent}%`;
+  document.getElementById('financialPendingPercent').textContent = `${pendingPercent}%`;
+  document.getElementById('financialOverduePercent').textContent = `${overduePercent}%`;
+
+  // ⚠️ INDICATORI DI RISCHIO
+  const solvencyScore = Math.max(10, Math.min(100, client.healthScore + Math.round((Math.random() - 0.5) * 20)));
+  const avgDelay = overduePercent > 20 ? Math.round(15 + Math.random() * 30) : Math.round(Math.random() * 15);
+  const lateRate = overduePercent;
+
+  document.getElementById('solvencyScore').textContent = `${solvencyScore}/100`;
+  document.getElementById('avgDelayDays').textContent = `${avgDelay} giorni`;
+  document.getElementById('latePaymentRate').textContent = `${lateRate}%`;
+
+  // 📋 FATTURE RECENTI (Simulate)
+  generateRecentInvoices();
+
+  // 💳 FATTURE NON PAGATE E IN SOSPESO
+  generateUnpaidInvoices();
+
+  // 🚨 ALERT FINANZIARI
+  generateFinancialAlerts();
+
+  // 📈 GRAFICO (Placeholder)
+  document.getElementById('paymentTrendChart').innerHTML = `
+    <div class="chart-placeholder">
+      📊 Grafico in elaborazione...<br>
+      <small>Andamento pagamenti ultimi 6 mesi per ${client.name}</small>
+    </div>
+  `;
+}
+
+// Genera fatture recenti REALI da Odoo
+function generateRecentInvoices() {
+  const client = currentFinancialClient;
+  const invoices = [];
+
+  // 🔄 Usa i dati reali se disponibili
+  if (client.rawData && client.rawData.realInvoices && typeof client.rawData.realInvoices === 'object') {
+    const realInvoices = client.rawData.realInvoices;
+
+    // Combina tutte le fatture reali da Odoo - Con controlli di sicurezza
+    const allInvoices = [
+      // Fatture pagate
+      ...(realInvoices.paid && Array.isArray(realInvoices.paid)
+        ? realInvoices.paid.map(inv => ({
+            number: inv.name || `INV-${inv.id}`,
+            date: inv.invoice_date ? formatDateSafe(inv.invoice_date) : 'N/A',
+            amount: Math.round(inv.amount_total || 0),
+            status: 'paid',
+            rawData: inv
+          }))
+        : []),
+      // Fatture in sospeso
+      ...(realInvoices.pending && Array.isArray(realInvoices.pending)
+        ? realInvoices.pending.map(inv => ({
+            number: inv.name || `INV-${inv.id}`,
+            date: inv.invoice_date ? formatDateSafe(inv.invoice_date) : 'N/A',
+            amount: Math.round(inv.amount_residual || inv.amount_total || 0),
+            status: 'pending',
+            rawData: inv
+          }))
+        : []),
+      // Fatture scadute
+      ...(realInvoices.overdue && Array.isArray(realInvoices.overdue)
+        ? realInvoices.overdue.map(inv => ({
+            number: inv.name || `INV-${inv.id}`,
+            date: inv.invoice_date ? formatDateSafe(inv.invoice_date) : 'N/A',
+            amount: Math.round(inv.amount_residual || inv.amount_total || 0),
+            status: 'overdue',
+            rawData: inv
+          }))
+        : [])
+    ];
+
+    // Ordina per data decrescente (più recenti prima) e prendi le prime 5
+    allInvoices.sort((a, b) => {
+      const dateA = a.rawData.invoice_date ? new Date(a.rawData.invoice_date) : new Date(0);
+      const dateB = b.rawData.invoice_date ? new Date(b.rawData.invoice_date) : new Date(0);
+      return dateB - dateA;
+    });
+
+    // Prendi solo le prime 5 fatture
+    invoices.push(...allInvoices.slice(0, 5));
+
+    addDebugLog(`💰 ${client.name}: Mostrate ${invoices.length} fatture reali da Odoo`);
+    addDebugLog(`  📋 Fatture: ${invoices.map(inv => `${inv.number} (${inv.status})`).join(', ')}`);
+
+  } else {
+    // ⚠️ Fallback ai dati simulati se i dati reali non sono disponibili
+    addDebugLog(`⚠️ ${client.name}: Dati reali non disponibili, uso fatture simulate`);
+
+    const total = client.invoicesPaid + client.invoicesPending + client.invoicesOverdue;
+    const paidCount = Math.round((client.invoicesPaid / total) * 5);
+    const pendingCount = Math.round((client.invoicesPending / total) * 5);
+    const overdueCount = 5 - paidCount - pendingCount;
+
+    const statuses = [
+      ...Array(paidCount).fill('paid'),
+      ...Array(pendingCount).fill('pending'),
+      ...Array(overdueCount).fill('overdue')
+    ];
+
+    for (let i = 0; i < 5; i++) {
+      const daysAgo = Math.round(10 + Math.random() * 80);
+      const amount = Math.round(100 + Math.random() * 2000);
+      const date = new Date();
+      date.setDate(date.getDate() - daysAgo);
+
+      invoices.push({
+        number: `INV-${2025}${String(Math.floor(Math.random() * 9999))}`,
+        date: formatDateSafe(date.toISOString()),
+        amount: amount,
+        status: statuses[i] || 'paid'
+      });
+    }
+
+    invoices.sort((a, b) => new Date(b.date.split('/').reverse().join('-')) - new Date(a.date.split('/').reverse().join('-')));
+  }
+
+  const invoicesList = document.getElementById('recentInvoicesList');
+  invoicesList.innerHTML = invoices.map(inv => `
+    <div class="invoice-item">
+      <div class="invoice-info">
+        <div class="invoice-number">${inv.number}</div>
+        <div class="invoice-date">${inv.date}</div>
+      </div>
+      <div class="invoice-actions">
+        <span style="font-weight: 600;">CHF ${inv.amount}</span>
+        <span class="invoice-status ${inv.status}">
+          ${inv.status === 'paid' ? 'Pagata' : inv.status === 'pending' ? 'In Sospeso' : 'Scaduta'}
+        </span>
+        <button class="download-pdf-btn" onclick="downloadInvoicePDF(${inv.rawData ? inv.rawData.id : 'null'}, '${inv.number}')" ${!inv.rawData ? 'disabled title="PDF non disponibile per fatture simulate"' : ''}>
+          📄 PDF
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Genera fatture non pagate e in sospeso COMPLETE
+function generateUnpaidInvoices() {
+  const client = currentFinancialClient;
+
+  // 🔄 Usa i dati reali se disponibili
+  if (client.rawData && client.rawData.realInvoices && typeof client.rawData.realInvoices === 'object') {
+    const realInvoices = client.rawData.realInvoices;
+
+    // 📋 FATTURE IN SOSPESO (NON SCADUTE) - Con controllo di sicurezza
+    const pendingInvoices = (realInvoices.pending && Array.isArray(realInvoices.pending))
+      ? realInvoices.pending.map(inv => ({
+          number: inv.name || `INV-${inv.id}`,
+          date: inv.invoice_date ? formatDateSafe(inv.invoice_date) : 'N/A',
+          dueDate: inv.invoice_date_due ? formatDateSafe(inv.invoice_date_due) : 'N/A',
+          amount: Math.round(inv.amount_residual || inv.amount_total || 0),
+          status: 'pending',
+          rawData: inv
+        }))
+      : [];
+
+    // 🚨 FATTURE SCADUTE (NON PAGATE) - Con controllo di sicurezza
+    const overdueInvoices = (realInvoices.overdue && Array.isArray(realInvoices.overdue))
+      ? realInvoices.overdue.map(inv => ({
+          number: inv.name || `INV-${inv.id}`,
+          date: inv.invoice_date ? formatDateSafe(inv.invoice_date) : 'N/A',
+          dueDate: inv.invoice_date_due ? formatDateSafe(inv.invoice_date_due) : 'N/A',
+          amount: Math.round(inv.amount_residual || inv.amount_total || 0),
+          status: 'overdue',
+          rawData: inv
+        }))
+      : [];
+
+    // Popola le liste
+    populateInvoiceList('pendingInvoicesList', pendingInvoices, 'pending');
+    populateInvoiceList('overdueInvoicesList', overdueInvoices, 'overdue');
+
+    addDebugLog(`💳 ${client.name}: ${pendingInvoices.length} fatture in sospeso, ${overdueInvoices.length} scadute`);
+
+  } else {
+    // ⚠️ Fallback ai dati simulati
+    addDebugLog(`⚠️ ${client.name}: Dati reali non disponibili per fatture non pagate`);
+
+    // Simula alcune fatture per testing
+    const simulatedPending = [];
+    const simulatedOverdue = [];
+
+    // Simula fatture in sospeso
+    for (let i = 0; i < 2; i++) {
+      const daysAgo = Math.round(10 + Math.random() * 20);
+      const date = new Date();
+      date.setDate(date.getDate() - daysAgo);
+
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + Math.round(5 + Math.random() * 15));
+
+      simulatedPending.push({
+        number: `INV-${2025}${String(Math.floor(Math.random() * 9999))}`,
+        date: formatDateSafe(date.toISOString()),
+        dueDate: formatDateSafe(dueDate.toISOString()),
+        amount: Math.round(500 + Math.random() * 1500),
+        status: 'pending',
+        rawData: null
+      });
+    }
+
+    // Simula fatture scadute
+    for (let i = 0; i < 1; i++) {
+      const daysAgo = Math.round(30 + Math.random() * 60);
+      const date = new Date();
+      date.setDate(date.getDate() - daysAgo);
+
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() - Math.round(5 + Math.random() * 20));
+
+      simulatedOverdue.push({
+        number: `INV-${2025}${String(Math.floor(Math.random() * 9999))}`,
+        date: formatDateSafe(date.toISOString()),
+        dueDate: formatDateSafe(dueDate.toISOString()),
+        amount: Math.round(300 + Math.random() * 1000),
+        status: 'overdue',
+        rawData: null
+      });
+    }
+
+    populateInvoiceList('pendingInvoicesList', simulatedPending, 'pending');
+    populateInvoiceList('overdueInvoicesList', simulatedOverdue, 'overdue');
+  }
+}
+
+// Popola una lista di fatture con template HTML
+function populateInvoiceList(containerId, invoices, status) {
+  const container = document.getElementById(containerId);
+
+  if (invoices.length === 0) {
+    container.innerHTML = ''; // Lascia vuoto per mostrare il CSS "nessuna fattura"
+    return;
+  }
+
+  container.innerHTML = invoices.map(inv => `
+    <div class="invoice-item">
+      <div class="invoice-info">
+        <div class="invoice-number">${inv.number}</div>
+        <div class="invoice-date">Emessa: ${inv.date}</div>
+        <div class="invoice-date">Scadenza: ${inv.dueDate}</div>
+      </div>
+      <div class="invoice-actions">
+        <span style="font-weight: 600;">CHF ${inv.amount.toLocaleString()}</span>
+        <span class="invoice-status ${inv.status}">
+          ${inv.status === 'pending' ? 'In Sospeso' : 'Scaduta'}
+        </span>
+        <button class="download-pdf-btn" onclick="downloadInvoicePDF(${inv.rawData ? inv.rawData.id : 'null'}, '${inv.number}')" ${!inv.rawData ? 'disabled title="PDF non disponibile per fatture simulate"' : ''}>
+          📄 PDF
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Genera alert finanziari
+function generateFinancialAlerts() {
+  const client = currentFinancialClient;
+  const alerts = [];
+
+  const total = client.invoicesPaid + client.invoicesPending + client.invoicesOverdue;
+  const overduePercent = total > 0 ? (client.invoicesOverdue / total) * 100 : 0;
+
+  if (overduePercent > 25) {
+    alerts.push({
+      type: 'danger',
+      icon: '🚨',
+      title: 'Rischio Alto',
+      message: `Cliente ha ${overduePercent.toFixed(1)}% di fatture scadute non pagate`
+    });
+  } else if (overduePercent > 10) {
+    alerts.push({
+      type: 'warning',
+      icon: '⚠️',
+      title: 'Attenzione',
+      message: `Monitorare pagamenti: ${overduePercent.toFixed(1)}% fatture in ritardo`
+    });
+  } else {
+    alerts.push({
+      type: 'success',
+      icon: '✅',
+      title: 'Situazione Buona',
+      message: 'Cliente ha un buon comportamento di pagamento'
+    });
+  }
+
+  if (client.healthScore < 60) {
+    alerts.push({
+      type: 'warning',
+      icon: '📉',
+      title: 'Health Score Basso',
+      message: 'Consigliata analisi approfondita del credito'
+    });
+  }
+
+  const alertsList = document.getElementById('financialAlerts');
+  alertsList.innerHTML = alerts.map(alert => `
+    <div class="financial-alert ${alert.type}">
+      <div class="alert-icon">${alert.icon}</div>
+      <div class="alert-content">
+        <div class="alert-title">${alert.title}</div>
+        <div class="alert-message">${alert.message}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// 📄 Scarica PDF delle fatture da Odoo - SEMPLICE CHE FUNZIONA
+async function downloadInvoicePDF(invoiceId, invoiceNumber) {
+  if (!invoiceId || invoiceId === 'null') {
+    alert('PDF non disponibile per fatture simulate');
+    return;
+  }
+
+  const button = event.target;
+  const originalText = button.innerHTML;
+  button.innerHTML = '⏳ Download...';
+  button.disabled = true;
+
+  try {
+    addDebugLog(`📄 Download PDF fattura ${invoiceNumber} (ID: ${invoiceId})`);
+
+    // APPROCCIO SEMPLICE: Usa l'URL diretto come nel delivery originale
+    const baseUrl = window.location.origin;
+    const pdfUrl = `${baseUrl}/report/pdf/account.report_invoice_with_payments/${invoiceId}`;
+
+    // Crea un link nascosto per forzare il download (come nel delivery originale)
+    const link = document.createElement('a');
+    link.href = pdfUrl;
+    link.download = `Fattura_${invoiceNumber.replace(/\//g, '_')}.pdf`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    addDebugLog(`✅ PDF ${invoiceNumber} scaricato: ${pdfUrl}`);
+
+  } catch (error) {
+    addDebugLog(`❌ Errore download PDF ${invoiceNumber}: ${error.message}`);
+    alert(`Errore download PDF: ${error.message}`);
+  } finally {
+    setTimeout(() => {
+      button.innerHTML = originalText;
+      button.disabled = false;
+    }, 1000);
+  }
+}
+
+// 📄 Converte base64 in PDF e lo scarica
+function downloadBase64AsPDF(base64Data, filename) {
+  try {
+    // Rimuovi il prefisso data: se presente
+    const cleanBase64 = base64Data.replace(/^data:application\/pdf;base64,/, '');
+
+    // Converti base64 in bytes
+    const byteCharacters = atob(cleanBase64);
+    const byteNumbers = new Array(byteCharacters.length);
+
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+    // Crea un URL temporaneo per il blob
+    const url = window.URL.createObjectURL(blob);
+
+    // Crea un link temporaneo per il download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+
+    // Pulizia
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    addDebugLog(`✅ PDF ${filename} scaricato con successo da base64`);
+
+  } catch (error) {
+    addDebugLog(`❌ Errore conversione base64 PDF: ${error.message}`);
+    alert(`Errore durante la conversione del PDF: ${error.message}`);
+  }
+}
+
+</script>

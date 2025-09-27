@@ -1,0 +1,1945 @@
+<meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Sistemazione Residui - LAPA</title>
+  
+  <style>
+    :root {
+      --bg: #0a0f1c;
+      --card: #111827;
+      --card-hover: #1f2937;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --border: #374151;
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --info: #3b82f6;
+      --success: #22c55e;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, var(--bg) 0%, #1a1f2e 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      z-index: 1000;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    .header-title {
+      flex: 1;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .connection-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .connection-status.connected {
+      background: rgba(34, 197, 94, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .connection-status.disconnected {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .main-container {
+      margin-top: 60px;
+      padding: 15px;
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .info-bar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-label {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .info-value {
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 100px;
+    }
+
+    @media (max-width: 768px) {
+      .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+      }
+    }
+
+    .product-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .product-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      border-color: var(--accent);
+    }
+
+    .product-card.selected {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+    }
+
+    .product-image {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 8px;
+      background: var(--border);
+      margin-bottom: 8px;
+    }
+
+    .product-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      min-height: 32px;
+    }
+
+    .product-code {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .product-qty {
+      font-size: 14px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .product-lot {
+      font-size: 11px;
+      color: var(--warning);
+      margin-top: 2px;
+    }
+
+    .bottom-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding: 15px;
+      display: none;
+      z-index: 999;
+      box-shadow: 0 -5px 20px rgba(0,0,0,0.3);
+    }
+
+    .bottom-panel.active {
+      display: block;
+    }
+
+    .selected-product {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .selected-product-image {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 8px;
+      background: var(--border);
+    }
+
+    .selected-product-info {
+      flex: 1;
+    }
+
+    .selected-product-name {
+      font-weight: 600;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .selected-product-details {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex: 1;
+    }
+
+    .input-label {
+      color: var(--muted);
+      font-size: 14px;
+      min-width: 60px;
+    }
+
+    .input-field {
+      flex: 1;
+      padding: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 16px;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .btn {
+      padding: 10px 20px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+      background: var(--accent-hover);
+      transform: scale(1.02);
+    }
+
+    .btn:disabled {
+      background: var(--muted);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn.secondary {
+      background: var(--border);
+    }
+
+    .btn.secondary:hover {
+      background: var(--card-hover);
+    }
+
+    .notification {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      padding: 16px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      animation: slideIn 0.3s ease;
+      z-index: 2000;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .notification.success {
+      background: var(--success);
+      color: white;
+    }
+
+    .notification.error {
+      background: var(--danger);
+      color: white;
+    }
+
+    .notification.warning {
+      background: var(--warning);
+      color: white;
+    }
+
+    .notification.info {
+      background: var(--info);
+      color: white;
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid var(--border);
+      border-top: 4px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    .empty-state-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .empty-state-description {
+      font-size: 16px;
+    }
+
+    .scanner-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.9);
+      z-index: 4000;
+    }
+
+    .scanner-modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scanner-content {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      width: 90%;
+      max-width: 500px;
+    }
+
+    .scanner-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .scanner-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .close-scanner {
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    #reader {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .manual-input {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .stats-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+    }
+
+    .stats-title {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+  </style>
+
+
+
+<div class="header">
+  <div class="header-title">
+    <span>📦 Sistemazione Residui</span>
+    <span style="color: var(--muted); font-size: 14px; font-weight: normal;">
+      <span id="driverInfo" style="display: none; color: var(--accent);"></span>
+      <span> | Resi dal furgone → Scaffali</span>
+    </span>
+  </div>
+  <button class="btn" style="padding: 8px 16px; font-size: 14px; margin-right: 10px;" onclick="openManualSearch()">
+    🔍 Ricerca Manuale
+  </button>
+  <div id="connectionStatus" class="connection-status disconnected">
+    <span class="status-dot"></span>
+    <span id="statusText">Non connesso</span>
+  </div>
+</div>
+
+<div class="main-container">
+  
+  <div class="info-bar">
+    <div class="info-item">
+      <span class="info-label">Origine:</span>
+      <span class="info-value">🚐 Resi dal furgone</span>
+    </div>
+    <div class="info-item" id="backordersInfo" style="display: none;">
+      <span class="info-label">Tuoi ordini residui:</span>
+      <span class="info-value" id="backordersCount">0</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Prodotti disponibili:</span>
+      <span class="info-value" id="totalProducts">0</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Sistemati oggi:</span>
+      <span class="info-value" id="productsCompleted">0</span>
+    </div>
+  </div>
+
+  
+  <div class="stats-card" id="statsCard" style="display: none;">
+    <div class="stats-title">📊 Riepilogo Giornaliero</div>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-label">Trasferimenti</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="statQty">0</div>
+        <div class="stat-label">Pezzi Totali</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="statLocations">0</div>
+        <div class="stat-label">Ubicazioni</div>
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="productsGrid" class="products-grid">
+    
+  </div>
+
+  
+  <div id="emptyState" class="empty-state" style="display: none;">
+    <div class="empty-state-icon">📦</div>
+    <div class="empty-state-title">Nessun prodotto da sistemare</div>
+    <div class="empty-state-description" id="emptyDescription">
+      Non ci sono prodotti nell'ubicazione "Resi dal furgone"
+    </div>
+  </div>
+
+  
+  <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="loading-spinner"></div>
+  </div>
+</div>
+
+
+<div id="bottomPanel" class="bottom-panel">
+  <div class="selected-product">
+    <img id="selectedImage" class="selected-product-image" src="" loading="lazy">
+    <div class="selected-product-info">
+      <div id="selectedName" class="selected-product-name"></div>
+      <div id="selectedDetails" class="selected-product-details"></div>
+    </div>
+  </div>
+  
+  <div class="action-row" style="margin-bottom: 15px;">
+    <div class="input-group">
+      <span class="input-label">Quantità:</span>
+      <input type="number" id="quantityInput" class="input-field" min="0.01" step="0.01" placeholder="0">
+      <span id="uomLabel" style="color: var(--muted);">PZ</span>
+    </div>
+  </div>
+  
+  <div class="action-row" style="margin-bottom: 15px;">
+    <div class="input-group">
+      <span class="input-label">Scaffale:</span>
+      <input type="text" id="locationInput" class="input-field" placeholder="Scansiona o inserisci ubicazione">
+      <button class="btn" onclick="openScanner()">📷</button>
+    </div>
+  </div>
+  
+  <div class="action-row">
+    <button class="btn secondary" onclick="cancelSelection()">Annulla</button>
+    <button id="transferBtn" class="btn" onclick="executeTransfer()" style="flex: 1;">
+      Trasferisci su scaffale
+    </button>
+  </div>
+</div>
+
+
+<div id="scannerModal" class="scanner-modal">
+  <div class="scanner-content">
+    <div class="scanner-header">
+      <span class="scanner-title">📷 Scansiona Scaffale</span>
+      <button class="close-scanner" onclick="closeScanner()">✕</button>
+    </div>
+    <div id="reader"></div>
+    <div class="manual-input">
+      <input type="text" id="manualCode" class="input-field" placeholder="Oppure inserisci codice">
+      <button class="btn" onclick="useManualCode()">OK</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="searchModal" class="scanner-modal">
+  <div class="scanner-content" style="max-width: 600px;">
+    <div class="scanner-header">
+      <span class="scanner-title">🔍 Ricerca Prodotti</span>
+      <button class="close-scanner" onclick="closeManualSearch()">✕</button>
+    </div>
+    <div style="padding: 20px;">
+      <input type="text" id="searchInput" class="input-field" placeholder="Cerca per nome, codice o barcode (min. 3 caratteri)" style="width: 100%; margin-bottom: 15px;">
+      <div id="searchResults" style="max-height: 400px; overflow-y: auto;">
+        <div style="text-align: center; color: var(--muted); padding: 20px;">
+          Inserisci almeno 3 caratteri per iniziare la ricerca
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div id="fireworksModal" class="scanner-modal" style="background: rgba(0,0,0,0.9);">
+  <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+    <canvas id="fireworksCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+    <div style="z-index: 10; text-align: center; background: rgba(0,0,0,0.7); padding: 30px; border-radius: 20px;">
+      <h1 style="color: #10b981; font-size: 48px; margin-bottom: 20px;">🎉 Complimenti!</h1>
+      <p style="color: white; font-size: 24px; margin-bottom: 10px;">Hai sistemato tutti i prodotti!</p>
+      <p style="color: #10b981; font-size: 20px; margin-bottom: 30px;">Ottimo lavoro, <span id="fireworksName"></span>!</p>
+      <button class="btn" style="font-size: 18px; padding: 15px 30px;" onclick="closeFireworks()">
+        Buona giornata! 👋
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+// Configurazione
+const CONFIG = {
+  resiLocation: {
+    id: 11,  // ID dell'ubicazione "Resi dal furgone" in Odoo
+    name: 'WH/Stock/Resi dal furgone'
+  },
+  refreshInterval: 30000, // Ricarica prodotti ogni 30 secondi
+  defaultUOM: 'PZ'
+};
+
+// Stato applicazione
+let appState = {
+  products: [],
+  selectedProduct: null,
+  scanner: null,
+  scannerActive: false,
+  todayTransfers: [],
+  userId: null,
+  employeeId: null,
+  employeeName: null,
+  driverPickings: []  // Picking dell'autista con backorder
+};
+
+// Funzioni Odoo RPC
+function csrf() {
+  try {
+    if (window.odoo && window.odoo.csrf_token) {
+      return window.odoo.csrf_token;
+    }
+    if (window.parent && window.parent.odoo && window.parent.odoo.csrf_token) {
+      return window.parent.odoo.csrf_token;
+    }
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) return meta.content;
+    
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'csrf_token') return decodeURIComponent(value);
+    }
+  } catch (e) {
+    console.error('CSRF token error:', e);
+  }
+  return null;
+}
+
+async function rpc(model, method, args) {
+  const token = csrf();
+  if (!token) {
+    throw new Error('CSRF token non trovato');
+  }
+
+  const response = await fetch('/web/dataset/call_kw', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': token
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'call',
+      params: {
+        model: model,
+        method: method,
+        args: args,
+        kwargs: {}
+      },
+      id: Math.floor(Math.random() * 1000000000)
+    })
+  });
+
+  const data = await response.json();
+  if (data.error) {
+    throw new Error(data.error.data?.message || data.error.message || 'Errore RPC');
+  }
+  return data.result;
+}
+
+async function searchRead(model, domain, fields, limit = false) {
+  const args = {
+    model: model,
+    domain: domain,
+    fields: fields
+  };
+  if (limit) args.limit = limit;
+  
+  return await rpc(model, 'search_read', [domain, fields]);
+}
+
+// Ottieni info utente corrente
+async function getCurrentUser() {
+  try {
+    // Ottieni sessione
+    const response = await fetch('/web/session/get_session_info', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrf()
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {},
+        id: Math.floor(Math.random() * 1000000000)
+      })
+    });
+    
+    const data = await response.json();
+    if (data && data.result) {
+      appState.userId = data.result.uid;
+      
+      // Ottieni employee associato all'utente
+      const employees = await searchRead(
+        'hr.employee',
+        [['user_id', '=', appState.userId]],
+        ['id', 'name'],
+        1
+      );
+      
+      if (employees && employees.length > 0) {
+        appState.employeeId = employees[0].id;
+        appState.employeeName = employees[0].name;
+        console.log('Autista:', appState.employeeName, '(ID:', appState.employeeId, ')');
+        
+        // Aggiorna UI con nome autista
+        const driverInfo = document.getElementById('driverInfo');
+        if (driverInfo) {
+          driverInfo.textContent = appState.employeeName;
+          driverInfo.style.display = 'inline';
+        }
+        
+        return true;
+      } else {
+        console.log('Nessun employee associato all\'utente');
+        return false;
+      }
+    }
+  } catch (error) {
+    console.error('Errore ottenimento utente:', error);
+    return false;
+  }
+}
+
+// Carica ordini residui dell'autista
+async function loadDriverBackorders() {
+  if (!appState.employeeId) {
+    console.log('Nessun autista, mostro tutti i prodotti');
+    return {};
+  }
+  
+  try {
+    // IMPORTANTE: Solo backorder con stato READY (pronti da consegnare)
+    const pickings = await searchRead(
+      'stock.picking',
+      [
+        ['driver_id', '=', appState.employeeId],
+        ['picking_type_code', '=', 'outgoing'],
+        ['backorder_id', '!=', false],  // È un backorder
+        ['state', '=', 'assigned']  // SOLO stato PRONTO (assigned = ready)
+      ],
+      ['id', 'name', 'backorder_id', 'move_ids', 'move_line_ids', 'state'],
+      false
+    );
+    
+    console.log(`Trovati ${pickings.length} ordini residui per ${appState.employeeName}`);
+    
+    // Debug: mostra i nomi dei picking
+    if (pickings.length > 0) {
+      console.log('Ordini residui trovati:', pickings.map(p => ({
+        name: p.name,
+        state: p.state,
+        backorder_id: p.backorder_id
+      })));
+    }
+    
+    appState.driverPickings = pickings;
+    
+    // Aggiorna UI con numero ordini residui
+    if (pickings.length > 0) {
+      const backordersInfo = document.getElementById('backordersInfo');
+      const backordersCount = document.getElementById('backordersCount');
+      if (backordersInfo && backordersCount) {
+        backordersInfo.style.display = 'flex';
+        backordersCount.textContent = pickings.length;
+      }
+    }
+    
+    // Estrai product_id E QUANTITÀ dai move di questi picking
+    const productQuantities = {};  // {product_id: quantity}
+    
+    for (const picking of pickings) {
+      if (picking.move_ids && picking.move_ids.length > 0) {
+        // Carica i move per ottenere product_id e quantità
+        const moves = await searchRead(
+          'stock.move',
+          [['id', 'in', picking.move_ids]],
+          ['product_id', 'product_uom_qty'],  // Solo campi validi per stock.move
+          false
+        );
+        
+        moves.forEach(move => {
+          if (move.product_id) {
+            const productId = move.product_id[0];
+            const qty = move.product_uom_qty || 0;
+            
+            // Somma le quantità se lo stesso prodotto è in più backorder
+            if (productQuantities[productId]) {
+              productQuantities[productId] += qty;
+            } else {
+              productQuantities[productId] = qty;
+            }
+          }
+        });
+      }
+    }
+    
+    console.log(`Prodotti e quantità nei backorder dell'autista:`, productQuantities);
+    return productQuantities;
+    
+  } catch (error) {
+    console.error('Errore caricamento backorder:', error);
+    return {};
+  }
+}
+
+// Carica prodotti dai resi
+async function loadProducts() {
+  try {
+    showLoading();
+    
+    // Prima ottieni info utente e backorder
+    await getCurrentUser();
+    const driverProductQuantities = await loadDriverBackorders();
+    
+    // Estrai solo gli ID dei prodotti
+    const driverProductIds = Object.keys(driverProductQuantities).map(id => parseInt(id));
+    
+    // Costruisci domain per i quants
+    let domain = [
+      ['location_id', '=', CONFIG.resiLocation.id],
+      ['quantity', '>', 0]
+    ];
+    
+    // Se abbiamo prodotti specifici dell'autista, filtra solo quelli
+    if (driverProductIds.length > 0) {
+      domain.push(['product_id', 'in', driverProductIds]);
+      console.log(`Filtro applicato: mostro solo ${driverProductIds.length} prodotti dei backorder PRONTI dell'autista`);
+      console.log('Domain finale:', domain);
+    } else if (appState.employeeId) {
+      // Se c'è un autista ma non ha backorder pronti, non mostrare nulla
+      console.log('Autista senza backorder pronti - non mostro prodotti');
+      appState.products = [];
+      renderProducts();
+      updateCounters();
+      hideLoading();
+      return;
+    }
+    
+    // Ottieni i quants dall'ubicazione resi
+    const quants = await searchRead(
+      'stock.quant',
+      domain,
+      ['product_id', 'quantity', 'lot_id'],
+      false
+    );
+    
+    console.log(`Trovati ${quants.length} quants nell'ubicazione resi dopo il filtro`);
+    
+    // Raggruppa per prodotto
+    const productMap = new Map();
+    
+    for (const quant of quants) {
+      const productId = quant.product_id[0];
+      
+      if (!productMap.has(productId)) {
+        // Ottieni dettagli prodotto
+        const products = await searchRead(
+          'product.product',
+          [['id', '=', productId]],
+          ['name', 'default_code', 'barcode', 'image_128', 'uom_id'],
+          1
+        );
+        
+        if (products.length > 0) {
+          const product = products[0];
+          productMap.set(productId, {
+            id: productId,
+            name: product.name,
+            code: product.default_code || product.barcode || '',
+            image: product.image_128 ? `data:image/png;base64,${product.image_128}` : null,
+            uom: product.uom_id ? product.uom_id[1] : CONFIG.defaultUOM,
+            uom_id: product.uom_id ? product.uom_id[0] : null,
+            totalQty: 0,
+            maxQtyFromBackorder: driverProductQuantities[productId] || null,  // Quantità massima dal backorder
+            lots: []
+          });
+        }
+      }
+      
+      const productData = productMap.get(productId);
+      if (productData) {
+        // Se abbiamo quantità specifiche dai backorder, usa il minimo tra disponibile e richiesto
+        let qtyToAdd = quant.quantity;
+        if (driverProductQuantities[productId]) {
+          const maxQtyFromBackorder = driverProductQuantities[productId] - productData.totalQty;
+          qtyToAdd = Math.min(quant.quantity, maxQtyFromBackorder);
+          if (qtyToAdd <= 0) continue; // Se abbiamo già raggiunto la quantità del backorder, salta
+        }
+        
+        productData.totalQty += qtyToAdd;
+        
+        if (quant.lot_id) {
+          // Cerca se il lotto esiste già
+          const existingLot = productData.lots.find(l => l.id === quant.lot_id[0]);
+          if (existingLot) {
+            existingLot.qty += quant.quantity;
+          } else {
+            productData.lots.push({
+              id: quant.lot_id[0],
+              name: quant.lot_id[1],
+              qty: quant.quantity
+            });
+          }
+        } else {
+          // Quantità senza lotto
+          const noLot = productData.lots.find(l => !l.id);
+          if (noLot) {
+            noLot.qty += quant.quantity;
+          } else {
+            productData.lots.push({
+              id: null,
+              name: 'Senza lotto',
+              qty: quant.quantity
+            });
+          }
+        }
+      }
+    }
+    
+    appState.products = Array.from(productMap.values());
+    
+    // Debug finale: mostra quali prodotti stiamo per visualizzare
+    if (appState.employeeId && appState.products.length > 0) {
+      console.log(`Prodotti finali da mostrare per ${appState.employeeName}:`, 
+        appState.products.map(p => ({
+          id: p.id,
+          name: p.name,
+          qty: p.totalQty
+        }))
+      );
+    }
+    
+    renderProducts();
+    updateCounters();
+    
+  } catch (error) {
+    console.error('Errore caricamento prodotti:', error);
+    showNotification('Errore nel caricamento dei prodotti', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+// Renderizza griglia prodotti
+function renderProducts() {
+  const grid = document.getElementById('productsGrid');
+  const emptyState = document.getElementById('emptyState');
+  const emptyDescription = document.getElementById('emptyDescription');
+  
+  if (appState.products.length === 0) {
+    grid.style.display = 'none';
+    emptyState.style.display = 'block';
+    
+    // Personalizza messaggio in base al contesto
+    if (appState.employeeName && appState.driverPickings.length === 0) {
+      emptyDescription.textContent = `Nessun ordine residuo trovato per ${appState.employeeName}`;
+    } else if (appState.employeeName && appState.driverPickings.length > 0) {
+      emptyDescription.textContent = `I prodotti dei tuoi ordini residui non sono ancora nell'ubicazione "Resi dal furgone"`;
+    } else {
+      emptyDescription.textContent = 'Non ci sono prodotti nell\'ubicazione "Resi dal furgone"';
+    }
+    
+    return;
+  }
+  
+  grid.style.display = 'grid';
+  emptyState.style.display = 'none';
+  
+  grid.innerHTML = appState.products.map(product => {
+    const lotInfo = product.lots.length > 0 ? 
+      product.lots.map(l => `${l.name}: ${l.qty}`).join(', ') : '';
+    
+    return `
+      <div class="product-card" onclick="selectProduct(${product.id})">
+        ${product.image ? 
+          `<img src="${product.image}" class="product-image" alt="${product.name}">` :
+          `<div class="product-image" style="display:flex;align-items:center;justify-content:center;font-size:48px;">📦</div>`
+        }
+        <div class="product-name">${product.name}</div>
+        ${product.code ? `<div class="product-code">${product.code}</div>` : ''}
+        <div class="product-qty">${product.totalQty} ${product.uom}</div>
+        ${lotInfo ? `<div class="product-lot">${lotInfo}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// Seleziona prodotto
+function selectProduct(productId) {
+  const product = appState.products.find(p => p.id === productId);
+  if (!product) return;
+  
+  appState.selectedProduct = product;
+  
+  // Rimuovi selezione precedente
+  document.querySelectorAll('.product-card').forEach(card => {
+    card.classList.remove('selected');
+  });
+  
+  // Aggiungi selezione - gestisci caso senza evento
+  if (typeof event !== 'undefined' && event && event.currentTarget) {
+    event.currentTarget.classList.add('selected');
+  } else {
+    // Se chiamato programmaticamente, trova la card giusta
+    document.querySelectorAll('.product-card').forEach(card => {
+      if (card.onclick && card.onclick.toString().includes(productId)) {
+        card.classList.add('selected');
+      }
+    });
+  }
+  
+  // Mostra pannello inferiore
+  const panel = document.getElementById('bottomPanel');
+  panel.classList.add('active');
+  
+  // Popola info prodotto
+  document.getElementById('selectedImage').src = product.image || '';
+  document.getElementById('selectedName').textContent = product.name;
+  document.getElementById('selectedDetails').textContent = 
+    `${product.code ? product.code + ' | ' : ''}Disponibili: ${product.totalQty} ${product.uom}`;
+  
+  // Reset campi
+  document.getElementById('quantityInput').value = '';
+  document.getElementById('quantityInput').max = product.totalQty;
+  document.getElementById('uomLabel').textContent = product.uom;
+  document.getElementById('locationInput').value = '';
+  
+  // Focus su quantità
+  setTimeout(() => {
+    document.getElementById('quantityInput').focus();
+  }, 100);
+}
+
+// Annulla selezione
+function cancelSelection() {
+  appState.selectedProduct = null;
+  document.getElementById('bottomPanel').classList.remove('active');
+  document.querySelectorAll('.product-card').forEach(card => {
+    card.classList.remove('selected');
+  });
+}
+
+// Scanner barcode
+function openScanner() {
+  document.getElementById('scannerModal').classList.add('active');
+  
+  if (!appState.scanner) {
+    appState.scanner = new Html5Qrcode("reader");
+  }
+  
+  const config = { 
+    fps: 10, 
+    qrbox: { width: 250, height: 250 } 
+  };
+  
+  appState.scanner.start(
+    { facingMode: "environment" },
+    config,
+    (decodedText) => {
+      document.getElementById('locationInput').value = decodedText;
+      closeScanner();
+      showNotification('Scaffale scansionato: ' + decodedText, 'success');
+    },
+    (errorMessage) => {
+      // Ignora errori di scansione continui
+    }
+  ).catch((err) => {
+    console.error('Errore avvio scanner:', err);
+    showNotification('Errore nell\'avvio della fotocamera', 'error');
+  });
+  
+  appState.scannerActive = true;
+}
+
+function closeScanner() {
+  if (appState.scanner && appState.scannerActive) {
+    appState.scanner.stop();
+    appState.scannerActive = false;
+  }
+  document.getElementById('scannerModal').classList.remove('active');
+}
+
+function useManualCode() {
+  const code = document.getElementById('manualCode').value.trim();
+  if (code) {
+    document.getElementById('locationInput').value = code;
+    closeScanner();
+  }
+}
+
+// Ricerca manuale prodotti
+function openManualSearch() {
+  document.getElementById('searchModal').classList.add('active');
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').innerHTML = `
+    <div style="text-align: center; color: var(--muted); padding: 20px;">
+      Inserisci almeno 3 caratteri per iniziare la ricerca
+    </div>
+  `;
+  setTimeout(() => {
+    document.getElementById('searchInput').focus();
+  }, 100);
+}
+
+function closeManualSearch() {
+  document.getElementById('searchModal').classList.remove('active');
+}
+
+let searchTimeout;
+async function searchProducts() {
+  const searchTerm = document.getElementById('searchInput').value.trim();
+  
+  if (searchTerm.length < 3) {
+    document.getElementById('searchResults').innerHTML = `
+      <div style="text-align: center; color: var(--muted); padding: 20px;">
+        Inserisci almeno 3 caratteri per iniziare la ricerca
+      </div>
+    `;
+    return;
+  }
+  
+  document.getElementById('searchResults').innerHTML = `
+    <div style="text-align: center; color: var(--accent); padding: 20px;">
+      ⏳ Ricerca in corso...
+    </div>
+  `;
+  
+  try {
+    // Cerca in TUTTI i prodotti, non solo quelli dell'autista
+    const products = await searchRead(
+      'product.product',
+      [
+        '|', '|',
+        ['name', 'ilike', searchTerm],
+        ['default_code', 'ilike', searchTerm],
+        ['barcode', 'ilike', searchTerm]
+      ],
+      ['id', 'name', 'default_code', 'barcode', 'image_128'],
+      20
+    );
+    
+    const resultsDiv = document.getElementById('searchResults');
+    
+    if (!products || products.length === 0) {
+      resultsDiv.innerHTML = `
+        <div style="text-align: center; color: var(--danger); padding: 20px;">
+          ❌ Nessun prodotto trovato
+        </div>
+      `;
+      return;
+    }
+    
+    resultsDiv.innerHTML = '';
+    products.forEach(product => {
+      const productDiv = document.createElement('div');
+      productDiv.style.cssText = `
+        padding: 12px; margin: 8px 0; background: var(--card-hover); 
+        border: 1px solid var(--border); border-radius: 10px; cursor: pointer;
+        display: flex; align-items: center; gap: 12px;
+        transition: all 0.2s;
+      `;
+      
+      const imgHtml = product.image_128 
+        ? `<img src="data:image/png;base64,${product.image_128}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;">`
+        : '<div style="width:50px;height:50px;background:var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;">📦</div>';
+      
+      productDiv.innerHTML = `
+        ${imgHtml}
+        <div style="flex:1;">
+          <div style="font-weight:bold;color:var(--text);margin-bottom:4px;">${product.name}</div>
+          <div style="font-size:12px;color:var(--muted);">
+            ${product.default_code ? `Codice: ${product.default_code}` : ''}
+            ${product.barcode ? ` | Barcode: ${product.barcode}` : ''}
+          </div>
+        </div>
+      `;
+      
+      productDiv.onmouseenter = () => {
+        productDiv.style.background = 'rgba(16, 185, 129, 0.15)';
+        productDiv.style.borderColor = 'var(--accent)';
+      };
+      
+      productDiv.onmouseleave = () => {
+        productDiv.style.background = 'var(--card-hover)';
+        productDiv.style.borderColor = 'var(--border)';
+      };
+      
+      productDiv.onclick = () => selectManualProduct(product);
+      resultsDiv.appendChild(productDiv);
+    });
+    
+  } catch (error) {
+    console.error('Errore ricerca prodotti:', error);
+    document.getElementById('searchResults').innerHTML = `
+      <div style="text-align: center; color: var(--danger); padding: 20px;">
+        ❌ Errore nella ricerca: ${error.message}
+      </div>
+    `;
+  }
+}
+
+async function selectManualProduct(product) {
+  closeManualSearch();
+  
+  // Verifica se il prodotto è nell'ubicazione resi
+  const quants = await searchRead(
+    'stock.quant',
+    [
+      ['product_id', '=', product.id],
+      ['location_id', '=', CONFIG.resiLocation.id],
+      ['quantity', '>', 0]
+    ],
+    ['quantity', 'lot_id'],
+    false
+  );
+  
+  let isPhysicallyAvailable = true;
+  
+  if (!quants || quants.length === 0) {
+    // Prodotto NON disponibile fisicamente, ma lo aggiungiamo comunque
+    isPhysicallyAvailable = false;
+    showNotification('⚠️ Prodotto non nei resi - Trasferimento sarà creato ma non validato', 'warning');
+  }
+  
+  // Crea oggetto prodotto per visualizzazione
+  const productData = {
+    id: product.id,
+    name: product.name,
+    code: product.default_code || product.barcode || '',
+    image: product.image_128 ? `data:image/png;base64,${product.image_128}` : null,
+    totalQty: isPhysicallyAvailable ? quants.reduce((sum, q) => sum + q.quantity, 0) : 0,
+    uom: 'PZ',
+    lots: [],
+    isPhysicallyAvailable: isPhysicallyAvailable  // Flag per tracciare se è fisicamente presente
+  };
+  
+  // Aggiungi info lotti solo se ci sono quants
+  if (isPhysicallyAvailable && quants) {
+    quants.forEach(quant => {
+    if (quant.lot_id) {
+      const existingLot = productData.lots.find(l => l.id === quant.lot_id[0]);
+      if (existingLot) {
+        existingLot.qty += quant.quantity;
+      } else {
+        productData.lots.push({
+          id: quant.lot_id[0],
+          name: quant.lot_id[1],
+          qty: quant.quantity
+        });
+      }
+    } else {
+      productData.lots.push({
+        id: null,
+        name: 'Senza lotto',
+        qty: quant.quantity
+      });
+    }
+    });
+  }
+  
+  // Se non fisicamente disponibile, aggiungi indicazione speciale
+  if (!isPhysicallyAvailable) {
+    productData.lots = [{
+      id: null,
+      name: 'DA CREARE',
+      qty: 0
+    }];
+  }
+  
+  // Aggiungi temporaneamente alla lista prodotti
+  if (!appState.products.find(p => p.id === productData.id)) {
+    appState.products.push(productData);
+    renderProducts();
+  }
+  
+  // Seleziona il prodotto
+  selectProduct(productData.id);
+  showNotification(`✅ Prodotto selezionato: ${product.name}`, 'success');
+}
+
+// Setup ricerca con debounce
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(searchProducts, 300);
+    });
+    
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        clearTimeout(searchTimeout);
+        searchProducts();
+      }
+    });
+  }
+});
+
+// Esegui trasferimento
+async function executeTransfer() {
+  if (!appState.selectedProduct) {
+    showNotification('Seleziona un prodotto', 'error');
+    return;
+  }
+  
+  const quantity = parseFloat(document.getElementById('quantityInput').value);
+  const locationCode = document.getElementById('locationInput').value.trim();
+  
+  if (!quantity || quantity <= 0) {
+    showNotification('Inserisci una quantità valida', 'error');
+    document.getElementById('quantityInput').focus();
+    return;
+  }
+  
+  // Per prodotti non fisicamente disponibili, permetti qualsiasi quantità
+  if (appState.selectedProduct.isPhysicallyAvailable !== false && quantity > appState.selectedProduct.totalQty) {
+    showNotification('Quantità superiore a quella disponibile', 'error');
+    return;
+  }
+  
+  if (!locationCode) {
+    showNotification('Inserisci o scansiona l\'ubicazione di destinazione', 'error');
+    document.getElementById('locationInput').focus();
+    return;
+  }
+  
+  try {
+    showLoading();
+    
+    // Cerca ubicazione destinazione
+    const locations = await searchRead(
+      'stock.location',
+      ['|', ['barcode', '=', locationCode], ['name', '=', locationCode]],
+      ['id', 'complete_name', 'name'],
+      1
+    );
+    
+    if (!locations || locations.length === 0) {
+      throw new Error('Ubicazione non trovata: ' + locationCode);
+    }
+    
+    const destLocation = locations[0];
+    
+    // Determina quale lotto usare (prendi il primo disponibile)
+    let lotId = null;
+    let lotName = null;
+    
+    if (appState.selectedProduct.lots.length > 0) {
+      const lot = appState.selectedProduct.lots[0];
+      if (lot.id) {
+        lotId = lot.id;
+        lotName = lot.name;
+      }
+    }
+    
+    // Crea trasferimento
+    const result = await createTransfer({
+      product_id: appState.selectedProduct.id,
+      product_name: appState.selectedProduct.name,
+      product_qty: quantity,
+      uom_id: appState.selectedProduct.uom_id,
+      location_dest_id: destLocation.id,
+      location_name: destLocation.complete_name || destLocation.name,
+      lot_id: lotId,
+      lot_name: lotName,
+      isPhysicallyAvailable: appState.selectedProduct.isPhysicallyAvailable !== false
+    });
+    
+    if (result.success) {
+      const message = appState.selectedProduct.isPhysicallyAvailable !== false ?
+        `✅ Trasferito ${quantity} ${appState.selectedProduct.uom} su ${destLocation.name}` :
+        `⚠️ Trasferimento CREATO (non validato) - ${quantity} ${appState.selectedProduct.uom} su ${destLocation.name}`;
+      
+      showNotification(message, appState.selectedProduct.isPhysicallyAvailable !== false ? 'success' : 'warning');
+      
+      // Salva in storico
+      addToHistory({
+        product: appState.selectedProduct.name,
+        quantity: quantity,
+        location: destLocation.name,
+        timestamp: new Date()
+      });
+      
+      // Reset e ricarica
+      cancelSelection();
+      await loadProducts();
+      
+      // Controlla se ha finito tutti i prodotti
+      if (appState.products.length === 0) {
+        showFireworks();
+      }
+    } else {
+      throw new Error(result.error || 'Errore nel trasferimento');
+    }
+    
+  } catch (error) {
+    console.error('Errore trasferimento:', error);
+    showNotification('Errore: ' + error.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+// Crea trasferimento in Odoo
+async function createTransfer(data) {
+  try {
+    // Prima trova info sul backorder originale del prodotto
+    let backorderInfo = null;
+    if (appState.driverPickings && appState.driverPickings.length > 0) {
+      // Cerca quale backorder contiene questo prodotto
+      for (const picking of appState.driverPickings) {
+        if (picking.move_ids && picking.move_ids.length > 0) {
+          const moves = await searchRead(
+            'stock.move',
+            [
+              ['id', 'in', picking.move_ids],
+              ['product_id', '=', data.product_id]
+            ],
+            ['id'],
+            1
+          );
+          
+          if (moves && moves.length > 0) {
+            // Trovato il picking che contiene questo prodotto
+            // Carica dettagli completi del picking
+            const pickingDetails = await searchRead(
+              'stock.picking',
+              [['id', '=', picking.id]],
+              ['name', 'partner_id', 'scheduled_date', 'date_done', 'origin'],
+              1
+            );
+            
+            if (pickingDetails && pickingDetails.length > 0) {
+              backorderInfo = pickingDetails[0];
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    // Trova picking type interno
+    const pickingTypes = await searchRead(
+      'stock.picking.type',
+      [['code', '=', 'internal']],
+      ['id'],
+      1
+    );
+    
+    if (!pickingTypes || pickingTypes.length === 0) {
+      throw new Error('Picking type interno non trovato');
+    }
+    
+    // Crea picking
+    const pickingData = {
+      picking_type_id: pickingTypes[0].id,
+      location_id: CONFIG.resiLocation.id,
+      location_dest_id: data.location_dest_id,
+      origin: `WEB-RESI-${Date.now()}`,
+      state: 'draft'
+    };
+    
+    const pickingId = await rpc('stock.picking', 'create', [pickingData]);
+    
+    // Crea movimento
+    const moveData = {
+      picking_id: pickingId,
+      product_id: data.product_id,
+      name: `Transfer ${data.product_name}`,
+      product_uom: data.uom_id,
+      product_uom_qty: data.product_qty,
+      location_id: CONFIG.resiLocation.id,
+      location_dest_id: data.location_dest_id,
+      state: 'draft'
+    };
+    
+    const moveId = await rpc('stock.move', 'create', [moveData]);
+    
+    // Conferma picking
+    await rpc('stock.picking', 'action_confirm', [[pickingId]]);
+    
+    // Crea move line con lotto se presente
+    const moveLineData = {
+      move_id: moveId,
+      picking_id: pickingId,
+      product_id: data.product_id,
+      qty_done: data.product_qty,
+      product_uom_id: data.uom_id,
+      location_id: CONFIG.resiLocation.id,
+      location_dest_id: data.location_dest_id
+    };
+    
+    if (data.lot_id) {
+      moveLineData.lot_id = data.lot_id;
+      moveLineData.lot_name = data.lot_name;
+    }
+    
+    await rpc('stock.move.line', 'create', [moveLineData]);
+    
+    // Valida picking SOLO se il prodotto è fisicamente disponibile
+    if (data.isPhysicallyAvailable) {
+      try {
+        const validationResult = await rpc('stock.picking', 'button_validate', [[pickingId]]);
+        
+        if (validationResult && validationResult.res_model) {
+          if (validationResult.res_model === 'stock.immediate.transfer') {
+            await rpc('stock.immediate.transfer', 'process', [[validationResult.res_id]]);
+          } else if (validationResult.res_model === 'stock.backorder.confirmation') {
+            await rpc('stock.backorder.confirmation', 'process_cancel_backorder', [[validationResult.res_id]]);
+          }
+        }
+      } catch (err) {
+        console.warn('Validazione automatica fallita:', err);
+      }
+    } else {
+      console.log('⚠️ Picking NON validato - prodotto non fisicamente disponibile nei resi');
+    }
+    
+    // Aggiungi messaggio nel chatter con info dettagliate
+    try {
+      let messageBody = `
+        <div style="font-family: Arial, sans-serif;">
+          <h3 style="color: #10b981;">📦 Prodotto Sistemato da Residui</h3>
+          <hr style="border: 1px solid #e5e7eb; margin: 10px 0;">
+          
+          <p><strong>🏷️ Prodotto:</strong> ${data.product_name}</p>
+          <p><strong>📊 Quantità:</strong> ${data.product_qty} ${data.lot_name ? `(Lotto: ${data.lot_name})` : ''}</p>
+          <p><strong>📍 Sistemato in:</strong> ${data.location_name || 'Ubicazione'}</p>
+          <p><strong>👤 Operatore:</strong> ${appState.employeeName || 'Operatore'}</p>
+          <p><strong>📅 Data/Ora:</strong> ${new Date().toLocaleString('it-IT')}</p>
+      `;
+      
+      // Aggiungi info sul backorder originale se disponibile
+      if (backorderInfo && backorderInfo.partner_id) {
+        const clientName = backorderInfo.partner_id ? backorderInfo.partner_id[1] : 'N/D';
+        const orderNumber = backorderInfo.name || 'N/D';
+        const orderOrigin = backorderInfo.origin || 'N/D';
+        const scheduledDate = backorderInfo.scheduled_date ? 
+          new Date(backorderInfo.scheduled_date).toLocaleDateString('it-IT') : 'N/D';
+        const deliveryDate = backorderInfo.date_done ? 
+          new Date(backorderInfo.date_done).toLocaleString('it-IT') : 'Non ancora consegnato';
+        
+        messageBody += `
+          <hr style="border: 1px solid #e5e7eb; margin: 10px 0;">
+          <h4 style="color: #f59e0b;">📋 Info Ordine Originale (Backorder)</h4>
+          <p><strong>👤 Cliente:</strong> ${clientName}</p>
+          <p><strong>📄 Numero Ordine:</strong> ${orderNumber}</p>
+          <p><strong>🔗 Origine:</strong> ${orderOrigin}</p>
+          <p><strong>📅 Data Prevista:</strong> ${scheduledDate}</p>
+          <p><strong>🚚 Data Consegna:</strong> ${deliveryDate}</p>
+        `;
+      } else {
+        // Messaggio per prodotti senza ordine collegato (ricerca manuale)
+        messageBody += `
+          <hr style="border: 1px solid #e5e7eb; margin: 10px 0;">
+          <p style="color: #f59e0b;">⚠️ <strong>Prodotto senza ordine collegato</strong></p>
+          <p style="color: #6b7280;">Questo prodotto è stato sistemato tramite ricerca manuale.</p>
+          <p style="color: #6b7280;">Non sono disponibili informazioni sull'ordine originale.</p>
+        `;
+      }
+      
+      // Aggiungi avviso se il prodotto NON era fisicamente disponibile
+      if (!data.isPhysicallyAvailable) {
+        messageBody += `
+          <hr style="border: 1px solid #ef4444; margin: 10px 0;">
+          <div style="background: rgba(239, 68, 68, 0.1); padding: 10px; border-radius: 8px;">
+            <p style="color: #ef4444; font-weight: bold;">🚨 ATTENZIONE: Prodotto NON presente fisicamente nei resi</p>
+            <p style="color: #ef4444;">Questo trasferimento è stato creato ma NON validato.</p>
+            <p style="color: #ef4444;">Verificare fisicamente la disponibilità del prodotto prima di validare.</p>
+          </div>
+        `;
+      }
+      
+      messageBody += `
+          <hr style="border: 1px solid #e5e7eb; margin: 10px 0;">
+          <p style="color: #6b7280; font-size: 12px;">
+            <em>Trasferimento automatico da app Sistemazione Residui</em>
+          </p>
+        </div>
+      `;
+      
+      // Crea il messaggio nel chatter del picking
+      await rpc('mail.message', 'create', [{
+        model: 'stock.picking',
+        res_id: pickingId,
+        body: messageBody,
+        message_type: 'comment',
+        subtype_id: 1  // Note
+      }]);
+      
+      console.log('✅ Messaggio aggiunto al chatter del trasferimento');
+    } catch (msgError) {
+      console.error('Errore aggiunta messaggio:', msgError);
+      // Non bloccare il trasferimento se il messaggio fallisce
+    }
+    
+    return { success: true, picking_id: pickingId, backorderInfo: backorderInfo };
+    
+  } catch (error) {
+    console.error('Errore creazione trasferimento:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Gestione storico
+function addToHistory(transfer) {
+  const today = new Date().toDateString();
+  let history = JSON.parse(localStorage.getItem('transferHistory') || '{}');
+  
+  if (!history[today]) {
+    history[today] = [];
+  }
+  
+  history[today].unshift(transfer);
+  
+  // Mantieni solo ultimi 7 giorni
+  const dates = Object.keys(history).sort().reverse();
+  if (dates.length > 7) {
+    dates.slice(7).forEach(date => delete history[date]);
+  }
+  
+  localStorage.setItem('transferHistory', JSON.stringify(history));
+  updateStats();
+}
+
+function updateStats() {
+  const today = new Date().toDateString();
+  const history = JSON.parse(localStorage.getItem('transferHistory') || '{}');
+  const todayTransfers = history[today] || [];
+  
+  appState.todayTransfers = todayTransfers;
+  
+  if (todayTransfers.length > 0) {
+    document.getElementById('statsCard').style.display = 'block';
+    
+    const totalQty = todayTransfers.reduce((sum, t) => sum + t.quantity, 0);
+    const locations = new Set(todayTransfers.map(t => t.location));
+    
+    document.getElementById('statTotal').textContent = todayTransfers.length;
+    document.getElementById('statQty').textContent = totalQty.toFixed(2);
+    document.getElementById('statLocations').textContent = locations.size;
+  } else {
+    document.getElementById('statsCard').style.display = 'none';
+  }
+  
+  document.getElementById('productsCompleted').textContent = todayTransfers.length;
+}
+
+// Aggiorna contatori
+function updateCounters() {
+  document.getElementById('totalProducts').textContent = appState.products.length;
+}
+
+// Verifica connessione
+async function checkConnection() {
+  const statusEl = document.getElementById('connectionStatus');
+  const statusText = document.getElementById('statusText');
+  
+  const token = csrf();
+  if (!token) {
+    statusEl.className = 'connection-status disconnected';
+    statusText.textContent = 'Non autenticato';
+    return false;
+  }
+  
+  try {
+    // Test con query semplice
+    const test = await searchRead('product.product', [], ['id'], 1);
+    if (test) {
+      statusEl.className = 'connection-status connected';
+      statusText.textContent = 'Connesso';
+      return true;
+    }
+  } catch (error) {
+    console.error('Errore connessione:', error);
+  }
+  
+  statusEl.className = 'connection-status disconnected';
+  statusText.textContent = 'Non connesso';
+  return false;
+}
+
+// Utilities
+function showLoading() {
+  document.getElementById('loadingOverlay').style.display = 'flex';
+}
+
+function hideLoading() {
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.animation = 'slideIn 0.3s ease reverse';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+
+// Inizializzazione
+async function init() {
+  console.log('Inizializzazione app...');
+  
+  // Verifica connessione
+  const connected = await checkConnection();
+  if (!connected) {
+    showNotification('Non connesso a Odoo. Verificare autenticazione.', 'error');
+    return;
+  }
+  
+  // Carica prodotti
+  await loadProducts();
+  
+  // Carica statistiche
+  updateStats();
+  
+  // RIMOSSO auto-refresh: ora ricarica solo dopo trasferimento
+  
+  // Gestione tasti
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (appState.scannerActive) {
+        closeScanner();
+      } else if (appState.selectedProduct) {
+        cancelSelection();
+      }
+    }
+  });
+  
+  // Previeni chiusura accidentale con modifiche non salvate
+  window.addEventListener('beforeunload', (e) => {
+    if (appState.selectedProduct) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+}
+
+// Fuochi d'artificio
+function showFireworks() {
+  document.getElementById('fireworksName').textContent = appState.employeeName || 'Campione';
+  document.getElementById('fireworksModal').classList.add('active');
+  
+  const canvas = document.getElementById('fireworksCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  const fireworks = [];
+  const particles = [];
+  
+  class Firework {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = canvas.height;
+      this.targetY = Math.random() * canvas.height * 0.5;
+      this.speed = 2 + Math.random() * 3;
+      this.exploded = false;
+      this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+    }
+    
+    update() {
+      if (!this.exploded) {
+        this.y -= this.speed;
+        if (this.y <= this.targetY) {
+          this.exploded = true;
+          this.explode();
+        }
+      }
+    }
+    
+    explode() {
+      for (let i = 0; i < 30; i++) {
+        particles.push(new Particle(this.x, this.y, this.color));
+      }
+    }
+    
+    draw() {
+      if (!this.exploded) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+      }
+    }
+  }
+  
+  class Particle {
+    constructor(x, y, color) {
+      this.x = x;
+      this.y = y;
+      this.vx = (Math.random() - 0.5) * 8;
+      this.vy = (Math.random() - 0.5) * 8;
+      this.alpha = 1;
+      this.color = color;
+    }
+    
+    update() {
+      this.x += this.vx;
+      this.y += this.vy;
+      this.vy += 0.1;
+      this.alpha -= 0.02;
+    }
+    
+    draw() {
+      ctx.save();
+      ctx.globalAlpha = this.alpha;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = this.color;
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  
+  function animate() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    if (Math.random() < 0.05) {
+      fireworks.push(new Firework());
+    }
+    
+    fireworks.forEach((firework, index) => {
+      firework.update();
+      firework.draw();
+      if (firework.exploded) {
+        fireworks.splice(index, 1);
+      }
+    });
+    
+    particles.forEach((particle, index) => {
+      particle.update();
+      particle.draw();
+      if (particle.alpha <= 0) {
+        particles.splice(index, 1);
+      }
+    });
+    
+    if (document.getElementById('fireworksModal').classList.contains('active')) {
+      requestAnimationFrame(animate);
+    }
+  }
+  
+  animate();
+}
+
+function closeFireworks() {
+  document.getElementById('fireworksModal').classList.remove('active');
+}
+
+// Avvia app quando DOM è pronto
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>

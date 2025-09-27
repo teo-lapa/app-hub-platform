@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(for dir in */)",
+      "Bash(do echo \"=== $dir ===\")",
+      "Bash(ls:*)",
+      "Bash(done)",
+      "Bash(for dir in app-per-inventario clientivision controllo-diretto dashboard-gestione-app-lapa lapa-delivery mappa-controllo-lapa operazioni-di-magazzino pick-residui prelievo-per-zone smart-route-ai super-utente-magazzino)",
+      "Bash(stat:*)",
+      "Bash(for app in lapa-delivery mappa-controllo-lapa operazioni-di-magazzino pick-residui prelievo-per-zone smart-route-ai super-utente-magazzino)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

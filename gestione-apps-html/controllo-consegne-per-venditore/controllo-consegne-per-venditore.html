@@ -1,0 +1,1041 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>🚚 App Consegne Venditori - LAPA</title>
+  <style>
+    * { 
+      margin: 0; 
+      padding: 0; 
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    
+    #map {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    
+    .floating-counter {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: white;
+      padding: 15px 25px;
+      border-radius: 30px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 1000;
+    }
+    
+    /* HEADER CON SELECTOR TEAM */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(135deg, #2563eb, #059669);
+      color: white;
+      padding: 15px 20px;
+      z-index: 2000;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.2);
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .team-selector {
+      background: rgba(255,255,255,0.95);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 25px;
+      padding: 8px 20px;
+      color: #333;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      min-width: 200px;
+      text-align: center;
+    }
+
+    .team-selector:focus {
+      outline: none;
+      border-color: rgba(255,255,255,0.8);
+      background: white;
+    }
+
+    .team-selector option {
+      color: #333;
+      background: white;
+      font-weight: 600;
+      padding: 8px;
+    }
+
+    .filters-panel {
+      position: fixed;
+      top: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(15px);
+      padding: 10px;
+      border-radius: 25px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
+    }
+
+    #map {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 70px;
+      left: 0;
+    }
+
+    .filter-btn {
+      padding: 8px 16px;
+      border: 2px solid #e2e8f0;
+      background: white;
+      border-radius: 18px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: #475569;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .filter-btn:hover {
+      background: #f8fafc;
+      border-color: #2563eb;
+      color: #2563eb;
+    }
+
+    .filter-btn.active {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+      box-shadow: 0 2px 10px rgba(37, 99, 235, 0.3);
+    }
+    
+    .legend {
+      position: fixed;
+      bottom: 30px;
+      left: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 1000;
+      transition: all 0.3s;
+      max-width: 300px;
+    }
+    
+    .legend-header {
+      padding: 12px 15px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    
+    .legend-toggle {
+      font-size: 18px;
+      transition: transform 0.3s;
+    }
+    
+    .legend.collapsed .legend-toggle {
+      transform: rotate(180deg);
+    }
+    
+    .legend-content {
+      padding: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .legend.collapsed .legend-content {
+      display: none;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      padding: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    
+    .legend-item:hover {
+      background: #f5f5f5;
+    }
+    
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    
+    .legend-label {
+      flex: 1;
+    }
+    
+    .legend-count {
+      background: #f0f0f0;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    
+    .info-panel {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 1000;
+      font-size: 13px;
+      max-width: 200px;
+    }
+    
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .info-row:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    
+    .info-label {
+      color: #666;
+    }
+    
+    .info-value {
+      font-weight: bold;
+    }
+    
+    @media (max-width: 768px) {
+      .filters-panel {
+        top: 60px;
+        padding: 5px;
+        gap: 3px;
+      }
+      
+      .filter-btn {
+        padding: 5px 8px;
+        font-size: 11px;
+      }
+      
+      .floating-counter {
+        top: 10px;
+        right: 10px;
+        padding: 10px 15px;
+        font-size: 14px;
+      }
+      
+      .info-panel {
+        display: none; /* Nasconde su mobile per più spazio */
+      }
+      
+      .legend {
+        bottom: 20px;
+        left: 10px;
+        max-width: 250px;
+      }
+      
+      .legend-header {
+        padding: 10px 12px;
+        font-size: 13px;
+      }
+      
+      .legend-content {
+        padding: 10px;
+      }
+    }
+  </style>
+
+
+
+
+
+
+<header class="header">
+  <div class="header-content">
+    <div class="logo">
+      🚚 <span>Consegne LAPA</span>
+    </div>
+
+    <select class="team-selector" id="teamSelector" onchange="onTeamChange()">
+      <option value="">👥 Seleziona team...</option>
+      <option value="all">🌍 Tutti i team</option>
+    </select>
+  </div>
+</header>
+
+<div id="map"></div>
+
+
+<div class="filters-panel">
+  <button class="filter-btn active" onclick="filterMarkers('all')">
+    🌍 Tutte
+  </button>
+  <button class="filter-btn" onclick="filterMarkers('pending')">
+    📦 Da fare
+  </button>
+  <button class="filter-btn" onclick="filterMarkers('completed')">
+    ✅ Fatte
+  </button>
+  <button class="filter-btn" onclick="filterMarkers('backorder')">
+    ⚠️ Residui
+  </button>
+</div>
+
+
+<div class="floating-counter">
+  📍 <span id="counter">0</span> consegne
+</div>
+
+
+<div class="info-panel">
+  <div class="info-row">
+    <span class="info-label">Da fare:</span>
+    <span class="info-value" id="pendingCount">0</span>
+  </div>
+  <div class="info-row">
+    <span class="info-label">Completate:</span>
+    <span class="info-value" id="completedCount">0</span>
+  </div>
+  <div class="info-row">
+    <span class="info-label">Residui:</span>
+    <span class="info-value" id="backorderCount">0</span>
+  </div>
+</div>
+
+
+<div class="legend" id="legend">
+  <div class="legend-header" onclick="toggleLegend()">
+    <span>🚚 Autisti</span>
+    <span class="legend-toggle">⌃</span>
+  </div>
+  <div class="legend-content" id="legendContent">
+    
+  </div>
+</div>
+
+<script>
+const API_KEY = 'AIzaSyDQbkXsAyNQs0NypjDgTGA_SUxFxJWmijk';
+const LAPA_TEAM_IDS = [5, 9, 12, 8, 1, 11, 14];
+
+let map;
+let markers = [];
+let allDeliveries = [];
+let driverData = {};
+let currentFilter = 'all';
+let selectedDriverId = null;
+let allTeams = [];
+let currentTeamId = null;
+
+function initMap() {
+  // MAPPA FULLSCREEN CON STREET VIEW
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 46.8182, lng: 8.2275 },
+    zoom: 10,
+    mapTypeControl: true,
+    fullscreenControl: true,
+    streetViewControl: true,  // Omino per Street View
+    zoomControl: true,
+    scaleControl: true,
+    rotateControl: false
+  });
+
+  // Carica team e poi consegne
+  loadTeams();
+}
+
+// FUNZIONE CHIAMATA ODOO
+async function callOdoo(model, method, args = [], kwargs = {}) {
+  const response = await fetch('/web/dataset/call_kw', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    credentials: 'same-origin',
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "call",
+      params: {
+        model: model,
+        method: method,
+        args: args,
+        kwargs: kwargs
+      },
+      id: Math.floor(Math.random() * 1000000)
+    })
+  });
+
+  const data = await response.json();
+  if (data.error) {
+    throw new Error(`Errore Odoo: ${data.error.message || JSON.stringify(data.error)}`);
+  }
+  return data.result;
+}
+
+// CARICA TEAM DA ODOO
+async function loadTeams() {
+  try {
+    const teams = await callOdoo('crm.team', 'search_read',
+      [[['id', 'in', LAPA_TEAM_IDS]]],
+      {
+        fields: ['id', 'name', 'user_id', 'member_ids'],
+        order: 'name asc'
+      }
+    );
+
+    if (teams && teams.length > 0) {
+      allTeams = teams;
+      populateTeamSelector(teams);
+    }
+  } catch (error) {
+    console.error('Errore caricamento teams:', error);
+  }
+
+  // Carica comunque le consegne
+  loadDeliveries();
+}
+
+// POPOLA SELECTOR TEAM
+function populateTeamSelector(teams) {
+  const selector = document.getElementById('teamSelector');
+
+  teams.forEach(team => {
+    const option = document.createElement('option');
+    option.value = team.id;
+    option.textContent = `👥 ${team.name}`;
+    selector.appendChild(option);
+  });
+}
+
+// CAMBIO TEAM
+async function onTeamChange() {
+  const selector = document.getElementById('teamSelector');
+  currentTeamId = selector.value;
+
+  // Ricarica le consegne con il filtro del team
+  loadDeliveries();
+}
+
+// Toggle legenda
+function toggleLegend() {
+  const legend = document.getElementById('legend');
+  legend.classList.toggle('collapsed');
+}
+
+// Filtra markers
+function filterMarkers(filter) {
+  currentFilter = filter;
+  
+  // Aggiorna bottoni
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.classList.add('active');
+  
+  // Mostra/nasconde markers
+  let visibleCount = 0;
+  const bounds = new google.maps.LatLngBounds();
+  
+  markers.forEach((marker, index) => {
+    const delivery = allDeliveries[index];
+    let show = false;
+    
+    // Prima controlla se c'è un autista selezionato
+    if (selectedDriverId !== null) {
+      // Mostra solo consegne dell'autista selezionato
+      if (delivery.driverId == selectedDriverId) {
+        // Poi applica il filtro di stato
+        if (filter === 'all') {
+          show = true;
+        } else if (filter === 'pending') {
+          show = delivery.status === 'pending';
+        } else if (filter === 'completed') {
+          show = delivery.status === 'completed';
+        } else if (filter === 'backorder') {
+          show = delivery.status === 'backorder';
+        }
+      }
+    } else {
+      // Nessun autista selezionato, mostra tutti con filtro
+      if (filter === 'all') {
+        show = true;
+      } else if (filter === 'pending') {
+        show = delivery.status === 'pending';
+      } else if (filter === 'completed') {
+        show = delivery.status === 'completed';
+      } else if (filter === 'backorder') {
+        show = delivery.status === 'backorder';
+      }
+    }
+    
+    marker.setVisible(show);
+    if (show) {
+      visibleCount++;
+      bounds.extend(marker.getPosition());
+    }
+  });
+  
+  // Aggiorna counter
+  document.getElementById('counter').textContent = visibleCount;
+  
+  // Zoom per vedere solo i markers visibili
+  if (visibleCount > 0) {
+    map.fitBounds(bounds);
+  }
+}
+
+// Focus su un autista dalla legenda
+function focusDriver(driverId) {
+  // Se clicco sullo stesso autista, deseleziona
+  if (selectedDriverId == driverId) {
+    selectedDriverId = null;
+    // Mostra tutti
+    filterMarkers(currentFilter);
+    // Rimuovi evidenziazione dalla legenda
+    document.querySelectorAll('.legend-item').forEach(item => {
+      item.style.background = '';
+    });
+  } else {
+    // Seleziona nuovo autista
+    selectedDriverId = driverId;
+    
+    // Evidenzia nella legenda
+    document.querySelectorAll('.legend-item').forEach(item => {
+      item.style.background = '';
+    });
+    event.currentTarget.style.background = '#e3f2fd';
+    
+    // Applica filtro corrente all'autista selezionato
+    filterMarkers(currentFilter);
+  }
+}
+
+async function loadDeliveries() {
+  try {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    let pickingDomain = [
+      '&',
+      ['scheduled_date', '>=', todayStr + ' 00:00:00'],
+      ['scheduled_date', '<=', todayStr + ' 23:59:59'],
+      ['name', 'like', 'WH/OUT']
+    ];
+
+    // Se è selezionato un team specifico, filtra i clienti
+    if (currentTeamId && currentTeamId !== 'all' && currentTeamId !== '') {
+      const customers = await callOdoo('res.partner', 'search_read', [], {
+        domain: [
+          ['team_id', '=', parseInt(currentTeamId)],
+          ['customer_rank', '>', 0]
+        ],
+        fields: ['id'],
+        limit: 1000
+      });
+
+      if (customers.length > 0) {
+        const customerIds = customers.map(c => c.id);
+        pickingDomain = [
+          '&',
+          ['scheduled_date', '>=', todayStr + ' 00:00:00'],
+          ['scheduled_date', '<=', todayStr + ' 23:59:59'],
+          ['name', 'like', 'WH/OUT'],
+          ['partner_id', 'in', customerIds]
+        ];
+      } else {
+        // Nessun cliente per questo team
+        allDeliveries = [];
+        markers.forEach(m => m.setMap(null));
+        markers = [];
+        document.getElementById('counter').textContent = '0';
+        return;
+      }
+    }
+
+    // Prendi consegne
+    const pickings = await callOdoo('stock.picking', 'search_read', [], {
+      domain: pickingDomain,
+      fields: ['id', 'name', 'partner_id', 'driver_id', 'state', 'backorder_id'],
+      limit: 200
+    });
+    const bounds = new google.maps.LatLngBounds();
+    let count = 0;
+    
+    // Reset
+    allDeliveries = [];
+    driverData = {};
+    markers.forEach(m => m.setMap(null));
+    markers = [];
+    
+    // COLORI PER AUTISTI
+    const colors = ['#FF0000', '#0000FF', '#00FF00', '#FF00FF', '#FFA500', '#00FFFF', '#800080', '#FFC0CB'];
+    const driverColors = {};
+    let colorIndex = 0;
+    
+    // Contatori
+    let pendingCount = 0;
+    let completedCount = 0;
+    let backorderCount = 0;
+    
+    // Per ogni consegna
+    for (const picking of pickings) {
+      if (!picking.partner_id) continue;
+      
+      // Carica coordinate cliente
+      const partnerResp = await fetch('/web/dataset/call_kw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "call",
+          params: {
+            model: 'res.partner',
+            method: 'read',
+            args: [picking.partner_id[0]],
+            kwargs: {
+              fields: ['name', 'street', 'city', 'partner_latitude', 'partner_longitude', 'phone']
+            }
+          },
+          id: Math.floor(Math.random() * 1e9)
+        })
+      });
+      
+      const partnerData = await partnerResp.json();
+      if (!partnerData.result || !partnerData.result[0]) continue;
+      
+      const partner = partnerData.result[0];
+      
+      // Solo se ha coordinate
+      if (!partner.partner_latitude || !partner.partner_longitude) continue;
+      
+      count++;
+      
+      // Info consegna
+      const driverId = picking.driver_id ? picking.driver_id[0] : 'none';
+      const driverName = picking.driver_id ? picking.driver_id[1] : 'Non assegnato';
+      
+      // Assegna colore per autista
+      if (!driverColors[driverId]) {
+        driverColors[driverId] = colors[colorIndex % colors.length];
+        colorIndex++;
+      }
+      
+      // Inizializza dati autista
+      if (!driverData[driverId]) {
+        driverData[driverId] = {
+          name: driverName,
+          color: driverColors[driverId],
+          count: 0,
+          completed: 0,
+          pending: 0,
+          backorder: 0
+        };
+      }
+      
+      // Determina stato
+      let status = 'pending';
+      if (picking.state === 'done') {
+        status = 'completed';
+        completedCount++;
+        driverData[driverId].completed++;
+      } else if (picking.backorder_id && picking.backorder_id.length > 0) {
+        status = 'backorder';
+        backorderCount++;
+        driverData[driverId].backorder++;
+      } else {
+        pendingCount++;
+        driverData[driverId].pending++;
+      }
+      
+      driverData[driverId].count++;
+      
+      // Pulisci nome cliente (rimuovi testo tra parentesi)
+      let customerName = partner.name;
+      if (customerName.includes('(')) {
+        customerName = customerName.split('(')[0].trim();
+      }
+      
+      // Salva info consegna
+      allDeliveries.push({
+        driverId: driverId,
+        driverName: driverName,
+        status: status,
+        customer: customerName,
+        address: `${partner.street || ''} ${partner.city || ''}`.trim()
+      });
+      
+      // CREA MARKER GRANDE E VISIBILE
+      const marker = new google.maps.Marker({
+        position: { 
+          lat: partner.partner_latitude, 
+          lng: partner.partner_longitude 
+        },
+        map: map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: driverColors[driverId],
+          fillOpacity: status === 'completed' ? 0.5 : 1,
+          strokeColor: '#FFFFFF',
+          strokeWeight: 3,
+          scale: 15  // Marker più grandi
+        },
+        label: {
+          text: String(count),
+          color: 'white',
+          fontSize: '14px',  // Testo più leggibile
+          fontWeight: 'bold'
+        }
+      });
+      
+      // Info window MODERNO e PULITO
+      const infoContent = `
+        <div style="
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+          padding: 0;
+          margin: 0;
+          min-width: 200px;
+          max-width: 250px;
+        ">
+          <!-- Header con nome -->
+          <div style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            border-radius: 8px 8px 0 0;
+            margin: -1px -1px 0 -1px;
+          ">
+            <div style="font-size: 15px; font-weight: 600; line-height: 1.2;">
+              ${customerName}
+            </div>
+          </div>
+          
+          <!-- Contenuto -->
+          <div style="padding: 10px 12px;">
+            <!-- Indirizzo -->
+            <div style="
+              display: flex;
+              align-items: center;
+              margin-bottom: 6px;
+              font-size: 12px;
+              color: #555;
+            ">
+              <span style="margin-right: 6px;">📍</span>
+              <span style="line-height: 1.3;">${partner.street || 'Indirizzo non disponibile'}</span>
+            </div>
+            
+            <!-- Autista -->
+            <div style="
+              display: flex;
+              align-items: center;
+              margin-bottom: 6px;
+              font-size: 12px;
+              color: #555;
+            ">
+              <span style="margin-right: 6px;">🚚</span>
+              <span>${picking.driver_id ? picking.driver_id[1] : 'Non assegnato'}</span>
+            </div>
+            
+            <!-- Stato -->
+            <div style="
+              display: inline-block;
+              padding: 3px 8px;
+              border-radius: 12px;
+              font-size: 11px;
+              font-weight: 600;
+              margin: 6px 0 10px 0;
+              ${picking.state === 'done' ? 
+                'background: #e8f5e9; color: #2e7d32;' : 
+                picking.backorder_id ? 
+                'background: #fff3e0; color: #ef6c00;' : 
+                'background: #e3f2fd; color: #1565c0;'}
+            ">
+              ${picking.state === 'done' ? '✅ Completata' : 
+                picking.backorder_id ? '⚠️ Residuo' : '📦 Da fare'}
+            </div>
+            
+            <!-- Pulsanti -->
+            <div style="
+              display: flex;
+              gap: 6px;
+              margin-top: 10px;
+              padding-top: 10px;
+              border-top: 1px solid #eee;
+            ">
+              ${partner.phone ? `
+                <button onclick="window.location.href='tel:${partner.phone}'" 
+                  style="
+                    flex: 1;
+                    background: #4CAF50;
+                    color: white;
+                    border: none;
+                    padding: 8px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 4px;
+                    transition: all 0.2s;
+                  "
+                  onmouseover="this.style.background='#45a049'"
+                  onmouseout="this.style.background='#4CAF50'">
+                  📞 Chiama
+                </button>
+              ` : ''}
+              <button onclick="showOrderDetails(${picking.id})"
+                style="
+                  flex: 1;
+                  background: #2563eb;
+                  color: white;
+                  border: none;
+                  padding: 8px;
+                  border-radius: 6px;
+                  font-size: 12px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 4px;
+                  transition: all 0.2s;
+                  margin-right: 4px;
+                "
+                onmouseover="this.style.background='#1d4ed8'"
+                onmouseout="this.style.background='#2563eb'">
+                📋 Dettagli
+              </button>
+              <button onclick="window.open('https://maps.google.com/maps?q=${partner.partner_latitude},${partner.partner_longitude}', '_blank')"
+                style="
+                  flex: 1;
+                  background: #2196F3;
+                  color: white;
+                  border: none;
+                  padding: 8px;
+                  border-radius: 6px;
+                  font-size: 12px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 4px;
+                  transition: all 0.2s;
+                "
+                onmouseover="this.style.background='#1976D2'"
+                onmouseout="this.style.background='#2196F3'">
+                🧭 Naviga
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      const infoWindow = new google.maps.InfoWindow({
+        content: infoContent,
+        maxWidth: 280,
+        disableAutoPan: false
+      });
+      
+      marker.addListener('click', () => {
+        infoWindow.open(map, marker);
+      });
+      
+      markers.push(marker);
+      bounds.extend(marker.getPosition());
+    }
+    
+    // Zoom per vedere tutti i punti
+    if (markers.length > 0) {
+      map.fitBounds(bounds);
+    }
+    
+    // Aggiorna counter e statistiche
+    document.getElementById('counter').textContent = count;
+    document.getElementById('pendingCount').textContent = pendingCount;
+    document.getElementById('completedCount').textContent = completedCount;
+    document.getElementById('backorderCount').textContent = backorderCount;
+    
+    // Popola legenda
+    updateLegend();
+    
+  } catch (error) {
+    console.error('Errore:', error);
+    // Se non siamo in Odoo, mostra punti di test
+    createTestMarkers();
+  }
+}
+
+// Aggiorna legenda
+function updateLegend() {
+  const legendContent = document.getElementById('legendContent');
+  let html = '';
+  
+  Object.keys(driverData).forEach(driverId => {
+    const driver = driverData[driverId];
+    html += `
+      <div class="legend-item" onclick="focusDriver('${driverId}')">
+        <div class="legend-color" style="background: ${driver.color}"></div>
+        <span class="legend-label">${driver.name}</span>
+        <span class="legend-count">${driver.count}</span>
+      </div>
+    `;
+  });
+  
+  legendContent.innerHTML = html || '<div style="color: #999; text-align: center;">Nessun autista</div>';
+}
+
+// Punti di test se non siamo in Odoo
+function createTestMarkers() {
+  const testPoints = [
+    { lat: 46.8182, lng: 8.2275, name: 'Punto 1' },
+    { lat: 46.83, lng: 8.24, name: 'Punto 2' },
+    { lat: 46.80, lng: 8.21, name: 'Punto 3' },
+    { lat: 46.82, lng: 8.25, name: 'Punto 4' },
+    { lat: 46.81, lng: 8.22, name: 'Punto 5' }
+  ];
+  
+  const bounds = new google.maps.LatLngBounds();
+  
+  testPoints.forEach((point, i) => {
+    const marker = new google.maps.Marker({
+      position: { lat: point.lat, lng: point.lng },
+      map: map,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        fillColor: ['#FF0000', '#0000FF', '#00FF00', '#FF00FF', '#FFA500'][i],
+        fillOpacity: 1,
+        strokeColor: '#FFFFFF',
+        strokeWeight: 3,
+        scale: 15  // Marker più grandi come prima
+      },
+      label: {
+        text: String(i + 1),
+        color: 'white',
+        fontSize: '14px',
+        fontWeight: 'bold'
+      }
+    });
+    
+    const infoWindow = new google.maps.InfoWindow({
+      content: `<h3>${point.name}</h3><p>Punto di test</p>`
+    });
+    
+    marker.addListener('click', () => {
+      infoWindow.open(map, marker);
+    });
+    
+    bounds.extend(marker.getPosition());
+  });
+  
+  map.fitBounds(bounds);
+  document.getElementById('counter').textContent = testPoints.length;
+}
+
+// POPUP DETTAGLI ORDINE
+function showOrderDetails(deliveryId) {
+  const delivery = allDeliveries.find(d => d.id == deliveryId);
+  if (!delivery) return;
+
+  const popup = `
+    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:3000;display:flex;align-items:center;justify-content:center;" onclick="this.remove()">
+      <div style="background:white;border-radius:15px;max-width:90vw;max-height:85vh;overflow-y:auto;width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+
+        <div style="background:linear-gradient(135deg,#2563eb,#059669);color:white;padding:20px;border-radius:15px 15px 0 0;position:relative;">
+          <h3 style="margin:0;font-size:18px;">Dettagli Consegna</h3>
+          <button onclick="this.closest('[style*=fixed]').remove()" style="position:absolute;top:15px;right:20px;background:rgba(255,255,255,0.2);border:none;color:white;font-size:24px;width:35px;height:35px;border-radius:50%;cursor:pointer;">×</button>
+        </div>
+
+        <div style="padding:25px;">
+          <div style="margin-bottom:20px;">
+            <h4 style="color:#2563eb;margin-bottom:10px;font-size:16px;">🏢 Cliente</h4>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:15px;font-size:14px;">
+              <span style="color:#666;font-weight:600;">Nome:</span>
+              <span style="font-weight:500;">${delivery.customer}</span>
+              <span style="color:#666;font-weight:600;">Indirizzo:</span>
+              <span style="font-weight:500;">${delivery.address}</span>
+              <span style="color:#666;font-weight:600;">Telefono:</span>
+              <span style="font-weight:500;">${delivery.phone || 'Non disponibile'}</span>
+            </div>
+          </div>
+
+          <div style="margin-bottom:20px;">
+            <h4 style="color:#2563eb;margin-bottom:10px;font-size:16px;">🚚 Consegna</h4>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:15px;font-size:14px;">
+              <span style="color:#666;font-weight:600;">Ordine N°:</span>
+              <span style="font-weight:500;">${delivery.name}</span>
+              <span style="color:#666;font-weight:600;">Autista:</span>
+              <span style="font-weight:500;">${delivery.driverName}</span>
+              <span style="color:#666;font-weight:600;">Stato:</span>
+              <span style="padding:4px 12px;border-radius:15px;font-size:12px;font-weight:600;${delivery.status === 'completed' ? 'background:#dcfce7;color:#166534;' : delivery.status === 'backorder' ? 'background:#fed7aa;color:#ea580c;' : 'background:#dbeafe;color:#1d4ed8;'}">${delivery.statusText}</span>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
+            <button onclick="window.open('/web/report/pdf/stock.report_picking/${delivery.id}', '_blank')" style="flex:1;padding:12px 20px;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:14px;background:#2563eb;color:white;min-width:140px;">📄 Scarica PDF</button>
+            ${delivery.phone ? `<button onclick="window.location.href='tel:${delivery.phone}'" style="flex:1;padding:12px 20px;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:14px;background:#059669;color:white;min-width:140px;">📞 Chiama</button>` : ''}
+            <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${delivery.lat},${delivery.lng}', '_blank')" style="flex:1;padding:12px 20px;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:14px;background:#d97706;color:white;min-width:140px;">🧭 Naviga</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', popup);
+}
+</script>
+
+<script async="" defer="" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDQbkXsAyNQs0NypjDgTGA_SUxFxJWmijk&amp;callback=initMap">
+</script>

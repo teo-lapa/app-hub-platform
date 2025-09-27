@@ -1,0 +1,3693 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>🚀 Order Manager IMPROVED - Sistema AI Gemini 2.5 Enhanced [VERSIONE MIGLIORATA]</title>
+
+<style>
+  :root{
+    --bg: #0b1220; --text: #e5e7eb; --muted: #94a3b8; --card: #0f172a; --border: #1f2937;
+    --chip: #0b1220; --ok:#16a34a; --err:#ef4444; --warn:#f59e0b;
+    --accent:#22c55e; --accent2:#2563eb; --btnText:#052112; --btnText2:#eaf2ff;
+  }
+  [data-theme="light"]{
+    --bg: #f6f8fc; --text:#0a1628; --muted:#5b6a7f; --card:#ffffff; --border:#e5e9f2;
+    --chip:#eef3fb; --accent:#0ea5e9; --accent2:#7c3aed; --btnText:#04212b; --btnText2:#f1eaff;
+  }
+
+  html{-webkit-text-size-adjust:100%; -webkit-tap-highlight-color:transparent}
+  html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,Segoe UI,Arial;
+            -webkit-touch-callout:none; -webkit-user-select:none; user-select:none}
+  input, textarea, .search-item{-webkit-user-select:auto; user-select:auto}
+  #app{position:fixed; inset:0; z-index:999999; overflow:auto;
+       background:radial-gradient(1200px 800px at 20% -10%, #111827 0%, var(--bg) 55%, var(--bg) 100%)}
+
+  @keyframes gradientShift{0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%}}
+  @media (prefers-reduced-motion:no-preference){
+    [data-theme="light"] #app{
+      background:linear-gradient(120deg,#e6f3ff 0%,#fff5f9 40%,#f5f7ff 70%,#eaf9ff 100%);
+      background-size:200% 200%; animation:gradientShift 18s ease infinite;
+    }
+  }
+
+  /* Nascondo header/footer Odoo */
+  #oe_main_menu_navbar, header, footer, #wrapwrap > header, #wrapwrap > footer,
+  .navbar, .o_footer, .o_footer_copyright { display:none !important; }
+
+  *{box-sizing:border-box}
+  .wrap{max-width:1000px; margin:20px auto; padding:0 16px 40px}
+
+  .header{position:sticky; top:0; z-index:5; backdrop-filter:blur(8px);
+          background:color-mix(in oklab, var(--bg) 80%, transparent);
+          border-bottom:1px solid var(--border); padding:10px 16px; margin:0 -16px 16px;
+          display:flex; justify-content:space-between; align-items:center; flex-wrap:nowrap;
+          transition:transform 0.3s ease, opacity 0.3s ease}
+  .logo{font-size:18px; font-weight:700; letter-spacing:.2px}
+  .welcome-msg{color:var(--muted); font-size:14px; font-weight:500; padding:8px 12px;
+               background:var(--chip); border:1px solid var(--border); border-radius:8px}
+  .btn{padding:12px 16px; border:0; border-radius:12px; cursor:pointer; font-weight:700; 
+       transition:.15s all; text-decoration:none; display:inline-flex; align-items:center; gap:8px}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent); color:var(--btnText)}
+  .btn.secondary{background:var(--accent2); color:var(--btnText2)}
+  .btn.accent{background:linear-gradient(135deg, #3b82f6, #1d4ed8); color:white; box-shadow:0 4px 12px rgba(59, 130, 246, 0.3)}
+  .btn.ghost{background:var(--chip); color:var(--muted); border:1px solid var(--border)}
+  .btn:disabled{opacity:.5; cursor:not-allowed; transform:none}
+
+  .card{background:var(--card); border:1px solid var(--border); border-radius:16px;
+        padding:20px; margin:16px 0; box-shadow:0 8px 32px rgba(0,0,0,.1)}
+  .card-title{font-size:18px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px}
+  
+  .form-group{margin-bottom:16px}
+  .label{display:block; font-weight:600; margin-bottom:6px; color:var(--text)}
+  .input, .select{width:100%; padding:12px 14px; border:1px solid var(--border); border-radius:10px;
+                  background:var(--bg); color:var(--text); font-size:15px}
+  .input:focus, .select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent)}
+
+  .search-input{position:relative}
+  .search-results{position:fixed !important; z-index:999999 !important;
+                  background:var(--card) !important; border:2px solid var(--accent) !important;
+                  border-radius:8px !important; max-height:200px; overflow:auto;
+                  box-shadow:0 8px 32px rgba(0,0,0,0.4) !important;
+                  min-width:280px; font-size:14px}
+  .search-item{padding:10px 12px; cursor:pointer; border-bottom:1px solid var(--border);
+               transition:all 0.2s ease}
+  .search-item:hover{background:var(--accent); color:var(--btnText)}
+  .search-item:last-child{border-bottom:none}
+
+  .input-modes{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin:16px 0}
+  .input-mode{padding:20px; border:2px solid var(--border); border-radius:12px; text-align:center;
+              cursor:pointer; transition:.2s; background:var(--card)}
+  .input-mode:hover{border-color:var(--accent); background:color-mix(in oklab, var(--card) 90%, var(--accent) 10%)}
+  .input-mode.active{border-color:var(--accent); background:color-mix(in oklab, var(--card) 80%, var(--accent) 20%)}
+  .mode-icon{font-size:32px; margin-bottom:8px}
+  .mode-title{font-weight:600; font-size:14px}
+
+  .upload-area{border:2px dashed var(--border); border-radius:12px; padding:40px 20px;
+               text-align:center; cursor:pointer; transition:.2s; margin:16px 0}
+  .upload-area:hover, .upload-area.dragover{border-color:var(--accent); 
+                                            background:color-mix(in oklab, var(--card) 95%, var(--accent) 5%)}
+  .upload-icon{font-size:48px; margin-bottom:12px; opacity:.7}
+  .upload-text{font-weight:600; margin-bottom:4px}
+  .upload-hint{color:var(--muted); font-size:13px}
+
+  .file-input{display:none}
+  .textarea{min-height:120px; resize:vertical; font-family:monospace}
+
+  .processing{display:none; align-items:center; gap:12px; padding:16px; margin:16px 0;
+              background:color-mix(in oklab, var(--card) 90%, var(--accent) 10%); border-radius:12px}
+  .processing.show{display:flex}
+  .spinner{width:20px; height:20px; border:3px solid var(--border); border-top-color:var(--accent);
+           border-radius:50%; animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .product-grid{display:grid; gap:12px; margin:16px 0}
+  .product-item{display:grid; grid-template-columns:auto 1fr auto auto auto auto auto; gap:12px; align-items:center;
+                padding:16px; border:1px solid var(--border); border-radius:12px; background:var(--card)}
+  .product-info{display:flex; flex-direction:column; gap:4px}
+  .product-name{font-weight:700; color:var(--text)}
+  .product-code{font-size:12px; color:var(--muted)}
+  .product-raw{font-size:11px; color:var(--muted); font-style:italic; opacity:.8}
+
+  .qty-input{width:100px; padding:12px 8px; border-radius:6px; border:1px solid var(--border);
+             background:var(--bg); color:var(--text); text-align:center; font-weight:600; min-height:44px}
+  
+  .price{text-align:right; font-size:13px}
+  .price-value{font-weight:700; color:var(--text)}
+  .price-type{color:var(--muted)}
+
+  .product-image{width:40px; height:40px; border-radius:8px; object-fit:cover; background:var(--border); flex-shrink:0}
+  .product-placeholder{width:40px; height:40px; background:var(--border); border-radius:8px;
+                      display:flex; align-items:center; justify-content:center;
+                      font-size:14px; color:var(--muted); flex-shrink:0}
+  .stock-info{padding:4px 8px; border-radius:6px; font-size:12px; font-weight:600; text-align:center; min-width:80px}
+  .stock-info.high{background:color-mix(in oklab, var(--ok) 20%, transparent); color:var(--ok)}
+  .stock-info.medium{background:color-mix(in oklab, var(--warn) 20%, transparent); color:var(--warn)}
+  .stock-info.low{background:color-mix(in oklab, var(--err) 20%, transparent); color:var(--err)}
+  .price-list-btn{padding:8px 12px; font-size:12px; border-radius:8px; cursor:pointer; border:1px solid var(--accent);
+                  background:transparent; color:var(--accent); transition:all 0.2s; min-height:44px; min-width:44px}
+  .price-list-btn:hover{background:var(--accent); color:var(--btnText)}
+
+  .confidence{padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600; text-align:center}
+  .conf-high{background:color-mix(in oklab, var(--ok) 20%, transparent); color:var(--ok)}
+  .conf-medium{background:color-mix(in oklab, var(--warn) 20%, transparent); color:var(--warn)}
+  .conf-low{background:color-mix(in oklab, var(--err) 20%, transparent); color:var(--err)}
+
+  .actions{display:flex; gap:12px; justify-content:center; margin:24px 0; flex-wrap:wrap}
+  
+  /* Raw Products List */
+  .raw-products-list{display:flex; flex-direction:column; gap:8px; margin:16px 0}
+  .raw-product-item{display:grid; grid-template-columns:auto 1fr auto auto auto; gap:12px; 
+                    align-items:center; padding:12px; border:1px solid var(--border); 
+                    border-radius:10px; background:var(--card); transition:.2s}
+  .raw-product-item:hover{border-color:var(--accent)}
+  .raw-product-item.selected{border-color:var(--accent); background:color-mix(in oklab, var(--card) 95%, var(--accent) 5%)}
+  
+  .raw-product-checkbox{width:24px; height:24px; cursor:pointer; min-width:24px; min-height:24px}
+  .raw-product-info{display:flex; flex-direction:column; gap:2px}
+  .raw-product-name{font-weight:600; color:var(--text)}
+  .raw-product-original{font-size:11px; color:var(--muted); font-style:italic}
+  .raw-product-qty{width:90px; padding:12px 8px; border-radius:6px; border:1px solid var(--border);
+                   background:var(--bg); color:var(--text); text-align:center; font-weight:600; min-height:44px}
+  .raw-product-uom{font-size:12px; color:var(--muted); font-weight:600; min-width:35px; text-align:center}
+  .raw-product-actions{display:flex; gap:4px}
+  .raw-product-status{font-size:11px; padding:3px 6px; border-radius:4px; font-weight:600}
+  .status-pending{background:color-mix(in oklab, var(--warn) 20%, transparent); color:var(--warn)}
+  .status-found{background:color-mix(in oklab, var(--ok) 20%, transparent); color:var(--ok)}
+  .status-missing{background:color-mix(in oklab, var(--err) 20%, transparent); color:var(--err)}
+  .order-summary{background:color-mix(in oklab, var(--card) 95%, var(--accent) 5%); 
+                 padding:16px; border-radius:12px; margin:16px 0}
+  .summary-row{display:flex; justify-content:space-between; margin:4px 0}
+  .summary-total{font-weight:700; font-size:18px; border-top:1px solid var(--border); padding-top:8px; margin-top:8px}
+
+  .toast{position:fixed; right:16px; bottom:16px; z-index:1000; background:var(--card);
+         border:1px solid var(--border); color:var(--text); padding:12px 16px; border-radius:12px;
+         box-shadow:0 8px 32px rgba(0,0,0,.2); opacity:0; transform:translateY(8px); transition:.3s}
+  .toast.show{opacity:1; transform:translateY(0)}
+
+  /* 📊 LOG TABLE STYLES */
+  .product-log-table{overflow-x:auto; margin:16px 0}
+  .log-table{width:100%; border-collapse:collapse; background:var(--bg); border-radius:8px; overflow:hidden}
+  .log-table th{background:var(--chip); color:var(--text); font-weight:700; padding:12px 8px;
+                text-align:left; border-bottom:2px solid var(--border); font-size:13px}
+  .log-table td{padding:10px 8px; border-bottom:1px solid var(--border); vertical-align:top; font-size:12px}
+  .log-table tr:hover{background:color-mix(in oklab, var(--card) 95%, var(--accent) 5%)}
+
+  .log-status{padding:4px 8px; border-radius:6px; font-weight:600; font-size:11px; text-align:center}
+  .log-status.inserito{background:var(--ok); color:white}
+  .log-status.non-trovato{background:var(--err); color:white}
+  .log-status.manuale{background:var(--warn); color:white}
+  .log-status.duplicato{background:var(--muted); color:white}
+  .log-status.in-elaborazione{background:var(--accent2); color:white}
+
+  .log-search-term{font-family:monospace; background:var(--chip); padding:2px 6px; border-radius:4px; font-size:11px}
+  .log-product-name{font-weight:600; color:var(--text)}
+  .log-reason{font-size:11px; color:var(--muted); font-style:italic}
+
+  .summary-stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:16px}
+  .summary-stat{text-align:center; padding:12px}
+  .summary-number{font-size:24px; font-weight:900; color:var(--accent)}
+  .summary-label{font-size:12px; color:var(--muted); margin-top:4px}
+
+  /* Popup Ricerca Manuale */
+  .popup-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100000; 
+                 display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px)}
+  .popup-overlay.show{display:flex}
+  .popup-content{background:var(--card); border-radius:16px; padding:24px; max-width:600px; 
+                 width:90%; max-height:80vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);
+                 border:2px solid var(--accent)}
+  .popup-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px}
+  .popup-title{font-size:20px; font-weight:700; color:var(--text)}
+  .popup-close{background:none; border:none; font-size:24px; cursor:pointer; color:var(--muted);
+               width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center}
+  .popup-close:hover{background:var(--border); color:var(--text)}
+  
+  .product-popup-item{display:flex; gap:12px; padding:12px; border:1px solid var(--border);
+                      border-radius:10px; margin-bottom:8px; cursor:pointer; transition:all 0.2s}
+  .product-popup-item:hover{border-color:var(--accent); background:color-mix(in oklab, var(--card) 95%, var(--accent) 5%)}
+  .product-popup-item.selected{border-color:var(--accent); background:color-mix(in oklab, var(--card) 90%, var(--accent) 10%)}
+  
+  .product-image{width:60px; height:60px; border-radius:8px; object-fit:cover; background:var(--border)}
+  .product-popup-info{flex:1; display:flex; flex-direction:column; gap:4px}
+  .product-popup-name{font-weight:600; color:var(--text)}
+  .product-popup-details{font-size:12px; color:var(--muted)}
+  .product-popup-stock{font-size:12px; font-weight:600; padding:4px 8px; border-radius:6px}
+  .stock-high{background:color-mix(in oklab, var(--ok) 20%, transparent); color:var(--ok)}
+  .stock-medium{background:color-mix(in oklab, var(--warn) 20%, transparent); color:var(--warn)}
+  .stock-low{background:color-mix(in oklab, var(--err) 20%, transparent); color:var(--err)}
+
+  /* Upload Method Selection */
+  .upload-method-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin:20px 0}
+  .upload-method{padding:20px; border:2px solid var(--border); border-radius:12px; text-align:center;
+                 cursor:pointer; transition:.2s; background:var(--card); position:relative}
+  .upload-method:hover{border-color:var(--accent); background:color-mix(in oklab, var(--card) 90%, var(--accent) 10%);
+                       transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,0.1)}
+  .upload-method-icon{font-size:48px; margin-bottom:12px}
+  .upload-method-title{font-weight:700; font-size:16px; margin-bottom:8px}
+  .upload-method-desc{font-size:12px; color:var(--muted); line-height:1.4}
+
+  /* Mobile First - Smartphone - FORZA I CAMBIAMENTI */
+  @media screen and (max-width: 425px){
+    .wrap{padding:0 8px 40px !important; max-width:100% !important}
+    .header{padding:8px !important; gap:6px !important; flex-wrap:wrap !important; justify-content:center !important}
+    .logo{font-size:16px !important; font-weight:600 !important}
+
+    /* PULSANTI PIÙ GRANDI SU MOBILE */
+    .btn{padding:18px 16px !important; font-size:16px !important; min-height:52px !important;
+         border-radius:10px !important; font-weight:700 !important; width:auto !important}
+    .btn.primary{font-size:18px !important; min-height:56px !important; padding:20px 18px !important}
+    .btn.secondary{font-size:15px !important; min-height:48px !important; padding:16px 14px !important}
+
+    .card{padding:16px !important; margin:10px 0 !important; border-radius:12px !important}
+    .card-title{font-size:18px !important; margin-bottom:12px !important}
+    .input,.select{padding:18px 16px !important; font-size:17px !important; min-height:52px !important; border-radius:10px !important}
+    .qty-input{width:90px !important; font-size:18px !important; min-height:52px !important; text-align:center !important; font-weight:700 !important}
+    .raw-product-qty{width:80px !important; font-size:18px !important; min-height:50px !important; text-align:center !important}
+    .product-item{grid-template-columns:1fr !important; gap:16px !important; padding:20px !important; border-radius:12px !important}
+    .product-item .product-info{grid-column:1 !important; margin-top:0 !important; font-size:16px !important; line-height:1.4 !important}
+    .product-item .price{font-size:17px !important; font-weight:700 !important}
+    .upload-method{padding:20px !important; min-height:140px !important; border-radius:12px !important}
+    .upload-method-icon{font-size:40px !important; margin-bottom:12px !important}
+    .upload-method-title{font-size:17px !important; font-weight:700 !important}
+    .search-item{padding:20px !important; font-size:17px !important; border-radius:12px !important; min-height:58px !important}
+    .actions{gap:14px !important; padding:14px 0 !important}
+    .header .btn{padding:14px 12px !important; font-size:14px !important; min-height:44px !important}
+    .product-item .btn{font-size:14px !important; padding:12px 14px !important; min-height:44px !important; border-radius:8px !important}
+  }
+
+  /* Tablet Portrait */
+  @media (max-width: 768px) and (min-width: 426px){
+    .wrap{padding:0 16px 40px}
+    .header{padding:12px; gap:10px; justify-content:space-between}
+    .logo{font-size:18px}
+    .btn{padding:15px 18px; font-size:15px; min-height:48px; border-radius:8px; font-weight:600}
+    .btn.primary{font-size:17px; min-height:50px}
+    .card{padding:18px; margin:10px 0}
+    .input,.select{padding:15px 14px; font-size:16px; min-height:48px}
+    .qty-input{width:90px; font-size:16px; min-height:48px; text-align:center; font-weight:600}
+    .product-item{
+      grid-template-columns:auto 1fr auto auto;
+      gap:12px;
+      padding:16px;
+      border-radius:10px;
+    }
+    .product-item .product-info{grid-column:1 / -1; margin-top:10px; font-size:15px}
+    .product-item .price{text-align:left; font-size:15px; font-weight:700}
+    .product-item .stock-info{font-size:13px; padding:10px; border-radius:6px}
+    .product-item .price-list-btn{font-size:13px; padding:10px 12px; min-height:46px}
+    .input-modes{grid-template-columns:1fr 1fr; gap:12px}
+    .actions{flex-direction:row; flex-wrap:wrap; justify-content:center; gap:12px}
+    .search-item{padding:16px; font-size:15px; min-height:50px}
+    .upload-method{padding:16px; min-height:120px}
+  }
+
+  /* Tablet Landscape */
+  @media (max-width: 1024px) and (min-width: 769px){
+    .wrap{padding:0 20px 40px}
+    .header{padding:16px; gap:12px}
+    .btn{padding:14px 20px; font-size:15px; min-height:46px; border-radius:8px}
+    .btn.primary{font-size:16px; min-height:48px}
+    .card{padding:20px; margin:12px 0}
+    .input,.select{padding:14px 16px; font-size:15px; min-height:46px}
+    .qty-input{width:85px; font-size:15px; min-height:46px; text-align:center}
+    .product-item{
+      grid-template-columns:auto 1fr auto auto auto auto;
+      gap:14px;
+      padding:18px;
+      border-radius:10px;
+    }
+    .product-item .product-info{font-size:14px}
+    .product-item .price{font-size:14px; font-weight:700}
+    .price-list-btn{font-size:13px; padding:10px 14px; min-height:44px}
+    .search-item{padding:16px; font-size:15px; min-height:48px}
+    .upload-method{padding:18px; min-height:110px}
+    .actions{gap:14px}
+  }
+
+  /* Touch-friendly improvements for all mobile devices */
+  @media (max-width: 1024px) {
+    .btn:active{transform:scale(0.98); transition:transform 0.1s}
+    .search-item:active{transform:scale(0.995)}
+    .upload-method:active{transform:scale(0.98)}
+    .product-item .btn:active{transform:scale(0.95)}
+
+    /* Larger tap targets */
+    .qty-input, .raw-product-qty{
+      background:var(--card);
+      border:2px solid var(--border);
+      border-radius:6px;
+      font-weight:600;
+    }
+    .qty-input:focus, .raw-product-qty:focus{
+      border-color:var(--accent);
+      outline:none;
+      box-shadow:0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Better spacing for touch */
+    .product-item{margin-bottom:12px}
+    .card + .card{margin-top:16px}
+
+    /* Smooth scrolling and better mobile navigation */
+    html{scroll-behavior:smooth}
+    .wrap{scroll-padding-top:60px}
+
+    /* Improve scroll momentum on iOS */
+    #app{-webkit-overflow-scrolling:touch; overscroll-behavior:contain}
+
+    /* Better modal and popup handling on mobile */
+    .modal, .popup{
+      padding:20px 12px;
+      border-radius:16px 16px 0 0;
+      max-height:85vh;
+      overflow-y:auto;
+    }
+  }
+
+  /* Landscape orientation adjustments for phones */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .header{padding:8px; font-size:14px}
+    .logo{font-size:15px}
+    .btn{min-height:38px; padding:10px 12px; font-size:14px}
+    .card{padding:12px; margin:6px 0}
+    .product-item{padding:12px; gap:8px}
+    .upload-method{min-height:90px; padding:12px}
+    .upload-method-icon{font-size:28px}
+  }
+
+  /* FORZA STILI MOBILE PER QUALSIASI DISPOSITIVO PICCOLO */
+  @media (max-width: 768px) {
+    /* OVERRIDE COMPLETO PER MOBILE */
+    * {
+      box-sizing: border-box !important;
+    }
+
+    /* LAYOUT CLIENTE E DATA IN COLONNA SINGOLA SU MOBILE */
+    .card > div[style*="grid-template-columns"] {
+      display: block !important;
+      grid-template-columns: none !important;
+    }
+
+    .card .form-group {
+      margin-bottom: 12px !important;
+    }
+
+    /* RISULTATI RICERCA PIÙ PICCOLI SU MOBILE */
+    .search-results {
+      font-size: 13px !important;
+      max-height: 200px !important;
+      border-radius: 6px !important;
+      min-width: 250px !important;
+      max-width: calc(100vw - 40px) !important;
+      left: 10px !important;
+      right: 10px !important;
+      width: auto !important;
+    }
+
+    .search-item {
+      padding: 8px 10px !important;
+      font-size: 13px !important;
+      line-height: 1.3 !important;
+    }
+
+    /* NASCONDI DEBUG BUTTON SU MOBILE */
+    #showDebugBtn {
+      display: none !important;
+    }
+
+    .btn {
+      padding: 8px 12px !important;
+      font-size: 13px !important;
+      min-height: 36px !important;
+      border-radius: 8px !important;
+      font-weight: 600 !important;
+      margin: 4px !important;
+      width: auto !important;
+      display: inline-block !important;
+      touch-action: manipulation !important;
+    }
+
+    .btn.primary {
+      padding: 8px 12px !important;
+      font-size: 13px !important;
+      min-height: 36px !important;
+      background: var(--accent) !important;
+      color: var(--btnText) !important;
+      box-shadow: 0 4px 12px rgba(34,197,94,0.3) !important;
+    }
+
+    .btn.secondary {
+      padding: 14px 18px !important;
+      font-size: 16px !important;
+      min-height: 50px !important;
+    }
+
+    .input, .select {
+      padding: 10px 12px !important;
+      font-size: 14px !important;
+      min-height: 40px !important;
+      border-radius: 12px !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    .qty-input, .raw-product-qty {
+      width: 100px !important;
+      font-size: 18px !important;
+      min-height: 54px !important;
+      text-align: center !important;
+      font-weight: 700 !important;
+      padding: 12px !important;
+      border: 2px solid var(--border) !important;
+      border-radius: 8px !important;
+      background: var(--card) !important;
+    }
+
+    .card {
+      padding: 20px !important;
+      margin: 12px 0 !important;
+      border-radius: 16px !important;
+      font-size: 16px !important;
+    }
+
+    .card-title {
+      font-size: 20px !important;
+      margin-bottom: 16px !important;
+      font-weight: 700 !important;
+    }
+
+    .search-item {
+      padding: 20px !important;
+      font-size: 17px !important;
+      min-height: 60px !important;
+      border-radius: 12px !important;
+      margin: 8px 0 !important;
+    }
+
+    .upload-method {
+      padding: 24px !important;
+      min-height: 150px !important;
+      border-radius: 16px !important;
+      margin: 12px 0 !important;
+    }
+
+    .upload-method-icon {
+      font-size: 48px !important;
+      margin-bottom: 12px !important;
+    }
+
+    .upload-method-title {
+      font-size: 18px !important;
+      font-weight: 700 !important;
+      margin-bottom: 8px !important;
+    }
+
+    .upload-method-desc {
+      font-size: 15px !important;
+      line-height: 1.4 !important;
+    }
+
+    .product-item {
+      padding: 20px !important;
+      margin: 12px 0 !important;
+      border-radius: 12px !important;
+      gap: 16px !important;
+    }
+
+    .product-item .product-info {
+      font-size: 16px !important;
+      line-height: 1.5 !important;
+    }
+
+    .product-item .price {
+      font-size: 18px !important;
+      font-weight: 700 !important;
+    }
+
+    .header {
+      padding: 12px !important;
+      gap: 8px !important;
+      flex-wrap: wrap !important;
+    }
+
+    .logo {
+      font-size: 18px !important;
+      font-weight: 700 !important;
+    }
+
+    .actions {
+      gap: 16px !important;
+      padding: 16px 0 !important;
+      flex-direction: column !important;
+    }
+
+    .wrap {
+      padding: 0 12px 60px !important;
+      max-width: 100% !important;
+    }
+  }
+</style>
+
+<div id="app">
+  <div class="wrap">
+    
+    
+    <div class="header">
+      <div class="logo">🤖 OrderAI+</div>
+      <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button id="hideHeaderBtn" class="btn ghost" onclick="toggleHeader()" title="Nascondi/Mostra header" style="font-size: 13px; padding: 6px 10px;">👁️</button>
+          <button id="themeBtn" class="btn ghost" style="font-size: 13px; padding: 6px 10px;">🌙 Scuro</button>
+          <button id="clearAllBtn" class="btn secondary" onclick="clearEverything()" title="Pulisci tutto e ricomincia" style="background:#ef4444; color:white; font-weight:bold; font-size: 13px; padding: 6px 12px;">🗑️ PULISCI TUTTO</button>
+          <button id="showDebugBtn" class="btn ghost" onclick="reopenDebugSection()" style="display:none; font-size: 13px; padding: 6px 10px;">🤖 Debug</button>
+          <button class="btn accent" onclick="openOrderInOdoo()" id="headerOrderBtn" style="display:none; font-size: 13px; padding: 6px 12px;">🔗 Apri in Odoo</button>
+        </div>
+        <div id="lastOrderInfo" style="font-size: 12px; color: var(--muted); display: none;">
+          Ultimo ordine registrato: <span id="lastOrderId" style="color: var(--accent); font-weight: 600;"></span>
+        </div>
+      </div>
+    </div>
+
+    
+    <div class="card" style="padding:12px;">
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px">
+        <div class="form-group">
+          <label class="label" style="font-size:13px; margin-bottom:4px;">👤 Cliente</label>
+          <div class="search-input">
+            <input type="text" id="customerSearch" class="input" placeholder="Cerca cliente..." autocomplete="off" style="padding:8px 12px; font-size:13px;">
+            <div id="customerResults" class="search-results" style="display:none"></div>
+          </div>
+          <input type="hidden" id="selectedCustomerId">
+        </div>
+
+        <div class="form-group">
+          <label class="label" style="font-size:13px; margin-bottom:4px;">📅 Data Consegna</label>
+          <input type="date" id="deliveryDate" class="input" style="padding:8px 12px; font-size:13px;">
+        </div>
+      </div>
+      
+      
+      <div id="deliveryAddressSection" class="form-group" style="display:none; margin-top:12px">
+        <label class="label">Indirizzo di Consegna</label>
+        <select id="deliveryAddress" class="select">
+          <option value="">Seleziona indirizzo...</option>
+        </select>
+        <div id="selectedAddressPreview" style="margin-top:8px; padding:8px; background:var(--chip); border-radius:6px; font-size:12px; color:var(--muted); display:none"></div>
+      </div>
+    </div>
+
+    
+    <div class="card" style="padding:12px;">
+      <div style="text-align:center; margin:8px 0">
+        <button onclick="openOrderUploadPopup()" class="btn primary" style="font-size:13px; padding:6px 12px; border-radius:8px;">
+          📤 Carica Ordine
+        </button>
+      </div>
+
+      
+      <div id="processing" class="processing">
+        <div class="spinner"></div>
+        <div id="processingText">Elaborando con AI...</div>
+      </div>
+    </div>
+
+    
+    <div id="rawProductsCard" class="card" style="display:none">
+      <div class="card-title">❌ Prodotti Non Trovati</div>
+      <div style="color:var(--muted);font-size:13px;margin-bottom:16px">
+        Aggiungi informazioni extra per aiutare l'AI a trovare questi prodotti
+      </div>
+      
+      <div id="rawProductsList" class="raw-products-list"></div>
+
+      
+      <div id="extraInfoSection" style="margin:20px 0; padding:16px; background:color-mix(in oklab, var(--card) 95%, var(--accent) 5%); border-radius:12px;">
+        <div style="font-weight:600; margin-bottom:12px;">🔍 Informazioni Aggiuntive per Ricerca</div>
+        <div style="color:var(--muted); font-size:13px; margin-bottom:12px;">
+          Aggiungi dettagli per aiutare l'AI a trovare i prodotti mancanti (es: marca, categoria, caratteristiche specifiche)
+        </div>
+        <textarea id="extraInfoText" class="input textarea" placeholder="Es: Il latte è della marca Alpro, nella sezione bio. Il pane è integrale ai cereali del fornaio locale..." style="min-height:80px;"></textarea>
+      </div>
+
+      <div class="final-actions">
+        <button id="retrySearchBtn" class="btn primary" onclick="retrySearchWithExtraInfo()">🔍 Riprova Ricerca con Info Extra</button>
+      </div>
+    </div>
+
+    
+    <div id="productLogCard" class="card" style="display:none">
+      <div class="card-title">📊 Log Elaborazione AI - Confronto Prodotti</div>
+      <div style="color:var(--muted);font-size:13px;margin-bottom:16px">
+        Confronto tra prodotti estratti dall'AI e risultati ricerca nel catalogo
+      </div>
+
+      <div class="product-log-table">
+        <table id="productLogTable" class="log-table">
+          <thead>
+            <tr>
+              <th>Prodotto Estratto</th>
+              <th>Qtà</th>
+              <th>UoM</th>
+              <th>Ricerca Effettuata</th>
+              <th>Risultati Trovati</th>
+              <th>Stato</th>
+              <th>Prodotto Selezionato</th>
+              <th>Motivo</th>
+            </tr>
+          </thead>
+          <tbody id="productLogTableBody">
+          </tbody>
+        </table>
+      </div>
+
+      <div class="log-summary" id="logSummary" style="margin-top:20px; padding:16px; background:var(--chip); border-radius:8px;">
+        <div class="summary-stats" id="summaryStats"></div>
+      </div>
+    </div>
+
+
+    <div id="orderCard" class="card" style="display:none">
+      <div class="card-title">🛒 Prodotti nell'Ordine</div>
+      <div id="productList" class="product-grid"></div>
+      
+      
+      <div id="orderSummary" class="order-summary">
+        <div class="summary-row">
+          <span>Totale Righe:</span>
+          <span id="totalLines">0</span>
+        </div>
+        <div class="summary-row">
+          <span>Totale Stimato:</span>
+          <span id="totalAmount">CHF 0.00</span>
+        </div>
+        <div class="summary-row summary-total">
+          <span>TOTALE ORDINE:</span>
+          <span id="finalTotal">CHF 0.00</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn secondary" onclick="clearOrder()">🗑️ Svuota Ordine</button>
+        <button class="btn primary" onclick="createOdooOrder()" id="createOrderBtn">📋 Crea Ordine in Odoo</button>
+      </div>
+    </div>
+
+    
+    <div class="card" style="padding:12px;">
+      <div style="text-align:center">
+        <button onclick="openManualSearchPopup()" class="btn primary" style="font-size:13px; padding:6px 12px; border-radius:8px;">
+          🔍 Ricerca Manuale
+        </button>
+      </div>
+    </div>
+
+  </div>
+  <div id="toast" class="toast"></div>
+  
+  
+  <div id="manualSearchPopup" class="popup-overlay">
+    <div class="popup-content">
+      <div class="popup-header">
+        <div class="popup-title">🔍 Ricerca Manuale Prodotti</div>
+        <button class="popup-close" onclick="closeManualSearchPopup()">×</button>
+      </div>
+      
+      <div style="margin-bottom:16px">
+        <input type="text" id="popupProductSearch" class="input" placeholder="Cerca prodotto per nome, codice o barcode...">
+      </div>
+      
+      <div id="popupProductResults" style="max-height:400px; overflow:auto"></div>
+      
+      <div style="margin-top:12px; text-align:center; font-size:12px; color:var(--muted)">
+        Clicca sui prodotti per aggiungerli direttamente all'ordine
+      </div>
+    </div>
+  </div>
+  
+  
+  <div id="orderUploadPopup" class="popup-overlay">
+    <div class="popup-content">
+      <div class="popup-header">
+        <div class="popup-title">📤 Carica Ordine</div>
+        <button class="popup-close" onclick="closeOrderUploadPopup()">×</button>
+      </div>
+      
+      <div class="upload-method-grid">
+        <div class="upload-method" onclick="selectUploadMethod('text')">
+          <div class="upload-method-icon">📄</div>
+          <div class="upload-method-title">Testo</div>
+          <div class="upload-method-desc">Incolla o scrivi l'ordine del cliente</div>
+        </div>
+        
+        <div class="upload-method" onclick="selectUploadMethod('photo')">
+          <div class="upload-method-icon">📸</div>
+          <div class="upload-method-title">Foto</div>
+          <div class="upload-method-desc">Carica foto di ordini scritti a mano</div>
+        </div>
+        
+        <div class="upload-method" onclick="selectUploadMethod('audio')">
+          <div class="upload-method-icon">🎤</div>
+          <div class="upload-method-title">Audio</div>
+          <div class="upload-method-desc">Carica messaggi vocali o registrazioni</div>
+        </div>
+      </div>
+      
+      
+      <div id="uploadMethodContent" style="display:none; margin-top:20px; border-top:1px solid var(--border); padding-top:20px">
+        
+        
+        <div id="textUploadContent" style="display:none">
+          <div class="form-group">
+            <label class="label">Incolla l'ordine del cliente</label>
+            <textarea id="orderTextPopup" class="input textarea" style="min-height:120px" placeholder="Esempio:
+1 gelato cioccolato
+20 lt olio di oliva  
+10 kg farina bianca
+1 kg sardelle marinate"></textarea>
+          </div>
+          <button class="btn primary" onclick="processTextOrderFromPopup()">🚀 Elabora con AI</button>
+        </div>
+        
+        
+        <div id="photoUploadContent" style="display:none">
+          <input type="file" id="photoFilePopup" class="file-input" accept="image/*" multiple="">
+          <div class="upload-area" onclick="document.getElementById('photoFilePopup').click()">
+            <div class="upload-icon">📸</div>
+            <div class="upload-text">Carica foto degli ordini</div>
+            <div class="upload-hint">Più file contemporaneamente</div>
+          </div>
+          <div id="photoPreviewPopup" style="display:none; margin-top:16px">
+            <div id="photoPreviewGridPopup" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:8px"></div>
+            <div style="margin-top:8px; font-size:12px; color:var(--muted)" id="photoInfoPopup"></div>
+          </div>
+          <button class="btn primary" onclick="processPhotoOrderFromPopup()" style="display:none; margin-top:12px" id="processPhotoBtnPopup">🔍 Leggi Foto con AI</button>
+        </div>
+        
+        
+        <div id="audioUploadContent" style="display:none">
+          <input type="file" id="audioFilePopup" class="file-input" accept="audio/*,.opus" multiple="">
+          <div class="upload-area" onclick="document.getElementById('audioFilePopup').click()">
+            <div class="upload-icon">🎤</div>
+            <div class="upload-text">Carica file audio</div>
+            <div class="upload-hint">Più file contemporaneamente</div>
+          </div>
+          <div id="audioPreviewPopup" style="display:none; margin-top:16px">
+            <div id="audioPreviewListPopup" style="display:flex; flex-direction:column; gap:6px"></div>
+            <div style="margin-top:8px; font-size:12px; color:var(--muted)" id="audioInfoPopup"></div>
+          </div>
+          <button class="btn primary" onclick="processAudioOrderFromPopup()" style="display:none; margin-top:12px" id="processAudioBtnPopup">🎧 Trascrivi Audio con AI</button>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="debugCard" class="card" style="display:none; margin-top:20px; background:color-mix(in oklab, var(--card) 95%, var(--accent2) 5%);">
+    <div class="card-title">🤖 Debug Gemini - Controllo Visivo</div>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-weight:600; margin-bottom:8px; color:var(--text);">📝 Messaggio Cliente:</div>
+      <div id="debugClientMessage" style="padding:12px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-family:monospace; white-space:pre-wrap; color:var(--text);"></div>
+    </div>
+
+    <div>
+      <div style="font-weight:600; margin-bottom:8px; color:var(--text);">🤖 Gemini Trascrizione:</div>
+      <div id="debugGeminiResponse" style="padding:12px; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text);"></div>
+    </div>
+
+    <div style="margin-top:12px; text-align:center;">
+      <button class="btn ghost" onclick="hideDebugSection()" style="font-size:12px;">✕ Chiudi Debug</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Configuration - Gemini API Key
+const GEMINI_API_KEY = 'AIzaSyAXlufp3aIYv-vH_XcS8xE_NgY9EEmxKig';
+
+// State
+let currentCustomer = null;
+let customerAddresses = []; // Indirizzi del cliente selezionato
+let selectedDeliveryAddress = null;
+let orderLines = []; // Solo per visualizzazione locale, il vero ordine è in Odoo
+let currentOdooOrder = null; // L'ordine/preventivo Odoo reale
+let currentInputMode = 'manual';
+let rawProductLines = []; // Prodotti grezzi estratti dall'AI
+let odooUomUnits = []; // Cache delle unità di misura Odoo
+let isProcessing = false; // Flag per evitare processamento multiplo
+let productSearchLog = []; // 📊 Log dettagliato della ricerca prodotti
+
+// 📊 FUNZIONI LOG PRODOTTI AI
+function initProductLog() {
+  productSearchLog = [];
+}
+
+function addToProductLog(entry) {
+  productSearchLog.push({
+    timestamp: new Date(),
+    ...entry
+  });
+  updateProductLogDisplay();
+}
+
+// 📊 Funzione per aggiornare un log esistente
+function updateProductLogEntry(extractedProduct, updatedEntry) {
+  const existingIndex = productSearchLog.findIndex(
+    log => log.extractedProduct === extractedProduct
+  );
+
+  if (existingIndex !== -1) {
+    // Aggiorna entry esistente
+    console.log(`📊 Aggiornando log per "${extractedProduct}": ${updatedEntry.status}`);
+    productSearchLog[existingIndex] = {
+      ...productSearchLog[existingIndex],
+      ...updatedEntry
+    };
+  } else {
+    // Se non esiste, aggiungila (con debug)
+    console.log(`⚠️ Log entry non trovata per "${extractedProduct}", la creo nuova`);
+    console.log('📊 Log entries disponibili:', productSearchLog.map(log => log.extractedProduct));
+    addToProductLog({
+      extractedProduct: extractedProduct,
+      ...updatedEntry
+    });
+  }
+  updateProductLogDisplay();
+}
+
+function updateProductLogDisplay() {
+  const logCard = document.getElementById('productLogCard');
+  const tbody = document.getElementById('productLogTableBody');
+  const summaryDiv = document.getElementById('summaryStats');
+
+  if (productSearchLog.length === 0) {
+    logCard.style.display = 'none';
+    return;
+  }
+
+  // Mostra la tabella
+  logCard.style.display = 'block';
+
+  // Pulisci tabella
+  tbody.innerHTML = '';
+
+  // Popoliza tabella
+  productSearchLog.forEach((entry, index) => {
+    const row = document.createElement('tr');
+
+    const statusClass =
+      entry.status === 'inserito' ? 'inserito' :
+      entry.status === 'non-trovato' ? 'non-trovato' :
+      entry.status === 'manuale' ? 'manuale' : 'duplicato';
+
+    row.innerHTML = `
+      <td><span class="log-product-name">${entry.extractedProduct || '-'}</span></td>
+      <td>${entry.quantity || 1}</td>
+      <td>${entry.uom || '-'}</td>
+      <td><span class="log-search-term">${entry.searchTerm || '-'}</span></td>
+      <td>${entry.foundResults || 0}</td>
+      <td><span class="log-status ${statusClass}">${entry.status}</span></td>
+      <td class="log-product-name">${entry.selectedProduct || '-'}</td>
+      <td><span class="log-reason">${entry.reason || '-'}</span></td>
+    `;
+
+    tbody.appendChild(row);
+  });
+
+  // Calcola statistiche
+  const stats = productSearchLog.reduce((acc, entry) => {
+    if (entry.status === 'inserito') acc.inseriti++;
+    else if (entry.status === 'non-trovato') acc.nonTrovati++;
+    else if (entry.status === 'manuale') acc.manuali++;
+    else if (entry.status === 'in-elaborazione') acc.inElaborazione++;
+    else acc.duplicati++;
+    acc.totali++;
+    return acc;
+  }, { inseriti: 0, nonTrovati: 0, manuali: 0, duplicati: 0, inElaborazione: 0, totali: 0 });
+
+  // Mostra statistiche
+  summaryDiv.innerHTML = `
+    <div class="summary-stat">
+      <div class="summary-number" style="color:var(--ok)">${stats.inseriti}</div>
+      <div class="summary-label">Inseriti</div>
+    </div>
+    <div class="summary-stat">
+      <div class="summary-number" style="color:var(--err)">${stats.nonTrovati}</div>
+      <div class="summary-label">Non Trovati</div>
+    </div>
+    <div class="summary-stat">
+      <div class="summary-number" style="color:var(--warn)">${stats.manuali}</div>
+      <div class="summary-label">Manuali</div>
+    </div>
+    <div class="summary-stat">
+      <div class="summary-number" style="color:var(--accent2)">${stats.inElaborazione}</div>
+      <div class="summary-label">In Corso</div>
+    </div>
+    <div class="summary-stat">
+      <div class="summary-number">${stats.totali}</div>
+      <div class="summary-label">Totali</div>
+    </div>
+  `;
+}
+
+// Theme Management
+(function initTheme(){
+  const html = document.documentElement;
+  const stored = localStorage.getItem('theme');
+  if (stored) html.setAttribute('data-theme', stored);
+  else if (matchMedia('(prefers-color-scheme: light)').matches) html.setAttribute('data-theme', 'light');
+  updateThemeBtn();
+})();
+
+function toggleTheme(){
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  html.setAttribute('data-theme', current);
+  localStorage.setItem('theme', current);
+  updateThemeBtn();
+}
+
+function updateThemeBtn(){
+  const html = document.documentElement;
+  const isLight = html.getAttribute('data-theme') === 'light';
+  document.getElementById('themeBtn').textContent = isLight ? '☀️ Chiaro' : '🌙 Scuro';
+}
+
+document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+
+/* ---------------- RPC (ESATTO COME FILE ORIGINALE) ---------------- */
+function getCSRF(){
+  try{
+    if(window.odoo?.csrf_token) return window.odoo.csrf_token;
+    const m=document.cookie.match(/(?:^|;)\s*csrf_token=([^;]+)/);
+    if(m) return decodeURIComponent(m[1]);
+  }catch(e){}
+  return null;
+}
+async function callKw(model,method,args=[],kwargs={}){
+  const h={'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'};
+  const t=getCSRF(); if(t) h['X-CSRFToken']=t;
+  const r=await fetch(`/web/dataset/call_kw/${model}/${method}`,{
+    method:'POST',credentials:'include',headers:h,
+    body:JSON.stringify({jsonrpc:'2.0',method:'call',params:{model,method,args,kwargs},id:Date.now()})
+  });
+  const d=await r.json();
+  if(d.error) throw new Error((d.error.data&&d.error.data.message)||d.error.message);
+  return d.result;
+}
+// Helper function for simple calls
+async function call(model, method, args = []) {
+  return callKw(model, method, args);
+}
+
+async function searchRead(model,domain,fields=[],limit=0,order=""){
+  return callKw(model,'search_read',[domain],{fields,limit,order});
+}
+
+// Load Odoo UoM Units
+async function loadOdooUomUnits() {
+  try {
+    if (odooUomUnits.length > 0) return odooUomUnits; // Use cache
+    
+    const uomUnits = await searchRead(
+      'uom.uom',
+      [], // All UoM units
+      ['id', 'name', 'category_id', 'factor', 'uom_type'],
+      0,
+      'category_id, name'
+    );
+    
+    odooUomUnits = uomUnits;
+    
+    return uomUnits;
+  } catch (error) {
+    console.error('❌ Errore nel caricamento UoM da Odoo:', error);
+    // Fallback to common units if Odoo fails
+    return [
+      {id: 1, name: 'kg', category_id: [1, 'Weight']},
+      {id: 2, name: 'L', category_id: [2, 'Volume']},
+      {id: 3, name: 'pz', category_id: [3, 'Unit']},
+      {id: 4, name: 'cart', category_id: [3, 'Unit']},
+      {id: 5, name: 'sacco', category_id: [3, 'Unit']}
+    ];
+  }
+}
+
+// Toast Notifications
+let toastTimer = null;
+function toast(message, duration = 3000){
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+}
+
+// Customer Search
+let customerSearchTimer = null;
+document.getElementById('customerSearch').addEventListener('input', function() {
+  const query = this.value.trim();
+  clearTimeout(customerSearchTimer);
+  
+  if (query.length < 2) {
+    document.getElementById('customerResults').style.display = 'none';
+    return;
+  }
+  
+  customerSearchTimer = setTimeout(() => searchCustomers(query), 300);
+});
+
+async function searchCustomers(query) {
+  try {
+    const customers = await searchRead(
+      'res.partner',
+      [
+        '&',
+        ['customer_rank', '>', 0],
+        '|',
+        ['name', 'ilike', query],
+        ['email', 'ilike', query]
+      ],
+      ['id', 'name', 'street', 'city', 'email'],
+      10,
+      'name asc'
+    );
+    
+    displayCustomerResults(customers);
+  } catch (error) {
+    console.error('Error searching customers:', error);
+    toast('❌ Errore nella ricerca clienti');
+  }
+}
+
+function displayCustomerResults(customers) {
+  const container = document.getElementById('customerResults');
+  const input = document.getElementById('customerSearch');
+  
+  container.innerHTML = '';
+  
+  if (customers.length === 0) {
+    container.innerHTML = '<div class="search-item">Nessun cliente trovato</div>';
+  } else {
+    customers.forEach(customer => {
+      const item = document.createElement('div');
+      item.className = 'search-item';
+      item.innerHTML = `
+        <strong>${customer.name}</strong><br>
+        <small style="color: var(--muted)">${customer.street || ''} ${customer.city || ''}</small>
+      `;
+      item.addEventListener('click', () => selectCustomer(customer));
+      container.appendChild(item);
+    });
+  }
+  
+  // Posiziona la tendina sotto l'input
+  const rect = input.getBoundingClientRect();
+  container.style.top = (rect.bottom + window.scrollY) + 'px';
+  container.style.left = rect.left + 'px';
+  container.style.width = rect.width + 'px';
+  container.style.display = 'block';
+}
+
+async function selectCustomer(customer) {
+  currentCustomer = customer;
+  document.getElementById('customerSearch').value = customer.name;
+  document.getElementById('selectedCustomerId').value = customer.id;
+  document.getElementById('customerResults').style.display = 'none';
+
+  // 🚨 IMPORTANTE: Pulisci l'ordine precedente quando cambi cliente
+  orderLines = [];
+  rawProductLines = [];
+  updateOrderDisplay();
+
+  // Nascondi la sezione prodotti non trovati
+  const rawProductsCard = document.getElementById('rawProductsCard');
+  if (rawProductsCard) rawProductsCard.style.display = 'none';
+
+
+  // Pulsante "Vedi 100 Prodotti Cliente" rimosso
+
+  // Carica gli indirizzi del cliente
+  await loadCustomerAddresses(customer.id);
+
+  // 🗓️ Reimposta sempre domani come data di consegna
+  setTomorrowDate();
+
+  toast(`✅ Cliente selezionato: ${customer.name} - Ordine precedente pulito`);
+}
+
+// Load Customer Addresses
+async function loadCustomerAddresses(customerId) {
+  try {
+    // Cerca tutti gli indirizzi collegati al cliente (figlio + principale)
+    const addresses = await searchRead(
+      'res.partner',
+      [
+        '|',
+        ['id', '=', customerId], // Cliente principale
+        ['parent_id', '=', customerId] // Indirizzi figlio
+      ],
+      ['id', 'name', 'street', 'street2', 'city', 'zip', 'country_id', 'is_company', 'parent_id'],
+      0,
+      'is_company desc, name asc' // Prima il principale, poi gli altri
+    );
+    
+    customerAddresses = addresses;
+    displayDeliveryAddresses(addresses);
+    
+  } catch (error) {
+    console.error('Errore nel caricamento indirizzi:', error);
+    customerAddresses = [currentCustomer]; // Fallback al cliente principale
+    displayDeliveryAddresses([currentCustomer]);
+  }
+}
+
+function displayDeliveryAddresses(addresses) {
+  const section = document.getElementById('deliveryAddressSection');
+  const select = document.getElementById('deliveryAddress');
+  
+  // Reset
+  select.innerHTML = '<option value="">Seleziona indirizzo...</option>';
+  selectedDeliveryAddress = null;
+  
+  if (addresses.length <= 1) {
+    // Solo un indirizzo - nascondo la selezione
+    section.style.display = 'none';
+    if (addresses.length === 1) {
+      selectedDeliveryAddress = addresses[0];
+    }
+  } else {
+    // Più indirizzi - mostro la selezione
+    section.style.display = 'block';
+    
+    addresses.forEach(address => {
+      const option = document.createElement('option');
+      option.value = address.id;
+      
+      // Formato descrizione indirizzo
+      let description = address.name;
+      if (address.parent_id && !address.is_company) {
+        description = `${address.name} (${address.parent_id[1]})`;
+      }
+      
+      const addressParts = [];
+      if (address.street) addressParts.push(address.street);
+      if (address.city) addressParts.push(address.city);
+      if (address.zip) addressParts.push(address.zip);
+      
+      if (addressParts.length > 0) {
+        description += ` - ${addressParts.join(', ')}`;
+      }
+      
+      option.textContent = description;
+      option.dataset.addressData = JSON.stringify(address);
+      select.appendChild(option);
+    });
+    
+    // Auto-seleziona il primo se è il principale
+    if (addresses[0] && addresses[0].is_company) {
+      select.value = addresses[0].id;
+      selectDeliveryAddress(addresses[0]);
+    }
+  }
+}
+
+function selectDeliveryAddress(address) {
+  selectedDeliveryAddress = address;
+  
+  // Mostra preview indirizzo selezionato
+  const preview = document.getElementById('selectedAddressPreview');
+  const addressParts = [];
+  
+  if (address.street) addressParts.push(address.street);
+  if (address.street2) addressParts.push(address.street2);
+  if (address.zip) addressParts.push(address.zip);
+  if (address.city) addressParts.push(address.city);
+  if (address.country_id) addressParts.push(address.country_id[1]);
+  
+  preview.innerHTML = `📍 ${addressParts.join(', ')}`;
+  preview.style.display = 'block';
+}
+
+// Event listener per selezione indirizzo
+document.getElementById('deliveryAddress').addEventListener('change', function() {
+  const selectedOption = this.options[this.selectedIndex];
+  if (selectedOption.value && selectedOption.dataset.addressData) {
+    const address = JSON.parse(selectedOption.dataset.addressData);
+    selectDeliveryAddress(address);
+  } else {
+    selectedDeliveryAddress = null;
+    document.getElementById('selectedAddressPreview').style.display = 'none';
+  }
+});
+
+async function addProductToOrder(product, quantity = 1, rawText = null) {
+  if (!currentCustomer) {
+    toast('⚠️ Seleziona prima un cliente');
+    return;
+  }
+
+  try {
+    // STEP 1: Crea ordine Odoo se non esiste
+    if (!currentOdooOrder) {
+      console.log('📋 Creando nuovo ordine Odoo...');
+      const orderData = {
+        partner_id: currentCustomer.id,
+        state: 'draft', // Preventivo
+        date_order: new Date().toISOString().split('T')[0]
+      };
+
+      if (selectedDeliveryAddress) {
+        orderData.partner_shipping_id = selectedDeliveryAddress.id;
+      }
+
+      currentOdooOrder = await call('sale.order', 'create', [orderData]);
+      console.log(`✅ Ordine Odoo creato: ID ${currentOdooOrder}`);
+    }
+
+    // STEP 2: Controlla se il prodotto esiste già nell'ordine
+    const existingLines = await searchRead('sale.order.line',
+      [['order_id', '=', currentOdooOrder], ['product_id', '=', product.id]],
+      ['id', 'product_uom_qty', 'price_unit'], 1);
+
+    if (existingLines.length > 0) {
+      // Aggiorna quantità della riga esistente
+      const newQty = existingLines[0].product_uom_qty + quantity;
+      await call('sale.order.line', 'write', [existingLines[0].id, {
+        product_uom_qty: newQty
+      }]);
+      console.log(`📈 Aggiornata quantità: ${existingLines[0].product_uom_qty} → ${newQty}`);
+    } else {
+      // Crea nuova riga ordine
+      const lineData = {
+        order_id: currentOdooOrder,
+        product_id: product.id,
+        product_uom_qty: quantity,
+        name: product.display_name || product.name
+      };
+
+      const newLine = await call('sale.order.line', 'create', [lineData]);
+      console.log(`✅ Nuova riga creata: ID ${newLine}`);
+    }
+
+    // STEP 3: Ricarica l'ordine per aggiornare la visualizzazione
+    await reloadOrderFromOdoo();
+    toast(`✅ Aggiunto: ${product.display_name || product.name}`);
+
+  } catch (error) {
+    console.error('❌ Errore aggiunta prodotto a Odoo:', error);
+    toast('❌ Errore: ' + error.message);
+  }
+}
+
+// Reload Order from Odoo
+async function reloadOrderFromOdoo() {
+  if (!currentOdooOrder) {
+    orderLines = [];
+    updateOrderDisplay();
+    return;
+  }
+
+  try {
+    // Carica le righe dell'ordine da Odoo
+    const lines = await searchRead('sale.order.line',
+      [['order_id', '=', currentOdooOrder]],
+      ['id', 'product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'name'],
+      false, 'sequence asc');
+
+    // Carica anche i dati dei prodotti per la visualizzazione
+    const productIds = lines.map(line => line.product_id[0]);
+    const products = await searchRead('product.product',
+      [['id', 'in', productIds]],
+      ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'qty_available', 'image_1920']);
+
+    // Combina dati ordine con dati prodotti
+    orderLines = lines.map(line => {
+      const product = products.find(p => p.id === line.product_id[0]);
+      return {
+        odooLineId: line.id, // ID della riga in Odoo
+        product: product,
+        quantity: line.product_uom_qty,
+        price: line.price_unit, // Prezzo già calcolato da Odoo
+        subtotal: line.price_subtotal,
+        rawText: null,
+        confidence: 'high'
+      };
+    });
+
+    updateOrderDisplay();
+
+  } catch (error) {
+    console.error('❌ Errore caricamento ordine da Odoo:', error);
+    toast('⚠️ Errore aggiornamento ordine');
+  }
+}
+
+// Remove Product from Odoo Order
+async function removeFromOrder(index) {
+  const line = orderLines[index];
+  if (!line || !line.odooLineId) {
+    toast('❌ Errore: riga non trovata');
+    return;
+  }
+
+  try {
+    // Rimuovi la riga dall'ordine Odoo
+    await call('sale.order.line', 'unlink', [line.odooLineId]);
+    console.log(`🗑️ Rimossa riga Odoo ID: ${line.odooLineId}`);
+
+    // Ricarica l'ordine
+    await reloadOrderFromOdoo();
+    toast(`🗑️ Rimosso: ${line.product.display_name || line.product.name}`);
+
+    // Se l'ordine è vuoto, eliminalo
+    if (orderLines.length === 0 && currentOdooOrder) {
+      await call('sale.order', 'unlink', [currentOdooOrder]);
+      console.log(`🗑️ Ordine vuoto eliminato: ${currentOdooOrder}`);
+      currentOdooOrder = null;
+    }
+
+  } catch (error) {
+    console.error('❌ Errore rimozione da Odoo:', error);
+    toast('❌ Errore rimozione: ' + error.message);
+  }
+}
+
+// AI Processing Functions
+async function callGemini(prompt, imageBase64 = null) {
+  if (!GEMINI_API_KEY) {
+    throw new Error('API Key Gemini non configurata');
+  }
+  
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  
+  let contents = [{
+    parts: [{text: prompt}]
+  }];
+  
+  if (imageBase64) {
+    contents[0].parts.push({
+      inline_data: {
+        mime_type: "image/jpeg",
+        data: imageBase64
+      }
+    });
+  }
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      contents: contents,
+      generationConfig: {
+        temperature: 0.1,
+        topK: 1,
+        topP: 1,
+        maxOutputTokens: 8192, // Aumentato da 2048 per evitare troncamento
+      }
+    })
+  });
+  
+  const data = await response.json();
+
+  // Debug della risposta per capire la struttura
+  console.log('🔍 Risposta completa Gemini:', JSON.stringify(data, null, 2));
+
+  if (data.error) {
+    throw new Error('Errore Gemini: ' + (data.error.message || 'Errore sconosciuto'));
+  }
+
+  if (data.candidates && data.candidates[0]) {
+    const candidate = data.candidates[0];
+
+    // Controlla se ha raggiunto il limite di token
+    if (candidate.finishReason === 'MAX_TOKENS') {
+      throw new Error('🚨 Gemini ha raggiunto il limite di token! Prova a ridurre la lunghezza del prompt o aumentare maxOutputTokens.');
+    }
+
+    if (candidate.content &&
+        candidate.content.parts &&
+        candidate.content.parts[0] &&
+        candidate.content.parts[0].text) {
+      return candidate.content.parts[0].text;
+    }
+  }
+
+  throw new Error('Risposta Gemini in formato non valido: ' + JSON.stringify(data));
+}
+
+
+async function extractTextFromAudio(file) {
+  try {
+    showProcessing('Convertendo audio in base64...');
+    
+    // Converti audio in base64
+    const base64Audio = await fileToBase64(file);
+    
+    showProcessing('Trascrivendo audio con AI...');
+    
+    // Usa Gemini per trascrizione (supporta audio)
+    const prompt = `
+Trascrivi questo audio contenente un ordine di prodotti alimentari.
+L'audio contiene un elenco di prodotti con quantità.
+
+IMPORTANTE:
+- Trascrivi fedelmente tutto quello che senti
+- Una riga per ogni prodotto se possibile
+- Mantieni numeri e quantità esatte
+- Se senti unità di misura (kg, litri, pezzi, cartoni) scrivile
+- Non correggere o interpretare, trascrivi letteralmente
+
+Output formato testo semplice, esempio:
+20 chili fiordilatte
+1 cartone pomodori
+due sacchi farina
+
+Trascrizione:`;
+
+    const result = await callGeminiWithAudio(prompt, base64Audio, file.type);
+    const cleanResult = result.trim();
+    
+    return cleanResult;
+    
+  } catch (error) {
+    console.error('Errore trascrizione audio:', error);
+    throw new Error('Errore nella trascrizione audio: ' + error.message + '. Prova con un file audio più chiaro.');
+  }
+}
+
+// Funzione per chiamare Gemini con audio
+async function callGeminiWithAudio(prompt, audioBase64, mimeType) {
+  if (!GEMINI_API_KEY) {
+    throw new Error('API Key Gemini non configurata');
+  }
+  
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  
+  // Determina il mime type corretto per Gemini
+  let audioMimeType = mimeType;
+  if (mimeType === 'audio/mpeg' || mimeType === 'audio/mp3') {
+    audioMimeType = 'audio/mp3';
+  } else if (mimeType === 'audio/wav') {
+    audioMimeType = 'audio/wav';
+  } else if (mimeType === 'audio/ogg') {
+    audioMimeType = 'audio/ogg';
+  } else if (mimeType.includes('opus') || mimeType === 'audio/opus') {
+    audioMimeType = 'audio/ogg'; // Gemini tratta .opus come ogg
+  } else {
+    audioMimeType = 'audio/wav'; // Default più compatibile
+  }
+  
+  
+  const requestBody = {
+    contents: [{
+      parts: [
+        { text: prompt },
+        {
+          inline_data: {
+            mime_type: audioMimeType,
+            data: audioBase64
+          }
+        }
+      ]
+    }],
+    generationConfig: {
+      temperature: 0.1,
+      topK: 1,
+      topP: 1,
+      maxOutputTokens: 8192, // Aumentato per evitare troncamento
+    }
+  };
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(requestBody)
+  });
+  
+  const data = await response.json();
+  
+  if (data.error) {
+    throw new Error('Errore Gemini: ' + (data.error.message || 'Formato audio non supportato'));
+  }
+  
+  if (data.candidates && data.candidates[0]) {
+    return data.candidates[0].content.parts[0].text;
+  }
+  
+  throw new Error('Nessuna trascrizione ricevuta da Gemini');
+}
+
+async function processOrderWithAI(orderText) {
+  if (!currentCustomer) {
+    toast('⚠️ Seleziona prima un cliente');
+    return;
+  }
+
+  if (isProcessing) {
+    toast('⏳ Elaborazione in corso, attendi...');
+    return;
+  }
+
+  try {
+    isProcessing = true;
+
+    // 📊 Inizializza il log per questo ordine e nascondi card precedenti
+    initProductLog();
+    document.getElementById('productLogCard').style.display = 'none';
+    document.getElementById('rawProductsCard').style.display = 'none';
+    showProcessing('Elaborando ordine con AI...');
+
+    // SALVA il messaggio cliente per debug
+    window.lastClientMessage = orderText;
+
+    // Parse order with Gemini
+    const parsedOrder = await parseOrderWithAI(orderText);
+
+    // Match products and save to raw list
+    showProcessing('Cercando prodotti nel catalogo...');
+    await matchProductsAndSaveRaw(parsedOrder);
+
+    hideProcessing();
+
+
+    displayRawProducts();
+
+    if (rawProductLines.length === 0) {
+      toast('⚠️ Nessun prodotto elaborato - controlla il formato del testo');
+    } else {
+      toast(`✅ Elaborati ${rawProductLines.length} prodotti! Controlla e seleziona quelli da aggiungere.`);
+    }
+
+  } catch (error) {
+    hideProcessing();
+    toast('❌ Errore: ' + error.message);
+  } finally {
+    isProcessing = false;
+  }
+}
+
+async function extractTextFromImage(base64) {
+  const prompt = `
+Analizza questa immagine che contiene un ordine di prodotti alimentari.
+Estrai SOLO il testo dell'ordine, mantenendo il formato originale.
+
+IMPORTANTE:
+- Una riga per ogni prodotto
+- Mantieni quantità esatte (numeri, unità di misura)
+- Mantieni nomi prodotti completi
+- Non aggiungere commenti o spiegazioni
+- Se vedi tabelle, lista o elenchi, estrai ogni voce
+
+ESEMPI di formato output:
+20 kg fiordilatte julienne
+1 cartone pomodorini
+2 sacchi farina 00
+10 lt olio extravergine
+
+Estrai solo i prodotti dall'immagine:`;
+  
+  try {
+    const result = await callGemini(prompt, base64);
+    const cleanResult = result.trim();
+    
+    return cleanResult;
+  } catch (error) {
+    console.error('Errore estrazione OCR:', error);
+    throw new Error('Errore nella lettura dell\'immagine: ' + error.message);
+  }
+}
+
+async function parseOrderWithAI(orderText) {
+  // Load UoM units from Odoo first
+  const odooUoms = await loadOdooUomUnits();
+  const uomNames = odooUoms.map(u => u.name).slice(0, 20); // Take first 20 most common
+  
+  const prompt = `
+Analizza questo ordine di prodotti alimentari e restituisci SOLO JSON valido.
+
+ORDINE:
+${orderText}
+
+IMPORTANTE: Restituisci SOLO JSON senza markdown, commenti o testo aggiuntivo.
+
+Formato JSON richiesto:
+{
+  "lines": [
+    {"raw": "testo originale", "qty": numero, "product_name": "nome prodotto", "uom": "unità"}
+  ]
+}
+
+REGOLE:
+- qty: sempre numero
+- uom: una di queste unità Odoo disponibili: ${uomNames.join(', ')} o null se non identificabile
+- product_name: nome prodotto pulito senza quantità
+- raw: testo originale senza spazi extra o commenti
+
+CONVERSIONI COMUNI:
+litri/lt/l → usa l'unità Odoo più simile per volume
+kg/chilogrammi → usa l'unità Odoo più simile per peso
+pezzi/pz → usa l'unità Odoo più simile per pezzi
+cartone/cart → usa l'unità Odoo più simile o "cartone"
+sacco/sacchi → usa l'unità Odoo più simile o "sacco"
+
+ATTENZIONE: Non aggiungere commenti, note o spiegazioni nel JSON. Solo il JSON pulito.
+`;
+
+  const result = await callGemini(prompt);
+  
+  try {
+    // Pulisci la risposta rimuovendo markdown e caratteri di controllo
+    let cleanResult = result.trim();
+    
+    // Rimuovi code blocks markdown
+    cleanResult = cleanResult.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    
+    // Estrai JSON dalla risposta
+    const jsonMatch = cleanResult.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('JSON non trovato nella risposta AI');
+    
+    let jsonText = jsonMatch[0];
+    
+    // Pulisci caratteri di controllo e problemi comuni
+    // Rimuovi caratteri di controllo dalle stringhe
+    jsonText = jsonText.replace(/[\t\n\r\f\v]/g, ' ');
+    // Rimuovi spazi multipli
+    jsonText = jsonText.replace(/\s+/g, ' ');
+    // Rimuovi commenti inline tipo "parziale (xxx)" 
+    jsonText = jsonText.replace(/"([^"]*?)\s+\([^)]+\)([^"]*?)"/g, '"$1$2"');
+    // Pulisci spazi extra attorno ai valori
+    jsonText = jsonText.replace(/:\s*"\s+/g, ': "').replace(/\s+"/g, '"');
+    
+    
+    const parsed = JSON.parse(jsonText);
+    
+    // Validazione e pulizia
+    if (parsed.lines && Array.isArray(parsed.lines)) {
+      parsed.lines = parsed.lines.map(line => ({
+        raw: (line.raw || '').replace(/\s+/g, ' ').trim(),
+        qty: Number(line.qty) || 1,
+        product_name: (line.product_name || '').replace(/\s+/g, ' ').trim(),
+        uom: line.uom || null
+      }));
+    }
+
+    const geminiTranscription = parsed.lines ?
+      parsed.lines.map(line => `• ${line.qty} ${line.uom || 'pz'} ${line.product_name} ("${line.raw}")`).join('\n') :
+      'Errore nel parsing - nessun prodotto estratto';
+
+    // Mostra sezione debug (il messaggio originale dovrebbe essere passato da chi chiama)
+    if (typeof window !== 'undefined' && window.lastClientMessage) {
+      showDebugSection(window.lastClientMessage, `Gemini ha estratto:\n${geminiTranscription}`);
+    }
+
+    return parsed;
+  } catch (error) {
+    
+    // Fallback: prova a parsare linea per linea manualmente
+    try {
+      const lines = orderText.split('\n').filter(line => line.trim());
+      const parsedLines = lines.map(line => {
+        const trimmed = line.trim();
+        // Estrai quantità (numero all'inizio)
+        const qtyMatch = trimmed.match(/^(\d+(?:\.\d+)?)/);
+        const qty = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
+        
+        // Estrai UoM comune
+        let uom = null;
+        if (/\b(kg|chilogram|chili)\b/i.test(trimmed)) uom = 'kg';
+        else if (/\b(l|lt|litri|litro)\b/i.test(trimmed)) uom = 'L';
+        else if (/\b(cart|cartone|cartoni)\b/i.test(trimmed)) uom = 'cart';
+        else if (/\b(sacco|sacchi)\b/i.test(trimmed)) uom = 'sacco';
+        else if (/\b(pz|pezzo|pezzi)\b/i.test(trimmed)) uom = 'pz';
+        
+        // Nome prodotto (rimuovi quantità e UoM)
+        let productName = trimmed.replace(/^\d+(?:\.\d+)?\s*/, '');
+        productName = productName.replace(/\b(kg|l|lt|litri|cart|cartone|sacco|pz|pezzo|pezzi)\b/gi, '').trim();
+        
+        return {
+          raw: trimmed,
+          qty: qty,
+          product_name: productName,
+          uom: uom
+        };
+      });
+      
+      return { lines: parsedLines };
+    } catch (fallbackError) {
+      console.error('Anche il parsing manuale è fallito:', fallbackError);
+      throw new Error('Impossibile parsare l\'ordine. Riprova con formato più semplice.');
+    }
+  }
+}
+
+// NUOVA LOGICA BATCH: Manda tutto l'ordine a Gemini insieme ai 100 prodotti preferiti
+// ===== 🚀 SISTEMA DI RICERCA AI INTELLIGENTE =====
+// Integrato da Order Manager Simple con logica Gemini avanzata
+
+async function matchProductsAndSaveRaw(parsedOrder) {
+  const lines = parsedOrder.lines || [];
+  rawProductLines = []; // Reset lista grezza
+
+
+  if (lines.length === 0) {
+    console.log('❌ ERRORE: Nessuna linea da processare');
+    toast('❌ Nessun prodotto da processare');
+    return;
+  }
+
+  // 📊 PASSO 0: Log di TUTTI i prodotti estratti da Gemini
+  console.log(`📊 Logging ${lines.length} prodotti estratti da Gemini...`);
+  lines.forEach(line => {
+    addToProductLog({
+      extractedProduct: line.product_name || line.raw,
+      quantity: line.qty || 1,
+      uom: line.uom || '-',
+      searchTerm: line.product_name || line.raw,
+      foundResults: 0, // Ancora da elaborare
+      status: 'in-elaborazione',
+      selectedProduct: '-',
+      reason: 'Estratto da Gemini, ricerca in corso...'
+    });
+  });
+
+  // Prima ottieni la lista dei prodotti preferiti del cliente (ultimi 50)
+  const customerId = currentCustomer ? currentCustomer.id : null;
+  let customerProducts = [];
+
+  console.log(`🔍 Cliente corrente: ${customerId ? currentCustomer.name : 'NESSUNO'}`);
+
+  if (customerId) {
+    console.log('🔍 Caricando prodotti preferiti del cliente...');
+    // NON chiamiamo showProcessing qui - lo fa la funzione principale
+    try {
+      customerProducts = await getCustomerPreferredProductsAI(customerId);
+      console.log(`🔍 Prodotti del cliente caricati: ${customerProducts.length}`);
+    } catch (error) {
+      console.error('❌ ERRORE nel caricamento prodotti cliente:', error);
+      customerProducts = [];
+    }
+  }
+
+  if (customerProducts.length === 0) {
+    console.log('⚠️ Nessun prodotto del cliente - andrò nel catalogo generale');
+    // NON fare return - continua comunque per processare nel catalogo generale
+  }
+
+  try {
+    console.log('🔍 Inizio elaborazione principale...');
+
+    // STEP 1: Cerca SOLO nei 100 prodotti del cliente con Gemini (SE CI SONO)
+    // showProcessing viene gestito dalla funzione principale
+
+    let foundCount = 0;
+    let notFoundProducts = [];
+
+    if (customerProducts.length > 0) {
+      console.log(`🔍 STEP 1: Elaborando con ${customerProducts.length} prodotti del cliente`);
+    
+      const searchPrompt = `
+Tu sei un esperto commesso di un'azienda alimentare italiana specializzata in prodotti gastronomici.
+Conosci perfettamente i prodotti e le abitudini dei clienti del settore HoReCa (Hotel, Ristoranti, Catering).
+
+CONTESTO CLIENTE:
+- Settore: Distribuzione alimentare B2B
+- Tipo cliente: Ristoranti, pizzerie, supermercati
+- Esperienza: Cliente abituale con storico acquisti consolidato
+
+ORDINE DEL CLIENTE:
+${lines.map(p => `- ${p.product_name} (${p.qty || 1} ${p.uom || 'pz'})`).join('\n')}
+
+CATALOGO PRODOTTI CLIENTE - ULTIMI 50 ACQUISTATI (può ordinare SOLO questi):
+${customerProducts.map(p => `ID ${p.id}: ${p.name} ${p.default_code ? '(COD: ' + p.default_code + ')' : ''}`).join('\n')}
+
+REGOLE DI MATCHING (in ordine di priorità):
+1. MATCH ESATTO: nome identico o quasi identico (confidence: "alta")
+2. MATCH CODICE: stesso codice prodotto o famiglia (confidence: "alta")
+3. MATCH SEMANTICO: stesso prodotto, marca/formato diverso (confidence: "media")
+4. MATCH CATEGORIA: stessa categoria merceologica (confidence: "bassa")
+5. NESSUN MATCH: prodotto completamente diverso (confidence: "none")
+
+ESEMPI DI MATCHING CORRETTO:
+- Ordine: "pelati" → Catalogo: "Pomodori Pelati San Marzano DOP" = MATCH SEMANTICO
+- Ordine: "mozzarella 2kg" → Catalogo: "Mozzarella Fiordilatte 2kg" = MATCH ESATTO
+- Ordine: "olio extra" → Catalogo: "Olio EVO Pugliese 1L" = MATCH SEMANTICO
+- Ordine: "parmigiano" → Catalogo: "Grana Padano DOP" = MATCH CATEGORIA
+- Ordine: "riso basmati" → Catalogo: "Pasta Penne" = NESSUN MATCH
+
+COMPITO:
+Per ogni prodotto dell'ordine, trova quello più simile nel catalogo del cliente.
+Se non trovi corrispondenza ragionevole, scrivi "NONE".
+
+CONTROLLO QUALITÀ:
+- Verifica che il matching sia logico per il settore alimentare
+- Non forzare match improbabili solo per trovare qualcosa
+- Considera le varianti di prodotto (diversi formati, marche, ecc.)
+
+IMPORTANTE: Nell'"order_product" restituisci SOLO il nome pulito senza quantità.
+
+Rispondi SOLO JSON valido:
+{
+  "matches": [
+    {
+      "order_product": "nome prodotto pulito",
+      "match_id": 123,
+      "confidence": "alta/media/bassa/none",
+      "match_type": "esatto/semantico/categoria/none",
+      "reason": "Motivo specifico del matching",
+      "alternative_ids": [456, 789],
+      "verify_quantity": false
+    }
+  ]
+}`;
+
+      console.log('🔍 Chiamando Gemini per il matching...');
+      const matchResponse = await callGemini(searchPrompt);
+      console.log('🔍 Risposta Gemini ricevuta:', matchResponse.substring(0, 200) + '...');
+
+      const matchClean = matchResponse.replace(/```json|```/g, '').trim();
+      console.log('🔍 JSON pulito:', matchClean.substring(0, 200) + '...');
+
+      const matches = JSON.parse(matchClean);
+      console.log('🔍 JSON parsato:', matches);
+
+    
+      // STEP 2: Processa i risultati - prodotti trovati nei preferiti
+      console.log(`🔍 STEP 2: Processando ${matches.matches.length} matches...`);
+
+      for (const match of matches.matches) {
+        console.log(`🔍 Processando match:`, {
+          prodotto: match.order_product,
+          id: match.match_id,
+          confidence: match.confidence,
+          tipo: match.match_type,
+          motivo: match.reason,
+          alternative: match.alternative_ids?.length || 0
+        });
+
+        // 🎯 MATCHING MIGLIORATO: Non solo esatto, ma anche simile
+        let originalLine = lines.find(l => l.product_name === match.order_product);
+
+        // Se non trova match esatto, prova matching fuzzy
+        if (!originalLine) {
+          const searchProduct = match.order_product.toLowerCase().trim();
+
+          originalLine = lines.find(l => {
+            const lineProduct = l.product_name.toLowerCase().trim();
+
+            // Match parziali comuni:
+            // 1. Contenuto uno nell'altro
+            if (lineProduct.includes(searchProduct) || searchProduct.includes(lineProduct)) {
+              return true;
+            }
+
+            // 2. Prime parole uguali (per "mozzarella bufala" vs "mozzarella")
+            const searchWords = searchProduct.split(' ')[0];
+            const lineWords = lineProduct.split(' ')[0];
+            if (searchWords === lineWords && searchWords.length > 3) {
+              return true;
+            }
+
+            return false;
+          });
+        }
+
+        console.log(`🔍 originalLine trovata:`, originalLine ? originalLine.product_name : 'NON TROVATA');
+
+        if (!originalLine) {
+          console.log(`❌ NESSUN MATCH per "${match.order_product}" in prodotti estratti`);
+        }
+
+        if (match.match_id !== "NONE" && !isNaN(match.match_id)) {
+          console.log(`🔍 Match valido per "${match.order_product}": ID ${match.match_id}`);
+          const product = customerProducts.find(p => p.id === match.match_id);
+          console.log(`🔍 Prodotto trovato nella lista cliente:`, product ? product.name : 'NON TROVATO');
+          console.log(`🔍 originalLine disponibile:`, !!originalLine);
+
+          if (product && originalLine) {
+            console.log(`🔍 Entrambi disponibili - processando "${product.name}"...`);
+          
+            // Calcola quantità intelligente
+            console.log(`🔍 Chiamando calculateSmartQuantity per ${product.name}...`);
+            const smartQuantity = await calculateSmartQuantity(originalLine, { product });
+            console.log(`🔍 smartQuantity ricevuta:`, smartQuantity);
+
+            const rawProduct = {
+              originalLine: originalLine,
+              matchResult: { product: product, confidence: match.confidence, source: 'customer_products' },
+              quantity: smartQuantity.quantity,
+              conversionNote: smartQuantity.note || null,
+              selected: true,
+              status: 'found',
+              id: Date.now() + Math.random()
+            };
+
+            rawProductLines.push(rawProduct);
+            foundCount++;
+
+            console.log(`✅ Aggiunto a rawProductLines: ${product.name} (quantity: ${smartQuantity.quantity})`);
+            console.log(`📊 rawProductLines.length ora: ${rawProductLines.length}`);
+
+            // 📊 Aggiorna log del prodotto trovato nei prodotti del cliente
+            updateProductLogEntry(originalLine.product_name, {
+              foundResults: 1, // Match trovato nei prodotti del cliente
+              status: 'inserito',
+              selectedProduct: product.name,
+              reason: `${match.match_type || 'semantico'}: ${match.reason || 'Trovato nei prodotti del cliente'}`,
+              confidence: match.confidence || 'media',
+              alternatives: match.alternative_ids ? match.alternative_ids.length : 0
+            });
+
+            // Aggiungi automaticamente all'ordine
+            const orderNote = `🎯 AI Match: ${match.confidence || 'media'} (${match.match_type || 'semantico'})`;
+            await addProductToOrder(
+              product,
+              smartQuantity.quantity,
+              orderNote
+            );
+          } else {
+            console.log(`⚠️ PROBLEMA: product=${!!product}, originalLine=${!!originalLine}`);
+            if (!product) console.log(`❌ Prodotto ID ${match.match_id} non trovato nella lista cliente`);
+            if (!originalLine) console.log(`❌ OriginalLine non trovata per "${match.order_product}"`);
+          }
+        } else {
+          console.log(`❌ Match non valido: ID="${match.match_id}", isNaN=${isNaN(match.match_id)}`);
+          // Prodotto non trovato nei preferiti
+          if (originalLine) {
+            notFoundProducts.push({
+              order_product: match.order_product,
+              originalLine: originalLine
+            });
+          }
+        }
+      }
+    } else {
+      console.log('🔍 STEP 1: Nessun prodotto del cliente - tutti al catalogo generale');
+      // Se non ci sono prodotti del cliente, tutti i prodotti vanno nel catalogo generale
+      notFoundProducts = lines.map(line => ({
+        order_product: line.product_name,
+        originalLine: line
+      }));
+      console.log(`🔍 Prodotti da cercare nel catalogo: ${notFoundProducts.length}`);
+    }
+
+    // STEP 3: Per prodotti non trovati, cerca nel catalogo completo
+    const catalogMatches = [];
+
+    console.log(`🔍 STEP 3: Cercando ${notFoundProducts.length} prodotti nel catalogo generale`);
+
+    if (notFoundProducts.length > 0) {
+      // showProcessing viene gestito dalla funzione principale
+
+      for (const notFound of notFoundProducts) {
+        console.log(`🔍 Cercando nel catalogo: "${notFound.order_product}"`);
+        try {
+          // Console log invece di showProcessing per non sovrascrivere
+
+          // Ricerca semplice nel catalogo
+          const catalogProducts = await searchRead(
+            'product.product',
+            [
+              '&',
+              ['sale_ok', '=', true],
+              '|', '|',
+              ['name', 'ilike', notFound.order_product],
+              ['default_code', 'ilike', notFound.order_product],
+              ['barcode', 'ilike', notFound.order_product]
+            ],
+            ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'qty_available', 'image_1920'],
+            5,
+            'name asc'
+          );
+
+          if (catalogProducts.length > 0) {
+
+            const product = catalogProducts[0];
+            const smartQuantity = await calculateSmartQuantity(notFound.originalLine, { product });
+
+            const rawProduct = {
+              originalLine: notFound.originalLine,
+              matchResult: { product: product, confidence: 'catalog', source: 'catalog' },
+              quantity: smartQuantity.quantity,
+              conversionNote: smartQuantity.note || null,
+              selected: true,
+              status: 'found',
+              id: Date.now() + Math.random()
+            };
+
+            rawProductLines.push(rawProduct);
+            catalogMatches.push({
+              order_product: notFound.order_product,
+              catalog_product: product,
+              confidence: 'catalog'
+            });
+
+            console.log(`✅ Aggiunto a rawProductLines da CATALOGO: ${product.name}`);
+            console.log(`📊 rawProductLines.length ora: ${rawProductLines.length}`);
+
+            // 📊 Aggiorna log del prodotto trovato nel catalogo generale
+            updateProductLogEntry(notFound.originalLine.product_name, {
+              searchTerm: notFound.order_product,
+              foundResults: catalogProducts.length,
+              status: 'inserito',
+              selectedProduct: product.name,
+              reason: 'Trovato nel catalogo generale'
+            });
+
+            // Aggiungi automaticamente all'ordine
+            await addProductToOrder(
+              product,
+              smartQuantity.quantity,
+              `🔍 Catalogo: ${product.name}`
+            );
+          } else {
+
+            // Aggiunge alla lista dei non trovati
+            const rawProduct = {
+              originalLine: notFound.originalLine,
+              matchResult: null,
+              quantity: notFound.originalLine.qty || 1,
+              conversionNote: null,
+              selected: false,
+              status: 'missing',
+              id: Date.now() + Math.random()
+            };
+            rawProductLines.push(rawProduct);
+            console.log(`❌ Aggiunto prodotto NON TROVATO: ${notFound.originalLine.product_name}`);
+            console.log(`📊 rawProductLines.length ora: ${rawProductLines.length}`);
+
+            // 📊 Aggiorna log del prodotto NON trovato
+            updateProductLogEntry(notFound.originalLine.product_name, {
+              searchTerm: notFound.order_product,
+              foundResults: 0,
+              status: 'non-trovato',
+              selectedProduct: '-',
+              reason: 'Nessuna corrispondenza nel catalogo'
+            });
+          }
+
+        } catch (error) {
+          console.error('Errore ricerca catalogo:', error);
+        }
+      }
+    }
+
+    // STEP 4: Risultati finali
+    const totalProducts = lines.length;
+    const totalFound = rawProductLines.filter(r => r.status === 'found').length;
+    const totalMissing = rawProductLines.filter(r => r.status === 'missing').length;
+    const catalogFound = catalogMatches.length;
+
+    // 📊 PASSO FINALE: Controlla prodotti rimasti "in-elaborazione" e marcali come non trovati
+    console.log('📊 Controllo finale prodotti in elaborazione...');
+    const inElaborazione = productSearchLog.filter(log => log.status === 'in-elaborazione');
+
+    if (inElaborazione.length > 0) {
+      console.log(`📊 Trovati ${inElaborazione.length} prodotti ancora in elaborazione, li marco come non-trovato`);
+      inElaborazione.forEach(logEntry => {
+        updateProductLogEntry(logEntry.extractedProduct, {
+          status: 'non-trovato',
+          selectedProduct: '-',
+          reason: 'Prodotto non trovato in nessun catalogo'
+        });
+      });
+    }
+
+    console.log('🏁 FINE matchProductsAndSaveRaw():');
+    console.log(`- Totale prodotti elaborati: ${totalProducts}`);
+    console.log(`- rawProductLines.length FINALE: ${rawProductLines.length}`);
+    console.log(`- Trovati: ${totalFound}, Mancanti: ${totalMissing}`);
+    console.log('- rawProductLines finale:', rawProductLines);
+
+    // NON chiamiamo hideProcessing() qui - lo fa la funzione principale
+    // NON chiamiamo displayRawProducts() qui - lo fa la funzione principale
+    updateOrderDisplay();
+
+    // Notifiche
+    const successRate = Math.round((totalFound / totalProducts) * 100);
+
+    if (totalMissing > 0) {
+      toast(`⚠️ ${successRate}% trovati: ${foundCount} suoi prodotti, ${catalogFound} catalogo, ${totalMissing} mancanti`);
+      // Solo se ci sono prodotti mancanti, mostra il debug
+      if (typeof showDebugSection === 'function') {
+        showDebugSection(`AI Search completato - ${totalMissing} prodotti richiedono attenzione.`, JSON.stringify(lines, null, 2));
+      }
+    } else {
+      toast(`🎉 Perfetto! ${successRate}% trovati: ${foundCount} suoi prodotti, ${catalogFound} dal catalogo`);
+    }
+
+
+  } catch (error) {
+    // NON chiamiamo hideProcessing() qui - lo fa la funzione principale
+    console.error('❌ ERRORE GRAVE in matchProductsAndSaveRaw():', error);
+    console.error('❌ Stack:', error.stack);
+    console.error('❌ Stato al momento dell\'errore:');
+    console.error(`- rawProductLines.length: ${rawProductLines.length}`);
+    console.error(`- customerProducts.length: ${customerProducts?.length || 0}`);
+    toast('❌ Errore sistema AI: ' + error.message);
+    throw error; // Rilancia l'errore per la funzione principale
+  }
+}
+
+// ===== FUNZIONE PER CARICARE PRODOTTI CLIENTE (da Simple) =====
+
+async function getCustomerPreferredProductsAI(customerId) {
+  try {
+    console.log(`🔍 Caricando ultimi 50 prodotti unici del cliente ${customerId}...`);
+
+    // Prendi gli ultimi ordini del cliente (più ordini = più possibilità)
+    const orders = await searchRead(
+      'sale.order',
+      [
+        '&',
+        ['partner_id', '=', customerId],
+        ['state', 'in', ['sale', 'done']] // Solo ordini confermati
+      ],
+      ['id', 'date_order'],
+      100, // Più ordini per avere più scelta
+      'date_order desc'
+    );
+
+    if (orders.length === 0) {
+      console.log('⚠️ Cliente senza ordini - uso catalogo generale');
+      return await searchRead(
+        'product.product',
+        [['sale_ok', '=', true]],
+        ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'qty_available', 'image_1920'],
+        50,
+        'name asc'
+      );
+    }
+
+    console.log(`📋 Trovati ${orders.length} ordini del cliente`);
+    const orderIds = orders.map(o => o.id);
+
+    // Prendi TUTTE le righe ordine per avere scelta
+    const lines = await searchRead(
+      'sale.order.line',
+      [
+        '&',
+        ['order_id', 'in', orderIds],
+        ['product_id', '!=', false]
+      ],
+      ['product_id', 'order_id'],
+      500, // Più righe per più scelta
+      'id desc' // Dal più recente
+    );
+
+    if (lines.length === 0) {
+      console.log('⚠️ Nessuna riga ordine - uso catalogo generale');
+      return await searchRead(
+        'product.product',
+        [['sale_ok', '=', true]],
+        ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'qty_available', 'image_1920'],
+        50,
+        'name asc'
+      );
+    }
+
+    console.log(`📦 Trovate ${lines.length} righe ordine`);
+
+    // 🎯 LOGICA CORRETTA: Ultimi 50 prodotti UNICI in ordine cronologico
+    const uniqueProductIds = [];
+    const seenProductIds = new Set();
+
+    for (const line of lines) {
+      const productId = line.product_id[0];
+
+      if (!seenProductIds.has(productId)) {
+        uniqueProductIds.push(productId);
+        seenProductIds.add(productId);
+
+        // Fermati a esattamente 50 prodotti unici
+        if (uniqueProductIds.length >= 50) {
+          break;
+        }
+      }
+    }
+
+    console.log(`🎯 Selezionati ${uniqueProductIds.length} prodotti unici`);
+
+    // Carica i dettagli dei prodotti selezionati
+    const products = await searchRead(
+      'product.product',
+      [
+        '&',
+        ['id', 'in', uniqueProductIds],
+        ['sale_ok', '=', true]
+      ],
+      ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'qty_available', 'image_1920'],
+      0, // Tutti i prodotti trovati
+      'name asc'
+    );
+
+    console.log(`✅ Caricati ${products.length} prodotti del cliente`);
+    return products;
+
+  } catch (error) {
+    console.error('❌ Errore caricamento prodotti cliente:', error);
+    // Fallback sicuro
+    return await searchRead(
+      'product.product',
+      [['sale_ok', '=', true]],
+      ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'qty_available', 'image_1920'],
+      50,
+      'name asc'
+    );
+  }
+}
+
+// ===== FUNZIONI DI RICERCA LEGACY (mantenute per compatibilità) =====
+
+
+
+
+// Cerca in tutto il catalogo - RICERCA SEMPLICE (MANTENUTA)
+async function findInFullCatalog(line) {
+  try {
+    const searchTerm = line.product_name.trim();
+    console.log(`🔍 Ricerca nel catalogo completo: "${searchTerm}"`);
+
+    // 🎯 STEP 1: Ricerca esatta (nome, codice, barcode)
+    let exactProducts = await searchRead(
+      'product.product',
+      [
+        '&',
+        ['sale_ok', '=', true],
+        '|', '|',
+        ['default_code', '=', searchTerm],
+        ['barcode', '=', searchTerm],
+        ['name', '=', searchTerm]
+      ],
+      ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'qty_available', 'image_1920'],
+      1
+    );
+
+    if (exactProducts.length > 0) {
+      console.log(`✅ Trovato match esatto: ${exactProducts[0].name}`);
+      return { product: exactProducts[0], confidence: 'high', source: 'catalog_exact' };
+    }
+
+    // 🎯 STEP 2: Ricerca parziale con ILIKE
+    let likeProducts = await searchRead(
+      'product.product',
+      [
+        '&',
+        ['sale_ok', '=', true],
+        '|', '|',
+        ['name', 'ilike', `%${searchTerm}%`],
+        ['default_code', 'ilike', `%${searchTerm}%`],
+        ['barcode', 'ilike', `%${searchTerm}%`]
+      ],
+      ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'qty_available', 'image_1920'],
+      5
+    );
+
+    if (likeProducts.length > 0) {
+      console.log(`✅ Trovato match parziale: ${likeProducts[0].name}`);
+      return { product: likeProducts[0], confidence: 'medium', source: 'catalog_like' };
+    }
+
+    // 🎯 STEP 3: Ricerca per singole parole (se prodotto ha più parole)
+    const words = searchTerm.split(' ').filter(word => word.length > 2);
+
+    if (words.length > 1) {
+      console.log(`🔍 Tentativo ricerca per parole: ${words.join(', ')}`);
+
+      for (const word of words) {
+        let wordProducts = await searchRead(
+          'product.product',
+          [
+            '&',
+            ['sale_ok', '=', true],
+            ['name', 'ilike', `%${word}%`]
+          ],
+          ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'qty_available', 'image_1920'],
+          3
+        );
+
+        if (wordProducts.length > 0) {
+          console.log(`✅ Trovato match per parola "${word}": ${wordProducts[0].name}`);
+          return { product: wordProducts[0], confidence: 'low', source: 'catalog_word' };
+        }
+      }
+    }
+
+    console.log(`❌ Nessun match trovato nel catalogo per "${searchTerm}"`);
+    return null;
+
+  } catch (error) {
+    console.error('❌ Errore ricerca catalogo:', error);
+    return null;
+  }
+}
+
+
+// 🎯 CALCOLO QUANTITÀ SEMPLIFICATO - Meno conversioni problematiche
+async function calculateSmartQuantity(line, matchResult) {
+  const product = matchResult.product;
+  const requestedQty = line.qty || 1;
+  const requestedUom = line.uom || 'pz';
+
+  console.log(`🔢 Calcolo quantità per ${product.name}: ${requestedQty} ${requestedUom}`);
+
+  try {
+    // 🎯 LOGICA SEMPLICE: Usa sempre la quantità richiesta, con pochi aggiustamenti
+    let finalQuantity = requestedQty;
+    let note = null;
+
+    // Solo alcune conversioni ovvie e sicure:
+
+    // 1. Se richiede in kg ma il prodotto si vende a pezzi
+    if (requestedUom.toLowerCase().includes('kg') && product.name.toLowerCase().includes('pezzo')) {
+      finalQuantity = Math.ceil(requestedQty); // 2.5 kg -> 3 pezzi
+      note = `Convertito da ${requestedQty} kg a ${finalQuantity} pezzi`;
+    }
+
+    // 2. Se richiede pezzi ma il nome ha "al kg"
+    else if (requestedUom.toLowerCase().includes('pz') && product.name.toLowerCase().includes('kg')) {
+      finalQuantity = requestedQty; // Mantieni quantità, potrebbe essere comunque corretta
+      note = `${requestedQty} pezzi per prodotto venduto al kg`;
+    }
+
+    // 3. Confezioni -> Pezzi (solo se chiaramente indicato)
+    else if (requestedUom.toLowerCase().includes('conf') || requestedUom.toLowerCase().includes('cart')) {
+      // Cerca numeri nel nome prodotto che indicano pezzi per confezione
+      const piecesMatch = product.name.match(/(\d+)\s*(pz|pezzi|pieces)/i);
+      if (piecesMatch) {
+        const piecesPerPack = parseInt(piecesMatch[1]);
+        finalQuantity = requestedQty * piecesPerPack;
+        note = `${requestedQty} confezioni × ${piecesPerPack} pz = ${finalQuantity} pezzi`;
+      }
+    }
+
+    console.log(`✅ Quantità finale: ${finalQuantity}${note ? ' (' + note + ')' : ''}`);
+
+    return {
+      quantity: finalQuantity,
+      note: note
+    };
+
+  } catch (error) {
+    console.error('❌ Errore calcolo quantità:', error);
+    // Fallback sicuro: usa quantità originale
+    return {
+      quantity: requestedQty,
+      note: `Fallback - errore calcolo: ${error.message}`
+    };
+  }
+}
+
+
+// Utility Functions
+function showProcessing(text) {
+  document.getElementById('processingText').textContent = text;
+  document.getElementById('processing').classList.add('show');
+}
+
+function hideProcessing() {
+  document.getElementById('processing').classList.remove('show');
+}
+
+async function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+  });
+}
+
+// Order Management
+function updateOrderDisplay() {
+  const container = document.getElementById('productList');
+  const orderCard = document.getElementById('orderCard');
+  
+  if (orderLines.length === 0) {
+    orderCard.style.display = 'none';
+    return;
+  }
+  
+  orderCard.style.display = 'block';
+  container.innerHTML = '';
+  
+  let totalAmount = 0;
+  
+  orderLines.forEach((line, index) => {
+    const lineTotal = line.quantity * line.price;
+    totalAmount += lineTotal;
+    
+    const item = document.createElement('div');
+    item.className = 'product-item';
+    
+    // Use REAL stock from Odoo with correct UoM
+    const stockQty = line.product.qty_available || 0;
+    let stockClass = stockQty > 50 ? 'high' : (stockQty > 20 ? 'medium' : 'low');
+
+    // Get correct unit of measure from product
+    const uomName = line.product.uom_id && line.product.uom_id[1] ? line.product.uom_id[1] : 'pz';
+    let stockText = `${stockQty} ${uomName}`;
+
+    const hasImage = line.product.image_1920;
+    const imageHTML = hasImage
+      ? `<img src="data:image/jpg;base64,${line.product.image_1920}" class="product-image" alt="${line.product.name}">`
+      : `<div class="product-image" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:24px">📦</div>`;
+
+    item.innerHTML = `
+      ${imageHTML}
+      <div class="product-info">
+        <div class="product-name">${line.product.display_name || line.product.name}</div>
+        ${line.product.default_code ? `<div class="product-code">${line.product.default_code}</div>` : ''}
+      </div>
+      <input type="number" class="qty-input" value="${line.quantity}" min="0" step="0.01"
+             onchange="updateQuantity(${index}, this.value)">
+      <div class="price">
+        <div class="price-value">CHF ${line.price.toFixed(2)}</div>
+      </div>
+      <div class="stock-info ${stockClass}">${stockText}</div>
+      <button class="price-list-btn" onclick="openPriceList('${line.product.id}')" title="Apri Listino Prezzi">💰 Listino</button>
+      <button class="btn ghost" onclick="removeFromOrder(${index})" style="padding:6px" title="Rimuovi dall'ordine e sposta in 'Prodotti Non Trovati' per rianalisi">🗑️</button>
+    `;
+    
+    container.appendChild(item);
+  });
+  
+  // Update summary
+  document.getElementById('totalLines').textContent = orderLines.length;
+  document.getElementById('totalAmount').textContent = `CHF ${totalAmount.toFixed(2)}`;
+  document.getElementById('finalTotal').textContent = `CHF ${totalAmount.toFixed(2)}`;
+}
+
+function openPriceList(productId) {
+  toast(`💰 Listino prezzi per prodotto ${productId} (da implementare)`);
+
+  // This could show:
+  // - Different customer price levels
+  // - Volume discounts
+  // - Special promotions
+  // - Price history
+}
+
+async function updateQuantity(index, newQty) {
+  const line = orderLines[index];
+  if (!line || !line.odooLineId) {
+    toast('❌ Errore: riga non trovata');
+    return;
+  }
+
+  const qty = parseFloat(newQty) || 0;
+  if (qty <= 0) {
+    // Se quantità è 0, rimuovi la riga
+    await removeFromOrder(index);
+    return;
+  }
+
+  try {
+    // Aggiorna la quantità in Odoo
+    await call('sale.order.line', 'write', [line.odooLineId, {
+      product_uom_qty: qty
+    }]);
+
+    // Ricarica per aggiornare prezzi totali
+    await reloadOrderFromOdoo();
+
+  } catch (error) {
+    console.error('❌ Errore aggiornamento quantità:', error);
+    toast('❌ Errore aggiornamento quantità');
+  }
+}
+
+// La funzione removeFromOrder è definita sopra per lavorare con Odoo
+
+async function clearOrder() {
+  if (!currentOdooOrder) return;
+
+  if (confirm('Sei sicuro di voler cancellare l\'ordine?')) {
+    try {
+      // Cancella l'ordine da Odoo
+      await call('sale.order', 'unlink', [currentOdooOrder]);
+      console.log(`🗑️ Ordine Odoo cancellato: ${currentOdooOrder}`);
+
+      // Reset stato locale
+      currentOdooOrder = null;
+      orderLines = [];
+      updateOrderDisplay();
+      toast('🗑️ Ordine cancellato');
+
+    } catch (error) {
+      console.error('❌ Errore cancellazione ordine:', error);
+      toast('❌ Errore cancellazione ordine');
+    }
+  }
+}
+
+// Odoo Order Creation
+async function createOdooOrder() {
+  console.log('🚨 INIZIO createOdooOrder() - PULSANTE CLICCATO!');
+
+  if (!currentCustomer) {
+    toast('❌ Seleziona un cliente');
+    return;
+  }
+
+  if (orderLines.length === 0) {
+    toast('❌ Aggiungi almeno un prodotto');
+    return;
+  }
+
+  const deliveryDate = document.getElementById('deliveryDate').value;
+  if (!deliveryDate) {
+    toast('❌ Inserisci la data di consegna');
+    return;
+  }
+
+  try {
+    const btn = document.getElementById('createOrderBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="width:16px;height:16px"></span> Creando...';
+
+    let orderId;
+
+    // 🚨 DEBUG: Mostra lo stato attuale
+    console.log('🔍 DEBUG ORDINE:');
+    console.log('- currentOdooOrder:', currentOdooOrder);
+    console.log('- Cliente:', currentCustomer?.name);
+    console.log('- Prodotti in orderLines:', orderLines.length);
+    console.log('- Data consegna:', deliveryDate);
+
+    // 🔧 FIX: Riusa l'ordine esistente invece di crearne uno nuovo
+    if (currentOdooOrder) {
+      console.log(`📝 Aggiornando ordine esistente: ${currentOdooOrder}`);
+
+      // Aggiorna l'ordine esistente con la data di consegna e indirizzo
+      const updateData = {
+        commitment_date: deliveryDate,
+        partner_shipping_id: selectedDeliveryAddress ? selectedDeliveryAddress.id : currentCustomer.id,
+      };
+
+      await callKw('sale.order', 'write', [[currentOdooOrder], updateData]);
+      orderId = currentOdooOrder;
+
+      console.log(`✅ Ordine ${orderId} aggiornato con data consegna: ${deliveryDate}`);
+
+    } else {
+      console.log('📋 Creando nuovo ordine (nessun ordine esistente)');
+
+      // Crea nuovo ordine solo se non esiste
+      const orderData = {
+        partner_id: currentCustomer.id,
+        partner_shipping_id: selectedDeliveryAddress ? selectedDeliveryAddress.id : currentCustomer.id,
+        date_order: new Date().toISOString().split('T')[0],
+        commitment_date: deliveryDate,
+        state: 'draft'
+      };
+
+      orderId = await callKw('sale.order', 'create', [orderData]);
+      currentOdooOrder = orderId;
+
+      // Crea le righe ordine solo se è un ordine nuovo
+      for (const line of orderLines) {
+        if (line.quantity > 0) {
+          const lineData = {
+            order_id: orderId,
+            product_id: line.product.id,
+            product_uom_qty: line.quantity,
+            name: line.product.name,
+            price_unit: line.price,
+          };
+
+          await callKw('sale.order.line', 'create', [lineData]);
+        }
+      }
+    }
+
+    toast(`✅ Ordine confermato! ID: ${orderId}`);
+
+    // 🔧 FIX: NON resettare currentOdooOrder per evitare duplicati
+    // Se l'utente clicca di nuovo "Crea Ordine", deve aggiornare lo stesso
+
+    // Disabilita il pulsante per evitare doppi clic
+    btn.innerHTML = '✅ Ordine Confermato';
+    btn.disabled = true;
+
+    // 🔗 Mostra info ultimo ordine e pulsante nell'header
+    const headerBtn = document.getElementById('headerOrderBtn');
+    const lastOrderInfo = document.getElementById('lastOrderInfo');
+    const lastOrderId = document.getElementById('lastOrderId');
+
+    if (headerBtn) {
+      headerBtn.style.display = 'inline-block';
+    }
+    if (lastOrderInfo && lastOrderId) {
+      lastOrderId.textContent = orderId;
+      lastOrderInfo.style.display = 'block';
+    }
+
+    // Reset SOLO dopo 3 secondi per evitare clic accidentali
+    setTimeout(() => {
+      // Reset ALL state variables (come clearEverything ma senza conferma)
+      currentCustomer = null;
+      initProductLog(); // 📊 Pulisci anche il log prodotti
+      customerAddresses = [];
+      selectedDeliveryAddress = null;
+      orderLines = [];
+      rawProductLines = [];
+      currentOdooOrder = null; // Ora si resetta solo dopo il delay
+      currentInputMode = 'manual';
+
+      // Clear customer section
+      document.getElementById('customerSearch').value = '';
+      document.getElementById('selectedCustomerId').value = '';
+      document.getElementById('customerResults').style.display = 'none';
+
+      // Hide delivery address section
+      document.getElementById('deliveryAddressSection').style.display = 'none';
+      document.getElementById('selectedAddressPreview').style.display = 'none';
+
+      // 🗓️ Reimposta data di consegna a domani per il prossimo ordine
+      setTomorrowDate();
+
+      // Clear ALL popup inputs
+      try {
+        const orderTextPopup = document.getElementById('orderTextPopup');
+        const photoFilePopup = document.getElementById('photoFilePopup');
+        const audioFilePopup = document.getElementById('audioFilePopup');
+
+        if (orderTextPopup) orderTextPopup.value = '';
+        if (photoFilePopup) photoFilePopup.value = '';
+        if (audioFilePopup) audioFilePopup.value = '';
+
+        hidePhotoPreviewPopup();
+        hideAudioPreviewPopup();
+      } catch (e) {}
+
+      // Clear manual product search
+      try {
+        const manualSearch = document.getElementById('manualProductSearch');
+        if (manualSearch) manualSearch.value = '';
+      } catch (e) {}
+
+      // CLEAR DEBUG GEMINI SECTION
+      try {
+        const debugCard = document.getElementById('debugCard');
+        const debugContent = document.getElementById('debugContent');
+        const showDebugBtn = document.getElementById('showDebugBtn');
+
+        if (debugCard) debugCard.style.display = 'none';
+        if (debugContent) debugContent.innerHTML = '';
+        if (showDebugBtn) showDebugBtn.style.display = 'none';
+      } catch (e) {}
+
+      // Hide ALL cards
+      document.getElementById('orderCard').style.display = 'none';
+      document.getElementById('rawProductsCard').style.display = 'none';
+      document.getElementById('productLogCard').style.display = 'none'; // 📊 Nascondi log elaborazione AI
+
+      // Clear previews
+      try {
+        const orderPreview = document.getElementById('orderPreview');
+        if (orderPreview) orderPreview.innerHTML = '';
+
+        const rawProductsPreview = document.getElementById('rawProductsPreview');
+        if (rawProductsPreview) rawProductsPreview.innerHTML = '';
+      } catch (e) {}
+
+      updateOrderDisplay();
+      hideProcessing();
+
+      // Ripristina il pulsante dopo il reset
+      const resetBtn = document.getElementById('createOrderBtn');
+      if (resetBtn) {
+        resetBtn.disabled = false;
+        resetBtn.innerHTML = '📋 Crea Ordine in Odoo';
+      }
+
+      toast('🎉 Sistema pulito e pronto per il prossimo ordine!');
+    }, 3000); // 3 secondi invece di 2 per dare più tempo
+    
+  } catch (error) {
+    console.error('Error creating order:', error);
+    toast('❌ Errore: ' + error.message);
+  } finally {
+    const btn = document.getElementById('createOrderBtn');
+    btn.disabled = false;
+    btn.innerHTML = '📋 Crea Ordine in Odoo';
+  }
+}
+
+// 🔗 Funzione per aprire l'ordine in Odoo
+function openOrderInOdoo() {
+  // Verifica se c'è un ordine corrente o l'ultimo ordine registrato
+  const lastOrderIdElement = document.getElementById('lastOrderId');
+  const orderIdToOpen = currentOdooOrder || (lastOrderIdElement ? lastOrderIdElement.textContent : null);
+
+  if (!orderIdToOpen) {
+    toast('❌ Nessun ordine registrato da aprire');
+    return;
+  }
+
+  // Costruisci URL Odoo per visualizzare l'ordine
+  const odooBaseUrl = window.location.origin; // Usa lo stesso dominio
+  const orderUrl = `${odooBaseUrl}/web#id=${orderIdToOpen}&cids=1&menu_id=174&model=sale.order&view_type=form`;
+
+  console.log(`🔗 Aprendo ordine ${orderIdToOpen} in Odoo: ${orderUrl}`);
+
+  // Apri in nuova finestra/tab
+  window.open(orderUrl, '_blank');
+
+  toast(`🔗 Ordine ${orderIdToOpen} aperto in nuova finestra`);
+}
+
+
+// Click outside to close dropdowns
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.search-input')) {
+    document.querySelectorAll('.search-results').forEach(r => r.style.display = 'none');
+  }
+});
+
+// 🗓️ SEMPRE IMPOSTA DOMANI - Data di consegna fissa su domani
+function setTomorrowDate() {
+  const deliveryDateField = document.getElementById('deliveryDate');
+  if (!deliveryDateField) return;
+
+  // SEMPRE domani - non recuperare date salvate
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  deliveryDateField.value = tomorrow;
+
+  console.log(`📅 Data di consegna impostata automaticamente: ${tomorrow}`);
+}
+
+// Funzione rimossa - non salviamo più date in localStorage
+// La data è sempre domani automaticamente
+
+// Esegui subito e quando DOM è pronto per impostare sempre domani
+setTomorrowDate();
+document.addEventListener('DOMContentLoaded', () => {
+  setTomorrowDate();
+});
+
+// Assicurati che sia impostata anche dopo un piccolo ritardo
+setTimeout(setTomorrowDate, 100);
+setTimeout(setTomorrowDate, 500);
+
+// Raw Products Management
+function displayRawProducts() {
+  const container = document.getElementById('rawProductsList');
+  const card = document.getElementById('rawProductsCard');
+
+
+  // RIPRISTINATO: Mostra solo prodotti NON trovati o da ricontrollare
+  const notFoundProducts = rawProductLines.filter(p => p.status === 'missing' || p.status === 'error');
+
+  if (notFoundProducts.length === 0) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = 'block';
+  container.innerHTML = '';
+
+  notFoundProducts.forEach((rawProduct, index) => {
+    const line = rawProduct.originalLine;
+    const match = rawProduct.matchResult;
+    
+    const div = document.createElement('div');
+    div.className = `raw-product-item ${rawProduct.selected ? 'selected' : ''}`;
+    
+    // Status class
+    let statusClass = 'status-pending';
+    let statusText = 'In attesa';
+    let statusIcon = '❓';
+
+    if (rawProduct.status === 'found') {
+      statusClass = 'status-found';
+      statusText = '✓ Trovato';
+      statusIcon = '✅';
+    } else if (rawProduct.status === 'missing') {
+      // Distingui tra prodotti rimossi dall'ordine e non trovati originariamente
+      if (rawProduct.conversionNote === 'Rimosso dall\'ordine per rianalisi') {
+        statusClass = 'status-missing';
+        statusText = '🔄 Rimosso';
+        statusIcon = '🔄';
+      } else {
+        statusClass = 'status-missing';
+        statusText = '✗ Non trovato';
+        statusIcon = '❌';
+      }
+    } else if (rawProduct.status === 'error') {
+      statusClass = 'status-missing';
+      statusText = '⚠ Errore';
+      statusIcon = '⚠️';
+    }
+    
+    div.innerHTML = `
+      <input type="checkbox" class="raw-product-checkbox" 
+             ${rawProduct.selected ? 'checked' : ''} 
+             onchange="toggleRawProduct(${index}, this.checked)">
+      
+      <div class="raw-product-info">
+        <div class="raw-product-name">
+          ${match ? (match.product.display_name || match.product.name) : line.product_name}
+        </div>
+        <div class="raw-product-original">"${line.raw}"</div>
+        ${rawProduct.conversionNote ? `<div style="font-size:10px;color:var(--muted)">${rawProduct.conversionNote}</div>` : ''}
+      </div>
+      
+      <input type="number" class="raw-product-qty" 
+             value="${rawProduct.quantity}" min="0" step="0.01"
+             onchange="updateRawProductQuantity(${index}, this.value)">
+      
+      <div class="raw-product-uom">${rawProduct.matchResult?.product?.uom_id?.[1] || line.uom || 'pz'}</div>
+      
+      <div class="raw-product-status ${statusClass}">${statusIcon} ${statusText}</div>
+    `;
+    
+    container.appendChild(div);
+  });
+  
+}
+
+function toggleRawProduct(index, selected) {
+  if (rawProductLines[index]) {
+    rawProductLines[index].selected = selected;
+    
+    // Update visual state
+    const item = document.querySelectorAll('.raw-product-item')[index];
+    if (selected) {
+      item.classList.add('selected');
+    } else {
+      item.classList.remove('selected');
+    }
+    
+  }
+}
+
+function updateRawProductQuantity(index, newQty) {
+  if (rawProductLines[index]) {
+    rawProductLines[index].quantity = parseFloat(newQty) || 0;
+  }
+}
+
+function toggleAllProducts(selectAll) {
+  rawProductLines.forEach((product, index) => {
+    product.selected = selectAll;
+    const checkbox = document.querySelectorAll('.raw-product-checkbox')[index];
+    if (checkbox) checkbox.checked = selectAll;
+    
+    const item = document.querySelectorAll('.raw-product-item')[index];
+    if (selectAll) {
+      item.classList.add('selected');
+    } else {
+      item.classList.remove('selected');
+    }
+  });
+  
+}
+
+
+async function addSelectedProducts() {
+  const selectedProducts = rawProductLines.filter(p => p.selected && p.matchResult);
+
+  if (selectedProducts.length === 0) {
+    toast('⚠️ Nessun prodotto trovato selezionato');
+    return;
+  }
+
+  // Aggiungi i prodotti selezionati all'ordine (uno per volta per calcolare prezzi)
+  for (const rawProduct of selectedProducts) {
+    await addProductToOrder(rawProduct.matchResult.product, rawProduct.quantity, rawProduct.originalLine.raw);
+  }
+  
+  toast(`✅ Aggiunti ${selectedProducts.length} prodotti all'ordine!`);
+  
+  // Nascondi la lista grezza
+  document.getElementById('rawProductsCard').style.display = 'none';
+  rawProductLines = [];
+}
+
+
+
+// Clear Everything Function
+function clearEverything() {
+  if (confirm('Sei sicuro di voler pulire tutto? Questa azione cancellerà:\n• Cliente selezionato\n• Tutti i prodotti nell\'ordine\n• Lista prodotti grezza\n• Log elaborazione AI\n• Debug Gemini e conversazioni\n• Tutti i file caricati\n• Ordine Odoo corrente\n\nLA DATA DI CONSEGNA SARÀ REIMPOSTATA A DOMANI')) {
+
+    // Reset ALL state variables
+    currentCustomer = null;
+    initProductLog(); // 📊 Pulisci anche il log prodotti
+    customerAddresses = [];
+    selectedDeliveryAddress = null;
+    orderLines = [];
+    rawProductLines = [];
+    currentOdooOrder = null;  // RESET ORDINE ODOO
+    currentInputMode = 'manual';
+
+    // Clear customer section
+    document.getElementById('customerSearch').value = '';
+    document.getElementById('selectedCustomerId').value = '';
+    document.getElementById('customerResults').style.display = 'none';
+
+    // Hide delivery address section
+    document.getElementById('deliveryAddressSection').style.display = 'none';
+    document.getElementById('selectedAddressPreview').style.display = 'none';
+
+    // 🗓️ Reimposta la data di consegna a domani
+    setTomorrowDate();
+
+    // Clear ALL popup inputs
+    try {
+      const orderTextPopup = document.getElementById('orderTextPopup');
+      const photoFilePopup = document.getElementById('photoFilePopup');
+      const audioFilePopup = document.getElementById('audioFilePopup');
+
+      if (orderTextPopup) orderTextPopup.value = '';
+      if (photoFilePopup) photoFilePopup.value = '';
+      if (audioFilePopup) audioFilePopup.value = '';
+
+      hidePhotoPreviewPopup();
+      hideAudioPreviewPopup();
+    } catch (e) {}
+
+    // Clear manual product search
+    try {
+      const manualSearch = document.getElementById('manualProductSearch');
+      if (manualSearch) manualSearch.value = '';
+    } catch (e) {}
+
+    // CLEAR DEBUG GEMINI SECTION
+    try {
+      const debugCard = document.getElementById('debugCard');
+      const debugContent = document.getElementById('debugContent');
+      const showDebugBtn = document.getElementById('showDebugBtn');
+
+      if (debugCard) debugCard.style.display = 'none';
+      if (debugContent) debugContent.innerHTML = '';
+      if (showDebugBtn) showDebugBtn.style.display = 'none';
+    } catch (e) {}
+
+    // Clear search results
+    document.getElementById('customerResults').style.display = 'none';
+
+    // Hide ALL cards
+    document.getElementById('orderCard').style.display = 'none';
+    document.getElementById('rawProductsCard').style.display = 'none';
+    document.getElementById('productLogCard').style.display = 'none'; // 📊 Nascondi log elaborazione AI
+
+    // Clear order preview
+    try {
+      const orderPreview = document.getElementById('orderPreview');
+      if (orderPreview) orderPreview.innerHTML = '';
+    } catch (e) {}
+
+    // Clear raw products preview
+    try {
+      const rawProductsPreview = document.getElementById('rawProductsPreview');
+      if (rawProductsPreview) rawProductsPreview.innerHTML = '';
+    } catch (e) {}
+
+    // Hide processing
+    hideProcessing();
+
+    // Show success message
+    toast('🗑️ TUTTO COMPLETAMENTE PULITO! Sistema resettato al 100%.');
+  }
+}
+
+// Manual Product Search Popup
+let popupSearchTimer = null;
+let selectedPopupProduct = null;
+
+function openManualSearchPopup() {
+  const popup = document.getElementById('manualSearchPopup');
+  popup.classList.add('show');
+  
+  // Focus on search input
+  setTimeout(() => {
+    document.getElementById('popupProductSearch').focus();
+  }, 100);
+  
+  // Setup search listener
+  const searchInput = document.getElementById('popupProductSearch');
+  searchInput.addEventListener('input', function() {
+    const query = this.value.trim();
+    clearTimeout(popupSearchTimer);
+    
+    if (query.length < 2) {
+      document.getElementById('popupProductResults').innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted)">Inizia a digitare per cercare prodotti...</div>';
+      return;
+    }
+    
+    popupSearchTimer = setTimeout(() => searchPopupProducts(query), 300);
+  });
+}
+
+function closeManualSearchPopup() {
+  const popup = document.getElementById('manualSearchPopup');
+  popup.classList.remove('show');
+  
+  // Reset
+  document.getElementById('popupProductSearch').value = '';
+  document.getElementById('popupProductResults').innerHTML = '';
+  selectedPopupProduct = null;
+}
+
+async function searchPopupProducts(query) {
+  try {
+    const products = await searchRead(
+      'product.product',
+      [
+        '&',
+        ['sale_ok', '=', true],
+        '|', '|',
+        ['name', 'ilike', query],
+        ['default_code', 'ilike', query],
+        ['barcode', 'ilike', query]
+      ],
+      ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'qty_available', 'image_1920'],
+      20,
+      'name asc'
+    );
+    
+    displayPopupProductResults(products);
+  } catch (error) {
+    console.error('Error searching popup products:', error);
+    toast('❌ Errore nella ricerca prodotti');
+  }
+}
+
+function displayPopupProductResults(products) {
+  const container = document.getElementById('popupProductResults');
+  container.innerHTML = '';
+  
+  if (products.length === 0) {
+    container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted)">Nessun prodotto trovato</div>';
+    return;
+  }
+  
+  products.forEach(product => {
+    const div = document.createElement('div');
+    div.className = 'product-popup-item';
+    div.dataset.productId = product.id;
+    
+    // Determina stock level con unità di misura corretta
+    const stock = product.qty_available || 0;
+    const uomName = product.uom_id && product.uom_id[1] ? product.uom_id[1] : 'pz';
+    let stockClass = 'stock-low';
+    let stockText = `Stock: ${stock} ${uomName}`;
+
+    if (stock > 10) {
+      stockClass = 'stock-high';
+      stockText = `Stock: ${stock} ${uomName} ✅`;
+    } else if (stock > 5) {
+      stockClass = 'stock-medium';  
+      stockText = `Stock: ${stock} ${uomName} ⚠️`;
+    } else {
+      stockText = `Stock: ${stock} ${uomName} ❌`;
+    }
+    
+    const hasImage = product.image_1920;
+    const imageHTML = hasImage 
+      ? `<img src="data:image/jpg;base64,${product.image_1920}" class="product-image" alt="${product.name}">`
+      : `<div class="product-image" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:24px">📦</div>`;
+    
+    div.innerHTML = `
+      ${imageHTML}
+      <div class="product-popup-info">
+        <div class="product-popup-name">${product.display_name || product.name}</div>
+        <div class="product-popup-details">
+          CHF ${product.lst_price}
+        </div>
+        <div class="product-popup-stock ${stockClass}">${stockText}</div>
+      </div>
+    `;
+    
+    div.addEventListener('click', () => addProductDirectly(product, div));
+    container.appendChild(div);
+  });
+}
+
+async function addProductDirectly(product, element) {
+  // Add visual feedback temporaneo
+  element.style.transform = 'scale(0.95)';
+  element.style.background = 'var(--accent)';
+  element.style.color = 'var(--btnText)';
+
+  // Add product to order with quantity 1 (user can modify after)
+  await addProductToOrder(product, 1);
+  
+  // Show success feedback
+  toast(`✅ Aggiunto: ${product.display_name || product.name}`);
+  
+  // Reset visual feedback dopo un attimo
+  setTimeout(() => {
+    element.style.transform = '';
+    element.style.background = '';
+    element.style.color = '';
+  }, 200);
+  
+  // Il popup RIMANE APERTO per continuare a cercare
+}
+
+// Close popup when clicking outside
+document.getElementById('manualSearchPopup').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeManualSearchPopup();
+  }
+});
+
+// Order Upload Popup Functions
+function openOrderUploadPopup() {
+  const popup = document.getElementById('orderUploadPopup');
+  popup.classList.add('show');
+}
+
+function closeOrderUploadPopup() {
+  const popup = document.getElementById('orderUploadPopup');
+  popup.classList.remove('show');
+  
+  // Reset everything
+  document.getElementById('uploadMethodContent').style.display = 'none';
+  document.querySelectorAll('#uploadMethodContent > div').forEach(div => div.style.display = 'none');
+  document.getElementById('orderTextPopup').value = '';
+  document.getElementById('photoFilePopup').value = '';
+  document.getElementById('audioFilePopup').value = '';
+  hidePhotoPreviewPopup();
+  hideAudioPreviewPopup();
+}
+
+function selectUploadMethod(method) {
+  const content = document.getElementById('uploadMethodContent');
+  const textContent = document.getElementById('textUploadContent');
+  const photoContent = document.getElementById('photoUploadContent');
+  const audioContent = document.getElementById('audioUploadContent');
+  
+  if (method === 'text') {
+    // Per il testo, mostra l'interfaccia normale
+    textContent.style.display = 'none';
+    photoContent.style.display = 'none';
+    audioContent.style.display = 'none';
+    
+    content.style.display = 'block';
+    textContent.style.display = 'block';
+    setTimeout(() => document.getElementById('orderTextPopup').focus(), 100);
+    
+  } else if (method === 'photo') {
+    // Per le foto, apri direttamente il file picker
+    setupPhotoUploadPopup();
+    document.getElementById('photoFilePopup').click();
+    
+  } else if (method === 'audio') {
+    // Per l'audio, apri direttamente il file picker
+    setupAudioUploadPopup();
+    document.getElementById('audioFilePopup').click();
+  }
+}
+
+// File upload handlers for popup
+function setupPhotoUploadPopup() {
+  const photoInput = document.getElementById('photoFilePopup');
+  // Rimuovi listener esistenti per evitare duplicati
+  photoInput.removeEventListener('change', handlePhotoChange);
+  photoInput.addEventListener('change', handlePhotoChange);
+}
+
+function setupAudioUploadPopup() {
+  const audioInput = document.getElementById('audioFilePopup');
+  // Rimuovi listener esistenti per evitare duplicati
+  audioInput.removeEventListener('change', handleAudioChange);
+  audioInput.addEventListener('change', handleAudioChange);
+}
+
+function handlePhotoChange(e) {
+  const files = Array.from(e.target.files);
+  if (files.length > 0) {
+    // Elabora direttamente senza popup intermedio
+    closeOrderUploadPopup();
+    
+    // Elabora immediatamente
+    setTimeout(async () => {
+      try {
+        let combinedText = '';
+        
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          showProcessing(`Leggendo foto ${i + 1}/${files.length} con AI...`);
+          
+          const base64 = await fileToBase64(file);
+          const orderText = await extractTextFromImage(base64);
+          
+          if (orderText.trim()) {
+            if (combinedText) combinedText += '\n\n';
+            combinedText += `--- Foto ${i + 1} (${file.name}) ---\n${orderText}`;
+          }
+        }
+        
+        if (combinedText.trim()) {
+          await processOrderWithAI(combinedText);
+        } else {
+          hideProcessing();
+          toast('⚠️ Nessun testo rilevato nelle foto');
+        }
+        
+      } catch (error) {
+        hideProcessing();
+        console.error('Errore elaborazione foto:', error);
+        toast('❌ ' + error.message);
+      }
+    }, 100);
+  }
+}
+
+function handleAudioChange(e) {
+  const files = Array.from(e.target.files);
+  if (files.length > 0) {
+    // Elabora direttamente senza popup intermedio
+    closeOrderUploadPopup();
+    
+    // Elabora immediatamente
+    setTimeout(async () => {
+      try {
+        let combinedText = '';
+        
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          showProcessing(`Trascrivendo audio ${i + 1}/${files.length}...`);
+          
+          const orderText = await extractTextFromAudio(file);
+          
+          if (orderText.trim()) {
+            if (combinedText) combinedText += '\n\n';
+            combinedText += `--- Audio ${i + 1} (${file.name}) ---\n${orderText}`;
+          }
+        }
+        
+        if (combinedText.trim()) {
+          await processOrderWithAI(combinedText);
+        } else {
+          hideProcessing();
+          toast('⚠️ Nessun testo trascritto dagli audio');
+        }
+        
+      } catch (error) {
+        hideProcessing();
+        console.error('Errore elaborazione audio:', error);
+        toast('❌ ' + error.message);
+      }
+    }, 100);
+  }
+}
+
+function showPhotoPreviewPopup(files) {
+  const preview = document.getElementById('photoPreviewPopup');
+  const grid = document.getElementById('photoPreviewGridPopup');
+  const info = document.getElementById('photoInfoPopup');
+  
+  preview.style.display = 'block';
+  grid.innerHTML = '';
+  
+  let totalSize = 0;
+  files.forEach((file, index) => {
+    totalSize += file.size;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const div = document.createElement('div');
+      div.style.cssText = 'position:relative; border:1px solid var(--border); border-radius:6px; overflow:hidden';
+      
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.style.cssText = 'width:100%; height:80px; object-fit:cover; display:block';
+      
+      div.appendChild(img);
+      grid.appendChild(div);
+    };
+    reader.readAsDataURL(file);
+  });
+  
+  const totalSizeKB = Math.round(totalSize / 1024);
+  info.textContent = `${files.length} foto • ${totalSizeKB} KB`;
+}
+
+function showAudioPreviewPopup(files) {
+  const preview = document.getElementById('audioPreviewPopup');
+  const list = document.getElementById('audioPreviewListPopup');
+  const info = document.getElementById('audioInfoPopup');
+  
+  preview.style.display = 'block';
+  list.innerHTML = '';
+  
+  let totalSize = 0;
+  files.forEach((file, index) => {
+    totalSize += file.size;
+    
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex; align-items:center; gap:8px; padding:6px; border:1px solid var(--border); border-radius:6px; font-size:12px';
+    div.innerHTML = `🎤 ${file.name}`;
+    list.appendChild(div);
+  });
+  
+  const totalSizeKB = Math.round(totalSize / 1024);
+  info.textContent = `${files.length} audio • ${totalSizeKB} KB`;
+}
+
+function hidePhotoPreviewPopup() {
+  try {
+    const preview = document.getElementById('photoPreviewPopup');
+    const btn = document.getElementById('processPhotoBtnPopup');
+    if (preview) preview.style.display = 'none';
+    if (btn) btn.style.display = 'none';
+  } catch (e) {
+  }
+}
+
+function hideAudioPreviewPopup() {
+  try {
+    const preview = document.getElementById('audioPreviewPopup');
+    const btn = document.getElementById('processAudioBtnPopup');
+    if (preview) preview.style.display = 'none';
+    if (btn) btn.style.display = 'none';
+  } catch (e) {
+  }
+}
+
+// Processing functions for popup
+async function processTextOrderFromPopup() {
+  const orderText = document.getElementById('orderTextPopup').value.trim();
+  if (!orderText) {
+    toast('⚠️ Inserisci il testo dell\'ordine');
+    return;
+  }
+  
+  closeOrderUploadPopup();
+  await processOrderWithAI(orderText);
+}
+
+async function processPhotoOrderFromPopup() {
+  const files = Array.from(document.getElementById('photoFilePopup').files);
+  if (files.length === 0) {
+    toast('⚠️ Seleziona almeno una foto');
+    return;
+  }
+  
+  closeOrderUploadPopup();
+  
+  try {
+    let combinedText = '';
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      showProcessing(`Leggendo foto ${i + 1}/${files.length} con AI...`);
+      
+      const base64 = await fileToBase64(file);
+      const orderText = await extractTextFromImage(base64);
+      
+      if (orderText.trim()) {
+        if (combinedText) combinedText += '\n\n';
+        combinedText += `--- Foto ${i + 1} (${file.name}) ---\n${orderText}`;
+      }
+    }
+    
+    if (combinedText.trim()) {
+      await processOrderWithAI(combinedText);
+    } else {
+      hideProcessing();
+      toast('⚠️ Nessun testo rilevato nelle foto');
+    }
+    
+  } catch (error) {
+    hideProcessing();
+    console.error('Errore elaborazione foto:', error);
+    toast('❌ ' + error.message);
+  }
+}
+
+async function processAudioOrderFromPopup() {
+  const files = Array.from(document.getElementById('audioFilePopup').files);
+  if (files.length === 0) {
+    toast('⚠️ Seleziona almeno un file audio');
+    return;
+  }
+  
+  closeOrderUploadPopup();
+  
+  try {
+    let combinedText = '';
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      showProcessing(`Trascrivendo audio ${i + 1}/${files.length}...`);
+      
+      const orderText = await extractTextFromAudio(file);
+      
+      if (orderText.trim()) {
+        if (combinedText) combinedText += '\n\n';
+        combinedText += `--- Audio ${i + 1} (${file.name}) ---\n${orderText}`;
+      }
+    }
+    
+    if (combinedText.trim()) {
+      await processOrderWithAI(combinedText);
+    } else {
+      hideProcessing();
+      toast('⚠️ Nessun testo trascritto dagli audio');
+    }
+    
+  } catch (error) {
+    hideProcessing();
+    console.error('Errore elaborazione audio:', error);
+    toast('❌ ' + error.message);
+  }
+}
+
+// Funzione per estrarre termini di ricerca intelligenti dalle info operatore
+function extractSearchTermsFromInfo(productName, operatorInfo) {
+  const searchTerms = [];
+
+  // Normalizza tutto in minuscolo
+  const productLower = productName.toLowerCase();
+  const infoLower = operatorInfo.toLowerCase();
+
+
+  // MAPPA SPECIFICA per tradurre prodotti problematici
+  const productMapping = {
+    'mozzarella': ['fiordilatte', 'mozzarella fiordilatte', 'fiordilatte taglio napoli', 'taglio napoli'],
+    'fiordilatte': ['mozzarella fiordilatte', 'fiordilatte taglio napoli', 'mozzarella'],
+    'pinze': ['pinza romana', 'pinza', 'pane pinza', 'focaccia'],
+    'pinza': ['pinza romana', 'pane pinza', 'focaccia pinza']
+  };
+
+  // Se il prodotto è nella mappa, usa quei termini
+  for (const [key, alternatives] of Object.entries(productMapping)) {
+    if (productLower.includes(key)) {
+      searchTerms.push(...alternatives);
+    }
+  }
+
+  // Estrai parole chiave specifiche dalle info operatore
+  const infoWords = infoLower.split(/[,.\s]+/).filter(word => word.length > 2);
+
+  // Cerca parole chiave rilevanti nelle info
+  const relevantKeywords = infoWords.filter(word =>
+    !['per', 'con', 'del', 'della', 'che', 'lui', 'sta', 'già', 'comprando', 'anche', 'significa', 'fornitore', 'comunque'].includes(word)
+  );
+
+
+  // Combina parole chiave con il nome prodotto originale
+  for (const keyword of relevantKeywords) {
+    if (keyword.length > 2) {
+      searchTerms.push(keyword);
+      searchTerms.push(productName + ' ' + keyword);
+      searchTerms.push(keyword + ' ' + productName);
+    }
+  }
+
+  // Aggiungi il prodotto originale come ultimo tentativo
+  searchTerms.push(productName);
+
+  // Rimuovi duplicati e ordina dal più specifico al più generico
+  const uniqueTerms = [...new Set(searchTerms)];
+
+  return uniqueTerms.slice(0, 8); // Max 8 tentativi
+}
+
+// NUOVA FUNZIONE: Riprova ricerca con info extra
+async function retrySearchWithExtraInfo() {
+  const extraInfo = document.getElementById('extraInfoText').value.trim();
+  const btn = document.getElementById('retrySearchBtn');
+
+  // Prendi solo i prodotti non trovati
+  const notFoundProducts = rawProductLines.filter(p => p.status === 'missing' || p.status === 'error');
+
+  if (notFoundProducts.length === 0) {
+    toast('ℹ️ Non ci sono prodotti non trovati da ricercare');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px"></span> Ricerca in corso...';
+
+  try {
+    showProcessing('Riprovando ricerca con AI e info extra...');
+
+    // USA GEMINI per analizzare e trovare i termini giusti
+    const productsList = notFoundProducts.map(p => `"${p.originalLine.raw}"`).join('\n');
+
+    const prompt = `Sei un esperto di prodotti gastronomici italiani. Aiutami a tradurre questi prodotti nei NOMI ESATTI che devo cercare nel catalogo.
+
+PRODOTTI NON TROVATI:
+${productsList}
+
+SPIEGAZIONE DELL'OPERATORE:
+${extraInfo}
+
+COMPITO: Per ogni prodotto, dimmi ESATTAMENTE che nome devo cercare nel catalogo, usando le informazioni dell'operatore.
+
+ESEMPI:
+- Se operatore dice "mozzarella significa fiordilatte taglio Napoli" → cerca "fiordilatte taglio napoli"
+- Se operatore dice "pinza è pinza romana" → cerca "pinza romana"
+- Se operatore dice "fornitore tamburo" → cerca "tamburo"
+
+Restituisci SOLO JSON:
+{
+  "translations": [
+    {
+      "original": "prodotto originale esatto",
+      "search_for": "nome esatto da cercare nel catalogo"
+    }
+  ]
+}
+
+IMPORTANTE: Usa ESATTAMENTE le parole dell'operatore per capire che nome cercare.`;
+
+    const response = await callGemini(prompt);
+    let translations;
+
+    try {
+      let cleanResponse = response.trim();
+      cleanResponse = cleanResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+      const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('Nessun JSON trovato');
+      translations = JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      console.error('Errore parsing JSON:', e);
+      throw new Error('Gemini non ha risposto correttamente');
+    }
+
+    if (!translations.translations) {
+      throw new Error('Formato risposta non valido');
+    }
+
+    let foundCount = 0;
+
+    // Prova le traduzioni da Gemini
+    for (const translation of translations.translations) {
+      const originalProduct = notFoundProducts.find(p =>
+        p.originalLine.raw === translation.original ||
+        p.originalLine.raw.includes(translation.original) ||
+        translation.original.includes(p.originalLine.raw)
+      );
+
+      if (!originalProduct) continue;
+
+      const searchTerm = translation.search_for;
+      showProcessing(`Cercando "${searchTerm}" per "${translation.original}"...`);
+
+      const testLine = {
+        product_name: searchTerm,
+        qty: originalProduct.originalLine.qty,
+        uom: originalProduct.originalLine.uom,
+        raw: originalProduct.originalLine.raw
+      };
+
+      // Cerca nel catalogo
+      let bestMatch = null;
+      if (currentCustomer) {
+        const customerPreferredProducts = await getCustomerPreferredProducts(currentCustomer.id);
+        bestMatch = await findInPreferredProducts(testLine, customerPreferredProducts);
+      }
+
+      if (!bestMatch) {
+        bestMatch = await findInFullCatalog(testLine);
+      }
+
+      if (bestMatch) {
+
+        const smartQuantity = await calculateSmartQuantity(testLine, bestMatch);
+        await addProductToOrder(bestMatch.product, smartQuantity.quantity, originalProduct.originalLine.raw);
+
+        const index = rawProductLines.indexOf(originalProduct);
+        if (index > -1) {
+          rawProductLines.splice(index, 1);
+        }
+
+        foundCount++;
+        toast(`✅ Trovato: ${bestMatch.product.name}`);
+      } else {
+      }
+    }
+
+    hideProcessing();
+
+    if (foundCount > 0) {
+      toast(`🎉 Trovati ${foundCount} prodotti aggiuntivi!`);
+      // Aggiorna la visualizzazione
+      displayRawProducts();
+    } else {
+      toast('😔 Nessun prodotto trovato con le informazioni aggiuntive. Prova con dettagli più specifici.');
+    }
+
+  } catch (error) {
+    hideProcessing();
+    console.error('Errore nella ricerca migliorata:', error);
+    toast('❌ Errore: ' + error.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔍 Riprova Ricerca con Info Extra';
+  }
+}
+
+// Close popup when clicking outside
+document.getElementById('orderUploadPopup').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeOrderUploadPopup();
+  }
+});
+
+// Debug Functions
+function showDebugSection(clientMessage, geminiResponse) {
+  document.getElementById('debugClientMessage').textContent = clientMessage;
+  document.getElementById('debugGeminiResponse').textContent = geminiResponse;
+  document.getElementById('debugCard').style.display = 'block';
+
+  // Nascondi il bottone "Debug Gemini" nell'header
+  document.getElementById('showDebugBtn').style.display = 'none';
+
+  // Scroll to debug section
+  document.getElementById('debugCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function hideDebugSection() {
+  document.getElementById('debugCard').style.display = 'none';
+
+  // Mostra il bottone "Debug Gemini" nell'header per riaprire
+  document.getElementById('showDebugBtn').style.display = 'inline-flex';
+}
+
+function reopenDebugSection() {
+  document.getElementById('debugCard').style.display = 'block';
+  document.getElementById('showDebugBtn').style.display = 'none';
+}
+
+let headerVisible = true;
+function toggleHeader() {
+  const header = document.querySelector('.header');
+  const hideBtn = document.getElementById('hideHeaderBtn');
+
+  if (headerVisible) {
+    // Nascondi header mantenendo solo il pulsante
+    header.style.transform = 'translateY(-80%)';
+    hideBtn.innerHTML = '👀';
+    hideBtn.title = 'Mostra header';
+    hideBtn.style.position = 'fixed';
+    hideBtn.style.top = '10px';
+    hideBtn.style.right = '10px';
+    hideBtn.style.zIndex = '9999';
+    headerVisible = false;
+  } else {
+    // Mostra header
+    header.style.transform = 'translateY(0)';
+    hideBtn.innerHTML = '👁️';
+    hideBtn.title = 'Nascondi header';
+    hideBtn.style.position = '';
+    hideBtn.style.top = '';
+    hideBtn.style.right = '';
+    hideBtn.style.zIndex = '';
+    headerVisible = true;
+  }
+}
+
+// Initialize
+
+</script>

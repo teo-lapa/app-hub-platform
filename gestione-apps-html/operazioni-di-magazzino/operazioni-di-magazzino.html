@@ -1,0 +1,3886 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Gestione Ubicazioni Magazzino - Odoo 17</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0f1c;
+    --card: #111827;
+    --card-hover: #1f2937;
+    --text: #f3f4f6;
+    --muted: #9ca3af;
+    --border: #374151;
+    --accent: #10b981;
+    --accent-hover: #059669;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --info: #3b82f6;
+    --success: #22c55e;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: linear-gradient(135deg, var(--bg) 0%, #1a1f2e 100%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 15px;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  
+  /* Ottimizzazione per tablet 8 pollici */
+  @media (max-width: 768px) {
+    body {
+      padding: 10px;
+    }
+    
+    .header h1 {
+      font-size: 1.8rem;
+    }
+    
+    .operation-card {
+      padding: 20px;
+    }
+    
+    .zone-card {
+      padding: 25px;
+    }
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 20px;
+    background: var(--card);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  }
+
+  .header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--info) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .connection-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 15px;
+  }
+
+  .connection-status.connected {
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+
+  .connection-status.disconnected {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .operation-selector {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 30px;
+    margin-bottom: 40px;
+  }
+
+  .operation-card {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 20px;
+    padding: 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .operation-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: var(--danger);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 18px;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+    animation: pulse 2s infinite;
+  }
+
+  .operation-badge.empty {
+    background: var(--muted);
+    animation: none;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+
+  .operation-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--info));
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+  }
+
+  .operation-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    border-color: var(--accent);
+  }
+
+  .operation-card:hover::before {
+    transform: scaleX(1);
+  }
+
+  .operation-card.active {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+    border-color: var(--accent);
+  }
+
+  .operation-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, var(--accent), var(--info));
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+  }
+
+  .operation-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .operation-description {
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* Zone Selection */
+  .zone-selector {
+    display: none;
+    margin-bottom: 40px;
+    animation: fadeIn 0.5s ease;
+  }
+
+  .zone-selector.active {
+    display: block;
+  }
+
+  .zone-header {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  .zone-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .zone-subtitle {
+    color: var(--muted);
+    font-size: 1.1rem;
+  }
+
+  .zones-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    margin-bottom: 30px;
+    padding: 0 20px;
+  }
+
+  .zone-card {
+    border-radius: 20px;
+    padding: 40px 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    position: relative;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .zone-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+
+  .zone-card.selected {
+    transform: scale(1.05);
+    box-shadow: 0 15px 50px rgba(0,0,0,0.4);
+  }
+
+  .zone-card.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 32px;
+    height: 32px;
+    background: white;
+    color: #333;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  }
+
+  /* Colori specifici per zone */
+  .zone-card.zone-secco {
+    background: linear-gradient(135deg, #00bcd4, #0097a7);
+    color: white;
+  }
+
+  .zone-card.zone-secco-sopra {
+    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+    color: white;
+  }
+
+  .zone-card.zone-pingu {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+  }
+
+  .zone-card.zone-frigo {
+    background: linear-gradient(135deg, #26c6da, #00acc1);
+    color: white;
+  }
+
+  .zone-counter {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(255,255,255,0.3);
+    backdrop-filter: blur(10px);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 18px;
+    min-width: 35px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .zone-counter.has-items {
+    background: rgba(255,255,255,0.9);
+    color: #333;
+    animation: bounce 2s infinite;
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+
+  .zone-icon {
+    font-size: 60px;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+  }
+
+  .zone-name {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .zone-info {
+    color: rgba(255,255,255,0.9);
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .main-content {
+    display: none;
+    animation: fadeIn 0.5s ease;
+  }
+
+  .main-content.active {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 30px;
+  }
+
+  .back-button:hover {
+    background: var(--card-hover);
+    transform: translateX(-5px);
+  }
+
+  .workflow-container {
+    display: grid;
+    gap: 30px;
+  }
+
+  .step-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 30px;
+    position: relative;
+  }
+
+  .step-card.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+  }
+
+  .step-card.completed {
+    opacity: 0.7;
+  }
+
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+
+  .step-number {
+    width: 40px;
+    height: 40px;
+    background: var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+  }
+
+  .step-card.active .step-number {
+    background: linear-gradient(135deg, var(--accent), var(--info));
+  }
+
+  .step-card.completed .step-number {
+    background: var(--success);
+  }
+
+  .step-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+  }
+
+  .input-group {
+    margin-bottom: 20px;
+  }
+
+  .input-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .input-wrapper {
+    position: relative;
+  }
+
+  .input-field {
+    width: 100%;
+    padding: 14px 50px 14px 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+
+  /* Calcolatrice */
+  #calculatorModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+  }
+
+  .calculator {
+    background: var(--card);
+    border: 2px solid var(--accent);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .calculator-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 18px;
+  }
+
+  .calculator-close {
+    background: transparent;
+    border: none;
+    color: var(--danger);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+  }
+
+  .calc-display {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-size: 28px;
+    font-weight: 700;
+    text-align: right;
+    margin-bottom: 20px;
+    color: var(--text);
+    min-height: 60px;
+  }
+
+  .calc-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .calc-button {
+    background: var(--border);
+    border: none;
+    border-radius: 10px;
+    padding: 16px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .calc-button:hover {
+    background: var(--accent);
+    transform: scale(1.05);
+  }
+
+  .calc-button:active {
+    transform: scale(0.95);
+  }
+
+  .calc-button.operator {
+    background: var(--accent2);
+    color: white;
+  }
+
+  .calc-button.clear {
+    background: var(--danger);
+    color: white;
+    grid-column: span 2;
+  }
+
+  .calc-button.zero {
+    grid-column: span 2;
+  }
+
+  .calc-button.equals {
+    background: var(--success);
+    color: white;
+    grid-column: span 2;
+  }
+
+  .calc-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .calc-action-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .calc-confirm {
+    background: var(--success);
+    color: white;
+  }
+
+  .calc-cancel {
+    background: var(--danger);
+    color: white;
+  }
+
+  .calc-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    min-width: 45px;
+    height: 45px;
+  }
+
+  .qty-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .qty-wrapper input {
+    flex-grow: 1;
+  }
+
+  #uom_label {
+    font-weight: bold;
+    white-space: nowrap;
+    color: var(--accent2);
+    background: rgba(59, 130, 246, 0.15);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  .product-image {
+    width: 100%;
+    max-width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin: 20px auto;
+    display: block;
+    border: 2px solid var(--border);
+  }
+  
+  .section-divider {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .input-field:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+  }
+
+  .input-field.scanning {
+    border-color: var(--info);
+    animation: scanPulse 1.5s infinite;
+  }
+
+  @keyframes scanPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+    50% { box-shadow: 0 0 20px 10px rgba(59, 130, 246, 0.2); }
+  }
+
+  .scan-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 20px;
+  }
+
+  .input-field:focus + .scan-icon {
+    color: var(--accent);
+  }
+
+  .product-info {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .info-row:last-child {
+    border-bottom: none;
+  }
+
+  .info-label {
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .info-value {
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .quantity-input {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+  }
+
+  .quantity-btn {
+    width: 40px;
+    height: 40px;
+    background: var(--border);
+    border: none;
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .quantity-btn:hover {
+    background: var(--accent);
+    transform: scale(1.1);
+  }
+
+  .quantity-btn:active {
+    transform: scale(0.95);
+  }
+
+  .quantity-display {
+    flex: 1;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 16px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--info));
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-secondary {
+    background: var(--card-hover);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    background: var(--border);
+  }
+
+  /* Griglia prodotti nel buffer */
+  .buffer-products-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+
+  .buffer-products-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .buffer-products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 15px;
+  }
+
+  @media (max-width: 768px) {
+    .buffer-products-grid {
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+    }
+  }
+
+  .buffer-product-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .buffer-product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    border-color: var(--accent);
+  }
+
+  .buffer-product-image {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 8px;
+    background: var(--border);
+    margin-bottom: 10px;
+  }
+
+  .buffer-product-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    min-height: 32px;
+  }
+
+  .buffer-product-code {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .buffer-product-qty {
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .buffer-product-lot {
+    font-size: 11px;
+    color: var(--warning);
+    margin-top: 2px;
+  }
+
+  .notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    animation: slideIn 0.3s ease;
+    z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(400px); }
+    to { transform: translateX(0); }
+  }
+
+  .notification.success {
+    background: linear-gradient(135deg, var(--success), var(--accent));
+    color: white;
+  }
+
+  .notification.error {
+    background: linear-gradient(135deg, var(--danger), #dc2626);
+    color: white;
+  }
+
+  .notification.info {
+    background: linear-gradient(135deg, var(--info), #2563eb);
+    color: white;
+  }
+
+  .stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 30px;
+  }
+
+  .stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .stat-label {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 5px;
+  }
+
+  @media (max-width: 768px) {
+    .header h1 {
+      font-size: 1.8rem;
+    }
+    
+    .operation-selector {
+      grid-template-columns: 1fr;
+    }
+    
+    .operation-icon {
+      width: 60px;
+      height: 60px;
+      font-size: 30px;
+    }
+    
+    .operation-title {
+      font-size: 1.2rem;
+    }
+    
+    .action-buttons {
+      flex-direction: column;
+    }
+  }
+
+  .loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Modal di ricerca avanzata */
+  .search-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 20px;
+  }
+
+  .search-modal.active {
+    display: flex;
+  }
+
+  .search-content {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  }
+
+  .search-header {
+    padding: 20px 20px 15px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .search-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .close-search {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .close-search:hover {
+    background: var(--card-hover);
+    color: var(--text);
+  }
+
+  .search-body {
+    padding: 20px;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 16px;
+    margin-bottom: 15px;
+    transition: border-color 0.2s;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+
+  .search-results {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .search-result-item {
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .search-result-item:hover {
+    background: var(--card-hover);
+    border-color: var(--accent);
+    transform: translateX(2px);
+  }
+
+  .search-result-image {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .search-result-info {
+    flex: 1;
+  }
+
+  .search-result-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .search-result-code {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Grid prodotti migliorata */
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 15px;
+    margin-bottom: 100px;
+  }
+
+  @media (max-width: 768px) {
+    .products-grid {
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+    }
+  }
+
+  .product-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    border-color: var(--accent);
+  }
+
+  .product-card.selected {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+  }
+
+  .product-image {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 8px;
+    background: var(--border);
+    margin-bottom: 10px;
+  }
+
+  .product-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    min-height: 32px;
+  }
+
+  .product-code {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .product-qty {
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .product-lot {
+    font-size: 11px;
+    color: var(--warning);
+    margin-top: 2px;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 20px;
+  }
+</style>
+
+
+
+<div class="container">
+  
+  <div class="header">
+    <h1>📦 Gestione Ubicazioni Magazzino</h1>
+    <div class="connection-status disconnected" id="connectionStatus">
+      <span class="status-dot"></span>
+      <span id="statusText">Non connesso</span>
+    </div>
+    <div id="userInfo" style="margin-top: 10px; display: none;">
+      <span style="color: var(--muted); font-size: 14px;">Operatore:</span>
+      <span id="userName" style="color: var(--accent); font-weight: 600; font-size: 16px;">-</span>
+    </div>
+    <button class="btn btn-secondary" onclick="showDebugInfo()" style="margin-top: 15px; padding: 8px 16px;">
+      🔧 Debug Info
+    </button>
+  </div>
+
+  
+  <div class="operation-selector" id="operationSelector">
+    <div class="operation-card" onclick="selectOperation('buffer')">
+      <span class="operation-badge" id="bufferCount">0</span>
+      <div class="operation-icon">📥</div>
+      <div class="operation-title">Buffer → Ubicazioni</div>
+      <div class="operation-description">
+        Trasferisci prodotti dal buffer di ricevimento alle ubicazioni di stoccaggio
+      </div>
+    </div>
+    
+  </div>
+
+  
+  <div class="zone-selector" id="zoneSelector">
+    <button class="back-button" onclick="backToOperationSelection()">
+      ← Torna alla selezione operazione
+    </button>
+    
+    <div class="zone-header">
+      <h2 class="zone-title">🏭 Seleziona la Zona di Lavoro</h2>
+      <p class="zone-subtitle" id="zoneSubtitle">Scegli la zona del magazzino dove vuoi operare</p>
+    </div>
+
+    <div class="zones-grid" id="zonesGrid">
+      
+    </div>
+  </div>
+
+  
+  <div class="main-content" id="mainContent">
+    <button class="back-button" onclick="backToZoneSelection()">
+      ← Torna alla selezione zona
+    </button>
+
+    
+    <div id="breadcrumb" style="margin-bottom: 20px; padding: 15px; background: var(--card); border-radius: 12px; border: 1px solid var(--border); display: none;">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <span style="color: var(--muted); font-size: 14px;">Percorso:</span>
+        <span id="breadcrumbPath" style="color: var(--accent); font-weight: 600; font-size: 16px;">-</span>
+      </div>
+    </div>
+
+    <div class="workflow-container">
+      
+      <div class="step-card active" id="mainCard" style="max-width: 600px; margin: 0 auto;">
+        <div class="step-header" style="padding: 15px;">
+          <div class="step-number">📦</div>
+          <div class="step-title" style="font-size: 18px;">Gestione Prodotto</div>
+        </div>
+        
+        
+        <div class="section-divider">
+          <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 16px;">1️⃣ Trova il Prodotto</h4>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          
+          <div class="input-group">
+            <label style="display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px;">Scansione Barcode / Codice:</label>
+            <div style="display: flex; gap: 8px; align-items: stretch;">
+              <div class="input-wrapper" style="flex: 1;">
+                <input type="text" class="input-field" id="productCode" placeholder="Scansiona o digita il codice..." autocomplete="off" style="font-size: 16px; padding: 14px;">
+                <span class="scan-icon">📷</span>
+              </div>
+              <button onclick="openManualSearch()" style="padding: 14px 16px; background: var(--accent); border: none; border-radius: 8px; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600;">
+                🔍 Cerca
+              </button>
+            </div>
+          </div>
+          
+          
+        </div>
+
+        
+        <div class="buffer-products-section" id="bufferProductsSection" style="display: none;">
+          <div class="buffer-products-title">
+            📦 Prodotti disponibili in <span id="bufferZoneName"></span>
+          </div>
+          <div class="buffer-products-grid" id="bufferProductsGrid">
+            
+          </div>
+        </div>
+        
+        <div class="product-display" id="productDisplay" style="display: none; margin-top: 20px; padding: 20px; background: rgba(255,255,255,0.02); border-radius: 12px;">
+          <div style="display: flex; gap: 20px; align-items: start;">
+            <div>
+              <img id="productImage" src="" alt="Prodotto" style="width: 120px; height: 120px; object-fit: cover; border-radius: 10px; border: 2px solid var(--border);" loading="lazy">
+              <button onclick="openNoteModal()" style="margin-top: 10px; width: 120px; padding: 8px; background: rgba(59, 130, 246, 0.2); border: 1px solid var(--info); color: var(--info); border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                📝 Aggiungi Nota
+              </button>
+            </div>
+            <div style="flex: 1;">
+              <h3 id="productName" style="margin: 0 0 10px; color: var(--text); font-size: 18px;">-</h3>
+              <div id="productCodeInfo" style="margin: 0 0 10px; color: var(--muted); font-size: 14px;">Codice: -</div>
+              
+              <div style="display: grid; gap: 12px; margin-top: 15px;">
+                <div>
+                  <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px;">LOTTO *</label>
+                  <input type="text" id="lotNumber" class="input-field" placeholder="Inserisci numero lotto (obbligatorio)" style="padding: 10px; font-size: 14px;">
+                </div>
+                <div>
+                  <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px;">SCADENZA</label>
+                  <input type="date" id="expiryDate" class="input-field" style="padding: 10px; font-size: 14px;">
+                </div>
+                <div>
+                  <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px;">QUANTITÀ</label>
+                  <div class="qty-wrapper">
+                    <input type="text" class="input-field" id="qtyInput" value="1" readonly="" onclick="openCalculator()" style="padding: 10px; font-size: 14px;">
+                    <span id="uom_label" style="padding: 10px;">PZ</span>
+                    <button class="calc-btn" onclick="openCalculator()">🔢</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        
+        <div class="section-divider" id="locationSection" style="display: none; margin-top: 25px;">
+          <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 16px;">2️⃣ Ubicazione di Destinazione</h4>
+        </div>
+        
+        <div class="input-group" id="locationInputGroup" style="display: none;">
+          <label style="display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px;">Scansiona ubicazione:</label>
+          <div style="display: flex; gap: 8px; align-items: stretch;">
+            <div class="input-wrapper" style="flex: 1;">
+              <input type="text" class="input-field" id="locationCode" placeholder="Scansiona il codice ubicazione..." autocomplete="off" style="font-size: 16px; padding: 14px;">
+              <span class="scan-icon">📍</span>
+            </div>
+            <button onclick="openLocationScanner()" style="padding: 14px 16px; background: var(--info); border: none; border-radius: 8px; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600;">
+              📷 Scansiona
+            </button>
+          </div>
+        </div>
+
+        
+        <div id="locationInfo" style="display: none; margin-top: 15px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 10px;">
+          <div style="font-weight: 600; color: var(--info); margin-bottom: 8px;">📍 Ubicazione Selezionata:</div>
+          <div id="locationName" style="font-size: 16px; color: var(--text);">-</div>
+        </div>
+
+        
+        <div class="action-buttons" id="actionButtons" style="display: none; margin-top: 25px;">
+          <button class="btn btn-primary" id="confirmBtn" onclick="confirmTransfer()" style="width: 100%; padding: 16px; font-size: 17px; font-weight: 600;">
+            ✅ CONFERMA TRASFERIMENTO
+          </button>
+        </div>
+      </div>
+    </div>
+
+    
+    <div id="transferLog" style="margin-top: 30px; display: none;">
+      <div style="background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 20px;">
+        <h3 style="color: var(--accent); margin-bottom: 15px; font-size: 18px;">
+          📋 Trasferimenti Completati Oggi
+        </h3>
+        <div id="transferList" style="max-height: 400px; overflow-y: auto;">
+          
+        </div>
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); display: flex; justify-content: space-between;">
+          <span style="color: var(--muted);">Totale trasferimenti:</span>
+          <span id="totalTransfers" style="color: var(--accent); font-weight: 600;">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div id="searchModal" class="search-modal">
+  <div class="search-content">
+    <div class="search-header">
+      <span class="search-title">🔍 Ricerca Prodotti</span>
+      <button class="close-search" onclick="closeManualSearch()">✕</button>
+    </div>
+    <div class="search-body">
+      <input type="text" id="searchInput" class="search-input" placeholder="Cerca per nome, codice o barcode (min. 3 caratteri)">
+      <div id="searchResults" class="search-results">
+        <div style="text-align: center; color: var(--muted); padding: 20px;">
+          Inserisci almeno 3 caratteri per iniziare la ricerca
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div id="locationScannerModal" class="search-modal">
+  <div class="search-content">
+    <div class="search-header">
+      <span class="search-title">📷 Scansiona Ubicazione</span>
+      <button class="close-search" onclick="closeLocationScanner()">✕</button>
+    </div>
+    <div class="search-body">
+      <div id="locationReader" style="width: 100%; margin-bottom: 15px;"></div>
+      <div class="manual-input" style="display: flex; gap: 8px; align-items: center;">
+        <input type="text" id="manualLocationCode" class="search-input" placeholder="Oppure inserisci codice manualmente">
+        <button onclick="useManualLocationCode()" style="padding: 14px 20px; background: var(--accent); border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal" id="noteModal" style="display: none;">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h2>📝 Aggiungi Nota/Attività</h2>
+      <span class="modal-close" onclick="closeNoteModal()">×</span>
+    </div>
+    <div class="modal-body">
+      <div id="noteProductInfo" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+        <span style="color: var(--muted);">Prodotto:</span>
+        <span id="noteProductName" style="color: var(--accent); font-weight: 600;">-</span>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; color: var(--muted); font-size: 14px;">Messaggio/Nota:</label>
+        <textarea id="noteText" style="width: 100%; min-height: 120px; padding: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; resize: vertical;" placeholder="Scrivi qui la tua nota o segnalazione..."></textarea>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; color: var(--muted); font-size: 14px;">Allega Foto (opzionale):</label>
+        <input type="file" id="notePhoto" accept="image/*" capture="environment" style="display: none;">
+        <button onclick="document.getElementById('notePhoto').click()" style="padding: 10px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); cursor: pointer;">
+          📷 Scatta/Seleziona Foto
+        </button>
+        <div id="photoPreview" style="margin-top: 10px; display: none;">
+          <img id="previewImage" src="" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid var(--border);" loading="lazy">
+          <button onclick="removePhoto()" style="margin-top: 5px; padding: 5px 10px; background: var(--danger); border: none; border-radius: 5px; color: white; cursor: pointer; font-size: 12px;">
+            ❌ Rimuovi Foto
+          </button>
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; color: var(--muted); font-size: 14px;">Priorità:</label>
+        <select id="notePriority" style="width: 100%; padding: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; color: var(--text);">
+          <option value="0">Normale</option>
+          <option value="1">Alta</option>
+          <option value="2">Urgente</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeNoteModal()">Annulla</button>
+      <button class="btn btn-primary" onclick="saveNote()">💾 Salva Nota</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="debugModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;max-width:700px;max-height:80vh;overflow:auto">
+    <h3 style="margin:0 0 16px;color:var(--accent2)">🔧 Informazioni Debug</h3>
+    <div id="debugContent"></div>
+    <button class="btn ghost" onclick="closeDebugModal()" style="margin-top:16px">Chiudi</button>
+  </div>
+</div>
+
+
+<div id="calculatorModal">
+  <div class="calculator">
+    <div class="calculator-header">
+      <span id="calculatorTitle">🔢 Calcolatrice</span>
+      <button class="calculator-close" onclick="closeCalculator()">×</button>
+    </div>
+    
+    <div class="calc-display" id="calcDisplay">0</div>
+    
+    <div class="calc-buttons">
+      <button class="calc-button clear" onclick="clearCalc()">C</button>
+      <button class="calc-button operator" onclick="appendToCalc('/')">÷</button>
+      <button class="calc-button operator" onclick="appendToCalc('*')">×</button>
+      <button class="calc-button" onclick="deleteLastCalc()">⌫</button>
+      
+      <button class="calc-button" onclick="appendToCalc('7')">7</button>
+      <button class="calc-button" onclick="appendToCalc('8')">8</button>
+      <button class="calc-button" onclick="appendToCalc('9')">9</button>
+      <button class="calc-button operator" onclick="appendToCalc('-')">-</button>
+      
+      <button class="calc-button" onclick="appendToCalc('4')">4</button>
+      <button class="calc-button" onclick="appendToCalc('5')">5</button>
+      <button class="calc-button" onclick="appendToCalc('6')">6</button>
+      <button class="calc-button operator" onclick="appendToCalc('+')">+</button>
+      
+      <button class="calc-button" onclick="appendToCalc('1')">1</button>
+      <button class="calc-button" onclick="appendToCalc('2')">2</button>
+      <button class="calc-button" onclick="appendToCalc('3')">3</button>
+      <button class="calc-button" onclick="appendToCalc('.')">,</button>
+      
+      <button class="calc-button zero" onclick="appendToCalc('0')">0</button>
+      <button class="calc-button equals" onclick="calculateResult()">=</button>
+    </div>
+    
+    <div class="calc-actions">
+      <button class="calc-action-btn calc-confirm" onclick="confirmCalculation()">✅ Conferma</button>
+      <button class="calc-action-btn calc-cancel" onclick="closeCalculator()">❌ Annulla</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Configurazione
+const CONFIG = {
+  scanTimeout: 800,  // Aumentato per pistole scanner hardware
+  connectionCheckInterval: 30000,
+  AUTO_SCAN_DELAY: 500,
+  // IMPORTANTE: Queste ubicazioni SONO i buffer di zona!
+  // I prodotti arrivano qui e devono essere spostati nelle ubicazioni di stoccaggio
+  zoneBuffers: {
+    'frigo': {
+      id: 28,
+      name: 'Frigo-01',
+      path: 'WH/Deposito/Frigo-01',
+      description: 'Buffer zona frigo'
+    },
+    'pingu': {
+      id: 31,
+      name: 'Pingu-01', 
+      path: 'WH/Deposito/Pingu-01',
+      description: 'Buffer zona congelatore'
+    },
+    'secco-sopra': {
+      id: 30,
+      name: 'Secco Sopra-02',
+      path: 'WH/Deposito/Secco Sopra-02',
+      description: 'Buffer zona secco sopra'
+    },
+    'secco': {
+      id: 29,
+      name: 'Secco-01',
+      path: 'WH/Deposito/Secco-01',
+      description: 'Buffer zona secco'
+    }
+  },
+};
+
+// Stato dell'applicazione
+let appState = {
+  currentOperation: null, // 'buffer'
+  currentZone: null, // zona selezionata
+  currentStep: 1,
+  productData: null,
+  locationData: null,
+  quantity: 1,
+  isScanning: false,
+  pendingProducts: [], // prodotti in coda da processare
+  currentProductIndex: 0,
+  stats: {
+    transfers: 0,
+    products: 0,
+    quantity: 0
+  },
+  counts: {
+    buffer: 0,
+    zones: {
+      'secco': 0,
+      'secco-sopra': 0,
+      'pingu': 0,
+      'frigo': 0
+    }
+  }
+};
+
+// Variabili calcolatrice
+let currentCalcInput = '0';
+let shouldResetCalcDisplay = false;
+let originalQtyValue = '';
+
+// Configurazione Zone
+const ZONES = [
+  { 
+    id: 'secco', 
+    name: 'SECCO', 
+    icon: '📦', 
+    description: 'Prodotti non deperibili',
+    className: 'zone-secco',
+    count: 0
+  },
+  { 
+    id: 'secco-sopra', 
+    name: 'SECCO SOPRA', 
+    icon: '📋', 
+    description: 'Scaffalatura superiore',
+    className: 'zone-secco-sopra',
+    count: 0
+  },
+  { 
+    id: 'pingu', 
+    name: 'PINGU', 
+    icon: '🐧', 
+    description: 'Area refrigerata speciale',
+    className: 'zone-pingu',
+    count: 0
+  },
+  { 
+    id: 'frigo', 
+    name: 'FRIGO', 
+    icon: '❄️', 
+    description: 'Prodotti refrigerati',
+    className: 'zone-frigo',
+    count: 0
+  }
+];
+
+// Inizializzazione
+document.addEventListener('DOMContentLoaded', async () => {
+  setupEventListeners();
+  await checkConnection();
+  setInterval(checkConnection, CONFIG.connectionCheckInterval);
+  loadStats();
+  await loadPendingCounts();
+  setInterval(loadPendingCounts, 30000);
+});
+
+// Ottieni CSRF token
+function csrf() {
+  // Prova prima dai cookies
+  const c = document.cookie.split('; ').find(x => x.startsWith('csrf_token='));
+  if (c) return c.split('=')[1];
+  
+  // Se in iframe, prova dal parent
+  if (window.parent !== window && window.parent.odoo) {
+    try {
+      const parentCookies = window.parent.document.cookie;
+      const pc = parentCookies.split('; ').find(x => x.startsWith('csrf_token='));
+      if (pc) return pc.split('=')[1];
+    } catch (e) {
+      console.log('Cannot access parent cookies:', e);
+    }
+  }
+  
+  // Prova da odoo object se disponibile
+  if (window.odoo && window.odoo.csrf_token) {
+    return window.odoo.csrf_token;
+  }
+  
+  // Prova da meta tag
+  const metaTag = document.querySelector('meta[name="csrf-token"]');
+  if (metaTag) {
+    return metaTag.content;
+  }
+  
+  return '';
+}
+
+// RPC Call a Odoo
+async function rpc(model, method, args = [], kwargs = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-CSRFToken': csrf()
+  };
+  
+  const body = {
+    jsonrpc: '2.0',
+    method: 'call',
+    params: {
+      model: model,
+      method: method,
+      args: args,
+      kwargs: kwargs
+    },
+    id: Math.floor(Math.random() * 1000000000)
+  };
+  
+  try {
+    const response = await fetch('/web/dataset/call_kw', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(body),
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(data.error.data?.message || data.error.message || 'Errore RPC');
+    }
+    
+    return data.result;
+  } catch (error) {
+    console.error('RPC Error:', error);
+    throw error;
+  }
+}
+
+// Search Read per query Odoo
+async function searchRead(model, domain = [], fields = [], limit = 100) {
+  return await rpc(model, 'search_read', [domain, fields, 0, limit]);
+}
+
+// Create per creare record in Odoo
+async function create(model, values) {
+  try {
+    const result = await rpc(model, 'create', [values]);
+    console.log(`✅ Record creato in ${model}:`, result);
+    return result;
+  } catch (error) {
+    console.error(`❌ Errore creazione ${model}:`, error);
+    throw error;
+  }
+}
+
+// COPIATA ESATTAMENTE dall'altro file che FUNZIONA
+async function getOrCreateLot(product_id, name) {
+  if (!name) return null;
+  
+  try {
+    const r = await searchRead('stock.lot', [['product_id', '=', product_id], ['name', '=', name]], ['id', 'name'], 1);
+    if (r.length) return r[0];
+    
+    const id = await rpc('stock.lot', 'create', [{product_id, name}]);
+    return {id, name};
+  } catch(e) {
+    console.error('Errore lotto:', e);
+    throw e;
+  }
+}
+
+// Event Listeners
+function setupEventListeners() {
+  // Scanner per prodotto
+  const productInput = document.getElementById('productCode');
+  if (productInput) {
+    productInput.addEventListener('focus', () => {
+      startScanning('product');
+      // Se c'è già un valore dopo 3 secondi di focus, puliscilo
+      setTimeout(() => {
+        if (productInput.value && !appState.productData) {
+          productInput.value = '';
+        }
+      }, 3000);
+    });
+    productInput.addEventListener('blur', () => stopScanning('product'));
+    productInput.addEventListener('input', debounce(handleProductScan, CONFIG.scanTimeout));
+    productInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault(); // Previene invio form
+        handleProductScan();
+      }
+    });
+  }
+
+  // Scanner per ubicazione
+  const locationInput = document.getElementById('locationCode');
+  if (locationInput) {
+    locationInput.addEventListener('focus', () => {
+      startScanning('location');
+      // Se c'è già un valore dopo 3 secondi di focus, puliscilo
+      setTimeout(() => {
+        if (locationInput.value && !appState.locationData) {
+          locationInput.value = '';
+        }
+      }, 3000);
+    });
+    locationInput.addEventListener('blur', () => stopScanning('location'));
+    locationInput.addEventListener('input', debounce(handleLocationScan, CONFIG.scanTimeout));
+    locationInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault(); // Previene invio form
+        handleLocationScan();
+      }
+    });
+  }
+
+  // Listener per il campo lotto - verifica quando viene compilato e calcola scadenza
+  const lotNumberInput = document.getElementById('lotNumber');
+  if (lotNumberInput) {
+    lotNumberInput.addEventListener('input', () => {
+      const lotValue = lotNumberInput.value.trim();
+      const confirmBtn = document.getElementById('confirmBtn');
+      const expiryDateInput = document.getElementById('expiryDate');
+      
+      // Se c'è un lotto e abbiamo expiration_time, calcola la scadenza
+      if (lotValue && appState.expirationTime && expiryDateInput) {
+        console.log('📊 Calcolo scadenza automatica:', {
+          lotto: lotValue,
+          expiration_time: appState.expirationTime,
+          prodotto: appState.productData?.name
+        });
+        
+        const today = new Date();
+        const expiryDate = new Date(today);
+        expiryDate.setDate(today.getDate() + parseInt(appState.expirationTime));
+        
+        // Formatta la data nel formato YYYY-MM-DD per l'input date
+        const year = expiryDate.getFullYear();
+        const month = String(expiryDate.getMonth() + 1).padStart(2, '0');
+        const day = String(expiryDate.getDate()).padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}`;
+        
+        expiryDateInput.value = formattedDate;
+        
+        console.log('📅 Data scadenza impostata:', formattedDate);
+        showNotification(`📅 Scadenza calcolata: +${appState.expirationTime} giorni (${formattedDate})`, 'info');
+      } else if (lotValue && !appState.expirationTime) {
+        console.log('⚠️ Nessun expiration_time definito per questo prodotto');
+        showNotification('⚠️ Prodotto senza tempo di scadenza definito - inserire manualmente', 'warning');
+      }
+      
+      // Se c'è già un'ubicazione scansionata, abilita/disabilita il pulsante
+      if (appState.locationData) {
+        if (lotValue) {
+          confirmBtn.disabled = false;
+        } else {
+          confirmBtn.disabled = true;
+        }
+      }
+    });
+    
+    // Quando l'utente preme Enter nel campo lotto, passa all'ubicazione
+    lotNumberInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && lotNumberInput.value.trim()) {
+        e.preventDefault();
+        document.getElementById('locationCode')?.focus();
+      }
+    });
+  }
+
+  // Keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') backToSelection();
+    if (e.key === 'F2') document.getElementById('productCode')?.focus();
+    if (e.key === 'F3') document.getElementById('locationCode')?.focus();
+  });
+}
+
+// Selezione Operazione - Globale per onclick
+window.selectOperation = function(type) {
+  appState.currentOperation = type;
+  
+  // Nasconde selezione operazione
+  document.getElementById('operationSelector').style.display = 'none';
+  
+  if (type === 'buffer') {
+    // Per Buffer: mostra selezione zona
+    showZoneSelector();
+    
+    // Personalizza titolo per buffer
+    const subtitle = 'Seleziona la zona dove trasferire i prodotti dal buffer';
+    document.getElementById('zoneSubtitle').textContent = subtitle;
+    showNotification('Operazione: Buffer → Ubicazioni', 'info');
+    
+  }
+}
+
+// Mostra selettore zona
+async function showZoneSelector() {
+  const zoneSelector = document.getElementById('zoneSelector');
+  const zonesGrid = document.getElementById('zonesGrid');
+  
+  // Prima aggiorna i contatori in base all'operazione selezionata
+  await updateZoneCountsForOperation();
+  
+  // Pulisci e popola zone
+  zonesGrid.innerHTML = '';
+  
+  ZONES.forEach(zone => {
+    const zoneCard = document.createElement('div');
+    zoneCard.className = `zone-card ${zone.className}`;
+    zoneCard.onclick = () => selectZone(zone.id);
+    
+    // Usa i contatori specifici per l'operazione corrente
+    let count = 0;
+    if (appState.currentOperation === 'buffer') {
+      count = appState.counts.zones[zone.id] || 0;
+    }
+    
+    const counterClass = count > 0 ? 'has-items' : '';
+    
+    zoneCard.innerHTML = `
+      <div class="zone-counter ${counterClass}" id="zone-count-${zone.id}">${count}</div>
+      <div class="zone-icon">${zone.icon}</div>
+      <div class="zone-name">${zone.name}</div>
+      <div class="zone-info">${zone.description}</div>
+    `;
+    zoneCard.id = `zone-${zone.id}`;
+    zonesGrid.appendChild(zoneCard);
+  });
+  
+  zoneSelector.classList.add('active');
+}
+
+// Funzione per caricare prodotti del buffer
+async function loadBufferProducts(zoneId, zoneName) {
+  const MAX_PRODUCTS_DISPLAY = 15; // Mostra massimo 15 prodotti per non sovraccaricare
+  
+  try {
+    console.log('🔍 Caricamento prodotti del buffer:', zoneName);
+    
+    // Mostra la sezione
+    document.getElementById('bufferProductsSection').style.display = 'block';
+    document.getElementById('bufferZoneName').textContent = zoneName;
+    document.getElementById('bufferProductsGrid').innerHTML = '<div style="text-align: center; padding: 20px;">⏳ Caricamento prodotti...</div>';
+    
+    // Cerca SOLO i primi 30 quants per velocizzare (di solito 1-2 per prodotto)
+    const quants = await searchRead(
+      'stock.quant',
+      [
+        ['location_id', '=', zoneId],
+        ['quantity', '>', 0]
+      ],
+      ['product_id', 'quantity', 'lot_id'],
+      30  // Limita a 30 quants
+    );
+    
+    if (!quants || quants.length === 0) {
+      document.getElementById('bufferProductsGrid').innerHTML = 
+        '<div style="grid-column: 1/-1; text-align: center; color: var(--muted); padding: 40px;">Nessun prodotto disponibile in questo buffer</div>';
+      return;
+    }
+    
+    // Raggruppa per prodotto
+    const productMap = {};
+    for (const quant of quants) {
+      const productId = quant.product_id[0];
+      if (!productMap[productId]) {
+        productMap[productId] = {
+          id: productId,
+          name: quant.product_id[1],
+          qty: 0,
+          lots: []
+        };
+      }
+      productMap[productId].qty += quant.quantity;
+      if (quant.lot_id) {
+        productMap[productId].lots.push(quant.lot_id[1]);
+      }
+    }
+    
+    // Prendi solo i primi 15 prodotti unici
+    const productIds = Object.keys(productMap).slice(0, 15).map(id => parseInt(id));
+    
+    // Carica SOLO questi 15 prodotti con le immagini e unità di misura
+    const products = await searchRead(
+      'product.product',
+      [['id', 'in', productIds]],
+      ['id', 'name', 'default_code', 'barcode', 'image_1920', 'uom_id'],
+      15
+    );
+    
+    // Ordina i prodotti per quantità (più alti prima)
+    products.sort((a, b) => {
+      const qtyA = productMap[a.id]?.qty || 0;
+      const qtyB = productMap[b.id]?.qty || 0;
+      return qtyB - qtyA;
+    });
+    
+    const totalProducts = Object.keys(productMap).length;
+    const productsToShow = products;
+    
+    // Crea le card dei prodotti
+    let html = '';
+    for (const product of productsToShow) {
+      const info = productMap[product.id];
+      // Escape delle stringhe per evitare problemi con apostrofi
+      const escapedName = product.name.replace(/'/g, "\\'");
+      const escapedCode = (product.default_code || '').replace(/'/g, "\\'");
+      const escapedBarcode = (product.barcode || '').replace(/'/g, "\\'");
+      
+      html += `
+        <div class="buffer-product-card" onclick="selectBufferProduct(${product.id}, '${escapedName}', '${escapedCode}', '${escapedBarcode}')">
+          ${product.image_1920 ? 
+            `<img class="buffer-product-image" src="data:image/png;base64,${product.image_1920}" alt="${product.name}">` :
+            `<div class="buffer-product-image" style="display: flex; align-items: center; justify-content: center; font-size: 48px;">📦</div>`
+          }
+          <div class="buffer-product-name">${product.name}</div>
+          ${product.default_code ? `<div class="buffer-product-code">${product.default_code}</div>` : ''}
+          <div class="buffer-product-qty">${info.qty.toFixed(0)} ${product.uom_id ? product.uom_id[1] : 'PZ'}</div>
+          ${info.lots.length > 0 ? `<div class="buffer-product-lot">${info.lots[0]}</div>` : ''}
+        </div>
+      `;
+    }
+    
+    // Se ci sono più prodotti, mostra un messaggio
+    if (totalProducts > MAX_PRODUCTS_DISPLAY) {
+      html += `
+        <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--warning); background: rgba(245, 158, 11, 0.1); border-radius: 12px; border: 1px solid var(--warning);">
+          ⚠️ Mostrati ${MAX_PRODUCTS_DISPLAY} di ${totalProducts} prodotti
+          <div style="font-size: 0.85rem; margin-top: 5px; color: var(--muted);">
+            Man mano che sposti i prodotti, ne appariranno altri
+          </div>
+        </div>
+      `;
+    }
+    
+    document.getElementById('bufferProductsGrid').innerHTML = html;
+    
+  } catch (error) {
+    console.error('Errore caricamento prodotti buffer:', error);
+    document.getElementById('bufferProductsGrid').innerHTML = 
+      '<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Errore nel caricamento dei prodotti</div>';
+  }
+}
+
+// Funzione per cercare prodotto per ID quando non ha codice a barre
+// Funzione deprecata - usa fetchProductDataById invece
+async function searchProductById(productId) {
+  const productData = await fetchProductDataById(productId);
+  if (productData) {
+    await displayProductInfo(productData);
+  } else {
+    showNotification('❌ Prodotto non trovato', 'error');
+  }
+}
+
+// Funzione per selezionare un prodotto dalla griglia
+window.selectBufferProduct = async function(productId, productName, defaultCode, barcode) {
+  try {
+    // Usa fetchProductDataById che è la funzione corretta per caricare tutti i dati
+    const productData = await fetchProductDataById(productId);
+    if (productData) {
+      // Usa displayProductInfo per mostrare il prodotto correttamente
+      await displayProductInfo(productData);
+      showNotification(`✅ Prodotto selezionato: ${productName}`, 'success');
+    } else {
+      showNotification('❌ Prodotto non trovato', 'error');
+    }
+  } catch (error) {
+    console.error('Errore selezione prodotto:', error);
+    showNotification('❌ Errore nella selezione', 'error');
+  }
+}
+
+// Selezione Zona - Click diretto senza conferma - Globale per onclick
+window.selectZone = function(zoneId) {
+  appState.currentZone = zoneId;
+  
+  const selectedZone = ZONES.find(z => z.id === zoneId);
+  showNotification(`Zona ${selectedZone.name} selezionata`, 'info');
+  
+  // Carica i prodotti del buffer selezionato
+  const zoneBuffer = CONFIG.zoneBuffers[zoneId];
+  if (zoneBuffer) {
+    loadBufferProducts(zoneBuffer.id, selectedZone.name);
+  }
+  
+  // Vai direttamente al contenuto principale
+  document.getElementById('zoneSelector').classList.remove('active');
+  document.getElementById('mainContent').classList.add('active');
+  
+  // Aggiorna breadcrumb
+  updateBreadcrumb();
+  
+  // Focus sul campo prodotto
+  setTimeout(() => {
+    document.getElementById('productCode')?.focus();
+  }, 300);
+}
+
+// Torna alla selezione operazione - Globale per onclick
+window.backToOperationSelection = function() {
+  document.getElementById('zoneSelector').classList.remove('active');
+  document.getElementById('operationSelector').style.display = 'grid';
+  appState.currentZone = null;
+  // confirmZoneBtn non esiste più, l'abbiamo rimosso
+}
+
+// Torna alla selezione zona - Globale per onclick
+window.backToZoneSelection = function() {
+  document.getElementById('mainContent').classList.remove('active');
+  
+  if (appState.currentOperation === 'buffer') {
+    // Per Buffer: torna alla selezione zona
+    showZoneSelector();
+  }
+  
+  resetForm();
+}
+
+// Torna alla selezione - Globale per onclick
+window.backToSelection = function() {
+  document.getElementById('mainContent').classList.remove('active');
+  document.getElementById('zoneSelector').classList.remove('active');
+  setTimeout(() => {
+    document.getElementById('operationSelector').style.display = 'grid';
+    appState.currentOperation = null;
+    appState.currentZone = null;
+    resetForm();
+  }, 300);
+}
+
+// Scanning
+function startScanning(type) {
+  const input = type === 'product' 
+    ? document.getElementById('productCode')
+    : document.getElementById('locationCode');
+  
+  if (input) {
+    input.classList.add('scanning');
+    appState.isScanning = true;
+  }
+}
+
+function stopScanning(type) {
+  const input = type === 'product' 
+    ? document.getElementById('productCode')
+    : document.getElementById('locationCode');
+  
+  if (input) {
+    input.classList.remove('scanning');
+    appState.isScanning = false;
+  }
+}
+
+// Gestione scansione prodotto
+async function handleProductScan() {
+  const productInput = document.getElementById('productCode');
+  const code = productInput.value.trim();
+  if (!code) return;
+
+  try {
+    showLoading('step1');
+    
+    // Chiamata API Odoo per ottenere info prodotto
+    const productData = await fetchProductData(code);
+    
+    if (productData) {
+      displayProductInfo(productData);
+    } else {
+      showNotification('❌ Prodotto non trovato - Riprova', 'error');
+      // PULISCE AUTOMATICAMENTE IL CAMPO per nuova scansione
+      productInput.value = '';
+      productInput.focus();
+    }
+  } catch (error) {
+    showNotification('Errore nella ricerca del prodotto', 'error');
+    console.error(error);
+    // PULISCE ANCHE IN CASO DI ERRORE
+    productInput.value = '';
+    productInput.focus();
+  } finally {
+    hideLoading('step1');
+  }
+}
+
+// Gestione scansione ubicazione
+async function handleLocationScan() {
+  const locationInput = document.getElementById('locationCode');
+  const code = locationInput.value.trim();
+  if (!code) return;
+
+  // Verifica prima che il lotto sia compilato
+  const lotNumber = document.getElementById('lotNumber').value.trim();
+  if (!lotNumber) {
+    showNotification('⚠️ Inserire prima il lotto!', 'warning');
+    locationInput.value = ''; // Pulisce il campo ubicazione
+    document.getElementById('lotNumber').focus();
+    return;
+  }
+
+  try {
+    showLoading('step3');
+    
+    // Chiamata API Odoo per verificare ubicazione
+    const locationData = await fetchLocationData(code);
+    
+    if (locationData) {
+      appState.locationData = locationData;
+      displayLocationInfo(locationData);
+      document.getElementById('confirmBtn').disabled = false;
+    } else {
+      showNotification('❌ Ubicazione non valida - Riprova', 'error');
+      // PULISCE AUTOMATICAMENTE IL CAMPO per nuova scansione
+      locationInput.value = '';
+      locationInput.focus();
+    }
+  } catch (error) {
+    showNotification('Errore nella verifica dell\'ubicazione', 'error');
+    console.error(error);
+    // PULISCE ANCHE IN CASO DI ERRORE
+    locationInput.value = '';
+    locationInput.focus();
+  } finally {
+    hideLoading('step3');
+  }
+}
+
+// Funzioni Calcolatrice - Globale per onclick
+window.openCalculator = function() {
+  originalQtyValue = document.getElementById('qtyInput').value || '1';
+  currentCalcInput = originalQtyValue;
+  
+  // Mostra l'unità di misura nel titolo della calcolatrice
+  const uom = appState.productUom || document.getElementById('uom_label').textContent || 'PZ';
+  document.getElementById('calculatorTitle').textContent = `🔢 Calcolatrice (${uom})`;
+  
+  document.getElementById('calculatorModal').style.display = 'flex';
+  updateCalcDisplay();
+  
+  showNotification('🔢 Calcolatrice aperta', 'info');
+}
+
+window.closeCalculator = function() {
+  document.getElementById('calculatorModal').style.display = 'none';
+  document.getElementById('locationCode')?.focus();
+}
+
+function updateCalcDisplay() {
+  document.getElementById('calcDisplay').textContent = currentCalcInput;
+}
+
+window.clearCalc = function() {
+  currentCalcInput = '0';
+  shouldResetCalcDisplay = false;
+  updateCalcDisplay();
+}
+
+window.appendToCalc = function(value) {
+  if (shouldResetCalcDisplay) {
+    if (!'+-*/'.includes(value)) {
+      currentCalcInput = value;
+      shouldResetCalcDisplay = false;
+    } else {
+      currentCalcInput += value;
+      shouldResetCalcDisplay = false;
+    }
+  } else {
+    if (currentCalcInput === '0' && value !== '.') {
+      currentCalcInput = value;
+    } else {
+      currentCalcInput += value;
+    }
+  }
+  updateCalcDisplay();
+}
+
+window.deleteLastCalc = function() {
+  if (currentCalcInput.length > 1) {
+    currentCalcInput = currentCalcInput.slice(0, -1);
+  } else {
+    currentCalcInput = '0';
+  }
+  updateCalcDisplay();
+}
+
+window.calculateResult = function() {
+  try {
+    let expression = currentCalcInput.replace(/×/g, '*').replace(/÷/g, '/');
+    let result = eval(expression);
+    
+    if (result % 1 !== 0) {
+      result = parseFloat(result.toFixed(2));
+    }
+    
+    currentCalcInput = result.toString();
+    shouldResetCalcDisplay = true;
+    updateCalcDisplay();
+  } catch (error) {
+    currentCalcInput = 'Errore';
+    shouldResetCalcDisplay = true;
+    updateCalcDisplay();
+  }
+}
+
+window.confirmCalculation = function() {
+  const result = parseFloat(currentCalcInput);
+  
+  if (!isNaN(result) && result > 0) {
+    document.getElementById('qtyInput').value = result;
+    appState.quantity = result;
+    closeCalculator();
+    showNotification(`Quantità impostata: ${result}`, 'success');
+  } else {
+    showNotification('Inserisci una quantità valida', 'error');
+  }
+}
+
+// Conferma trasferimento - Globale per onclick
+window.confirmTransfer = async function() {
+  // Verifica che il lotto sia presente (obbligatorio)
+  const lotNumber = document.getElementById('lotNumber').value.trim();
+  if (!lotNumber) {
+    showNotification('❌ Il lotto è obbligatorio per il trasferimento!', 'error');
+    document.getElementById('lotNumber').focus();
+    return;
+  }
+  
+  if (!appState.productData || !appState.locationData) {
+    showNotification('Completa tutti i campi richiesti', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('confirmBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-spinner"></span> Elaborazione...';
+
+  try {
+    // USA LA STESSA FUNZIONE DELL'ALTRO FILE
+    let lot_id = null;
+    let lot = null;
+    
+    if (lotNumber && lotNumber.length > 0) {
+      try {
+        console.log('🏷️ Gestione lotto...');
+        lot = await getOrCreateLot(appState.productData.id, lotNumber);
+        if (lot && lot.id) {
+          lot_id = lot.id;
+          console.log('Lotto gestito:', lot);
+        }
+      } catch(lotError) {
+        console.warn('Errore lotto (continuando senza):', lotError);
+      }
+    }
+    
+    const expiryDateValue = document.getElementById('expiryDate').value;
+    console.log('📦 Trasferimento con lotto:', lotNumber, 'ID:', lot_id);
+    
+    // Prepara dati trasferimento
+    const transferData = {
+      product_id: appState.productData.id,
+      product_name: appState.productData.name,
+      location_dest_id: appState.locationData.id,
+      product_qty: parseFloat(document.getElementById('qtyInput').value) || 1,
+      lot_id: lot_id,
+      lot_name: lotNumber,
+      expiry_date: expiryDateValue || null,
+      uom_id: appState.productData.uom_id ? (Array.isArray(appState.productData.uom_id) ? appState.productData.uom_id[0] : appState.productData.uom_id) : 1
+    };
+
+    // Invia a Odoo
+    const result = await createTransfer(transferData);
+    
+    if (result.success) {
+      // Aggiungi al log dei trasferimenti
+      addTransferToLog(transferData);
+      
+      showNotification('✅ Trasferimento completato!', 'success');
+      appState.currentProductIndex++;
+      
+      // Aggiorna contatori
+      updateCounters();
+      
+      // Reset per nuovo prodotto
+      setTimeout(() => {
+        resetForm();
+        updateTransferLog(); // Aggiorna visualizzazione log
+      }, 1500);
+    } else {
+      showNotification('Errore nel trasferimento: ' + result.error, 'error');
+    }
+  } catch (error) {
+    showNotification('Errore di connessione', 'error');
+    console.error(error);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Conferma Trasferimento';
+  }
+}
+
+// Reset form
+function resetForm() {
+  // Reset stato (mantiene operazione e zona)
+  appState.productData = null;
+  appState.locationData = null;
+  appState.quantity = 1;
+
+  // Reset UI
+  document.getElementById('productCode').value = '';
+  document.getElementById('locationCode').value = '';
+  document.getElementById('lotNumber').value = '';
+  document.getElementById('expiryDate').value = '';
+  document.getElementById('qtyInput').value = '1';
+  document.getElementById('uom_label').textContent = 'PZ';
+  
+  // Nascondi sezioni
+  document.getElementById('productDisplay').style.display = 'none';
+  document.getElementById('locationSection').style.display = 'none';
+  document.getElementById('locationInputGroup').style.display = 'none';
+  document.getElementById('locationInfo').style.display = 'none';
+  document.getElementById('actionButtons').style.display = 'none';
+  
+  // Reset stili campi
+  document.getElementById('lotNumber').readOnly = false;
+  document.getElementById('lotNumber').style.background = '';
+  document.getElementById('expiryDate').readOnly = false;
+  document.getElementById('expiryDate').style.background = '';
+  
+  // Focus sul campo prodotto
+  document.getElementById('productCode').focus();
+}
+
+// Non serve più navigazione tra step - tutto unificato
+function moveToStep(stepNumber) {
+  // Deprecato - non più necessario
+}
+
+// Display info prodotto nella scheda unificata
+async function displayProductInfo(data) {
+  // Mostra sempre il prodotto, anche se non nel buffer
+  appState.productData = data;
+  
+  // Salva anche l'unità di misura nello stato
+  appState.productUom = data.uom || 'PZ';
+  
+  // Salva expiration_time per usarlo quando viene inserito il lotto
+  appState.expirationTime = data.expiration_time;
+  
+  console.log('🏷️ Prodotto selezionato:', {
+    nome: data.name,
+    expiration_time: data.expiration_time,
+    expiration_time_giorni: data.expiration_time ? `${data.expiration_time} giorni` : 'NON DEFINITO'
+  });
+  
+  // Nome prodotto
+  document.getElementById('productName').textContent = data.name || '-';
+  
+  // IMPORTANTE: Mostra avviso se il prodotto NON è nell'ubicazione di origine
+  if (!data.qty_in_buffer || data.qty_in_buffer === 0) {
+    let originLocation = '';
+    if (appState.currentOperation === 'buffer') {
+      const zoneBuffer = CONFIG.zoneBuffers[appState.currentZone];
+      originLocation = zoneBuffer ? zoneBuffer.name : 'Buffer';
+    }
+    
+    // Mostra avviso prominente
+    showNotification(`⚠️ ATTENZIONE: Questo prodotto NON è disponibile in ${originLocation}! Puoi comunque procedere con il trasferimento.`, 'warning');
+    
+    // Aggiungi anche un avviso visivo nella scheda
+    const warningDiv = document.createElement('div');
+    warningDiv.id = 'productWarning';
+    warningDiv.style.cssText = `
+      background: rgba(245, 158, 11, 0.1);
+      border: 2px solid var(--warning);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 15px;
+      color: var(--warning);
+      font-weight: 600;
+      text-align: center;
+    `;
+    warningDiv.innerHTML = `⚠️ Prodotto NON presente in ${originLocation}`;
+    
+    const productDisplay = document.getElementById('productDisplay');
+    const existingWarning = document.getElementById('productWarning');
+    if (existingWarning) existingWarning.remove();
+    productDisplay.insertBefore(warningDiv, productDisplay.firstChild);
+  } else {
+    // Rimuovi avviso se presente
+    const existingWarning = document.getElementById('productWarning');
+    if (existingWarning) existingWarning.remove();
+  }
+  
+  // Immagine prodotto
+  const img = document.getElementById('productImage');
+  if (data.image_url) {
+    img.src = data.image_url;
+    img.style.display = 'block';
+  } else {
+    img.src = '';
+    img.style.display = 'none';
+  }
+  
+  // Popola lotto e scadenza se presenti
+  const lotInput = document.getElementById('lotNumber');
+  const expiryInput = document.getElementById('expiryDate');
+  
+  if (data.lot_name) {
+    lotInput.value = data.lot_name;
+    lotInput.readOnly = true;
+    lotInput.style.background = 'rgba(255,255,255,0.05)';
+  } else {
+    lotInput.value = '';
+    lotInput.readOnly = false;
+    lotInput.style.background = '';
+  }
+  
+  if (data.expiry_date) {
+    // Converti la data nel formato corretto per input date
+    const date = new Date(data.expiry_date);
+    const dateStr = date.toISOString().split('T')[0];
+    expiryInput.value = dateStr;
+    expiryInput.readOnly = true;
+    expiryInput.style.background = 'rgba(255,255,255,0.05)';
+  } else {
+    expiryInput.value = '';
+    expiryInput.readOnly = false;
+    expiryInput.style.background = '';
+  }
+  
+  // Unità di misura
+  document.getElementById('uom_label').textContent = data.uom || 'PZ';
+  
+  // Mostra la sezione prodotto
+  document.getElementById('productDisplay').style.display = 'block';
+  
+  // Mostra sezione ubicazione
+  document.getElementById('locationSection').style.display = 'block';
+  document.getElementById('locationInputGroup').style.display = 'block';
+  document.getElementById('actionButtons').style.display = 'block';
+  
+  // Focus sul lotto se vuoto, altrimenti sull'ubicazione
+  setTimeout(() => {
+    if (!lotInput.value) {
+      lotInput.focus();
+    } else {
+      document.getElementById('locationCode').focus();
+    }
+  }, 300);
+}
+
+// Display info ubicazione
+function displayLocationInfo(data) {
+  document.getElementById('locationName').textContent = data.complete_name || data.name || '-';
+  document.getElementById('locationInfo').style.display = 'block';
+  
+  // Verifica se il lotto è compilato prima di abilitare il pulsante
+  const lotNumber = document.getElementById('lotNumber').value.trim();
+  if (!lotNumber) {
+    document.getElementById('confirmBtn').disabled = true;
+    showNotification('⚠️ Inserire il lotto prima di procedere!', 'warning');
+    document.getElementById('lotNumber').focus();
+  } else {
+    // Abilita pulsante conferma solo se c'è il lotto
+    document.getElementById('confirmBtn').disabled = false;
+  }
+}
+
+// Fetch dati prodotto da Odoo tramite ID (per ricerca manuale)
+async function fetchProductDataById(productId) {
+  try {
+    // Cerca il prodotto tramite ID (incluso product_tmpl_id per expiration_time)
+    const products = await searchRead(
+      'product.product',
+      [['id', '=', productId]],
+      ['id', 'name', 'default_code', 'barcode', 'uom_id', 'image_1920', 'qty_available', 'product_tmpl_id'],
+      1
+    );
+    
+    if (products && products.length > 0) {
+      const product = products[0];
+      
+      // Recupera expiration_time dal product.template
+      let expirationTime = null;
+      if (product.product_tmpl_id && product.product_tmpl_id[0]) {
+        try {
+          const templates = await searchRead(
+            'product.template',
+            [['id', '=', product.product_tmpl_id[0]]],
+            ['expiration_time'],
+            1
+          );
+          if (templates && templates.length > 0) {
+            expirationTime = templates[0].expiration_time;
+          }
+        } catch (error) {
+          console.log('Impossibile recuperare expiration_time:', error);
+        }
+      }
+      
+      // Stesso codice per ottenere info buffer/resi
+      let qtyInBuffer = 0;
+      let lotInfo = null;
+      
+      if (appState.currentZone && appState.currentOperation === 'buffer') {
+        const zoneBuffer = CONFIG.zoneBuffers[appState.currentZone];
+        if (zoneBuffer) {
+          const quants = await searchRead(
+            'stock.quant',
+            [
+              ['product_id', '=', product.id],
+              ['location_id', '=', zoneBuffer.id],
+              ['quantity', '>', 0]
+            ],
+            ['quantity', 'lot_id', 'product_id', 'location_id'],
+            false
+          );
+          
+          console.log('🔍 DEBUG QUANTS BUFFER (by ID):', {
+            location: zoneBuffer.name,
+            product: product.name,
+            quants: quants
+          });
+          
+          qtyInBuffer = quants.reduce((sum, q) => sum + (q.quantity || 0), 0);
+          
+          const quantWithLot = quants.find(q => q.lot_id);
+          if (quantWithLot && quantWithLot.lot_id) {
+            product.lot_id = quantWithLot.lot_id[0];
+            product.lot_name = quantWithLot.lot_id[1];
+            
+            const lots = await searchRead(
+              'stock.lot',
+              [['id', '=', quantWithLot.lot_id[0]]],
+              ['name', 'expiration_date', 'use_date', 'removal_date', 'alert_date', 'ref'],
+              1
+            );
+            
+            if (lots && lots.length > 0) {
+              product.lot_name = lots[0].name;
+              product.expiry_date = lots[0].expiration_date || lots[0].use_date || lots[0].removal_date;
+            }
+          }
+        }
+      }
+      
+      return {
+        id: product.id,
+        name: product.name,
+        default_code: product.default_code || '',
+        qty_in_buffer: qtyInBuffer,
+        uom: product.uom_id ? product.uom_id[1] : 'PZ',
+        uom_id: product.uom_id ? product.uom_id[0] : null,
+        image_url: product.image_1920 ? `data:image/png;base64,${product.image_1920}` : null,
+        lot_id: product.lot_id || null,
+        lot_name: product.lot_name || null,
+        expiry_date: product.expiry_date || null,
+        expiration_time: expirationTime || null // Giorni per calcolare scadenza
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching product by ID:', error);
+    return null;
+  }
+}
+
+// Fetch dati prodotto da Odoo tramite codice/barcode/nome
+async function fetchProductData(code) {
+  try {
+    let products = [];
+    
+    // Prima cerca per codice prodotto esatto
+    products = await searchRead(
+      'product.product',
+      [['default_code', '=', code]],
+      ['id', 'name', 'default_code', 'barcode', 'uom_id', 'image_1920', 'tracking', 'product_tmpl_id'],
+      1
+    );
+    
+    // Se non trovato, cerca per barcode (se il codice sembra un barcode)
+    if ((!products || products.length === 0) && code.length > 6) {
+      products = await searchRead(
+        'product.product',
+        [['barcode', '=', code]],
+        ['id', 'name', 'default_code', 'barcode', 'uom_id', 'image_1920', 'tracking', 'product_tmpl_id'],
+        1
+      );
+    }
+    
+    // Se ancora non trovato, cerca per nome (parziale)
+    if (!products || products.length === 0) {
+      products = await searchRead(
+        'product.product',
+        [['name', 'ilike', code]],
+        ['id', 'name', 'default_code', 'barcode', 'uom_id', 'image_1920', 'tracking', 'product_tmpl_id'],
+        5 // Limita a 5 risultati per ricerca nome
+      );
+      
+      // Se trovati più prodotti con ricerca nome, mostra una lista
+      if (products && products.length > 1) {
+        showNotification(`Trovati ${products.length} prodotti. Usa il primo: ${products[0].name}`, 'info');
+      }
+    }
+    
+    if (products && products.length > 0) {
+      const product = products[0];
+      
+      // Recupera expiration_time dal product.template
+      let expirationTime = null;
+      if (product.product_tmpl_id && product.product_tmpl_id[0]) {
+        try {
+          const templates = await searchRead(
+            'product.template',
+            [['id', '=', product.product_tmpl_id[0]]],
+            ['expiration_time'],
+            1
+          );
+          if (templates && templates.length > 0) {
+            expirationTime = templates[0].expiration_time;
+          }
+        } catch (error) {
+          console.log('Impossibile recuperare expiration_time:', error);
+        }
+      }
+      
+      // Ottieni quantità SOLO dal buffer della zona corrente
+      let qtyInBuffer = 0;
+      let lotInfo = null;
+      
+      if (appState.currentZone && appState.currentOperation === 'buffer') {
+        const zoneBuffer = CONFIG.zoneBuffers[appState.currentZone];
+        if (zoneBuffer) {
+          const quants = await searchRead(
+            'stock.quant',
+            [
+              ['product_id', '=', product.id],
+              ['location_id', '=', zoneBuffer.id],
+              ['quantity', '>', 0]
+            ],
+            ['quantity', 'lot_id', 'product_id', 'location_id'],
+            false
+          );
+          
+          // DEBUG: Mostra cosa restituisce Odoo
+          console.log('🔍 DEBUG QUANTS BUFFER:', {
+            location: zoneBuffer.name,
+            product: product.name,
+            quants: quants
+          });
+          
+          // Somma le quantità trovate nel buffer
+          qtyInBuffer = quants.reduce((sum, q) => sum + (q.quantity || 0), 0);
+          
+          // Prendi info lotto dal primo quant con lotto
+          const quantWithLot = quants.find(q => q.lot_id);
+          if (quantWithLot && quantWithLot.lot_id) {
+            // lot_id è un array [id, name]
+            product.lot_id = quantWithLot.lot_id[0];
+            product.lot_name = quantWithLot.lot_id[1];
+            
+            // Prova a ottenere info scadenza dal lotto
+            const lots = await searchRead(
+              'stock.lot',
+              [['id', '=', quantWithLot.lot_id[0]]],
+              ['name', 'expiration_date', 'use_date', 'removal_date', 'alert_date'],
+              1
+            );
+            
+            console.log('🔍 DEBUG LOT INFO:', {
+              lotId: quantWithLot.lot_id[0],
+              lotData: lots
+            });
+            
+            if (lots && lots.length > 0) {
+              product.lot_name = lots[0].name;
+              // Usa expiration_date come campo principale per la scadenza
+              product.expiry_date = lots[0].expiration_date || lots[0].use_date || lots[0].removal_date;
+              console.log('📅 Date trovate:', {
+                expiration_date: lots[0].expiration_date,
+                use_date: lots[0].use_date,
+                removal_date: lots[0].removal_date
+              });
+            }
+          }
+        }
+      }
+      
+      return {
+        id: product.id,
+        name: product.name,
+        default_code: product.default_code || code,
+        qty_in_buffer: qtyInBuffer, // Quantità SOLO nel buffer/resi
+        uom: product.uom_id ? product.uom_id[1] : 'PZ',
+        uom_id: product.uom_id ? product.uom_id[0] : null,
+        image_url: product.image_1920 ? `data:image/png;base64,${product.image_1920}` : null,
+        lot_id: product.lot_id || null,
+        lot_name: product.lot_name || null,
+        expiry_date: product.expiry_date || null,
+        expiration_time: expirationTime || null // Giorni per calcolare scadenza
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    return null;
+  }
+}
+
+async function fetchLocationData(code) {
+  try {
+    // Cerca ubicazione per barcode o nome
+    const locations = await searchRead(
+      'stock.location',
+      ['|', ['barcode', '=', code], ['name', '=', code]],
+      ['id', 'complete_name', 'name', 'barcode'],
+      1
+    );
+    
+    if (locations && locations.length > 0) {
+      const location = locations[0];
+      return {
+        id: location.id,
+        complete_name: location.complete_name,
+        name: location.name,
+        zone: appState.currentZone
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching location:', error);
+    return null;
+  }
+}
+
+async function createTransfer(data) {
+  try {
+    // Determina ubicazione sorgente
+    let sourceLocationId;
+    if (appState.currentOperation === 'buffer') {
+      const zoneBuffer = CONFIG.zoneBuffers[appState.currentZone];
+      sourceLocationId = zoneBuffer.id;
+    }
+    
+    // Trova picking type interno
+    let ptype = (await searchRead(
+      'stock.picking.type', 
+      [['code', '=', 'internal']], 
+      ['id', 'name'], 
+      1
+    ))[0];
+    
+    if (!ptype) {
+      throw new Error('Picking type interno non trovato');
+    }
+    
+    // Crea picking
+    const pickingData = {
+      picking_type_id: ptype.id,
+      location_id: sourceLocationId,
+      location_dest_id: data.location_dest_id,
+      origin: `WEB-${appState.currentZone.toUpperCase()}-${Date.now()}`,
+      state: 'draft'
+    };
+    
+    const picking_id = await rpc('stock.picking', 'create', [pickingData]);
+    
+    // Crea movimento
+    const moveData = {
+      picking_id: picking_id,
+      product_id: data.product_id,
+      name: `Transfer ${data.product_name || data.product_id}`,
+      product_uom: data.uom_id,
+      product_uom_qty: data.product_qty,
+      location_id: sourceLocationId,
+      location_dest_id: data.location_dest_id,
+      state: 'draft'
+    };
+    
+    const move_id = await rpc('stock.move', 'create', [moveData]);
+    
+    // Conferma picking
+    await rpc('stock.picking', 'action_confirm', [[picking_id]]);
+    
+    // Crea move line con lot_id (se disponibile) o lot_name
+    const moveLineData = {
+      move_id: move_id,
+      picking_id: picking_id,
+      product_id: data.product_id,
+      qty_done: data.product_qty,
+      product_uom_id: data.uom_id,
+      location_id: sourceLocationId,
+      location_dest_id: data.location_dest_id
+    };
+    
+    // PASSA ENTRAMBI come fa l'altro file che funziona!
+    if (data.lot_id) {
+      moveLineData.lot_id = data.lot_id;
+      moveLineData.lot_name = data.lot_name;  // PASSA ENTRAMBI!
+      console.log('✅ Impostato lot_id:', data.lot_id, 'e lot_name:', data.lot_name);
+    } else if (data.lot_name && data.lot_name.trim()) {
+      moveLineData.lot_name = data.lot_name.trim();
+      console.log('⚠️ Solo lot_name (senza ID):', moveLineData.lot_name);
+    }
+    
+    await rpc('stock.move.line', 'create', [moveLineData]);
+    
+    // Valida picking
+    try {
+      const validationResult = await rpc('stock.picking', 'button_validate', [[picking_id]]);
+      
+      if (validationResult && validationResult.res_model) {
+        if (validationResult.res_model === 'stock.immediate.transfer') {
+          await rpc('stock.immediate.transfer', 'process', [[validationResult.res_id]]);
+        } else if (validationResult.res_model === 'stock.backorder.confirmation') {
+          await rpc('stock.backorder.confirmation', 'process_cancel_backorder', [[validationResult.res_id]]);
+        }
+      }
+    } catch (err) {
+      console.warn('Validazione automatica fallita, ma picking creato:', err);
+    }
+    
+    return { success: true, picking_id: picking_id };
+  } catch (error) {
+    console.error('Transfer error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Connessione Odoo
+async function checkConnection() {
+  const statusEl = document.getElementById('connectionStatus');
+  const statusText = document.getElementById('statusText');
+  const userInfoDiv = document.getElementById('userInfo');
+  const userNameSpan = document.getElementById('userName');
+  
+  const token = csrf();
+  if (!token) {
+    statusEl.className = 'connection-status disconnected';
+    statusText.textContent = 'Non autenticato';
+    userInfoDiv.style.display = 'none';
+    return false;
+  }
+  
+  try {
+    // Metodo principale: usa session info che funziona sempre
+    const response = await fetch('/web/session/get_session_info', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrf()
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {},
+        id: Math.floor(Math.random() * 1000000000)
+      })
+    });
+    
+    const data = await response.json();
+    console.log('Session info:', data); // Debug
+    
+    if (data && data.result) {
+      const sessionInfo = data.result;
+      statusEl.className = 'connection-status connected';
+      statusText.textContent = '✅ Connesso';
+      userInfoDiv.style.display = 'block';
+      
+      // Prova diversi campi per il nome
+      const userName = sessionInfo.name || 
+                      sessionInfo.partner_display_name ||
+                      sessionInfo.username || 
+                      sessionInfo.login ||
+                      sessionInfo.user_context?.name ||
+                      'Operatore';
+      
+      userNameSpan.textContent = userName;
+      
+      // Salva anche altre info utili
+      if (sessionInfo.uid) {
+        appState.userId = sessionInfo.uid;
+      }
+      
+      return true;
+    }
+    
+    // Fallback: prova con una query semplice per verificare connessione
+    const test = await searchRead('product.product', [], ['id'], 1);
+    if (test) {
+      statusEl.className = 'connection-status connected';
+      statusText.textContent = '✅ Connesso';
+      userInfoDiv.style.display = 'block';
+      userNameSpan.textContent = 'Operatore';
+      return true;
+    }
+    
+  } catch (error) {
+    console.error('Connection check error:', error);
+    
+    // Se c'è un errore ma abbiamo il token, probabilmente siamo connessi
+    if (token) {
+      try {
+        // Prova una query semplice
+        const test = await searchRead('product.product', [], ['id'], 1);
+        if (test) {
+          statusEl.className = 'connection-status connected';
+          statusText.textContent = '✅ Connesso';
+          userInfoDiv.style.display = 'block';
+          userNameSpan.textContent = 'Operatore';
+          return true;
+        }
+      } catch (e) {
+        console.log('Anche query semplice fallita');
+      }
+    }
+    
+    statusEl.className = 'connection-status disconnected';
+    statusText.textContent = 'Non connesso';
+    userInfoDiv.style.display = 'none';
+  }
+  
+  return false;
+}
+
+// Breadcrumb - Mostra il percorso
+function updateBreadcrumb() {
+  const breadcrumbDiv = document.getElementById('breadcrumb');
+  const breadcrumbPath = document.getElementById('breadcrumbPath');
+  
+  let path = '';
+  
+  if (appState.currentOperation === 'buffer') {
+    path = `📥 Buffer`;
+    if (appState.currentZone) {
+      const zone = ZONES.find(z => z.id === appState.currentZone);
+      const zoneBuffer = CONFIG.zoneBuffers[appState.currentZone];
+      path += ` → ${zone?.icon} ${zone?.name} (${zoneBuffer?.name})`;
+    }
+    path += ` → 📍 Ubicazione destinazione`;
+  }
+  
+  breadcrumbPath.textContent = path;
+  breadcrumbDiv.style.display = 'block';
+}
+
+// Log Trasferimenti
+let transferHistory = JSON.parse(localStorage.getItem('transferHistory') || '[]');
+
+function addTransferToLog(transferData) {
+  const now = new Date();
+  const transfer = {
+    timestamp: now.toISOString(),
+    time: now.toLocaleTimeString('it-IT'),
+    product: transferData.product_name,
+    quantity: transferData.product_qty,
+    lot: transferData.lot_name,
+    from: '',
+    to: '',
+    operation: appState.currentOperation
+  };
+  
+  // Determina origine
+  if (appState.currentOperation === 'buffer') {
+    const zoneBuffer = CONFIG.zoneBuffers[appState.currentZone];
+    transfer.from = zoneBuffer?.name || 'Buffer';
+  }
+  
+  // Determina destinazione
+  transfer.to = appState.locationData?.complete_name || appState.locationData?.name || 'Ubicazione';
+  
+  // Aggiungi alla storia
+  transferHistory.unshift(transfer); // Aggiungi all'inizio
+  if (transferHistory.length > 50) { // Mantieni solo gli ultimi 50
+    transferHistory = transferHistory.slice(0, 50);
+  }
+  
+  localStorage.setItem('transferHistory', JSON.stringify(transferHistory));
+  updateTransferLog();
+}
+
+function updateTransferLog() {
+  const transferList = document.getElementById('transferList');
+  const totalTransfers = document.getElementById('totalTransfers');
+  const logContainer = document.getElementById('transferLog');
+  
+  if (!transferList) return;
+  
+  // Filtra solo i trasferimenti di oggi
+  const today = new Date().toDateString();
+  const todayTransfers = transferHistory.filter(t => 
+    new Date(t.timestamp).toDateString() === today
+  );
+  
+  if (todayTransfers.length === 0) {
+    transferList.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 20px;">Nessun trasferimento oggi</div>';
+  } else {
+    transferList.innerHTML = todayTransfers.map((t, index) => `
+      <div style="background: rgba(255,255,255,0.02); border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 3px solid ${t.operation === 'buffer' ? 'var(--info)' : 'var(--warning)'};">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+          <span style="color: var(--accent); font-weight: 600;">${t.product}</span>
+          <span style="color: var(--muted); font-size: 12px;">${t.time}</span>
+        </div>
+        <div style="font-size: 14px; color: var(--text);">
+          <span style="color: var(--muted);">Quantità:</span> ${t.quantity} |
+          <span style="color: var(--muted);">Lotto:</span> ${t.lot || '-'}
+        </div>
+        <div style="font-size: 13px; margin-top: 5px; color: var(--muted);">
+          📤 ${t.from} → 📍 ${t.to}
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  totalTransfers.textContent = todayTransfers.length;
+  logContainer.style.display = todayTransfers.length > 0 ? 'block' : 'none';
+}
+
+// Statistiche (legacy)
+function loadStats() {
+  updateTransferLog(); // Carica il log invece delle statistiche
+}
+
+function updateStats() {
+  // Non serve più per le statistiche, ora usa il log
+}
+
+// Utilities
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.animation = 'slideIn 0.3s ease reverse';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+
+function showLoading(stepId) {
+  document.getElementById(stepId)?.classList.add('loading');
+}
+
+function hideLoading(stepId) {
+  document.getElementById(stepId)?.classList.remove('loading');
+}
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+
+// Ricerca manuale prodotti
+function openManualSearch() {
+  document.getElementById('searchModal').classList.add('active');
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').innerHTML = `
+    <div style="text-align: center; color: var(--muted); padding: 20px;">
+      Inserisci almeno 3 caratteri per iniziare la ricerca
+    </div>
+  `;
+  setTimeout(() => {
+    document.getElementById('searchInput').focus();
+  }, 100);
+}
+
+function closeManualSearch() {
+  document.getElementById('searchModal').classList.remove('active');
+  document.getElementById('productCode').focus();
+}
+
+let searchTimeout;
+async function searchProducts() {
+  const searchTerm = document.getElementById('searchInput').value.trim();
+  
+  if (searchTerm.length < 3) {
+    document.getElementById('searchResults').innerHTML = `
+      <div style="text-align: center; color: var(--muted); padding: 20px;">
+        Inserisci almeno 3 caratteri per iniziare la ricerca
+      </div>
+    `;
+    return;
+  }
+  
+  document.getElementById('searchResults').innerHTML = `
+    <div style="text-align: center; color: var(--accent); padding: 20px;">
+      ⏳ Ricerca in corso...
+    </div>
+  `;
+  
+  try {
+    const products = await searchRead(
+      'product.product',
+      [
+        '|', '|',
+        ['name', 'ilike', searchTerm],
+        ['default_code', 'ilike', searchTerm],
+        ['barcode', 'ilike', searchTerm]
+      ],
+      ['id', 'display_name', 'default_code', 'barcode', 'uom_id', 'qty_available', 'image_128'],
+      20
+    );
+    
+    const resultsDiv = document.getElementById('searchResults');
+    
+    if (!products || products.length === 0) {
+      resultsDiv.innerHTML = `
+        <div style="text-align: center; color: var(--danger); padding: 20px;">
+          ❌ Nessun prodotto trovato
+        </div>
+      `;
+      return;
+    }
+    
+    resultsDiv.innerHTML = '';
+    products.forEach(product => {
+      const item = document.createElement('div');
+      item.className = 'search-result-item';
+      
+      let uomDisplay = 'PZ';
+      if(product.uom_id && Array.isArray(product.uom_id) && product.uom_id.length >= 2) {
+        uomDisplay = product.uom_id[1];
+      }
+      
+      item.innerHTML = `
+        ${product.image_128 ? 
+          `<img src="data:image/png;base64,${product.image_128}" class="search-result-image" alt="${product.display_name}">` :
+          `<div class="search-result-image" style="display:flex;align-items:center;justify-content:center;font-size:20px;">📦</div>`
+        }
+        <div class="search-result-info">
+          <div class="search-result-name">${product.display_name}</div>
+          <div class="search-result-code">
+            ${product.default_code ? `Cod: ${product.default_code}` : ''}
+            ${product.barcode ? ` | ${product.barcode}` : ''}
+            | Disp: ${product.qty_available || 0} ${uomDisplay}
+          </div>
+        </div>
+      `;
+      
+      item.onclick = () => selectManualProduct(product);
+      
+      resultsDiv.appendChild(item);
+    });
+    
+  } catch (error) {
+    console.error('Errore ricerca prodotti:', error);
+    document.getElementById('searchResults').innerHTML = `
+      <div style="text-align: center; color: var(--danger); padding: 20px;">
+        ❌ Errore nella ricerca: ${error.message}
+      </div>
+    `;
+  }
+}
+
+async function selectManualProduct(product) {
+  closeManualSearch();
+  
+  try {
+    showLoading('step1');
+    
+    // Ottieni direttamente i dati del prodotto usando l'ID
+    // Non serve barcode o codice, usiamo direttamente l'ID del prodotto
+    const productData = await fetchProductDataById(product.id);
+    
+    if (productData) {
+      // Compila il campo codice per riferimento (anche se vuoto)
+      document.getElementById('productCode').value = product.default_code || product.barcode || `ID:${product.id}`;
+      
+      // Mostra le info del prodotto
+      displayProductInfo(productData);
+      
+      showNotification('✅ Prodotto selezionato: ' + product.display_name, 'success');
+    } else {
+      showNotification('Errore nel caricamento del prodotto', 'error');
+    }
+  } catch (error) {
+    console.error('Errore:', error);
+    showNotification('Errore nel caricamento del prodotto', 'error');
+  } finally {
+    hideLoading('step1');
+  }
+}
+
+// Setup ricerca con debounce  
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(searchProducts, 300);
+    });
+    
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        clearTimeout(searchTimeout);
+        searchProducts();
+      }
+    });
+  }
+});
+
+// Funzioni Note/Attività
+let selectedPhotoData = null;
+
+window.openNoteModal = function() {
+  if (!appState.productData) {
+    showNotification('Seleziona prima un prodotto', 'error');
+    return;
+  }
+  
+  document.getElementById('noteProductName').textContent = appState.productData.name || 'Prodotto';
+  document.getElementById('noteText').value = '';
+  document.getElementById('notePriority').value = '0';
+  selectedPhotoData = null;
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('noteModal').style.display = 'flex';
+}
+
+window.closeNoteModal = function() {
+  document.getElementById('noteModal').style.display = 'none';
+  selectedPhotoData = null;
+}
+
+window.removePhoto = function() {
+  selectedPhotoData = null;
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('notePhoto').value = '';
+}
+
+// Gestione foto
+document.addEventListener('DOMContentLoaded', function() {
+  const photoInput = document.getElementById('notePhoto');
+  if (photoInput) {
+    photoInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          selectedPhotoData = event.target.result;
+          document.getElementById('previewImage').src = selectedPhotoData;
+          document.getElementById('photoPreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+});
+
+window.saveNote = async function() {
+  const noteText = document.getElementById('noteText').value.trim();
+  if (!noteText) {
+    showNotification('Inserisci un messaggio', 'error');
+    return;
+  }
+  
+  if (!appState.productData) {
+    showNotification('Errore: prodotto non selezionato', 'error');
+    return;
+  }
+  
+  try {
+    showNotification('Salvataggio nota in corso...', 'info');
+    
+    // Prepara il messaggio con foto se presente
+    let messageBody = noteText;
+    if (selectedPhotoData) {
+      // In Odoo, le immagini nelle attività sono gestite come allegati
+      // Convertiamo base64 in formato appropriato
+      const base64Image = selectedPhotoData.split(',')[1];
+      
+      // Prima crea l'allegato
+      const attachment = await rpc('ir.attachment', 'create', [{
+        name: `Foto_nota_${appState.productData.name}_${new Date().getTime()}.jpg`,
+        type: 'binary',
+        datas: base64Image,
+        res_model: 'product.product',
+        res_id: appState.productData.id,
+        public: true
+      }]);
+      
+      messageBody += `<br/><br/>📷 Foto allegata`;
+    }
+    
+    // Crea l'attività/nota su Odoo
+    const priority = document.getElementById('notePriority').value;
+    
+    // Prima ottieni i tipi di attività disponibili
+    let activityTypeId = 4; // Default: To Do
+    try {
+      const activityTypes = await searchRead(
+        'mail.activity.type',
+        [], // Prendi tutti i tipi
+        ['id', 'name'],
+        10
+      );
+      console.log('Tipi attività disponibili:', activityTypes);
+      
+      // Cerca "Da fare" o "To Do" o prendi il primo disponibile
+      const todoType = activityTypes.find(t => 
+        t.name.toLowerCase().includes('fare') || 
+        t.name.toLowerCase().includes('todo') ||
+        t.name.toLowerCase().includes('do')
+      );
+      
+      if (todoType) {
+        activityTypeId = todoType.id;
+      } else if (activityTypes.length > 0) {
+        activityTypeId = activityTypes[0].id;
+      }
+    } catch (e) {
+      console.log('Usando tipo attività default:', activityTypeId);
+    }
+    
+    // Ottieni il modello ID per product.product
+    let resModelId = null;
+    try {
+      const models = await searchRead(
+        'ir.model',
+        [['model', '=', 'product.product']],
+        ['id'],
+        1
+      );
+      if (models && models.length > 0) {
+        resModelId = models[0].id;
+      }
+    } catch (e) {
+      console.error('Errore nel recuperare model ID:', e);
+    }
+    
+    // Ottieni il responsabile del prodotto dalle impostazioni magazzino
+    let assignedUserId = false;
+    try {
+      // Prima prova a ottenere il responsabile dal prodotto (campo responsible_id nelle impostazioni magazzino)
+      const products = await searchRead(
+        'product.product', 
+        [['id', '=', appState.productData.id]], 
+        ['responsible_id'], 
+        1
+      );
+      
+      if (products && products[0]?.responsible_id) {
+        assignedUserId = products[0].responsible_id[0];
+        console.log('Responsabile prodotto trovato:', products[0].responsible_id);
+      }
+      
+      // Se non c'è responsabile sul prodotto, prova con il template
+      if (!assignedUserId) {
+        const templates = await searchRead(
+          'product.template',
+          [['product_variant_ids', 'in', [appState.productData.id]]],
+          ['responsible_id'],
+          1
+        );
+        
+        if (templates && templates[0]?.responsible_id) {
+          assignedUserId = templates[0].responsible_id[0];
+          console.log('Responsabile template trovato:', templates[0].responsible_id);
+        }
+      }
+      
+      // Se ancora non c'è responsabile, usa l'utente corrente
+      if (!assignedUserId) {
+        const sessionInfo = await fetch('/web/session/get_session_info', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf()
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {},
+            id: Math.floor(Math.random() * 1000000000)
+          })
+        });
+        const sessionData = await sessionInfo.json();
+        if (sessionData?.result?.uid) {
+          assignedUserId = sessionData.result.uid;
+          console.log('Usando utente corrente:', assignedUserId);
+        }
+      }
+    } catch (e) {
+      console.log('Errore nel recuperare responsabile:', e);
+    }
+    
+    // Se ancora non abbiamo un utente, usa admin
+    if (!assignedUserId) {
+      assignedUserId = 2; // Admin come fallback
+      console.log('Usando admin come fallback');
+    }
+    
+    // Formatta la data di scadenza (7 giorni da oggi)
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + 7);
+    const deadlineStr = deadline.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Crea l'attività con i campi corretti
+    const activityData = {
+      activity_type_id: activityTypeId,
+      res_model_id: resModelId, // IMPORTANTE: usa res_model_id invece di res_model
+      res_id: appState.productData.id,
+      date_deadline: deadlineStr,
+      user_id: assignedUserId,
+      summary: `Segnalazione magazzino: ${noteText.substring(0, 40)}${noteText.length > 40 ? '...' : ''}`,
+      note: `<p><strong>Segnalazione da magazzino:</strong></p><p>${noteText}</p>${selectedPhotoData ? '<p>📷 Foto allegata</p>' : ''}<p><small>Segnalato da: ${appState.userName || 'Operatore'} - ${new Date().toLocaleString('it-IT')}</small></p>`
+    };
+    
+    console.log('Creando attività con dati:', activityData);
+    
+    const activity = await rpc('mail.activity', 'create', [activityData]);
+    console.log('✅ Attività creata con successo! ID:', activity);
+    
+    // Aggiungi anche un messaggio nel chatter del prodotto
+    await rpc('mail.message', 'create', [{
+      model: 'product.product',
+      res_id: appState.productData.id,
+      body: `<p><strong>📝 Nota da Magazzino</strong></p><p>${messageBody}</p><p><small>Creata da: ${appState.userName || 'Operatore'} - ${new Date().toLocaleString('it-IT')}</small></p>`,
+      message_type: 'comment',
+      subtype_id: 1 // Note
+    }]);
+    
+    showNotification('✅ Nota salvata con successo!', 'success');
+    closeNoteModal();
+    
+  } catch (error) {
+    console.error('Errore nel salvare la nota:', error);
+    showNotification('❌ Errore nel salvare la nota', 'error');
+  }
+}
+
+// Funzioni Debug - Globale per onclick
+window.showDebugInfo = function() {
+  const debugContent = document.getElementById('debugContent');
+  const csrfToken = csrf();
+  
+  debugContent.innerHTML = `
+    <div style="font-family:monospace;font-size:13px;line-height:1.6">
+      <h4 style="color:var(--accent)">🌐 Informazioni Connessione</h4>
+      <div><strong>URL:</strong> ${window.location.href}</div>
+      <div><strong>Origin:</strong> ${window.location.origin}</div>
+      <div><strong>User Agent:</strong> ${navigator.userAgent.substring(0,60)}...</div>
+      <div><strong>Cookies:</strong> ${document.cookie ? 'Presenti' : 'Assenti'}</div>
+      
+      <h4 style="color:var(--accent);margin-top:16px">🔑 Autenticazione</h4>
+      <div><strong>CSRF Token:</strong> ${csrfToken ? '✅ ' + csrfToken.substring(0,20) + '...' : '❌ Non trovato'}</div>
+      <div><strong>Window Odoo:</strong> ${window.odoo ? '✅ Presente' : '❌ Non presente'}</div>
+      <div><strong>Parent Odoo:</strong> ${window.parent && window.parent.odoo ? '✅ Presente' : '❌ Non presente'}</div>
+      
+      <h4 style="color:var(--accent);margin-top:16px">📊 Stato Applicazione</h4>
+      <div><strong>Operazione:</strong> ${appState.currentOperation || 'Nessuna'}</div>
+      <div><strong>Zona:</strong> ${appState.currentZone || 'Nessuna'}</div>
+      <div><strong>Prodotto ID:</strong> ${appState.productData?.id || 'Nessuno'}</div>
+      <div><strong>Quantità:</strong> ${appState.quantity}</div>
+      
+      <h4 style="color:var(--accent);margin-top:16px">📦 Buffer e Zone</h4>
+      <div><strong>Buffer Totali:</strong> ${appState.counts.buffer}</div>
+      <div><strong>Zona Secco:</strong> ${appState.counts.zones.secco}</div>
+      <div><strong>Zona Secco Sopra:</strong> ${appState.counts.zones['secco-sopra']}</div>
+      <div><strong>Zona Pingu:</strong> ${appState.counts.zones.pingu}</div>
+      <div><strong>Zona Frigo:</strong> ${appState.counts.zones.frigo}</div>
+      
+      <h4 style="color:var(--accent);margin-top:16px">🏗️ Ambiente</h4>
+      <div><strong>In iframe:</strong> ${window.parent !== window ? '✅ Sì' : '❌ No'}</div>
+      <div><strong>HTTPS:</strong> ${window.location.protocol === 'https:' ? '✅ Sì' : '❌ No'}</div>
+      <div><strong>Service Worker:</strong> ${navigator.serviceWorker ? '✅ Supportato' : '❌ Non supportato'}</div>
+      
+      <h4 style="color:var(--accent);margin-top:16px">📱 Hardware</h4>
+      <div><strong>Camera:</strong> ${navigator.mediaDevices ? '✅ Supportata' : '❌ Non supportata'}</div>
+      <div><strong>Touch Device:</strong> ${('ontouchstart' in window) ? '✅ Sì' : '❌ No'}</div>
+      
+      <h4 style="color:var(--danger);margin-top:16px">🐛 Ultimi Errori</h4>
+      <div id="errorLog" style="max-height:200px;overflow:auto;background:rgba(255,0,0,0.1);padding:10px;border-radius:8px;margin-top:8px;">
+        ${window.debugErrors && window.debugErrors.length > 0 
+          ? window.debugErrors.map(err => `<div style="margin:4px 0;color:var(--danger);">${err}</div>`).join('')
+          : '<div style="color:var(--muted);">Nessun errore registrato</div>'}
+      </div>
+      
+      <h4 style="color:var(--warning);margin-top:16px">⚡ Azioni Test</h4>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+        <button class="btn slim blue" onclick="testConnection()">Test Connessione</button>
+        <button class="btn slim blue" onclick="testProductSearch()">Test Ricerca Prodotto</button>
+        <button class="btn slim blue" onclick="clearLocalStorage()">Clear Cache</button>
+        <button class="btn slim blue" onclick="reloadCounts()">Ricarica Contatori</button>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('debugModal').style.display = 'flex';
+}
+
+window.closeDebugModal = function() {
+  document.getElementById('debugModal').style.display = 'none';
+}
+
+// Test functions - Globale per onclick
+window.testConnection = async function() {
+  try {
+    showNotification('Testing connessione...', 'info');
+    const connected = await checkConnection();
+    if (connected) {
+      showNotification('✅ Connessione OK', 'success');
+    } else {
+      showNotification('❌ Connessione fallita', 'error');
+    }
+  } catch (e) {
+    showNotification('❌ Errore test: ' + e.message, 'error');
+  }
+}
+
+window.testProductSearch = async function() {
+  try {
+    showNotification('Testing ricerca prodotti...', 'info');
+    const products = await searchRead('product.product', [], ['id', 'name'], 5);
+    showNotification(`✅ Trovati ${products.length} prodotti`, 'success');
+  } catch (e) {
+    showNotification('❌ Errore ricerca: ' + e.message, 'error');
+  }
+}
+
+window.clearLocalStorage = function() {
+  localStorage.clear();
+  showNotification('✅ Cache pulita', 'success');
+}
+
+window.reloadCounts = async function() {
+  try {
+    showNotification('Ricaricando contatori...', 'info');
+    await loadPendingCounts();
+    showNotification('✅ Contatori aggiornati', 'success');
+  } catch (e) {
+    showNotification('❌ Errore aggiornamento: ' + e.message, 'error');
+  }
+}
+
+// Error logging
+window.debugErrors = [];
+window.addEventListener('error', (e) => {
+  const errorMsg = `${new Date().toLocaleTimeString()}: ${e.message} (${e.filename}:${e.lineno})`;
+  console.error('Errore applicazione:', e);
+  
+  if (!window.debugErrors) window.debugErrors = [];
+  window.debugErrors.unshift(errorMsg);
+  if (window.debugErrors.length > 10) window.debugErrors.pop();
+  
+  showNotification('Si è verificato un errore (vedi Debug)', 'error');
+});
+
+// Log unhandled promise rejections
+window.addEventListener('unhandledrejection', (e) => {
+  const errorMsg = `${new Date().toLocaleTimeString()}: Promise rejection: ${e.reason}`;
+  
+  if (!window.debugErrors) window.debugErrors = [];
+  window.debugErrors.unshift(errorMsg);
+  if (window.debugErrors.length > 10) window.debugErrors.pop();
+  
+  console.error('Unhandled promise rejection:', e);
+});
+
+// Funzioni aggiuntive per gestione prodotti in coda
+async function loadPendingCounts() {
+  try {
+    let totalBufferProducts = 0;
+    
+    // Per ogni zona, conta QUANTI PRODOTTI DIVERSI sono nel buffer (non la quantità)
+    for (const zoneId of Object.keys(appState.counts.zones)) {
+      const zoneBuffer = CONFIG.zoneBuffers[zoneId];
+      if (!zoneBuffer) continue;
+      
+      // Ottieni i prodotti nel buffer di questa zona
+      const products = await searchRead(
+        'stock.quant',
+        [
+          ['location_id', '=', zoneBuffer.id],
+          ['quantity', '>', 0]
+        ],
+        ['product_id', 'quantity'],
+        false
+      );
+      
+      // Conta QUANTI PRODOTTI DIVERSI ci sono (non la quantità totale)
+      // Ogni product_id unico = 1 prodotto da sistemare
+      const uniqueProducts = new Set(products.map(p => p.product_id[0]));
+      const productCount = uniqueProducts.size;
+      
+      appState.counts.zones[zoneId] = productCount;
+      totalBufferProducts += productCount;
+      
+      console.log(`Buffer ${zoneBuffer.name}: ${productCount} prodotti diversi da sistemare`);
+    }
+    
+    // Totale buffer = numero totale di prodotti diversi in tutti i buffer
+    appState.counts.buffer = totalBufferProducts;
+    
+    console.log(`Totale: ${totalBufferProducts} prodotti nei buffer`);
+    
+  } catch (error) {
+    console.error('Error loading counts:', error);
+    // Usa valori di default se errore
+    appState.counts.buffer = 0;
+    Object.keys(appState.counts.zones).forEach(zoneId => {
+      appState.counts.zones[zoneId] = 0;
+    });
+  }
+  
+  updateCounterDisplay();
+}
+
+// Nuova funzione per aggiornare i contatori in base all'operazione
+async function updateZoneCountsForOperation() {
+  // Ricarica i contatori se necessario
+  await loadPendingCounts();
+}
+
+function updateCounterDisplay() {
+  // Aggiorna badge operazioni
+  const bufferBadge = document.getElementById('bufferCount');
+  
+  if (bufferBadge) {
+    bufferBadge.textContent = appState.counts.buffer;
+    bufferBadge.className = appState.counts.buffer > 0 ? 'operation-badge' : 'operation-badge empty';
+  }
+  
+  
+  // Aggiorna contatori zone se visibili
+  Object.keys(appState.counts.zones).forEach(zoneId => {
+    const zoneCounter = document.getElementById(`zone-count-${zoneId}`);
+    if (zoneCounter) {
+      const count = appState.counts.zones[zoneId];
+      zoneCounter.textContent = count;
+      zoneCounter.className = count > 0 ? 'zone-counter has-items' : 'zone-counter';
+    }
+  });
+}
+
+async function loadPendingProductsForZone() {
+  try {
+    let sourceLocationId;
+    
+    if (appState.currentOperation === 'buffer') {
+      // Operazione Buffer: prendi dal buffer della zona corrente
+      const zoneBuffer = CONFIG.zoneBuffers[appState.currentZone];
+      if (!zoneBuffer) {
+        console.error('Buffer non configurato per zona:', appState.currentZone);
+        appState.pendingProducts = [];
+        return;
+      }
+      sourceLocationId = zoneBuffer.id;
+    }
+    
+    // Ottieni i prodotti disponibili nell'ubicazione sorgente
+    const quants = await searchRead(
+      'stock.quant',
+      [
+        ['location_id', '=', sourceLocationId],
+        ['quantity', '>', 0]
+      ],
+      ['product_id', 'quantity', 'lot_id'],
+      100
+    );
+    
+    appState.pendingProducts = [];
+    
+    for (const quant of quants) {
+      // Ottieni dettagli prodotto
+      const product = await searchRead(
+        'product.product',
+        [['id', '=', quant.product_id[0]]],
+        ['name', 'default_code', 'barcode'],
+        1
+      );
+      
+      if (product.length > 0) {
+        appState.pendingProducts.push({
+          id: quant.product_id[0],
+          name: product[0].name,
+          code: product[0].barcode || product[0].default_code || '',
+          qty: quant.quantity,
+          lot_id: quant.lot_id ? quant.lot_id[0] : null,
+          lot_name: quant.lot_id ? quant.lot_id[1] : '',
+          quant_id: quant.id
+        });
+      }
+    }
+    
+    appState.currentProductIndex = 0;
+    
+    if (appState.pendingProducts.length === 0) {
+      showNotification('Nessun prodotto disponibile in questa zona', 'info');
+    } else {
+      const sourceName = CONFIG.zoneBuffers[appState.currentZone].name;
+      showNotification(`${appState.pendingProducts.length} prodotti da sistemare da ${sourceName}`, 'info');
+    }
+    
+  } catch (error) {
+    console.error('Error loading pending products:', error);
+    appState.pendingProducts = [];
+  }
+}
+
+function autoFillNextProduct() {
+  if (appState.currentProductIndex >= appState.pendingProducts.length) {
+    showNotification('Nessun altro prodotto da processare', 'info');
+    return;
+  }
+  
+  const product = appState.pendingProducts[appState.currentProductIndex];
+  
+  // Compila automaticamente il codice prodotto
+  document.getElementById('productCode').value = product.code;
+  
+  // Simula scansione automatica
+  setTimeout(() => {
+    handleProductScan();
+  }, 500);
+}
+
+// Funzione skipProduct rimossa - non più necessaria
+
+function updateCounters() {
+  // Decrementa contatori dopo trasferimento completato
+  if (appState.counts.zones[appState.currentZone] > 0) {
+    appState.counts.zones[appState.currentZone]--;
+  }
+  
+  if (appState.currentOperation === 'buffer' && appState.counts.buffer > 0) {
+    appState.counts.buffer--;
+  }
+  
+  updateCounterDisplay();
+}
+
+// Scanner telecamera per ubicazioni
+let locationScanner = null;
+let locationScannerActive = false;
+
+function openLocationScanner() {
+  document.getElementById('locationScannerModal').classList.add('active');
+  document.getElementById('manualLocationCode').value = '';
+  
+  if (!locationScanner) {
+    locationScanner = new Html5Qrcode("locationReader");
+  }
+  
+  const config = { 
+    fps: 10, 
+    qrbox: { width: 250, height: 250 },
+    aspectRatio: 1.0
+  };
+  
+  locationScanner.start(
+    { facingMode: "environment" },
+    config,
+    (decodedText) => {
+      // Codice scansionato con successo
+      document.getElementById('locationCode').value = decodedText;
+      closeLocationScanner();
+      // Avvia automaticamente la ricerca dell'ubicazione
+      handleLocationScan();
+    },
+    (errorMessage) => {
+      // Ignora errori di scansione continui
+    }
+  ).catch((err) => {
+    console.error('Errore avvio scanner telecamera:', err);
+    showNotification('Errore nell\'avvio della fotocamera. Verifica i permessi.', 'error');
+  });
+  
+  locationScannerActive = true;
+}
+
+function closeLocationScanner() {
+  if (locationScanner && locationScannerActive) {
+    locationScanner.stop().then(() => {
+      locationScannerActive = false;
+    }).catch((err) => {
+      console.error('Errore chiusura scanner:', err);
+      locationScannerActive = false;
+    });
+  }
+  document.getElementById('locationScannerModal').classList.remove('active');
+}
+
+function useManualLocationCode() {
+  const code = document.getElementById('manualLocationCode').value.trim();
+  if (code) {
+    document.getElementById('locationCode').value = code;
+    closeLocationScanner();
+    // Avvia automaticamente la ricerca dell'ubicazione
+    handleLocationScan();
+  } else {
+    showNotification('Inserisci un codice valido', 'warning');
+  }
+}
+
+// Aggiungi gestione tasto Escape per chiudere scanner
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && locationScannerActive) {
+    closeLocationScanner();
+  }
+});
+
+// Service Worker per offline (opzionale)
+if ('serviceWorker' in navigator) {
+  // navigator.serviceWorker.register('/sw.js');
+}
+</script>

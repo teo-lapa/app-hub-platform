@@ -46,6 +46,7 @@ export async function GET(
 
     // Percorsi possibili per i file HTML
     const possiblePaths = [
+      join(process.cwd(), 'gestione-apps-html', appName, `${appName}.html`),
       join(process.cwd(), '..', 'gestione app generale', appName, `${appName}.html`),
       join(process.cwd(), '..', '..', 'gestione app generale', appName, `${appName}.html`)
     ];

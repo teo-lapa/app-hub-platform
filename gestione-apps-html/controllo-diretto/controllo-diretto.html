@@ -1,0 +1,3907 @@
+<meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>✅ Controllo Zone – Magazzino</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  
+  <style>
+    /* ===== Design tokens ===== */
+    :root {
+      --bg: #0b1220;
+      --card: #0f172a;
+      --muted: #8aa0b6;
+      --text: #e6eef5;
+      --border: #1f2937;
+      --accent: #22c55e;
+      --accent2: #3b82f6;
+      --danger: #ef4444;
+      --ok: #16a34a;
+      --warning: #f59e0b;
+      --purple: #8b5cf6;
+      --orange: #f97316;
+      --secco: #0ea5e9;
+      --secco-sopra: #7c3aed;
+      --pingu: #f59e0b;
+      --frigo: #06b6d4;
+    }
+
+    [data-theme="light"] {
+      --bg: #f6f8fc;
+      --card: #ffffff;
+      --muted: #5b6a7f;
+      --text: #0a1628;
+      --border: #e6eaf3;
+      --accent: #0ea5e9;
+      --accent2: #7c3aed;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.5 system-ui, Segoe UI, Arial, sans-serif;
+      overflow-x: hidden;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    /* Hide Odoo chrome if present */
+    header, footer, .navbar, #oe_main_menu_navbar, .o_footer, .o_footer_copyright {
+      display: none !important;
+    }
+
+    /* Container */
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 16px 40px;
+    }
+
+    /* Top Bar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      margin: 0 -16px 20px;
+      padding: 16px 20px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: color-mix(in oklab, var(--bg) 85%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 2px solid var(--border);
+      box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+    }
+
+    .title {
+      font-weight: 900;
+      font-size: 24px;
+      letter-spacing: .3px;
+      margin-right: auto;
+      color: var(--accent);
+    }
+
+    /* Info Badges */
+    .batch-badge, .zone-badge, .vehicle-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 6px 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      min-width: 80px;
+    }
+
+    .batch-badge span:first-child, 
+    .zone-badge span:first-child, 
+    .vehicle-badge span:first-child {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .batch-badge span:last-child, 
+    .zone-badge span:last-child, 
+    .vehicle-badge span:last-child {
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    /* Debug Panel */
+    #debugPanel {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 380px;
+      height: 100vh;
+      background: var(--card);
+      border-left: 2px solid var(--border);
+      transition: .3s;
+      z-index: 1000;
+      overflow-y: auto;
+      padding: 20px;
+      font-size: 12px;
+    }
+
+    #debugPanel.open {
+      right: 0;
+    }
+
+    .debug-toggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1001;
+      background: var(--purple);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .debug-section {
+      margin: 16px 0;
+      padding: 12px;
+      background: var(--bg);
+      border-radius: 8px;
+    }
+
+    .debug-title {
+      color: var(--accent);
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    /* Driver Info */
+    .driver-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 12px;
+      min-width: 140px;
+      transition: all 0.2s;
+    }
+
+    .driver-info:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .driver-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #04110a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    /* Buttons */
+    .btn {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: .2s;
+      font-size: 15px;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn.green {
+      background: var(--accent);
+      color: #04110a;
+    }
+
+    .btn.blue {
+      background: var(--accent2);
+      color: #eef2ff;
+    }
+
+    .btn.purple {
+      background: var(--purple);
+      color: #fff;
+    }
+
+    .btn.orange {
+      background: var(--orange);
+      color: #fff;
+    }
+
+    .btn.ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 2px solid var(--border);
+    }
+
+    .btn.danger {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    /* Connection Status */
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .connection-status.connected {
+      background: color-mix(in oklab, var(--ok) 20%, transparent);
+      color: var(--ok);
+    }
+
+    .connection-status.disconnected {
+      background: color-mix(in oklab, var(--danger) 20%, transparent);
+      color: var(--danger);
+    }
+
+    /* Views */
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    /* ===== ZONE SELECTION VIEW ===== */
+    .zone-main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      text-align: center;
+    }
+
+    .zone-title {
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .zone-subtitle {
+      font-size: 18px;
+      color: var(--muted);
+      margin-bottom: 60px;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    .batch-info {
+      background: var(--card);
+      border: 2px solid var(--accent2);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    .batch-name {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--accent2);
+      margin: 0 0 8px;
+    }
+
+    .batch-details {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .zones-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .zone-btn {
+      min-height: 120px;
+      font-size: 24px;
+      font-weight: 900;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: .3s;
+      border: 3px solid;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .zone-btn:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+
+    .zone-btn:active {
+      transform: translateY(-2px);
+    }
+
+    .zone-btn.secco {
+      background: var(--secco);
+      color: #fff;
+      border-color: var(--secco);
+    }
+
+    .zone-btn.secco-sopra {
+      background: var(--secco-sopra);
+      color: #fff;
+      border-color: var(--secco-sopra);
+    }
+
+    .zone-btn.pingu {
+      background: var(--pingu);
+      color: #000;
+      border-color: var(--pingu);
+    }
+
+    .zone-btn.frigo {
+      background: var(--frigo);
+      color: #fff;
+      border-color: var(--frigo);
+    }
+
+    .zone-icon {
+      font-size: 36px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .zone-name {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .zone-count {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      background: rgba(0,0,0,0.3);
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .zone-actions {
+      margin-top: 40px;
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* ===== SUBLOCATION LIST VIEW ===== */
+    .sublocation-header {
+      background: var(--card);
+      border: 3px solid var(--current-zone-color, var(--accent));
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 24px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .zone-info {
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .current-zone-name {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--current-zone-color, var(--accent));
+      margin: 0 0 8px;
+    }
+
+    .current-zone-path {
+      font-size: 16px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .zone-stats {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .zone-stat {
+      text-align: center;
+    }
+
+    .zone-stat-number {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--accent);
+    }
+
+    .zone-stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .sublocation-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sublocations-container {
+      display: grid;
+      gap: 16px;
+    }
+
+    .sublocation-item {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      cursor: pointer;
+      transition: .3s;
+      position: relative;
+    }
+
+    .sublocation-item:hover {
+      border-color: var(--current-zone-color, var(--accent));
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    }
+
+    .sublocation-item.has-operations {
+      border-left: 6px solid var(--current-zone-color, var(--accent));
+    }
+
+    .sublocation-header-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 12px;
+    }
+
+    .sublocation-name {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--current-zone-color, var(--accent));
+      margin: 0;
+    }
+
+    .operations-count {
+      background: var(--current-zone-color, var(--accent));
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .sublocation-details {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .sublocation-progress {
+      margin-top: 12px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--current-zone-color, var(--accent));
+      transition: .3s;
+      border-radius: 3px;
+    }
+
+    .progress-text {
+      text-align: center;
+      margin-top: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--current-zone-color, var(--accent));
+    }
+
+    /* ===== OPERATIONS VIEW ===== */
+    .location-header {
+      background: var(--card);
+      border: 3px solid var(--current-zone-color, var(--accent));
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .location-info {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .location-details {
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .location-name {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--current-zone-color, var(--accent));
+      margin: 0 0 6px;
+    }
+
+    .location-path {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .location-stats {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .location-stat {
+      text-align: center;
+    }
+
+    .location-stat-number {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--accent);
+    }
+
+    .location-stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .location-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .operations-container {
+      display: grid;
+      gap: 20px;
+    }
+
+    .operation-item {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      transition: .3s;
+      position: relative;
+    }
+
+    .operation-item.completed {
+      border-color: var(--ok);
+      background: color-mix(in oklab, var(--ok) 8%, var(--card));
+    }
+    
+    .operation-item.checked {
+      border-color: var(--info);
+      border-width: 3px;
+      background: color-mix(in oklab, var(--info) 5%, var(--card));
+      position: relative;
+    }
+    
+    .operation-item.checked::before {
+      content: '✓';
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--info);
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    .operation-item.active {
+      border-color: var(--accent);
+      box-shadow: 0 6px 24px rgba(34,197,94,0.2);
+    }
+
+    .operation-item.scanning {
+      border-color: var(--accent2);
+      animation: pulse-border 2s infinite;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% {
+        border-color: var(--accent);
+      }
+      50% {
+        border-color: var(--accent2);
+      }
+    }
+
+    .operation-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: start;
+      margin-bottom: 20px;
+    }
+
+    .product-section {
+      min-width: 0;
+    }
+
+    .product-name {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text);
+      margin: 0 0 6px;
+      word-break: break-word;
+    }
+
+    .product-code {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .product-customer {
+      font-size: 14px;
+      color: var(--accent2);
+      margin-top: 6px;
+    }
+
+    .product-image-placeholder {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .picking-info {
+      text-align: right;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .picking-ref {
+      font-weight: 600;
+      color: var(--accent2);
+      font-size: 11px;
+    }
+
+    .operation-quantities {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 24px;
+      align-items: center;
+      margin: 20px 0;
+    }
+
+    .qty-block {
+      text-align: center;
+    }
+
+    .qty-number {
+      font-size: 28px;
+      font-weight: 900;
+      margin-bottom: 6px;
+    }
+
+    .qty-needed {
+      color: var(--accent2);
+    }
+
+    .qty-done {
+      color: var(--ok);
+    }
+
+    .qty-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .uom-indicator {
+      background: var(--purple);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 16px;
+      text-align: center;
+      min-width: 70px;
+    }
+
+    .operation-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .operation-btn {
+      min-height: 48px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .operation-status {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .operation-status.pending {
+      background: var(--border);
+      color: var(--muted);
+    }
+
+    .operation-status.completed {
+      background: var(--ok);
+      color: #fff;
+    }
+
+    .operation-status.partial {
+      background: var(--warning);
+      color: #000;
+    }
+
+    /* ===== VIRTUAL KEYBOARD ===== */
+    #keyboardModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.9);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 300;
+      padding: 0;
+    }
+
+    .keyboard {
+      background: var(--card);
+      border-radius: 24px 24px 0 0;
+      padding: 24px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 -12px 48px rgba(0,0,0,0.6);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(100%);
+      }
+      to {
+        transform: translateY(0);
+      }
+    }
+
+    .keyboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .keyboard-title {
+      font-weight: 800;
+      color: var(--accent2);
+      font-size: 18px;
+    }
+
+    .keyboard-close {
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .keyboard-display {
+      background: var(--bg);
+      color: var(--text);
+      font-size: 2.2em;
+      font-weight: 900;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      border-radius: 16px;
+      min-height: 80px;
+      border: 3px solid var(--accent2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .keyboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .key {
+      background: var(--bg);
+      color: var(--text);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .key:active {
+      transform: scale(0.95);
+      background: var(--accent);
+      color: #04110a;
+      border-color: var(--accent);
+    }
+
+    .key.wide {
+      grid-column: span 2;
+    }
+
+    .key.confirm {
+      background: var(--ok);
+      color: #fff;
+      font-size: 18px;
+      border-color: var(--ok);
+    }
+
+    .key.clear {
+      background: var(--danger);
+      color: #fff;
+      border-color: var(--danger);
+    }
+
+    .key.backspace {
+      background: var(--warning);
+      color: #000;
+      border-color: var(--warning);
+    }
+
+    /* ===== TOAST & INDICATORS ===== */
+    .toast {
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      background: var(--card);
+      color: var(--text);
+      border: 2px solid var(--border);
+      padding: 16px 20px;
+      border-radius: 16px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.3);
+      opacity: 0;
+      transform: translateY(-12px);
+      transition: .3s;
+      z-index: 200;
+      max-width: 340px;
+      font-weight: 600;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast.success {
+      border-color: var(--ok);
+      background: color-mix(in oklab, var(--ok) 12%, var(--card));
+    }
+
+    .toast.error {
+      border-color: var(--danger);
+      background: color-mix(in oklab, var(--danger) 12%, var(--card));
+    }
+
+    .toast.warning {
+      border-color: var(--warning);
+      background: color-mix(in oklab, var(--warning) 12%, var(--card));
+    }
+
+    /* Batch Selection Modal */
+    #batchSelectionModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 250;
+    }
+
+    #batchSelectionModal .modal-content {
+      background: var(--card);
+      border: 2px solid var(--accent2);
+      border-radius: 20px;
+      padding: 28px;
+      max-width: 500px;
+      width: 90%;
+    }
+
+    /* Loading states */
+    .loading {
+      opacity: 0.7;
+      pointer-events: none;
+      position: relative;
+    }
+
+    .loading::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 28px;
+      height: 28px;
+      margin: -14px 0 0 -14px;
+      border: 4px solid var(--accent);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ===== TABLET 8" OPTIMIZATION ===== */
+    /* Optimized for 8" tablets (768x1024 or 800x1280) */
+    @media (min-width: 600px) and (max-width: 1024px) and (min-height: 768px) {
+      body {
+        font-size: 15px;
+      }
+      
+      .wrap {
+        max-width: 100%;
+        padding: 0 20px 30px;
+      }
+      
+      .topbar {
+        padding: 12px 20px;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      
+      .title {
+        font-size: 20px;
+        font-weight: 800;
+      }
+      
+      /* Badges optimized for touch */
+      .batch-badge, .zone-badge, .vehicle-badge {
+        padding: 5px 12px;
+      }
+      
+      .batch-badge span:last-child, 
+      .zone-badge span:last-child, 
+      .vehicle-badge span:last-child {
+        font-size: 12px;
+      }
+      
+      /* Driver info */
+      .driver-info {
+        padding: 8px 14px;
+      }
+      
+      .driver-avatar {
+        width: 30px;
+        height: 30px;
+        font-size: 13px;
+      }
+      
+      /* Buttons - 44px minimum touch target */
+      .btn {
+        padding: 12px 18px;
+        font-size: 14px;
+        min-height: 44px;
+        border-radius: 10px;
+      }
+      
+      /* Zone selection */
+      .zone-title {
+        font-size: 30px;
+        margin-bottom: 16px;
+      }
+      
+      .zone-subtitle {
+        font-size: 16px;
+        margin-bottom: 30px;
+      }
+      
+      .zones-grid {
+        gap: 20px;
+        grid-template-columns: repeat(2, 1fr);
+        max-width: 700px;
+        margin: 0 auto;
+      }
+      
+      .zone-btn {
+        min-height: 110px;
+        font-size: 18px;
+        border-radius: 16px;
+      }
+      
+      .zone-icon {
+        font-size: 32px;
+        margin-bottom: 8px;
+      }
+      
+      .zone-name {
+        font-size: 17px;
+      }
+      
+      /* Sublocations */
+      .sublocation-header {
+        padding: 20px;
+      }
+      
+      .current-zone-name {
+        font-size: 26px;
+      }
+      
+      .sublocation-item {
+        padding: 18px;
+        border-radius: 14px;
+      }
+      
+      .sublocation-name {
+        font-size: 17px;
+      }
+      
+      /* Operations */
+      .operation-item {
+        padding: 20px;
+        border-radius: 16px;
+      }
+      
+      .product-name {
+        font-size: 16px;
+        font-weight: 700;
+      }
+      
+      .product-customer {
+        font-size: 14px;
+      }
+      
+      .qty-number {
+        font-size: 26px;
+      }
+      
+      .operation-btn {
+        font-size: 13px;
+        padding: 10px;
+        min-height: 42px;
+      }
+      
+      /* Product images */
+      img.product-image, .product-image-placeholder {
+        width: 65px !important;
+        height: 65px !important;
+      }
+      
+      /* Keyboard */
+      .keyboard {
+        padding: 24px;
+        max-width: 500px;
+      }
+      
+      .keyboard-display {
+        font-size: 2.2em;
+        padding: 18px;
+        min-height: 75px;
+      }
+      
+      .key {
+        padding: 18px;
+        font-size: 22px;
+        min-height: 65px;
+      }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 599px) {
+      .wrap {
+        padding: 0 12px 40px;
+      }
+      
+      .topbar {
+        padding: 8px 12px;
+        gap: 6px;
+      }
+      
+      .title {
+        font-size: 18px;
+        width: 100%;
+        margin-bottom: 6px;
+      }
+      
+      .zones-grid {
+        grid-template-columns: 1fr;
+        max-width: 400px;
+      }
+      
+      .operation-header {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        text-align: center;
+      }
+      
+      .operation-quantities {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      
+      .operation-actions {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+    }
+  </style>
+
+
+
+
+<button class="debug-toggle" onclick="toggleDebug()">🐛</button>
+<div id="debugPanel">
+  <div class="debug-section">
+    <div class="debug-title">🔍 Debug Status</div>
+    <div id="debugStatus">Initializing...</div>
+  </div>
+  
+  <div class="debug-section">
+    <div class="debug-title">📊 Current State</div>
+    <div id="debugState">No data</div>
+  </div>
+  
+  <div class="debug-section">
+    <div class="debug-title">📋 Recent Errors</div>
+    <div id="debugErrors">No errors</div>
+  </div>
+  
+  <div class="debug-section">
+    <div class="debug-title">🔌 Last RPC Calls</div>
+    <div id="debugRPC">No calls</div>
+  </div>
+</div>
+
+<div class="wrap">
+  
+  
+  <div class="topbar">
+    <div class="title">✅ Controllo Zone</div>
+    
+    <div class="driver-info" onclick="showDriverInfo()" style="cursor:pointer" title="Clicca per vedere info complete">
+      <div class="driver-avatar" id="driverAvatar">?</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:14px" id="driverName">Non assegnato</div>
+        <div style="font-size:11px;color:var(--muted)" id="driverRole">Driver</div>
+      </div>
+    </div>
+    
+    <div class="batch-badge" id="batchBadge" style="display:none">
+      <span style="font-size:11px;color:var(--muted)">BATCH</span>
+      <span style="font-weight:800;color:var(--accent2)" id="batchBadgeName">-</span>
+    </div>
+    
+    <div class="zone-badge" id="zoneBadge" style="display:none">
+      <span style="font-size:11px;color:var(--muted)">ZONA</span>
+      <span style="font-weight:800;color:var(--current-zone-color, var(--accent))" id="zoneBadgeName">-</span>
+    </div>
+    
+    <div class="vehicle-badge" id="vehicleBadge" style="display:none">
+      <span style="font-size:11px;color:var(--muted)">VEICOLO</span>
+      <span style="font-weight:800;color:var(--orange)" id="vehicleBadgePlate">-</span>
+    </div>
+    
+    <div id="connectionStatus" class="connection-status checking">
+      <span id="connectionIcon">🟡</span>
+      <span>Connessione...</span>
+    </div>
+    
+    <button class="btn ghost" id="themeBtn" onclick="toggleTheme()">🌙</button>
+  </div>
+
+  
+  <div class="view active" id="zoneSelectionView">
+    <div class="zone-main">
+      <h1 class="zone-title">🏭 Controllo Diretto per Zona</h1>
+      <p class="zone-subtitle">
+        Scegli la zona per vedere TUTTE le operazioni da verificare
+      </p>
+      
+      <div class="batch-info" id="batchInfo">
+        <div class="batch-name" id="currentBatchName">Batch non selezionato</div>
+        <div class="batch-details" id="currentBatchDetails">Seleziona un batch per iniziare</div>
+      </div>
+      
+      <div class="zones-grid">
+        <button class="zone-btn secco" onclick="selectZone('secco')">
+          <span class="zone-icon">📦</span>
+          <div class="zone-name">SECCO</div>
+          <div class="zone-count" id="seccoCount">0</div>
+        </button>
+        
+        <button class="zone-btn secco-sopra" onclick="selectZone('secco-sopra')">
+          <span class="zone-icon">📚</span>
+          <div class="zone-name">SECCO SOPRA</div>
+          <div class="zone-count" id="seccoSopraCount">0</div>
+        </button>
+        
+        <button class="zone-btn pingu" onclick="selectZone('pingu')">
+          <span class="zone-icon">🐧</span>
+          <div class="zone-name">PINGU</div>
+          <div class="zone-count" id="pinguCount">0</div>
+        </button>
+        
+        <button class="zone-btn frigo" onclick="selectZone('frigo')">
+          <span class="zone-icon">❄️</span>
+          <div class="zone-name">FRIGO</div>
+          <div class="zone-count" id="frigoCount">0</div>
+        </button>
+      </div>
+      
+      <div class="zone-actions">
+        <button class="btn blue" onclick="selectBatch()">📦 Seleziona Batch</button>
+        <button class="btn orange" onclick="refreshZoneCounts()">🔄 Aggiorna</button>
+      </div>
+    </div>
+  </div>
+
+  
+
+  
+  <div class="view" id="operationsView">
+    <div class="location-header">
+      <div class="location-info">
+        <div class="location-details">
+          <h1 class="location-name" id="currentLocationName">Zona</h1>
+          <div class="location-path" id="currentLocationPath">WH/Deposito/Zona</div>
+        </div>
+        
+        <div class="location-stats">
+          <div class="location-stat">
+            <div class="location-stat-number" id="locationTotalOps">0</div>
+            <div class="location-stat-label">Operazioni Totali</div>
+          </div>
+          <div class="location-stat">
+            <div class="location-stat-number" id="locationCompletedOps">0</div>
+            <div class="location-stat-label">Controllate/Complete</div>
+          </div>
+          <div class="location-stat">
+            <div class="location-stat-number" id="locationProgressPct">0%</div>
+            <div class="location-stat-label">Progresso</div>
+          </div>
+          <div class="location-stat">
+            <div class="location-stat-number" id="zoneTimer" style="color:var(--accent2);">00:00</div>
+            <div class="location-stat-label">⏱️ Tempo</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="location-actions">
+        <button class="btn orange" onclick="backToZoneSelection()">← Indietro</button>
+        <button class="btn green" onclick="loadAllZoneOperations()">🔄 Aggiorna</button>
+      </div>
+    </div>
+    
+    <div class="operations-container" id="operationsContainer">
+      
+    </div>
+  </div>
+</div>
+
+
+<div id="cameraModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.95); display:none; align-items:center; justify-content:center; z-index:400; flex-direction:column; gap:20px; padding:20px;">
+  <video id="cameraFeed" playsinline="" style="width:100%; max-width:600px; border-radius:20px; border:3px solid var(--accent2);"></video>
+  <div id="scanFeedback" style="color:var(--accent2); font-weight:bold; font-size:16px;">Inquadra il codice QR dell'ubicazione...</div>
+  <div style="display:flex; gap:16px;">
+    <button class="btn ghost" onclick="switchCamera()">🔄 Cambia Fotocamera</button>
+    <button class="btn danger" onclick="closeCameraScanner()">❌ Annulla</button>
+  </div>
+</div>
+
+
+<div id="keyboardModal">
+  <div class="keyboard">
+    <div class="keyboard-header">
+      <div class="keyboard-title">⌨️ Inserisci Quantità</div>
+      <button class="keyboard-close" onclick="closeKeyboard()">×</button>
+    </div>
+    
+    <div class="keyboard-display" id="keyboardDisplay">0</div>
+    
+    <div class="keyboard-grid">
+      <button class="key" onclick="keyPress('1')">1</button>
+      <button class="key" onclick="keyPress('2')">2</button>
+      <button class="key" onclick="keyPress('3')">3</button>
+      
+      <button class="key" onclick="keyPress('4')">4</button>
+      <button class="key" onclick="keyPress('5')">5</button>
+      <button class="key" onclick="keyPress('6')">6</button>
+      
+      <button class="key" onclick="keyPress('7')">7</button>
+      <button class="key" onclick="keyPress('8')">8</button>
+      <button class="key" onclick="keyPress('9')">9</button>
+      
+      <button class="key" onclick="keyPress('.')">.</button>
+      <button class="key" onclick="keyPress('0')">0</button>
+      <button class="key backspace" onclick="keyBackspace()">⌫</button>
+      
+      <button class="key clear" onclick="keyClear()">Pulisci</button>
+      <button class="key confirm wide" onclick="confirmQuantity()">✅ Conferma</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="toast" class="toast"></div>
+
+
+<div id="batchSelectionModal">
+  <div class="modal-content">
+    <h3 style="margin:0 0 20px;color:var(--accent2);font-size:22px">📦 Seleziona il Tuo Batch</h3>
+    <div id="batchList" style="max-height:300px;overflow:auto;margin-bottom:20px">
+      
+    </div>
+    <button class="btn ghost" onclick="closeBatchSelection()" style="width:100%">❌ Chiudi</button>
+  </div>
+</div>
+
+<canvas id="qrCanvas" style="display: none;"></canvas>
+
+<script>
+/* ===== GLOBAL CONFIGURATION ===== */
+const CONFIG = {
+  AUTO_SCAN_DELAY: 300,
+  SCAN_TIMEOUT: 45000,
+  CONNECTION_CHECK_INTERVAL: 30000,
+  REFRESH_INTERVAL: 120000,
+  DEBUG_MODE: localStorage.getItem('picking_debug') === 'true',
+  QR_VERIFICATION: localStorage.getItem('picking_qr_verification') !== 'false',
+  USER_ID: null, // Will be set when connection is established
+  USER_NAME: null // Will store logged user name
+};
+
+// Zone configuration
+const ZONES = {
+  'secco': { name: 'SECCO', color: 'var(--secco)', icon: '📦' },
+  'secco-sopra': { name: 'SECCO SOPRA', color: 'var(--secco-sopra)', icon: '📚' },
+  'pingu': { name: 'PINGU', color: 'var(--pingu)', icon: '🐧' },
+  'frigo': { name: 'FRIGO', color: 'var(--frigo)', icon: '❄️' }
+};
+
+// State variables
+let currentBatchId = null;
+let currentZone = null;
+let currentSublocationId = null;
+let currentOperations = [];
+let currentKeyboardTarget = null;
+let pickingNotesMap = {};
+
+// Control check tracking
+let checkedOperations = new Set(); // Store checked operation IDs
+
+// Timer tracking variables
+let zoneStartTime = null;
+let sublocationStartTime = null;
+let operationStartTimes = {};
+let workStats = {
+  zoneTime: 0,
+  sublocationTimes: {},
+  operationTimes: {},
+  productsPickedCount: 0,
+  totalKgPicked: 0,
+  completedOperations: []
+};
+let keyboardValue = '';
+let pendingSublocationId = null;
+let pendingOperations = null;
+
+// Scanner variables
+let cameraStream = null;
+let cameraFacing = 'environment';
+let barcodeDetector = null;
+let scannerActive = false;
+let scanTimeout = null;
+let scanMode = null;
+
+// Data caches
+let movesCache = new Map();
+let linesCache = new Map();  
+let linesByMove = {};
+let doneByMove = {};
+let metaByMove = {};
+
+// Debug system
+let debugLog = [];
+let rpcLog = [];
+
+// Connection
+let connectionInterval = null;
+let toastTimer = null;
+
+/* ===== DEBUG SYSTEM ===== */
+function debugPrint(context, data, level = 'info') {
+  const timestamp = new Date().toISOString();
+  const entry = { timestamp, context, data, level };
+  
+  debugLog.unshift(entry);
+  if (debugLog.length > 50) debugLog = debugLog.slice(0, 50);
+  
+  if (CONFIG.DEBUG_MODE) {
+    console.group(`🔍 DEBUG: ${context}`);
+    console.log(data);
+    console.groupEnd();
+  }
+  
+  updateDebugPanel();
+}
+
+function logRPC(model, method, args, result, error = null) {
+  const timestamp = new Date().toISOString();
+  const entry = { timestamp, model, method, args, result: error ? 'ERROR' : 'OK', error };
+  
+  rpcLog.unshift(entry);
+  if (rpcLog.length > 20) rpcLog = rpcLog.slice(0, 20);
+  
+  updateDebugPanel();
+}
+
+function toggleDebug() {
+  const panel = document.getElementById('debugPanel');
+  if(panel) {
+    panel.classList.toggle('open');
+  }
+  
+  CONFIG.DEBUG_MODE = !CONFIG.DEBUG_MODE;
+  localStorage.setItem('picking_debug', CONFIG.DEBUG_MODE);
+}
+
+function updateDebugPanel() {
+  const debugStatus = document.getElementById('debugStatus');
+  const debugState = document.getElementById('debugState');
+  const debugErrors = document.getElementById('debugErrors');
+  const debugRPC = document.getElementById('debugRPC');
+  
+  if(debugStatus) {
+    debugStatus.innerHTML = `
+      Debug: ${CONFIG.DEBUG_MODE ? 'ON' : 'OFF'}<br>
+      Batch: ${currentBatchId || 'None'}<br>
+      Zone: ${currentZone || 'None'}<br>
+      Operations: ${currentOperations.length}
+    `;
+  }
+  
+  if(debugState) {
+    debugState.innerHTML = `
+      Moves Cache: ${movesCache.size}<br>
+      Lines Cache: ${linesCache.size}<br>
+      Lines by Move: ${Object.keys(linesByMove).length}
+    `;
+  }
+  
+  if(debugErrors) {
+    const errorEntries = debugLog.filter(e => e.level === 'error').slice(0, 3);
+    debugErrors.innerHTML = errorEntries.length ? 
+      errorEntries.map(e => `<div style="font-size:10px;margin:2px 0;color:var(--danger)">${e.context}: ${JSON.stringify(e.data).slice(0, 100)}</div>`).join('') :
+      'No recent errors';
+  }
+  
+  if(debugRPC) {
+    debugRPC.innerHTML = rpcLog.slice(0, 5)
+      .map(r => `<div style="font-size:10px;margin:2px 0;color:${r.result === 'OK' ? 'var(--ok)' : 'var(--danger)'}">${r.model}.${r.method} - ${r.result}</div>`)
+      .join('');
+  }
+}
+
+/* ===== UTILITY FUNCTIONS ===== */
+function getEl(id) {
+  return document.getElementById(id);
+}
+
+function setElText(id, text) {
+  const el = getEl(id);
+  if(el) el.textContent = text;
+}
+
+function showToast(msg, type = 'info', duration = 2500){
+  const toast = document.getElementById('toast');
+  if(!toast) return;
+  
+  toast.textContent = msg;
+  toast.className = `toast ${type} show`;
+  
+  debugPrint('Toast', { message: msg, type }, type === 'error' ? 'error' : 'info');
+  
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    if(toast) {
+      toast.classList.remove('show');
+    }
+  }, duration);
+}
+
+function updateConnectionStatus(connected, text){
+  const status = document.getElementById('connectionStatus');
+  const icon = document.getElementById('connectionIcon');
+  
+  if(status) {
+    status.className = connected ? 'connection-status connected' : 'connection-status disconnected';
+    
+    const textSpan = status.querySelector('span:last-child');
+    if(textSpan) {
+      textSpan.textContent = text || (connected ? 'Connesso' : 'Disconnesso');
+    }
+  }
+  
+  if(icon) {
+    icon.textContent = connected ? '🟢' : '🔴';
+  }
+  
+  debugPrint('Connection Status', { connected, text });
+}
+
+function toggleTheme(){
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('picking_theme', next);
+  
+  const btn = document.getElementById('themeBtn');
+  if(btn) {
+    btn.textContent = next === 'light' ? '☀️' : '🌙';
+  }
+}
+
+function initTheme(){
+  const saved = localStorage.getItem('picking_theme');
+  if(saved) document.documentElement.setAttribute('data-theme', saved);
+  
+  const btn = document.getElementById('themeBtn');
+  if(btn) {
+    const current = document.documentElement.getAttribute('data-theme');
+    btn.textContent = current === 'light' ? '☀️' : '🌙';
+  }
+}
+
+function setZoneColors(zone){
+  if(ZONES[zone]){
+    document.documentElement.style.setProperty('--current-zone-color', ZONES[zone].color);
+  }
+}
+
+function getCSRF(){
+  try{
+    if(window.odoo?.csrf_token) return window.odoo.csrf_token;
+    if(window.parent && window.parent.odoo?.csrf_token) return window.parent.odoo.csrf_token;
+    const m=document.cookie.match(/(?:^|;)\s*csrf_token=([^;]+)/);
+    if(m) return decodeURIComponent(m[1]);
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if(meta) return meta.getAttribute('content');
+  }catch(e){
+    debugPrint('CSRF Error', e, 'error');
+  }
+  return null;
+}
+
+/* ===== ODOO RPC FUNCTIONS ===== */
+async function callKw(model, method, args = [], kwargs = {}){
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
+  };
+  
+  const token = getCSRF();
+  if(token) headers['X-CSRFToken'] = token;
+  
+  const requestData = {
+    jsonrpc: '2.0',
+    method: 'call',
+    params: {
+      model: model,
+      method: method,
+      args: args,
+      kwargs: kwargs
+    },
+    id: Date.now()
+  };
+  
+  debugPrint('RPC Request', { model, method, args, kwargs });
+  
+  try {
+    const res = await fetch(`/web/dataset/call_kw/${model}/${method}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: headers,
+      body: JSON.stringify(requestData)
+    });
+    
+    if(!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    
+    const data = await res.json();
+    if(data.error) {
+      throw new Error((data.error.data && data.error.data.message) || data.error.message || 'RPC Error');
+    }
+    
+    debugPrint('RPC Success', { model, method, result: data.result });
+    logRPC(model, method, args, data.result);
+    
+    return data.result;
+  } catch(e) {
+    debugPrint('RPC Error', { model, method, error: e.message, args, kwargs }, 'error');
+    logRPC(model, method, args, null, e.message);
+    
+    if(e.message.includes('401') || e.message.includes('403')){
+      updateConnectionStatus(false, 'Non autorizzato');
+    }
+    throw e;
+  }
+}
+
+async function searchRead(model, domain, fields = [], limit = 0, order = ''){
+  return callKw(model, 'search_read', [domain], {fields, limit, order});
+}
+
+/* ===== CONNECTION MANAGEMENT ===== */
+async function checkConnection(){
+  try {
+    await searchRead('stock.location', [], ['id'], 1);
+    updateConnectionStatus(true, 'Connesso a Odoo');
+    
+    // Get current user ID if not already stored
+    if(!CONFIG.USER_ID || !CONFIG.USER_NAME) {
+      try {
+        // Simple approach: call name_get on res.users model with uid 
+        // This should return info about the current user
+        const userContext = await callKw('res.users', 'context_get', []);
+        
+        if(userContext && userContext.uid) {
+          CONFIG.USER_ID = userContext.uid;
+          
+          // Get user details
+          const user = await searchRead('res.users', 
+            [['id', '=', CONFIG.USER_ID]], 
+            ['name', 'login'], 1);
+          
+          if(user && user.length > 0) {
+            CONFIG.USER_NAME = user[0].name || user[0].login || 'Operatore';
+            debugPrint('Current user found via context', { 
+              userId: CONFIG.USER_ID, 
+              userName: CONFIG.USER_NAME 
+            });
+          }
+        } else {
+          // Alternative: Use browse to get current user
+          // When we browse without ID, it often returns current user
+          const browseResult = await callKw('res.users', 'name_get', [[2]]);
+          
+          if(browseResult && browseResult.length > 0) {
+            // Try to find actual logged user by checking who can modify their own preferences
+            const users = await searchRead('res.users',
+              [['write_uid', '!=', false]],
+              ['id', 'name', 'login', 'write_date'], 
+              5, 
+              'write_date desc');
+            
+            if(users && users.length > 0) {
+              // The most recently modified user is likely the current one
+              CONFIG.USER_ID = users[0].id;
+              CONFIG.USER_NAME = users[0].name || users[0].login;
+              debugPrint('User found by write activity', {
+                userId: CONFIG.USER_ID,
+                userName: CONFIG.USER_NAME
+              });
+            }
+          }
+        }
+      } catch(e) {
+        debugPrint('Could not get current user, trying fallback', e);
+        
+        // Final fallback: Ask the user to identify themselves
+        CONFIG.USER_ID = null;
+        CONFIG.USER_NAME = prompt('Inserisci il tuo nome utente:') || 'Operatore';
+        
+        if(CONFIG.USER_NAME !== 'Operatore') {
+          localStorage.setItem('picking_user_name', CONFIG.USER_NAME);
+        }
+      }
+      
+      // Check if we have a saved user name
+      if(!CONFIG.USER_NAME || CONFIG.USER_NAME === 'Operatore') {
+        const savedName = localStorage.getItem('picking_user_name');
+        if(savedName) {
+          CONFIG.USER_NAME = savedName;
+        }
+      }
+    }
+    
+    // Try to discover available fields in stock.move.line (only once)
+    if(!window.fieldsDiscovered) {
+      try {
+        const testLine = await searchRead('stock.move.line', [], [], 1);
+        if(testLine.length > 0) {
+          debugPrint('Available fields in stock.move.line', Object.keys(testLine[0]));
+          window.fieldsDiscovered = true;
+        }
+      } catch(e) {
+        debugPrint('Could not discover fields', e);
+      }
+    }
+    
+    return true;
+  } catch(e) {
+    debugPrint('Connection Check Failed', e, 'error');
+    updateConnectionStatus(false, 'Errore connessione');
+    return false;
+  }
+}
+
+/* ===== BATCH MANAGEMENT ===== */
+async function selectBatch(){
+  try {
+    showToast('🔍 Caricamento batch disponibili...', 'info');
+    
+    const batches = await searchRead('stock.picking.batch', 
+      [['state', '=', 'in_progress']], 
+      ['id', 'name', 'user_id', 'x_studio_autista_del_giro', 'x_studio_auto_del_giro', 'picking_ids'], 20, 'name desc');
+    
+    debugPrint('Batches Loaded', { count: batches.length });
+    
+    if(batches.length === 0){
+      showToast('❌ Nessun batch disponibile', 'error');
+      return;
+    }
+    
+    const batchList = document.getElementById('batchList');
+    batchList.innerHTML = '';
+    
+    for(const batch of batches) {
+      const item = document.createElement('div');
+      item.style.cssText = `
+        padding: 16px; margin: 8px 0; background: var(--bg); 
+        border: 2px solid var(--border); border-radius: 12px; cursor: pointer;
+        transition: all 0.2s;
+      `;
+      
+      // Get driver name from custom field or user field
+      let driverInfo = 'Non assegnato';
+      let driverType = 'Autista';
+      
+      if(batch.x_studio_autista_del_giro && Array.isArray(batch.x_studio_autista_del_giro)) {
+        driverInfo = batch.x_studio_autista_del_giro[1];
+        driverType = 'Autista';
+      } else if(batch.user_id && Array.isArray(batch.user_id)) {
+        driverInfo = batch.user_id[1];
+        driverType = 'Operatore';
+      }
+      
+      const pickingCount = batch.picking_ids ? batch.picking_ids.length : 0;
+      let vehicleInfo = '';
+      if(batch.x_studio_auto_del_giro && Array.isArray(batch.x_studio_auto_del_giro)) {
+        vehicleInfo = ` • 🚗 ${batch.x_studio_auto_del_giro[1]}`;
+      }
+      
+      item.innerHTML = `
+        <div style="font-weight: 800; font-size: 16px; color: var(--accent2); margin-bottom: 4px;">${batch.name}</div>
+        <div style="font-size: 13px; color: var(--muted);">
+          ${driverType}: ${driverInfo} • ${pickingCount} picking${vehicleInfo}
+        </div>
+      `;
+      
+      item.addEventListener('click', () => {
+        selectBatchById(batch.id, batch.name);
+        closeBatchSelection();
+      });
+      
+      item.addEventListener('mouseenter', () => {
+        item.style.borderColor = 'var(--accent2)';
+        item.style.transform = 'translateY(-2px)';
+      });
+      item.addEventListener('mouseleave', () => {
+        item.style.borderColor = 'var(--border)';
+        item.style.transform = 'translateY(0)';
+      });
+      
+      batchList.appendChild(item);
+    }
+    
+    document.getElementById('batchSelectionModal').style.display = 'flex';
+    
+  } catch(e) {
+    showToast('❌ Errore caricamento batch: ' + e.message, 'error');
+    debugPrint('Batch Loading Error', e, 'error');
+  }
+}
+
+function closeBatchSelection(){
+  const modal = document.getElementById('batchSelectionModal');
+  if(modal) {
+    modal.style.display = 'none';
+  }
+}
+
+function showDriverInfo(){
+  const driverName = document.getElementById('driverName').textContent;
+  const driverRole = document.getElementById('driverRole').textContent;
+  const batchName = document.getElementById('batchBadgeName').textContent;
+  const zoneName = document.getElementById('zoneBadgeName').textContent;
+  
+  let info = `👤 ${driverRole}: ${driverName}`;
+  
+  if(currentBatchId) {
+    info += `\n📦 Batch: ${batchName}`;
+  }
+  if(currentZone) {
+    info += `\n📍 Zona: ${zoneName}`;
+  }
+  
+  showToast(info, 'info', 3000);
+}
+
+function showNotePopup(note){
+  const popup = document.getElementById('notePopup');
+  const content = document.getElementById('noteContent');
+  
+  if(popup && content) {
+    content.textContent = note || 'Nessuna nota disponibile';
+    popup.style.display = 'flex';
+  }
+}
+
+function closeNotePopup(){
+  const popup = document.getElementById('notePopup');
+  if(popup) {
+    popup.style.display = 'none';
+  }
+}
+
+// Control check functions
+function toggleOperationCheck(operationId){
+  if(checkedOperations.has(operationId)) {
+    checkedOperations.delete(operationId);
+  } else {
+    checkedOperations.add(operationId);
+  }
+  
+  // Save to localStorage
+  saveCheckedOperations();
+  
+  // Update UI
+  updateOperationCheckUI(operationId);
+}
+
+function updateOperationCheckUI(operationId){
+  const checkBtn = document.getElementById(`check-btn-${operationId}`);
+  const operationDiv = document.querySelector(`[data-operation-id="${operationId}"]`);
+  
+  if(checkedOperations.has(operationId)) {
+    if(checkBtn) {
+      checkBtn.classList.remove('ghost');
+      checkBtn.classList.add('success');
+      checkBtn.innerHTML = '✅ Controllato';
+    }
+    if(operationDiv) {
+      operationDiv.classList.add('checked');
+    }
+  } else {
+    if(checkBtn) {
+      checkBtn.classList.remove('success');
+      checkBtn.classList.add('ghost');
+      checkBtn.innerHTML = '⬜ Da Controllare';
+    }
+    if(operationDiv) {
+      operationDiv.classList.remove('checked');
+    }
+  }
+}
+
+function saveCheckedOperations(){
+  if(currentBatchId && currentZone) {
+    const key = `checked_ops_${currentBatchId}_${currentZone}`;
+    localStorage.setItem(key, JSON.stringify([...checkedOperations]));
+  }
+}
+
+function loadCheckedOperations(){
+  if(currentBatchId && currentZone) {
+    const key = `checked_ops_${currentBatchId}_${currentZone}`;
+    const saved = localStorage.getItem(key);
+    if(saved) {
+      try {
+        checkedOperations = new Set(JSON.parse(saved));
+      } catch(e) {
+        checkedOperations = new Set();
+      }
+    } else {
+      checkedOperations = new Set();
+    }
+  }
+}
+
+// Timer functions
+let zoneTimerInterval = null;
+
+function startZoneTimer(){
+  // Clear any existing timer
+  if(zoneTimerInterval) clearInterval(zoneTimerInterval);
+  
+  zoneTimerInterval = setInterval(() => {
+    if(zoneStartTime) {
+      const elapsed = Math.floor((Date.now() - zoneStartTime) / 1000);
+      const minutes = Math.floor(elapsed / 60);
+      const seconds = elapsed % 60;
+      document.getElementById('zoneTimer').textContent = 
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+  }, 1000);
+}
+
+function stopZoneTimer(){
+  if(zoneTimerInterval) {
+    clearInterval(zoneTimerInterval);
+    zoneTimerInterval = null;
+  }
+  
+  if(zoneStartTime) {
+    const elapsed = Date.now() - zoneStartTime;
+    workStats.zoneTime = elapsed;
+    zoneStartTime = null;
+  }
+}
+
+function formatTime(milliseconds){
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${seconds}s`;
+}
+
+async function generateWorkReport(){
+  // Use stored user name or try to get it again
+  let operatorName = CONFIG.USER_NAME || 'Operatore';
+  
+  // If we still don't have the name, try one more time
+  if(!CONFIG.USER_NAME && CONFIG.USER_ID) {
+    try {
+      const userInfo = await searchRead('res.users', 
+        [['id', '=', CONFIG.USER_ID]], 
+        ['name', 'login'], 1);
+      
+      if(userInfo && userInfo.length > 0) {
+        operatorName = userInfo[0].name || userInfo[0].login || 'Operatore';
+        CONFIG.USER_NAME = operatorName;
+      }
+    } catch(e) {
+      debugPrint('Could not get user name for report', e, 'error');
+    }
+  }
+  
+  const zoneName = ZONES[currentZone] ? ZONES[currentZone].name : currentZone;
+  const now = new Date();
+  
+  let report = `📊 REPORT LAVORO - ${zoneName}\n`;
+  report += `👤 Operatore: ${operatorName}\n`;
+  report += `📅 Data: ${now.toLocaleDateString('it-IT')} ${now.toLocaleTimeString('it-IT')}\n`;
+  report += `⏱️ Tempo totale zona: ${formatTime(workStats.zoneTime)}\n\n`;
+  
+  report += `📦 STATISTICHE:\n`;
+  report += `- Prodotti prelevati: ${workStats.productsPickedCount}\n`;
+  report += `- Peso totale: ${workStats.totalKgPicked.toFixed(2)} kg\n`;
+  report += `- Operazioni completate: ${workStats.completedOperations.length}\n\n`;
+  
+  if(Object.keys(workStats.sublocationTimes).length > 0) {
+    report += `📍 TEMPI PER UBICAZIONE:\n`;
+    for(const [subloc, time] of Object.entries(workStats.sublocationTimes)) {
+      report += `- ${subloc}: ${formatTime(time)}\n`;
+    }
+    report += `\n`;
+  }
+  
+  return report;
+}
+
+async function selectBatchById(batchId, batchName){
+  currentBatchId = batchId;
+  
+  document.getElementById('currentBatchName').textContent = batchName;
+  document.getElementById('currentBatchDetails').textContent = `Batch selezionato - ID: ${batchId}`;
+  
+  const batchBadge = document.getElementById('batchBadge');
+  const batchBadgeName = document.getElementById('batchBadgeName');
+  if(batchBadge && batchBadgeName) {
+    batchBadge.style.display = 'flex';
+    batchBadgeName.textContent = batchName;
+  }
+  
+  // Get batch details for driver info
+  try {
+    const batchDetails = await searchRead('stock.picking.batch', 
+      [['id', '=', batchId]], 
+      ['name', 'user_id', 'x_studio_autista_del_giro', 'x_studio_auto_del_giro', 'picking_ids'], 1);
+    
+    if(batchDetails.length > 0) {
+      const batch = batchDetails[0];
+      
+      // Update driver info - check custom field first
+      if(batch.x_studio_autista_del_giro && Array.isArray(batch.x_studio_autista_del_giro)) {
+        const driverName = batch.x_studio_autista_del_giro[1];
+        document.getElementById('driverName').textContent = driverName;
+        document.getElementById('driverRole').textContent = 'Autista';
+        
+        // Update avatar with initials
+        const initials = driverName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        document.getElementById('driverAvatar').textContent = initials;
+      } else if(batch.user_id && Array.isArray(batch.user_id)) {
+        const userName = batch.user_id[1];
+        document.getElementById('driverName').textContent = userName;
+        document.getElementById('driverRole').textContent = 'Operatore';
+        
+        // Update avatar with initials
+        const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        document.getElementById('driverAvatar').textContent = initials;
+      } else {
+        document.getElementById('driverName').textContent = 'Non assegnato';
+        document.getElementById('driverRole').textContent = 'Driver';
+        document.getElementById('driverAvatar').textContent = '?';
+      }
+      
+      // Update vehicle info if available
+      if(batch.x_studio_auto_del_giro && Array.isArray(batch.x_studio_auto_del_giro)) {
+        const vehiclePlate = batch.x_studio_auto_del_giro[1];
+        document.getElementById('vehicleBadgePlate').textContent = vehiclePlate;
+        document.getElementById('vehicleBadge').style.display = 'flex';
+      } else {
+        document.getElementById('vehicleBadge').style.display = 'none';
+      }
+    }
+  } catch(e) {
+    debugPrint('Error getting batch details', e, 'error');
+  }
+  
+  debugPrint('Batch Selected', { batchId, batchName });
+  showToast(`📦 Batch selezionato: ${batchName}`, 'success');
+  
+  // Clear caches
+  movesCache.clear();
+  linesCache.clear();
+  linesByMove = {};
+  doneByMove = {};
+  metaByMove = {};
+  
+  const zoneBadge = document.getElementById('zoneBadge');
+  if(zoneBadge) {
+    zoneBadge.style.display = 'none';
+  }
+  
+  await refreshZoneCounts();
+}
+
+/* ===== ZONE MANAGEMENT ===== */
+async function refreshZoneCounts(){
+  if(!currentBatchId) {
+    Object.keys(ZONES).forEach(zone => {
+      document.getElementById(`${zone.replace('-', '')}Count`).textContent = '0';
+    });
+    return;
+  }
+  
+  try {
+    showToast('🔄 Aggiornamento conteggi zone...', 'info');
+    
+    // Get all picking IDs in the current batch
+    const batch = await searchRead('stock.picking.batch', 
+      [['id', '=', currentBatchId]], 
+      ['picking_ids'], 1);
+    
+    if(batch.length === 0 || !batch[0].picking_ids) {
+      debugPrint('No Pickings in Batch', { batchId: currentBatchId });
+      return;
+    }
+    
+    const pickingIds = batch[0].picking_ids;
+    debugPrint('Picking IDs in Batch', { pickingIds, count: pickingIds.length });
+    
+    // Get picking info with partner data and notes
+    const pickings = await searchRead('stock.picking', 
+      [['id', 'in', pickingIds]], 
+      ['id', 'partner_id', 'sale_id', 'note'], 0);
+    
+    const pickingPartners = {};
+    const pickingSales = {};
+    const pickingNotes = {};
+    pickings.forEach(p => {
+      if(p.partner_id) {
+        pickingPartners[p.id] = p.partner_id;
+      }
+      if(p.sale_id) {
+        pickingSales[p.id] = p.sale_id[0];
+      }
+      if(p.note) {
+        pickingNotes[p.id] = p.note;
+      }
+    });
+    
+    // Get all moves from these pickings
+    const moves = await searchRead('stock.move', 
+      [['picking_id', 'in', pickingIds], ['state', '!=', 'cancel']], 
+      ['id', 'picking_id', 'product_id', 'product_uom_qty', 'location_id', 'product_uom', 'sale_line_id'], 0);
+    
+    debugPrint('Moves Loaded', { count: moves.length });
+    
+    if(moves.length === 0) return;
+    
+    // Cache moves with partner info
+    moves.forEach(move => {
+      // Add partner info to move
+      if(move.picking_id && pickingPartners[move.picking_id[0]]) {
+        move.partner_id = pickingPartners[move.picking_id[0]];
+      }
+      // Add sale_id from picking
+      if(move.picking_id && pickingSales[move.picking_id[0]]) {
+        move.sale_order_id = pickingSales[move.picking_id[0]];
+      }
+      // Add note from picking
+      if(move.picking_id && pickingNotes[move.picking_id[0]]) {
+        move.picking_note = pickingNotes[move.picking_id[0]];
+      }
+      movesCache.set(move.id, move);
+      metaByMove[move.id] = move;
+    });
+    
+    // Get all move lines with lot information
+    const moveIds = moves.map(m => m.id);
+    const moveLines = await searchRead('stock.move.line', 
+      [['move_id', 'in', moveIds]], 
+      ['id', 'move_id', 'location_id', 'qty_done', 'quantity', 'lot_id', 'product_id', 'picking_id', 'product_uom_id'], 0);
+    
+    debugPrint('Move Lines Loaded', { count: moveLines.length });
+    
+    // Clear old caches and rebuild
+    linesByMove = {};
+    doneByMove = {};
+    linesCache.clear();
+    
+    // Process lines by move
+    moveLines.forEach(line => {
+      const mid = line.move_id && line.move_id[0];
+      
+      // Track lines by move
+      if(!linesByMove[mid]) linesByMove[mid] = [];
+      linesByMove[mid].push(line.id);
+      
+      // Do NOT track total done by move - each line keeps its own qty_done
+      
+      // Cache line
+      linesCache.set(line.id, line);
+    });
+    
+    // Count operations by zone
+    const zoneCounts = {
+      'secco': 0,
+      'secco-sopra': 0,
+      'pingu': 0,
+      'frigo': 0
+    };
+    
+    for(const line of moveLines) {
+      if(line.location_id && Array.isArray(line.location_id)) {
+        const locationPath = line.location_id[1].toLowerCase();
+        
+        if(locationPath.includes('secco sopra')) {
+          zoneCounts['secco-sopra']++;
+        } else if(locationPath.includes('secco')) {
+          zoneCounts['secco']++;
+        } else if(locationPath.includes('pingu')) {
+          zoneCounts['pingu']++;
+        } else if(locationPath.includes('frigo')) {
+          zoneCounts['frigo']++;
+        }
+      }
+    }
+    
+    debugPrint('Zone Counts', zoneCounts);
+    
+    // Update UI
+    document.getElementById('seccoCount').textContent = zoneCounts['secco'];
+    document.getElementById('seccoSopraCount').textContent = zoneCounts['secco-sopra'];
+    document.getElementById('pinguCount').textContent = zoneCounts['pingu'];
+    document.getElementById('frigoCount').textContent = zoneCounts['frigo'];
+    
+    showToast('✅ Conteggi aggiornati', 'success');
+    
+  } catch(e) {
+    debugPrint('Zone Counts Error', e, 'error');
+    showToast('❌ Errore aggiornamento conteggi: ' + e.message, 'error');
+  }
+}
+
+async function selectZone(zone){
+  if(!currentBatchId) {
+    showToast('⚠️ Seleziona prima un batch', 'warning');
+    return;
+  }
+  
+  currentZone = zone;
+  setZoneColors(zone);
+  
+  // Start zone timer
+  zoneStartTime = Date.now();
+  startZoneTimer();
+  
+  const zoneBadge = document.getElementById('zoneBadge');
+  const zoneBadgeName = document.getElementById('zoneBadgeName');
+  if(zoneBadge && zoneBadgeName) {
+    zoneBadge.style.display = 'flex';
+    zoneBadgeName.textContent = ZONES[zone].name;
+    zoneBadgeName.style.color = ZONES[zone].color;
+  }
+  
+  const qrBtn = document.getElementById('qrToggleBtn');
+  if(qrBtn){
+    qrBtn.className = CONFIG.QR_VERIFICATION ? 'btn green' : 'btn ghost';
+    qrBtn.textContent = CONFIG.QR_VERIFICATION ? '📱 QR Attivo' : '📱 QR Disattivato';
+  }
+  
+  debugPrint('Zone Selected', { zone, zoneName: ZONES[zone].name });
+  
+  // GO DIRECTLY TO OPERATIONS VIEW - SKIP SUBLOCATIONS
+  document.getElementById('currentLocationName').textContent = ZONES[zone].name;
+  document.getElementById('currentLocationPath').textContent = `WH/Deposito/${ZONES[zone].name}`;
+  
+  document.getElementById('zoneSelectionView').classList.remove('active');
+  document.getElementById('operationsView').classList.add('active');
+  
+  showToast(`📍 Controllo zona: ${ZONES[zone].name}`, 'success');
+  
+  await loadAllZoneOperations();
+}
+
+/* ===== LOAD ALL ZONE OPERATIONS DIRECTLY ===== */
+async function loadAllZoneOperations(){
+  try {
+    const container = document.getElementById('operationsContainer');
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">🔍 Caricamento operazioni zona...</div>';
+    
+    if(!currentBatchId || !currentZone) return;
+    
+    // Load checked operations state
+    loadCheckedOperations();
+    
+    debugPrint('Loading All Zone Operations', { batchId: currentBatchId, zone: currentZone });
+    
+    // Collect all operations for the current zone
+    let zoneOperations = [];
+    
+    for(const [lineId, line] of linesCache.entries()) {
+      if(line.location_id && Array.isArray(line.location_id)) {
+        const locationPath = line.location_id[1].toLowerCase();
+        
+        let belongsToZone = false;
+        if(currentZone === 'secco' && locationPath.includes('secco') && !locationPath.includes('sopra')) {
+          belongsToZone = true;
+        } else if(currentZone === 'secco-sopra' && locationPath.includes('secco sopra')) {
+          belongsToZone = true;
+        } else if(currentZone === 'pingu' && locationPath.includes('pingu')) {
+          belongsToZone = true;
+        } else if(currentZone === 'frigo' && locationPath.includes('frigo')) {
+          belongsToZone = true;
+        }
+        
+        if(belongsToZone) {
+          const move = metaByMove[line.move_id && line.move_id[0]];
+          
+          zoneOperations.push({
+            id: lineId,
+            move_id: line.move_id,
+            product_id: line.product_id,
+            lot_id: line.lot_id,
+            location_id: line.location_id,
+            location_name: line.location_id[1],
+            quantity: line.quantity || 0,
+            qty_done: line.qty_done || 0,
+            product_uom_id: line.product_uom_id,
+            move: move
+          });
+        }
+      }
+    }
+    
+    // Sort by location name for better organization
+    zoneOperations.sort((a, b) => {
+      const locA = a.location_name || '';
+      const locB = b.location_name || '';
+      return locA.localeCompare(locB);
+    });
+    
+    // Update current operations
+    currentOperations = zoneOperations;
+    
+    // Update stats
+    const totalOps = zoneOperations.length;
+    const completedOps = zoneOperations.filter(op => op.qty_done >= op.quantity).length;
+    const checkedOps = [...checkedOperations].filter(id => 
+      zoneOperations.some(op => op.id === id)
+    ).length;
+    
+    document.getElementById('locationTotalOps').textContent = totalOps;
+    document.getElementById('locationCompletedOps').textContent = `${checkedOps}/${completedOps}`;
+    document.getElementById('locationProgressPct').textContent = totalOps > 0 ? 
+      Math.round((checkedOps / totalOps) * 100) + '%' : '0%';
+    
+    if(zoneOperations.length === 0) {
+      container.innerHTML = `
+        <div style="text-align:center;padding:60px 20px;">
+          <div style="font-size:48px;margin-bottom:16px;">📭</div>
+          <div style="font-size:18px;color:var(--text);font-weight:600;">Nessuna operazione in questa zona</div>
+          <div style="font-size:14px;color:var(--muted);margin-top:8px;">Tutte le operazioni sono state completate</div>
+        </div>
+      `;
+      return;
+    }
+    
+    // Render operations grouped or ungrouped based on preference
+    await renderOperations(zoneOperations);
+    
+    showToast(`✅ ${totalOps} operazioni caricate per ${ZONES[currentZone].name}`, 'success');
+    
+  } catch(e) {
+    debugPrint('Error loading zone operations', e, 'error');
+    showToast('❌ Errore caricamento operazioni', 'error');
+  }
+}
+
+/* ===== SUBLOCATION MANAGEMENT ===== */
+async function loadSublocations(){
+  try {
+    document.getElementById('sublocationsContainer').innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">🔍 Caricamento ubicazioni...</div>';
+    
+    if(!currentBatchId || !currentZone) return;
+    
+    debugPrint('Loading Sublocations', { batchId: currentBatchId, zone: currentZone });
+    
+    // Get move lines for current zone
+    let relevantLines = [];
+    
+    for(const [lineId, line] of linesCache.entries()) {
+      if(line.location_id && Array.isArray(line.location_id)) {
+        const locationPath = line.location_id[1].toLowerCase();
+        
+        let belongsToZone = false;
+        if(currentZone === 'secco' && locationPath.includes('secco') && !locationPath.includes('sopra')) {
+          belongsToZone = true;
+        } else if(currentZone === 'secco-sopra' && locationPath.includes('secco sopra')) {
+          belongsToZone = true;
+        } else if(currentZone === 'pingu' && locationPath.includes('pingu')) {
+          belongsToZone = true;
+        } else if(currentZone === 'frigo' && locationPath.includes('frigo')) {
+          belongsToZone = true;
+        }
+        
+        if(belongsToZone) {
+          relevantLines.push(line);
+        }
+      }
+    }
+    
+    debugPrint('Relevant Lines', { zone: currentZone, count: relevantLines.length });
+    
+    if(relevantLines.length === 0) {
+      document.getElementById('sublocationsContainer').innerHTML = `
+        <div style="text-align:center;padding:60px;color:var(--muted)">
+          <div style="font-size:48px;margin-bottom:16px">${ZONES[currentZone].icon}</div>
+          <h3>Nessuna operazione nella zona ${ZONES[currentZone].name}</h3>
+        </div>
+      `;
+      return;
+    }
+    
+    // Group by sublocation
+    const sublocationMap = new Map();
+    
+    for(const line of relevantLines) {
+      const locationId = line.location_id[0];
+      const locationName = line.location_id[1];
+      
+      if(!sublocationMap.has(locationId)) {
+        sublocationMap.set(locationId, {
+          id: locationId,
+          name: locationName,
+          barcode: '',  // Will be fetched later
+          operations: [],
+          totalOps: 0,
+          completedOps: 0
+        });
+      }
+      
+      const subloc = sublocationMap.get(locationId);
+      const move = metaByMove[line.move_id && line.move_id[0]];
+      
+      // Use ONLY the specific line's qty_done, not aggregated by move
+      const currentQtyDone = line.qty_done || 0;
+      
+      const enrichedLine = {
+        ...line,
+        qty_done: currentQtyDone,
+        move: move
+        // product_uom_qty should already be in line from searchRead
+      };
+      
+      subloc.operations.push(enrichedLine);
+      subloc.totalOps++;
+      
+      // Use quantity from the line (stock.move.line), not from move
+      const qtyToPickFromLine = line.quantity || 0;
+      if(currentQtyDone >= qtyToPickFromLine) {
+        subloc.completedOps++;
+      }
+    }
+    
+    const sublocations = Array.from(sublocationMap.values());
+    
+    // Get barcode for each location
+    const locationIds = sublocations.map(s => s.id);
+    try {
+      const locations = await searchRead('stock.location', 
+        [['id', 'in', locationIds]], 
+        ['id', 'barcode'], 0);
+      
+      // Map barcodes to sublocations
+      locations.forEach(loc => {
+        const subloc = sublocations.find(s => s.id === loc.id);
+        if(subloc && loc.barcode) {
+          subloc.barcode = loc.barcode;
+        }
+      });
+      
+      debugPrint('Location Barcodes Loaded', { count: locations.length });
+    } catch(e) {
+      debugPrint('Error loading location barcodes', e, 'error');
+    }
+    
+    // Sort sublocations alphabetically by name
+    sublocations.sort((a, b) => a.name.localeCompare(b.name));
+    
+    debugPrint('Sublocations', { count: sublocations.length });
+    
+    // Update stats
+    const totalOperations = sublocations.reduce((sum, sub) => sum + sub.totalOps, 0);
+    const completedOperations = sublocations.reduce((sum, sub) => sum + sub.completedOps, 0);
+    
+    document.getElementById('totalSublocations').textContent = sublocations.length;
+    document.getElementById('totalZoneOperations').textContent = totalOperations;
+    document.getElementById('completedZoneOperations').textContent = completedOperations;
+    
+    await renderSublocations(sublocations);
+    
+    showToast(`📍 ${sublocations.length} ubicazioni con operazioni`, 'success');
+    
+  } catch(e) {
+    debugPrint('Sublocation Loading Error', e, 'error');
+    showToast('❌ Errore caricamento ubicazioni: ' + e.message, 'error');
+  }
+}
+
+async function renderSublocations(sublocations){
+  const container = document.getElementById('sublocationsContainer');
+  container.innerHTML = '';
+  
+  for(const sublocation of sublocations) {
+    const item = document.createElement('div');
+    item.className = 'sublocation-item has-operations';
+    
+    if(CONFIG.QR_VERIFICATION){
+      // Pass the barcode instead of name for QR verification
+      item.onclick = () => startLocationScan(sublocation.id, sublocation.operations, sublocation.barcode || sublocation.name);
+    } else {
+      item.onclick = () => openSublocation(sublocation.id, sublocation.operations);
+    }
+    
+    const progress = sublocation.totalOps > 0 ? Math.round((sublocation.completedOps / sublocation.totalOps) * 100) : 0;
+    const locationName = sublocation.name.split('/').pop();
+    
+    item.innerHTML = `
+      <div class="sublocation-header-info">
+        <h3 class="sublocation-name">${locationName}</h3>
+        <div class="operations-count">${sublocation.totalOps}</div>
+      </div>
+      
+      <div class="sublocation-details">
+        <div><strong>Percorso:</strong> ${sublocation.name}</div>
+        <div><strong>Operazioni:</strong> ${sublocation.completedOps}/${sublocation.totalOps} completate</div>
+        ${sublocation.barcode ? `<div style="font-size:11px;color:var(--muted)">📊 Barcode: ${sublocation.barcode}</div>` : ''}
+        ${CONFIG.QR_VERIFICATION ? '<div style="font-size:11px;color:var(--accent)">📱 Richiede scansione QR</div>' : ''}
+      </div>
+      
+      <div class="sublocation-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: ${progress}%"></div>
+        </div>
+        <div class="progress-text">${progress}% completato</div>
+      </div>
+    `;
+    
+    container.appendChild(item);
+  }
+}
+
+/* ===== OPERATIONS MANAGEMENT ===== */
+async function openSublocation(sublocationId, operations){
+  currentSublocationId = sublocationId;
+  
+  // Track sublocation timing
+  if(sublocationStartTime) {
+    // Save previous sublocation time
+    const prevLocation = document.getElementById('currentLocationName')?.textContent;
+    if(prevLocation) {
+      const elapsed = Date.now() - sublocationStartTime;
+      if(!workStats.sublocationTimes[prevLocation]) {
+        workStats.sublocationTimes[prevLocation] = 0;
+      }
+      workStats.sublocationTimes[prevLocation] += elapsed;
+    }
+  }
+  sublocationStartTime = Date.now();
+  
+  // Update operations with latest qty_done from cache
+  currentOperations = operations.map(op => {
+    // Get the latest qty_done from the cache for THIS SPECIFIC line
+    const cachedLine = linesCache.get(op.id);
+    const latestQty = cachedLine ? cachedLine.qty_done : op.qty_done || 0;
+    return {
+      ...op,
+      qty_done: latestQty
+    };
+  });
+  
+  debugPrint('Sublocation Opened', { sublocationId, operationsCount: currentOperations.length });
+  
+  try {
+    const location = await searchRead('stock.location', 
+      [['id', '=', sublocationId]], 
+      ['name', 'complete_name'], 1);
+    
+    if(location.length > 0) {
+      document.getElementById('currentLocationName').textContent = location[0].name;
+      document.getElementById('currentLocationPath').textContent = location[0].complete_name;
+    }
+  } catch(e) {
+    debugPrint('Location Details Error', e, 'error');
+  }
+  
+  // Update stats with latest data
+  const totalOps = currentOperations.length;
+  const completedOps = currentOperations.filter(op => (op.qty_done || 0) >= (op.quantity || 0)).length;
+  const progress = totalOps > 0 ? Math.round((completedOps / totalOps) * 100) : 0;
+  
+  document.getElementById('locationTotalOps').textContent = totalOps;
+  document.getElementById('locationCompletedOps').textContent = completedOps;
+  document.getElementById('locationProgressPct').textContent = `${progress}%`;
+  
+  // Show operations view (sublocationListView removed in this version)
+  document.getElementById('operationsView').classList.add('active');
+  
+  await renderOperations();
+  
+  // Show appropriate message based on completion status
+  if(completedOps === 0) {
+    showToast(`📦 ${totalOps} operazioni da completare`, 'info');
+  } else if(completedOps === totalOps) {
+    showToast(`✅ Tutte le ${totalOps} operazioni già completate!`, 'success');
+  } else {
+    showToast(`📦 ${completedOps}/${totalOps} operazioni completate`, 'info');
+  }
+}
+
+async function renderOperations(){
+  const container = document.getElementById('operationsContainer');
+  container.innerHTML = '';
+  
+  // Group operations by product, customer and picking
+  const groupedOps = {};
+  
+  for(let i = 0; i < currentOperations.length; i++) {
+    const op = currentOperations[i];
+    const move = op.move || metaByMove[op.move_id && op.move_id[0]];
+    
+    if(move && move.product_id) {
+      const productId = move.product_id[0];
+      const partnerId = move.partner_id ? move.partner_id[0] : 'no-partner';
+      const pickingId = move.picking_id ? move.picking_id[0] : 'no-picking';
+      const locationId = op.location_id ? op.location_id[0] : currentSublocationId;
+      
+      // Group by product, partner, picking AND LOCATION
+      // This way we only sum quantities within the same location
+      const groupKey = `${productId}_${partnerId}_${pickingId}_${locationId}`;
+      
+      if(!groupedOps[groupKey]) {
+        groupedOps[groupKey] = {
+          productId: productId,
+          productName: move.product_id[1],
+          partnerId: partnerId,
+          partnerName: move.partner_id ? move.partner_id[1] : '',
+          pickingId: pickingId,
+          locationId: locationId,
+          operations: [],
+          saleOrderId: move.sale_order_id || null, // Get sale order from picking
+          customerOrderQty: 0, // Will fetch from sale.order.line
+          totalAvailable: 0, // Will get from stock.quant (all lots)
+          totalToPick: 0, // Sum from move lines (operations)
+          totalQtyDone: 0,
+          uom: move.product_uom ? move.product_uom[1] : 'pz',
+          hasNote: move.picking_note ? true : false,
+          noteText: move.picking_note || ''
+        };
+      }
+      
+      groupedOps[groupKey].operations.push({...op, index: i});
+      // The quantity to pick comes from the move line operation details
+      // This should be the quantity Odoo calculated for this specific operation
+      const qtyToPickFromOperation = op.quantity || 0;
+      groupedOps[groupKey].totalToPick += qtyToPickFromOperation;
+      groupedOps[groupKey].totalQtyDone += (op.qty_done || 0);
+    }
+  }
+  
+  // Render grouped operations
+  for(const groupKey in groupedOps) {
+    const group = groupedOps[groupKey];
+    
+    if(group.operations.length > 1) {
+      // Multiple lots - create consolidated view
+      const element = await createGroupedOperationElement(group, groupKey);
+      container.appendChild(element);
+    } else {
+      // Single operation - render normally
+      const element = await createOperationElement(group.operations[0], group.operations[0].index);
+      container.appendChild(element);
+    }
+  }
+}
+
+async function createGroupedOperationElement(group, groupKey){
+  const div = document.createElement('div');
+  const isCompleted = group.totalQtyDone >= group.totalToPick;
+  
+  div.className = `operation-item ${isCompleted ? 'completed' : ''} grouped-operation`;
+  div.dataset.groupKey = groupKey;
+  
+  // Get product image
+  let productImage = '';
+  let productCode = '';
+  
+  try {
+    const productDetails = await searchRead('product.product', 
+      [['id', '=', group.productId]], 
+      ['default_code', 'barcode', 'image_128'], 1);
+    if(productDetails.length > 0){
+      productCode = productDetails[0].default_code || productDetails[0].barcode || '';
+      productImage = productDetails[0].image_128 || '';
+    }
+  } catch(e) {
+    debugPrint('Product Details Error', e, 'error');
+  }
+  
+  // Count total locations for this product across ALL BATCH operations
+  // Need to look at ALL lines in the batch, not just current location
+  let totalLocationsForProduct = new Set();
+  let totalLotsInBatch = 0;
+  
+  // Search through ALL lines in cache for this product AND same customer
+  for(const [lineId, line] of linesCache.entries()) {
+    const move = metaByMove[line.move_id && line.move_id[0]];
+    if(move && move.product_id && move.product_id[0] === group.productId) {
+      // Check if same customer too
+      const sameCustomer = (move.partner_id && move.partner_id[0]) === group.partnerId || 
+                          (!move.partner_id && group.partnerId === 'no-partner');
+      
+      if(sameCustomer) {
+        // Same product and customer - count its location
+        if(line.location_id && Array.isArray(line.location_id)) {
+          totalLocationsForProduct.add(line.location_id[0]);
+        }
+        totalLotsInBatch++;
+      }
+    }
+  }
+  
+  const uniqueLocations = totalLocationsForProduct.size;
+  
+  debugPrint('Product location count', {
+    productId: group.productId,
+    productName: group.productName,
+    partnerId: group.partnerId,
+    uniqueLocations: uniqueLocations,
+    locations: Array.from(totalLocationsForProduct),
+    totalLotsInBatch: totalLotsInBatch,
+    lotsInThisLocation: group.operations.length
+  });
+  
+  // Create pickup info message
+  let pickupInfo = '';
+  if(uniqueLocations > 1) {
+    pickupInfo = `📍 Prelevare da ${uniqueLocations} ubicazioni`;
+  } else if(group.operations.length > 1) {
+    pickupInfo = `📦 Prelevare ${group.operations.length} lotti`;
+  } else {
+    pickupInfo = productCode ? `Codice: ${productCode}` : '';
+  }
+  
+  // Get customer order quantity from sale.order.line if available
+  let customerOrderQty = group.totalToPick; // Default to what we can pick
+  if(group.saleOrderId) {
+    try {
+      // Get all lines from the sale order for this product
+      const saleLines = await searchRead('sale.order.line',
+        [['order_id', '=', group.saleOrderId],
+         ['product_id', '=', group.productId]],
+        ['product_uom_qty'], 0);
+      
+      // Sum all quantities for this product in the order
+      let totalOrderQty = 0;
+      for(const line of saleLines) {
+        totalOrderQty += line.product_uom_qty || 0;
+      }
+      
+      if(totalOrderQty > 0) {
+        customerOrderQty = totalOrderQty;
+      }
+      
+      debugPrint('Customer order quantity from sale order', { 
+        saleOrderId: group.saleOrderId,
+        productId: group.productId,
+        customerOrderQty,
+        lineCount: saleLines.length
+      });
+    } catch(e) {
+      debugPrint('Error fetching sale order lines', e, 'error');
+    }
+  }
+  group.customerOrderQty = customerOrderQty;
+  
+  // Get total available quantity for the product (all lots combined)
+  let totalAvailable = 0;
+  
+  try {
+    // Fetch total available quantity from stock.quant for this product in THIS SPECIFIC location
+    const quants = await searchRead('stock.quant',
+      [['product_id', '=', group.productId], 
+       ['location_id', '=', group.locationId || currentSublocationId]],
+      ['quantity', 'reserved_quantity'], 100);
+    
+    // Sum all quantities across all lots
+    for(const quant of quants) {
+      totalAvailable += (quant.quantity || 0);
+    }
+    
+    debugPrint('Total available for product', { 
+      productId: group.productId,
+      locationId: group.locationId || currentSublocationId,
+      totalAvailable,
+      quantRecords: quants.length
+    });
+  } catch(e) {
+    debugPrint('Error fetching total available', e, 'error');
+    // Fallback to summing operation quantities
+    totalAvailable = group.totalToPick;
+  }
+  
+  // Get lot information for each operation
+  const lotInfo = [];
+  let earliestExpiration = null; // Track earliest expiration to highlight it
+  
+  for(const op of group.operations) {
+    const move = op.move || metaByMove[op.move_id && op.move_id[0]];
+    
+    // Initialize variables
+    let lotName = 'Senza lotto';
+    let lotId = null;
+    let lotExpirationDate = null;
+    let lotAvailableQty = 0;
+    let qtyToPick = op.quantity || 0;
+    
+    // Check if lot info is in the cached operation
+    const cachedLine = linesCache.get(op.id);
+    if(cachedLine && cachedLine.lot_id) {
+      if(Array.isArray(cachedLine.lot_id)) {
+        lotId = cachedLine.lot_id[0];
+        lotName = cachedLine.lot_id[1];
+        debugPrint('Lot found in cache', { lotId, lotName, lineId: op.id });
+        
+        // Get expiration date for cached lot too!
+        if(lotId) {
+          try {
+            const lots = await searchRead('stock.lot',
+              [['id', '=', lotId]],
+              ['expiration_date', 'use_date', 'removal_date'], 1);
+            
+            if(lots.length > 0) {
+              lotExpirationDate = lots[0].expiration_date || lots[0].use_date || lots[0].removal_date;
+              debugPrint('Lot expiration from cache lot', { 
+                lotId, 
+                expiration_date: lots[0].expiration_date,
+                used: lotExpirationDate
+              });
+            }
+          } catch(e) {
+            debugPrint('Error fetching expiration for cached lot', e);
+          }
+        }
+      }
+    }
+    
+    // If no lot in cache, fetch it directly
+    if(!lotId) {
+      try {
+        const moveLines = await searchRead('stock.move.line', 
+          [['id', '=', op.id]], 
+          ['lot_id', 'product_id', 'location_id', 'move_id', 'qty_done', 'quantity'], 1);
+        
+        if(moveLines.length > 0) {
+          const line = moveLines[0];
+          
+          if(line.lot_id && Array.isArray(line.lot_id)) {
+            lotId = line.lot_id[0];
+            lotName = line.lot_id[1];
+            debugPrint('Lot fetched from move.line', { lotId, lotName, lineId: op.id });
+            
+            // Get ONLY expiration date for display (not for logic)
+            try {
+              const lots = await searchRead('stock.lot',
+                [['id', '=', lotId]],
+                ['expiration_date', 'use_date', 'removal_date'], 1);
+              
+              if(lots.length > 0) {
+                // Priority to expiration_date, then fallback to other dates
+                lotExpirationDate = lots[0].expiration_date || lots[0].use_date || lots[0].removal_date;
+                debugPrint('Lot expiration retrieved', { 
+                  lotId, 
+                  expiration_date: lots[0].expiration_date,
+                  use_date: lots[0].use_date,
+                  removal_date: lots[0].removal_date,
+                  used: lotExpirationDate
+                });
+              }
+            } catch(e) {
+              // Ignore errors
+            }
+          }
+          
+          // Get available quantity from stock.quant for this specific lot
+          if(lotId && line.product_id && line.location_id) {
+            try {
+              const quants = await searchRead('stock.quant',
+                [['lot_id', '=', lotId], 
+                 ['product_id', '=', line.product_id[0]], 
+                 ['location_id', '=', line.location_id[0]]],
+                ['quantity', 'reserved_quantity'], 1);
+              
+              if(quants.length > 0) {
+                // Lot-specific quantity in this location
+                lotAvailableQty = quants[0].quantity || 0;
+                debugPrint('Quant data for lot', { 
+                  lotName, 
+                  quantity: lotAvailableQty,
+                  reservedQty: quants[0].reserved_quantity || 0
+                });
+              } else {
+                debugPrint('No quant found for lot', { lotId, lotName });
+                // If no quant, show 0
+                lotAvailableQty = 0;
+              }
+            } catch(qe) {
+              debugPrint('Error fetching quant', { error: qe.message, lotId });
+              lotAvailableQty = 0;
+            }
+          } else {
+            // No lot info, don't show lot-specific availability
+            lotAvailableQty = 0;
+          }
+        }
+      } catch(e) {
+        debugPrint('Error fetching lot details', { error: e.message, operationId: op.id });
+      }
+    }
+    
+    // Format expiration date ONLY for display
+    let expirationDisplay = 'Senza scadenza';
+    let expirationDateObj = null;
+    if(lotExpirationDate) {
+      const date = new Date(lotExpirationDate);
+      expirationDateObj = date;
+      
+      // Format as DD/MM/YYYY
+      expirationDisplay = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+      
+      // Track earliest expiration
+      if(!earliestExpiration || date < earliestExpiration) {
+        earliestExpiration = date;
+      }
+    }
+    
+    lotInfo.push({
+      operation: op,
+      lotId: lotId,
+      lotName: lotName || 'Senza lotto',
+      expirationDisplay: expirationDisplay,
+      expirationDate: expirationDateObj,
+      availableQty: lotAvailableQty,  // Lot-specific availability
+      qtyToPick: qtyToPick,  // From operation
+      qtyDone: op.qty_done || 0,
+      qtyNeeded: qtyToPick  // For buttons
+    });
+    
+    debugPrint('Lot info added', { 
+      lotName, 
+      lotAvailableQty, 
+      qtyToPick,
+      operationId: op.id 
+    });
+  }
+  
+  // Now assign colors: orange for earliest, purple for others, red for expired
+  const today = new Date();
+  for(const lot of lotInfo) {
+    if(lot.expirationDate) {
+      const daysUntilExpiry = Math.floor((lot.expirationDate - today) / (1000 * 60 * 60 * 24));
+      
+      if(daysUntilExpiry < 0) {
+        // Expired - always red
+        lot.expirationColor = 'var(--danger)';
+      } else if(earliestExpiration && lot.expirationDate.getTime() === earliestExpiration.getTime()) {
+        // This is the earliest expiration - orange
+        lot.expirationColor = 'var(--warning)';
+      } else {
+        // Not the earliest - purple/violet
+        lot.expirationColor = 'var(--purple)';
+      }
+    } else {
+      // No expiration date
+      lot.expirationColor = 'var(--muted)';
+    }
+  }
+  
+  // Set the total available for the entire product
+  group.totalAvailable = totalAvailable;
+  
+  div.innerHTML = `
+    <div class="operation-status ${isCompleted ? 'completed' : group.totalQtyDone > 0 ? 'partial' : 'pending'}">
+      ${isCompleted ? '✓' : group.totalQtyDone > 0 ? '◐' : '○'}
+    </div>
+    
+    <div style="position:absolute;top:10px;right:50px;background:var(--purple);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;">
+      ${group.operations.length} LOTTI
+    </div>
+    
+    <div class="operation-header">
+      <div class="product-section">
+        <div style="display:flex;gap:12px;align-items:start">
+          ${productImage ? `<img src="data:image/png;base64,${productImage}" class="product-image" alt="${group.productName}" style="width:65px;height:65px;border-radius:8px;object-fit:cover;border:2px solid var(--border);">` : '<div class="product-image-placeholder">📦</div>'}
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="product-name">${group.productName}</div>
+              ${group.hasNote ? `<button onclick="showNotePopup('${group.noteText.replace(/'/g, "\\'").replace(/\n/g, "\\n")}')" style="background:var(--warning);color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;">▲ NOTA</button>` : ''}
+            </div>
+            ${pickupInfo ? `<div class="product-code" style="color:var(--warning);font-weight:600;">${pickupInfo}</div>` : ''}
+            ${group.partnerName ? `<div class="product-customer">🏢 Cliente: <strong>${group.partnerName}</strong></div>` : ''}
+            <div style="font-size:12px;color:var(--purple);margin-top:4px;">📦 ${group.operations.length} lott${group.operations.length > 1 ? 'i' : 'o'} in questa ubicazione</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div style="background:var(--bg);border-radius:12px;padding:12px;margin:16px 0;">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;text-align:center;">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">RICHIESTA CLIENTE</div>
+          <div style="font-size:22px;font-weight:900;color:var(--orange);">${group.customerOrderQty}</div>
+          <div style="font-size:12px;color:var(--muted);">${group.uom}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">DA PRELEVARE</div>
+          <div style="font-size:22px;font-weight:900;color:var(--accent2);">${group.totalToPick}</div>
+          <div style="font-size:12px;color:var(--muted);">${group.uom}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">DISPONIBILE</div>
+          <div style="font-size:22px;font-weight:900;color:var(--purple);">${group.totalAvailable}</div>
+          <div style="font-size:12px;color:var(--muted);">${group.uom}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">PRELEVATO</div>
+          <div style="font-size:22px;font-weight:900;color:var(--ok);">${group.totalQtyDone}</div>
+          <div style="font-size:12px;color:var(--muted);">${group.uom}</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="operation-actions" style="grid-template-columns: 1fr;">
+      <button class="btn purple operation-btn" onclick="toggleLotDetails('${groupKey}')" style="width:100%;">
+        📦 Apri Dettagli Lotti (${group.operations.length} lotti)
+      </button>
+    </div>
+    
+    <div id="lot-details-${groupKey}" class="lot-details" style="display:none;margin-top:20px;padding:16px;background:var(--bg);border-radius:12px;">
+      <h4 style="margin:0 0 16px;color:var(--accent);font-size:16px;">📋 Dettaglio Lotti da Prelevare:</h4>
+      ${lotInfo.map((lot, idx) => `
+        <div style="padding:12px;margin:8px 0;background:var(--card);border-radius:10px;border:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-weight:700;color:${lot.expirationColor};">📅 Scad: ${lot.expirationDisplay}</div>
+            <div style="font-size:12px;color:var(--muted);">Op. #${lot.operation.id}</div>
+          </div>
+          
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:center;margin:16px 0;text-align:center;">
+            <div>
+              <div style="font-size:18px;font-weight:900;color:var(--purple);">${lot.availableQty}</div>
+              <div style="font-size:10px;color:var(--muted);">Disponibile</div>
+            </div>
+            
+            <div>
+              <div style="font-size:18px;font-weight:900;color:var(--accent2);">${lot.qtyToPick}</div>
+              <div style="font-size:10px;color:var(--muted);">Da prelevare</div>
+            </div>
+            
+            <div>
+              <div style="font-size:18px;font-weight:900;color:var(--ok);" id="lot-qty-${groupKey}-${idx}">${lot.qtyDone}</div>
+              <div style="font-size:10px;color:var(--muted);">Prelevato</div>
+            </div>
+            
+            <div>
+              <div style="background:var(--purple);color:#fff;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:700;">
+                ${group.uom}
+              </div>
+            </div>
+          </div>
+          
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;">
+            <button class="btn blue" style="padding:8px;font-size:12px;min-height:36px;" onclick="openKeyboard(${lot.operation.index})">
+              ⌨️ Qtà
+            </button>
+            <button class="btn ${lot.qtyDone >= lot.qtyNeeded ? 'ghost' : 'green'}" style="padding:8px;font-size:12px;min-height:36px;" 
+                    onclick="quickComplete(${lot.operation.index})" ${lot.qtyDone >= lot.qtyNeeded ? 'disabled' : ''}>
+              ${lot.qtyDone >= lot.qtyNeeded ? '✓' : `✅ ${lot.qtyNeeded}`}
+            </button>
+            <button class="btn danger" style="padding:8px;font-size:12px;min-height:36px;" 
+                    onclick="resetQuantity(${lot.operation.index})" ${lot.qtyDone === 0 ? 'disabled' : ''}>
+              ❌ Reset
+            </button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  
+  return div;
+}
+
+async function createOperationElement(operation, index){
+  const div = document.createElement('div');
+  const move = operation.move || metaByMove[operation.move_id && operation.move_id[0]];
+  
+  // Always use the latest qty_done from cache
+  const qtyDone = operation.qty_done || 0;
+  const qtyNeeded = operation.quantity || 0;
+  const isCompleted = qtyDone >= qtyNeeded;
+  
+  const isChecked = checkedOperations.has(operation.id);
+  div.className = `operation-item ${isCompleted ? 'completed' : ''} ${isChecked ? 'checked' : ''}`;
+  div.dataset.operationId = operation.id;
+  div.dataset.operationIndex = index;
+  
+  // Get product details
+  let productName = 'Prodotto sconosciuto';
+  let productCode = '';
+  let productImage = '';
+  let uomName = 'pz';
+  let customerName = '';
+  let customerOrderQty = qtyNeeded; // Default to what we need to pick
+  
+  // Count locations for this product across entire batch
+  let totalLocationsForProduct = new Set();
+  let pickupInfo = '';
+  
+  if(move && move.product_id && Array.isArray(move.product_id)){
+    productName = move.product_id[1];
+    const productId = move.product_id[0];
+    const partnerId = move.partner_id ? move.partner_id[0] : 'no-partner';
+    
+    // Get customer from cached move data
+    if(move.partner_id && Array.isArray(move.partner_id)) {
+      customerName = move.partner_id[1];
+    }
+    
+    // Count ALL locations for this product/customer in the batch
+    for(const [lineId, line] of linesCache.entries()) {
+      const lineMove = metaByMove[line.move_id && line.move_id[0]];
+      if(lineMove && lineMove.product_id && lineMove.product_id[0] === productId) {
+        // Check if same customer
+        const sameCustomer = (lineMove.partner_id && lineMove.partner_id[0]) === partnerId || 
+                            (!lineMove.partner_id && partnerId === 'no-partner');
+        
+        if(sameCustomer && line.location_id && Array.isArray(line.location_id)) {
+          totalLocationsForProduct.add(line.location_id[0]);
+        }
+      }
+    }
+    
+    const uniqueLocations = totalLocationsForProduct.size;
+    
+    // Create pickup info
+    if(uniqueLocations > 1) {
+      pickupInfo = `📍 Prelevare da ${uniqueLocations} ubicazioni`;
+    }
+    
+    try {
+      const productDetails = await searchRead('product.product', 
+        [['id', '=', move.product_id[0]]], 
+        ['default_code', 'barcode', 'image_128'], 1);
+      if(productDetails.length > 0){
+        productCode = productDetails[0].default_code || productDetails[0].barcode || '';
+        productImage = productDetails[0].image_128 || '';
+      }
+    } catch(e) {
+      debugPrint('Product Details Error', e, 'error');
+    }
+  }
+  
+  if(move && move.product_uom && Array.isArray(move.product_uom)){
+    uomName = move.product_uom[1];
+  }
+  
+  // Get customer order quantity from sale.order.line if available
+  if(move && move.sale_order_id) {
+    try {
+      // Get ALL lines from this order for this product
+      const allOrderLines = await searchRead('sale.order.line',
+        [['order_id', '=', move.sale_order_id], 
+         ['product_id', '=', move.product_id[0]]],
+        ['product_uom_qty'], 0);
+      
+      // Sum all quantities for this product in this order
+      let totalOrderQty = 0;
+      for(const line of allOrderLines) {
+        totalOrderQty += line.product_uom_qty || 0;
+      }
+      
+      if(totalOrderQty > 0) {
+        customerOrderQty = totalOrderQty;
+      }
+      
+      debugPrint('Single op customer order quantity from sale order', { 
+        saleOrderId: move.sale_order_id,
+        productId: move.product_id[0],
+        totalOrderQty,
+        lineCount: allOrderLines.length
+      });
+    } catch(e) {
+      debugPrint('Error fetching sale order lines for single op', e, 'error');
+    }
+  }
+  
+  div.innerHTML = `
+    <div class="operation-status ${isCompleted ? 'completed' : qtyDone > 0 ? 'partial' : 'pending'}">
+      ${isCompleted ? '✓' : qtyDone > 0 ? '◐' : '○'}
+    </div>
+    
+    <div class="operation-header">
+      <div class="product-section">
+        <div style="display:flex;gap:12px;align-items:start">
+          ${productImage ? `<img src="data:image/png;base64,${productImage}" class="product-image" alt="${productName}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid var(--border);">` : '<div class="product-image-placeholder">📦</div>'}
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="product-name">${productName}</div>
+              ${move && move.picking_note ? `<button onclick="showNotePopup('${move.picking_note.replace(/'/g, "\\'").replace(/\n/g, "\\n")}')" style="background:var(--warning);color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;">▲ NOTA</button>` : ''}
+            </div>
+            ${productCode ? `<div class="product-code">Codice: ${productCode}</div>` : ''}
+            ${customerName ? `<div class="product-customer">🏢 Cliente: <strong>${customerName}</strong></div>` : ''}
+            ${pickupInfo ? `<div style="color:var(--info);font-weight:600;font-size:13px;margin-top:4px">${pickupInfo}</div>` : ''}
+          </div>
+        </div>
+      </div>
+      
+      <div class="picking-info">
+        <div class="picking-ref">Op. #${operation.id}</div>
+        <div style="font-size:11px;color:var(--muted)">Batch ${currentBatchId}</div>
+      </div>
+    </div>
+    
+    <div class="operation-quantities" style="grid-template-columns: repeat(4, 1fr);">
+      <div class="qty-block">
+        <div class="qty-number" style="color:var(--orange)">${customerOrderQty}</div>
+        <div class="qty-label">Ordine Cliente</div>
+      </div>
+      
+      <div class="qty-block">
+        <div class="qty-number qty-needed">${qtyNeeded}</div>
+        <div class="qty-label">Da Prelevare</div>
+      </div>
+      
+      <div class="uom-indicator">${uomName}</div>
+      
+      <div class="qty-block">
+        <div class="qty-number qty-done" id="qty-done-${index}">${qtyDone}</div>
+        <div class="qty-label">Completata</div>
+      </div>
+    </div>
+    
+    <div class="operation-actions">
+      <button id="check-btn-${operation.id}" class="btn ${isChecked ? 'success' : 'ghost'} operation-btn" onclick="toggleOperationCheck(${operation.id})" style="font-size:16px;font-weight:bold;">
+        ${isChecked ? '✅ Controllato' : '⬜ Da Controllare'}
+      </button>
+      <button class="btn blue operation-btn" onclick="openKeyboard(${index})">⌨️ Modifica Qtà</button>
+      <button class="btn ${isCompleted ? 'ghost' : 'green'} operation-btn" onclick="quickComplete(${index})" ${isCompleted ? 'disabled' : ''}>
+        ${isCompleted ? '✓ Completato' : `✅ Completa (${qtyNeeded})`}
+      </button>
+    </div>
+  `;
+  
+  return div;
+}
+
+/* ===== QR SCANNER MANAGEMENT ===== */
+function toggleQRVerification(){
+  CONFIG.QR_VERIFICATION = !CONFIG.QR_VERIFICATION;
+  localStorage.setItem('picking_qr_verification', CONFIG.QR_VERIFICATION);
+  
+  const qrBtn = document.getElementById('qrToggleBtn');
+  if(qrBtn){
+    qrBtn.className = CONFIG.QR_VERIFICATION ? 'btn green' : 'btn ghost';
+    qrBtn.textContent = CONFIG.QR_VERIFICATION ? '📱 QR Attivo' : '📱 QR Disattivato';
+  }
+  
+  showToast(`Verifica QR ${CONFIG.QR_VERIFICATION ? 'attivata' : 'disattivata'}.`, 'info');
+  
+  // Reload sublocations to update onclick handlers
+  loadSublocations();
+}
+
+function startLocationScan(sublocationId, operations, expectedBarcode){
+  debugPrint('Starting Location Scan', { sublocationId, expectedBarcode });
+  
+  // Store the data for when the scan is successful
+  pendingSublocationId = sublocationId;
+  pendingOperations = operations;
+  
+  // Use the barcode directly as expected value
+  const expectedQR = expectedBarcode;
+  
+  openCameraScanner('location', expectedQR);
+}
+
+async function openCameraScanner(mode, expectedValue = null){
+  scanMode = { type: mode, expected: expectedValue };
+  scannerActive = true;
+  
+  const modal = document.getElementById('cameraModal');
+  const video = document.getElementById('cameraFeed');
+  const feedback = document.getElementById('scanFeedback');
+  
+  if(!modal || !video || !feedback) {
+    showToast('❌ Errore: Interfaccia scanner non trovata.', 'error');
+    return;
+  }
+  
+  feedback.textContent = `Inquadra il QR per: ${expectedValue}`;
+  modal.style.display = 'flex';
+  
+  try {
+    const constraints = { video: { facingMode: cameraFacing }, audio: false };
+    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = cameraStream;
+    await video.play();
+
+    scanTimeout = setTimeout(() => {
+        if(scannerActive) {
+            showToast('⏰ Scansione scaduta', 'warning');
+            closeCameraScanner();
+        }
+    }, CONFIG.SCAN_TIMEOUT);
+    
+    // Check for native support first, otherwise use jsQR
+    if ('BarcodeDetector' in window) {
+        barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+        debugPrint('Scanner', { using: 'Native BarcodeDetector' });
+        requestAnimationFrame(detectBarcodeNative);
+    } else if ('jsQR' in window) {
+        debugPrint('Scanner', { using: 'jsQR Fallback' });
+        requestAnimationFrame(detectBarcodeJsQR);
+    } else {
+        throw new Error('Nessun lettore QR supportato.');
+    }
+
+  } catch (err) {
+    debugPrint('Camera Error', err, 'error');
+    showToast(`❌ Errore fotocamera: ${err.message}`, 'error');
+    closeCameraScanner();
+  }
+}
+
+async function detectBarcodeNative() {
+  if (!scannerActive || !barcodeDetector) return;
+
+  const video = document.getElementById('cameraFeed');
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      try {
+          const barcodes = await barcodeDetector.detect(video);
+          if (barcodes.length > 0) {
+              handleScanResult(barcodes[0].rawValue);
+          }
+      } catch (err) {
+          debugPrint('Native Detection Error', err, 'error');
+      }
+  }
+  
+  if (scannerActive) {
+      requestAnimationFrame(detectBarcodeNative);
+  }
+}
+
+function detectBarcodeJsQR() {
+    if (!scannerActive) return;
+
+    const video = document.getElementById('cameraFeed');
+    const canvas = document.getElementById('qrCanvas');
+    const context = canvas.getContext('2d');
+
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+        if (code) {
+            handleScanResult(code.data);
+        }
+    }
+    if(scannerActive) requestAnimationFrame(detectBarcodeJsQR);
+}
+
+function handleScanResult(scannedValue) {
+    if (!scannerActive) return; // Prevent multiple triggers
+    scannerActive = false; // Stop scanning immediately
+    clearTimeout(scanTimeout);
+
+    debugPrint('Scan Result', { mode: scanMode.type, expected: scanMode.expected, scanned: scannedValue });
+
+    if (scanMode.type === 'location') {
+        if (scannedValue === scanMode.expected) {
+            showToast(`✅ Ubicazione ${scannedValue} verificata!`, 'success');
+            // Open the sublocation using the pending data
+            openSublocation(pendingSublocationId, pendingOperations);
+        } else {
+            showToast(`❌ QR Errato. Atteso: ${scanMode.expected}, Scansionato: ${scannedValue}`, 'error');
+        }
+    }
+    
+    // Always close the scanner after a result
+    setTimeout(closeCameraScanner, 300);
+}
+
+function closeCameraScanner() {
+  scannerActive = false;
+  clearTimeout(scanTimeout);
+  
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+  
+  const modal = document.getElementById('cameraModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+  
+  const video = document.getElementById('cameraFeed');
+  if (video) {
+    video.srcObject = null;
+  }
+  
+  // Clear pending data
+  pendingSublocationId = null;
+  pendingOperations = null;
+}
+
+async function switchCamera() {
+    cameraFacing = cameraFacing === 'environment' ? 'user' : 'environment';
+    closeCameraScanner();
+    // Re-open with the same mode but new camera
+    setTimeout(() => openCameraScanner(scanMode.type, scanMode.expected), 100);
+}
+
+/* ===== LOT MANAGEMENT ===== */
+function toggleLotDetails(groupKey){
+  const detailsDiv = document.getElementById(`lot-details-${groupKey}`);
+  if(detailsDiv) {
+    if(detailsDiv.style.display === 'none') {
+      detailsDiv.style.display = 'block';
+      // Scroll to make details visible
+      setTimeout(() => {
+        detailsDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    } else {
+      detailsDiv.style.display = 'none';
+    }
+  }
+}
+
+/* ===== QUANTITY MANAGEMENT ===== */
+function openKeyboard(operationIndex){
+  currentKeyboardTarget = operationIndex;
+  const operation = currentOperations[operationIndex];
+  keyboardValue = (operation.qty_done || 0).toString();
+  
+  const display = document.getElementById('keyboardDisplay');
+  const modal = document.getElementById('keyboardModal');
+  
+  if(display) {
+    display.textContent = keyboardValue;
+  }
+  if(modal) {
+    modal.style.display = 'flex';
+  }
+}
+
+function closeKeyboard(){
+  document.getElementById('keyboardModal').style.display = 'none';
+  currentKeyboardTarget = null;
+}
+
+function keyPress(key){
+  if(keyboardValue === '0' && key !== '.'){
+    keyboardValue = key;
+  } else {
+    keyboardValue += key;
+  }
+  const display = document.getElementById('keyboardDisplay');
+  if(display) {
+    display.textContent = keyboardValue;
+  }
+}
+
+function keyBackspace(){
+  keyboardValue = keyboardValue.slice(0, -1) || '0';
+  const display = document.getElementById('keyboardDisplay');
+  if(display) {
+    display.textContent = keyboardValue;
+  }
+}
+
+function keyClear(){
+  keyboardValue = '0';
+  const display = document.getElementById('keyboardDisplay');
+  if(display) {
+    display.textContent = keyboardValue;
+  }
+}
+
+async function confirmQuantity(){
+  if(currentKeyboardTarget === null) return;
+  
+  const qty = parseFloat(keyboardValue) || 0;
+  await updateOperationQuantity(currentKeyboardTarget, qty);
+  closeKeyboard();
+}
+
+async function updateOperationQuantity(operationIndex, quantity){
+  try {
+    const operation = currentOperations[operationIndex];
+    const moveId = operation.move_id && operation.move_id[0];
+    const value = parseFloat(quantity) || 0;
+    
+    debugPrint('Updating Operation', { 
+      operationId: operation.id,
+      moveId: moveId,
+      oldQty: operation.qty_done, 
+      newQty: value 
+    });
+    
+    // Update the SPECIFIC operation line, not just any line from the move
+    const lineId = operation.id; // This IS the stock.move.line ID
+    
+    if(lineId) {
+      // Update this specific line
+      debugPrint('Updating specific line', { lineId: lineId, qty_done: value });
+      
+      await callKw('stock.move.line', 'write', [[lineId], {qty_done: value}]);
+      
+      // Update the cache for this specific line
+      const cachedLine = linesCache.get(lineId);
+      if(cachedLine) {
+        cachedLine.qty_done = value;
+        linesCache.set(lineId, cachedLine);
+      }
+      
+      // Track statistics if operation is completed
+      if(value > 0 && !workStats.completedOperations.includes(lineId)) {
+        workStats.completedOperations.push(lineId);
+        workStats.productsPickedCount++;
+        
+        // Calculate weight if UOM is kg
+        const move = metaByMove[moveId];
+        if(move && move.product_uom && move.product_uom[1] && move.product_uom[1].toLowerCase().includes('kg')) {
+          workStats.totalKgPicked += value;
+        }
+        
+        // Track operation time
+        if(operationStartTimes[lineId]) {
+          const elapsed = Date.now() - operationStartTimes[lineId];
+          workStats.operationTimes[lineId] = elapsed;
+        }
+      }
+      
+      // Start tracking this operation if not already
+      if(!operationStartTimes[lineId]) {
+        operationStartTimes[lineId] = Date.now();
+      }
+      
+    } else {
+      // Create new line if none exists
+      debugPrint('Creating new line', { moveId });
+      
+      const move = metaByMove[moveId];
+      if(!move) {
+        throw new Error('Move data not found');
+      }
+      
+      const vals = {
+        move_id: moveId,
+        picking_id: move.picking_id[0],
+        product_id: move.product_id[0],
+        qty_done: value,
+        location_id: move.location_id[0],
+        location_dest_id: move.location_dest_id ? move.location_dest_id[0] : 1,
+        product_uom_id: move.product_uom ? move.product_uom[0] : 1
+      };
+      
+      debugPrint('Creating line with values', vals);
+      
+      const newId = await callKw('stock.move.line', 'create', [vals]);
+      
+      // Update caches
+      linesByMove[moveId] = [newId];
+      linesCache.set(newId, {
+        id: newId,
+        move_id: [moveId, ''],
+        qty_done: value,
+        location_id: move.location_id
+      });
+    }
+    
+    // Update ONLY this specific operation
+    currentOperations[operationIndex].qty_done = value;
+    
+    // Update ONLY this specific line in the cache
+    if(operation.id && linesCache.has(operation.id)) {
+      const cachedOp = linesCache.get(operation.id);
+      cachedOp.qty_done = value;
+      linesCache.set(operation.id, cachedOp);
+    }
+    
+    // Do NOT update doneByMove - it causes all lines with same move to get same value!
+    
+    // Re-render operations to update grouped views
+    await renderOperations();
+    
+    updateLocationStats();
+    showToast(`✅ Quantità aggiornata: ${value}`, 'success');
+    
+    // Mark that we need to refresh zone counts
+    localStorage.setItem('picking_needs_refresh', 'true');
+    
+  } catch(e) {
+    debugPrint('Update Operation Error', { 
+      operationIndex, 
+      quantity, 
+      error: e.message,
+      stack: e.stack 
+    }, 'error');
+    showToast('❌ Errore aggiornamento: ' + e.message, 'error');
+  }
+}
+
+function updateLocationStats(){
+  const totalOps = currentOperations.length;
+  const completedOps = currentOperations.filter(op => (op.qty_done || 0) >= (op.quantity || 0)).length;
+  const progress = totalOps > 0 ? Math.round((completedOps / totalOps) * 100) : 0;
+  
+  setElText('locationTotalOps', totalOps);
+  setElText('locationCompletedOps', completedOps);
+  setElText('locationProgressPct', `${progress}%`);
+  
+  if(progress === 100){
+    showToast('🎉 Ottimo lavoro! Tutte le operazioni in questa ubicazione sono state completate!', 'success', 3500);
+  }
+}
+
+async function quickComplete(operationIndex){
+  const operation = currentOperations[operationIndex];
+  const qtyNeeded = operation.quantity || 0;
+  const currentQty = operation.qty_done || 0;
+  
+  if(currentQty >= qtyNeeded) {
+    showToast('⚠️ Operazione già completata', 'warning');
+    return;
+  }
+  
+  await updateOperationQuantity(operationIndex, qtyNeeded);
+  showToast(`✅ Operazione completata con quantità: ${qtyNeeded}`, 'success');
+}
+
+async function resetQuantity(operationIndex){
+  const operation = currentOperations[operationIndex];
+  const currentQty = operation.qty_done || 0;
+  
+  if(currentQty > 0) {
+    if(!window.confirm(`Sei sicuro di voler azzerare la quantità (${currentQty})?`)) {
+      return;
+    }
+  }
+  
+  await updateOperationQuantity(operationIndex, 0);
+  showToast('❌ Quantità azzerata', 'warning');
+}
+
+/* ===== NAVIGATION ===== */
+async function backToZoneSelection(){
+  // Stop zone timer and save sublocation time
+  stopZoneTimer();
+  
+  if(sublocationStartTime) {
+    const location = document.getElementById('currentLocationName')?.textContent;
+    if(location) {
+      const elapsed = Date.now() - sublocationStartTime;
+      if(!workStats.sublocationTimes[location]) {
+        workStats.sublocationTimes[location] = 0;
+      }
+      workStats.sublocationTimes[location] += elapsed;
+    }
+    sublocationStartTime = null;
+  }
+  
+  // Generate and save report if we have work done
+  if(workStats.zoneTime > 0 && workStats.completedOperations.length > 0) {
+    try {
+      const report = await generateWorkReport();
+      
+      // Post message to batch chatter
+      await callKw('stock.picking.batch', 'message_post', 
+        [[currentBatchId]], // Pass batch ID as first argument
+        {
+          body: `<div style="font-family: monospace; white-space: pre-wrap;">${report}</div>`,
+          message_type: 'comment',
+          subtype_xmlid: 'mail.mt_note'
+        }
+      );
+      
+      showToast('📊 Report salvato nel Chatter del batch', 'success');
+      
+      // Also save to a custom statistics model if needed for future analytics
+      // This could be implemented later with a custom Odoo model
+      
+    } catch(e) {
+      debugPrint('Error saving work report to chatter', e, 'error');
+      showToast('⚠️ Impossibile salvare il report', 'warning');
+    }
+  }
+  
+  // Reset work stats
+  workStats = {
+    zoneTime: 0,
+    sublocationTimes: {},
+    operationTimes: {},
+    productsPickedCount: 0,
+    totalKgPicked: 0,
+    completedOperations: []
+  };
+  operationStartTimes = {};
+  
+  currentZone = null;
+  currentSublocationId = null;
+  currentOperations = [];
+  
+  const zoneBadge = document.getElementById('zoneBadge');
+  if(zoneBadge) {
+    zoneBadge.style.display = 'none';
+  }
+  
+  // Only remove from operationsView since sublocationListView was removed
+  document.getElementById('operationsView').classList.remove('active');
+  document.getElementById('zoneSelectionView').classList.add('active');
+  
+  document.documentElement.style.removeProperty('--current-zone-color');
+  
+  refreshZoneCounts();
+}
+
+// Removed backToSublocations - not needed in zone control app
+
+/* ===== INITIALIZATION ===== */
+async function initializeApp(){
+  try {
+    debugPrint('App Initialization', { timestamp: new Date().toISOString() });
+    
+    initTheme();
+    updateDebugPanel();
+    
+    // Initialize badges as hidden
+    document.getElementById('batchBadge').style.display = 'none';
+    document.getElementById('zoneBadge').style.display = 'none';
+    document.getElementById('vehicleBadge').style.display = 'none';
+    
+    const qrBtn = document.getElementById('qrToggleBtn');
+    if(qrBtn){
+      qrBtn.className = CONFIG.QR_VERIFICATION ? 'btn green' : 'btn ghost';
+      qrBtn.textContent = CONFIG.QR_VERIFICATION ? '📱 QR Attivo' : '📱 QR Disattivato';
+    }
+    
+    const connected = await checkConnection();
+    
+    if(connected) {
+      connectionInterval = setInterval(checkConnection, CONFIG.CONNECTION_CHECK_INTERVAL);
+      
+      showToast('🚛 App caricata con successo!', 'success');
+      showToast('💡 Seleziona un batch per iniziare', 'info', 3000);
+      
+      debugPrint('App Ready', { 
+        connected: true, 
+        debugMode: CONFIG.DEBUG_MODE,
+        qrVerification: CONFIG.QR_VERIFICATION 
+      });
+    } else {
+      showToast('❌ Impossibile connettersi a Odoo', 'error');
+      debugPrint('App Failed', { connected: false }, 'error');
+    }
+  } catch(e) {
+    console.error('Initialization Error:', e);
+    debugPrint('Init Error', { error: e.message, stack: e.stack }, 'error');
+    showToast('❌ Errore inizializzazione app', 'error');
+  }
+}
+
+// Event listeners
+document.addEventListener('keydown', (e) => {
+  if(e.ctrlKey && e.shiftKey && e.key === 'D') {
+    e.preventDefault();
+    toggleDebug();
+  }
+  
+  if(e.key === 'Escape') {
+    const keyboardModal = document.getElementById('keyboardModal');
+    const cameraModal = document.getElementById('cameraModal');
+    const batchModal = document.getElementById('batchSelectionModal');
+    const debugPanel = document.getElementById('debugPanel');
+    
+    if(keyboardModal && keyboardModal.style.display === 'flex') {
+      closeKeyboard();
+    } else if(cameraModal && cameraModal.style.display === 'flex') {
+      closeCameraScanner();
+    } else if(batchModal && batchModal.style.display === 'flex') {
+      closeBatchSelection();
+    } else if(debugPanel && debugPanel.classList.contains('open')) {
+      toggleDebug();
+    }
+  }
+  
+  if(e.key === 'F9') {
+    e.preventDefault();
+    toggleQRVerification();
+  }
+});
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', initializeApp);
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  if(connectionInterval) clearInterval(connectionInterval);
+});
+</script>
+
+
+<div id="notePopup" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); display:none; align-items:center; justify-content:center; z-index:500; padding:20px;">
+  <div style="background:var(--bg); border-radius:20px; padding:24px; max-width:600px; width:100%; max-height:80vh; overflow:auto; border:2px solid var(--accent2);">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+      <h3 style="margin:0; color:var(--accent2); font-size:20px;">📝 Nota Picking</h3>
+      <button class="btn ghost" onclick="closeNotePopup()" style="padding:8px 16px;">✕</button>
+    </div>
+    <div id="noteContent" style="color:var(--text); font-size:15px; line-height:1.6; white-space:pre-wrap;"></div>
+  </div>
+</div>
