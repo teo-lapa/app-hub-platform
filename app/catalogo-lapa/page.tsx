@@ -32,6 +32,7 @@ export default function CatalogoLapaPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isAutoSearching, setIsAutoSearching] = useState(false);
 
   const productsPerPage = 50;
 
@@ -80,6 +81,21 @@ export default function CatalogoLapaPage() {
     setCurrentPage(1);
     loadProducts(1, searchQuery);
   };
+
+  // Ricerca veloce automatica
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim().length >= 3 || searchQuery.trim().length === 0) {
+        setIsAutoSearching(true);
+        setCurrentPage(1);
+        loadProducts(1, searchQuery).finally(() => {
+          setIsAutoSearching(false);
+        });
+      }
+    }, 300); // Attesa 300ms dopo aver smesso di digitare
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   // Cambia pagina
   const handlePageChange = (newPage: number) => {
@@ -134,6 +150,11 @@ export default function CatalogoLapaPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Barra di ricerca */}
         <div className="mb-8">
+          <div className="text-center mb-4">
+            <p className="text-slate-400 text-sm">
+              🚀 <strong>Ricerca istantanea attiva!</strong> Digita almeno 3 caratteri per cercare automaticamente
+            </p>
+          </div>
           <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -143,9 +164,14 @@ export default function CatalogoLapaPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cerca prodotti per nome, codice o barcode..."
+                placeholder="Cerca prodotti per nome, codice o barcode... (ricerca automatica dopo 3 caratteri)"
                 className="block w-full pl-10 pr-24 py-4 text-lg bg-slate-800/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
               />
+              {isAutoSearching && (
+                <div className="absolute inset-y-0 right-16 flex items-center pr-3 pointer-events-none">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-500"></div>
+                </div>
+              )}
               <button
                 type="submit"
                 disabled={loading}
