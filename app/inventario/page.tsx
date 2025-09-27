@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Camera, Search, Package, MapPin, Calculator, RotateCcw } from 'lucide-react';
+import { Camera, Search, Package, MapPin, Calculator, RotateCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
+import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
 import { QRScanner } from '@/components/inventario/QRScanner';
 import { Calculator as CalculatorComponent } from '@/components/inventario/Calculator';
 import { ProductSearch } from '@/components/inventario/ProductSearch';
@@ -233,45 +234,29 @@ export default function InventarioPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
-      <div className="glass-strong border-b border-white/10 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.back()}
-                className="glass p-2 rounded-xl hover:bg-white/20 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="text-xl font-bold flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-blue-400" />
-                  Gestione Inventario
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  Scanner → Prodotti → Modifica
-                </p>
-              </div>
-            </div>
-
-            {/* Connection Status */}
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
-              connectionStatus === 'connected'
-                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                : 'bg-red-500/20 text-red-400 border border-red-500/30'
-            }`}>
-              <div className={`w-2 h-2 rounded-full ${
-                connectionStatus === 'connected' ? 'bg-green-400' : 'bg-red-400'
-              }`} />
-              <span className="text-sm font-medium">
-                {connectionStatus === 'connected' ? 'Connesso' : 'Non connesso'}
-              </span>
-            </div>
+      <AppHeader
+        title="Gestione Inventario"
+        subtitle="Scanner → Prodotti → Modifica"
+        icon={<Package className="h-8 w-8 text-white" />}
+        showHomeButton={true}
+        showBackButton={false}
+        rightElement={
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+            connectionStatus === 'connected'
+              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+              : 'bg-red-500/20 text-red-400 border border-red-500/30'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${
+              connectionStatus === 'connected' ? 'bg-green-400' : 'bg-red-400'
+            }`} />
+            <span className="text-sm font-medium">
+              {connectionStatus === 'connected' ? 'Connesso' : 'Non connesso'}
+            </span>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Notification */}
       {notification && (
@@ -566,6 +551,9 @@ export default function InventarioPage() {
           }
         }}
       />
+
+      {/* Mobile Home Button */}
+      <MobileHomeButton />
     </div>
   );
 }
