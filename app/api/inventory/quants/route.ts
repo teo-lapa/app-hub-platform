@@ -63,6 +63,15 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Errore caricamento quants:', error);
+
+    // Gestione sessione scaduta
+    if (error.message && error.message.includes('session')) {
+      return NextResponse.json(
+        { success: false, error: 'Odoo Session Expired' },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, error: error.message || 'Errore interno del server' },
       { status: 500 }
