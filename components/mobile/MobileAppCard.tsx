@@ -115,7 +115,13 @@ export function MobileAppCard({ app, index }: MobileAppCardProps) {
           <div className="flex items-center gap-2">
             {/* Access level indicator */}
             <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-              app.requiredRole === 'visitor'
+              app.controlStatus === 'in_review'
+                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                : app.controlStatus === 'pending'
+                ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                : app.controlStatus === 'rejected'
+                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                : app.requiredRole === 'visitor'
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                 : app.requiredRole === 'cliente_gratuito'
                 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
@@ -125,11 +131,14 @@ export function MobileAppCard({ app, index }: MobileAppCardProps) {
                 ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
                 : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
             }`}>
-              {app.requiredRole === 'visitor' && 'Pubblico'}
-              {app.requiredRole === 'cliente_gratuito' && 'Gratuito'}
-              {app.requiredRole === 'cliente_premium' && 'Premium'}
-              {app.requiredRole === 'dipendente' && 'Staff'}
-              {app.requiredRole === 'admin' && 'Admin'}
+              {app.controlStatus === 'in_review' && 'In Controllo'}
+              {app.controlStatus === 'pending' && 'In Attesa'}
+              {app.controlStatus === 'rejected' && 'Rifiutata'}
+              {!app.controlStatus && app.requiredRole === 'visitor' && 'Pubblico'}
+              {!app.controlStatus && app.requiredRole === 'cliente_gratuito' && 'Gratuito'}
+              {!app.controlStatus && app.requiredRole === 'cliente_premium' && 'Premium'}
+              {!app.controlStatus && app.requiredRole === 'dipendente' && 'Staff'}
+              {!app.controlStatus && app.requiredRole === 'admin' && 'Admin'}
             </span>
           </div>
 

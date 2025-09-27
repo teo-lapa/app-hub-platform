@@ -41,6 +41,18 @@ export function AppCard({ app, index }: AppCardProps) {
   };
 
   const getBadgeColor = () => {
+    // Se l'app è in controllo, mostra colori specifici
+    if (app.controlStatus === 'in_review') {
+      return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+    }
+    if (app.controlStatus === 'pending') {
+      return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+    }
+    if (app.controlStatus === 'rejected') {
+      return 'bg-red-500/20 text-red-400 border-red-500/30';
+    }
+
+    // Altrimenti usa i colori normali
     switch (app.requiredRole) {
       case 'visitor':
         return 'bg-green-500/20 text-green-400 border-green-500/30';
@@ -58,6 +70,18 @@ export function AppCard({ app, index }: AppCardProps) {
   };
 
   const getBadgeText = () => {
+    // Se l'app è in controllo, mostra "IN CONTROLLO"
+    if (app.controlStatus === 'in_review') {
+      return 'IN CONTROLLO';
+    }
+    if (app.controlStatus === 'pending') {
+      return 'IN ATTESA';
+    }
+    if (app.controlStatus === 'rejected') {
+      return 'RIFIUTATA';
+    }
+
+    // Altrimenti mostra il badge normale
     switch (app.requiredRole) {
       case 'visitor':
         return 'PUBBLICO';
