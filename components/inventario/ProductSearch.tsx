@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Package, Plus } from 'lucide-react';
 import { getInventoryClient } from '@/lib/odoo/inventoryClient';
@@ -17,6 +17,7 @@ export function ProductSearch({ isOpen, onClose, onSelectProduct, currentLocatio
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<BasicProduct[]>([]);
   const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const inventoryClient = getInventoryClient();
 
@@ -27,6 +28,30 @@ export function ProductSearch({ isOpen, onClose, onSelectProduct, currentLocatio
       setSearchResults([]);
     }
   }, [searchQuery]);
+
+  // Focus sul campo quando si apre il pannello
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      // Reset del campo
+      setSearchQuery('');
+      setSearchResults([]);
+
+      // Focus con delay per garantire che il DOM sia pronto
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.select();
+        }
+      }, 100);
+
+      // Riprova il focus se necessario
+      setTimeout(() => {
+        if (inputRef.current && document.activeElement !== inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 300);
+    }
+  }, [isOpen]);
 
   const searchProducts = async (query: string) => {
     setLoading(true);
@@ -101,12 +126,25 @@ export function ProductSearch({ isOpen, onClose, onSelectProduct, currentLocatio
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
+                ref={inputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyUp={(e) => {
+                  // Fallback per dispositivi che hanno problemi con onChange
+                  if (e.key !== 'Enter' && e.key !== 'Escape' && e.key !== 'Tab') {
+                    setSearchQuery(e.currentTarget.value);
+                  }
+                }}
                 placeholder="Cerca prodotto per nome, codice o barcode..."
                 className="w-full glass pl-10 pr-4 py-3 rounded-xl border border-white/20 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 autoFocus
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                readOnly={false}
+                disabled={false}
               />
             </div>
             <p className="text-xs text-muted-foreground mt-2">

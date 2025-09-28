@@ -663,6 +663,14 @@
       color: var(--text);
       font-size: 18px;
       touch-action: manipulation;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      pointer-events: auto;
+      user-select: text;
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
     }
 
     .search-results {
@@ -1093,7 +1101,7 @@
         </div>
       </div>
       <div style="padding: 15px;">
-        <input type="text" id="searchInput" class="search-input" placeholder="Cerca prodotto per nome, codice o barcode...">
+        <input type="text" id="searchInput" class="search-input" placeholder="Cerca prodotto per nome, codice o barcode..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         <div id="searchResults" class="search-results">
           <div style="text-align: center; color: var(--muted); padding: 20px;">
             Inserisci almeno 3 caratteri per iniziare la ricerca
@@ -2385,18 +2393,35 @@
         showNotification('Prima scansiona un\'ubicazione', 'error');
         return;
       }
-      
+
       document.getElementById('searchPanel').classList.add('active');
       document.getElementById('currentLocationName').textContent = appState.currentLocation.name;
-      document.getElementById('searchInput').value = '';
+
+      const searchInput = document.getElementById('searchInput');
+      searchInput.value = '';
+
+      // Assicurati che il campo sia abilitato
+      searchInput.removeAttribute('readonly');
+      searchInput.removeAttribute('disabled');
+      searchInput.style.pointerEvents = 'auto';
+
       document.getElementById('searchResults').innerHTML = `
         <div style="text-align: center; color: var(--muted); padding: 20px;">
           Inserisci almeno 3 caratteri per iniziare la ricerca
         </div>
       `;
+
+      // Focus con delay maggiore e riprovare se necessario
       setTimeout(() => {
-        document.getElementById('searchInput').focus();
-      }, 100);
+        searchInput.focus();
+        searchInput.select();
+        // Riprova il focus dopo un altro delay
+        setTimeout(() => {
+          if (document.activeElement !== searchInput) {
+            searchInput.focus();
+          }
+        }, 300);
+      }, 200);
     }
     
     function closeProductSearch() {
@@ -2816,9 +2841,23 @@
 
       // Setup ricerca prodotti
       const searchInput = document.getElementById('searchInput');
-      searchInput.addEventListener('input', () => {
+
+      // Fix per problemi di input su alcuni dispositivi
+      searchInput.removeAttribute('readonly');
+      searchInput.removeAttribute('disabled');
+
+      // Event listener per input con fallback
+      searchInput.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(searchProducts, 500); // Aumentato timeout per tablet
+      });
+
+      // Fallback per dispositivi che hanno problemi con l'evento input
+      searchInput.addEventListener('keyup', (e) => {
+        // Ignora tasti speciali
+        if (e.key === 'Enter' || e.key === 'Escape' || e.key === 'Tab') return;
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(searchProducts, 500);
       });
 
       searchInput.addEventListener('keypress', (e) => {

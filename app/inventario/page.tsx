@@ -10,8 +10,12 @@ import { QRScanner } from '@/components/inventario/QRScanner';
 import { Calculator as CalculatorComponent } from '@/components/inventario/Calculator';
 import { ProductSearch } from '@/components/inventario/ProductSearch';
 import { BufferTransfer } from '@/components/inventario/BufferTransfer';
+import { LotManager } from '@/components/inventario/LotManager';
+import { ProductList } from '@/components/inventario/ProductList';
+import { ConnectionStatus } from '@/components/inventario/ConnectionStatus';
 import { getInventoryClient } from '@/lib/odoo/inventoryClient';
 import { Location, Product, BasicProduct, AppState, InventoryConfig } from '@/lib/types/inventory';
+import toast from 'react-hot-toast';
 
 // Configurazione app inventario
 const CONFIG: InventoryConfig = {
@@ -46,6 +50,9 @@ export default function InventarioPage() {
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [showBufferTransfer, setShowBufferTransfer] = useState(false);
+  const [showLotManager, setShowLotManager] = useState(false);
+  const [selectedProductForLot, setSelectedProductForLot] = useState<any>(null);
+  const [locationProducts, setLocationProducts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
@@ -183,6 +190,14 @@ export default function InventarioPage() {
 
       const productsArray = Array.from(productMap.values());
       setAppState(prev => ({ ...prev, products: productsArray }));
+
+      // Popola anche locationProducts per il nuovo componente ProductList
+      setLocationProducts(productsArray.map(p => ({
+        ...p,
+        stockQuantity: p.totalQty,
+        countedQuantity: p.inventoryQuantity || p.totalQty,
+        difference: p.inventoryDiff || 0
+      })));
 
     } catch (error) {
       console.error('Errore caricamento prodotti:', error);
@@ -345,48 +360,29 @@ export default function InventarioPage() {
           </motion.div>
         )}
 
-        {/* Products Grid */}
-        {appState.products.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {appState.products.map((product) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                whileHover={{ scale: 1.02 }}
-                onClick={() => selectProduct(product)}
-                className="glass-strong rounded-xl p-6 cursor-pointer hover:bg-white/10 transition-all"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
-                    {product.image ? (
-                      <img src={product.image} alt={product.name} className="w-full h-full object-cover rounded-lg" />
-                    ) : (
-                      <Package className="w-8 h-8 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold truncate">{product.name}</h4>
-                    <p className="text-sm text-muted-foreground">{product.code}</p>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-lg font-bold text-blue-400">
-                        {product.totalQty} {product.uom}
-                      </span>
-                      {product.isCounted && (
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          product.isCountedRecent
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-yellow-500/20 text-yellow-400'
-                        }`}>
-                          ✓ Contato
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+        {/* Products List */}
+        {locationProducts.length > 0 ? (
+          <ProductList
+            products={locationProducts}
+            onSelectProduct={(product) => {
+              setSelectedProductForLot(product);
+              setShowLotManager(true);
+            }}
+            onUpdateQuantity={(productId, quantity) => {
+              setLocationProducts(prev => prev.map(p =>
+                p.id === productId ? { ...p, countedQuantity: quantity } : p
+              ));
+              toast.success('Quantità aggiornata');
+            }}
+            onOpenCalculator={(productId, currentQuantity) => {
+              setAppState(prev => ({
+                ...prev,
+                selectedProduct: locationProducts.find(p => p.id === productId)
+              }));
+              setCountedQuantity(currentQuantity.toString());
+              setShowCalculator(true);
+            }}
+          />
         ) : appState.currentLocation ? (
           <div className="glass-strong rounded-xl p-12 text-center">
             <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -551,6 +547,23 @@ export default function InventarioPage() {
           }
         }}
       />
+
+      {/* Lot Manager */}
+      <LotManager
+        isOpen={showLotManager}
+        onClose={() => setShowLotManager(false)}
+        productId={selectedProductForLot?.id || 0}
+        productName={selectedProductForLot?.name || ''}
+        onSelectLot={(lot) => {
+          setAppState(prev => ({ ...prev, selectedLot: lot }));
+          setShowLotManager(false);
+          toast.success(`Lotto ${lot.name} selezionato`);
+        }}
+        currentLocationId={appState.currentLocation?.id}
+      />
+
+      {/* Connection Status */}
+      <ConnectionStatus />
 
       {/* Mobile Home Button */}
       <MobileHomeButton />
