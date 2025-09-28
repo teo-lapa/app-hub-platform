@@ -89,9 +89,6 @@ export default function InventarioPage() {
   // Verifica connessione all'avvio
   useEffect(() => {
     checkConnection();
-    // Focus iniziale sul campo ubicazione
-    const locationInput = document.getElementById('locationScanner');
-    if (locationInput) locationInput.focus();
   }, []);
 
   const checkConnection = async () => {
@@ -152,12 +149,6 @@ export default function InventarioPage() {
         await loadProducts(data.location.id);
         showNotification(`📍 ${data.location.display_name}`, 'success');
         setLocationSearchQuery('');
-
-        // Mantieni focus per scansioni consecutive
-        setTimeout(() => {
-          const input = document.getElementById('locationScanner');
-          if (input) input.focus();
-        }, 100);
       } else {
         showNotification('Ubicazione non trovata', 'error');
       }
@@ -314,10 +305,8 @@ export default function InventarioPage() {
     showNotification(`✅ ${product.name} aggiunto per conteggio`, 'success');
 
     // Auto-seleziona per conteggio immediato
-    setTimeout(() => {
-      setSelectedProduct(newProduct);
-      setCountedQty('0');
-    }, 500);
+    setSelectedProduct(newProduct);
+    setCountedQty('0');
   };
 
   // TRASFERIMENTO DA BUFFER
@@ -365,12 +354,6 @@ export default function InventarioPage() {
         setTransferLotNumber('');
         setTransferExpiryDate('');
         await loadProducts(currentLocation.id);
-
-        // Ritorna focus su ubicazione
-        setTimeout(() => {
-          const input = document.getElementById('locationScanner');
-          if (input) input.focus();
-        }, 500);
       } else {
         throw new Error(data.error || 'Errore trasferimento');
       }
@@ -428,19 +411,6 @@ export default function InventarioPage() {
         setCountedQty('');
         setLotNumber('');
         setExpiryDate('');
-
-        // Focus su prossimo prodotto o ubicazione
-        setTimeout(() => {
-          const nextProduct = products.find(p => !p.isCounted);
-          if (nextProduct) {
-            setSelectedProduct(nextProduct);
-            const input = document.getElementById('countedInput');
-            if (input) input.focus();
-          } else {
-            const input = document.getElementById('locationScanner');
-            if (input) input.focus();
-          }
-        }, 500);
       } else {
         showNotification(data.error || 'Errore aggiornamento', 'error');
       }
@@ -506,11 +476,9 @@ export default function InventarioPage() {
               onChange={(e) => setLocationSearchQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  e.preventDefault();
                   searchLocation(locationSearchQuery);
                 }
               }}
-              autoFocus
             />
             <button
               onClick={() => searchLocation(locationSearchQuery)}
@@ -596,7 +564,6 @@ export default function InventarioPage() {
                 onChange={(e) => setProductSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    e.preventDefault();
                     searchTab === 'product' ? searchProducts() : searchLocations();
                   }
                 }}
@@ -883,7 +850,6 @@ export default function InventarioPage() {
                 value={countedQty}
                 onChange={(e) => setCountedQty(e.target.value)}
                 placeholder="0"
-                autoFocus
               />
             </div>
 
@@ -1006,13 +972,11 @@ export default function InventarioPage() {
         </div>
       )}
 
-      {/* Loading Overlay */}
+      {/* Loading Indicator (non-blocking) */}
       {loading && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
-          <div className="bg-gray-800 rounded-lg p-6 flex items-center gap-4">
-            <div className="w-12 h-12 border-4 border-gray-600 border-t-emerald-500 rounded-full animate-spin" />
-            <span className="text-white font-medium">Caricamento...</span>
-          </div>
+        <div className="fixed bottom-6 left-6 bg-gray-800 rounded-lg px-4 py-3 flex items-center gap-3 shadow-lg z-50">
+          <div className="w-6 h-6 border-3 border-gray-600 border-t-emerald-500 rounded-full animate-spin" />
+          <span className="text-white text-sm font-medium">Caricamento...</span>
         </div>
       )}
     </div>
