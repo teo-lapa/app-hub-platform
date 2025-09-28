@@ -148,8 +148,8 @@ export default function InventarioPage() {
       // IMPORTANTE: Popola anche locationProducts per il componente ProductList
       const locationProductsData = products.map(p => ({
         ...p,
-        stockQuantity: p.totalQty || p.quantity || 0,
-        countedQuantity: p.totalQty || p.quantity || 0,
+        stockQuantity: p.totalQty || 0,
+        countedQuantity: p.totalQty || 0,
         difference: 0
       }));
 
@@ -245,8 +245,8 @@ export default function InventarioPage() {
       // Popola anche locationProducts per il nuovo componente ProductList
       const locationProductsData = productsArray.map(p => ({
         ...p,
-        stockQuantity: p.totalQty || p.quantity || 0,
-        countedQuantity: p.inventoryQuantity || p.totalQty || p.quantity || 0,
+        stockQuantity: p.totalQty || 0,
+        countedQuantity: p.inventoryQuantity || p.totalQty || 0,
         difference: p.inventoryDiff || 0
       }));
 
@@ -417,9 +417,6 @@ export default function InventarioPage() {
         )}
 
         {/* Products List */}
-        {console.log('🎨 [React] Rendering - locationProducts.length:', locationProducts.length)}
-        {console.log('🎨 [React] Rendering - appState.currentLocation:', appState.currentLocation?.name)}
-        {console.log('🎨 [React] Rendering - appState.products.length:', appState.products.length)}
         {locationProducts.length > 0 ? (
           <ProductList
             products={locationProducts}
@@ -448,8 +445,8 @@ export default function InventarioPage() {
               id: p.id,
               name: p.name,
               code: p.code,
-              stockQuantity: p.quantity,
-              countedQuantity: p.quantity,
+              stockQuantity: p.totalQty || 0,
+              countedQuantity: p.totalQty || 0,
               difference: 0
             }))}
             onSelectProduct={(product) => {
