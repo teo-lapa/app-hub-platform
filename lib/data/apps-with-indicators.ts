@@ -147,7 +147,7 @@ export const standaloneApps: App[] = [
     name: 'Prelievo Zone',
     description: 'Sistema picking ottimizzato per zone magazzino',
     icon: '🚛',
-    badge: 'NEW',
+    badge: 'FREE',
     category: 'Magazzino',
     url: '/prelievo-zone',
     requiredRole: 'cliente_gratuito',

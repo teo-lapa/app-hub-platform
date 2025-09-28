@@ -114,7 +114,7 @@ export default function PrelievoZonePage() {
       setBatches(odoBatches);
 
       if (odoBatches.length === 0) {
-        toast.info('Nessun batch disponibile al momento');
+        toast('Nessun batch disponibile al momento', { icon: 'ℹ️' });
       }
     } catch (error: any) {
       console.error('Errore caricamento batch:', error);
@@ -176,7 +176,7 @@ export default function PrelievoZonePage() {
       }
 
       if (odooLocations.length === 0) {
-        toast.info(`Nessuna ubicazione trovata nella zona ${zone.displayName}`);
+        toast(`Nessuna ubicazione trovata nella zona ${zone.displayName}`, { icon: 'ℹ️' });
       }
     } catch (error: any) {
       console.error('Errore caricamento ubicazioni:', error);
@@ -222,7 +222,7 @@ export default function PrelievoZonePage() {
       }));
 
       if (odooOperations.length === 0) {
-        toast.info(`Nessuna operazione da prelevare in ${location.name}`);
+        toast(`Nessuna operazione da prelevare in ${location.name}`, { icon: 'ℹ️' });
       }
     } catch (error: any) {
       console.error('Errore caricamento operazioni:', error);
@@ -360,7 +360,7 @@ export default function PrelievoZonePage() {
 
             {/* Settings Button */}
             <button
-              onClick={() => toast.info('Impostazioni in sviluppo')}
+              onClick={() => toast('Impostazioni in sviluppo', { icon: 'ℹ️' })}
               className="glass p-2 rounded-lg hover:bg-white/20 transition-colors"
             >
               <Settings className="w-5 h-5" />

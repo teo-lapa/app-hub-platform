@@ -229,7 +229,7 @@ export class PickingOdooClient {
       );
 
       // Aggiungi informazioni sui prodotti
-      const productIds = [...new Set(moveLines.map(ml => ml.product_id[0]))];
+      const productIds = Array.from(new Set(moveLines.map(ml => ml.product_id[0])));
       const products = await this.getProducts(productIds);
       const productMap = new Map(products.map(p => [p.id, p]));
 
@@ -305,12 +305,12 @@ export class PickingOdooClient {
       );
 
       // Carica i dettagli dei prodotti
-      const productIds = [...new Set(moveLines.map(ml => ml.product_id[0]))];
+      const productIds = Array.from(new Set(moveLines.map(ml => ml.product_id[0])));
       const products = await this.getProducts(productIds);
       const productMap = new Map(products.map(p => [p.id, p]));
 
       // Carica i dettagli dei picking per info cliente
-      const pickingIds = [...new Set(moveLines.map(ml => ml.picking_id?.[0]).filter(Boolean))];
+      const pickingIds = Array.from(new Set(moveLines.map(ml => ml.picking_id && ml.picking_id[0]).filter(Boolean)));
       const pickings = await this.getPickings(pickingIds as number[]);
       const pickingMap = new Map(pickings.map(p => [p.id, p]));
 
@@ -321,7 +321,7 @@ export class PickingOdooClient {
         return {
           id: ml.id,
           lineId: ml.id,
-          moveId: ml.move_id?.[0],
+          moveId: ml.move_id ? ml.move_id[0] : undefined,
           productId: ml.product_id[0],
           productName: ml.product_id[1],
           productCode: product?.default_code || '',
@@ -330,7 +330,7 @@ export class PickingOdooClient {
           locationName: ml.location_id[1],
           quantity: ml.quantity || ml.product_uom_qty || 0,
           qty_done: ml.qty_done || 0,
-          uom: ml.product_uom_id?.[1]?.split(' ')[0] || 'PZ',
+          uom: ml.product_uom_id && typeof ml.product_uom_id[1] === 'string' ? ml.product_uom_id[1].split(' ')[0] : 'PZ',
           lot_id: ml.lot_id || undefined,
           lot_name: ml.lot_name || undefined,
           package_id: ml.package_id || undefined,
