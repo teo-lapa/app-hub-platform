@@ -13,6 +13,8 @@ export const mockApps: App[] = [
     category: 'Business',
     url: '/apps/menu-app',
     requiredRole: 'cliente_gratuito',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
     isPopular: true,
     controlStatus: 'in_review',
     createdAt: new Date('2023-01-15'),
@@ -27,6 +29,8 @@ export const mockApps: App[] = [
     category: 'Business',
     url: '/apps/booking',
     requiredRole: 'cliente_premium',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
     isNew: true,
     controlStatus: 'pending',
     createdAt: new Date('2023-03-10'),
@@ -41,6 +45,8 @@ export const mockApps: App[] = [
     category: 'AI & Tech',
     url: '/apps/ai-chat',
     requiredRole: 'cliente_premium',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
     isPopular: true,
     isNew: true,
     controlStatus: 'pending',
@@ -56,6 +62,8 @@ export const mockApps: App[] = [
     category: 'Analytics',
     url: '/apps/analytics',
     requiredRole: 'cliente_gratuito',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
     controlStatus: 'in_review',
     createdAt: new Date('2023-02-05'),
     updatedAt: new Date('2023-11-30'),
@@ -69,6 +77,8 @@ export const mockApps: App[] = [
     category: 'Productivity',
     url: '/apps/tasks',
     requiredRole: 'cliente_gratuito',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
     isPopular: true,
     controlStatus: 'in_review',
     createdAt: new Date('2023-04-12'),
@@ -83,6 +93,8 @@ export const mockApps: App[] = [
     category: 'Finance',
     url: '/apps/invoices',
     requiredRole: 'cliente_premium',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
     controlStatus: 'pending',
     createdAt: new Date('2023-08-01'),
     updatedAt: new Date('2023-12-25'),
@@ -96,6 +108,8 @@ export const mockApps: App[] = [
     category: 'Business',
     url: '/catalogo-lapa',
     requiredRole: 'cliente_gratuito',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
     isPopular: true,
     controlStatus: 'in_review',
     createdAt: new Date('2023-09-01'),
@@ -115,6 +129,10 @@ export const standaloneApps: App[] = [
     category: 'Magazzino',
     url: '/apps/magazzino/inventario',
     requiredRole: 'cliente_gratuito',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   {
     id: 's2',
@@ -125,6 +143,8 @@ export const standaloneApps: App[] = [
     category: 'Magazzino',
     url: '/apps/magazzino/operazioni',
     requiredRole: 'cliente_gratuito',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   {
     id: 's3',
@@ -135,6 +155,8 @@ export const standaloneApps: App[] = [
     category: 'Magazzino',
     url: '/apps/magazzino/pick-residui',
     requiredRole: 'cliente_gratuito',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   {
     id: 's4',
@@ -145,6 +167,8 @@ export const standaloneApps: App[] = [
     category: 'Magazzino',
     url: '/apps/magazzino/prelievo-zone',
     requiredRole: 'cliente_gratuito',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   {
     id: 's5',
@@ -155,6 +179,8 @@ export const standaloneApps: App[] = [
     category: 'Magazzino',
     url: '/apps/magazzino/super-user',
     requiredRole: 'cliente_premium',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   // VENDITE
   {
@@ -166,6 +192,8 @@ export const standaloneApps: App[] = [
     category: 'Vendite',
     url: '/apps/vendite/catalogo',
     requiredRole: 'cliente_gratuito',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   {
     id: 's7',
@@ -176,6 +204,8 @@ export const standaloneApps: App[] = [
     category: 'Vendite',
     url: '/apps/vendite/dashboard',
     requiredRole: 'cliente_premium',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   {
     id: 's8',
@@ -186,6 +216,8 @@ export const standaloneApps: App[] = [
     category: 'Vendite',
     url: '/apps/vendite/ordini-intelligenti',
     requiredRole: 'cliente_premium',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   // LOGISTICA
   {
@@ -197,6 +229,8 @@ export const standaloneApps: App[] = [
     category: 'Logistica',
     url: '/apps/logistica/controllo-consegne',
     requiredRole: 'cliente_gratuito',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   {
     id: 's10',
@@ -207,6 +241,8 @@ export const standaloneApps: App[] = [
     category: 'Logistica',
     url: '/apps/logistica/delivery',
     requiredRole: 'cliente_gratuito',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   {
     id: 's11',
@@ -217,6 +253,8 @@ export const standaloneApps: App[] = [
     category: 'Logistica',
     url: '/apps/logistica/mappa-controllo',
     requiredRole: 'cliente_premium',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   {
     id: 's12',
@@ -227,6 +265,8 @@ export const standaloneApps: App[] = [
     category: 'Logistica',
     url: '/apps/logistica/gestione-ritorni',
     requiredRole: 'cliente_gratuito',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   {
     id: 's13',
@@ -237,6 +277,8 @@ export const standaloneApps: App[] = [
     category: 'Logistica',
     url: '/apps/logistica/smart-route',
     requiredRole: 'cliente_premium',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   {
     id: 's14',
@@ -247,6 +289,8 @@ export const standaloneApps: App[] = [
     category: 'Logistica',
     url: '/apps/logistica/controllo-diretto',
     requiredRole: 'cliente_premium',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   // CLIENTI
   {
@@ -258,6 +302,8 @@ export const standaloneApps: App[] = [
     category: 'CRM',
     url: '/apps/clienti/clientivision',
     requiredRole: 'cliente_premium',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
   // COMUNICAZIONI
   {
@@ -269,6 +315,8 @@ export const standaloneApps: App[] = [
     category: 'Comunicazioni',
     url: '/apps/comunicazioni/centralino-ai',
     requiredRole: 'cliente_premium',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
   },
 ];
 
