@@ -148,6 +148,63 @@ export async function POST(request: NextRequest) {
     let products = inventoryData.result || [];
     console.log(`📦 Trovati ${products.length} record inventario nell'ubicazione`);
 
+    // Se ci sono prodotti, recupera anche le loro immagini
+    if (products.length > 0) {
+      const productIds = [...new Set(products.map((p: any) => p.product_id[0]))];
+      console.log(`🖼️ Recupero immagini per ${productIds.length} prodotti...`);
+
+      const productsDetailResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'product.product',
+            method: 'search_read',
+            args: [
+              [['id', 'in', productIds]]
+            ],
+            kwargs: {
+              fields: ['id', 'image_128', 'default_code', 'barcode'],
+              limit: 100
+            }
+          },
+          id: Math.random()
+        })
+      });
+
+      const productsDetailData = await productsDetailResponse.json();
+
+      if (!productsDetailData.error && productsDetailData.result) {
+        // Crea una mappa per accesso rapido alle immagini
+        const productDetailsMap = new Map();
+        productsDetailData.result.forEach((p: any) => {
+          productDetailsMap.set(p.id, {
+            image_128: p.image_128,
+            default_code: p.default_code,
+            barcode: p.barcode
+          });
+        });
+
+        // Aggiungi le immagini ai prodotti
+        products = products.map((p: any) => {
+          const details = productDetailsMap.get(p.product_id[0]);
+          return {
+            ...p,
+            image_128: details?.image_128 || null,
+            default_code: details?.default_code || p.default_code,
+            barcode: details?.barcode || p.barcode
+          };
+        });
+
+        console.log(`✅ Immagini aggiunte ai prodotti`);
+      }
+    }
+
     // Se non ci sono prodotti, cerca alcuni prodotti del catalogo per gestione inventario
     if (products.length === 0) {
       console.log('🔍 Nessun inventario esistente, carico prodotti del catalogo per gestione...');

@@ -124,6 +124,7 @@ export default function InventarioPage() {
         code: item.default_code || '',
         barcode: item.barcode || '',
         default_code: item.default_code || '',
+        image: item.image_128 ? `data:image/png;base64,${item.image_128}` : null,
         quantity: item.quantity || 0,
         reserved: item.reserved_quantity || 0,
         uom: 'PZ',
@@ -148,6 +149,7 @@ export default function InventarioPage() {
       // IMPORTANTE: Popola anche locationProducts per il componente ProductList
       const locationProductsData = products.map(p => ({
         ...p,
+        image: p.image,
         stockQuantity: p.totalQty || 0,
         countedQuantity: p.totalQty || 0,
         difference: 0
