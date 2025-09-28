@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
 
     // Se ci sono prodotti, recupera anche le loro immagini
     if (products.length > 0) {
-      const productIds = [...new Set(products.map((p: any) => p.product_id[0]))];
+      const productIds = Array.from(new Set(products.map((p: any) => p.product_id[0])));
       console.log(`🖼️ Recupero immagini per ${productIds.length} prodotti...`);
 
       const productsDetailResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
