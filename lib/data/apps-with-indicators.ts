@@ -108,7 +108,7 @@ export const standaloneApps: App[] = [
   // MAGAZZINO
   {
     id: 's1',
-    name: 'Gestione Inventario',
+    name: 'Gestione Inventario [P]',
     description: 'Controllo ubicazioni e gestione magazzino con lotti',
     icon: '📦',
     badge: 'FREE',
