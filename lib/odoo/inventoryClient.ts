@@ -123,6 +123,8 @@ export class InventoryOdooClient {
   // Cerca ubicazione per codice o barcode e restituisce anche l'inventory
   async findLocation(locationCode: string): Promise<{ location: OdooLocation; inventory: any[] } | null> {
     try {
+      console.log('🔧 [Client] Chiamata API per ubicazione:', locationCode);
+
       const response = await fetch('/api/inventory/location', {
         method: 'POST',
         headers: {
@@ -132,19 +134,27 @@ export class InventoryOdooClient {
         body: JSON.stringify({ locationCode })
       });
 
+      console.log('📡 [Client] Risposta API:', response.status, response.statusText);
+
       const data = await response.json();
+      console.log('📋 [Client] Dati ricevuti:', data);
 
       if (!data.success) {
+        console.error('❌ [Client] Errore dal server:', data.error);
+        console.error('❌ [Client] Dettagli:', data.details);
         throw new Error(data.error || 'Ubicazione non trovata');
       }
 
       // L'API restituisce sia location che inventory
+      console.log('✅ [Client] Ubicazione trovata:', data.location.name);
+      console.log('✅ [Client] Prodotti trovati:', data.inventory?.length || 0);
+
       return {
         location: data.location,
         inventory: data.inventory || []
       };
     } catch (error) {
-      console.error('Errore ricerca ubicazione:', error);
+      console.error('❌ [Client] Errore completo:', error);
       throw error;
     }
   }

@@ -102,9 +102,14 @@ export default function InventarioPage() {
     try {
       setLoading(true);
 
+      console.log('🔍 [React] Cercando ubicazione:', locationCode);
+
       const result = await inventoryClient.findLocation(locationCode);
 
+      console.log('📦 [React] Risultato ricevuto:', result);
+
       if (!result) {
+        console.error('❌ [React] Nessun risultato per:', locationCode);
         showNotification(`⚠️ Ubicazione "${locationCode}" non trovata`, 'error');
         setLoading(false);
         return;
