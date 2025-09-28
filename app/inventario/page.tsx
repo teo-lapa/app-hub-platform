@@ -102,19 +102,32 @@ export default function InventarioPage() {
     try {
       setLoading(true);
 
-      const location = await inventoryClient.findLocation(locationCode);
+      const result = await inventoryClient.findLocation(locationCode);
 
-      if (!location) {
+      if (!result) {
         showNotification(`⚠️ Ubicazione "${locationCode}" non trovata`, 'error');
         setLoading(false);
         return;
       }
 
-      setAppState(prev => ({ ...prev, currentLocation: location }));
+      const { location, inventory } = result;
 
-      await loadLocationProducts(location.id);
+      setAppState(prev => ({
+        ...prev,
+        currentLocation: location,
+        products: inventory.map((item: any) => ({
+          id: item.product_id[0],
+          name: item.product_id[1],
+          quantity: item.quantity || 0,
+          reserved: item.reserved_quantity || 0,
+          lot_id: item.lot_id,
+          barcode: item.barcode,
+          default_code: item.default_code
+        }))
+      }));
+
       setLocationCode('');
-      showNotification(`✅ Ubicazione: ${location.name}`, 'success');
+      showNotification(`✅ Ubicazione: ${location.name} (${inventory.length} prodotti)`, 'success');
 
     } catch (error: any) {
       console.error('Errore scan ubicazione:', error);
