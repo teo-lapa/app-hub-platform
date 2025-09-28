@@ -225,15 +225,24 @@ export default function InventarioPage() {
       }
 
       const productsArray = Array.from(productMap.values());
+
+      console.log('📦 [React] ProductsArray creato:', productsArray.length);
+      console.log('🔍 [React] Primo prodotto:', productsArray[0]);
+
       setAppState(prev => ({ ...prev, products: productsArray }));
 
       // Popola anche locationProducts per il nuovo componente ProductList
-      setLocationProducts(productsArray.map(p => ({
+      const locationProductsData = productsArray.map(p => ({
         ...p,
-        stockQuantity: p.totalQty,
-        countedQuantity: p.inventoryQuantity || p.totalQty,
+        stockQuantity: p.totalQty || p.quantity || 0,
+        countedQuantity: p.inventoryQuantity || p.totalQty || p.quantity || 0,
         difference: p.inventoryDiff || 0
-      })));
+      }));
+
+      console.log('🏪 [React] LocationProducts mappati:', locationProductsData.length);
+      console.log('📋 [React] Primo locationProduct:', locationProductsData[0]);
+
+      setLocationProducts(locationProductsData);
 
     } catch (error) {
       console.error('Errore caricamento prodotti:', error);
@@ -397,6 +406,9 @@ export default function InventarioPage() {
         )}
 
         {/* Products List */}
+        {console.log('🎨 [React] Rendering - locationProducts.length:', locationProducts.length)}
+        {console.log('🎨 [React] Rendering - appState.currentLocation:', appState.currentLocation?.name)}
+        {console.log('🎨 [React] Rendering - appState.products.length:', appState.products.length)}
         {locationProducts.length > 0 ? (
           <ProductList
             products={locationProducts}
@@ -421,10 +433,27 @@ export default function InventarioPage() {
           />
         ) : appState.currentLocation && appState.products.length > 0 ? (
           <ProductList
-            products={appState.products}
-            onProductClick={(product) => {
-              setAppState(prev => ({ ...prev, selectedProduct: product }));
-              setShowBottomPanel(true);
+            products={appState.products.map(p => ({
+              id: p.id,
+              name: p.name,
+              code: p.code,
+              stockQuantity: p.quantity,
+              countedQuantity: p.quantity,
+              difference: 0
+            }))}
+            onSelectProduct={(product) => {
+              const selectedProd = appState.products.find(p => p.id === product.id);
+              if (selectedProd) {
+                setAppState(prev => ({ ...prev, selectedProduct: selectedProd }));
+                setShowBottomPanel(true);
+              }
+            }}
+            onUpdateQuantity={(productId, quantity) => {
+              console.log('Update quantity:', productId, quantity);
+            }}
+            onOpenCalculator={(productId, currentQuantity) => {
+              setCountedQuantity(currentQuantity.toString());
+              setShowCalculator(true);
             }}
           />
         ) : appState.currentLocation ? (
