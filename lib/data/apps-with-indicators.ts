@@ -108,15 +108,15 @@ export const standaloneApps: App[] = [
   // MAGAZZINO
   {
     id: 's1',
-    name: 'Gestione Inventario [S]',
-    description: 'Controllo ubicazioni e gestione magazzino',
+    name: 'Gestione Inventario',
+    description: 'Controllo ubicazioni e gestione magazzino con lotti',
     icon: '📦',
     badge: 'FREE',
     category: 'Magazzino',
-    url: '/apps/magazzino/inventario',
+    url: '/inventario',
     requiredRole: 'cliente_gratuito',
     createdAt: new Date('2023-09-01'),
-    updatedAt: new Date('2023-12-28'),
+    updatedAt: new Date('2024-09-28'),
   },
   {
     id: 's2',
