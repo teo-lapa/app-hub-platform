@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Package, Search, MapPin, Home, RefreshCw, Camera, AlertCircle, Plus, X, Barcode, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 
 interface Location {
   id: number;
@@ -28,11 +27,6 @@ interface Product {
   inventoryDiff?: number;
 }
 
-// Scanner component - caricato dinamicamente per evitare SSR issues
-const QrScanner = dynamic(
-  () => import('../../../../components/qr-scanner').then(mod => mod.QrScanner),
-  { ssr: false }
-);
 
 export default function InventarioPage() {
   // Stati base
@@ -44,8 +38,6 @@ export default function InventarioPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [countedQty, setCountedQty] = useState('');
   const [notification, setNotification] = useState<{message: string; type: string} | null>(null);
-  const [showScanner, setShowScanner] = useState(false);
-  const [scanMode, setScanMode] = useState<'location' | 'product'>('location');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Test connessione all'avvio
@@ -180,19 +172,12 @@ export default function InventarioPage() {
   };
 
   // APRI SCANNER CAMERA (placeholder)
-  const openScanner = (mode: 'location' | 'product' = 'location') => {
-    setScanMode(mode);
-    setShowScanner(true);
-  };
-
-  const handleScanResult = (result: string) => {
-    setShowScanner(false);
-    if (scanMode === 'location') {
-      setSearchQuery(result);
+  const openScanner = () => {
+    // Prompt manuale per simulare scanner
+    const code = prompt('Inserisci codice ubicazione (es: WH/Stock, LOC-001):');
+    if (code) {
+      setSearchQuery(code);
       setTimeout(() => searchLocation(), 100);
-    } else {
-      // Per prodotti futuri
-      showNotification(`Prodotto scansionato: ${result}`, 'info');
     }
   };
 
@@ -253,7 +238,7 @@ export default function InventarioPage() {
               Cerca
             </button>
             <button
-              onClick={() => openScanner('location')}
+              onClick={openScanner}
               className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
             >
               <Barcode className="w-5 h-5" />
@@ -390,32 +375,6 @@ export default function InventarioPage() {
         <div className="fixed bottom-6 left-6 bg-gray-800 rounded-lg px-4 py-3 flex items-center gap-3 shadow-lg">
           <div className="w-5 h-5 border-2 border-gray-600 border-t-emerald-500 rounded-full animate-spin" />
           <span className="text-white text-sm">Caricamento...</span>
-        </div>
-      )}
-
-      {/* Scanner Modal */}
-      {showScanner && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
-          <div className="relative w-full max-w-lg p-4">
-            <button
-              onClick={() => setShowScanner(false)}
-              className="absolute top-4 right-4 p-2 bg-red-500 hover:bg-red-600 rounded-lg text-white z-10"
-            >
-              <X className="w-6 h-6" />
-            </button>
-            <div className="bg-gray-800 rounded-xl p-6">
-              <h3 className="text-xl font-semibold text-white mb-4">
-                Scansiona {scanMode === 'location' ? 'Ubicazione' : 'Prodotto'}
-              </h3>
-              <QrScanner
-                onResult={handleScanResult}
-                onError={(error) => {
-                  showNotification(`Errore scanner: ${error}`, 'error');
-                  setShowScanner(false);
-                }}
-              />
-            </div>
-          </div>
         </div>
       )}
     </div>
