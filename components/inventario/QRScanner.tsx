@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, X, Flashlight, FlashlightOff } from 'lucide-react';
+import { Html5Qrcode } from 'html5-qrcode';
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -12,103 +13,124 @@ interface QRScannerProps {
 }
 
 export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode" }: QRScannerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [torchEnabled, setTorchEnabled] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [torchEnabled, setTorchEnabled] = useState(false);
+  const [hasScanned, setHasScanned] = useState(false);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      startCamera();
+      startScanner();
+      setHasScanned(false);
     } else {
-      stopCamera();
+      stopScanner();
     }
 
     return () => {
-      stopCamera();
+      stopScanner();
     };
   }, [isOpen]);
 
-  const startCamera = async () => {
+  const startScanner = async () => {
     try {
       setError(null);
       setScanning(true);
 
-      const constraints = {
-        video: {
-          facingMode: 'environment', // Camera posteriore
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+      const html5QrCode = new Html5Qrcode("qr-reader");
+      scannerRef.current = html5QrCode;
+
+      const qrCodeSuccessCallback = (decodedText: string) => {
+        // Evita scansioni multiple dello stesso codice
+        if (!hasScanned) {
+          setHasScanned(true);
+          console.log(`✅ QR Code scansionato: ${decodedText}`);
+          onScan(decodedText);
+          stopScanner();
+          onClose();
         }
       };
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      setStream(mediaStream);
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+      };
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        videoRef.current.play();
+      // Prova prima con la camera posteriore
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          config,
+          qrCodeSuccessCallback,
+          (errorMessage) => {
+            // Ignora errori di scansione continui
+          }
+        );
+      } catch (err) {
+        console.warn('Camera posteriore non disponibile, provo con anteriore');
+        // Se fallisce, prova con qualsiasi camera disponibile
+        await html5QrCode.start(
+          { facingMode: "user" },
+          config,
+          qrCodeSuccessCallback,
+          (errorMessage) => {
+            // Ignora errori di scansione continui
+          }
+        );
       }
 
-      // Simula scanner QR (in produzione useresti una libreria come html5-qrcode)
-      setTimeout(() => {
-        simulateQRScan();
-      }, 2000);
-
     } catch (err) {
-      console.error('Errore accesso camera:', err);
+      console.error('Errore avvio scanner:', err);
       setError('Impossibile accedere alla camera. Verifica i permessi.');
       setScanning(false);
     }
   };
 
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
+  const stopScanner = async () => {
+    if (scannerRef.current) {
+      try {
+        const isScanning = scannerRef.current.isScanning;
+        if (isScanning) {
+          await scannerRef.current.stop();
+        }
+        scannerRef.current.clear();
+      } catch (err) {
+        console.error('Errore stop scanner:', err);
+      }
+      scannerRef.current = null;
     }
     setScanning(false);
     setTorchEnabled(false);
   };
 
   const toggleTorch = async () => {
-    if (stream) {
-      const track = stream.getVideoTracks()[0];
-      const capabilities = track.getCapabilities() as any;
-
-      if (capabilities.torch) {
-        try {
-          await track.applyConstraints({
-            advanced: [{ torch: !torchEnabled } as any]
-          });
-          setTorchEnabled(!torchEnabled);
-        } catch (err) {
-          console.error('Errore controllo flash:', err);
+    if (scannerRef.current && scannerRef.current.isScanning) {
+      try {
+        const state = scannerRef.current.getState();
+        if (state === 2) { // SCANNING
+          // Ottieni le capacità della camera
+          const track = scannerRef.current.getRunningTrack();
+          if (track) {
+            const capabilities = track.getCapabilities() as any;
+            if (capabilities.torch) {
+              await track.applyConstraints({
+                advanced: [{ torch: !torchEnabled } as any]
+              });
+              setTorchEnabled(!torchEnabled);
+            }
+          }
         }
+      } catch (err) {
+        console.error('Errore controllo flash:', err);
       }
     }
   };
 
-  const simulateQRScan = () => {
-    // Simula la lettura di un QR code dopo 2 secondi
-    const mockCodes = [
-      'LOC001',
-      'WH/Stock/Shelf-A',
-      'PROD123456',
-      'LOC_BUFFER_001'
-    ];
-
-    const randomCode = mockCodes[Math.floor(Math.random() * mockCodes.length)];
-    onScan(randomCode);
-    onClose();
-  };
-
   const handleManualInput = () => {
     const input = prompt('Inserisci codice manualmente:');
-    if (input) {
-      onScan(input);
+    if (input && input.trim()) {
+      onScan(input.trim());
       onClose();
     }
   };
@@ -160,47 +182,22 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
               </div>
             ) : (
               <>
-                {/* Video Preview */}
-                <div className="relative bg-black rounded-lg overflow-hidden mb-4 aspect-video">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover"
-                  />
-
-                  {/* Scanning Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-48 h-48 border-2 border-blue-500 relative">
-                      <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-blue-500"></div>
-                      <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-blue-500"></div>
-                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-blue-500"></div>
-                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-blue-500"></div>
-
-                      {/* Scanning Line */}
-                      {scanning && (
-                        <motion.div
-                          animate={{ y: [0, 192, 0] }}
-                          transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                          className="absolute left-0 right-0 h-0.5 bg-blue-500 shadow-lg shadow-blue-500/50"
-                        />
-                      )}
-                    </div>
-                  </div>
+                {/* QR Scanner Container */}
+                <div className="relative bg-black rounded-lg overflow-hidden mb-4">
+                  <div id="qr-reader" className="w-full"></div>
 
                   {/* Status Indicator */}
-                  <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
+                  <div className="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none">
                     <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      scanning ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                      scanning ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
                     }`}>
-                      {scanning ? 'Scansione attiva' : 'Camera non attiva'}
+                      {scanning ? 'Scansione attiva' : 'Avvio scanner...'}
                     </div>
 
                     <button
                       onClick={toggleTorch}
-                      className="glass p-2 rounded-full hover:bg-white/20 transition-colors"
-                      disabled={!stream}
+                      className="glass p-2 rounded-full hover:bg-white/20 transition-colors pointer-events-auto"
+                      disabled={!scanning}
                     >
                       {torchEnabled ? (
                         <FlashlightOff className="w-4 h-4" />
@@ -214,7 +211,7 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
                 {/* Instructions */}
                 <div className="text-center mb-4">
                   <p className="text-muted-foreground text-sm">
-                    Inquadra il codice QR o barcode nell'area evidenziata
+                    Inquadra il codice QR o barcode nel riquadro
                   </p>
                 </div>
 
@@ -227,10 +224,10 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
                     Inserimento Manuale
                   </button>
                   <button
-                    onClick={simulateQRScan}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors"
+                    onClick={onClose}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors"
                   >
-                    Simula Scansione
+                    Annulla
                   </button>
                 </div>
               </>
