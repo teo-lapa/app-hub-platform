@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 Ricerca ubicazione:', locationCode);
 
-    const odooUrl = process.env.ODOO_URL!;
+    const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
     const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
 
     // STEP 1: Autenticazione con credenziali corrette (stesso metodo del catalogo)

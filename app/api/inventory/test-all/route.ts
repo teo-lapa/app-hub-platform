@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     tests: [] as any[]
   };
 
-  const odooUrl = process.env.ODOO_URL!;
+  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
 
   // Test 1: Database list
   try {
