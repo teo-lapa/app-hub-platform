@@ -60,17 +60,30 @@ export function LotManager({ isOpen, onClose, productId, productName, onSelectLo
 
     setCreating(true);
     try {
-      const lotData = {
+      const lotData: any = {
         product_id: productId,
         name: newLotName,
         company_id: 1
       };
 
       if (newLotExpiry) {
-        lotData['expiration_date'] = newLotExpiry;
+        lotData.expiration_date = newLotExpiry;
       }
 
-      const newLotId = await inventoryClient.create('stock.lot', lotData);
+      // Creiamo il lotto tramite API
+      const response = await fetch('/api/inventory/lot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(lotData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore creazione lotto');
+      }
+
+      const { id: newLotId } = await response.json();
 
       const newLot: Lot = {
         id: newLotId,

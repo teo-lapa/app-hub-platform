@@ -555,7 +555,13 @@ export default function InventarioPage() {
         productId={selectedProductForLot?.id || 0}
         productName={selectedProductForLot?.name || ''}
         onSelectLot={(lot) => {
-          setAppState(prev => ({ ...prev, selectedLot: lot }));
+          setAppState(prev => ({
+            ...prev,
+            selectedLot: {
+              ...lot,
+              quantity: lot.quantity || 0
+            }
+          }));
           setShowLotManager(false);
           toast.success(`Lotto ${lot.name} selezionato`);
         }}
@@ -569,4 +575,4 @@ export default function InventarioPage() {
       <MobileHomeButton />
     </div>
   );
-}
+} 
