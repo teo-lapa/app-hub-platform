@@ -445,7 +445,7 @@ export default function InventarioPage() {
               const selectedProd = locationProducts.find(p => p.id === productId);
               setAppState(prev => ({
                 ...prev,
-                selectedProduct: selectedProd
+                selectedProduct: selectedProd || null
               }));
               setCountedQuantity(currentQuantity.toString());
               setShowCalculator(true);
@@ -475,7 +475,7 @@ export default function InventarioPage() {
               const selectedProd = appState.products.find(p => p.id === productId);
               setAppState(prev => ({
                 ...prev,
-                selectedProduct: selectedProd
+                selectedProduct: selectedProd || null
               }));
               setCountedQuantity(currentQuantity.toString());
               setShowCalculator(true);
