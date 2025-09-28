@@ -145,6 +145,17 @@ export default function InventarioPage() {
         products: products
       }));
 
+      // IMPORTANTE: Popola anche locationProducts per il componente ProductList
+      const locationProductsData = products.map(p => ({
+        ...p,
+        stockQuantity: p.totalQty || p.quantity || 0,
+        countedQuantity: p.totalQty || p.quantity || 0,
+        difference: 0
+      }));
+
+      console.log('🏪 [React] Setting locationProducts:', locationProductsData.length);
+      setLocationProducts(locationProductsData);
+
       console.log('📦 [React] Stato aggiornato. Prodotti nello stato:', appState.products.length);
 
       setLocationCode('');
