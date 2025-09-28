@@ -184,6 +184,8 @@ export async function POST(request: NextRequest) {
           quantity: 0,
           reserved_quantity: 0,
           lot_id: false,
+          barcode: product.barcode,
+          default_code: product.default_code,
           _catalog_item: true
         }));
         console.log(`📋 Caricati ${products.length} prodotti del catalogo per gestione inventario`);

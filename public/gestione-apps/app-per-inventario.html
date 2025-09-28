@@ -1310,6 +1310,10 @@
     };
 
     // Stato applicazione
+    console.log('🚀🚀🚀 APP INVENTARIO INIZIALIZZATA! 🚀🚀🚀');
+    console.log('📍 URL corrente:', window.location.href);
+    console.log('📍 Origin:', window.location.origin);
+
     let appState = {
       currentLocation: null,
       products: [],
@@ -1387,14 +1391,20 @@
 
     // Gestione scanner ubicazione
     async function scanLocation(locationCode) {
+      console.log('🚀 FUNZIONE scanLocation CHIAMATA con:', locationCode);
+
       if (!locationCode) {
+        console.log('❌ Codice ubicazione vuoto');
         showNotification('Inserisci un codice ubicazione', 'error');
         return;
       }
 
+      console.log('✅ Codice valido, procedo...');
+
       try {
         showLoading();
         console.log('🔍 Cercando ubicazione:', locationCode);
+        console.log('📍 URL API:', window.location.origin + '/api/inventory/location');
 
         // Usa la API che funziona (stesse credenziali del catalogo)
         const response = await fetch('/api/inventory/location', {
@@ -1408,15 +1418,25 @@
         });
 
         console.log('📡 Risposta fetch:', response.status, response.statusText);
+        console.log('📡 Response headers:', response.headers);
 
-        if (!response.ok) {
-          throw new Error(`Errore HTTP: ${response.status}`);
+        const responseText = await response.text();
+        console.log('📡 Raw response:', responseText);
+
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('❌ Errore parsing JSON:', parseError);
+          console.error('❌ Response text:', responseText);
+          throw new Error('Risposta non valida dal server');
         }
 
-        const data = await response.json();
         console.log('📦 Dati ricevuti:', data);
 
         if (!data.success) {
+          console.error('❌ Errore dal server:', data.error);
+          console.error('❌ Dettagli:', data.details);
           throw new Error(data.error || 'Errore nella ricerca ubicazione');
         }
 
@@ -1430,8 +1450,16 @@
         document.getElementById('locationName').textContent = location.complete_name || location.name;
         document.getElementById('locationDetails').textContent = `Codice: ${location.barcode || location.name}`;
 
-        // Carica prodotti dell'ubicazione usando l'ID
-        await loadLocationProducts(location.id);
+        // I prodotti sono già nell'inventory restituito dall'API
+        console.log('📦 Prodotti già caricati dall\'API:', inventory.length);
+        console.log('📦 INVENTORY COMPLETO:', JSON.stringify(inventory.slice(0,5)));
+
+        // Verifica se ci sono quantità > 0
+        const conGiacenza = inventory.filter(p => p.quantity > 0);
+        console.log('🟢 Prodotti CON giacenza:', conGiacenza.length);
+        console.log('🟢 Esempi con giacenza:', conGiacenza.slice(0,3));
+
+        displayProducts(inventory);
 
         // Pulisci il campo e mantieni il focus
         document.getElementById('locationScanner').value = '';
@@ -1450,7 +1478,68 @@
       }
     }
 
-    // Carica prodotti dell'ubicazione
+    // Mostra i prodotti nell'interfaccia
+    function displayProducts(inventory) {
+      console.log('📦 Mostrando', inventory.length, 'prodotti');
+      console.log('📦 Dati inventario ricevuti:', inventory);
+
+      // Salva i prodotti nello stato
+      appState.products = inventory.map(item => {
+        console.log('Prodotto:', item.product_id[1], 'Quantità:', item.quantity);
+        return {
+          id: item.product_id[0],
+          name: item.product_id[1],
+          quantity: parseFloat(item.quantity) || 0,
+          reserved: parseFloat(item.reserved_quantity) || 0,
+          lot_id: item.lot_id
+        };
+      });
+
+      // Aggiorna l'interfaccia
+      const container = document.getElementById('productsGrid');
+      if (!container) {
+        console.error('❌ Elemento productsGrid non trovato!');
+        return;
+      }
+
+      if (appState.products.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📦</div>
+            <div class="empty-title">Ubicazione vuota</div>
+            <div class="empty-description">
+              Nessun prodotto in questa ubicazione
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = appState.products.map(product => {
+        const bgColor = product.quantity > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.05)';
+        const borderColor = product.quantity > 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.2)';
+
+        return `
+          <div class="product-card" onclick="selectProduct(${product.id})"
+               style="background: ${bgColor}; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.3s;">
+            <div class="product-info">
+              <div class="product-name" style="font-weight: 600;">${product.name}</div>
+              <div class="product-details" style="color: #9ca3af; font-size: 14px; margin-top: 4px;">
+                ${product.lot_id ? `📋 Lotto: ${product.lot_id[1] || product.lot_id}` : ''}
+              </div>
+            </div>
+            <div class="product-quantity" style="text-align: center;">
+              <div class="quantity-value" style="font-size: 32px; font-weight: bold; color: ${product.quantity > 0 ? '#10b981' : '#ef4444'};">
+                ${product.quantity}
+              </div>
+              <div class="quantity-label" style="font-size: 12px; color: #6b7280;">Disponibili</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Carica prodotti dell'ubicazione (VECCHIA - non più usata)
     async function loadLocationProducts(locationId) {
       try {
         // Ottieni quants dall'ubicazione con informazioni complete
@@ -2809,12 +2898,24 @@
 
     // Event listeners
     document.addEventListener('DOMContentLoaded', () => {
+      console.log('🎯 DOMContentLoaded - Inizializzo event listeners');
+
       // Scanner ubicazione con Enter e pistola
       const locationInput = document.getElementById('locationScanner');
+      console.log('🎯 Input ubicazione trovato:', locationInput);
+
+      if (!locationInput) {
+        console.error('❌ ERRORE: Input locationScanner non trovato!');
+        return;
+      }
+
       locationInput.addEventListener('keypress', (e) => {
+        console.log('⌨️ Tasto premuto:', e.key);
         if (e.key === 'Enter') {
           const code = locationInput.value.trim();
+          console.log('⌨️ ENTER premuto, codice:', code);
           if (code) {
+            console.log('🚀 Chiamo scanLocation con:', code);
             scanLocation(code);
           }
         }
