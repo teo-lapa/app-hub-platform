@@ -105,7 +105,9 @@ export default function InventarioPage() {
       const location = await inventoryClient.findLocation(locationCode);
 
       if (!location) {
-        throw new Error('Ubicazione non trovata: ' + locationCode);
+        showNotification(`⚠️ Ubicazione "${locationCode}" non trovata`, 'error');
+        setLoading(false);
+        return;
       }
 
       setAppState(prev => ({ ...prev, currentLocation: location }));
