@@ -130,25 +130,30 @@ export function ProductList({ products, onSelectProduct, onUpdateQuantity, onOpe
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-400">Contato:</span>
                       <input
-                        type="number"
+                        type="text"
                         value={product.countedQuantity}
-                        onChange={(e) => handleQuantityChange(product.id, e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-20 glass px-2 py-1 rounded text-center font-bold"
-                      />
-                    </div>
-
-                    {onOpenCalculator && (
-                      <button
+                        readOnly
                         onClick={(e) => {
                           e.stopPropagation();
-                          onOpenCalculator(product.id, product.countedQuantity);
+                          if (onOpenCalculator) {
+                            onOpenCalculator(product.id, product.countedQuantity);
+                          }
                         }}
-                        className="glass p-2 rounded-lg hover:bg-white/10"
-                      >
-                        <Calculator className="w-4 h-4" />
-                      </button>
-                    )}
+                        className="w-20 glass px-2 py-1 rounded text-center font-bold cursor-pointer hover:bg-white/10"
+                        placeholder="0"
+                      />
+                      {onOpenCalculator && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenCalculator(product.id, product.countedQuantity);
+                          }}
+                          className="glass p-2 rounded-lg hover:bg-white/10"
+                        >
+                          <Calculator className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Indicatore differenza */}

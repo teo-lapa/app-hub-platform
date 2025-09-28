@@ -289,6 +289,17 @@ export default function InventarioPage() {
 
   const handleCalculatorConfirm = (value: string) => {
     setCountedQuantity(value);
+    const quantity = parseFloat(value) || 0;
+
+    // Aggiorna locationProducts se stiamo usando quella lista
+    if (locationProducts.length > 0 && appState.selectedProduct) {
+      setLocationProducts(prev => prev.map(p =>
+        p.id === appState.selectedProduct?.id
+          ? { ...p, countedQuantity: quantity, difference: quantity - p.stockQuantity }
+          : p
+      ));
+      toast.success(`Quantità aggiornata: ${quantity}`);
+    }
   };
 
   const handleProductSelect = (product: BasicProduct) => {
@@ -431,9 +442,10 @@ export default function InventarioPage() {
               toast.success('Quantità aggiornata');
             }}
             onOpenCalculator={(productId, currentQuantity) => {
+              const selectedProd = locationProducts.find(p => p.id === productId);
               setAppState(prev => ({
                 ...prev,
-                selectedProduct: locationProducts.find(p => p.id === productId)
+                selectedProduct: selectedProd
               }));
               setCountedQuantity(currentQuantity.toString());
               setShowCalculator(true);
@@ -460,6 +472,11 @@ export default function InventarioPage() {
               console.log('Update quantity:', productId, quantity);
             }}
             onOpenCalculator={(productId, currentQuantity) => {
+              const selectedProd = appState.products.find(p => p.id === productId);
+              setAppState(prev => ({
+                ...prev,
+                selectedProduct: selectedProd
+              }));
               setCountedQuantity(currentQuantity.toString());
               setShowCalculator(true);
             }}
