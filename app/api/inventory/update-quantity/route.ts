@@ -3,7 +3,7 @@ import { getOdooClient } from '@/lib/odoo-client';
 
 export async function POST(req: NextRequest) {
   try {
-    const { productId, locationId, quantity, lotId } = await req.json();
+    const { productId, locationId, quantity, lotId, lotNumber, expiryDate, isNewProduct } = await req.json();
 
     if (!productId || !locationId || quantity === undefined) {
       return NextResponse.json({
@@ -14,14 +14,53 @@ export async function POST(req: NextRequest) {
 
     const client = await getOdooClient();
 
+    // Gestisci creazione lotto se necessario
+    let actualLotId = lotId;
+    if (!lotId && lotNumber && quantity > 0) {
+      // Cerca lotto esistente o creane uno nuovo
+      const existingLots = await client.searchRead(
+        'stock.lot',
+        [
+          ['product_id', '=', productId],
+          ['name', '=', lotNumber]
+        ],
+        ['id'],
+        1
+      );
+
+      if (existingLots && existingLots.length > 0) {
+        actualLotId = existingLots[0].id;
+        // Aggiorna scadenza se fornita
+        if (expiryDate) {
+          await client.write('stock.lot', [actualLotId], {
+            expiration_date: expiryDate
+          });
+        }
+      } else {
+        // Crea nuovo lotto
+        const lotData: any = {
+          product_id: productId,
+          name: lotNumber,
+          company_id: 1
+        };
+
+        if (expiryDate) {
+          lotData.expiration_date = expiryDate;
+        }
+
+        const newLotIds = await client.create('stock.lot', [lotData]);
+        actualLotId = newLotIds[0];
+      }
+    }
+
     // Trova il quant specifico
     const domain: any[] = [
       ['product_id', '=', productId],
       ['location_id', '=', locationId]
     ];
 
-    if (lotId) {
-      domain.push(['lot_id', '=', lotId]);
+    if (actualLotId) {
+      domain.push(['lot_id', '=', actualLotId]);
     } else {
       domain.push(['lot_id', '=', false]);
     }
@@ -53,7 +92,7 @@ export async function POST(req: NextRequest) {
       const newQuant = await client.create('stock.quant', [{
         product_id: productId,
         location_id: locationId,
-        lot_id: lotId || false,
+        lot_id: actualLotId || false,
         inventory_quantity: quantity
       }]);
 
