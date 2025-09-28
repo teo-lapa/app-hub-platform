@@ -9,6 +9,7 @@ import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
 import { QRScanner } from '@/components/prelievo-zone/QRScanner';
 import { NumericKeyboard } from '@/components/prelievo-zone/NumericKeyboard';
 import { ZONES, Zone, Batch, StockLocation, Operation, WorkStats, DEFAULT_CONFIG } from '@/lib/types/picking';
+import { getPickingClient } from '@/lib/odoo/pickingClient';
 import toast from 'react-hot-toast';
 
 export default function PrelievoZonePage() {
@@ -52,6 +53,9 @@ export default function PrelievoZonePage() {
 
   // Configurazione
   const [config, setConfig] = useState(DEFAULT_CONFIG);
+
+  // Client Odoo
+  const pickingClient = getPickingClient();
 
   // Check connessione all'avvio
   useEffect(() => {
@@ -102,36 +106,26 @@ export default function PrelievoZonePage() {
   const loadBatches = async () => {
     setIsLoading(true);
     try {
-      // TODO: Implementare chiamata reale a Odoo
-      // Per ora usiamo dati mock
-      const mockBatches: Batch[] = [
-        {
-          id: 1,
-          name: 'BATCH/2024/001',
-          state: 'in_progress',
-          user_id: [1, 'Mario Rossi'],
-          scheduled_date: '2024-01-15',
-          picking_count: 12,
-          move_line_count: 45,
-          product_count: 38,
-          driver_id: [2, 'Luca Bianchi'],
-          vehicle_id: [1, 'Furgone 01']
-        },
-        {
-          id: 2,
-          name: 'BATCH/2024/002',
-          state: 'draft',
-          scheduled_date: '2024-01-15',
-          picking_count: 8,
-          move_line_count: 32,
-          product_count: 28
-        }
-      ];
+      // Carica batch reali da Odoo
+      const odoBatches = await pickingClient.getBatches();
 
-      setBatches(mockBatches);
-    } catch (error) {
+      console.log('📦 Batch caricati da Odoo:', odoBatches.length);
+
+      setBatches(odoBatches);
+
+      if (odoBatches.length === 0) {
+        toast.info('Nessun batch disponibile al momento');
+      }
+    } catch (error: any) {
       console.error('Errore caricamento batch:', error);
-      toast.error('Errore nel caricamento dei batch');
+
+      // Se è un errore di autenticazione, reindirizza al login
+      if (error.message?.includes('Session') || error.message?.includes('401')) {
+        toast.error('Sessione scaduta, reindirizzamento al login...');
+        router.push('/');
+      } else {
+        toast.error('Errore nel caricamento dei batch');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -167,31 +161,24 @@ export default function PrelievoZonePage() {
   const loadZoneLocations = async (zone: Zone) => {
     setIsLoading(true);
     try {
-      // TODO: Implementare chiamata reale a Odoo
-      // Per ora usiamo dati mock
-      const mockLocations: StockLocation[] = [
-        {
-          id: 1,
-          name: `${zone.name}/A/01`,
-          complete_name: `WH/Stock/${zone.name}/A/01`,
-          barcode: 'LOC001'
-        },
-        {
-          id: 2,
-          name: `${zone.name}/A/02`,
-          complete_name: `WH/Stock/${zone.name}/A/02`,
-          barcode: 'LOC002'
-        },
-        {
-          id: 3,
-          name: `${zone.name}/B/01`,
-          complete_name: `WH/Stock/${zone.name}/B/01`,
-          barcode: 'LOC003'
-        }
-      ];
+      // Carica ubicazioni reali da Odoo per la zona selezionata
+      const odooLocations = await pickingClient.getZoneLocations(zone.name);
 
-      setLocations(mockLocations);
-    } catch (error) {
+      console.log(`📍 Ubicazioni caricate per zona ${zone.name}:`, odooLocations.length);
+
+      // Filtra solo le ubicazioni che hanno operazioni nel batch corrente
+      if (currentBatch) {
+        // Per ora mostriamo tutte le ubicazioni della zona
+        // In futuro possiamo filtrare solo quelle con operazioni
+        setLocations(odooLocations);
+      } else {
+        setLocations(odooLocations);
+      }
+
+      if (odooLocations.length === 0) {
+        toast.info(`Nessuna ubicazione trovata nella zona ${zone.displayName}`);
+      }
+    } catch (error: any) {
       console.error('Errore caricamento ubicazioni:', error);
       toast.error('Errore nel caricamento delle ubicazioni');
     } finally {
@@ -213,45 +200,31 @@ export default function PrelievoZonePage() {
   const loadLocationOperations = async (location: StockLocation) => {
     setIsLoading(true);
     try {
-      // TODO: Implementare chiamata reale a Odoo
-      // Per ora usiamo dati mock
-      const mockOperations: Operation[] = [
-        {
-          id: 1,
-          productId: 1,
-          productName: 'Pasta Barilla 500g',
-          productCode: 'PASTA001',
-          productBarcode: '8076809513388',
-          locationId: location.id,
-          locationName: location.name,
-          quantity: 10,
-          qty_done: 0,
-          uom: 'PZ',
-          customer: 'Ristorante Da Mario'
-        },
-        {
-          id: 2,
-          productId: 2,
-          productName: 'Pomodori Pelati 400g',
-          productCode: 'POM001',
-          productBarcode: '8001440123456',
-          locationId: location.id,
-          locationName: location.name,
-          quantity: 5,
-          qty_done: 0,
-          uom: 'PZ',
-          customer: 'Pizzeria Napoli'
-        }
-      ];
+      if (!currentBatch) {
+        toast.error('Nessun batch selezionato');
+        return;
+      }
 
-      setCurrentOperations(mockOperations);
+      // Carica operazioni reali da Odoo per l'ubicazione selezionata
+      const odooOperations = await pickingClient.getLocationOperations(
+        currentBatch.id,
+        location.id
+      );
+
+      console.log(`📦 Operazioni caricate per ${location.name}:`, odooOperations.length);
+
+      setCurrentOperations(odooOperations);
 
       // Aggiorna statistiche
       setWorkStats(prev => ({
         ...prev,
-        totalOperations: prev.totalOperations + mockOperations.length
+        totalOperations: prev.totalOperations + odooOperations.length
       }));
-    } catch (error) {
+
+      if (odooOperations.length === 0) {
+        toast.info(`Nessuna operazione da prelevare in ${location.name}`);
+      }
+    } catch (error: any) {
       console.error('Errore caricamento operazioni:', error);
       toast.error('Errore nel caricamento delle operazioni');
     } finally {
@@ -259,7 +232,8 @@ export default function PrelievoZonePage() {
     }
   };
 
-  const updateOperation = (operationId: number, qtyDone: number) => {
+  const updateOperation = async (operationId: number, qtyDone: number) => {
+    // Aggiorna UI immediatamente
     setCurrentOperations(prev => prev.map(op => {
       if (op.id === operationId) {
         const updated = { ...op, qty_done: qtyDone };
@@ -277,6 +251,18 @@ export default function PrelievoZonePage() {
       }
       return op;
     }));
+
+    // Salva su Odoo in background
+    try {
+      const success = await pickingClient.updateOperationQuantity(operationId, qtyDone);
+      if (!success) {
+        toast.error('Errore salvataggio quantità su Odoo');
+        // Potremmo fare rollback qui se necessario
+      }
+    } catch (error) {
+      console.error('Errore aggiornamento Odoo:', error);
+      toast.error('Errore sincronizzazione con Odoo');
+    }
   };
 
   // Handler per QR Scanner
