@@ -137,11 +137,15 @@ export default function InventarioPage() {
         isCountedRecent: false
       }));
 
+      console.log('📦 [React] Prodotti convertiti:', products.length, products);
+
       setAppState(prev => ({
         ...prev,
         currentLocation: location,
         products: products
       }));
+
+      console.log('📦 [React] Stato aggiornato. Prodotti nello stato:', appState.products.length);
 
       setLocationCode('');
       showNotification(`✅ Ubicazione: ${location.name} (${inventory.length} prodotti)`, 'success');
@@ -413,6 +417,14 @@ export default function InventarioPage() {
               }));
               setCountedQuantity(currentQuantity.toString());
               setShowCalculator(true);
+            }}
+          />
+        ) : appState.currentLocation && appState.products.length > 0 ? (
+          <ProductList
+            products={appState.products}
+            onProductClick={(product) => {
+              setAppState(prev => ({ ...prev, selectedProduct: product }));
+              setShowBottomPanel(true);
             }}
           />
         ) : appState.currentLocation ? (
