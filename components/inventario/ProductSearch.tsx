@@ -59,6 +59,12 @@ export function ProductSearch({ isOpen, onClose, onSelectProduct, currentLocatio
     try {
       const products = await inventoryClient.searchProducts(query, 20);
 
+      if (!products || !Array.isArray(products)) {
+        console.warn('Nessun prodotto trovato o risposta non valida');
+        setSearchResults([]);
+        return;
+      }
+
       const formattedProducts = products.map(product => ({
         id: product.id,
         name: product.name,
