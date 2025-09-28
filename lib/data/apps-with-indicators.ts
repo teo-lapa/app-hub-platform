@@ -1,0 +1,315 @@
+import { App } from '@/lib/types';
+
+// [P] = Piattaforma (in /app/)
+// [S] = Standalone (in /apps/)
+
+export const mockApps: App[] = [
+  {
+    id: '1',
+    name: 'Menu App [P]',
+    description: 'Gestisci il menu del tuo ristorante con facilità. Crea, modifica e organizza i piatti con foto e prezzi.',
+    icon: '🍽️',
+    badge: 'FREE',
+    category: 'Business',
+    url: '/apps/menu-app',
+    requiredRole: 'cliente_gratuito',
+    isPopular: true,
+    controlStatus: 'in_review',
+    createdAt: new Date('2023-01-15'),
+    updatedAt: new Date('2023-12-01'),
+  },
+  {
+    id: '2',
+    name: 'Booking System [P]',
+    description: 'Sistema di prenotazioni completo per hotel, ristoranti e servizi. Gestisci calendari e disponibilità.',
+    icon: '📅',
+    badge: 'PRO',
+    category: 'Business',
+    url: '/apps/booking',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    controlStatus: 'pending',
+    createdAt: new Date('2023-03-10'),
+    updatedAt: new Date('2023-12-15'),
+  },
+  {
+    id: '3',
+    name: 'AI Chat [P]',
+    description: 'Chatbot intelligente per il customer service. Integra AI avanzata per risposte automatiche.',
+    icon: '🤖',
+    badge: 'PRO',
+    category: 'AI & Tech',
+    url: '/apps/ai-chat',
+    requiredRole: 'cliente_premium',
+    isPopular: true,
+    isNew: true,
+    controlStatus: 'pending',
+    createdAt: new Date('2023-06-20'),
+    updatedAt: new Date('2023-12-20'),
+  },
+  {
+    id: '4',
+    name: 'Analytics Dashboard [P]',
+    description: 'Dashboard completo per analizzare le performance del tuo business con grafici interattivi.',
+    icon: '📊',
+    badge: 'FREE',
+    category: 'Analytics',
+    url: '/apps/analytics',
+    requiredRole: 'cliente_gratuito',
+    controlStatus: 'in_review',
+    createdAt: new Date('2023-02-05'),
+    updatedAt: new Date('2023-11-30'),
+  },
+  {
+    id: '5',
+    name: 'Task Manager [P]',
+    description: 'Organizza progetti e task del team. Collaborazione in tempo reale con notifiche e deadline.',
+    icon: '✅',
+    badge: 'FREE',
+    category: 'Productivity',
+    url: '/apps/tasks',
+    requiredRole: 'cliente_gratuito',
+    isPopular: true,
+    controlStatus: 'in_review',
+    createdAt: new Date('2023-04-12'),
+    updatedAt: new Date('2023-12-10'),
+  },
+  {
+    id: '6',
+    name: 'Invoice Generator [P]',
+    description: 'Crea fatture professionali in pochi click. Template personalizzabili e invio automatico.',
+    icon: '🧾',
+    badge: 'COMING_SOON',
+    category: 'Finance',
+    url: '/apps/invoices',
+    requiredRole: 'cliente_premium',
+    controlStatus: 'pending',
+    createdAt: new Date('2023-08-01'),
+    updatedAt: new Date('2023-12-25'),
+  },
+  {
+    id: '7',
+    name: 'Catalogo LAPA [P]',
+    description: 'Catalogo prodotti collegato a Odoo con prezzi e disponibilità in tempo reale.',
+    icon: '📦',
+    badge: 'FREE',
+    category: 'Business',
+    url: '/catalogo-lapa',
+    requiredRole: 'cliente_gratuito',
+    isPopular: true,
+    controlStatus: 'in_review',
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-12-28'),
+  },
+];
+
+// Le app Standalone in /apps/
+export const standaloneApps: App[] = [
+  // MAGAZZINO
+  {
+    id: 's1',
+    name: 'Gestione Inventario [S]',
+    description: 'Controllo ubicazioni e gestione magazzino',
+    icon: '📦',
+    badge: 'FREE',
+    category: 'Magazzino',
+    url: '/apps/magazzino/inventario',
+    requiredRole: 'cliente_gratuito',
+  },
+  {
+    id: 's2',
+    name: 'Operazioni Magazzino [S]',
+    description: 'Gestione operazioni di magazzino',
+    icon: '🏭',
+    badge: 'FREE',
+    category: 'Magazzino',
+    url: '/apps/magazzino/operazioni',
+    requiredRole: 'cliente_gratuito',
+  },
+  {
+    id: 's3',
+    name: 'Pick Residui [S]',
+    description: 'Gestione picking residui',
+    icon: '📋',
+    badge: 'FREE',
+    category: 'Magazzino',
+    url: '/apps/magazzino/pick-residui',
+    requiredRole: 'cliente_gratuito',
+  },
+  {
+    id: 's4',
+    name: 'Prelievo Zone [S]',
+    description: 'Organizzazione prelievi per zona',
+    icon: '🗺️',
+    badge: 'FREE',
+    category: 'Magazzino',
+    url: '/apps/magazzino/prelievo-zone',
+    requiredRole: 'cliente_gratuito',
+  },
+  {
+    id: 's5',
+    name: 'Super User Magazzino [S]',
+    description: 'Controllo avanzato magazzino',
+    icon: '👨‍💼',
+    badge: 'PRO',
+    category: 'Magazzino',
+    url: '/apps/magazzino/super-user',
+    requiredRole: 'cliente_premium',
+  },
+  // VENDITE
+  {
+    id: 's6',
+    name: 'Catalogo Venditori [S]',
+    description: 'Catalogo completo per la forza vendita',
+    icon: '🛒',
+    badge: 'FREE',
+    category: 'Vendite',
+    url: '/apps/vendite/catalogo',
+    requiredRole: 'cliente_gratuito',
+  },
+  {
+    id: 's7',
+    name: 'Dashboard Venditori [S]',
+    description: 'Pannello di controllo venditori',
+    icon: '📊',
+    badge: 'PRO',
+    category: 'Vendite',
+    url: '/apps/vendite/dashboard',
+    requiredRole: 'cliente_premium',
+  },
+  {
+    id: 's8',
+    name: 'Ordini Intelligenti [S]',
+    description: 'Gestione ordini con AI',
+    icon: '🤖',
+    badge: 'PRO',
+    category: 'Vendite',
+    url: '/apps/vendite/ordini-intelligenti',
+    requiredRole: 'cliente_premium',
+  },
+  // LOGISTICA
+  {
+    id: 's9',
+    name: 'Controllo Consegne [S]',
+    description: 'Monitoraggio consegne per venditore',
+    icon: '🚚',
+    badge: 'FREE',
+    category: 'Logistica',
+    url: '/apps/logistica/controllo-consegne',
+    requiredRole: 'cliente_gratuito',
+  },
+  {
+    id: 's10',
+    name: 'LAPA Delivery [S]',
+    description: 'Gestione sistema delivery',
+    icon: '📦',
+    badge: 'FREE',
+    category: 'Logistica',
+    url: '/apps/logistica/delivery',
+    requiredRole: 'cliente_gratuito',
+  },
+  {
+    id: 's11',
+    name: 'Mappa Controllo [S]',
+    description: 'Controllo geografico operazioni',
+    icon: '🗺️',
+    badge: 'PRO',
+    category: 'Logistica',
+    url: '/apps/logistica/mappa-controllo',
+    requiredRole: 'cliente_premium',
+  },
+  {
+    id: 's12',
+    name: 'Gestione Ritorni [S]',
+    description: 'Sistemazione ritorni dal furgone',
+    icon: '↩️',
+    badge: 'FREE',
+    category: 'Logistica',
+    url: '/apps/logistica/gestione-ritorni',
+    requiredRole: 'cliente_gratuito',
+  },
+  {
+    id: 's13',
+    name: 'Smart Route AI [S]',
+    description: 'Ottimizzazione percorsi con AI',
+    icon: '🛣️',
+    badge: 'PRO',
+    category: 'Logistica',
+    url: '/apps/logistica/smart-route',
+    requiredRole: 'cliente_premium',
+  },
+  {
+    id: 's14',
+    name: 'Controllo Diretto [S]',
+    description: 'Supervisione diretta operazioni',
+    icon: '👁️',
+    badge: 'PRO',
+    category: 'Logistica',
+    url: '/apps/logistica/controllo-diretto',
+    requiredRole: 'cliente_premium',
+  },
+  // CLIENTI
+  {
+    id: 's15',
+    name: 'ClientiVision [S]',
+    description: 'Gestione e analisi clienti',
+    icon: '👥',
+    badge: 'PRO',
+    category: 'CRM',
+    url: '/apps/clienti/clientivision',
+    requiredRole: 'cliente_premium',
+  },
+  // COMUNICAZIONI
+  {
+    id: 's16',
+    name: 'Centralino AI [S]',
+    description: 'Sistema di gestione chiamate con AI',
+    icon: '📞',
+    badge: 'PRO',
+    category: 'Comunicazioni',
+    url: '/apps/comunicazioni/centralino-ai',
+    requiredRole: 'cliente_premium',
+  },
+];
+
+// Combina tutte le app
+export const allApps = [...mockApps, ...standaloneApps];
+
+export const categories = [
+  'Tutti',
+  'Business',
+  'AI & Tech',
+  'Analytics',
+  'Productivity',
+  'Finance',
+  'Magazzino',
+  'Vendite',
+  'Logistica',
+  'CRM',
+  'Comunicazioni'
+];
+
+export const getAppsByCategory = (category: string): App[] => {
+  if (category === 'Tutti') return allApps;
+  return allApps.filter(app => app.category === category);
+};
+
+export const getAppById = (id: string): App | undefined => {
+  return allApps.find(app => app.id === id);
+};
+
+export const getPopularApps = (): App[] => {
+  return allApps.filter(app => app.isPopular);
+};
+
+export const getNewApps = (): App[] => {
+  return allApps.filter(app => app.isNew);
+};
+
+export const getFreeApps = (): App[] => {
+  return allApps.filter(app => app.badge === 'FREE');
+};
+
+export const getProApps = (): App[] => {
+  return allApps.filter(app => app.badge === 'PRO');
+};

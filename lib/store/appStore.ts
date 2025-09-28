@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { AppStore, App } from '@/lib/types';
-import { mockApps } from '@/lib/data/apps';
+import { allApps as mockApps } from '@/lib/data/apps-with-indicators';
 
 export const useAppStore = create<AppStore>((set, get) => ({
   apps: mockApps,
