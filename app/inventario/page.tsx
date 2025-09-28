@@ -52,6 +52,7 @@ export default function InventarioPage() {
   const [showBufferTransfer, setShowBufferTransfer] = useState(false);
   const [showLotManager, setShowLotManager] = useState(false);
   const [selectedProductForLot, setSelectedProductForLot] = useState<any>(null);
+  const [selectedNewProduct, setSelectedNewProduct] = useState<BasicProduct | null>(null);
   const [locationProducts, setLocationProducts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
@@ -293,8 +294,45 @@ export default function InventarioPage() {
     setCountedQuantity(value);
     const quantity = parseFloat(value) || 0;
 
-    // Aggiorna locationProducts se stiamo usando quella lista
-    if (locationProducts.length > 0 && appState.selectedProduct) {
+    // Se stiamo aggiungendo un nuovo prodotto dalla ricerca
+    if (selectedNewProduct) {
+      console.log('➕ Aggiungendo nuovo prodotto con quantità:', quantity);
+
+      // Crea un nuovo oggetto Product dal BasicProduct
+      const newProduct: Product = {
+        id: selectedNewProduct.id,
+        name: selectedNewProduct.name,
+        code: selectedNewProduct.code || '',
+        barcode: selectedNewProduct.barcode || '',
+        image: selectedNewProduct.image,
+        uom: selectedNewProduct.uom || 'PZ',
+        totalQty: quantity,
+        lots: [],
+        isCounted: true,
+        isCountedRecent: true
+      };
+
+      // Aggiungi alla lista dei prodotti dell'ubicazione
+      setLocationProducts(prev => [...prev, {
+        ...newProduct,
+        stockQuantity: 0, // Nuovo prodotto, quindi stock iniziale 0
+        countedQuantity: quantity,
+        difference: quantity // Differenza positiva perché stiamo aggiungendo
+      }]);
+
+      // Aggiungi anche ad appState.products
+      setAppState(prev => ({
+        ...prev,
+        products: [...prev.products, newProduct]
+      }));
+
+      toast.success(`✅ ${selectedNewProduct.name} aggiunto con quantità: ${quantity}`);
+
+      // Reset
+      setSelectedNewProduct(null);
+
+    } else if (appState.selectedProduct) {
+      // Aggiorna locationProducts se stiamo modificando un prodotto esistente
       setLocationProducts(prev => prev.map(p =>
         p.id === appState.selectedProduct?.id
           ? { ...p, countedQuantity: quantity, difference: quantity - p.stockQuantity }
@@ -305,8 +343,16 @@ export default function InventarioPage() {
   };
 
   const handleProductSelect = (product: BasicProduct) => {
-    // Implementa logica per aggiungere prodotto all'ubicazione
-    showNotification(`Prodotto ${product.name} selezionato per l'ubicazione`, 'info');
+    console.log('🆕 Prodotto selezionato dalla ricerca:', product);
+
+    // Salva il prodotto selezionato
+    setSelectedNewProduct(product);
+
+    // Apri la calcolatrice per inserire la quantità
+    setCountedQuantity('0');
+    setShowCalculator(true);
+
+    showNotification(`📦 Inserisci quantità per: ${product.name}`, 'info');
   };
 
   const openQRScanner = () => {
