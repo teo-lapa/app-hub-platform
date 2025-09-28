@@ -105,26 +105,10 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
   };
 
   const toggleTorch = async () => {
-    if (scannerRef.current && scannerRef.current.isScanning) {
-      try {
-        const state = scannerRef.current.getState();
-        if (state === 2) { // SCANNING
-          // Ottieni le capacità della camera
-          const track = scannerRef.current.getRunningTrack();
-          if (track) {
-            const capabilities = track.getCapabilities() as any;
-            if (capabilities.torch) {
-              await track.applyConstraints({
-                advanced: [{ torch: !torchEnabled } as any]
-              });
-              setTorchEnabled(!torchEnabled);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Errore controllo flash:', err);
-      }
-    }
+    // Per ora disabilitiamo il flash finché non troviamo il metodo corretto
+    // La libreria html5-qrcode potrebbe non esporre direttamente l'accesso al track
+    console.log('Flash temporaneamente disabilitato');
+    // TODO: Implementare controllo flash quando disponibile nell'API
   };
 
   const handleManualInput = () => {
