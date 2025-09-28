@@ -487,13 +487,7 @@ export default function InventarioPage() {
               <Search className="w-5 h-5" />
               Cerca
             </button>
-            <button
-              onClick={() => startCameraScanner('location')}
-              className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-            >
-              <Camera className="w-5 h-5" />
-              Scansiona
-            </button>
+            {/* Scanner temporaneamente disabilitato */}
           </div>
 
           {/* Bottone ricerca avanzata */}
@@ -573,12 +567,6 @@ export default function InventarioPage() {
                 className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium"
               >
                 Cerca
-              </button>
-              <button
-                onClick={() => startCameraScanner('product')}
-                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium"
-              >
-                <Camera className="w-5 h-5" />
               </button>
             </div>
 
@@ -698,12 +686,13 @@ export default function InventarioPage() {
                                  product.isNewProduct ? 'border-blue-500/30' : 'border-gray-700';
 
               return (
-                <div
+                <button
                   key={product.id}
                   onClick={() => setSelectedProduct(product)}
-                  className={`bg-gray-800 border ${statusColor} rounded-xl p-6 cursor-pointer hover:border-emerald-500 transition-all ${
+                  className={`bg-gray-800 border ${statusColor} rounded-xl p-6 cursor-pointer hover:border-emerald-500 transition-all w-full text-left ${
                     selectedProduct?.id === product.id ? 'ring-2 ring-emerald-500' : ''
                   }`}
+                  type="button"
                 >
                   {product.image ? (
                     <img src={product.image} alt={product.name} className="w-full h-32 object-contain mb-4 rounded" />
@@ -753,7 +742,7 @@ export default function InventarioPage() {
                       Diff: {product.inventoryDiff > 0 ? '+' : ''}{product.inventoryDiff}
                     </div>
                   )}
-                </div>
+                </button>
               );
             })}
           </div>
@@ -781,7 +770,15 @@ export default function InventarioPage() {
 
       {/* Modal Conteggio Prodotto */}
       {selectedProduct && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-6" onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setSelectedProduct(null);
+            setSelectedLot(null);
+            setCountedQty('');
+            setLotNumber('');
+            setExpiryDate('');
+          }
+        }}>
           <div className="bg-gray-800 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-white">{selectedProduct.name}</h3>
@@ -927,37 +924,6 @@ export default function InventarioPage() {
         </div>
       )}
 
-      {/* Modal Scanner Camera */}
-      {showScanner && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6">
-          <div className="bg-gray-800 rounded-xl p-6 max-w-lg w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-white">
-                Scansiona {scannerType === 'location' ? 'Ubicazione' : 'Prodotto'}
-              </h3>
-              <button
-                onClick={stopScanner}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium"
-              >
-                Chiudi
-              </button>
-            </div>
-            <div id="qr-reader" className="w-full" />
-            <div className="mt-4">
-              <input
-                type="text"
-                placeholder="O digita manualmente..."
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.currentTarget.value) {
-                    onScanSuccess(e.currentTarget.value);
-                  }
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Notifiche */}
       {notification && (
