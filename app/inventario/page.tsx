@@ -117,18 +117,30 @@ export default function InventarioPage() {
 
       const { location, inventory } = result;
 
+      // Convertiamo i prodotti dell'inventory nel formato Product corretto
+      const products: Product[] = inventory.map((item: any) => ({
+        id: item.product_id[0],
+        name: item.product_id[1],
+        code: item.default_code || '',
+        barcode: item.barcode || '',
+        default_code: item.default_code || '',
+        quantity: item.quantity || 0,
+        reserved: item.reserved_quantity || 0,
+        uom: 'PZ',
+        totalQty: item.quantity || 0,
+        lots: item.lot_id ? [{
+          id: item.lot_id[0],
+          name: item.lot_id[1],
+          quantity: item.quantity || 0
+        }] : [],
+        isCounted: false,
+        isCountedRecent: false
+      }));
+
       setAppState(prev => ({
         ...prev,
         currentLocation: location,
-        products: inventory.map((item: any) => ({
-          id: item.product_id[0],
-          name: item.product_id[1],
-          quantity: item.quantity || 0,
-          reserved: item.reserved_quantity || 0,
-          lot_id: item.lot_id,
-          barcode: item.barcode,
-          default_code: item.default_code
-        }))
+        products: products
       }));
 
       setLocationCode('');
