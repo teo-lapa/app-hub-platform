@@ -2,21 +2,6 @@ import { App } from '@/lib/types';
 
 export const mockApps: App[] = [
   {
-    id: 'gestione-apps',
-    name: 'Gestione Apps LAPA',
-    description: 'Hub completo per accedere a tutte le 17 applicazioni aziendali LAPA. Magazzino, vendite, logistica e molto altro.',
-    icon: '🎛️',
-    badge: 'AZIENDALE',
-    category: 'Business',
-    url: '/gestione-apps',
-    requiredRole: 'cliente_gratuito',
-    isPopular: true,
-    isNew: true,
-    controlStatus: 'in_review',
-    createdAt: new Date('2024-09-27'),
-    updatedAt: new Date('2024-09-27'),
-  },
-  {
     id: '1',
     name: 'Menu App',
     description: 'Gestisci il menu del tuo ristorante con facilità. Crea, modifica e organizza i piatti con foto e prezzi.',
