@@ -308,7 +308,7 @@ export const standaloneApps: App[] = [
     name: 'Stella AI Assistant [P]',
     description: 'Assistente AI vocale con OpenAI Real-Time. Conversazioni naturali e supporto specializzato.',
     icon: '🌟',
-    badge: 'NEW',
+    badge: 'FREE',
     category: 'AI & Tech',
     url: '/stella-assistant',
     requiredRole: 'cliente_gratuito',
