@@ -555,7 +555,7 @@ export class PickingOdooClient {
       const pickings = await this.rpc(
         'stock.picking',
         'read',
-        [pickingIds, ['name', 'partner_id', 'origin', 'note']]
+        [pickingIds, ['name', 'partner_id', 'origin']]
       );
 
       return pickings.map((p: any) => ({
