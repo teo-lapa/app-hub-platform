@@ -292,13 +292,13 @@ export const standaloneApps: App[] = [
   // COMUNICAZIONI
   {
     id: 's16',
-    name: 'Centralino AI [S]',
+    name: 'Centralino AI [P]',
     description: 'Sistema di gestione chiamate con AI',
     icon: '📞',
-    badge: 'PRO',
+    badge: 'FREE',
     category: 'Comunicazioni',
-    url: '/apps/comunicazioni/centralino-ai',
-    requiredRole: 'cliente_premium',
+    url: '/centralino-ai',
+    requiredRole: 'cliente_gratuito',
     createdAt: new Date('2023-09-01'),
     updatedAt: new Date('2023-12-28'),
   },
