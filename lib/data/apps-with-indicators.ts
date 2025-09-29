@@ -302,6 +302,35 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2023-09-01'),
     updatedAt: new Date('2023-12-28'),
   },
+  // AI ASSISTANTS
+  {
+    id: 's17',
+    name: 'Stella AI Assistant [P]',
+    description: 'Assistente AI vocale con OpenAI Real-Time. Conversazioni naturali e supporto specializzato.',
+    icon: '🌟',
+    badge: 'NEW',
+    category: 'AI & Tech',
+    url: '/stella-assistant',
+    requiredRole: 'cliente_gratuito',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2024-01-15'),
+    updatedAt: new Date('2024-01-15'),
+  },
+  {
+    id: 's18',
+    name: 'Stella Setup [P]',
+    description: 'Configurazione e setup iniziale per Stella AI Assistant',
+    icon: '⚙️',
+    badge: 'FREE',
+    category: 'AI & Tech',
+    url: '/stella-setup',
+    requiredRole: 'cliente_gratuito',
+    controlStatus: 'approved',
+    createdAt: new Date('2024-01-15'),
+    updatedAt: new Date('2024-01-15'),
+  },
 ];
 
 // Combina tutte le app
