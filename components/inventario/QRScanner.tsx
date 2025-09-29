@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, X, Flashlight, FlashlightOff } from 'lucide-react';
-import { Html5Qrcode } from 'html5-qrcode';
+import QrScanner from 'qr-scanner';
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -17,7 +17,8 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
   const [error, setError] = useState<string | null>(null);
   const [torchEnabled, setTorchEnabled] = useState(false);
   const [hasScanned, setHasScanned] = useState(false);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerRef = useRef<QrScanner | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -37,47 +38,40 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
       setError(null);
       setScanning(true);
 
-      const html5QrCode = new Html5Qrcode("qr-reader");
-      scannerRef.current = html5QrCode;
+      if (!videoRef.current) {
+        setError('Elemento video non trovato');
+        return;
+      }
 
-      const qrCodeSuccessCallback = (decodedText: string) => {
-        // Evita scansioni multiple dello stesso codice
-        if (!hasScanned) {
-          setHasScanned(true);
-          console.log(`✅ QR Code scansionato: ${decodedText}`);
-          onScan(decodedText);
-          stopScanner();
-          onClose();
+      const qrScanner = new QrScanner(
+        videoRef.current,
+        (result) => {
+          // Evita scansioni multiple dello stesso codice
+          if (!hasScanned) {
+            setHasScanned(true);
+            console.log(`✅ QR Code scansionato: ${result.data}`);
+            onScan(result.data);
+            stopScanner();
+            onClose();
+          }
+        },
+        {
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
         }
-      };
+      );
 
-      const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0
-      };
+      scannerRef.current = qrScanner;
 
       // Prova prima con la camera posteriore
       try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          config,
-          qrCodeSuccessCallback,
-          (errorMessage) => {
-            // Ignora errori di scansione continui
-          }
-        );
+        await qrScanner.start();
+        qrScanner.setCamera('environment').catch(() => {
+          console.warn('Camera posteriore non disponibile, uso default');
+        });
       } catch (err) {
-        console.warn('Camera posteriore non disponibile, provo con anteriore');
-        // Se fallisce, prova con qualsiasi camera disponibile
-        await html5QrCode.start(
-          { facingMode: "user" },
-          config,
-          qrCodeSuccessCallback,
-          (errorMessage) => {
-            // Ignora errori di scansione continui
-          }
-        );
+        console.warn('Errore camera posteriore, provo con anteriore');
+        await qrScanner.start();
       }
 
     } catch (err) {
@@ -90,11 +84,8 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
   const stopScanner = async () => {
     if (scannerRef.current) {
       try {
-        const isScanning = scannerRef.current.isScanning;
-        if (isScanning) {
-          await scannerRef.current.stop();
-        }
-        scannerRef.current.clear();
+        scannerRef.current.stop();
+        scannerRef.current.destroy();
       } catch (err) {
         console.error('Errore stop scanner:', err);
       }
@@ -102,13 +93,6 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
     }
     setScanning(false);
     setTorchEnabled(false);
-  };
-
-  const toggleTorch = async () => {
-    // Per ora disabilitiamo il flash finché non troviamo il metodo corretto
-    // La libreria html5-qrcode potrebbe non esporre direttamente l'accesso al track
-    console.log('Flash temporaneamente disabilitato');
-    // TODO: Implementare controllo flash quando disponibile nell'API
   };
 
   const handleManualInput = () => {
@@ -127,13 +111,13 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+        className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="w-full max-w-md mx-4"
+          className="w-full max-w-md"
         >
           {/* Header */}
           <div className="glass-strong rounded-t-xl p-4 flex items-center justify-between border-b border-white/20">
@@ -168,18 +152,22 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
               <>
                 {/* QR Scanner Container */}
                 <div className="relative bg-black rounded-lg overflow-hidden mb-4">
-                  <div id="qr-reader" className="w-full"></div>
+                  <video
+                    ref={videoRef}
+                    className="w-full h-64 object-cover rounded-lg"
+                    autoPlay
+                    muted
+                    playsInline
+                  />
 
                   {/* Status Indicator */}
                   <div className="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none">
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      scanning ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                    }`}>
-                      {scanning ? 'Scansione attiva' : 'Avvio scanner...'}
+                    <div className="px-3 py-1 rounded-full text-sm font-medium bg-blue-500/20 text-blue-400">
+                      {scanning ? 'Scansione in corso...' : 'Avvio scanner...'}
                     </div>
 
                     <button
-                      onClick={toggleTorch}
+                      onClick={() => console.log('Flash non disponibile')}
                       className="glass p-2 rounded-full hover:bg-white/20 transition-colors pointer-events-auto"
                       disabled={!scanning}
                     >
@@ -195,7 +183,7 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
                 {/* Instructions */}
                 <div className="text-center mb-4">
                   <p className="text-muted-foreground text-sm">
-                    Inquadra il codice QR o barcode nel riquadro
+                    Inquadra il QR code o codice a barre
                   </p>
                 </div>
 

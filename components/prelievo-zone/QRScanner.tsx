@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, X, Flashlight, FlashlightOff, Package, MapPin } from 'lucide-react';
-import { Html5Qrcode } from 'html5-qrcode';
+import QrScanner from 'qr-scanner';
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -27,7 +27,8 @@ export function QRScanner({
   const [torchEnabled, setTorchEnabled] = useState(false);
   const [hasScanned, setHasScanned] = useState(false);
   const [wrongCodeScanned, setWrongCodeScanned] = useState(false);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerRef = useRef<QrScanner | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -48,66 +49,64 @@ export function QRScanner({
       setError(null);
       setScanning(true);
 
-      const html5QrCode = new Html5Qrcode("qr-reader-picking");
-      scannerRef.current = html5QrCode;
+      if (!videoRef.current) {
+        setError('Elemento video non trovato');
+        return;
+      }
 
-      const qrCodeSuccessCallback = (decodedText: string) => {
-        // Evita scansioni multiple dello stesso codice
-        if (!hasScanned) {
-          setHasScanned(true);
+      const qrScanner = new QrScanner(
+        videoRef.current,
+        (result) => {
+          // Evita scansioni multiple dello stesso codice
+          if (!hasScanned) {
+            setHasScanned(true);
 
-          // Verifica se il codice scansionato è quello atteso (per modalità prodotto)
-          if (expectedCode && scanMode === 'product' && decodedText !== expectedCode) {
-            setWrongCodeScanned(true);
-            setHasScanned(false); // Permetti nuova scansione
+            // Verifica se il codice scansionato è quello atteso (per modalità prodotto)
+            if (expectedCode && scanMode === 'product' && result.data !== expectedCode) {
+              setWrongCodeScanned(true);
+              setHasScanned(false); // Permetti nuova scansione
 
-            // Vibrazione per feedback errore
-            if ('vibrate' in navigator) {
-              navigator.vibrate([100, 50, 100]);
+              // Vibrazione per feedback errore
+              if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 100]);
+              }
+
+              setTimeout(() => {
+                setWrongCodeScanned(false);
+              }, 2000);
+
+              return;
             }
 
-            setTimeout(() => {
-              setWrongCodeScanned(false);
-            }, 2000);
+            console.log(`✅ Codice scansionato (${scanMode}): ${result.data}`);
 
-            return;
+            // Vibrazione per feedback successo
+            if ('vibrate' in navigator) {
+              navigator.vibrate(200);
+            }
+
+            onScan(result.data, scanMode);
+            stopScanner();
+            onClose();
           }
-
-          console.log(`✅ Codice scansionato (${scanMode}): ${decodedText}`);
-
-          // Vibrazione per feedback successo
-          if ('vibrate' in navigator) {
-            navigator.vibrate(200);
-          }
-
-          onScan(decodedText, scanMode);
-          stopScanner();
-          onClose();
+        },
+        {
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
         }
-      };
+      );
 
-      const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0
-      };
+      scannerRef.current = qrScanner;
 
       // Prova prima con la camera posteriore
       try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          config,
-          qrCodeSuccessCallback,
-          () => {} // Ignora errori di scansione continui
-        );
+        await qrScanner.start();
+        qrScanner.setCamera('environment').catch(() => {
+          console.warn('Camera posteriore non disponibile, uso default');
+        });
       } catch (err) {
-        console.warn('Camera posteriore non disponibile, provo con anteriore');
-        await html5QrCode.start(
-          { facingMode: "user" },
-          config,
-          qrCodeSuccessCallback,
-          () => {}
-        );
+        console.warn('Errore camera posteriore, provo con anteriore');
+        await qrScanner.start();
       }
 
     } catch (err) {
@@ -120,11 +119,8 @@ export function QRScanner({
   const stopScanner = async () => {
     if (scannerRef.current) {
       try {
-        const isScanning = scannerRef.current.isScanning;
-        if (isScanning) {
-          await scannerRef.current.stop();
-        }
-        scannerRef.current.clear();
+        scannerRef.current.stop();
+        scannerRef.current.destroy();
       } catch (err) {
         console.error('Errore stop scanner:', err);
       }
@@ -195,7 +191,13 @@ export function QRScanner({
               <>
                 {/* QR Scanner Container */}
                 <div className="relative bg-black rounded-lg overflow-hidden mb-4">
-                  <div id="qr-reader-picking" className="w-full"></div>
+                  <video
+                    ref={videoRef}
+                    className="w-full h-64 object-cover rounded-lg"
+                    autoPlay
+                    muted
+                    playsInline
+                  />
 
                   {/* Wrong Code Alert */}
                   {wrongCodeScanned && (

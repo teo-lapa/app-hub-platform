@@ -10,6 +10,8 @@ interface OdooPickingBatch {
   note?: string | false;
   vehicle_id?: [number, string] | false;
   driver_id?: [number, string] | false;
+  x_studio_autista_del_giro?: [number, string] | false;
+  x_studio_auto_del_giro?: [number, string] | false;
   picking_count?: number;
   move_line_count?: number;
   product_count?: number;
@@ -20,7 +22,6 @@ interface OdooStockLocation {
   name: string;
   complete_name: string;
   barcode?: string | false;
-  parent_id?: [number, string] | false;
   child_ids?: number[] | false;
   posx?: number;
   posy?: number;
@@ -36,6 +37,7 @@ interface OdooStockMoveLine {
   location_dest_id: [number, string];
   lot_id?: [number, string] | false;
   lot_name?: string | false;
+  expiry_date?: string | false;
   package_id?: [number, string] | false;
   quantity: number;
   qty_done: number;
@@ -79,11 +81,13 @@ export class PickingOdooClient {
     this.odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
   }
 
+
   private async rpc(model: string, method: string, args: any[], kwargs: any = {}) {
     try {
-      const endpoint = `${this.odooUrl}/web/dataset/call_kw`;
+      // Usa API del server locale invece di chiamare Odoo direttamente dal browser
+      const endpoint = '/api/odoo/rpc';
 
-      console.log(`🔧 [Picking] RPC Call: ${model}.${method}`, args);
+      console.log(`🔧 [Picking] RPC Call (via server): ${model}.${method}`, args);
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -92,16 +96,10 @@ export class PickingOdooClient {
         },
         credentials: 'include',
         body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {
-            model: model,
-            method: method,
-            args: args,
-            kwargs: kwargs,
-            context: {}
-          },
-          id: Math.floor(Math.random() * 1000000000)
+          model: model,
+          method: method,
+          args: args,
+          kwargs: kwargs
         })
       });
 
@@ -111,9 +109,9 @@ export class PickingOdooClient {
 
       const data = await response.json();
 
-      if (data.error) {
+      if (!data.success) {
         console.error('❌ [Picking] RPC Error:', data.error);
-        throw new Error(data.error.message || 'Errore RPC');
+        throw new Error(data.error || 'Errore RPC');
       }
 
       console.log(`✅ [Picking] RPC Success:`, data.result);
@@ -128,64 +126,121 @@ export class PickingOdooClient {
   // Carica tutti i batch disponibili
   async getBatches(): Promise<Batch[]> {
     try {
+      console.log('🔄 [Picking] Caricamento batch...');
+
       const domain = [
-        ['state', 'in', ['draft', 'in_progress', 'done']]
+        ['state', '=', 'in_progress']
       ];
 
       const fields = [
-        'name', 'state', 'user_id', 'picking_ids', 'scheduled_date',
-        'note', 'vehicle_id', 'driver_id'
+        'id', 'name', 'state', 'user_id', 'scheduled_date',
+        'x_studio_autista_del_giro', 'x_studio_auto_del_giro',
+        'picking_ids'
       ];
 
       const batches: OdooPickingBatch[] = await this.rpc(
         'stock.picking.batch',
         'search_read',
-        [domain, fields]
+        [domain, fields],
+        { limit: 20, order: 'name desc' }
       );
 
-      // Conta i picking e le linee per ogni batch
-      const batchesWithCounts = await Promise.all(batches.map(async (batch) => {
+      console.log(`✅ [Picking] Trovati ${batches.length} batch`);
+
+      // Per ogni batch, carica i dettagli dei picking per contare prodotti
+      const batchesWithDetails = await Promise.all(batches.map(async (batch) => {
         let pickingCount = 0;
-        let moveLineCount = 0;
         let productCount = 0;
 
-        if (batch.picking_ids && Array.isArray(batch.picking_ids) && batch.picking_ids.length > 0) {
+        if (batch.picking_ids && Array.isArray(batch.picking_ids)) {
           pickingCount = batch.picking_ids.length;
 
-          // Conta le move lines per tutti i picking del batch
-          const moveLines = await this.rpc(
-            'stock.move.line',
-            'search_count',
-            [[['picking_id', 'in', batch.picking_ids]]]
-          );
-          moveLineCount = moveLines || 0;
+          // Conta i prodotti nelle move lines
+          try {
+            const moveLines = await this.rpc(
+              'stock.move.line',
+              'search_read',
+              [[['picking_id', 'in', batch.picking_ids]], ['product_id']],
+              {}
+            );
 
-          // Conta i prodotti unici
-          const products = await this.rpc(
-            'stock.move.line',
-            'read_group',
-            [
-              [['picking_id', 'in', batch.picking_ids]],
-              ['product_id'],
-              ['product_id']
-            ]
-          );
-          productCount = products ? products.length : 0;
+            // Conta prodotti unici
+            const uniqueProducts = new Set(moveLines.map((line: any) => line.product_id[0]));
+            productCount = uniqueProducts.size;
+          } catch (error) {
+            console.warn('Errore conteggio prodotti per batch', batch.id, error);
+          }
         }
 
         return {
           ...batch,
           picking_count: pickingCount,
-          move_line_count: moveLineCount,
           product_count: productCount
         };
       }));
 
-      return batchesWithCounts.map(this.mapBatch);
+      return batchesWithDetails.map(this.mapBatch);
 
     } catch (error) {
       console.error('Errore caricamento batch:', error);
       throw error;
+    }
+  }
+
+  // Carica conteggi prodotti per zona per un batch
+  async getBatchZoneCounts(batchId: number): Promise<{ [key: string]: number }> {
+    try {
+      console.log('🔄 [Picking] Caricamento conteggi zone per batch:', batchId);
+
+      // Carica i picking del batch
+      const batch: OdooPickingBatch = await this.rpc(
+        'stock.picking.batch',
+        'read',
+        [[batchId], ['picking_ids']]
+      ).then(res => res[0]);
+
+      if (!batch.picking_ids || !Array.isArray(batch.picking_ids) || batch.picking_ids.length === 0) {
+        return { 'secco': 0, 'secco_sopra': 0, 'pingu': 0, 'frigo': 0 };
+      }
+
+      // Carica le move lines
+      const moveLines = await this.rpc(
+        'stock.move.line',
+        'search_read',
+        [[['picking_id', 'in', batch.picking_ids]], ['location_id']],
+        {}
+      );
+
+      // Conta operazioni per zona usando gli ID come nell'HTML
+      const zoneCounts = {
+        'secco': 0,
+        'secco_sopra': 0,
+        'pingu': 0,
+        'frigo': 0
+      };
+
+      for (const line of moveLines) {
+        if (line.location_id && Array.isArray(line.location_id)) {
+          const locationPath = line.location_id[1].toLowerCase();
+
+          if (locationPath.includes('secco sopra')) {
+            zoneCounts['secco_sopra']++;
+          } else if (locationPath.includes('secco')) {
+            zoneCounts['secco']++;
+          } else if (locationPath.includes('pingu')) {
+            zoneCounts['pingu']++;
+          } else if (locationPath.includes('frigo')) {
+            zoneCounts['frigo']++;
+          }
+        }
+      }
+
+      console.log('✅ [Picking] Conteggi zone:', zoneCounts);
+      return zoneCounts;
+
+    } catch (error) {
+      console.error('Errore caricamento conteggi zone:', error);
+      return { 'secco': 0, 'secco_sopra': 0, 'pingu': 0, 'frigo': 0 };
     }
   }
 
@@ -248,7 +303,96 @@ export class PickingOdooClient {
     }
   }
 
-  // Carica le ubicazioni per una zona
+  // Carica le ubicazioni per una zona che hanno operazioni nel batch - COPIA DELL'HTML
+  async getZoneLocationsWithOperations(batchId: number, zone: string): Promise<(StockLocation & { operationCount?: number })[]> {
+    try {
+      console.log(`🔄 [Picking] Caricamento ubicazioni per zona: ${zone}, batch: ${batchId} (logica HTML)`);
+
+      // Prima carica i picking del batch
+      const batch: OdooPickingBatch = await this.rpc(
+        'stock.picking.batch',
+        'read',
+        [[batchId], ['picking_ids']]
+      ).then(res => res[0]);
+
+      if (!batch.picking_ids || !Array.isArray(batch.picking_ids) || batch.picking_ids.length === 0) {
+        return [];
+      }
+
+      // Carica le move lines per il batch (come nell'HTML)
+      const moveLines = await this.rpc(
+        'stock.move.line',
+        'search_read',
+        [[['picking_id', 'in', batch.picking_ids], ['state', 'not in', ['done', 'cancel']]], ['location_id', 'product_id', 'quantity', 'qty_done']],
+        {}
+      );
+
+      console.log(`📦 [Picking] Caricate ${moveLines.length} move lines dal batch ${batchId}`);
+
+      // Filtra le move lines per zona (COPIA ESATTA DELL'HTML)
+      let relevantLines = [];
+
+      for (const line of moveLines) {
+        if (line.location_id && Array.isArray(line.location_id)) {
+          const locationPath = line.location_id[1].toLowerCase();
+
+          let belongsToZone = false;
+          if (zone === 'secco' && locationPath.includes('secco') && !locationPath.includes('sopra')) {
+            belongsToZone = true;
+          } else if (zone === 'secco_sopra' && locationPath.includes('secco sopra')) {
+            belongsToZone = true;
+          } else if (zone === 'pingu' && locationPath.includes('pingu')) {
+            belongsToZone = true;
+          } else if (zone === 'frigo' && locationPath.includes('frigo')) {
+            belongsToZone = true;
+          }
+
+          if (belongsToZone) {
+            relevantLines.push(line);
+          }
+        }
+      }
+
+      console.log(`🔍 [Picking] Trovate ${relevantLines.length} operazioni per zona ${zone}`);
+
+      if (relevantLines.length === 0) {
+        return [];
+      }
+
+      // Raggruppa per ubicazione (COPIA ESATTA DELL'HTML)
+      const sublocationMap = new Map();
+
+      for (const line of relevantLines) {
+        const locationId = line.location_id[0];
+        const locationName = line.location_id[1];
+
+        if (!sublocationMap.has(locationId)) {
+          sublocationMap.set(locationId, {
+            id: locationId,
+            name: locationName,
+            complete_name: locationName,
+            barcode: '',
+            operationCount: 0
+          });
+        }
+
+        const subloc = sublocationMap.get(locationId);
+        subloc.operationCount++;
+      }
+
+      const result = Array.from(sublocationMap.values());
+
+      console.log(`✅ [Picking] Trovate ${result.length} ubicazioni con operazioni nella zona ${zone}`);
+
+      return result;
+
+    } catch (error) {
+      console.error('Errore caricamento ubicazioni con operazioni:', error);
+      throw error;
+    }
+  }
+
+  // Carica le ubicazioni per una zona (metodo originale, mantenuto per compatibilità)
   async getZoneLocations(zone: string): Promise<StockLocation[]> {
     try {
       const domain = [
@@ -258,7 +402,7 @@ export class PickingOdooClient {
       ];
 
       const fields = [
-        'name', 'complete_name', 'barcode', 'parent_id',
+        'name', 'complete_name', 'barcode',
         'child_ids', 'posx', 'posy', 'posz'
       ];
 
@@ -304,10 +448,28 @@ export class PickingOdooClient {
         [domain]
       );
 
-      // Carica i dettagli dei prodotti
+      // Carica i dettagli dei prodotti con immagini
       const productIds = Array.from(new Set(moveLines.map(ml => ml.product_id[0])));
       const products = await this.getProducts(productIds);
       const productMap = new Map(products.map(p => [p.id, p]));
+
+      // Carica date di scadenza per i lotti
+      const lotIds = Array.from(new Set(moveLines
+        .filter(ml => ml.lot_id && Array.isArray(ml.lot_id))
+        .map(ml => ml.lot_id![0])
+      ));
+
+      const lotMap = new Map();
+      if (lotIds.length > 0) {
+        const lots = await this.rpc(
+          'stock.lot',
+          'search_read',
+          [[['id', 'in', lotIds]], ['id', 'name', 'expiration_date']]
+        );
+        lots.forEach((lot: any) => {
+          lotMap.set(lot.id, lot.expiration_date);
+        });
+      }
 
       // Carica i dettagli dei picking per info cliente
       const pickingIds = Array.from(new Set(moveLines.map(ml => ml.picking_id && ml.picking_id[0]).filter(Boolean)));
@@ -333,6 +495,7 @@ export class PickingOdooClient {
           uom: ml.product_uom_id && typeof ml.product_uom_id[1] === 'string' ? ml.product_uom_id[1].split(' ')[0] : 'PZ',
           lot_id: ml.lot_id || undefined,
           lot_name: ml.lot_name || undefined,
+          expiry_date: ml.lot_id ? lotMap.get(ml.lot_id[0]) || undefined : undefined,
           package_id: ml.package_id || undefined,
           note: ml.description_picking || '',
           customer: picking?.partner_name || '',
@@ -420,6 +583,8 @@ export class PickingOdooClient {
       note: batch.note || undefined,
       vehicle_id: batch.vehicle_id || undefined,
       driver_id: batch.driver_id || undefined,
+      x_studio_autista_del_giro: batch.x_studio_autista_del_giro || undefined,
+      x_studio_auto_del_giro: batch.x_studio_auto_del_giro || undefined,
       picking_count: batch.picking_count,
       move_line_count: batch.move_line_count,
       product_count: batch.product_count
@@ -432,7 +597,7 @@ export class PickingOdooClient {
       name: location.name,
       complete_name: location.complete_name,
       barcode: location.barcode || undefined,
-      parent_id: location.parent_id || undefined,
+      parent_id: undefined,
       child_ids: location.child_ids || undefined,
       posx: location.posx,
       posy: location.posy,

@@ -19,6 +19,8 @@ export interface Batch {
   note?: string;
   vehicle_id?: [number, string];
   driver_id?: [number, string];
+  x_studio_autista_del_giro?: [number, string];
+  x_studio_auto_del_giro?: [number, string];
   picking_count?: number;
   move_line_count?: number;
   product_count?: number;
@@ -29,7 +31,7 @@ export interface StockLocation {
   name: string;
   complete_name: string;
   barcode?: string;
-  parent_id?: [number, string];
+  parent_id?: [number, string] | undefined;
   child_ids?: number[];
   quant_ids?: number[];
   posx?: number;
@@ -46,6 +48,7 @@ export interface StockMoveLine {
   location_dest_id: [number, string];
   lot_id?: [number, string];
   lot_name?: string;
+  expiry_date?: string;
   package_id?: [number, string];
   quantity: number;
   qty_done: number;
@@ -89,6 +92,7 @@ export interface Operation {
   uom?: string;
   lot_id?: [number, string];
   lot_name?: string;
+  expiry_date?: string;
   package_id?: [number, string];
   note?: string;
   customer?: string;

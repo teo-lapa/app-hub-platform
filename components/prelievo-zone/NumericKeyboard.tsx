@@ -63,18 +63,18 @@ export function NumericKeyboard({
     } else {
       const newValue = value + key;
 
-      // Verifica max value
-      if (maxValue !== undefined) {
-        const numValue = parseFloat(newValue);
-        if (numValue > maxValue) {
-          setError(`Max: ${maxValue}`);
-          // Vibrazione per feedback errore
-          if ('vibrate' in navigator) {
-            navigator.vibrate(100);
-          }
-          return;
-        }
-      }
+      // Rimuovi verifica max value - permetti quantità superiore
+      // if (maxValue !== undefined) {
+      //   const numValue = parseFloat(newValue);
+      //   if (numValue > maxValue) {
+      //     setError(`Max: ${maxValue}`);
+      //     // Vibrazione per feedback errore
+      //     if ('vibrate' in navigator) {
+      //       navigator.vibrate(100);
+      //     }
+      //     return;
+      //   }
+      // }
 
       setValue(newValue);
     }
@@ -88,10 +88,11 @@ export function NumericKeyboard({
       return;
     }
 
-    if (maxValue !== undefined && numValue > maxValue) {
-      setError(`Il valore non può superare ${maxValue}`);
-      return;
-    }
+    // Rimuovi controllo max value - permetti quantità superiore
+    // if (maxValue !== undefined && numValue > maxValue) {
+    //   setError(`Il valore non può superare ${maxValue}`);
+    //   return;
+    // }
 
     // Vibrazione per feedback conferma
     if ('vibrate' in navigator) {
