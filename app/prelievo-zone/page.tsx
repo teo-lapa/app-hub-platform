@@ -848,7 +848,7 @@ export default function PrelievoZonePage() {
                       onClick={() => {
                         // Quick complete senza validazione della quantità massima
                         if (operation.qty_done >= operation.quantity) {
-                          toast.warning('⚠️ Operazione già completata');
+                          toast('⚠️ Operazione già completata', { icon: '⚠️' });
                           return;
                         }
 

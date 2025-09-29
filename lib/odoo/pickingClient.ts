@@ -456,7 +456,7 @@ export class PickingOdooClient {
       // Carica date di scadenza per i lotti
       const lotIds = Array.from(new Set(moveLines
         .filter(ml => ml.lot_id && Array.isArray(ml.lot_id))
-        .map(ml => ml.lot_id![0])
+        .map(ml => (ml.lot_id as [number, string])[0])
       ));
 
       const lotMap = new Map();
