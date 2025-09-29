@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Truck, MapPin, BarChart3, Settings, ChevronRight, Clock, CheckCircle2, Camera, Sun, Moon } from 'lucide-react';
+import { Package, Truck, MapPin, BarChart3, Settings, ChevronRight, Clock, CheckCircle2, Camera, Sun, Moon, RefreshCw, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
@@ -63,6 +63,7 @@ export default function PrelievoZonePage() {
 
   // Cache per operazioni già caricate
   const [operationsCache, setOperationsCache] = useState<{ [key: string]: Operation[] }>({});
+  const [cacheTimestamps, setCacheTimestamps] = useState<{ [key: string]: number }>({});
 
   // Configurazione
   const [config, setConfig] = useState(DEFAULT_CONFIG);
@@ -79,10 +80,17 @@ export default function PrelievoZonePage() {
     // Carica cache dal localStorage
     try {
       const savedCache = localStorage.getItem('pickingOperationsCache');
+      const savedTimestamps = localStorage.getItem('pickingCacheTimestamps');
+
       if (savedCache) {
         const cache = JSON.parse(savedCache);
         setOperationsCache(cache);
         console.log('💾 Cache caricata dal localStorage:', Object.keys(cache).length, 'entries');
+      }
+
+      if (savedTimestamps) {
+        const timestamps = JSON.parse(savedTimestamps);
+        setCacheTimestamps(timestamps);
       }
     } catch (e) {
       console.warn('Errore caricamento cache:', e);
@@ -278,11 +286,20 @@ export default function PrelievoZonePage() {
 
       // Controlla cache prima
       const cacheKey = `${currentBatch.id}-${location.id}`;
-      if (operationsCache[cacheKey]) {
-        console.log(`🚀 Cache HIT per ${location.name}: ${operationsCache[cacheKey].length} operazioni`);
-        setCurrentOperations(operationsCache[cacheKey]);
-        setIsLoading(false);
-        return;
+      const CACHE_EXPIRE_TIME = 5 * 60 * 1000; // 5 minuti
+      const now = Date.now();
+
+      if (operationsCache[cacheKey] && cacheTimestamps[cacheKey]) {
+        const cacheAge = now - cacheTimestamps[cacheKey];
+
+        if (cacheAge < CACHE_EXPIRE_TIME) {
+          console.log(`🚀 Cache HIT per ${location.name}: ${operationsCache[cacheKey].length} operazioni (età: ${Math.round(cacheAge/1000)}s)`);
+          setCurrentOperations(operationsCache[cacheKey]);
+          setIsLoading(false);
+          return;
+        } else {
+          console.log(`⏰ Cache EXPIRED per ${location.name} (età: ${Math.round(cacheAge/1000)}s) - ricaricamento`);
+        }
       }
 
       console.log(`📡 Cache MISS - Caricamento da Odoo per ${location.name}`);
@@ -300,11 +317,17 @@ export default function PrelievoZonePage() {
         ...operationsCache,
         [cacheKey]: odooOperations
       };
+      const newTimestamps = {
+        ...cacheTimestamps,
+        [cacheKey]: now
+      };
       setOperationsCache(newCache);
+      setCacheTimestamps(newTimestamps);
 
       // Salva anche in localStorage per persistenza
       try {
         localStorage.setItem('pickingOperationsCache', JSON.stringify(newCache));
+        localStorage.setItem('pickingCacheTimestamps', JSON.stringify(newTimestamps));
       } catch (e) {
         console.warn('Impossibile salvare in localStorage:', e);
       }
@@ -389,6 +412,33 @@ export default function PrelievoZonePage() {
       } else {
         toast.error('Ubicazione non trovata');
       }
+    }
+  };
+
+  // Funzione per pulire la cache e forzare refresh
+  const clearCache = () => {
+    setOperationsCache({});
+    setCacheTimestamps({});
+    localStorage.removeItem('pickingOperationsCache');
+    localStorage.removeItem('pickingCacheTimestamps');
+    toast.success('Cache pulita - prossimi caricamenti saranno da Odoo');
+    console.log('🧹 Cache pulita completamente');
+  };
+
+  const refreshCurrentLocation = async () => {
+    if (currentLocation && currentBatch) {
+      const cacheKey = `${currentBatch.id}-${currentLocation.id}`;
+      // Rimuovi dalla cache
+      const newCache = { ...operationsCache };
+      const newTimestamps = { ...cacheTimestamps };
+      delete newCache[cacheKey];
+      delete newTimestamps[cacheKey];
+      setOperationsCache(newCache);
+      setCacheTimestamps(newTimestamps);
+
+      // Ricarica
+      await loadLocationOperations(currentLocation);
+      toast.success(`Dati aggiornati per ${currentLocation.name}`);
     }
   };
 
