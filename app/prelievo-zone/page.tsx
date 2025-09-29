@@ -61,6 +61,9 @@ export default function PrelievoZonePage() {
     'frigo': 0
   });
 
+  // Cache per operazioni già caricate
+  const [operationsCache, setOperationsCache] = useState<{ [key: string]: Operation[] }>({});
+
   // Configurazione
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(true);
@@ -72,6 +75,19 @@ export default function PrelievoZonePage() {
   useEffect(() => {
     checkConnection();
     loadConfiguration();
+
+    // Carica cache dal localStorage
+    try {
+      const savedCache = localStorage.getItem('pickingOperationsCache');
+      if (savedCache) {
+        const cache = JSON.parse(savedCache);
+        setOperationsCache(cache);
+        console.log('💾 Cache caricata dal localStorage:', Object.keys(cache).length, 'entries');
+      }
+    } catch (e) {
+      console.warn('Errore caricamento cache:', e);
+    }
+
     // Carica batch solo se l'utente è disponibile, altrimenti usa token mock
     if (user || true) { // Per ora sempre carica
       loadBatches();
@@ -260,6 +276,17 @@ export default function PrelievoZonePage() {
         return;
       }
 
+      // Controlla cache prima
+      const cacheKey = `${currentBatch.id}-${location.id}`;
+      if (operationsCache[cacheKey]) {
+        console.log(`🚀 Cache HIT per ${location.name}: ${operationsCache[cacheKey].length} operazioni`);
+        setCurrentOperations(operationsCache[cacheKey]);
+        setIsLoading(false);
+        return;
+      }
+
+      console.log(`📡 Cache MISS - Caricamento da Odoo per ${location.name}`);
+
       // Carica operazioni reali da Odoo per l'ubicazione selezionata
       const odooOperations = await pickingClient.getLocationOperations(
         currentBatch.id,
@@ -267,6 +294,20 @@ export default function PrelievoZonePage() {
       );
 
       console.log(`📦 Operazioni caricate per ${location.name}:`, odooOperations.length);
+
+      // Salva in cache per future selezioni
+      const newCache = {
+        ...operationsCache,
+        [cacheKey]: odooOperations
+      };
+      setOperationsCache(newCache);
+
+      // Salva anche in localStorage per persistenza
+      try {
+        localStorage.setItem('pickingOperationsCache', JSON.stringify(newCache));
+      } catch (e) {
+        console.warn('Impossibile salvare in localStorage:', e);
+      }
 
       setCurrentOperations(odooOperations);
 
