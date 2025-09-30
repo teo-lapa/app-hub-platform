@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store/appStore';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -9,8 +10,37 @@ import { Search, Package } from 'lucide-react';
 export function AppGrid() {
   const { filteredApps, searchQuery } = useAppStore();
   const { user } = useAuthStore();
+  const [visibilitySettings, setVisibilitySettings] = useState<Record<string, boolean>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (filteredApps.length === 0) {
+  // Carica impostazioni visibilità
+  useEffect(() => {
+    loadVisibility();
+  }, []);
+
+  const loadVisibility = async () => {
+    try {
+      const response = await fetch('/api/apps/visibility');
+      const data = await response.json();
+
+      if (data.success) {
+        const settings: Record<string, boolean> = {};
+        data.apps.forEach((app: any) => {
+          settings[app.id] = app.visible;
+        });
+        setVisibilitySettings(settings);
+      }
+    } catch (error) {
+      console.error('Errore caricamento visibilità:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Filtra app nascoste
+  const visibleApps = filteredApps.filter(app => visibilitySettings[app.id] !== false);
+
+  if (visibleApps.length === 0) {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -65,7 +95,7 @@ export function AppGrid() {
         <div className="flex items-center gap-4">
           <div className="glass-strong px-4 py-2 rounded-xl">
             <span className="text-sm text-muted-foreground">
-              {filteredApps.length} app{filteredApps.length !== 1 ? 's' : ''} trovate
+              {visibleApps.length} app{visibleApps.length !== 1 ? 's' : ''} trovate
             </span>
           </div>
 
@@ -103,13 +133,13 @@ export function AppGrid() {
         transition={{ delay: 0.2 }}
         className="grid grid-cols-1 tablet-grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"
       >
-        {filteredApps.map((app, index) => (
+        {visibleApps.map((app, index) => (
           <AppCard key={app.id} app={app} index={index} />
         ))}
       </motion.div>
 
       {/* Load More - Placeholder per futuro */}
-      {filteredApps.length >= 12 && (
+      {visibleApps.length >= 12 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

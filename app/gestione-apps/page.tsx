@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Package,
   ShoppingCart,
@@ -16,7 +16,9 @@ import {
   ExternalLink,
   Search,
   Grid3X3,
-  List
+  List,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -192,6 +194,69 @@ export default function GestioneAppsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Tutte');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [appVisibility, setAppVisibility] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+
+  // Carica stato visibilità all'avvio
+  useEffect(() => {
+    loadVisibility();
+  }, []);
+
+  const loadVisibility = async () => {
+    try {
+      const response = await fetch('/api/apps/visibility');
+      const data = await response.json();
+
+      if (data.success) {
+        const visibility: Record<string, boolean> = {};
+        data.apps.forEach((app: any) => {
+          visibility[app.id] = app.visible;
+        });
+        setAppVisibility(visibility);
+      }
+    } catch (error) {
+      console.error('Errore caricamento visibilità:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleVisibility = async (appId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const newVisibility = !appVisibility[appId];
+
+    // Aggiorna subito UI
+    setAppVisibility(prev => ({
+      ...prev,
+      [appId]: newVisibility
+    }));
+
+    // Salva su server
+    try {
+      const allApps = apps.map(app => ({
+        id: app.id,
+        name: app.name,
+        icon: '📱',
+        category: app.category,
+        visible: app.id === appId ? newVisibility : (appVisibility[app.id] !== false)
+      }));
+
+      await fetch('/api/apps/visibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apps: allApps })
+      });
+    } catch (error) {
+      console.error('Errore salvataggio:', error);
+      // Ripristina in caso di errore
+      setAppVisibility(prev => ({
+        ...prev,
+        [appId]: !newVisibility
+      }));
+    }
+  };
 
   const filteredApps = apps.filter(app => {
     const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -319,44 +384,64 @@ export default function GestioneAppsPage() {
             ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
             : 'space-y-4'
           }>
-            {filteredApps.map((app) => (
-              <a
-                key={app.id}
-                href={app.path}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`group ${viewMode === 'grid'
-                  ? 'bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 p-6 hover:border-blue-500/50 transition-all duration-300 hover:scale-105'
-                  : 'bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 p-4 hover:border-blue-500/50 transition-all duration-300 flex items-center space-x-4'
-                }`}
-              >
-                <div className={`bg-gradient-to-r ${app.color} ${viewMode === 'grid' ? 'p-4 rounded-xl mb-4 inline-block' : 'p-3 rounded-lg'}`}>
-                  {app.icon}
-                </div>
+            {filteredApps.map((app) => {
+              const isVisible = appVisibility[app.id] !== false;
+              return (
+                <div
+                  key={app.id}
+                  className={`group relative ${viewMode === 'grid'
+                    ? 'bg-slate-800/40 backdrop-blur-sm rounded-xl border p-6 transition-all duration-300'
+                    : 'bg-slate-800/40 backdrop-blur-sm rounded-xl border p-4 transition-all duration-300 flex items-center space-x-4'
+                  } ${isVisible ? 'border-slate-600/50 hover:border-blue-500/50' : 'border-red-500/50 opacity-60'}`}
+                >
+                  {/* Toggle visibilità in alto a destra */}
+                  <button
+                    onClick={(e) => toggleVisibility(app.id, e)}
+                    className={`absolute top-3 right-3 p-2 rounded-lg transition-all z-10 ${
+                      isVisible
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
+                        : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
+                    }`}
+                    title={isVisible ? 'Nascondi app' : 'Mostra app'}
+                  >
+                    {isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                  </button>
 
-                <div className={viewMode === 'grid' ? '' : 'flex-1'}>
-                  <h3 className={`font-semibold text-white group-hover:text-blue-400 transition-colors ${viewMode === 'grid' ? 'text-lg mb-2' : 'text-base mb-1'}`}>
-                    {app.name}
-                  </h3>
-                  <p className={`text-slate-400 ${viewMode === 'grid' ? 'text-sm mb-3' : 'text-sm'}`}>
-                    {app.description}
-                  </p>
+                  <a
+                    href={app.path}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1"
+                  >
+                    <div className={`bg-gradient-to-r ${app.color} ${viewMode === 'grid' ? 'p-4 rounded-xl mb-4 inline-block' : 'p-3 rounded-lg'}`}>
+                      {app.icon}
+                    </div>
 
-                  <div className={`flex items-center ${viewMode === 'grid' ? 'justify-between' : 'justify-end space-x-3'}`}>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300">
-                      {app.category}
-                    </span>
-                    {viewMode === 'grid' && (
-                      <ExternalLink className="h-4 w-4 text-slate-400 group-hover:text-blue-400 transition-colors" />
+                    <div className={viewMode === 'grid' ? '' : 'flex-1'}>
+                      <h3 className={`font-semibold text-white group-hover:text-blue-400 transition-colors ${viewMode === 'grid' ? 'text-lg mb-2' : 'text-base mb-1'}`}>
+                        {app.name}
+                      </h3>
+                      <p className={`text-slate-400 ${viewMode === 'grid' ? 'text-sm mb-3' : 'text-sm'}`}>
+                        {app.description}
+                      </p>
+
+                      <div className={`flex items-center ${viewMode === 'grid' ? 'justify-between' : 'justify-end space-x-3'}`}>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300">
+                          {app.category}
+                        </span>
+                        {viewMode === 'grid' && (
+                          <ExternalLink className="h-4 w-4 text-slate-400 group-hover:text-blue-400 transition-colors" />
+                        )}
+                      </div>
+                    </div>
+
+                    {viewMode === 'list' && (
+                      <ExternalLink className="h-5 w-5 text-slate-400 group-hover:text-blue-400 transition-colors" />
                     )}
-                  </div>
+                  </a>
                 </div>
-
-                {viewMode === 'list' && (
-                  <ExternalLink className="h-5 w-5 text-slate-400 group-hover:text-blue-400 transition-colors" />
-                )}
-              </a>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12">

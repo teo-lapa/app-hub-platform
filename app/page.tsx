@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Header } from '@/components/layout/Header';
-import { CategoryFilter } from '@/components/layout/CategoryFilter';
+// import { CategoryFilter } from '@/components/layout/CategoryFilter';
 import { AppGrid } from '@/components/layout/AppGrid';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { RegisterForm } from '@/components/auth/RegisterForm';
@@ -309,7 +309,7 @@ export default function HomePage() {
             </div>
           </motion.div>
 
-          <CategoryFilter />
+          {/* <CategoryFilter /> */}
           <AppGrid />
         </main>
       </PullToRefresh>
