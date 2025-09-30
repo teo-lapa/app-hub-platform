@@ -1,198 +1,267 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
-const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
-const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+export const dynamic = 'force-dynamic';
 
-async function authenticateOdoo() {
-  const response = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'call',
-      params: {
-        db: ODOO_DB,
-        login: ODOO_USERNAME,
-        password: ODOO_PASSWORD
-      },
-      id: 1
-    })
-  });
+// Task definitions for Stella actions
+const STELLA_TASKS = [
+  {
+    id: 'order',
+    name: 'Voglio Fare un Ordine',
+    description: `Prompt per Stella quando il cliente vuole fare un ordine:
 
-  const data = await response.json();
-  if (data.error || !data.result?.uid) {
-    throw new Error('Authentication failed');
+Ciao! Sono Stella e ti aiuterò a fare il tuo ordine.
+
+COSA DEVI FARE:
+1. Chiedi che tipo di prodotti sta cercando
+2. Cerca nel catalogo Odoo con search_read sui prodotti
+3. Mostra i prodotti disponibili con prezzi e disponibilità
+4. Gestisci le quantità richieste
+5. Crea una bozza di ordine di vendita
+6. Conferma tutti i dettagli prima di finalizzare
+
+TONO: Professionale, utile, orientato alle vendite
+OBIETTIVO: Completare l'ordine del cliente con successo`
+  },
+  {
+    id: 'complaint',
+    name: 'Lamentele',
+    description: `Prompt per Stella quando il cliente ha una lamentela:
+
+Ciao! Mi dispiace per il disagio. Sono qui per aiutarti a risolvere il problema.
+
+COSA DEVI FARE:
+1. Ascolta il problema con empatia
+2. Raccogli tutti i dettagli: quando, dove, cosa è successo
+3. Chiedi numero ordine se applicabile
+4. Classifica il tipo di problema
+5. Proponi soluzioni immediate se possibile
+6. Crea un ticket di supporto se necessario
+7. Rassicura il cliente sui tempi di risoluzione
+
+TONO: Empatico, professionale, orientato alla risoluzione
+OBIETTIVO: Risolvere il problema e mantenere il cliente soddisfatto`
+  },
+  {
+    id: 'search',
+    name: 'Ricerca Prodotto',
+    description: `Prompt per Stella quando il cliente cerca prodotti:
+
+Ciao! Sono Stella e ti aiuterò a trovare quello che cerchi.
+
+COSA DEVI FARE:
+1. Chiedi specifiche del prodotto (nome, tipo, caratteristiche)
+2. Usa search_read per cercare prodotti in Odoo
+3. Filtra per disponibilità e categoria
+4. Mostra risultati con: nome, prezzo, disponibilità, descrizione
+5. Suggerisci prodotti alternativi se necessario
+6. Fornisci dettagli tecnici se richiesti
+7. Proponi di procedere con l'ordine se interessato
+
+TONO: Esperto, utile, orientato alla consulenza
+OBIETTIVO: Aiutare il cliente a trovare il prodotto perfetto`
+  },
+  {
+    id: 'intervention',
+    name: 'Richiesta di Intervento',
+    description: `Prompt per Stella quando il cliente richiede un intervento tecnico:
+
+Ciao! Sono qui per organizzare il tuo intervento tecnico.
+
+COSA DEVI FARE:
+1. Identifica il tipo di problema tecnico
+2. Raccogli informazioni su: ubicazione, urgenza, orari preferiti
+3. Verifica disponibilità tecnici nella zona
+4. Classifica l'intervento (manutenzione, riparazione, installazione)
+5. Proponi date e orari disponibili
+6. Conferma i dettagli dell'appuntamento
+7. Crea il task di intervento in Odoo con tutti i dettagli
+
+TONO: Tecnico ma accessibile, efficiente, organizzato
+OBIETTIVO: Programmare l'intervento nel minor tempo possibile`
+  },
+  {
+    id: 'other',
+    name: 'Altre Richieste',
+    description: `Prompt per Stella per richieste generiche:
+
+Ciao! Sono Stella, il tuo assistente personale. Dimmi pure di cosa hai bisogno!
+
+COSA DEVI FARE:
+1. Ascolta attentamente la richiesta
+2. Classifica il tipo di richiesta
+3. Se è correlata ai nostri servizi, fornisci informazioni dettagliate
+4. Se serve supporto tecnico, indirizza verso l'intervento
+5. Per info prodotti, indirizza verso la ricerca
+6. Per problemi, gestisci come reclamo
+7. Sii sempre utile e cordiale
+
+TONO: Amichevole, versatile, sempre disponibile
+OBIETTIVO: Assistere il cliente in qualsiasi sua necessità`
   }
+];
 
-  const setCookieHeader = response.headers.get('set-cookie');
-  let sessionId = null;
-  if (setCookieHeader) {
-    const sessionMatch = setCookieHeader.match(/session_id=([^;]+)/);
-    sessionId = sessionMatch ? sessionMatch[1] : null;
-  }
-
-  return { uid: data.result.uid, sessionId };
-}
-
+// Create Stella tasks in Odoo project 108
 export async function POST(request: NextRequest) {
   try {
-    console.log('🌟 Creating Stella tasks in Odoo project 108...');
+    console.log('🚀 Creazione task Stella in progetto 108...');
 
-    const { uid, sessionId } = await authenticateOdoo();
+    const results = [];
 
-    const stellaTasks = [
-      {
-        name: 'Stella - Conversazione Generale',
-        description: 'Prompt per conversazioni generali con Stella',
-        action_id: 'general',
-        project_id: 108,
-        prompt_text: "Sei Stella, un'assistente AI amichevole per LAPA. Rispondi in modo naturale e utile in italiano."
-      },
-      {
-        name: 'Stella - Assistente Magazzino',
-        description: 'Prompt per assistenza magazzino e inventario',
-        action_id: 'inventory',
-        project_id: 108,
-        prompt_text: "Sei Stella, esperta di gestione magazzino per LAPA. Aiuta con inventario, scorte, movimentazioni e procedure di magazzino."
-      },
-      {
-        name: 'Stella - Assistente Vendite',
-        description: 'Prompt per supporto vendite e clienti',
-        action_id: 'sales',
-        project_id: 108,
-        prompt_text: "Sei Stella, assistente vendite LAPA. Aiuta con ordini, gestione clienti, preventivi e attività commerciali."
-      },
-      {
-        name: 'Stella - Supporto Tecnico',
-        description: 'Prompt per supporto e risoluzione problemi',
-        action_id: 'support',
-        project_id: 108,
-        prompt_text: "Sei Stella, supporto tecnico LAPA. Risolvi problemi, fornisci assistenza tecnica e guida troubleshooting."
-      },
-      {
-        name: 'Stella - Formazione Team',
-        description: 'Prompt per formazione e training aziendale',
-        action_id: 'training',
-        project_id: 108,
-        prompt_text: "Sei Stella, formatrice aziendale LAPA. Aiuta con formazione, procedure aziendali e training del personale."
-      }
-    ];
-
-    const createdTasks = [];
-
-    for (const task of stellaTasks) {
-      const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': `session_id=${sessionId}`
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {
+    for (const task of STELLA_TASKS) {
+      try {
+        // Create task in Odoo project 108
+        const odooResponse = await fetch(`${request.nextUrl.origin}/api/odoo/rpc`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             model: 'project.task',
             method: 'create',
-            args: [task],
+            args: [{
+              name: task.name,
+              description: task.description,
+              project_id: 108, // Project ID 108
+              tag_ids: [[6, 0, []]], // Empty tags for now
+              priority: '1', // Normal priority
+            }],
             kwargs: {}
-          },
-          id: Math.random()
-        })
-      });
+          })
+        });
 
-      const data = await response.json();
-      if (data.result) {
-        createdTasks.push({ id: data.result, ...task });
-        console.log(`✅ Created task: ${task.name} (ID: ${data.result})`);
-      } else {
-        console.error(`❌ Failed to create task: ${task.name}`, data.error);
+        if (odooResponse.ok) {
+          const data = await odooResponse.json();
+          if (data.result) {
+            results.push({
+              action_id: task.id,
+              task_id: data.result,
+              name: task.name,
+              success: true
+            });
+            console.log(`✅ Task creato: ${task.name} (ID: ${data.result})`);
+          } else {
+            results.push({
+              action_id: task.id,
+              name: task.name,
+              success: false,
+              error: 'Nessun risultato da Odoo'
+            });
+          }
+        } else {
+          const errorData = await odooResponse.json();
+          results.push({
+            action_id: task.id,
+            name: task.name,
+            success: false,
+            error: errorData.error || `HTTP ${odooResponse.status}`
+          });
+        }
+
+      } catch (taskError) {
+        console.error(`❌ Errore creazione task ${task.name}:`, taskError);
+        results.push({
+          action_id: task.id,
+          name: task.name,
+          success: false,
+          error: taskError instanceof Error ? taskError.message : 'Errore sconosciuto'
+        });
       }
     }
 
+    const successCount = results.filter(r => r.success).length;
+    console.log(`📊 Task creati: ${successCount}/${STELLA_TASKS.length}`);
+
     return NextResponse.json({
-      success: true,
-      message: `Created ${createdTasks.length} Stella tasks in project 108`,
-      tasks: createdTasks
+      success: successCount > 0,
+      message: `Creati ${successCount} task su ${STELLA_TASKS.length}`,
+      results
     });
 
-  } catch (error: any) {
-    console.error('❌ Error creating Stella tasks:', error);
+  } catch (error) {
+    console.error('❌ Errore generale creazione task:', error);
     return NextResponse.json({
       success: false,
-      error: 'Failed to create tasks',
-      details: error.message
+      error: 'Errore nella creazione dei task',
+      details: error instanceof Error ? error.message : 'Errore sconosciuto'
     }, { status: 500 });
   }
 }
 
+// Get Stella task prompts from Odoo
 export async function GET(request: NextRequest) {
   try {
-    const url = new URL(request.url);
-    const actionId = url.searchParams.get('action_id');
+    const searchParams = request.nextUrl.searchParams;
+    const actionId = searchParams.get('action_id');
 
-    const { uid, sessionId } = await authenticateOdoo();
-
-    // Build domain filter
-    let domain = [['project_id', '=', 108]];
-    if (actionId) {
-      domain.push(['action_id', '=', actionId]);
+    if (!actionId) {
+      return NextResponse.json({
+        success: false,
+        error: 'action_id parameter required'
+      }, { status: 400 });
     }
 
-    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+    // Search for task by name in project 108
+    const taskName = STELLA_TASKS.find(t => t.id === actionId)?.name;
+    if (!taskName) {
+      return NextResponse.json({
+        success: false,
+        error: 'Action ID non valido'
+      }, { status: 400 });
+    }
+
+    const odooResponse = await fetch(`${request.nextUrl.origin}/api/odoo/rpc`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `session_id=${sessionId}`
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model: 'project.task',
-          method: 'search_read',
-          args: [domain],
-          kwargs: {
-            fields: ['id', 'name', 'description', 'action_id', 'prompt_text'],
-            order: 'name ASC'
-          }
-        },
-        id: Math.random()
+        model: 'project.task',
+        method: 'search_read',
+        args: [
+          [
+            ['project_id', '=', 108],
+            ['name', '=', taskName]
+          ],
+          ['id', 'name', 'description', 'stage_id', 'priority']
+        ],
+        kwargs: { limit: 1 }
       })
     });
 
-    const data = await response.json();
-
-    if (data.result && Array.isArray(data.result)) {
-      if (actionId && data.result.length > 0) {
-        // Return specific prompt for action_id
-        return NextResponse.json({
-          success: true,
-          prompt: data.result[0].prompt_text,
-          task: data.result[0]
-        });
-      } else {
-        // Return all tasks
-        return NextResponse.json({
-          success: true,
-          tasks: data.result
-        });
-      }
+    if (!odooResponse.ok) {
+      return NextResponse.json({
+        success: false,
+        error: 'Errore ricerca task in Odoo'
+      }, { status: 500 });
     }
 
-    return NextResponse.json({
-      success: true,
-      tasks: [],
-      prompt: null
-    });
+    const data = await odooResponse.json();
 
-  } catch (error: any) {
-    console.error('❌ Error fetching Stella tasks:', error);
+    if (data.result && data.result.length > 0) {
+      const task = data.result[0];
+      return NextResponse.json({
+        success: true,
+        task_id: task.id,
+        prompt: task.description || `Ciao! Come posso aiutarti con: ${task.name}`,
+        task_name: task.name,
+        stage: task.stage_id?.[1] || 'Unknown',
+        priority: task.priority || '1'
+      });
+    } else {
+      // Fallback to default prompts
+      const defaultTask = STELLA_TASKS.find(t => t.id === actionId);
+      return NextResponse.json({
+        success: true,
+        task_id: null,
+        prompt: defaultTask?.description || 'Ciao! Come posso aiutarti?',
+        task_name: defaultTask?.name || 'Richiesta generica',
+        stage: 'Default',
+        priority: '1',
+        fallback: true
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Errore ricerca prompt:', error);
     return NextResponse.json({
       success: false,
-      error: 'Failed to fetch tasks',
-      details: error.message
+      error: 'Errore nella ricerca del prompt'
     }, { status: 500 });
   }
 }

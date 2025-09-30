@@ -1,0 +1,29 @@
+{
+  "video_generation_request": {
+    "filename": "stella-idle.mp4",
+    "description": "Professional businesswoman in idle/waiting state",
+    "prompt": "Medium shot of a professional blonde businesswoman in her 30s sitting at a modern office desk. She wears a light blue blouse and has a calm, confident expression while looking directly at the camera. Natural breathing motion with subtle chest rise and fall. Occasional gentle blinks and very slight head movements. Clean modern office background with computer and desk accessories. Soft professional lighting illuminating her face evenly. She maintains eye contact and appears approachable and ready to help.",
+    "settings": {
+      "duration": "10 seconds",
+      "resolution": "1080p",
+      "motion_intensity": "Low",
+      "style": "Photorealistic",
+      "camera_movement": "Static",
+      "aspect_ratio": "16:9"
+    },
+    "key_elements": [
+      "Blonde businesswoman, professional appearance",
+      "Calm, confident facial expression",
+      "Direct eye contact with camera",
+      "Subtle breathing and blinking only",
+      "Modern office environment",
+      "Soft professional lighting"
+    ],
+    "motion_details": {
+      "facial": "Gentle blinks, minimal expression changes",
+      "body": "Subtle breathing motion, very slight posture adjustments",
+      "hands": "Stationary, resting professionally",
+      "overall_energy": "Calm, ready, professional standby"
+    }
+  }
+}

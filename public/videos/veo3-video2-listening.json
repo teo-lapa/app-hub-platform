@@ -1,0 +1,36 @@
+{
+  "video_generation_request": {
+    "filename": "stella-listening.mp4",
+    "description": "Professional businesswoman in active listening state",
+    "prompt": "Same blonde businesswoman from previous video, now actively listening. She leans slightly forward showing engagement, with focused and attentive facial expression. Subtle nodding motions while maintaining direct eye contact with camera. Occasional small head tilts and raised eyebrows showing understanding and interest. Same office setting and lighting as before. Her posture demonstrates concentration and genuine engagement in listening.",
+    "settings": {
+      "duration": "10 seconds",
+      "resolution": "1080p",
+      "motion_intensity": "Medium",
+      "style": "Photorealistic",
+      "camera_movement": "Static",
+      "aspect_ratio": "16:9"
+    },
+    "key_elements": [
+      "Same blonde businesswoman (consistency crucial)",
+      "Leaning forward, engaged posture",
+      "Focused, attentive facial expression",
+      "Subtle nodding movements",
+      "Direct eye contact maintained",
+      "Same office environment as video 1"
+    ],
+    "motion_details": {
+      "facial": "Attentive expression, raised eyebrows, focused eyes",
+      "head": "Subtle nodding, slight tilts showing interest",
+      "body": "Leaning slightly forward, engaged posture",
+      "hands": "Minimal movement, professional positioning",
+      "overall_energy": "Focused, engaged, actively listening"
+    },
+    "consistency_notes": {
+      "reference_video": "Use same character/settings as stella-idle.mp4",
+      "environment": "Identical office background and lighting",
+      "clothing": "Same light blue blouse",
+      "camera_angle": "Same medium shot framing"
+    }
+  }
+}

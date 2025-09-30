@@ -1,0 +1,62 @@
+{
+  "veo3_prompts": {
+    "video_1": {
+      "filename": "stella-idle.mp4",
+      "veo3_prompt": "Medium shot of a professional blonde businesswoman in her 30s sitting at a modern office desk. She wears a light blue blouse and has a calm, confident expression while looking directly at the camera. Natural breathing motion with subtle chest rise and fall. Occasional gentle blinks and very slight head movements. Clean modern office background with computer and desk accessories. Soft professional lighting illuminating her face evenly. She maintains eye contact and appears approachable and ready to help.",
+      "veo3_settings": {
+        "duration": "10s",
+        "resolution": "1080p",
+        "motion_intensity": "Low",
+        "style": "Photorealistic",
+        "camera_movement": "Static"
+      }
+    },
+    "video_2": {
+      "filename": "stella-listening.mp4",
+      "veo3_prompt": "Same blonde businesswoman from previous video, now actively listening. She leans slightly forward showing engagement, with focused and attentive facial expression. Subtle nodding motions while maintaining direct eye contact with camera. Occasional small head tilts and raised eyebrows showing understanding and interest. Same office setting and lighting as before. Her posture demonstrates concentration and genuine engagement in listening.",
+      "veo3_settings": {
+        "duration": "10s",
+        "resolution": "1080p",
+        "motion_intensity": "Medium",
+        "style": "Photorealistic",
+        "camera_movement": "Static"
+      }
+    },
+    "video_3": {
+      "filename": "stella-speaking.mp4",
+      "veo3_prompt": "Same blonde businesswoman now actively speaking in a professional conversation. Natural mouth movements as if explaining something important. Expressive facial gestures with varying expressions. Slight hand gestures visible in frame. She appears confident and articulate while speaking, with natural pauses and eye contact variations as if making conversational points. Same office background and lighting consistency maintained.",
+      "veo3_settings": {
+        "duration": "10s",
+        "resolution": "1080p",
+        "motion_intensity": "Medium-High",
+        "style": "Photorealistic",
+        "camera_movement": "Static"
+      }
+    }
+  },
+  "veo3_consistency_instructions": {
+    "character_consistency": "Use same seed/reference image for all three videos to maintain same person",
+    "environment_consistency": "Keep identical office background across all videos",
+    "lighting_consistency": "Maintain same professional office lighting setup",
+    "camera_consistency": "Use identical medium shot framing for all three"
+  },
+  "veo3_technical_specs": {
+    "recommended_duration": "10 seconds each",
+    "recommended_resolution": "1080p (1920x1080)",
+    "motion_guidance": {
+      "idle": "Low motion - breathing, blinking only",
+      "listening": "Medium motion - nodding, head tilts",
+      "speaking": "Medium-High motion - mouth, hands, expressions"
+    },
+    "style_setting": "Photorealistic",
+    "camera_setting": "Static (no camera movement)"
+  },
+  "instructions_for_use": [
+    "1. Open Google Veo 3 interface",
+    "2. Copy each 'veo3_prompt' text exactly",
+    "3. Set the corresponding 'veo3_settings' for each video",
+    "4. Generate all three videos using same reference if possible",
+    "5. Download and rename to exact filenames listed",
+    "6. Place in public/videos/ folder"
+  ]
+}

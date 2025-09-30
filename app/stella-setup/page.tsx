@@ -2,15 +2,24 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { toast } from 'react-hot-toast';
+import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
+import toast from 'react-hot-toast';
+
+interface TaskResult {
+  action_id: string;
+  task_id?: number;
+  name: string;
+  success: boolean;
+  error?: string;
+}
 
 export default function StellaSetup() {
-  const [isCreating, setIsCreating] = useState(false);
-  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<TaskResult[]>([]);
 
   const createTasks = async () => {
-    setIsCreating(true);
-    toast.loading('Creando task Stella in Odoo...');
+    setLoading(true);
+    setResults([]);
 
     try {
       const response = await fetch('/api/stella/tasks', {
@@ -21,174 +30,150 @@ export default function StellaSetup() {
       const data = await response.json();
 
       if (data.success) {
-        toast.dismiss();
-        toast.success(`✅ Creati ${data.tasks.length} task Stella!`);
-        setTasks(data.tasks);
+        toast.success(data.message);
+        setResults(data.results);
       } else {
-        throw new Error(data.error);
+        toast.error(data.error || 'Errore nella creazione dei task');
+        if (data.results) {
+          setResults(data.results);
+        }
       }
-    } catch (error: any) {
-      toast.dismiss();
-      toast.error(`❌ Errore: ${error.message}`);
-    }
 
-    setIsCreating(false);
+    } catch (error) {
+      console.error('Errore:', error);
+      toast.error('Errore di connessione');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const testConnection = async () => {
-    toast.loading('Test connessione OpenAI...');
-
+  const testPrompt = async (actionId: string) => {
     try {
-      const response = await fetch('/api/openai/realtime', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action_id: 'general' })
-      });
-
+      const response = await fetch(`/api/stella/tasks?action_id=${actionId}`);
       const data = await response.json();
 
       if (data.success) {
-        toast.dismiss();
-        toast.success('✅ Connessione OpenAI OK!');
+        toast.success(`Prompt trovato: ${data.task_name}`);
+        console.log('Prompt:', data.prompt);
+        alert(`PROMPT PER ${data.task_name}:\n\n${data.prompt}`);
       } else {
-        throw new Error(data.error);
+        toast.error('Errore nel recupero del prompt');
       }
-    } catch (error: any) {
-      toast.dismiss();
-      toast.error(`❌ Errore OpenAI: ${error.message}`);
+    } catch (error) {
+      console.error('Errore test prompt:', error);
+      toast.error('Errore test prompt');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-            🛠️ Stella Setup
-          </h1>
-          <p className="text-xl text-purple-200">
-            Configurazione iniziale per Stella AI Assistant
-          </p>
-        </motion.div>
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+      <AppHeader
+        title="🔧 Setup Stella - Progetto 108"
+        subtitle="Configurazione task Odoo per i prompt di Stella"
+      />
+      <MobileHomeButton />
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Task Creation */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-white/10 rounded-lg p-6 backdrop-blur-sm border border-white/20"
-          >
-            <h2 className="text-2xl font-bold mb-4 text-purple-300">
-              📋 Creazione Task Odoo
-            </h2>
-            <p className="text-purple-200 mb-6">
-              Crea i task per Stella nel progetto 108 di Odoo con i prompt predefiniti.
-            </p>
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
 
-            <button
-              onClick={createTasks}
-              disabled={isCreating}
-              className={`w-full py-3 px-6 rounded-lg font-semibold text-white transition-all
-                ${isCreating
-                  ? 'bg-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700'
-                }`}
-            >
-              {isCreating ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Creando...</span>
-                </div>
-              ) : (
-                '🚀 Crea Task Stella'
-              )}
-            </button>
-
-            {tasks.length > 0 && (
-              <div className="mt-6">
-                <h3 className="font-semibold text-green-300 mb-2">Task creati:</h3>
-                <ul className="space-y-1 text-sm text-green-200">
-                  {tasks.map((task: any) => (
-                    <li key={task.id}>✅ {task.name}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </motion.div>
-
-          {/* API Test */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-white/10 rounded-lg p-6 backdrop-blur-sm border border-white/20"
-          >
-            <h2 className="text-2xl font-bold mb-4 text-blue-300">
-              🔗 Test API OpenAI
-            </h2>
-            <p className="text-blue-200 mb-6">
-              Verifica che la connessione con OpenAI Real-Time API funzioni correttamente.
-            </p>
-
-            <button
-              onClick={testConnection}
-              className="w-full py-3 px-6 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold transition-all"
-            >
-              🧪 Test Connessione
-            </button>
-          </motion.div>
-        </div>
-
-        {/* Configuration Info */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mt-12 bg-white/5 rounded-lg p-6 backdrop-blur-sm border border-white/10"
+          className="bg-white rounded-xl shadow-xl p-8 mb-8"
         >
-          <h3 className="text-xl font-bold mb-4 text-yellow-300">
-            ⚙️ Configurazione Richiesta
-          </h3>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-semibold text-yellow-200 mb-2">Variabili Ambiente:</h4>
-              <ul className="space-y-1 text-sm text-yellow-100">
-                <li>• <code>OPENAI_API_KEY</code> - Chiave API OpenAI</li>
-                <li>• <code>ODOO_URL</code> - URL istanza Odoo</li>
-                <li>• <code>ODOO_DB</code> - Database Odoo</li>
-                <li>• <code>ODOO_USERNAME</code> - Username Odoo</li>
-                <li>• <code>ODOO_PASSWORD</code> - Password Odoo</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-yellow-200 mb-2">Requisiti:</h4>
-              <ul className="space-y-1 text-sm text-yellow-100">
-                <li>• Progetto Odoo ID 108 esistente</li>
-                <li>• OpenAI API con Real-Time access</li>
-                <li>• Browser con WebRTC support</li>
-                <li>• Microfono funzionante</li>
-              </ul>
-            </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+            🎯 Setup Progetto 108
+          </h2>
+
+          <p className="text-gray-600 mb-6">
+            Questo setup creerà automaticamente 5 task nel progetto Odoo ID 108, uno per ogni pulsante di Stella.
+            Ogni task conterrà il prompt specifico che Stella userà per quella funzione.
+          </p>
+
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+            <h3 className="font-semibold text-blue-800 mb-2">Task che verranno creati:</h3>
+            <ul className="text-blue-700 space-y-1">
+              <li>• <strong>Voglio Fare un Ordine</strong> - Prompt per gestire ordini</li>
+              <li>• <strong>Lamentele</strong> - Prompt per gestire reclami</li>
+              <li>• <strong>Ricerca Prodotto</strong> - Prompt per ricerca prodotti</li>
+              <li>• <strong>Richiesta di Intervento</strong> - Prompt per interventi tecnici</li>
+              <li>• <strong>Altre Richieste</strong> - Prompt per richieste generiche</li>
+            </ul>
           </div>
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={createTasks}
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+          >
+            {loading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Creando task...
+              </>
+            ) : (
+              <>
+                🚀 CREA TASK NEL PROGETTO 108
+              </>
+            )}
+          </motion.button>
         </motion.div>
 
-        {/* Navigation */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="mt-8 text-center"
-        >
-          <a
-            href="/stella-assistant"
-            className="inline-block px-8 py-3 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-semibold rounded-lg transition-all"
+        {/* Results */}
+        {results.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-xl p-8"
           >
-            🌟 Vai a Stella Assistant
-          </a>
-        </motion.div>
+            <h3 className="text-xl font-bold text-gray-800 mb-4">
+              📊 Risultati Creazione Task
+            </h3>
+
+            <div className="space-y-4">
+              {results.map((result, index) => (
+                <div
+                  key={index}
+                  className={`p-4 rounded-lg border-l-4 ${
+                    result.success
+                      ? 'bg-green-50 border-green-400'
+                      : 'bg-red-50 border-red-400'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className={`font-semibold ${
+                        result.success ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        {result.success ? '✅' : '❌'} {result.name}
+                      </h4>
+                      {result.success && result.task_id && (
+                        <p className="text-sm text-green-600">
+                          Task ID: {result.task_id}
+                        </p>
+                      )}
+                      {result.error && (
+                        <p className="text-sm text-red-600">
+                          Errore: {result.error}
+                        </p>
+                      )}
+                    </div>
+
+                    {result.success && (
+                      <button
+                        onClick={() => testPrompt(result.action_id)}
+                        className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600 transition-colors"
+                      >
+                        Testa Prompt
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   );

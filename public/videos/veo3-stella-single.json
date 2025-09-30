@@ -1,0 +1,46 @@
+{
+  "single_video_generation": {
+    "filename": "stella.mp4",
+    "description": "Professional businesswoman - single video for all states",
+    "prompt": "Medium shot of a professional blonde businesswoman in her 30s sitting at a modern office desk. She wears a light blue blouse and has a natural, confident expression while looking directly at the camera. Natural breathing motion with subtle chest rise and fall. Occasional gentle blinks and very slight head movements. She appears engaged and approachable, with a subtle smile. Clean modern office background with computer and desk accessories. Soft professional lighting illuminating her face evenly. She maintains eye contact and appears ready to help customers. Natural, professional demeanor suitable for customer service.",
+    "settings": {
+      "duration": "15 seconds",
+      "resolution": "1080p",
+      "motion_intensity": "Low-Medium",
+      "style": "Photorealistic",
+      "camera_movement": "Static",
+      "aspect_ratio": "16:9"
+    },
+    "key_elements": [
+      "Blonde businesswoman, professional appearance",
+      "Natural, confident facial expression",
+      "Direct eye contact with camera",
+      "Subtle breathing and gentle movements",
+      "Slight smile, approachable demeanor",
+      "Modern office environment",
+      "Soft professional lighting"
+    ],
+    "motion_details": {
+      "facial": "Natural expression, gentle blinks, subtle smile",
+      "head": "Very slight natural movements, maintaining eye contact",
+      "body": "Subtle breathing motion, professional posture",
+      "hands": "Stationary, resting professionally on desk",
+      "overall_energy": "Calm, professional, approachable, ready to assist"
+    },
+    "usage_note": "This single video will be used for all conversation states (idle, listening, speaking) with visual effects overlays to indicate different states"
+  },
+  "visual_effects_instead_of_multiple_videos": {
+    "idle_state": "Normal video playback",
+    "listening_state": "Green 'ASCOLTO' overlay indicator",
+    "speaking_state": "Blue 'PARLANDO' overlay + slight brightness increase + scale animation"
+  },
+  "technical_specs": {
+    "format": "MP4",
+    "codec": "H.264",
+    "resolution": "1920x1080",
+    "duration": "15 seconds",
+    "loop": "Seamless loop for continuous playback",
+    "file_size": "Under 50MB",
+    "audio": "Not required (will be muted)"
+  }
+}

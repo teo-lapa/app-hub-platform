@@ -1,0 +1,45 @@
+{
+  "video_generation_request": {
+    "filename": "stella-speaking.mp4",
+    "description": "Professional businesswoman in active speaking state",
+    "prompt": "Same blonde businesswoman now actively speaking in a professional conversation. Natural mouth movements as if explaining something important. Expressive facial gestures with varying expressions. Slight hand gestures visible in frame. She appears confident and articulate while speaking, with natural pauses and eye contact variations as if making conversational points. Same office background and lighting consistency maintained.",
+    "settings": {
+      "duration": "10 seconds",
+      "resolution": "1080p",
+      "motion_intensity": "Medium-High",
+      "style": "Photorealistic",
+      "camera_movement": "Static",
+      "aspect_ratio": "16:9"
+    },
+    "key_elements": [
+      "Same blonde businesswoman (consistency crucial)",
+      "Natural mouth movements while speaking",
+      "Expressive facial gestures",
+      "Slight hand gestures in frame",
+      "Confident, articulate demeanor",
+      "Same office environment as previous videos"
+    ],
+    "motion_details": {
+      "facial": "Natural speaking expressions, mouth movements, varying looks",
+      "head": "Natural conversation head movements and gestures",
+      "body": "Confident posture, engaged speaking stance",
+      "hands": "Subtle gestures visible in frame, professional movements",
+      "eyes": "Natural eye contact with slight variations during speech",
+      "overall_energy": "Confident, articulate, professionally animated"
+    },
+    "consistency_notes": {
+      "reference_video": "Use same character/settings as previous two videos",
+      "environment": "Identical office background and lighting",
+      "clothing": "Same light blue blouse",
+      "camera_angle": "Same medium shot framing",
+      "character_continuity": "Maintain same person appearance across all three videos"
+    },
+    "speaking_behavior": {
+      "mouth_movement": "Natural lip sync as if speaking professional content",
+      "expressions": "Varying between explanatory, confident, and engaging",
+      "gestures": "Professional hand movements, not excessive",
+      "pace": "Natural conversation rhythm with pauses",
+      "tone": "Professional, confident, approachable energy"
+    }
+  }
+}

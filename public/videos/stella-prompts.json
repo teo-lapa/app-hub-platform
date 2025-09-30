@@ -1,0 +1,94 @@
+{
+  "stella_videos": [
+    {
+      "filename": "stella-idle.mp4",
+      "description": "Stato di riposo/attesa",
+      "prompt": "A professional blonde businesswoman in her 30s sitting at a modern office desk, wearing a light blue or white blouse. She has a calm, attentive expression looking directly at the camera. Natural breathing motion, occasional gentle blinks, slight head movements. Professional office background with desk, computer, maybe some plants. Soft, even lighting on her face. She appears confident and approachable, in a waiting/standby pose. Shot from chest up, corporate professional style.",
+      "settings": {
+        "duration": "10-15 seconds",
+        "style": "photorealistic, corporate professional",
+        "quality": "high definition, 4K",
+        "aspect_ratio": "16:9 or 9:16",
+        "motion_level": "minimal, subtle breathing and blinking",
+        "lighting": "soft, even, professional office lighting",
+        "camera_angle": "straight on, eye level, chest up"
+      },
+      "key_elements": [
+        "Calm, professional demeanor",
+        "Direct eye contact with camera",
+        "Natural breathing rhythm",
+        "Occasional soft blinks",
+        "Confident posture",
+        "Modern office environment"
+      ]
+    },
+    {
+      "filename": "stella-listening.mp4",
+      "description": "Stato di ascolto attento",
+      "prompt": "The same professional blonde businesswoman from the previous video, now in an active listening pose. She leans slightly forward showing engagement, with a focused and attentive facial expression. Subtle nodding motions, maintaining eye contact with camera. Her posture shows she's concentrated and interested. Occasional small movements like tilting head slightly or raising eyebrows showing understanding. Same office setting and lighting as before. Professional attire. She appears genuinely engaged in listening to someone speaking.",
+      "settings": {
+        "duration": "10-15 seconds",
+        "style": "photorealistic, corporate professional",
+        "quality": "high definition, 4K",
+        "aspect_ratio": "16:9 or 9:16",
+        "motion_level": "moderate, engaged listening gestures",
+        "lighting": "soft, even, professional office lighting",
+        "camera_angle": "straight on, eye level, chest up"
+      },
+      "key_elements": [
+        "Leaning slightly forward",
+        "Active, engaged expression",
+        "Subtle nodding movements",
+        "Focused eye contact",
+        "Raised eyebrows showing interest",
+        "Same consistent office setting"
+      ]
+    },
+    {
+      "filename": "stella-speaking.mp4",
+      "description": "Stato di conversazione attiva",
+      "prompt": "The same blonde businesswoman now actively speaking and gesturing. Natural mouth movements as if talking in a professional conversation, expressive facial gestures, slight hand movements visible in frame. She appears animated and engaged, with varying facial expressions showing she's explaining something important. Occasional gestures with hands, changing eye focus slightly as if making conversational points. Same professional office background as previous videos. She looks confident, articulate, and personable while speaking. Natural conversation flow with pauses and expressions.",
+      "settings": {
+        "duration": "10-15 seconds",
+        "style": "photorealistic, corporate professional",
+        "quality": "high definition, 4K",
+        "aspect_ratio": "16:9 or 9:16",
+        "motion_level": "active, natural speaking movements",
+        "lighting": "soft, even, professional office lighting",
+        "camera_angle": "straight on, eye level, chest up"
+      },
+      "key_elements": [
+        "Natural mouth movements (speaking)",
+        "Hand gestures visible in frame",
+        "Varying facial expressions",
+        "Confident, articulate demeanor",
+        "Eye contact with slight variations",
+        "Same consistent office environment"
+      ]
+    }
+  ],
+  "consistency_requirements": {
+    "same_person": "Must be the same blonde businesswoman across all three videos",
+    "same_setting": "Identical office background and desk setup",
+    "same_lighting": "Consistent soft professional lighting",
+    "same_attire": "Same or very similar professional clothing",
+    "same_camera_position": "Identical framing and angle"
+  },
+  "technical_specs": {
+    "format": "MP4",
+    "codec": "H.264",
+    "resolution": "1920x1080 (preferred) or 1280x720",
+    "framerate": "24fps or 30fps",
+    "duration_each": "10-15 seconds",
+    "file_size": "Under 50MB each",
+    "audio": "Not required (will be muted)"
+  },
+  "ai_platforms": [
+    "Runway ML Gen-2",
+    "Pika Labs",
+    "Stable Video Diffusion",
+    "Synthesia",
+    "D-ID",
+    "HeyGen"
+  ]
+}

@@ -2,383 +2,748 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'react-hot-toast';
+import { Mic, MicOff, PhoneOff, Volume2, VolumeX } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface StellaRealTimeProps {
-  actionId: string;
-  onListeningChange: (listening: boolean) => void;
-  onSpeakingChange: (speaking: boolean) => void;
+  action: any;
+  userContext: any;
+  onClose: () => void;
 }
 
-export default function StellaRealTime({
-  actionId,
-  onListeningChange,
-  onSpeakingChange
-}: StellaRealTimeProps) {
-  const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [currentPrompt, setCurrentPrompt] = useState('');
-  const [conversation, setConversation] = useState<Array<{type: 'user' | 'assistant', text: string}>>([]);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isListening, setIsListening] = useState(false);
+interface RealtimeEvent {
+  type: string;
+  [key: string]: any;
+}
 
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+export default function StellaRealTime({ action, userContext, onClose }: StellaRealTimeProps) {
+  // WebRTC refs COME NEL TUO HTML FUNZIONANTE
+  const pcRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const currentResponseRef = useRef<string>('');
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Load prompt for the selected action
-  useEffect(() => {
-    loadPromptForAction();
-  }, [actionId]);
+  // Component state
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [conversation, setConversation] = useState<string[]>([]);
+  const [stellaInstructions, setStellaInstructions] = useState('');
+  const [textInput, setTextInput] = useState('');
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const hasTriedConnecting = useRef(false);
 
-  // Video state sync
+  // WebRTC connection ESATTAMENTE come nel tuo HTML errors.txt
+  const initializeConnection = useCallback(async () => {
+    if (isConnecting || isConnected || hasTriedConnecting.current) return;
+
+    hasTriedConnecting.current = true;
+    setIsConnecting(true);
+    setHasError(false);
+    setErrorMessage('');
+
+    try {
+      // Get session setup
+      const setupResponse = await fetch('/api/openai/realtime', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          userContext,
+          taskId: '108'
+        })
+      });
+
+      const setupData = await setupResponse.json();
+      if (!setupData.success) {
+        throw new Error(setupData.error);
+      }
+
+      setStellaInstructions(setupData.instructions);
+
+      // ✅ USA WEBRTC COME NEL FILE FUNZIONANTE
+      pcRef.current = new RTCPeerConnection();
+
+      // Setup microfono
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      stream.getTracks().forEach(track => pcRef.current!.addTrack(track, stream));
+
+      // Audio output
+      const audio = new Audio();
+      audio.autoplay = true;
+      pcRef.current.ontrack = e => audio.srcObject = e.streams[0];
+
+      // Canale dati per prompt
+      dataChannelRef.current = pcRef.current.createDataChannel('oai-events');
+
+      dataChannelRef.current.onopen = function() {
+        const fullPrompt = setupData.instructions;
+
+        console.log('📝 Prompt vocale lunghezza:', fullPrompt.length);
+        console.log('👤 Cliente per voce:', setupData.userData?.name || 'GUEST');
+
+        // ✅ USA LA CONFIGURAZIONE CHE FUNZIONA + TRASCRIZIONE INPUT
+        dataChannelRef.current!.send(JSON.stringify({
+          type: 'session.update',
+          session: {
+            instructions: fullPrompt,
+            voice: 'alloy',
+            input_audio_format: 'pcm16',
+            output_audio_format: 'pcm16',
+            input_audio_transcription: {
+              model: 'whisper-1'
+            },
+            turn_detection: {
+              type: 'server_vad',
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 200
+            }
+          }
+        }));
+
+        setIsConnected(true);
+        setIsConnecting(false);
+
+        console.log('✅ Stella vocale attiva - Puoi parlare!');
+        toast.success(`🎙️ Connesso a Stella!`);
+        setConversation(prev => [...prev, '🌟 Stella è pronta! Parla oppure scrivi il tuo messaggio.']);
+      };
+
+      // Gestione eventi WebRTC
+      dataChannelRef.current.onmessage = function(event) {
+        try {
+          const message = JSON.parse(event.data);
+          handleRealtimeEvent(message);
+        } catch (error) {
+          console.log('📥 Messaggio audio ricevuto da Stella');
+        }
+      };
+
+      // WebRTC offer
+      const offer = await pcRef.current.createOffer();
+      await pcRef.current.setLocalDescription(offer);
+
+      // ✅ USA L'URL CHE FUNZIONA
+      const response = await fetch('https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview', {
+        method: 'POST',
+        body: offer.sdp,
+        headers: {
+          'Authorization': 'Bearer ' + setupData.apiKey,
+          'Content-Type': 'application/sdp'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore connessione OpenAI: ' + response.status);
+      }
+
+      const sdp = await response.text();
+      await pcRef.current.setRemoteDescription({ type: 'answer', sdp });
+
+      console.log('✅ Stella vocale WebRTC connessa con successo!');
+
+    } catch (error) {
+      console.error('❌ Errore connessione vocale WebRTC:', error);
+      setHasError(true);
+      setErrorMessage(error instanceof Error ? error.message : 'Errore di connessione');
+      setIsConnecting(false);
+      toast.error('Errore: ' + (error instanceof Error ? error.message : 'Sconosciuto'));
+      hasTriedConnecting.current = false;
+    }
+  }, [action, userContext]);
+
+  // Handle Realtime events SEMPLICE
+  const handleRealtimeEvent = (data: any) => {
+    console.log('📥 Evento Realtime:', data.type);
+
+    if (data.type === 'session.created') {
+      console.log('✅ Sessione Realtime creata con successo');
+    }
+    else if (data.type === 'session.updated') {
+      console.log('✅ Sessione aggiornata con successo');
+    }
+    else if (data.type === 'input_audio_buffer.speech_started') {
+      console.log('🎤 Rilevato inizio parlato - Stella ti sta ascoltando!');
+      setIsListening(true);
+    }
+    else if (data.type === 'input_audio_buffer.speech_stopped') {
+      console.log('🛑 Rilevata fine parlato - Stella sta processando...');
+      setIsListening(false);
+    }
+    else if (data.type === 'conversation.item.input_audio_transcription.completed') {
+      if (data.transcript) {
+        console.log('📝 Trascrizione cliente completata:', data.transcript);
+        setConversation(prev => [...prev, `🎤 Tu: ${data.transcript}`]);
+      }
+    }
+    else if (data.type === 'input_audio_transcription.completed') {
+      if (data.transcript) {
+        console.log('📝 Trascrizione cliente (alt):', data.transcript);
+        setConversation(prev => [...prev, `🎤 Tu: ${data.transcript}`]);
+      }
+    }
+    else if (data.type === 'conversation.item.done' && data.item && data.item.content && data.item.content[0] && data.item.content[0].transcript) {
+      const transcript = data.item.content[0].transcript;
+      if (data.item.role === 'user') {
+        console.log('📝 Trascrizione cliente (via item):', transcript);
+        setConversation(prev => [...prev, `🎤 Tu: ${transcript}`]);
+      } else if (data.item.role === 'assistant') {
+        console.log('📝 Trascrizione Stella (via item):', transcript);
+        setConversation(prev => [...prev, `🔊 Stella: ${transcript}`]);
+      }
+    }
+    else if (data.type === 'response.created') {
+      console.log('🤖 Stella sta creando una risposta...');
+      setIsSpeaking(true);
+    }
+    else if (data.type === 'response.text.delta') {
+      if (!currentResponseRef.current) {
+        currentResponseRef.current = '';
+      }
+      currentResponseRef.current += data.delta;
+      // Update a live text response in conversation
+      setConversation(prev => {
+        const newConv = [...prev];
+        const lastIndex = newConv.length - 1;
+        if (newConv[lastIndex] && newConv[lastIndex].startsWith('💭 Stella (testo):')) {
+          newConv[lastIndex] = `💭 Stella (testo): ${currentResponseRef.current}`;
+        } else {
+          newConv.push(`💭 Stella (testo): ${currentResponseRef.current}`);
+        }
+        return newConv;
+      });
+    }
+    else if (data.type === 'response.text.done') {
+      if (currentResponseRef.current) {
+        console.log('✅ Risposta testo completata via Realtime unificata');
+        currentResponseRef.current = '';
+      }
+    }
+    else if (data.type === 'response.audio.delta') {
+      console.log('🔊 Audio delta ricevuto (lunghezza:', data.delta ? data.delta.length : 0, ')');
+      if (data.delta) {
+        playReceivedAudio(data.delta);
+      }
+    }
+    else if (data.type === 'response.audio_transcript.done') {
+      if (data.transcript) {
+        console.log('🔊 Trascrizione risposta Stella:', data.transcript);
+        setConversation(prev => [...prev, `🔊 Stella: ${data.transcript}`]);
+      }
+    }
+    else if (data.type === 'response.output_audio_transcript.done') {
+      if (data.transcript) {
+        console.log('🔊 Trascrizione risposta Stella (alt):', data.transcript);
+        setConversation(prev => [...prev, `🔊 Stella: ${data.transcript}`]);
+      }
+    }
+    else if (data.type === 'response.audio.done') {
+      console.log('✅ Audio risposta completato');
+    }
+    else if (data.type === 'response.done') {
+      console.log('✅ Risposta completa di Stella terminata');
+      setIsSpeaking(false);
+    }
+    else if (data.type === 'error') {
+      const errorMsg = data.error.message || 'Errore sconosciuto';
+      console.error('❌ Errore Realtime:', errorMsg);
+      toast.error('Stella error: ' + errorMsg);
+      setConversation(prev => [...prev, `❌ Errore: ${errorMsg}`]);
+    }
+    else {
+      console.log('❓ Evento sconosciuto:', data.type);
+    }
+  };
+
+  // Send text message via WebRTC Data Channel COME NEL TUO HTML
+  const sendTextMessage = () => {
+    const text = textInput.trim();
+
+    if (!text || !isConnected || !dataChannelRef.current) {
+      return;
+    }
+
+    // Show user message
+    setConversation(prev => [...prev, `📝 Tu: ${text}`]);
+    setTextInput('');
+
+    // Send message to OpenAI Realtime via WebRTC Data Channel
+    const message = {
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: text
+          }
+        ]
+      }
+    };
+
+    dataChannelRef.current.send(JSON.stringify(message));
+
+    // Request response
+    const responseRequest = {
+      type: 'response.create'
+    };
+
+    dataChannelRef.current.send(JSON.stringify(responseRequest));
+
+    setIsSpeaking(true);
+  };
+
+  // Audio variables COME NEL TUO HTML
+  const audioQueue = useRef<string[]>([]);
+  const isPlayingAudio = useRef(false);
+
+  // Play received audio ESATTAMENTE come nel tuo HTML errors.txt
+  const playReceivedAudio = (base64Audio: string) => {
+    try {
+      audioQueue.current.push(base64Audio);
+
+      if (!isPlayingAudio.current) {
+        processAudioQueue();
+      }
+
+    } catch (error) {
+      console.log('❌ Errore gestione audio:', error);
+    }
+  };
+
+  // Process audio queue ESATTAMENTE come nel tuo HTML
+  const processAudioQueue = async () => {
+    if (audioQueue.current.length === 0) {
+      isPlayingAudio.current = false;
+      return;
+    }
+
+    isPlayingAudio.current = true;
+    const base64Audio = audioQueue.current.shift()!;
+
+    try {
+      const binaryString = atob(base64Audio);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+
+      const pcm16 = new Int16Array(bytes.buffer);
+      const float32 = new Float32Array(pcm16.length);
+      for (let i = 0; i < pcm16.length; i++) {
+        float32[i] = pcm16[i] / 32768.0;
+      }
+
+      const audioBuffer = audioContextRef.current.createBuffer(1, float32.length, 24000);
+      audioBuffer.getChannelData(0).set(float32);
+
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContextRef.current.destination);
+
+      source.onended = () => {
+        setTimeout(() => processAudioQueue(), 10);
+      };
+
+      source.start(0);
+      console.log('🔊 Riproduzione audio Stella');
+
+    } catch (error) {
+      console.log('❌ Errore riproduzione audio:', error);
+      setTimeout(() => processAudioQueue(), 100);
+    }
+  };
+
+  // Toggle mute
+  const toggleMute = () => {
+    if (audioStreamRef.current) {
+      const audioTracks = audioStreamRef.current.getAudioTracks();
+      audioTracks.forEach(track => {
+        track.enabled = isMuted;
+      });
+      setIsMuted(!isMuted);
+      toast.success(isMuted ? '🎤 Microfono attivato' : '🔇 Microfono silenziato');
+    }
+  };
+
+  // Cleanup function WebRTC COME NEL TUO HTML
+  const cleanup = () => {
+    // Ferma stream microfono
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('🔇 Track audio fermato:', track.kind);
+      });
+      audioStreamRef.current = null;
+      console.log('🔇 Stream microfono completamente fermato');
+    }
+
+    // Chiudi WebRTC PeerConnection
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+      console.log('🔇 WebRTC PeerConnection chiuso');
+    }
+
+    // Chiudi Data Channel
+    if (dataChannelRef.current) {
+      dataChannelRef.current.close();
+      dataChannelRef.current = null;
+      console.log('🔇 Data Channel chiuso');
+    }
+
+    // Chiudi audio context
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+
+    console.log('⏹️ Conversazione terminata');
+  };
+
+  // End conversation
+  const endConversation = () => {
+    cleanup();
+    onClose();
+    toast.success('👋 Conversazione con Stella terminata');
+  };
+
+  // Handle text input keypress
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      sendTextMessage();
+    }
+  };
+
+  // Retry connection function
+  const retryConnection = () => {
+    hasTriedConnecting.current = false;
+    setHasError(false);
+    setErrorMessage('');
+    cleanup();
+    initializeConnection();
+  };
+
+  // Control video playback based on Stella's state
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     if (isSpeaking) {
-      video.playbackRate = 1.2;
+      // Stella sta parlando - aumenta velocità video e luminosità
+      video.playbackRate = 1.2; // Velocità leggermente più alta
       video.style.filter = 'brightness(1.15) contrast(1.1) saturate(1.1)';
     } else if (isListening) {
+      // Stella sta ascoltando - velocità normale ma più attenta
       video.playbackRate = 1.0;
       video.style.filter = 'brightness(1.05) contrast(1.05)';
     } else {
-      video.playbackRate = 0.8;
+      // Stella in idle - velocità più lenta e normale
+      video.playbackRate = 0.8; // Più rilassata
       video.style.filter = 'brightness(1) contrast(1)';
     }
   }, [isSpeaking, isListening]);
 
-  // Update parent component
+  // Auto-connect on mount (only once)
   useEffect(() => {
-    onListeningChange(isListening);
-    onSpeakingChange(isSpeaking);
-  }, [isListening, isSpeaking, onListeningChange, onSpeakingChange]);
+    const timer = setTimeout(() => {
+      initializeConnection();
+    }, 100); // Small delay to prevent race conditions
 
-  const loadPromptForAction = async () => {
-    try {
-      const response = await fetch(`/api/stella/tasks?action_id=${actionId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentPrompt(data.prompt || getDefaultPrompt(actionId));
-      } else {
-        setCurrentPrompt(getDefaultPrompt(actionId));
-      }
-    } catch (error) {
-      console.error('Error loading prompt:', error);
-      setCurrentPrompt(getDefaultPrompt(actionId));
-    }
-  };
-
-  const getDefaultPrompt = (actionId: string) => {
-    const prompts = {
-      general: "Sei Stella, un'assistente AI amichevole per LAPA. Rispondi in modo naturale e utile in italiano.",
-      inventory: "Sei Stella, esperta di gestione magazzino. Aiuta con inventario, scorte e movimentazioni.",
-      sales: "Sei Stella, assistente vendite. Aiuta con ordini, clienti e gestione commerciale.",
-      support: "Sei Stella, supporto tecnico. Risolvi problemi e fornisci assistenza tecnica.",
-      training: "Sei Stella, formatrice aziendale. Aiuta con formazione e procedure aziendali."
+    return () => {
+      clearTimeout(timer);
+      cleanup();
     };
-    return prompts[actionId as keyof typeof prompts] || prompts.general;
-  };
-
-  const connectToOpenAI = async () => {
-    if (isConnecting) return;
-
-    setIsConnecting(true);
-    toast.loading('Connessione a Stella in corso...');
-
-    try {
-      // Get ephemeral token
-      const tokenResponse = await fetch('/api/openai/realtime', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action_id: actionId })
-      });
-
-      if (!tokenResponse.ok) {
-        throw new Error('Failed to get token');
-      }
-
-      const { client_secret } = await tokenResponse.json();
-
-      // Create WebRTC connection
-      const peerConnection = new RTCPeerConnection();
-
-      // Add audio element for playback
-      const audioElement = new Audio();
-      audioElement.autoplay = true;
-      audioElementRef.current = audioElement;
-
-      // Handle incoming audio stream
-      peerConnection.ontrack = (event) => {
-        if (audioElement) {
-          audioElement.srcObject = event.streams[0];
-        }
-      };
-
-      // Create data channel for communication
-      const dataChannel = peerConnection.createDataChannel('oai-events');
-      dataChannelRef.current = dataChannel;
-
-      dataChannel.addEventListener('open', () => {
-        console.log('📡 Data channel opened');
-        setIsConnected(true);
-        setIsConnecting(false);
-        toast.dismiss();
-        toast.success('Connessa a Stella! 🌟');
-
-        // Send session configuration
-        const sessionUpdate = {
-          type: 'session.update',
-          session: {
-            instructions: currentPrompt,
-            voice: 'nova',
-            input_audio_format: 'pcm16',
-            output_audio_format: 'pcm16',
-            turn_detection: {
-              type: 'server_vad',
-              threshold: 0.5,
-              prefix_padding_ms: 300,
-              silence_duration_ms: 500
-            }
-          }
-        };
-        dataChannel.send(JSON.stringify(sessionUpdate));
-      });
-
-      dataChannel.addEventListener('message', (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          handleRealtimeMessage(message);
-        } catch (error) {
-          console.error('Error parsing message:', error);
-        }
-      });
-
-      // Set up peer connection
-      peerConnectionRef.current = peerConnection;
-
-      // Create offer and set local description
-      const offer = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
-
-      // Connect to OpenAI
-      const baseUrl = 'https://api.openai.com/v1/realtime';
-      const model = 'gpt-4o-realtime-preview-2024-12-17';
-
-      const response = await fetch(`${baseUrl}?model=${model}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${client_secret}`,
-          'Content-Type': 'application/sdp'
-        },
-        body: offer.sdp
-      });
-
-      if (!response.ok) {
-        throw new Error(`OpenAI connection failed: ${response.status}`);
-      }
-
-      const answerSDP = await response.text();
-      await peerConnection.setRemoteDescription({
-        type: 'answer',
-        sdp: answerSDP
-      });
-
-      console.log('✅ WebRTC connection established');
-
-    } catch (error) {
-      console.error('❌ Connection error:', error);
-      setIsConnecting(false);
-      setIsConnected(false);
-      toast.dismiss();
-      toast.error('Errore di connessione a Stella');
-    }
-  };
-
-  const handleRealtimeMessage = (message: any) => {
-    switch (message.type) {
-      case 'input_audio_buffer.speech_started':
-        console.log('🎤 Speech started');
-        setIsListening(true);
-        break;
-
-      case 'input_audio_buffer.speech_stopped':
-        console.log('🎤 Speech stopped');
-        setIsListening(false);
-        break;
-
-      case 'response.audio.start':
-        console.log('🔊 Response audio started');
-        setIsSpeaking(true);
-        break;
-
-      case 'response.audio.done':
-        console.log('🔊 Response audio done');
-        setIsSpeaking(false);
-        break;
-
-      case 'conversation.item.created':
-        if (message.item.type === 'message') {
-          const content = message.item.content?.[0]?.text || '';
-          if (message.item.role === 'user') {
-            setConversation(prev => [...prev, { type: 'user', text: content }]);
-          } else if (message.item.role === 'assistant') {
-            setConversation(prev => [...prev, { type: 'assistant', text: content }]);
-          }
-        }
-        break;
-
-      case 'error':
-        console.error('❌ OpenAI error:', message);
-        toast.error(`Errore Stella: ${message.error?.message || 'Errore sconosciuto'}`);
-        break;
-
-      default:
-        console.log('📨 Message:', message.type);
-    }
-  };
-
-  const disconnect = () => {
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-
-    if (dataChannelRef.current) {
-      dataChannelRef.current.close();
-      dataChannelRef.current = null;
-    }
-
-    if (audioElementRef.current) {
-      audioElementRef.current.srcObject = null;
-      audioElementRef.current = null;
-    }
-
-    setIsConnected(false);
-    setIsListening(false);
-    setIsSpeaking(false);
-    toast.success('Disconnessa da Stella');
-  };
+  }, []); // Empty dependency array - only run once
 
   return (
-    <div className="space-y-6">
-      {/* Stella Video Avatar */}
+    <div className="fixed inset-0 bg-black z-50 flex">
+      {/* Left Side - Stella Video Avatar */}
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="flex justify-center mb-6"
+        initial={{ x: -100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: -100, opacity: 0 }}
+        className="w-1/2 relative bg-gradient-to-br from-blue-900 to-purple-900"
       >
-        <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-purple-400/50 shadow-2xl">
-          <video
-            ref={videoRef}
-            className="w-full h-full object-cover"
-            autoPlay
-            loop
-            muted
-            playsInline
-          >
-            <source src="/stella-avatar.mp4" type="video/mp4" />
-            {/* Fallback animated gradient */}
-            <div className="w-full h-full bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-600 animate-pulse flex items-center justify-center">
-              <span className="text-4xl">🌟</span>
-            </div>
-          </video>
+        {/* Office Background */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent">
+          {/* Simulated office environment */}
+          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-800/50 to-transparent" />
+          <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-gray-800/30 to-transparent" />
+        </div>
 
-          {/* Status Overlay */}
-          <AnimatePresence>
+        {/* Stella Video Container */}
+        <div className="relative w-full h-full flex items-center justify-center">
+          <motion.div
+            className="relative w-full h-full max-w-md mx-auto"
+            animate={isSpeaking ? {
+              scale: [1, 1.02, 1]
+            } : {}}
+            transition={{
+              repeat: isSpeaking ? Infinity : 0,
+              duration: 2,
+              ease: "easeInOut"
+            }}
+          >
+            {/* Video Avatar - Real Woman - UN SOLO VIDEO */}
+            <video
+              ref={videoRef}
+              className="w-full h-full object-cover object-center transition-all duration-300"
+              autoPlay
+              loop
+              muted
+              playsInline
+              style={{
+                transform: isSpeaking ? 'scale(1.02)' : 'scale(1)'
+              }}
+            >
+              {/* UN SOLO VIDEO PER TUTTI GLI STATI */}
+              <source src="/videos/stella.mp4" type="video/mp4" />
+
+              {/* Fallback for missing video - show professional woman image */}
+              <div className="w-full h-full bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center">
+                <div className="text-center text-gray-600">
+                  <div className="w-48 h-48 mx-auto mb-4 bg-white rounded-full shadow-xl flex items-center justify-center">
+                    <div className="text-8xl">👩‍💼</div>
+                  </div>
+                  <p className="text-lg font-semibold">Stella</p>
+                  <p className="text-sm">Assistente LAPA</p>
+                </div>
+              </div>
+            </video>
+
+            {/* Voice Visualization Overlay */}
             {isSpeaking && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-blue-500/20 flex items-center justify-center"
-              >
-                <div className="w-16 h-16 border-4 border-blue-400 rounded-full animate-pulse"></div>
-              </motion.div>
+              <>
+                <motion.div
+                  className="absolute inset-0 border-4 border-pink-500/60 rounded-lg"
+                  animate={{
+                    opacity: [0.4, 0.9, 0.4],
+                    scale: [1, 1.02, 1],
+                    boxShadow: [
+                      '0 0 20px rgba(236, 72, 153, 0.3)',
+                      '0 0 40px rgba(236, 72, 153, 0.6)',
+                      '0 0 20px rgba(236, 72, 153, 0.3)'
+                    ]
+                  }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 1.2,
+                    ease: "easeInOut"
+                  }}
+                />
+                <motion.div
+                  className="absolute inset-0 border-2 border-blue-400/40 rounded-lg"
+                  animate={{
+                    opacity: [0.2, 0.7, 0.2],
+                    scale: [1, 1.04, 1],
+                    boxShadow: [
+                      '0 0 15px rgba(59, 130, 246, 0.2)',
+                      '0 0 30px rgba(59, 130, 246, 0.5)',
+                      '0 0 15px rgba(59, 130, 246, 0.2)'
+                    ]
+                  }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 1.8,
+                    ease: "easeInOut",
+                    delay: 0.4
+                  }}
+                />
+                {/* Pulse overlay quando parla */}
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-lg"
+                  animate={{
+                    opacity: [0, 0.3, 0]
+                  }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 0.8,
+                    ease: "easeInOut"
+                  }}
+                />
+              </>
             )}
+
+            {/* Status Indicators */}
             {isListening && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-red-500/20 flex items-center justify-center"
+                animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
+                transition={{ repeat: Infinity, duration: 1.5 }}
+                className="absolute top-4 right-4 bg-green-500 text-white px-3 py-2 rounded-full text-sm font-semibold shadow-lg"
               >
-                <div className="w-16 h-16 border-4 border-red-400 rounded-full animate-ping"></div>
+                ASCOLTO
               </motion.div>
             )}
-          </AnimatePresence>
+
+            {isSpeaking && (
+              <motion.div
+                animate={{ scale: [1, 1.1, 1], opacity: [0.8, 1, 0.8] }}
+                transition={{ repeat: Infinity, duration: 0.8 }}
+                className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-2 rounded-full text-sm font-semibold shadow-lg"
+              >
+                PARLANDO
+              </motion.div>
+            )}
+
+            {/* Name Plate */}
+            <div className="absolute bottom-4 left-4 bg-black/70 text-white px-4 py-2 rounded-lg backdrop-blur-sm">
+              <h3 className="text-lg font-bold">Stella</h3>
+              <p className="text-sm text-gray-300">Assistente LAPA</p>
+            </div>
+          </motion.div>
         </div>
       </motion.div>
 
-      {/* Connection Controls */}
-      <div className="text-center">
-        {!isConnected ? (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={connectToOpenAI}
-            disabled={isConnecting}
-            className={`px-8 py-4 rounded-full text-white font-semibold text-lg transition-all
-              ${isConnecting
-                ? 'bg-gray-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700'
-              }`}
-          >
-            {isConnecting ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Connessione...</span>
-              </div>
-            ) : (
-              '🎤 Inizia Conversazione'
-            )}
-          </motion.button>
-        ) : (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={disconnect}
-            className="px-8 py-4 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold text-lg transition-all"
-          >
-            🛑 Disconnetti
-          </motion.button>
-        )}
-      </div>
+      {/* Right Side - Chat Interface */}
+      <motion.div
+        initial={{ x: 100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: 100, opacity: 0 }}
+        className="w-1/2 bg-white flex flex-col"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+          <h2 className="text-2xl font-bold mb-2">
+            {isConnecting ? 'Connessione in corso...' :
+             isConnected ? 'Stella - Assistente LAPA' :
+             'Offline'}
+          </h2>
 
-      {/* Conversation History */}
-      {conversation.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-h-64 overflow-y-auto space-y-2 bg-white/5 rounded-lg p-4 backdrop-blur-sm"
-        >
-          <h4 className="font-semibold text-purple-300 mb-2">Conversazione:</h4>
-          {conversation.map((msg, index) => (
-            <div
-              key={index}
-              className={`p-2 rounded ${
-                msg.type === 'user'
-                  ? 'bg-blue-600/20 text-blue-200 ml-8'
-                  : 'bg-purple-600/20 text-purple-200 mr-8'
-              }`}
+          <p className="text-blue-100">
+            {hasError ? (
+              <span className="text-red-300">❌ {errorMessage}</span>
+            ) : isConnecting ? 'Sto preparando la conversazione vocale...' :
+             isConnected ? (
+               isListening ? 'Ti sto ascoltando con attenzione...' :
+               isSpeaking ? 'Stella sta parlando...' :
+               'Ciao! Parla o scrivi per iniziare!'
+             ) : 'Connessione interrotta'}
+          </p>
+
+          {/* Connection Status */}
+          <div className="mt-3 text-sm">
+            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+              hasError ? 'bg-red-400' :
+              isConnected ? 'bg-green-400' :
+              isConnecting ? 'bg-yellow-400' :
+              'bg-gray-400'
+            }`}></span>
+            {hasError ? 'Errore' :
+             isConnected ? 'Connesso (WebRTC)' :
+             isConnecting ? 'Connessione...' :
+             'Disconnesso'}
+          </div>
+        </div>
+
+        {/* Retry button for errors */}
+        {hasError && (
+          <div className="p-4 bg-red-50 border-b">
+            <button
+              onClick={retryConnection}
+              className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
             >
-              <strong>{msg.type === 'user' ? 'Tu:' : 'Stella:'}</strong> {msg.text}
-            </div>
-          ))}
-        </motion.div>
-      )}
+              🔄 Riprova connessione
+            </button>
+          </div>
+        )}
 
-      {/* Current Prompt Display */}
-      {currentPrompt && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-xs text-purple-300 bg-white/5 p-3 rounded-lg"
-        >
-          <strong>Prompt attivo:</strong> {currentPrompt}
-        </motion.div>
-      )}
+        {/* Action context */}
+        {action && (
+          <div className="p-4 bg-blue-50 border-b">
+            <p className="text-sm text-blue-800">
+              <strong>Contesto:</strong> {action.title}
+            </p>
+          </div>
+        )}
+
+        {/* Conversation */}
+        <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+          <div className="space-y-4">
+            {conversation.map((message, index) => {
+              const isUser = message.startsWith('Tu:') || message.startsWith('🎤 Tu:') || message.startsWith('📝 Tu:');
+              const isError = message.startsWith('❌ Errore:');
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[80%] p-3 rounded-lg ${
+                      isUser
+                        ? 'bg-blue-500 text-white'
+                        : isError
+                        ? 'bg-red-100 text-red-800 border border-red-300'
+                        : 'bg-white text-gray-800 shadow-sm border'
+                    }`}
+                  >
+                    {message}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Text Input */}
+        {isConnected && (
+          <div className="p-4 bg-white border-t">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Scrivi il tuo messaggio qui..."
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <button
+                onClick={sendTextMessage}
+                disabled={!textInput.trim() || isSpeaking}
+                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 transition-colors font-semibold"
+              >
+                Invia
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Controls */}
+        <div className="p-4 bg-gray-100 border-t flex justify-center gap-4">
+          <button
+            onClick={toggleMute}
+            className={`p-4 rounded-full transition-all font-semibold ${
+              isMuted ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+            disabled={!isConnected || !audioStreamRef.current}
+            title={isMuted ? 'Attiva microfono' : 'Disattiva microfono'}
+          >
+            {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+          </button>
+
+          <button
+            onClick={endConversation}
+            className="p-4 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all font-semibold"
+            title="Termina conversazione"
+          >
+            <PhoneOff className="w-6 h-6" />
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
-}// Clear Vercel cache completely 1759167087
+}
