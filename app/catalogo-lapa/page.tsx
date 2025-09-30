@@ -11,7 +11,7 @@ interface Product {
   barcode?: string;
   list_price?: number;
   categ_id?: [number, string];
-  image_1920?: string;
+  image_256?: string;
   description_sale?: string;
   qty_available?: number;
   uom_id?: [number, string];
@@ -27,12 +27,15 @@ interface OdooResponse {
 
 export default function CatalogoLapaPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]); // Cache completa
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isAutoSearching, setIsAutoSearching] = useState(false);
+  const [cacheProgress, setCacheProgress] = useState(0); // Progresso caricamento cache
+  const [isCacheComplete, setIsCacheComplete] = useState(false);
 
   const productsPerPage = 50;
 
@@ -70,37 +73,109 @@ export default function CatalogoLapaPage() {
     }
   };
 
-  // Carica prodotti all'avvio
+  // Carica tutti i prodotti in background per la cache
+  const loadAllProductsInBackground = async () => {
+    try {
+      console.log('🚀 Inizio caricamento cache completa...');
+      const response = await fetch('/api/catalogo-lapa/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          page: 1,
+          limit: 10000, // Carica tutti
+          search: ''
+        })
+      });
+
+      const data: OdooResponse = await response.json();
+
+      if (data.success && data.data) {
+        setAllProducts(data.data);
+        setTotalProducts(data.total || data.data.length);
+        setIsCacheComplete(true);
+        setCacheProgress(100);
+        console.log(`✅ Cache completa! ${data.data.length} prodotti caricati`);
+      }
+    } catch (err) {
+      console.error('❌ Errore caricamento cache:', err);
+    }
+  };
+
+  // Ricerca client-side nella cache
+  const searchInCache = (query: string, page: number = 1) => {
+    if (!isCacheComplete || allProducts.length === 0) {
+      return;
+    }
+
+    const q = query.toLowerCase().trim();
+
+    let filtered = allProducts;
+
+    if (q) {
+      filtered = allProducts.filter(p =>
+        p.name?.toLowerCase().includes(q) ||
+        p.default_code?.toLowerCase().includes(q) ||
+        p.barcode?.toLowerCase().includes(q) ||
+        p.categ_id?.[1]?.toLowerCase().includes(q)
+      );
+    }
+
+    const startIndex = (page - 1) * productsPerPage;
+    const endIndex = startIndex + productsPerPage;
+    const paginated = filtered.slice(startIndex, endIndex);
+
+    setProducts(paginated);
+    setTotalProducts(filtered.length);
+    setCurrentPage(page);
+  };
+
+  // Carica prima pagina all'avvio
   useEffect(() => {
     loadProducts(1, searchQuery);
+    // Avvia caricamento cache in background
+    setTimeout(() => loadAllProductsInBackground(), 1000);
   }, []);
 
   // Gestisci ricerca
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentPage(1);
-    loadProducts(1, searchQuery);
+    if (isCacheComplete) {
+      searchInCache(searchQuery, 1);
+    } else {
+      setCurrentPage(1);
+      loadProducts(1, searchQuery);
+    }
   };
 
   // Ricerca veloce automatica
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (searchQuery.trim().length >= 3 || searchQuery.trim().length === 0) {
-        setIsAutoSearching(true);
-        setCurrentPage(1);
-        loadProducts(1, searchQuery).finally(() => {
-          setIsAutoSearching(false);
-        });
+        if (isCacheComplete) {
+          // Ricerca istantanea nella cache
+          searchInCache(searchQuery, 1);
+        } else {
+          // Ricerca server-side se cache non pronta
+          setIsAutoSearching(true);
+          setCurrentPage(1);
+          loadProducts(1, searchQuery).finally(() => {
+            setIsAutoSearching(false);
+          });
+        }
       }
-    }, 300); // Attesa 300ms dopo aver smesso di digitare
+    }, isCacheComplete ? 0 : 300); // Istantanea se cache pronta, altrimenti 300ms
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery]);
+  }, [searchQuery, isCacheComplete]);
 
   // Cambia pagina
   const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-    loadProducts(newPage, searchQuery);
+    if (isCacheComplete) {
+      searchInCache(searchQuery, newPage);
+    } else {
+      setCurrentPage(newPage);
+      loadProducts(newPage, searchQuery);
+    }
     window.scrollTo(0, 0);
   };
 
@@ -135,13 +210,6 @@ export default function CatalogoLapaPage() {
                 </div>
               </div>
 
-              <div className="mt-4 lg:mt-0">
-                <div className="bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-600">
-                  <div className="text-sm text-slate-300">
-                    <span className="font-semibold text-emerald-400">{totalProducts}</span> prodotti totali
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -150,32 +218,27 @@ export default function CatalogoLapaPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Barra di ricerca */}
         <div className="mb-8">
-          <div className="text-center mb-4">
-            <p className="text-slate-400 text-sm">
-              🚀 <strong>Ricerca istantanea attiva!</strong> Digita almeno 3 caratteri per cercare automaticamente
-            </p>
-          </div>
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
+          <form onSubmit={handleSearch} className="max-w-xl mx-auto">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-slate-400" />
+              <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-slate-400" />
               </div>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cerca prodotti per nome, codice o barcode... (ricerca automatica dopo 3 caratteri)"
-                className="block w-full pl-10 pr-24 py-4 text-lg bg-slate-800/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                placeholder="Cerca..."
+                className="block w-full pl-8 pr-20 py-2 text-sm bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
               />
               {isAutoSearching && (
-                <div className="absolute inset-y-0 right-16 flex items-center pr-3 pointer-events-none">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-500"></div>
+                <div className="absolute inset-y-0 right-14 flex items-center pr-2 pointer-events-none">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500"></div>
                 </div>
               )}
               <button
                 type="submit"
                 disabled={loading}
-                className="absolute inset-y-0 right-0 px-6 py-2 m-2 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-all"
+                className="absolute inset-y-0 right-0 px-4 py-1 m-1 bg-gradient-to-r from-emerald-500 to-blue-500 text-white text-sm font-medium rounded-md hover:from-emerald-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-all"
               >
                 Cerca
               </button>
@@ -213,99 +276,76 @@ export default function CatalogoLapaPage() {
         {/* Griglia prodotti */}
         {!loading && products.length > 0 && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2 mb-8">
               {products.map((product) => (
                 <div key={product.id} className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 overflow-hidden hover:border-emerald-500/50 transition-all duration-300 group">
                   {/* Immagine prodotto */}
                   <div className="aspect-square bg-slate-700/30 relative overflow-hidden">
-                    {product.image_1920 ? (
+                    {product.image_256 ? (
                       <img
-                        src={`data:image/jpeg;base64,${product.image_1920}`}
+                        src={`data:image/jpeg;base64,${product.image_256}`}
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Package className="h-16 w-16 text-slate-500" />
+                        <Package className="h-8 w-8 text-slate-500" />
                       </div>
                     )}
 
-                    {/* Badge categoria */}
+                    {/* Badge categoria madre (prima categoria) */}
                     {product.categ_id && (
-                      <div className="absolute top-3 left-3">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/90 text-white">
-                          <Tag className="w-3 h-3 mr-1" />
-                          {product.categ_id[1]}
+                      <div className="absolute top-1.5 left-1.5">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-emerald-500/90 text-white">
+                          {product.categ_id[1].split('/')[0].trim()}
                         </span>
                       </div>
                     )}
 
-                    {/* Quantità disponibile */}
+                    {/* Badge disponibilità piccolo */}
                     {typeof product.qty_available === 'number' && (
-                      <div className="absolute top-3 right-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      <div className="absolute top-1.5 right-1.5">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium ${
                           product.qty_available > 0
                             ? 'bg-green-500/90 text-white'
                             : 'bg-red-500/90 text-white'
                         }`}>
-                          {product.qty_available > 0 ? 'Disponibile' : 'Esaurito'}
+                          {product.qty_available > 0 ? '✓' : '✗'}
                         </span>
                       </div>
                     )}
                   </div>
 
                   {/* Contenuto card */}
-                  <div className="p-4">
-                    <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2 group-hover:text-emerald-400 transition-colors">
+                  <div className="p-2">
+                    <h3 className="text-xs font-semibold text-white mb-1 line-clamp-2 leading-tight group-hover:text-emerald-400 transition-colors">
                       {product.name}
                     </h3>
 
                     {/* Codice prodotto */}
                     {product.default_code && (
-                      <div className="flex items-center text-slate-400 text-sm mb-2">
-                        <Eye className="w-4 h-4 mr-1" />
-                        <span>Codice: {product.default_code}</span>
+                      <div className="text-slate-400 text-[10px] mb-1 truncate">
+                        {product.default_code}
                       </div>
-                    )}
-
-                    {/* Barcode */}
-                    {product.barcode && (
-                      <div className="flex items-center text-slate-400 text-sm mb-2">
-                        <Barcode className="w-4 h-4 mr-1" />
-                        <span className="font-mono">{product.barcode}</span>
-                      </div>
-                    )}
-
-                    {/* Descrizione */}
-                    {product.description_sale && (
-                      <p className="text-slate-300 text-sm mb-3 line-clamp-2">
-                        {product.description_sale}
-                      </p>
                     )}
 
                     {/* Footer card */}
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-600/50">
+                    <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-slate-600/50">
                       {/* Prezzo */}
                       {product.list_price && product.list_price > 0 ? (
-                        <div className="text-right">
-                          <span className="text-2xl font-bold text-emerald-400">
+                        <div>
+                          <span className="text-sm font-bold text-emerald-400">
                             €{product.list_price.toFixed(2)}
                           </span>
-                          {product.uom_id && (
-                            <span className="text-slate-400 text-sm ml-1">
-                              /{product.uom_id[1]}
-                            </span>
-                          )}
                         </div>
                       ) : (
-                        <span className="text-slate-500 text-sm">Prezzo da definire</span>
+                        <span className="text-slate-500 text-[10px]">N/D</span>
                       )}
 
                       {/* Quantità */}
                       {typeof product.qty_available === 'number' && (
                         <div className="text-right">
-                          <div className="text-sm text-slate-400">Qtà disponibile</div>
-                          <div className={`font-semibold ${
+                          <div className={`text-[11px] font-semibold ${
                             product.qty_available > 0 ? 'text-green-400' : 'text-red-400'
                           }`}>
                             {product.qty_available}
