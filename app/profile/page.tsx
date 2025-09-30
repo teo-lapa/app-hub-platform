@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/lib/store/authStore';
 import { UserRole } from '@/lib/types';
-import { User, Mail, Shield, Calendar, Edit2, Save, X } from 'lucide-react';
+import { User, Mail, Shield, Calendar, Edit2, Save, X, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
 
@@ -305,7 +305,20 @@ export default function ProfilePage() {
           )}
 
           {/* Azioni */}
-          <div className="mt-8 pt-6 border-t border-white/10">
+          <div className="mt-8 pt-6 border-t border-white/10 space-y-4">
+            {/* Pulsante Gestione Visibilità (solo per paul@lapa.ch) */}
+            {user.email === 'paul@lapa.ch' && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => router.push('/gestione-visibilita-app')}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl font-medium transition-all"
+              >
+                <Settings className="w-5 h-5" />
+                Gestione Visibilità App
+              </motion.button>
+            )}
+
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
