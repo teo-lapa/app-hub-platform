@@ -148,17 +148,53 @@ export default function StellaAssistant() {
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
   const [showRealTime, setShowRealTime] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Load user profile with company data
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const response = await fetch('/api/user/profile');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setUserProfile(data.data);
+            console.log('✅ Profilo utente caricato:', data.data);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Errore caricamento profilo:', error);
+      }
+    };
+
+    if (user) {
+      loadUserProfile();
+    }
+  }, [user]);
 
   // Welcome message on load
   useEffect(() => {
+    if (!userProfile) return;
+
+    const userName = userProfile.user?.name || user?.email?.split('@')[0] || 'Cliente';
+    const companyName = userProfile.company?.name;
+
+    let welcomeText = `Ciao ${userName}! 👋 Sono Stella, la tua assistente personale`;
+
+    if (userProfile.user?.isContact && companyName) {
+      welcomeText += ` di ${companyName}`;
+    }
+
+    welcomeText += '. Come posso aiutarti oggi?';
+
     const welcomeMessage: Message = {
       id: '1',
-      text: `Ciao${user?.email ? ` ${user.email.split('@')[0]}` : ''}! 👋 Sono Stella, la tua assistente personale. Come posso aiutarti oggi?`,
+      text: welcomeText,
       isUser: false,
       timestamp: new Date()
     };
     setMessages([welcomeMessage]);
-  }, [user]);
+  }, [userProfile, user]);
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -222,10 +258,43 @@ export default function StellaAssistant() {
         toast(`⚠️ Usando prompt statico per: ${action.title}`);
       }
 
+      // Build complete prompt with user context
+      let completePrompt = '';
+
+      if (userProfile) {
+        const userName = userProfile.user?.name || 'Cliente';
+        const isContact = userProfile.user?.isContact;
+        const company = userProfile.company;
+
+        completePrompt += `INFORMAZIONI CLIENTE:\n`;
+        completePrompt += `- Nome: ${userName}\n`;
+        completePrompt += `- Email: ${userProfile.user?.email || 'N/D'}\n`;
+        completePrompt += `- Telefono: ${userProfile.user?.phone || 'N/D'}\n`;
+
+        if (isContact && company) {
+          completePrompt += `- Tipo: Contatto aziendale\n`;
+          completePrompt += `- Azienda: ${company.name}\n`;
+          completePrompt += `- P.IVA: ${company.vat || 'N/D'}\n`;
+          completePrompt += `- Codice Cliente: ${company.ref || 'N/D'}\n`;
+          completePrompt += `- Fatturato: €${company.totalInvoiced?.toFixed(2) || '0.00'}\n`;
+          completePrompt += `- Limite credito: €${company.creditLimit?.toFixed(2) || 'Non impostato'}\n\n`;
+          completePrompt += `IMPORTANTE: Rispondi chiamando ${userName} per nome, ma usa i dati dell'azienda "${company.name}" per le informazioni commerciali.\n\n`;
+        } else if (company) {
+          completePrompt += `- Tipo: Azienda\n`;
+          completePrompt += `- P.IVA: ${company.vat || 'N/D'}\n`;
+          completePrompt += `- Codice Cliente: ${company.ref || 'N/D'}\n`;
+          completePrompt += `- Fatturato: €${company.totalInvoiced?.toFixed(2) || '0.00'}\n\n`;
+        }
+
+        completePrompt += `---\n\n`;
+      }
+
+      completePrompt += promptText;
+
       // Add Stella's response con il prompt dal task
       const stellaResponse: Message = {
         id: Date.now().toString(),
-        text: promptText,
+        text: completePrompt,
         isUser: false,
         timestamp: new Date()
       };
