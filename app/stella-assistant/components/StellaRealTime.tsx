@@ -130,12 +130,12 @@ export default function StellaRealTime({ action, userContext, onClose }: StellaR
       const offer = await pcRef.current.createOffer();
       await pcRef.current.setLocalDescription(offer);
 
-      // ✅ USA L'URL CHE FUNZIONA
-      const response = await fetch('https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview', {
+      // ✅ USA L'URL CHE FUNZIONA con token sicuro da Vercel
+      const response = await fetch('https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17', {
         method: 'POST',
         body: offer.sdp,
         headers: {
-          'Authorization': 'Bearer ' + setupData.apiKey,
+          'Authorization': 'Bearer ' + setupData.client_secret,
           'Content-Type': 'application/sdp'
         }
       });

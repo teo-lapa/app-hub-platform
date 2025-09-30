@@ -127,11 +127,38 @@ STILE CONVERSAZIONE:
 - Chiedi chiarimenti se qualcosa non è chiaro
 - Mantieni un tono umano e naturale`;
 
+    // Create ephemeral token for secure Real-Time API access
+    // This token is temporary and can be safely sent to the client
+    let ephemeralToken = null;
+    try {
+      const tokenResponse = await fetch('https://api.openai.com/v1/realtime/sessions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-realtime-preview-2024-12-17',
+          voice: 'alloy'
+        })
+      });
+
+      if (tokenResponse.ok) {
+        const tokenData = await tokenResponse.json();
+        ephemeralToken = tokenData.client_secret?.value;
+        console.log('✅ Ephemeral token created for secure Real-Time connection');
+      } else {
+        console.error('❌ Failed to create ephemeral token:', await tokenResponse.text());
+      }
+    } catch (error) {
+      console.error('❌ Error creating ephemeral token:', error);
+    }
+
     return NextResponse.json({
       success: true,
       instructions,
       userData,
-      apiKey, // For WebRTC connection
+      client_secret: ephemeralToken, // Secure ephemeral token (NOT the API key!)
       voice: 'alloy', // Stella's voice
       temperature: 0.8,
       max_response_output_tokens: 4096
