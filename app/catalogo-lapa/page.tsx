@@ -38,11 +38,12 @@ export default function CatalogoLapaPage() {
   const [cacheProgress, setCacheProgress] = useState(0); // Progresso caricamento cache
   const [isCacheComplete, setIsCacheComplete] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null); // Prodotto selezionato per popup
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Categoria selezionata
 
   const productsPerPage = 50;
 
   // Carica prodotti con dati VERI da Odoo
-  const loadProducts = async (page: number = 1, search: string = '') => {
+  const loadProducts = async (page: number = 1, search: string = '', category: string | null = null) => {
     try {
       setLoading(true);
       setError(null);
@@ -53,7 +54,8 @@ export default function CatalogoLapaPage() {
         body: JSON.stringify({
           page,
           limit: productsPerPage,
-          search: search.trim() || undefined
+          search: search.trim() || undefined,
+          category: category || undefined
         })
       });
 
@@ -113,11 +115,29 @@ export default function CatalogoLapaPage() {
 
     let filtered = allProducts;
 
+    // Filtro per categoria se selezionata
+    if (selectedCategory) {
+      if (selectedCategory === 'SECCO') {
+        // Per SECCO: include sia SECCO che SECCO 2
+        filtered = filtered.filter(p => {
+          const categ = p.categ_id?.[1]?.toLowerCase() || '';
+          return categ.includes('secco');
+        });
+      } else {
+        // Per altre categorie
+        filtered = filtered.filter(p => {
+          const categ = p.categ_id?.[1]?.toLowerCase() || '';
+          return categ.includes(selectedCategory.toLowerCase());
+        });
+      }
+    }
+
+    // Filtro per ricerca testuale
     if (q) {
-      filtered = allProducts.filter(p =>
+      filtered = filtered.filter(p =>
         p.name?.toLowerCase().includes(q) ||
-        p.default_code?.toLowerCase().includes(q) ||
-        p.barcode?.toLowerCase().includes(q) ||
+        (typeof p.default_code === 'string' && p.default_code.toLowerCase().includes(q)) ||
+        (typeof p.barcode === 'string' && p.barcode.toLowerCase().includes(q)) ||
         p.categ_id?.[1]?.toLowerCase().includes(q)
       );
     }
@@ -145,8 +165,22 @@ export default function CatalogoLapaPage() {
       searchInCache(searchQuery, 1);
     } else {
       setCurrentPage(1);
-      loadProducts(1, searchQuery);
+      loadProducts(1, searchQuery, selectedCategory);
     }
+  };
+
+  // Gestisci click categoria
+  const handleCategoryClick = (category: string | null) => {
+    if (selectedCategory === category) {
+      // Se clicco sulla stessa categoria, non faccio nulla
+      return;
+    }
+
+    // Seleziono nuova categoria (null = TUTTO)
+    setSelectedCategory(category);
+    setSearchQuery('');
+    setCurrentPage(1);
+    loadProducts(1, '', category);
   };
 
   // Ricerca veloce automatica
@@ -246,6 +280,62 @@ export default function CatalogoLapaPage() {
               </button>
             </div>
           </form>
+
+          {/* Pulsanti categorie */}
+          <div className="max-w-3xl mx-auto mt-4">
+            <div className="grid grid-cols-5 gap-2">
+              <button
+                onClick={() => handleCategoryClick(null)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  selectedCategory === null
+                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
+                }`}
+              >
+                TUTTO
+              </button>
+              <button
+                onClick={() => handleCategoryClick('SECCO')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  selectedCategory === 'SECCO'
+                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
+                }`}
+              >
+                SECCO
+              </button>
+              <button
+                onClick={() => handleCategoryClick('FRIGO')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  selectedCategory === 'FRIGO'
+                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
+                }`}
+              >
+                FRIGO
+              </button>
+              <button
+                onClick={() => handleCategoryClick('PINGU')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  selectedCategory === 'PINGU'
+                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
+                }`}
+              >
+                PINGU
+              </button>
+              <button
+                onClick={() => handleCategoryClick('NON FOOD')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  selectedCategory === 'NON FOOD'
+                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
+                }`}
+              >
+                NON FOOD
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Stati di caricamento e errore */}

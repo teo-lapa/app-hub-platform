@@ -6,10 +6,10 @@ const CACHE_DURATION = 30 * 60 * 1000; // 30 minuti
 
 export async function POST(request: NextRequest) {
   try {
-    const { page = 1, limit = 50, search = '' } = await request.json();
+    const { page = 1, limit = 50, search = '', category = null } = await request.json();
 
-    // Crea chiave cache
-    const cacheKey = `${page}-${limit}-${search}`;
+    // Crea chiave cache (include anche categoria)
+    const cacheKey = `${page}-${limit}-${search}-${category || ''}`;
     const cached = pageCache.get(cacheKey);
 
     // Controlla cache
@@ -60,6 +60,21 @@ export async function POST(request: NextRequest) {
     // Prepara dominio ricerca
     let domain: any[] = [['sale_ok', '=', true]];
 
+    // Filtro categoria
+    if (category) {
+      if (category === 'SECCO') {
+        // Per SECCO: include sia SECCO che SECCO 2
+        domain.push('|',
+          ['categ_id', 'ilike', 'SECCO 2'],
+          ['categ_id', 'ilike', 'SECCO']
+        );
+      } else {
+        // Per altre categorie: ricerca semplice
+        domain.push(['categ_id', 'ilike', category]);
+      }
+    }
+
+    // Filtro ricerca testuale
     if (search && search.trim()) {
       const s = search.trim();
       domain.push('|', '|', '|',
