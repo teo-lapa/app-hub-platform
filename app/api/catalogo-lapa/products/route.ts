@@ -89,12 +89,13 @@ export async function POST(request: NextRequest) {
           kwargs: {
             fields: [
               'id', 'name', 'default_code', 'barcode', 'list_price',
-              'categ_id', 'image_256', 'description_sale', 'qty_available',
-              'uom_id'
+              'categ_id', 'image_256', 'description', 'description_sale',
+              'qty_available', 'uom_id'
             ],
             offset,
             limit,
-            order: 'name ASC'
+            order: 'name ASC',
+            context: { lang: 'it_IT' }
           }
         },
         id: Math.random()

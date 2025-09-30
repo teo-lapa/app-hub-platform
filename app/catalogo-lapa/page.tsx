@@ -12,6 +12,7 @@ interface Product {
   list_price?: number;
   categ_id?: [number, string];
   image_256?: string;
+  description?: string;
   description_sale?: string;
   qty_available?: number;
   uom_id?: [number, string];
@@ -36,6 +37,7 @@ export default function CatalogoLapaPage() {
   const [isAutoSearching, setIsAutoSearching] = useState(false);
   const [cacheProgress, setCacheProgress] = useState(0); // Progresso caricamento cache
   const [isCacheComplete, setIsCacheComplete] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null); // Prodotto selezionato per popup
 
   const productsPerPage = 50;
 
@@ -278,7 +280,10 @@ export default function CatalogoLapaPage() {
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2 mb-8">
               {products.map((product) => (
-                <div key={product.id} className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 overflow-hidden hover:border-emerald-500/50 transition-all duration-300 group">
+                <div
+                  key={product.id}
+                  onClick={() => setSelectedProduct(product)}
+                  className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 overflow-hidden hover:border-emerald-500/50 transition-all duration-300 group cursor-pointer">
                   {/* Immagine prodotto */}
                   <div className="aspect-square bg-slate-700/30 relative overflow-hidden">
                     {product.image_256 ? (
@@ -415,6 +420,145 @@ export default function CatalogoLapaPage() {
           </div>
         )}
       </div>
+
+      {/* Popup dettaglio prodotto */}
+      {selectedProduct && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedProduct(null)}
+        >
+          <div
+            className="bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header con immagine */}
+            <div className="relative">
+              <div className="aspect-video bg-slate-700/30 relative overflow-hidden">
+                {selectedProduct.image_256 ? (
+                  <img
+                    src={`data:image/jpeg;base64,${selectedProduct.image_256}`}
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Package className="h-24 w-24 text-slate-500" />
+                  </div>
+                )}
+              </div>
+
+              {/* Pulsante chiudi */}
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="absolute top-4 right-4 bg-slate-900/80 hover:bg-slate-900 text-white rounded-full p-2 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Contenuto */}
+            <div className="p-6">
+              {/* Nome prodotto */}
+              <h2 className="text-2xl font-bold text-white mb-4">{selectedProduct.name}</h2>
+
+              {/* Informazioni principali */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                {/* Codice prodotto */}
+                {selectedProduct.default_code && (
+                  <div className="bg-slate-700/30 rounded-lg p-3">
+                    <div className="text-slate-400 text-sm mb-1">Codice Prodotto</div>
+                    <div className="text-white font-semibold">{selectedProduct.default_code}</div>
+                  </div>
+                )}
+
+                {/* Barcode */}
+                {selectedProduct.barcode && (
+                  <div className="bg-slate-700/30 rounded-lg p-3">
+                    <div className="text-slate-400 text-sm mb-1">Barcode</div>
+                    <div className="text-white font-mono font-semibold">{selectedProduct.barcode}</div>
+                  </div>
+                )}
+
+                {/* Prezzo */}
+                {selectedProduct.list_price && selectedProduct.list_price > 0 && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
+                    <div className="text-emerald-400 text-sm mb-1">Prezzo di Listino</div>
+                    <div className="text-white font-bold text-xl">
+                      €{selectedProduct.list_price.toFixed(2)}
+                      {selectedProduct.uom_id && (
+                        <span className="text-slate-400 text-base font-normal ml-1">
+                          / {selectedProduct.uom_id[1]}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Disponibilità */}
+                {typeof selectedProduct.qty_available === 'number' && (
+                  <div className={`rounded-lg p-3 ${
+                    selectedProduct.qty_available > 0
+                      ? 'bg-green-500/10 border border-green-500/30'
+                      : 'bg-red-500/10 border border-red-500/30'
+                  }`}>
+                    <div className={`text-sm mb-1 ${
+                      selectedProduct.qty_available > 0 ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      Disponibilità
+                    </div>
+                    <div className="text-white font-bold text-xl">
+                      {selectedProduct.qty_available > 0 ? (
+                        <span className="text-green-400">{selectedProduct.qty_available} disponibili</span>
+                      ) : (
+                        <span className="text-red-400">Esaurito</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Categoria */}
+              {selectedProduct.categ_id && (
+                <div className="mb-6">
+                  <div className="text-slate-400 text-sm mb-2">Categoria</div>
+                  <div className="flex items-center space-x-2">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      {selectedProduct.categ_id[1]}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Descrizione */}
+              {selectedProduct.description_sale && (
+                <div className="mb-6">
+                  <div className="text-slate-400 text-sm mb-2">Descrizione</div>
+                  <p className="text-white leading-relaxed whitespace-pre-line">
+                    {selectedProduct.description_sale}
+                  </p>
+                </div>
+              )}
+
+              {/* Pulsanti azione */}
+              <div className="flex gap-3 pt-4 border-t border-slate-700">
+                <button
+                  onClick={() => setSelectedProduct(null)}
+                  className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors"
+                >
+                  Chiudi
+                </button>
+                <button
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-medium rounded-lg transition-all"
+                >
+                  Richiedi Info
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pulsante Home Mobile - sempre visibile */}
       <div className="fixed bottom-6 right-6 md:hidden z-50">
