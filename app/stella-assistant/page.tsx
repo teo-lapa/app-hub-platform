@@ -150,27 +150,35 @@ export default function StellaAssistant() {
   const [showRealTime, setShowRealTime] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
-  // Load user profile with company data
+  // Load user profile with company data on mount
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
+        console.log('🔄 Caricamento profilo utente...');
         const response = await fetch('/api/user/profile');
+        console.log('📡 Response status:', response.status);
+
         if (response.ok) {
           const data = await response.json();
+          console.log('📋 Response data:', data);
+
           if (data.success) {
             setUserProfile(data.data);
             console.log('✅ Profilo utente caricato:', data.data);
+          } else {
+            console.log('⚠️ Profile API returned success: false');
           }
+        } else {
+          console.log('❌ Profile API response not OK:', response.status);
         }
       } catch (error) {
         console.error('❌ Errore caricamento profilo:', error);
       }
     };
 
-    if (user) {
-      loadUserProfile();
-    }
-  }, [user]);
+    // Always try to load profile (relies on cookie auth, not Zustand state)
+    loadUserProfile();
+  }, []); // Empty deps - run once on mount
 
   // Welcome message on load
   useEffect(() => {
@@ -647,8 +655,11 @@ export default function StellaAssistant() {
           <StellaRealTime
             action={selectedAction}
             userContext={{
-              email: user?.email,
-              userId: user?.id
+              email: userProfile?.user?.email || user?.email,
+              userId: user?.id,
+              userName: userProfile?.user?.name,
+              isContact: userProfile?.user?.isContact,
+              companyName: userProfile?.company?.name
             }}
             onClose={closeRealTimeConversation}
           />

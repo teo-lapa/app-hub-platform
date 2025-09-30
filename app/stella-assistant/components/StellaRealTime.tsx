@@ -111,9 +111,13 @@ export default function StellaRealTime({ action, userContext, onClose }: StellaR
         setIsConnected(true);
         setIsConnecting(false);
 
+        // Messaggio di benvenuto personalizzato
+        const userName = setupData.userData?.name || userContext?.userName || 'Cliente';
+        const welcomeMsg = `Ciao ${userName}! 👋 Sono Stella, la tua assistente personale. Parla con me oppure scrivi il tuo messaggio.`;
+
         console.log('✅ Stella vocale attiva - Puoi parlare!');
         toast.success(`🎙️ Connesso a Stella!`);
-        setConversation(prev => [...prev, '🌟 Stella è pronta! Parla oppure scrivi il tuo messaggio.']);
+        setConversation(prev => [...prev, welcomeMsg]);
       };
 
       // Gestione eventi WebRTC
