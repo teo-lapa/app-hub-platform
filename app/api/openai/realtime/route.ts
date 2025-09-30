@@ -36,9 +36,10 @@ export async function POST(request: NextRequest) {
 
     // Get user data from Odoo if needed
     let userData = null;
+    let companyData = null;
     if (userContext?.email) {
       try {
-        // Call existing Odoo RPC to get user data
+        // Step 1: Get the logged-in partner (could be company or contact)
         const odooResponse = await fetch(`${request.nextUrl.origin}/api/odoo/rpc`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
             method: 'search_read',
             args: [
               [['email', '=', userContext.email]],
-              ['name', 'phone', 'mobile', 'email', 'total_invoiced', 'street', 'city']
+              ['id', 'name', 'phone', 'mobile', 'email', 'parent_id', 'is_company', 'total_invoiced', 'street', 'city', 'vat', 'ref']
             ],
             kwargs: { limit: 1 }
           })
@@ -56,6 +57,34 @@ export async function POST(request: NextRequest) {
         if (odooResponse.ok) {
           const data = await odooResponse.json();
           userData = data.result?.[0] || null;
+
+          // Step 2: If user is a contact (has parent_id), load the company data
+          if (userData && userData.parent_id && userData.parent_id[0]) {
+            console.log(`👤 Contatto rilevato: ${userData.name} - Carico dati azienda padre ID: ${userData.parent_id[0]}`);
+
+            const companyResponse = await fetch(`${request.nextUrl.origin}/api/odoo/rpc`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: 'res.partner',
+                method: 'read',
+                args: [
+                  [userData.parent_id[0]],
+                  ['name', 'phone', 'email', 'total_invoiced', 'street', 'city', 'vat', 'ref', 'x_studio_credit_limit']
+                ]
+              })
+            });
+
+            if (companyResponse.ok) {
+              const companyDataResponse = await companyResponse.json();
+              companyData = companyDataResponse.result?.[0] || null;
+              console.log(`🏢 Dati azienda padre caricati: ${companyData?.name}`);
+            }
+          } else {
+            console.log(`🏢 Azienda principale rilevata: ${userData?.name}`);
+            // If user is the company itself, use userData as companyData
+            companyData = userData;
+          }
         }
       } catch (error) {
         console.warn('Failed to fetch user data from Odoo:', error);
@@ -70,12 +99,34 @@ IMPORTANTE: Questa è una conversazione VOCALE in tempo reale. Parla come se fos
 PROFILO UTENTE:`;
 
     if (userData) {
+      // Check if user is a contact (has parent company) or the company itself
+      const isContact = userData.parent_id && userData.parent_id[0];
+
       instructions += `
-- Nome: ${userData.name}
+- Nome contatto: ${userData.name}
 - Email: ${userData.email}
-- Telefono: ${userData.phone || userData.mobile || 'non disponibile'}
+- Telefono: ${userData.phone || userData.mobile || 'non disponibile'}`;
+
+      if (isContact && companyData) {
+        instructions += `
+- Tipo: Contatto di azienda
+- AZIENDA: ${companyData.name}
+- P.IVA Azienda: ${companyData.vat || 'non disponibile'}
+- Codice Cliente: ${companyData.ref || 'non disponibile'}
+- Fatturato totale azienda: €${companyData.total_invoiced?.toFixed(2) || '0.00'}
+- Indirizzo azienda: ${companyData.street || 'non disponibile'}${companyData.city ? `, ${companyData.city}` : ''}
+- Limite credito: €${companyData.x_studio_credit_limit?.toFixed(2) || 'non impostato'}
+
+IMPORTANTE: Quando parli, saluta ${userData.name} per nome, ma fai riferimento ai dati dell'azienda "${companyData.name}" per ordini, fatturato e informazioni commerciali.`;
+      } else {
+        instructions += `
+- Tipo: Azienda principale
+- Azienda: ${userData.name}
+- P.IVA: ${userData.vat || 'non disponibile'}
+- Codice Cliente: ${userData.ref || 'non disponibile'}
 - Fatturato totale: €${userData.total_invoiced?.toFixed(2) || '0.00'}
 - Indirizzo: ${userData.street || 'non disponibile'}${userData.city ? `, ${userData.city}` : ''}`;
+      }
     } else {
       instructions += `
 - Utente non identificato o guest`;
