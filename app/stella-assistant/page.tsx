@@ -22,6 +22,58 @@ import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
 import toast from 'react-hot-toast';
 import StellaRealTime from './components/StellaRealTime';
 
+// Browser API types
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+}
+
+interface SpeechRecognitionEvent {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: {
+      new (): SpeechRecognition;
+    };
+    webkitSpeechRecognition: {
+      new (): SpeechRecognition;
+    };
+  }
+}
+
 interface Message {
   id: string;
   text: string;
@@ -37,14 +89,6 @@ interface ActionButton {
   icon: React.ElementType;
   color: string;
   prompt: string;
-}
-
-// Extend Window interface for speech recognition
-declare global {
-  interface Window {
-    webkitSpeechRecognition: any;
-    SpeechRecognition: any;
-  }
 }
 
 const actionButtons: ActionButton[] = [
@@ -175,7 +219,7 @@ export default function StellaAssistant() {
         toast.success(`Prompt caricato dal task: ${data.task_name}`);
       } else {
         console.log(`⚠️ Usando prompt statico per ${action.title}`);
-        toast.warning(`Usando prompt statico per: ${action.title}`);
+        toast(`⚠️ Usando prompt statico per: ${action.title}`);
       }
 
       // Add Stella's response con il prompt dal task

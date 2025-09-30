@@ -1,44 +1,44 @@
-15:21:02.760 Running build in Washington, D.C., USA (East) – iad1
-15:21:02.760 Build machine configuration: 2 cores, 8 GB
-15:21:02.798 Cloning github.com/teo-lapa/app-hub-platform (Branch: main, Commit: 67451ee)
-15:21:03.218 Cloning completed: 420.000ms
-15:21:04.101 Restored build cache from previous deployment (3TDGvvCj75fBeFxMcjgrfQKkspPR)
-15:21:04.558 Running "vercel build"
-15:21:04.945 Vercel CLI 48.1.6
-15:21:05.276 Running "install" command: `npm install`...
-15:21:08.277 
-15:21:08.278 up to date, audited 420 packages in 3s
-15:21:08.279 
-15:21:08.279 150 packages are looking for funding
-15:21:08.279   run `npm fund` for details
-15:21:08.342 
-15:21:08.343 1 critical severity vulnerability
-15:21:08.343 
-15:21:08.344 To address all issues, run:
-15:21:08.344   npm audit fix --force
-15:21:08.344 
-15:21:08.344 Run `npm audit` for details.
-15:21:08.377 Detected Next.js version: 14.0.3
-15:21:08.378 Running "npm run build"
-15:21:08.490 
-15:21:08.491 > app-hub-platform@1.0.0 build
-15:21:08.491 > next build
-15:21:08.491 
-15:21:09.186    ▲ Next.js 14.0.3
-15:21:09.187 
-15:21:09.187    Creating an optimized production build ...
-15:21:15.709  ✓ Compiled successfully
-15:21:15.714    Linting and checking validity of types ...
-15:21:19.904 Failed to compile.
-15:21:19.905 
-15:21:19.905 ./app/api/catalogo-lapa/products/route.ts:71:57
-15:21:19.906 Type error: 'error' is of type 'unknown'.
-15:21:19.906 
-15:21:19.906 [0m [90m 69 |[39m         }[0m
-15:21:19.906 [0m [90m 70 |[39m       } [36mcatch[39m (error) {[0m
-15:21:19.906 [0m[31m[1m>[22m[39m[90m 71 |[39m         console[33m.[39mlog([32m`💥 Errore auth ${cred.username}:`[39m[33m,[39m error[33m.[39mmessage)[33m;[39m[0m
-15:21:19.907 [0m [90m    |[39m                                                         [31m[1m^[22m[39m[0m
-15:21:19.907 [0m [90m 72 |[39m       }[0m
-15:21:19.907 [0m [90m 73 |[39m     }[0m
-15:21:19.907 [0m [90m 74 |[39m[0m
-15:21:19.972 Error: Command "npm run build" exited with 1
+09:36:32.504 Running build in Washington, D.C., USA (East) – iad1
+09:36:32.505 Build machine configuration: 4 cores, 8 GB
+09:36:32.523 Cloning github.com/teo-lapa/app-hub-platform (Branch: main, Commit: 839212c)
+09:36:33.101 Cloning completed: 577.000ms
+09:36:34.100 Restored build cache from previous deployment (J9Ux8C5QwM2RiXPk61GrppxrxHnW)
+09:36:34.672 Running "vercel build"
+09:36:35.077 Vercel CLI 48.1.6
+09:36:35.394 Running "install" command: `npm install`...
+09:36:38.196 
+09:36:38.197 up to date, audited 502 packages in 3s
+09:36:38.197 
+09:36:38.197 154 packages are looking for funding
+09:36:38.197   run `npm fund` for details
+09:36:38.258 
+09:36:38.258 1 critical severity vulnerability
+09:36:38.258 
+09:36:38.258 To address all issues, run:
+09:36:38.258   npm audit fix --force
+09:36:38.258 
+09:36:38.258 Run `npm audit` for details.
+09:36:38.294 Detected Next.js version: 14.0.3
+09:36:38.295 Running "npm run build"
+09:36:38.409 
+09:36:38.410 > app-hub-platform@1.0.0 build
+09:36:38.410 > next build
+09:36:38.410 
+09:36:39.073    ▲ Next.js 14.0.3
+09:36:39.074 
+09:36:39.074    Creating an optimized production build ...
+09:36:46.511  ✓ Compiled successfully
+09:36:46.512    Linting and checking validity of types ...
+09:36:56.070 Failed to compile.
+09:36:56.071 
+09:36:56.071 ./app/stella-assistant/page.tsx:105:50
+09:36:56.071 Type error: Cannot find name 'SpeechRecognition'.
+09:36:56.071 
+09:36:56.071 [0m [90m 103 |[39m   [36mconst[39m [showActionButtons[33m,[39m setShowActionButtons] [33m=[39m useState([36mtrue[39m)[33m;[39m[0m
+09:36:56.071 [0m [90m 104 |[39m   [36mconst[39m [isListening[33m,[39m setIsListening] [33m=[39m useState([36mfalse[39m)[33m;[39m[0m
+09:36:56.071 [0m[31m[1m>[22m[39m[90m 105 |[39m   [36mconst[39m [recognition[33m,[39m setRecognition] [33m=[39m useState[33m<[39m[33mSpeechRecognition[39m [33m|[39m [36mnull[39m[33m>[39m([36mnull[39m)[33m;[39m[0m
+09:36:56.072 [0m [90m     |[39m                                                  [31m[1m^[22m[39m[0m
+09:36:56.072 [0m [90m 106 |[39m   [36mconst[39m [showRealTime[33m,[39m setShowRealTime] [33m=[39m useState([36mfalse[39m)[33m;[39m[0m
+09:36:56.072 [0m [90m 107 |[39m[0m
+09:36:56.072 [0m [90m 108 |[39m   [90m// Welcome message on load[39m[0m
+09:36:56.138 Error: Command "npm run build" exited with 1
