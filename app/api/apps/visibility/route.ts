@@ -1,51 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { allApps } from '@/lib/data/apps-with-indicators';
-import fs from 'fs';
-import path from 'path';
+import { kv } from '@vercel/kv';
 
 export const dynamic = 'force-dynamic';
 
-// File per salvare le impostazioni di visibilità
-const VISIBILITY_FILE = path.join(process.cwd(), 'data', 'app-visibility.json');
+const VISIBILITY_KEY = 'app_hub:visibility_settings';
 
-// Assicura che la directory data esista
-function ensureDataDirectory() {
-  const dataDir = path.join(process.cwd(), 'data');
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+// Carica le impostazioni di visibilità da Vercel KV
+async function loadVisibilitySettings(): Promise<Record<string, boolean>> {
+  try {
+    const settings = await kv.get<Record<string, boolean>>(VISIBILITY_KEY);
+    return settings || {};
+  } catch (error) {
+    console.error('Errore lettura visibility settings da KV:', error);
+    // Default: tutte le app visibili
+    return {};
   }
 }
 
-// Carica le impostazioni di visibilità
-function loadVisibilitySettings(): Record<string, boolean> {
+// Salva le impostazioni di visibilità in Vercel KV
+async function saveVisibilitySettings(settings: Record<string, boolean>): Promise<boolean> {
   try {
-    ensureDataDirectory();
-    if (fs.existsSync(VISIBILITY_FILE)) {
-      const data = fs.readFileSync(VISIBILITY_FILE, 'utf-8');
-      return JSON.parse(data);
-    }
+    await kv.set(VISIBILITY_KEY, settings);
+    return true;
   } catch (error) {
-    console.error('Errore lettura visibility settings:', error);
-  }
-  // Default: tutte le app visibili
-  return {};
-}
-
-// Salva le impostazioni di visibilità
-function saveVisibilitySettings(settings: Record<string, boolean>) {
-  try {
-    ensureDataDirectory();
-    fs.writeFileSync(VISIBILITY_FILE, JSON.stringify(settings, null, 2));
-  } catch (error) {
-    console.error('Errore salvataggio visibility settings:', error);
-    throw error;
+    console.error('Errore salvataggio visibility settings in KV:', error);
+    return false;
   }
 }
 
 // GET: Carica lista app con visibilità
 export async function GET(request: NextRequest) {
   try {
-    const visibilitySettings = loadVisibilitySettings();
+    const visibilitySettings = await loadVisibilitySettings();
 
     const apps = allApps.map(app => ({
       id: app.id,
@@ -86,15 +73,21 @@ export async function POST(request: NextRequest) {
       visibilitySettings[app.id] = app.visible;
     });
 
-    // Salva su file
-    saveVisibilitySettings(visibilitySettings);
+    // Salva in Vercel KV
+    const saved = await saveVisibilitySettings(visibilitySettings);
 
-    console.log('✅ Impostazioni visibilità salvate:', visibilitySettings);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Impostazioni salvate'
-    });
+    if (saved) {
+      console.log('✅ Impostazioni visibilità salvate in Vercel KV:', visibilitySettings);
+      return NextResponse.json({
+        success: true,
+        message: 'Impostazioni salvate con successo'
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        error: 'Errore salvataggio impostazioni'
+      }, { status: 500 });
+    }
   } catch (error) {
     console.error('Errore POST visibility:', error);
     return NextResponse.json({
