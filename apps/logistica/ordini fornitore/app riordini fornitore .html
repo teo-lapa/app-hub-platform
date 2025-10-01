@@ -1,0 +1,2478 @@
+<meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Riordino Intelligente Fornitori</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 500: '#3b82f6', 600: '#2563eb' },
+                        danger: { 500: '#ef4444', 50: '#fef2f2' },
+                        warning: { 500: '#f59e0b', 50: '#fffbeb' },
+                        success: { 500: '#22c55e', 50: '#f0fdf4' }
+                    }
+                }
+            }
+        }
+    </script>
+
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // Controlla se siamo nel contesto Odoo
+        const isInOdooContext = () => {
+            return window.location.hostname.includes('odoo') ||
+                   window.location.hostname.includes('dev.odoo') ||
+                   document.cookie.includes('session_id') ||
+                   window.odoo !== undefined;
+        };
+
+        // Utilità per formattazione numeri
+        const formatNumber = (num, decimals = 1) => {
+            if (num === null || num === undefined) return '0';
+            return Number(num).toFixed(decimals);
+        };
+
+        const formatCurrency = (amount) => {
+            if (amount === null || amount === undefined) return '€0,00';
+            return new Intl.NumberFormat('it-IT', {
+                style: 'currency',
+                currency: 'EUR',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        };
+
+        const formatInteger = (num) => {
+            if (num === null || num === undefined) return '0';
+            return Math.round(Number(num)).toString();
+        };
+
+        // Funzioni per connessione Odoo (prese da app inventario)
+        function csrf() {
+            try {
+                // Prova diversi modi per ottenere il CSRF token
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    const [name, value] = cookie.trim().split('=');
+                    if (name === 'csrf_token') return decodeURIComponent(value);
+                }
+
+                // Fallback: cerca nei meta tag
+                const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+                if (metaCsrf) return metaCsrf.getAttribute('content');
+
+                // Fallback: cerca in window.odoo
+                if (window.odoo && window.odoo.csrf_token) return window.odoo.csrf_token;
+
+                console.warn('🔍 CSRF token non trovato, app potrebbe essere fuori contesto Odoo');
+            } catch (e) {
+                console.error('CSRF token error:', e);
+            }
+            return null;
+        }
+
+        async function rpc(model, method, args) {
+            const token = csrf();
+            if (!token) {
+                console.warn('🔍 Nessun CSRF token - app in modalità demo');
+                // Fallback: usa dati mock invece di errore
+                throw new Error('CSRF token non trovato - usando dati demo');
+            }
+
+            const response = await fetch('/web/dataset/call_kw', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': token
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: 'call',
+                    params: {
+                        model: model,
+                        method: method,
+                        args: args,
+                        kwargs: {}
+                    },
+                    id: Math.floor(Math.random() * 1000000000)
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) {
+                throw new Error(data.error.data?.message || data.error.message || 'Errore RPC');
+            }
+            return data.result;
+        }
+
+        async function searchRead(model, domain, fields, limit = false) {
+            const args = [domain, fields];
+            if (limit) args.push(0, limit);
+            return await rpc(model, 'search_read', args);
+        }
+
+        // Funzione per caricare dati reali di vendita da Odoo con clienti
+        async function loadRealSalesData(productId, days = 40) {
+            try {
+                // Data di inizio (40 giorni fa)
+                const startDate = new Date();
+                startDate.setDate(startDate.getDate() - days);
+                const startDateStr = startDate.toISOString().split('T')[0];
+
+                // Prima carica le righe ordine per questo prodotto
+                const salesLines = await searchRead('sale.order.line', [
+                    ['product_id', '=', productId],
+                    ['create_date', '>=', startDateStr + ' 00:00:00']
+                ], ['product_uom_qty', 'order_id', 'create_date']);
+
+                if (!salesLines || salesLines.length === 0) {
+                    throw new Error('Nessuna vendita trovata');
+                }
+
+                // Estrai gli ID degli ordini
+                const orderIds = [...new Set(salesLines.map(line => line.order_id ? line.order_id[0] : null).filter(id => id))];
+
+                // Carica i dettagli degli ordini per avere clienti e date
+                const orders = await searchRead('sale.order', [
+                    ['id', 'in', orderIds],
+                    ['state', 'in', ['sale', 'done']] // Solo ordini confermati
+                ], ['partner_id', 'date_order', 'name']);
+
+                // Crea mappa ordine -> cliente
+                const orderToCustomer = {};
+                const orderToDate = {};
+                orders.forEach(order => {
+                    orderToCustomer[order.id] = order.partner_id ? order.partner_id[1] : 'Cliente Sconosciuto';
+                    orderToDate[order.id] = order.date_order ? order.date_order.split(' ')[0] : null;
+                });
+
+                // Raggruppa per giorno con dettagli clienti
+                const salesByDay = {};
+                const customersByDay = {};
+
+                salesLines.forEach(line => {
+                    const orderId = line.order_id ? line.order_id[0] : null;
+                    const orderDate = orderToDate[orderId];
+                    const customerName = orderToCustomer[orderId] || 'Cliente Sconosciuto';
+                    const quantity = line.product_uom_qty || 0;
+
+                    if (orderDate && quantity > 0) {
+                        // Totale giornaliero
+                        if (!salesByDay[orderDate]) {
+                            salesByDay[orderDate] = 0;
+                        }
+                        salesByDay[orderDate] += quantity;
+
+                        // Dettaglio clienti per giorno
+                        if (!customersByDay[orderDate]) {
+                            customersByDay[orderDate] = {};
+                        }
+                        if (!customersByDay[orderDate][customerName]) {
+                            customersByDay[orderDate][customerName] = 0;
+                        }
+                        customersByDay[orderDate][customerName] += quantity;
+                    }
+                });
+
+                // Crea array giornaliero completo con dettagli clienti
+                const result = {
+                    dailySales: [],
+                    detailedHistory: []
+                };
+
+                for (let i = days - 1; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    const dateStr = date.toISOString().split('T')[0];
+
+                    const dailyTotal = salesByDay[dateStr] || 0;
+                    result.dailySales.push(dailyTotal);
+
+                    // Dettaglio clienti per questo giorno
+                    const dayCustomers = customersByDay[dateStr] || {};
+                    const customerSales = Object.entries(dayCustomers).map(([customer, qty]) => ({
+                        customer: customer,
+                        quantity: qty,
+                        delivered: true
+                    }));
+
+                    result.detailedHistory.push({
+                        date: new Date(date),
+                        totalSales: dailyTotal,
+                        customerSales: customerSales
+                    });
+                }
+
+                const uniqueCustomers = Object.keys(Object.values(customersByDay).reduce((acc, dayCustomers) => {
+                    Object.keys(dayCustomers).forEach(customer => {
+                        if (customer !== 'Cliente Sconosciuto') acc[customer] = true;
+                    });
+                    return acc;
+                }, {}));
+
+                console.log(`✅ Caricati dati vendita reali per prodotto ${productId}:`);
+                console.log(`   - ${Object.keys(salesByDay).length} giorni con vendite`);
+                console.log(`   - ${uniqueCustomers.length} clienti unici: ${uniqueCustomers.join(', ')}`);
+                console.log(`   - ${salesLines.length} righe ordine totali`);
+                console.log(`   - ${orders.length} ordini confermati`);
+
+                return result;
+
+            } catch (error) {
+                console.warn(`⚠️ Errore caricamento vendite reali prodotto ${productId}:`, error);
+                throw error;
+            }
+        }
+
+        // Algoritmo riordino intelligente matematico avanzato
+        function calculateAdvancedReorderSuggestion(product, salesData, leadTime, currentStock = 0) {
+            if (!salesData || salesData.length === 0) return {suggestion: 0, analysis: 'Dati insufficienti'};
+
+            // === ANALISI MULTI-PERIODO ===
+            const data7 = salesData.slice(-7);   // Ultima settimana
+            const data14 = salesData.slice(-14); // Ultime 2 settimane
+            const data30 = salesData.slice(-30); // Ultimo mese
+            const dataAll = salesData;           // Tutti i dati
+
+            const avg7 = data7.reduce((sum, qty) => sum + qty, 0) / data7.length;
+            const avg14 = data14.reduce((sum, qty) => sum + qty, 0) / data14.length;
+            const avg30 = data30.reduce((sum, qty) => sum + qty, 0) / data30.length;
+            const avgAll = dataAll.reduce((sum, qty) => sum + qty, 0) / dataAll.length;
+
+            // === CALCOLO VARIABILITÀ (DEVIAZIONE STANDARD) ===
+            const variance = data30.reduce((sum, qty) => sum + Math.pow(qty - avg30, 2), 0) / data30.length;
+            const stdDev = Math.sqrt(variance);
+            const variabilityCoeff = stdDev / avg30; // Coefficiente di variazione
+
+            // === ANALISI TREND MULTIPLA ===
+            const trend7vs14 = ((avg7 - avg14) / avg14) * 100;
+            const trend14vs30 = ((avg14 - avg30) / avg30) * 100;
+            const trendOverall = ((avg7 - avgAll) / avgAll) * 100;
+
+            // Trend ponderato (più peso ai dati recenti)
+            const weightedTrend = (trend7vs14 * 0.5) + (trend14vs30 * 0.3) + (trendOverall * 0.2);
+
+            // === CALCOLO GIORNI SCORTA ATTUALI ===
+            const daysOfStock = avg7 > 0 ? currentStock / avg7 : 999;
+
+            // === MARGINE DINAMICO INTELLIGENTE ===
+            let safetyMargin = 0.15; // Base 15%
+
+            // Aggiusta margine per variabilità
+            if (variabilityCoeff > 0.5) safetyMargin += 0.10; // +10% se molto variabile
+            else if (variabilityCoeff < 0.2) safetyMargin -= 0.05; // -5% se stabile
+
+            // Aggiusta margine per trend
+            if (weightedTrend > 15) safetyMargin += 0.15; // +15% se crescita forte
+            else if (weightedTrend > 5) safetyMargin += 0.08; // +8% se crescita moderata
+            else if (weightedTrend < -15) safetyMargin -= 0.10; // -10% se calo forte
+            else if (weightedTrend < -5) safetyMargin -= 0.05; // -5% se calo moderato
+
+            // Aggiusta margine per lead time (più lungo = più margine)
+            if (leadTime > 14) safetyMargin += 0.05;
+            else if (leadTime > 7) safetyMargin += 0.03;
+
+            // === CALCOLO FINALE INTELLIGENTE ===
+            // Media ponderata con più peso ai dati recenti
+            const weightedAvgDaily = (avg7 * 0.5) + (avg14 * 0.3) + (avg30 * 0.2);
+
+            // Fabbisogno base per lead time
+            const baseNeed = weightedAvgDaily * leadTime;
+
+            // Margine di sicurezza
+            const safetyStock = baseNeed * safetyMargin;
+
+            // Quantità totale da ordinare
+            const totalNeed = baseNeed + safetyStock;
+
+            // Sottrai giacenza attuale (se positiva)
+            const finalSuggestion = Math.max(0, Math.round(totalNeed - Math.max(0, currentStock)));
+
+            // === ANALISI QUALITATIVA ===
+            let urgency = 'normale';
+            if (daysOfStock < leadTime * 0.5) urgency = 'critica';
+            else if (daysOfStock < leadTime) urgency = 'alta';
+            else if (daysOfStock < leadTime * 1.5) urgency = 'media';
+            else urgency = 'bassa';
+
+            let trendText = 'stabile';
+            if (weightedTrend > 10) trendText = 'crescita forte';
+            else if (weightedTrend > 3) trendText = 'crescita';
+            else if (weightedTrend < -10) trendText = 'calo forte';
+            else if (weightedTrend < -3) trendText = 'calo';
+
+            let variabilityText = 'normale';
+            if (variabilityCoeff > 0.5) variabilityText = 'alta';
+            else if (variabilityCoeff < 0.2) variabilityText = 'bassa';
+
+            return {
+                suggestion: finalSuggestion,
+                analysis: {
+                    weightedAvgDaily: weightedAvgDaily,
+                    trend: weightedTrend,
+                    trendText: trendText,
+                    variability: variabilityCoeff,
+                    variabilityText: variabilityText,
+                    daysOfStock: daysOfStock,
+                    urgency: urgency,
+                    safetyMargin: safetyMargin * 100,
+                    baseNeed: Math.round(baseNeed),
+                    safetyStock: Math.round(safetyStock)
+                }
+            };
+        }
+
+        // Algoritmo semplice (fallback)
+        function calculateReorderSuggestion(product, salesData, leadTime) {
+            const result = calculateAdvancedReorderSuggestion(product, salesData, leadTime, product?.qty_available || 0);
+            return result.suggestion;
+        }
+
+        function getProductStatus(currentStock, dailySales, leadTime) {
+            // Se non ci sono vendite, giudica solo dalla giacenza
+            if (dailySales === 0 || dailySales === null || dailySales === undefined) {
+                if (currentStock <= 5) return 'critical';   // Meno di 5 pezzi = critico
+                if (currentStock <= 20) return 'warning';   // Meno di 20 = attenzione
+                return 'ok';
+            }
+
+            // Se ci sono vendite, usa la logica normale
+            const daysOfStock = currentStock / dailySales;
+            if (daysOfStock <= leadTime) return 'critical';
+            if (daysOfStock <= leadTime * 1.5) return 'warning';
+            return 'ok';
+        }
+
+        const mockData = {
+            products: [
+                {
+                    id: 1,
+                    name: "LATTE SENZA LATTOSIO 1.5% UHT 1L",
+                    code: "12LCRTPRO",
+                    currentStock: 16,
+                    dailyAvgSales: 6.0,
+                    leadTime: 7,
+                    supplier: "Fornitore Alpha",
+                    supplierId: 101,
+                    reorderPoint: 42,
+                    suggestedOrder: 84,
+                    status: "critical",
+                    trend: "+15%"
+                },
+                {
+                    id: 2,
+                    name: "OLIVE NERE A RONDELLE LATTA240G",
+                    code: "3PZCRTRIS",
+                    currentStock: 10,
+                    dailyAvgSales: 4.7,
+                    leadTime: 7,
+                    supplier: "Fornitore Alpha",
+                    supplierId: 101,
+                    reorderPoint: 33,
+                    suggestedOrder: 65,
+                    status: "critical",
+                    trend: "+12%"
+                },
+                {
+                    id: 3,
+                    name: "OLIVE TAGGIASCHE DENOCCIOLATE",
+                    code: "6PZCRTRIS",
+                    currentStock: 31,
+                    dailyAvgSales: 4.8,
+                    leadTime: 7,
+                    supplier: "Fornitore Beta",
+                    supplierId: 102,
+                    reorderPoint: 34,
+                    suggestedOrder: 45,
+                    status: "warning",
+                    trend: "+8%"
+                },
+                {
+                    id: 4,
+                    name: "PECORINO ROMANO DOP GRATTUGIATO 1KG",
+                    code: "10KGCRTLSM",
+                    currentStock: 0,
+                    dailyAvgSales: 5.1,
+                    leadTime: 7,
+                    supplier: "Fornitore Beta",
+                    supplierId: 102,
+                    reorderPoint: 36,
+                    suggestedOrder: 72,
+                    status: "critical",
+                    trend: "+20%"
+                },
+                {
+                    id: 5,
+                    name: "PECORINO ROMANO DOP FRESCO 1KG",
+                    code: "10KGCRTAUR",
+                    currentStock: 20,
+                    dailyAvgSales: 5.7,
+                    leadTime: 7,
+                    supplier: "Fornitore Gamma",
+                    supplierId: 103,
+                    reorderPoint: 40,
+                    suggestedOrder: 55,
+                    status: "warning",
+                    trend: "+5%"
+                }
+            ],
+            suppliers: [
+                { id: 101, name: "Fornitore Alpha", reliability: 85, avgLeadTime: 7.2 },
+                { id: 102, name: "Fornitore Beta", reliability: 92, avgLeadTime: 5.1 },
+                { id: 103, name: "Fornitore Gamma", reliability: 78, avgLeadTime: 9.8 }
+            ]
+        };
+
+        function Layout({ children, activeTab, setActiveTab }) {
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <nav className="bg-white shadow-sm border-b">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex justify-between h-16">
+                                <div className="flex items-center">
+                                    <h1 className="text-xl font-bold text-gray-900">
+                                        📦 Riordino Intelligente
+                                    </h1>
+                                </div>
+                                <div className="flex space-x-8">
+                                    {[
+                                        { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+                                        { id: 'products', label: 'Prodotti', icon: '📦' },
+                                        { id: 'orders', label: 'Ordini', icon: '🛒' },
+                                        { id: 'suppliers', label: 'Fornitori', icon: '🏭' }
+                                    ].map(tab => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setActiveTab(tab.id)}
+                                            className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                                activeTab === tab.id
+                                                    ? 'bg-primary-50 text-primary-600 border-b-2 border-primary-500'
+                                                    : 'text-gray-500 hover:text-gray-700'
+                                            }`}
+                                        >
+                                            <span className="mr-2">{tab.icon}</span>
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </nav>
+                    <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                        {children}
+                    </main>
+                </div>
+            );
+        }
+
+        function Dashboard({ activeTab }) {
+            if (activeTab !== 'dashboard') return null;
+
+            const [products, setProducts] = useState([]);
+            const [suppliers, setSuppliers] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [selectedProducts, setSelectedProducts] = useState([]);
+            const [editedQuantities, setEditedQuantities] = useState({});
+            const [salesHistoryPopup, setSalesHistoryPopup] = useState(null);
+            const [expandedSuppliers, setExpandedSuppliers] = useState(new Set());
+            const [showCatalog, setShowCatalog] = useState(false);
+            const [allProducts, setAllProducts] = useState([]);
+            const [catalogSearch, setCatalogSearch] = useState('');
+
+            // Funzione per caricare tutti i prodotti per il catalogo
+            async function loadAllProducts() {
+                try {
+                    if (!isInOdooContext()) {
+                        console.log('📦 Catalogo - usando dati demo');
+                        setAllProducts(mockData.products);
+                        return;
+                    }
+
+                    const productData = await searchRead('product.product',
+                        [['type', '=', 'product'], ['active', '=', true]],
+                        ['name', 'default_code', 'categ_id', 'qty_available', 'seller_ids', 'image_1920'],
+                        1000 // Carica più prodotti per catalogo completo
+                    );
+
+                    const enhancedProducts = await Promise.all(productData.map(async (product) => {
+                        let supplierName = 'Nessun Fornitore';
+                        let supplierId = null;
+
+                        if (product.seller_ids && product.seller_ids.length > 0) {
+                            try {
+                                const suppliers = await searchRead('product.supplierinfo',
+                                    [['id', 'in', product.seller_ids]],
+                                    ['partner_id', 'price']
+                                );
+                                if (suppliers.length > 0) {
+                                    supplierName = suppliers[0].partner_id[1];
+                                    supplierId = suppliers[0].partner_id[0];
+                                }
+                            } catch (e) {
+                                console.warn('Errore caricamento fornitore:', e);
+                            }
+                        }
+
+                        return {
+                            id: product.id,
+                            name: product.name,
+                            code: product.default_code || 'N/A',
+                            category: product.categ_id ? product.categ_id[1] : 'N/A',
+                            supplier: supplierName,
+                            supplierId: supplierId,
+                            stock: product.qty_available || 0,
+                            image: product.image_1920 || null,
+                            status: 'ok' // Per il catalogo generale tutti sono OK
+                        };
+                    }));
+
+                    console.log('✅ Catalogo completo caricato:', enhancedProducts.length);
+                    setAllProducts(enhancedProducts);
+                } catch (error) {
+                    console.error('❌ Errore caricamento catalogo:', error);
+                    setAllProducts(mockData.products);
+                }
+            }
+
+            const toggleSupplierExpansion = (supplierName) => {
+                setExpandedSuppliers(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(supplierName)) {
+                        newSet.delete(supplierName);
+                    } else {
+                        newSet.add(supplierName);
+                    }
+                    return newSet;
+                });
+            };
+
+            useEffect(() => {
+                loadDashboardData();
+            }, []);
+
+            async function loadDashboardData() {
+                try {
+                    setLoading(true);
+                    console.log('🔄 Caricamento dati dashboard...');
+
+                    // Controlla se siamo in Odoo
+                    if (!isInOdooContext()) {
+                        console.log('📋 App fuori contesto Odoo - usando dati demo');
+                        setProducts(mockData.products);
+                        setSuppliers(mockData.suppliers);
+                        setError('App in modalità demo - non connessa a Odoo');
+                        setLoading(false);
+                        return;
+                    }
+
+                    // NUOVA LOGICA: Prima trova prodotti venduti, poi li carica
+                    console.log('🚀 NUOVA LOGICA: Prima trovo prodotti venduti ultimi 40 giorni...');
+
+                    // 1. Query diretta vendite ultimi 40 giorni
+                    const startDate = new Date();
+                    startDate.setDate(startDate.getDate() - 40);
+                    const startDateStr = startDate.toISOString().split('T')[0];
+
+                    const salesLines = await searchRead('sale.order.line', [
+                        ['create_date', '>=', startDateStr + ' 00:00:00']
+                    ], ['product_id'], 1000); // Carica molte righe vendita
+
+                    // 2. Estrai product_id unici venduti
+                    const soldProductIds = [...new Set(salesLines.map(line => line.product_id[0]))];
+                    console.log('📊 Trovati', soldProductIds.length, 'prodotti unici venduti negli ultimi 40 giorni');
+
+                    // 3. Debug per RETINA PIZZA
+                    console.log('🔍 Product IDs venduti (primi 20):', soldProductIds.slice(0, 20));
+
+                    // 4. Carica SOLO i prodotti che sono stati venduti
+                    const productData = await searchRead('product.product',
+                        [
+                            ['id', 'in', soldProductIds],
+                            ['type', '=', 'product'],
+                            ['active', '=', true]
+                        ],
+                        ['name', 'default_code', 'categ_id', 'qty_available', 'seller_ids']
+                    );
+
+                    console.log('✅ Caricati solo', productData.length, 'prodotti con vendite recenti');
+                    const productsWithSales = productData; // Tutti questi hanno vendite per definizione
+
+                    // Debug specifico per RETINA PIZZA nei prodotti VENDUTI
+                    console.log('🔍 Ricerca RETINA PIZZA nei prodotti VENDUTI...');
+                    const retinaKeywords = ['RETINA', 'PIZZA', '36CM', 'ALLUMINIO', 'GI.METAL', 'GI METAL'];
+
+                    const allRetinaProducts = productData.filter(p => p.name &&
+                        retinaKeywords.some(keyword => p.name.toUpperCase().includes(keyword))
+                    );
+
+                    console.log('🍕 Prodotti GI.METAL/RETINA venduti ultimi 40gg:', allRetinaProducts.length);
+                    allRetinaProducts.forEach((product, index) => {
+                        console.log(`🍕 [${index+1}] ${product.name} (ID: ${product.id}, Stock: ${product.qty_available})`);
+                    });
+
+                    // Ricerca specifica RETINA PIZZA
+                    const retinaPizza = productData.find(p => p.name &&
+                        p.name.toUpperCase().includes('RETINA') &&
+                        p.name.toUpperCase().includes('PIZZA')
+                    );
+
+                    if (retinaPizza) {
+                        console.log('✅ RETINA PIZZA trovata e VENDUTA:', retinaPizza.name);
+                        console.log('🍕 RETINA PIZZA ID:', retinaPizza.id);
+                        console.log('🍕 RETINA PIZZA giacenza:', retinaPizza.qty_available);
+                        console.log('🍕 RETINA PIZZA sarà nel riordino!');
+                    } else {
+                        console.log('❌ RETINA PIZZA NON è stata venduta negli ultimi 40 giorni');
+                        console.log('💡 Oppure ha un nome diverso nel database');
+                    }
+
+                    // Per ogni prodotto, carica il fornitore principale da product.supplierinfo
+                    const enhancedProducts = await Promise.all(productsWithSales.map(async (product) => {
+                        // Prova a caricare dati reali, fallback a mock
+                        let salesHistory;
+                        let avgDaily;
+
+                        try {
+                            // Carica vendite reali ultimi 60 giorni
+                            const salesDataResult = await loadRealSalesData(product.id);
+                            if (salesDataResult && salesDataResult.dailySales && salesDataResult.dailySales.length > 0) {
+                                salesHistory = salesDataResult.dailySales;
+                                avgDaily = salesHistory.reduce((a, b) => a + b, 0) / salesHistory.length;
+                                console.log(`📊 Dati vendite reali caricati per ${product.name}: ${salesHistory.length} giorni`);
+                                // Salva anche i dettagli per il popup
+                                product._detailedHistory = salesDataResult.detailedHistory;
+                            } else {
+                                throw new Error('Nessun dato vendite trovato');
+                            }
+                        } catch (error) {
+                            // NIENTE DATI SIMULATI - Solo reali o zero
+                            console.warn(`❌ Nessun dato vendite per ${product.name}:`, error.message);
+                            salesHistory = Array.from({length: 60}, () => 0); // Solo zeri
+                            avgDaily = 0;
+                            product._detailedHistory = null;
+                        }
+                        let leadTime = 7; // Default
+                        let supplier = 'Nessun Fornitore';
+                        let supplierId = null;
+
+                        try {
+                            // Carica info fornitore principale (primo della lista, priorità più alta)
+                            const supplierInfo = await searchRead('product.supplierinfo',
+                                [['product_tmpl_id.product_variant_ids', '=', product.id]],
+                                ['partner_id', 'delay'],
+                                1 // Solo il primo (principale)
+                            );
+
+                            if (supplierInfo && supplierInfo.length > 0) {
+                                const mainSupplier = supplierInfo[0];
+                                if (mainSupplier.partner_id) {
+                                    supplier = mainSupplier.partner_id[1]; // Nome fornitore
+                                    supplierId = mainSupplier.partner_id[0]; // ID fornitore
+                                    leadTime = mainSupplier.delay || 7; // Lead time reale
+                                }
+                            }
+                        } catch (error) {
+                            console.warn(`⚠️ Errore caricamento fornitore per ${product.name}:`, error);
+                        }
+
+                        // Usa algoritmo avanzato per calcolo più preciso
+                        const advancedResult = calculateAdvancedReorderSuggestion(product, salesHistory, leadTime, product.qty_available);
+                        const suggestedOrder = advancedResult.suggestion;
+                        const status = getProductStatus(product.qty_available, advancedResult.analysis.weightedAvgDaily, leadTime);
+
+                        // Debug specifico per RETINA PIZZA
+                        if (product.name && product.name.includes('RETINA')) {
+                            console.log(`🍕 DEBUG RETINA: ${product.name}`);
+                            console.log(`   Stock: ${product.qty_available}`);
+                            console.log(`   Vendite medie: ${advancedResult.analysis.weightedAvgDaily.toFixed(2)}/gg`);
+                            console.log(`   Lead Time: ${leadTime}`);
+                            console.log(`   Status: ${status}`);
+                            console.log(`   Suggerimento: ${advancedResult.suggestion}`);
+                            console.log(`   Viene mostrato? ${status !== 'ok'}`);
+                        }
+
+                        console.log(`📦 Prodotto: ${product.name} → Fornitore: ${supplier} (ID: ${supplierId})`);
+                        console.log(`   Stock: ${product.qty_available}, Vendite: ${advancedResult.analysis.weightedAvgDaily.toFixed(2)}/gg, Status: ${status}`);
+
+                        return {
+                            id: product.id,
+                            name: product.name,
+                            code: product.default_code || 'N/A',
+                            currentStock: formatInteger(product.qty_available),
+                            dailyAvgSales: formatNumber(advancedResult.analysis.weightedAvgDaily, 1),
+                            leadTime: leadTime,
+                            suggestedOrder: formatInteger(suggestedOrder),
+                            status: status,
+                            salesHistory: salesHistory,
+                            category: product.categ_id ? product.categ_id[1] : 'N/A',
+                            supplier: supplier,
+                            supplierId: supplierId,
+                            advancedAnalysis: advancedResult.analysis
+                        };
+                    }));
+
+                    setProducts(enhancedProducts);
+                    setSuppliers([]);
+                    setError(null);
+
+                    console.log('✅ Prodotti caricati con fornitori reali da Odoo:', enhancedProducts.length);
+                } catch (err) {
+                    console.error('❌ Errore caricamento dashboard:', err);
+                    setError(err.message);
+                    // Fallback ai dati mock
+                    setProducts(mockData.products);
+                    setSuppliers(mockData.suppliers);
+                }
+                setLoading(false);
+            }
+
+            if (loading) {
+                return (
+                    <div className="flex justify-center items-center h-64">
+                        <div className="text-lg text-gray-600">🔄 Caricamento dati da Odoo...</div>
+                    </div>
+                );
+            }
+
+            if (error) {
+                return (
+                    <div className="bg-danger-50 border border-danger-200 rounded-lg p-4 mb-6">
+                        <div className="flex">
+                            <span className="text-danger-500 text-xl mr-3">⚠️</span>
+                            <div>
+                                <h3 className="text-danger-800 font-medium">Errore connessione Odoo</h3>
+                                <p className="text-danger-700 text-sm mt-1">{error}</p>
+                                <p className="text-danger-600 text-sm mt-2">Usando dati di esempio...</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            const criticalProducts = products.filter(p => p.status === 'critical');
+            const warningProducts = products.filter(p => p.status === 'warning');
+            const totalSuggestedValue = products.reduce((sum, p) => sum + (parseInt(p.suggestedOrder) || 0), 0);
+
+            const toggleProductSelection = (product) => {
+                setSelectedProducts(prev => {
+                    const isSelected = prev.find(p => p.id === product.id);
+                    if (isSelected) {
+                        return prev.filter(p => p.id !== product.id);
+                    } else {
+                        return [...prev, product];
+                    }
+                });
+            };
+
+            const updateQuantity = (productId, newQuantity) => {
+                setEditedQuantities(prev => ({
+                    ...prev,
+                    [productId]: parseInt(newQuantity) || 0
+                }));
+            };
+
+            const getProductQuantity = (product) => {
+                return editedQuantities[product.id] !== undefined
+                    ? editedQuantities[product.id]
+                    : parseInt(product.suggestedOrder);
+            };
+
+            const generateSalesHistory = (product) => {
+                // Simula storico vendite ultimi 60 giorni
+                const salesHistory = [];
+                const customers = ['Ristorante Bella Vista', 'Hotel Alpino', 'Catering Roma', 'Pizzeria Da Mario', 'Bar Central'];
+
+                for (let i = 60; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+
+                    // Simula vendite giornaliere
+                    const dailySales = Math.floor(Math.random() * 10) + 1;
+
+                    // Simula vendite per cliente
+                    const customerSales = customers.map(customer => ({
+                        customer: customer,
+                        quantity: Math.floor(Math.random() * 5),
+                        delivered: Math.random() > 0.1 // 90% consegnato
+                    })).filter(sale => sale.quantity > 0);
+
+                    salesHistory.push({
+                        date: date,
+                        totalSales: dailySales,
+                        customerSales: customerSales
+                    });
+                }
+
+                return salesHistory;
+            };
+
+            const openSalesHistory = async (product) => {
+                let salesData = product.salesHistory;
+                let history = product._detailedHistory;
+                let dataSource = 'cache';
+
+                // Se non abbiamo dati cached, prova a caricare dati reali
+                if (!salesData || salesData.length === 0 || !history) {
+                    try {
+                        if (isInOdooContext()) {
+                            const salesDataResult = await loadRealSalesData(product.id, 60);
+                            salesData = salesDataResult.dailySales;
+                            history = salesDataResult.detailedHistory;
+                            dataSource = 'odoo_real';
+                        } else {
+                            throw new Error('Fuori contesto Odoo');
+                        }
+                    } catch (error) {
+                        console.warn(`❌ Nessun dato vendite per popup ${product.name}:`, error.message);
+                        salesData = Array.from({length: 60}, () => 0); // Solo zeri
+                        dataSource = 'no_data';
+
+                        // Storico vuoto - nessun cliente fake
+                        history = salesData.map((dailySales, index) => {
+                            const date = new Date();
+                            date.setDate(date.getDate() - (salesData.length - 1 - index));
+
+                            return {
+                                date: date,
+                                totalSales: 0,
+                                customerSales: [] // Nessun cliente fake
+                            };
+                        });
+                    }
+                }
+
+                // Analisi matematica avanzata sui dati reali
+                const advancedAnalysis = calculateAdvancedReorderSuggestion(
+                    product,
+                    salesData,
+                    product.leadTime,
+                    parseInt(product.currentStock)
+                );
+
+                const totalSold = salesData.reduce((sum, qty) => sum + qty, 0);
+
+                setSalesHistoryPopup({
+                    product: product,
+                    history: history,
+                    advancedAnalysis: advancedAnalysis,
+                    dataSource: dataSource,
+                    stats: {
+                        totalSold: totalSold,
+                        avgDaily: advancedAnalysis.analysis.weightedAvgDaily,
+                        projectedNeed: advancedAnalysis.analysis.baseNeed,
+                        recommendation: advancedAnalysis.suggestion,
+                        safetyStock: advancedAnalysis.analysis.safetyStock,
+                        safetyMargin: advancedAnalysis.analysis.safetyMargin
+                    }
+                });
+
+                // Conta clienti unici reali
+                const uniqueCustomers = new Set();
+                history.forEach(day => {
+                    day.customerSales.forEach(sale => {
+                        if (sale.customer !== 'Cliente Sconosciuto') {
+                            uniqueCustomers.add(sale.customer);
+                        }
+                    });
+                });
+
+                console.log(`📊 Popup aperto per ${product.name} - Fonte dati: ${dataSource} - Totale venduto: ${totalSold} - Clienti unici: ${uniqueCustomers.size}`);
+            };
+
+            const createBulkOrder = async () => {
+                if (selectedProducts.length === 0) {
+                    alert('⚠️ Seleziona almeno un prodotto per creare gli ordini');
+                    return;
+                }
+
+                // Controlla che tutti i prodotti abbiano un fornitore valido
+                const productsWithoutSupplier = selectedProducts.filter(p => !p.supplierId || p.supplier === 'Nessun Fornitore');
+                if (productsWithoutSupplier.length > 0) {
+                    const productNames = productsWithoutSupplier.map(p => `• ${p.name}`).join('\n');
+                    alert(
+                        `❌ ERRORE: Alcuni prodotti non hanno un fornitore configurato!\n\n` +
+                        `Prodotti senza fornitore:\n${productNames}\n\n` +
+                        `Per favore configura i fornitori in Odoo prima di creare gli ordini.`
+                    );
+                    return;
+                }
+
+                // Raggruppa per fornitore usando l'ID del fornitore
+                const ordersBySupplier = {};
+                selectedProducts.forEach(product => {
+                    const supplierKey = `${product.supplierId}_${product.supplier}`;
+                    const quantity = getProductQuantity(product);
+
+                    if (!ordersBySupplier[supplierKey]) {
+                        ordersBySupplier[supplierKey] = {
+                            supplierId: product.supplierId,
+                            supplierName: product.supplier || 'Fornitore Sconosciuto',
+                            products: [],
+                            totalQty: 0,
+                            totalValue: 0
+                        };
+                    }
+
+                    const productWithQty = { ...product, finalQuantity: quantity };
+                    ordersBySupplier[supplierKey].products.push(productWithQty);
+                    ordersBySupplier[supplierKey].totalQty += quantity;
+                    ordersBySupplier[supplierKey].totalValue += quantity * 1; // Valore simbolico per il riepilogo
+                });
+
+                // Crea riepilogo dettagliato
+                const orderSummary = Object.values(ordersBySupplier)
+                    .map((data) => {
+                        const productList = data.products.map(p => `  - ${p.name}: ${p.finalQuantity} pz`).join('\n');
+                        return `📦 ${data.supplierName} (ID: ${data.supplierId})\n${productList}\n  Totale: ${data.totalQty} pezzi`;
+                    }).join('\n\n');
+
+                const totalValue = Object.values(ordersBySupplier).reduce((sum, data) => sum + data.totalValue, 0);
+                const supplierCount = Object.keys(ordersBySupplier).length;
+
+                const confirmed = confirm(
+                    `🛒 RIEPILOGO ORDINI DA CREARE\n\n` +
+                    `${supplierCount} ordini separati per ${supplierCount} fornitori\n` +
+                    `Totale prodotti: ${selectedProducts.length}\n\n` +
+                    `DETTAGLIO:\n${orderSummary}\n\n` +
+                    `⚠️ IMPORTANTE: Ogni ordine sarà creato per il fornitore specifico!\n` +
+                    `💰 I prezzi verranno calcolati automaticamente da Odoo\n` +
+                    `📋 Modalità: ${isInOdooContext() ? 'ODOO REALE' : 'DEMO'}\n\n` +
+                    `Confermi la creazione di questi ordini separati?`
+                );
+
+                if (confirmed) {
+                    try {
+                        let successCount = 0;
+                        const createdOrders = [];
+
+                        for (const supplierData of Object.values(ordersBySupplier)) {
+                            if (!isInOdooContext()) {
+                                // Modalità demo
+                                console.log(`📋 Ordine DEMO per ${supplierData.supplierName} (ID: ${supplierData.supplierId}):`, supplierData.products);
+                                createdOrders.push(`DEMO-${supplierData.supplierId}-${Date.now()}`);
+                                successCount++;
+                            } else {
+                                // Modalità Odoo reale - controlla se esiste preventivo draft per questo fornitore
+                                let orderId = null;
+
+                                // Cerca preventivo esistente in stato draft per questo fornitore
+                                const existingOrders = await rpc('purchase.order', 'search_read', [
+                                    [['partner_id', '=', supplierData.supplierId], ['state', '=', 'draft']],
+                                    ['id', 'name', 'order_line'],
+                                    1 // Solo il più recente
+                                ]);
+
+                                if (existingOrders && existingOrders.length > 0) {
+                                    // AGGIORNA preventivo esistente
+                                    orderId = existingOrders[0].id;
+                                    console.log(`🔄 Aggiornamento preventivo esistente ${orderId} per ${supplierData.supplierName}`);
+
+                                    // Carica righe esistenti
+                                    const existingLines = await rpc('purchase.order.line', 'search_read', [
+                                        [['order_id', '=', orderId]],
+                                        ['product_id', 'product_qty']
+                                    ]);
+
+                                    // Per ogni prodotto nuovo, controlla se esiste già
+                                    for (const product of supplierData.products) {
+                                        const existingLine = existingLines.find(line =>
+                                            line.product_id && line.product_id[0] === product.id
+                                        );
+
+                                        if (existingLine) {
+                                            // AGGIORNA quantità esistente
+                                            const newQty = existingLine.product_qty + product.finalQuantity;
+                                            await rpc('purchase.order.line', 'write', [
+                                                [existingLine.id],
+                                                {product_qty: newQty}
+                                            ]);
+                                            console.log(`📈 Aggiornata quantità ${product.name}: ${existingLine.product_qty} → ${newQty}`);
+                                        } else {
+                                            // AGGIUNGI nuovo prodotto
+                                            await rpc('purchase.order.line', 'create', [{
+                                                order_id: orderId,
+                                                product_id: product.id,
+                                                product_qty: product.finalQuantity,
+                                                price_unit: 0,
+                                                name: product.name
+                                            }]);
+                                            console.log(`➕ Aggiunto nuovo prodotto: ${product.name} (${product.finalQuantity})`);
+                                        }
+                                    }
+                                } else {
+                                    // CREA nuovo preventivo
+                                    console.log(`🆕 Creazione nuovo preventivo per ${supplierData.supplierName}`);
+                                    const orderData = {
+                                        partner_id: supplierData.supplierId,
+                                        state: 'draft',
+                                        origin: `RIORDINO-${supplierData.supplierName}-${Date.now()}`,
+                                        order_line: supplierData.products.map(product => [0, 0, {
+                                            product_id: product.id,
+                                            product_qty: product.finalQuantity,
+                                            price_unit: 0,
+                                            name: product.name
+                                        }])
+                                    };
+
+                                    orderId = await rpc('purchase.order', 'create', [orderData]);
+                                }
+                                console.log(`✅ Ordine Odoo creato per ${supplierData.supplierName} (ID: ${supplierData.supplierId}):`, orderId);
+
+                                // Forza il ricalcolo dei prezzi - Metodo diretto
+                                try {
+                                    // Carica le righe ordine appena create
+                                    const orderLines = await rpc('purchase.order.line', 'search_read', [
+                                        [['order_id', '=', orderId]],
+                                        ['id', 'product_id', 'product_qty']
+                                    ]);
+
+                                    console.log(`🔍 Trovate ${orderLines.length} righe ordine da aggiornare`);
+
+                                    // Per ogni riga, forza l'onchange del prodotto
+                                    for (const line of orderLines) {
+                                        if (line.product_id) {
+                                            try {
+                                                // Chiamata diretta _onchange_product_id
+                                                await rpc('purchase.order.line', '_onchange_product_id', [[line.id]]);
+                                                console.log(`💰 Prezzo aggiornato per riga ${line.id} (Prodotto: ${line.product_id[1]})`);
+                                            } catch (lineError) {
+                                                console.warn(`⚠️ Errore riga ${line.id}:`, lineError);
+
+                                                // Metodo alternativo: write + onchange
+                                                try {
+                                                    await rpc('purchase.order.line', 'write', [
+                                                        [line.id],
+                                                        {product_qty: line.product_qty}
+                                                    ]);
+                                                    console.log(`🔄 Aggiornamento alternativo per riga ${line.id}`);
+                                                } catch (altError) {
+                                                    console.warn(`❌ Errore alternativo riga ${line.id}:`, altError);
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Finale: refresh dell'intero ordine
+                                    await rpc('purchase.order', 'write', [[orderId], {}]);
+                                    console.log(`✅ Ordine ${orderId} refreshato completamente`);
+
+                                } catch (priceError) {
+                                    console.warn(`⚠️ Errore generale ricalcolo prezzi per ordine ${orderId}:`, priceError);
+                                }
+
+                                createdOrders.push(orderId);
+                                successCount++;
+                            }
+                        }
+
+                        const ordersList = createdOrders.map((id, idx) =>
+                            `• Ordine ${idx + 1}: ${id} (${Object.values(ordersBySupplier)[idx].supplierName})`
+                        ).join('\n');
+
+                        alert(
+                            `✅ ORDINI CREATI CON SUCCESSO!\n\n` +
+                            `• ${successCount} ordini separati creati\n` +
+                            `• ${selectedProducts.length} prodotti ordinati\n\n` +
+                            `ORDINI CREATI:\n${ordersList}\n\n` +
+                            `✅ Ogni ordine è stato assegnato al fornitore corretto!\n` +
+                            `💰 I prezzi sono stati calcolati automaticamente da Odoo`
+                        );
+
+                        setSelectedProducts([]);
+
+                    } catch (error) {
+                        alert(`❌ Errore nella creazione degli ordini: ${error.message}`);
+                    }
+                }
+            };
+
+            async function createPurchaseOrder(product) {
+                try {
+                    console.log('🛒 Creazione ordine per:', product.name);
+
+                    // Controlla se siamo in modalità demo
+                    if (!isInOdooContext()) {
+                        // Modalità demo - simula creazione ordine
+                        const confirmed = confirm(
+                            `🛒 MODALITÀ DEMO\n\n` +
+                            `Creare ordine di acquisto per:\n` +
+                            `• Prodotto: ${product.name}\n` +
+                            `• Codice: ${product.code}\n` +
+                            `• Quantità: ${product.suggestedOrder}\n` +
+                            `• Valore stimato: ${formatCurrency(parseInt(product.suggestedOrder) * 10)}\n\n` +
+                            `In modalità reale questo ordine verrebbe creato in Odoo.\n\n` +
+                            `Continuare con la simulazione?`
+                        );
+
+                        if (confirmed) {
+                            // Simula tempo di elaborazione
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+
+                            alert(
+                                `✅ ORDINE SIMULATO CREATO!\n\n` +
+                                `ID Ordine: DEMO-${Date.now()}\n` +
+                                `Prodotto: ${product.name}\n` +
+                                `Quantità: ${product.suggestedOrder}\n` +
+                                `Stato: Bozza\n\n` +
+                                `Nota: In modalità reale questo ordine sarebbe stato creato in Odoo.`
+                            );
+                        }
+                        return;
+                    }
+
+                    // Modalità Odoo reale
+                    // Trova il fornitore principale del prodotto
+                    const supplierInfo = await searchRead('product.supplierinfo',
+                        [['product_tmpl_id.product_variant_ids', '=', product.id]],
+                        ['partner_id', 'delay'],
+                        1
+                    );
+
+                    if (!supplierInfo || supplierInfo.length === 0) {
+                        alert('⚠️ Nessun fornitore configurato per questo prodotto');
+                        return;
+                    }
+
+                    const supplier = supplierInfo[0];
+
+                    // Crea ordine di acquisto
+                    const orderData = {
+                        partner_id: supplier.partner_id[0],
+                        state: 'draft',
+                        origin: `RIORDINO-${Date.now()}`,
+                        order_line: [[0, 0, {
+                            product_id: product.id,
+                            product_qty: parseInt(product.suggestedOrder),
+                            price_unit: 0, // Da impostare
+                            name: product.name
+                        }]]
+                    };
+
+                    const orderId = await rpc('purchase.order', 'create', [orderData]);
+                    console.log('✅ Ordine creato con ID:', orderId);
+
+                    alert(`✅ Ordine di acquisto creato con successo!\nID: ${orderId}\nProdotto: ${product.name}\nQuantità: ${product.suggestedOrder}`);
+
+                    // Ricarica i dati
+                    loadDashboardData();
+
+                } catch (error) {
+                    console.error('❌ Errore creazione ordine:', error);
+                    alert(`❌ Errore nella creazione dell'ordine: ${error.message}\n\nVerifica di essere connesso a Odoo correttamente.`);
+                }
+            }
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex">
+                            <span className="text-blue-500 text-xl mr-3">💡</span>
+                            <div>
+                                <h3 className="text-blue-800 font-medium">📋 Come creare ordini intelligenti</h3>
+                                <p className="text-blue-700 text-sm mt-1">
+                                    <strong>1.</strong> Usa le checkbox per selezionare i prodotti da ordinare<br/>
+                                    <strong>2.</strong> Clicca "🛒 Crea Ordini" per raggruppare automaticamente per fornitore<br/>
+                                    <strong>3.</strong> Il sistema crea UN ordine per ogni fornitore con tutti i suoi prodotti<br/>
+                                    <strong>4.</strong> {isInOdooContext() ? 'Gli ordini vengono creati direttamente in Odoo' : 'In modalità demo: simulazione della creazione'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-danger-500">
+                            <div className="flex items-center">
+                                <div className="flex-shrink-0">
+                                    <span className="text-2xl">🚨</span>
+                                </div>
+                                <div className="ml-5 w-0 flex-1">
+                                    <dt className="text-sm font-medium text-gray-500 truncate">
+                                        Prodotti Critici
+                                    </dt>
+                                    <dd className="text-3xl font-bold text-danger-600">
+                                        {formatInteger(criticalProducts.length)}
+                                    </dd>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-warning-500">
+                            <div className="flex items-center">
+                                <div className="flex-shrink-0">
+                                    <span className="text-2xl">⚠️</span>
+                                </div>
+                                <div className="ml-5 w-0 flex-1">
+                                    <dt className="text-sm font-medium text-gray-500 truncate">
+                                        In Attenzione
+                                    </dt>
+                                    <dd className="text-3xl font-bold text-warning-600">
+                                        {formatInteger(warningProducts.length)}
+                                    </dd>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-success-500">
+                            <div className="flex items-center">
+                                <div className="flex-shrink-0">
+                                    <span className="text-2xl">💰</span>
+                                </div>
+                                <div className="ml-5 w-0 flex-1">
+                                    <dt className="text-sm font-medium text-gray-500 truncate">
+                                        Prodotti da Ordinare
+                                    </dt>
+                                    <dd className="text-3xl font-bold text-success-600">
+                                        {formatInteger(totalSuggestedValue)}
+                                    </dd>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow">
+                        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h3 className="text-lg font-medium text-gray-900">
+                                🔥 Prodotti che Richiedono Attenzione Immediata
+                            </h3>
+                            <div className="flex items-center space-x-4">
+                                <button
+                                    onClick={() => {
+                                        setShowCatalog(true);
+                                        if (allProducts.length === 0) {
+                                            loadAllProducts();
+                                        }
+                                    }}
+                                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                                >
+                                    📚 Catalogo Completo
+                                </button>
+                                {selectedProducts.length > 0 && (
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-sm text-gray-600">
+                                            {selectedProducts.length} selezionati
+                                        </span>
+                                        <button
+                                            onClick={createBulkOrder}
+                                            className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
+                                        >
+                                            🛒 Crea Ordini ({selectedProducts.length})
+                                        </button>
+                                        <button
+                                            onClick={() => setSelectedProducts([])}
+                                            className="bg-gray-300 text-gray-700 px-3 py-2 rounded-md hover:bg-gray-400 transition-colors"
+                                        >
+                                            Deseleziona
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            {/* Raggruppa prodotti per fornitore */}
+                            {Object.entries(
+                                products.filter(p => p.status !== 'ok').reduce((acc, product) => {
+                                    const supplier = product.supplier || 'Fornitore Sconosciuto';
+                                    if (!acc[supplier]) acc[supplier] = [];
+                                    acc[supplier].push(product);
+                                    return acc;
+                                }, {})
+                            ).map(([supplier, supplierProducts]) => (
+                                <div key={supplier} className="mb-6">
+                                    {/* Header Fornitore */}
+                                    <div className="bg-gray-100 px-4 py-3 border-b-2 border-primary-500 cursor-pointer hover:bg-gray-200 transition-colors">
+                                        <div className="flex items-center justify-between" onClick={() => toggleSupplierExpansion(supplier)}>
+                                            <div className="flex items-center space-x-3">
+                                                <button className="text-xl">
+                                                    {expandedSuppliers.has(supplier) ? '📂' : '📁'}
+                                                </button>
+                                                <h4 className="text-lg font-semibold text-gray-800">
+                                                    🏭 {supplier}
+                                                </h4>
+                                            </div>
+                                            <div className="flex items-center space-x-4">
+                                                <span className="text-sm text-gray-600">
+                                                    {supplierProducts.length} prodotti
+                                                </span>
+                                                <span className="text-sm text-gray-600">
+                                                    {supplierProducts.filter(p => selectedProducts.find(s => s.id === p.id)).length} selezionati
+                                                </span>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        // TODO: Implementare apertura catalogo per fornitore specifico
+                                                        alert(`Apertura catalogo per ${supplier} - Da implementare`);
+                                                    }}
+                                                    className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                                                >
+                                                    📋 Catalogo {supplier}
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const allSelected = supplierProducts.every(p => selectedProducts.find(s => s.id === p.id));
+                                                        if (allSelected) {
+                                                            setSelectedProducts(prev => prev.filter(s => !supplierProducts.find(p => p.id === s.id)));
+                                                        } else {
+                                                            setSelectedProducts(prev => {
+                                                                const newSelected = [...prev];
+                                                                supplierProducts.forEach(p => {
+                                                                    if (!newSelected.find(s => s.id === p.id)) {
+                                                                        newSelected.push(p);
+                                                                    }
+                                                                });
+                                                                return newSelected;
+                                                            });
+                                                        }
+                                                    }}
+                                                    className="px-3 py-1 bg-primary-600 text-white rounded text-sm hover:bg-primary-700"
+                                                >
+                                                    {supplierProducts.every(p => selectedProducts.find(s => s.id === p.id)) ? 'Deseleziona Tutto' : 'Seleziona Tutto'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Tabella prodotti del fornitore - Mostra solo se espanso */}
+                                    {expandedSuppliers.has(supplier) && (
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">✓</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Prodotto</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Giacenza</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Vendite/Gg</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lead Time</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Quantità da Ordinare</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {supplierProducts.map((product) => {
+                                                const isSelected = selectedProducts.find(p => p.id === product.id);
+                                                const currentQty = getProductQuantity(product);
+                                                return (
+                                                    <tr key={product.id} className={`${
+                                                        isSelected ? 'bg-primary-50 border-l-4 border-primary-500' :
+                                                        product.status === 'critical' ? 'bg-danger-50' : 'bg-warning-50'
+                                                    } hover:bg-gray-100 transition-colors`}>
+                                                        <td className="px-4 py-3 whitespace-nowrap">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!!isSelected}
+                                                                onChange={() => toggleProductSelection(product)}
+                                                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap">
+                                                            <div className="flex items-center">
+                                                                <div className={`flex-shrink-0 h-3 w-3 rounded-full mr-3 ${
+                                                                    product.status === 'critical' ? 'bg-danger-500' : 'bg-warning-500'
+                                                                }`}></div>
+                                                                <div>
+                                                                    <div className="text-sm font-medium text-gray-900">
+                                                                        {product.name}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center">
+                                                            <span className="font-semibold">{product.currentStock}</span>
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
+                                                            <button
+                                                                onClick={async () => await openSalesHistory(product)}
+                                                                className="text-blue-600 hover:text-blue-800 hover:underline font-medium cursor-pointer"
+                                                            >
+                                                                📊 {product.dailyAvgSales}
+                                                            </button>
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center">
+                                                            {product.leadTime} gg
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap">
+                                                            <div className="flex items-center space-x-2">
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    value={currentQty}
+                                                                    onChange={(e) => updateQuantity(product.id, e.target.value)}
+                                                                    className="w-20 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:ring-primary-500 focus:border-primary-500"
+                                                                />
+                                                                <span className="text-xs text-gray-500">
+                                                                    (sug: {product.suggestedOrder})
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap">
+                                                            <div className={`px-2 py-1 rounded text-xs font-medium text-center ${
+                                                                isSelected
+                                                                    ? 'bg-primary-100 text-primary-700'
+                                                                    : product.status === 'critical'
+                                                                    ? 'bg-danger-100 text-danger-700'
+                                                                    : 'bg-warning-100 text-warning-700'
+                                                            }`}>
+                                                                {isSelected ? '✓ Selezionato' :
+                                                                 product.status === 'critical' ? 'CRITICO' : 'ATTENZIONE'}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Popup Storico Vendite */}
+                    {salesHistoryPopup && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-90vh overflow-y-auto">
+                                <div className="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900">
+                                            📊 Storico Vendite: {salesHistoryPopup.product.name}
+                                        </h3>
+                                        <div className={`text-xs px-2 py-1 rounded mt-1 ${
+                                            salesHistoryPopup.dataSource === 'odoo_real' ? 'bg-green-100 text-green-800' :
+                                            salesHistoryPopup.dataSource === 'cache' ? 'bg-blue-100 text-blue-800' :
+                                            'bg-red-100 text-red-800'
+                                        }`}>
+                                            {salesHistoryPopup.dataSource === 'odoo_real' ? '✅ Dati reali da Odoo' :
+                                             salesHistoryPopup.dataSource === 'cache' ? '📋 Dati cache Odoo' :
+                                             '❌ Nessun dato vendite'}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setSalesHistoryPopup(null)}
+                                        className="text-gray-400 hover:text-gray-600 text-2xl"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Statistiche */}
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-gray-800">📈 Statistiche 60 giorni</h4>
+                                        <div className="bg-gray-50 p-4 rounded">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-sm text-gray-600">Totale Venduto</p>
+                                                    <p className="text-xl font-bold text-blue-600">{formatInteger(salesHistoryPopup.stats.totalSold)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-600">Media Giornaliera</p>
+                                                    <p className="text-xl font-bold text-green-600">{formatNumber(salesHistoryPopup.stats.avgDaily, 1)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-600">Fabbisogno {salesHistoryPopup.product.leadTime}gg</p>
+                                                    <p className="text-xl font-bold text-orange-600">{formatInteger(salesHistoryPopup.stats.projectedNeed)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-600">🧠 AI Consiglia</p>
+                                                    <p className="text-xl font-bold text-purple-600">{formatInteger(salesHistoryPopup.stats.recommendation)}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Analisi Matematica Avanzata */}
+                                        <div className="bg-blue-50 p-4 rounded border-l-4 border-blue-500">
+                                            <h5 className="font-semibold text-blue-800 mb-2">🧮 Analisi Matematica Avanzata</h5>
+                                            <div className="text-sm text-blue-700 space-y-2">
+                                                <p>
+                                                    <strong>Trend:</strong> {salesHistoryPopup.advancedAnalysis.analysis.trendText}
+                                                    ({salesHistoryPopup.advancedAnalysis.analysis.trend > 0 ? '+' : ''}{formatNumber(salesHistoryPopup.advancedAnalysis.analysis.trend, 1)}%)
+                                                </p>
+                                                <p>
+                                                    <strong>Variabilità:</strong> {salesHistoryPopup.advancedAnalysis.analysis.variabilityText}
+                                                    ({formatNumber(salesHistoryPopup.advancedAnalysis.analysis.variability * 100, 1)}%)
+                                                </p>
+                                                <p>
+                                                    <strong>Urgenza:</strong>
+                                                    <span className={`ml-1 px-2 py-1 rounded text-xs font-medium ${
+                                                        salesHistoryPopup.advancedAnalysis.analysis.urgency === 'critica' ? 'bg-red-100 text-red-800' :
+                                                        salesHistoryPopup.advancedAnalysis.analysis.urgency === 'alta' ? 'bg-orange-100 text-orange-800' :
+                                                        salesHistoryPopup.advancedAnalysis.analysis.urgency === 'media' ? 'bg-yellow-100 text-yellow-800' :
+                                                        'bg-green-100 text-green-800'
+                                                    }`}>
+                                                        {salesHistoryPopup.advancedAnalysis.analysis.urgency}
+                                                    </span>
+                                                </p>
+                                                <p>
+                                                    <strong>Giorni scorta attuali:</strong> {formatNumber(salesHistoryPopup.advancedAnalysis.analysis.daysOfStock, 1)} giorni
+                                                </p>
+                                                <hr className="border-blue-200"/>
+                                                <p>
+                                                    <strong>💡 Calcolo:</strong> Fabbisogno base {salesHistoryPopup.stats.projectedNeed} +
+                                                    margine sicurezza {salesHistoryPopup.stats.safetyStock} ({formatNumber(salesHistoryPopup.stats.safetyMargin, 1)}%)
+                                                    = <strong>{salesHistoryPopup.stats.recommendation} unità</strong>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Grafico semplice */}
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-gray-800">📊 Andamento Vendite</h4>
+                                        <div className="bg-gray-50 p-4 rounded">
+                                            <div className="h-32 flex items-end justify-between space-x-1">
+                                                {salesHistoryPopup.history.slice(-14).map((day, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="bg-blue-500 rounded-t flex-1"
+                                                        style={{
+                                                            height: `${(day.totalSales / Math.max(...salesHistoryPopup.history.map(d => d.totalSales))) * 100}%`,
+                                                            minHeight: '4px'
+                                                        }}
+                                                        title={`${day.date.toLocaleDateString('it-IT')}: ${day.totalSales} vendite`}
+                                                    ></div>
+                                                ))}
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-2 text-center">Ultimi 14 giorni</p>
+                                        </div>
+
+                                        {/* Top Clienti */}
+                                        <div>
+                                            <h4 className="font-semibold text-gray-800 mb-2">👥 Top Clienti (ultime due settimane)</h4>
+                                            <div className="space-y-2">
+                                                {Array.from(
+                                                    salesHistoryPopup.history.slice(-14) // Ultime 2 settimane invece di 1
+                                                    .flatMap(day => day.customerSales)
+                                                    .reduce((acc, sale) => {
+                                                        if (sale.customer !== 'Cliente Sconosciuto') {
+                                                            acc.set(sale.customer, (acc.get(sale.customer) || 0) + sale.quantity);
+                                                        }
+                                                        return acc;
+                                                    }, new Map())
+                                                )
+                                                .sort((a, b) => b[1] - a[1])
+                                                .slice(0, 5)
+                                                .map(([customer, quantity]) => (
+                                                    <div key={customer} className="flex justify-between text-sm">
+                                                        <span className="text-gray-700">{customer}</span>
+                                                        <span className="font-medium text-gray-900">{quantity} pz</span>
+                                                    </div>
+                                                ))}
+                                                {salesHistoryPopup.history.slice(-14).flatMap(day => day.customerSales).length === 0 && (
+                                                    <div className="text-sm text-gray-500 italic">
+                                                        Nessun cliente trovato negli ultimi 14 giorni
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modale Catalogo Completo */}
+                    {showCatalog && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+                                {/* Header */}
+                                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                                    <h2 className="text-xl font-semibold text-gray-900">📚 Catalogo Completo</h2>
+                                    <button
+                                        onClick={() => setShowCatalog(false)}
+                                        className="text-gray-400 hover:text-gray-600"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                {/* Barra di ricerca */}
+                                <div className="px-6 py-4 border-b border-gray-200">
+                                    <input
+                                        type="text"
+                                        placeholder="🔍 Cerca prodotti..."
+                                        value={catalogSearch}
+                                        onChange={(e) => setCatalogSearch(e.target.value)}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                </div>
+
+                                {/* Contenuto */}
+                                <div className="p-6 overflow-y-auto max-h-[60vh]">
+                                    {allProducts.length === 0 ? (
+                                        <div className="flex justify-center items-center h-32">
+                                            <div className="text-lg text-gray-600">🔄 Caricamento catalogo...</div>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                            {allProducts
+                                                .filter(product =>
+                                                    catalogSearch === '' ||
+                                                    product.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                                                    product.code.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                                                    product.category.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                                                    product.supplier.toLowerCase().includes(catalogSearch.toLowerCase())
+                                                )
+                                                .map(product => (
+                                                    <div key={product.id} className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                                                        {/* Immagine prodotto */}
+                                                        <div className="h-48 bg-gray-100 rounded-t-lg flex items-center justify-center">
+                                                            {product.image ? (
+                                                                <img
+                                                                    src={`data:image/jpeg;base64,${product.image}`}
+                                                                    alt={product.name}
+                                                                    className="h-full w-full object-cover rounded-t-lg"
+                                                                />
+                                                            ) : (
+                                                                <div className="text-4xl text-gray-400">📦</div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Info prodotto */}
+                                                        <div className="p-4">
+                                                            <h3 className="font-medium text-gray-900 text-sm mb-2 line-clamp-2">
+                                                                {product.name}
+                                                            </h3>
+                                                            <div className="space-y-1 text-xs text-gray-600">
+                                                                <div>Codice: {product.code}</div>
+                                                                <div>Categoria: {product.category}</div>
+                                                                <div>Fornitore: {product.supplier}</div>
+                                                                <div className="flex items-center justify-between pt-2">
+                                                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                                        product.stock > 10 ? 'bg-success-50 text-success-600' :
+                                                                        product.stock > 0 ? 'bg-warning-50 text-warning-600' :
+                                                                        'bg-danger-50 text-danger-600'
+                                                                    }`}>
+                                                                        Giacenza: {formatInteger(product.stock)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Pulsante selezione */}
+                                                            <div className="mt-3">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const isSelected = selectedProducts.find(p => p.id === product.id);
+                                                                        if (isSelected) {
+                                                                            setSelectedProducts(selectedProducts.filter(p => p.id !== product.id));
+                                                                        } else {
+                                                                            setSelectedProducts([...selectedProducts, {...product, suggestedOrder: 1}]);
+                                                                        }
+                                                                    }}
+                                                                    className={`w-full px-3 py-2 text-xs font-medium rounded transition-colors ${
+                                                                        selectedProducts.find(p => p.id === product.id)
+                                                                            ? 'bg-primary-600 text-white hover:bg-primary-700'
+                                                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                                    }`}
+                                                                >
+                                                                    {selectedProducts.find(p => p.id === product.id) ? '✓ Selezionato' : '+ Aggiungi'}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            }
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Footer */}
+                                <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                                    <div className="text-sm text-gray-600">
+                                        {selectedProducts.length > 0 && (
+                                            <span>{selectedProducts.length} prodotti selezionati</span>
+                                        )}
+                                    </div>
+                                    <div className="flex space-x-3">
+                                        <button
+                                            onClick={() => setShowCatalog(false)}
+                                            className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
+                                        >
+                                            Chiudi
+                                        </button>
+                                        {selectedProducts.length > 0 && (
+                                            <button
+                                                onClick={() => {
+                                                    setShowCatalog(false);
+                                                    // I prodotti selezionati sono già nel selectedProducts
+                                                }}
+                                                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                                            >
+                                                Conferma Selezione ({selectedProducts.length})
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function Products({ activeTab }) {
+            if (activeTab !== 'products') return null;
+
+            const [allProducts, setAllProducts] = useState([]);
+            const [selectedProducts, setSelectedProducts] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [catalogSearch, setCatalogSearch] = useState('');
+
+            useEffect(() => {
+                if (activeTab === 'products' && allProducts.length === 0) {
+                    loadAllProducts();
+                }
+            }, [activeTab]);
+
+            // Funzione per caricare tutti i prodotti per il catalogo
+            async function loadAllProducts() {
+                try {
+                    setLoading(true);
+
+                    if (!isInOdooContext()) {
+                        console.log('📦 Catalogo - usando dati demo');
+                        setAllProducts(mockData.products);
+                        setLoading(false);
+                        return;
+                    }
+
+                    const productData = await searchRead('product.product',
+                        [['type', '=', 'product'], ['active', '=', true]],
+                        ['name', 'default_code', 'categ_id', 'qty_available', 'seller_ids', 'image_1920'],
+                        1000 // Carica più prodotti per catalogo completo
+                    );
+
+                    const enhancedProducts = await Promise.all(productData.map(async (product) => {
+                        let supplierName = 'Nessun Fornitore';
+                        let supplierId = null;
+
+                        if (product.seller_ids && product.seller_ids.length > 0) {
+                            try {
+                                const suppliers = await searchRead('product.supplierinfo',
+                                    [['id', 'in', product.seller_ids]],
+                                    ['partner_id', 'price']
+                                );
+                                if (suppliers.length > 0) {
+                                    supplierName = suppliers[0].partner_id[1];
+                                    supplierId = suppliers[0].partner_id[0];
+                                }
+                            } catch (e) {
+                                console.warn('Errore caricamento fornitore:', e);
+                            }
+                        }
+
+                        return {
+                            id: product.id,
+                            name: product.name,
+                            code: product.default_code || 'N/A',
+                            category: product.categ_id ? product.categ_id[1] : 'N/A',
+                            supplier: supplierName,
+                            supplierId: supplierId,
+                            stock: product.qty_available || 0,
+                            image: product.image_1920 || null,
+                            status: 'ok' // Per il catalogo generale tutti sono OK
+                        };
+                    }));
+
+                    console.log('✅ Catalogo sezione Prodotti caricato:', enhancedProducts.length);
+                    setAllProducts(enhancedProducts);
+                } catch (error) {
+                    console.error('❌ Errore caricamento catalogo prodotti:', error);
+                    setAllProducts(mockData.products);
+                }
+                setLoading(false);
+            }
+
+            if (loading) {
+                return (
+                    <div className="flex justify-center items-center h-64">
+                        <div className="text-lg text-gray-600">🔄 Caricamento catalogo prodotti...</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white rounded-lg shadow">
+                        <div className="px-6 py-4 border-b border-gray-200">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-lg font-medium text-gray-900">📦 Catalogo Prodotti</h3>
+                                {selectedProducts.length > 0 && (
+                                    <div className="flex items-center space-x-3">
+                                        <span className="text-sm text-gray-600">
+                                            {selectedProducts.length} prodotti selezionati
+                                        </span>
+                                        <button
+                                            onClick={() => setSelectedProducts([])}
+                                            className="px-3 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+                                        >
+                                            Deseleziona tutti
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Barra di ricerca */}
+                        <div className="px-6 py-4 border-b border-gray-200">
+                            <input
+                                type="text"
+                                placeholder="🔍 Cerca prodotti per nome, codice, categoria o fornitore..."
+                                value={catalogSearch}
+                                onChange={(e) => setCatalogSearch(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                        </div>
+
+                        {/* Catalogo prodotti */}
+                        <div className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {allProducts
+                                    .filter(product =>
+                                        catalogSearch === '' ||
+                                        product.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                                        product.code.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                                        product.category.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                                        product.supplier.toLowerCase().includes(catalogSearch.toLowerCase())
+                                    )
+                                    .map(product => (
+                                        <div key={product.id} className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                                            {/* Immagine prodotto */}
+                                            <div className="h-48 bg-gray-100 rounded-t-lg flex items-center justify-center">
+                                                {product.image ? (
+                                                    <img
+                                                        src={`data:image/jpeg;base64,${product.image}`}
+                                                        alt={product.name}
+                                                        className="h-full w-full object-cover rounded-t-lg"
+                                                    />
+                                                ) : (
+                                                    <div className="text-4xl text-gray-400">📦</div>
+                                                )}
+                                            </div>
+
+                                            {/* Info prodotto */}
+                                            <div className="p-4">
+                                                <h3 className="font-medium text-gray-900 text-sm mb-2 line-clamp-2">
+                                                    {product.name}
+                                                </h3>
+                                                <div className="space-y-1 text-xs text-gray-600">
+                                                    <div>Codice: {product.code}</div>
+                                                    <div>Categoria: {product.category}</div>
+                                                    <div>Fornitore: {product.supplier}</div>
+                                                    <div className="flex items-center justify-between pt-2">
+                                                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                            product.stock > 10 ? 'bg-success-50 text-success-600' :
+                                                            product.stock > 0 ? 'bg-warning-50 text-warning-600' :
+                                                            'bg-danger-50 text-danger-600'
+                                                        }`}>
+                                                            Giacenza: {formatInteger(product.stock)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Pulsante selezione */}
+                                                <div className="mt-3">
+                                                    <button
+                                                        onClick={() => {
+                                                            const isSelected = selectedProducts.find(p => p.id === product.id);
+                                                            if (isSelected) {
+                                                                setSelectedProducts(selectedProducts.filter(p => p.id !== product.id));
+                                                            } else {
+                                                                setSelectedProducts([...selectedProducts, {...product, suggestedOrder: 1}]);
+                                                            }
+                                                        }}
+                                                        className={`w-full px-3 py-2 text-xs font-medium rounded transition-colors ${
+                                                            selectedProducts.find(p => p.id === product.id)
+                                                                ? 'bg-primary-600 text-white hover:bg-primary-700'
+                                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                        }`}
+                                                    >
+                                                        {selectedProducts.find(p => p.id === product.id) ? '✓ Selezionato' : '+ Seleziona'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function Orders({ activeTab }) {
+            if (activeTab !== 'orders') return null;
+
+            const [orders, setOrders] = useState([]);
+            const [purchaseOrders, setPurchaseOrders] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                if (activeTab === 'orders') {
+                    loadOrders();
+                }
+            }, [activeTab]);
+
+            async function loadOrders() {
+                try {
+                    setLoading(true);
+
+                    if (!isInOdooContext()) {
+                        console.log('🛒 Ordini - usando dati demo');
+                        setPurchaseOrders([]);
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Carica ordini di acquisto esistenti
+                    const orderData = await searchRead('purchase.order',
+                        [['state', 'in', ['draft', 'sent', 'to approve', 'purchase']]],
+                        ['name', 'partner_id', 'amount_total', 'state', 'date_order', 'order_line'],
+                        20
+                    );
+
+                    setPurchaseOrders(orderData);
+                } catch (error) {
+                    console.error('Errore caricamento ordini:', error);
+                }
+                setLoading(false);
+            }
+
+            const generateOrder = async (product) => {
+                try {
+                    console.log('🛒 Generazione ordine per:', product.name);
+
+                    // Controlla se siamo in modalità demo
+                    if (!isInOdooContext()) {
+                        // Modalità demo
+                        const confirmed = confirm(
+                            `🛒 MODALITÀ DEMO - GENERAZIONE ORDINE\n\n` +
+                            `Prodotto: ${product.name}\n` +
+                            `Fornitore: ${product.supplier}\n` +
+                            `Quantità: ${product.suggestedOrder}\n` +
+                            `Valore: ${formatCurrency(product.suggestedOrder * 10)}\n\n` +
+                            `Generare ordine simulato?`
+                        );
+
+                        if (confirmed) {
+                            const newOrder = {
+                                id: `DEMO-${Date.now()}`,
+                                productName: product.name,
+                                supplier: product.supplier,
+                                quantity: product.suggestedOrder,
+                                status: 'demo',
+                                createdAt: new Date().toLocaleDateString('it-IT'),
+                                estimatedValue: parseInt(product.suggestedOrder) * 10
+                            };
+
+                            setOrders([...orders, newOrder]);
+
+                            alert(
+                                `✅ ORDINE DEMO GENERATO!\n\n` +
+                                `ID: ${newOrder.id}\n` +
+                                `Stato: Simulato\n\n` +
+                                `Visibile nella tabella ordini creati.`
+                            );
+                        }
+                        return;
+                    }
+
+                    // Modalità Odoo reale
+                    // Trova fornitore
+                    const supplierInfo = await searchRead('product.supplierinfo',
+                        [['product_tmpl_id.product_variant_ids', '=', product.id]],
+                        ['partner_id', 'delay'],
+                        1
+                    );
+
+                    if (!supplierInfo || supplierInfo.length === 0) {
+                        alert('⚠️ Nessun fornitore configurato per questo prodotto');
+                        return;
+                    }
+
+                    const supplier = supplierInfo[0];
+
+                    // Crea ordine
+                    const orderData = {
+                        partner_id: supplier.partner_id[0],
+                        state: 'draft',
+                        origin: `RIORDINO-${Date.now()}`,
+                        order_line: [[0, 0, {
+                            product_id: product.id,
+                            product_qty: parseInt(product.suggestedOrder),
+                            price_unit: 0,
+                            name: product.name
+                        }]]
+                    };
+
+                    const orderId = await rpc('purchase.order', 'create', [orderData]);
+
+                    const newOrder = {
+                        id: orderId,
+                        productName: product.name,
+                        supplier: supplier.partner_id[1],
+                        quantity: product.suggestedOrder,
+                        status: 'created',
+                        createdAt: new Date().toLocaleDateString('it-IT'),
+                        estimatedValue: parseInt(product.suggestedOrder) * 10
+                    };
+
+                    setOrders([...orders, newOrder]);
+                    loadOrders(); // Ricarica ordini
+
+                    alert(`✅ Ordine creato con successo! ID: ${orderId}`);
+
+                } catch (error) {
+                    console.error('❌ Errore generazione ordine:', error);
+                    alert(`❌ Errore: ${error.message}\n\nVerifica connessione Odoo.`);
+                }
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white rounded-lg shadow">
+                        <div className="px-6 py-4 border-b border-gray-200">
+                            <h3 className="text-lg font-medium text-gray-900">
+                                🛒 Ordini Suggeriti
+                            </h3>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            {loading ? (
+                                <div className="text-center py-4">🔄 Caricamento...</div>
+                            ) : (
+                                // Usa i dati mock per i suggerimenti se non abbiamo prodotti caricati
+                                mockData.products.filter(p => p.suggestedOrder > 0).map(product => (
+                                <div key={product.id} className="border rounded-lg p-4 flex justify-between items-center">
+                                    <div>
+                                        <h4 className="font-medium text-gray-900">{product.name}</h4>
+                                        <p className="text-sm text-gray-500">
+                                            Fornitore: {product.supplier} | Quantità: {product.suggestedOrder}
+                                        </p>
+                                        <p className="text-sm text-gray-500">
+                                            Valore stimato: {formatCurrency(product.suggestedOrder * 10)}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => generateOrder(product)}
+                                        className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
+                                    >
+                                        Crea Ordine
+                                    </button>
+                                </div>
+                            ))
+                            )}
+                        </div>
+                    </div>
+
+                    {orders.length > 0 && (
+                        <div className="bg-white rounded-lg shadow">
+                            <div className="px-6 py-4 border-b border-gray-200">
+                                <h3 className="text-lg font-medium text-gray-900">
+                                    📋 Ordini Creati
+                                </h3>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Prodotto
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Fornitore
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Quantità
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Valore
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Data
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Status
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {orders.map((order) => (
+                                            <tr key={order.id}>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    {order.productName}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {order.supplier}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {order.quantity}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {formatCurrency(order.estimatedValue)}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {order.createdAt}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-warning-100 text-warning-800">
+                                                        In Attesa
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Ordini di acquisto da Odoo */}
+                    {purchaseOrders.length > 0 && (
+                        <div className="bg-white rounded-lg shadow">
+                            <div className="px-6 py-4 border-b border-gray-200">
+                                <h3 className="text-lg font-medium text-gray-900">
+                                    📋 Ordini di Acquisto (Odoo)
+                                </h3>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Ordine
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Fornitore
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Totale
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Stato
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Data
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {purchaseOrders.map((order) => (
+                                            <tr key={order.id}>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    {order.name}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {order.partner_id ? order.partner_id[1] : 'N/A'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {formatCurrency(order.amount_total || 0)}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                                        order.state === 'draft' ? 'bg-warning-100 text-warning-800' :
+                                                        order.state === 'purchase' ? 'bg-success-100 text-success-800' :
+                                                        'bg-primary-100 text-primary-800'
+                                                    }`}>
+                                                        {order.state}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {order.date_order ? new Date(order.date_order).toLocaleDateString('it-IT') : 'N/A'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function Suppliers({ activeTab }) {
+            if (activeTab !== 'suppliers') return null;
+
+            const [suppliers, setSuppliers] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                if (activeTab === 'suppliers') {
+                    loadSuppliers();
+                }
+            }, [activeTab]);
+
+            async function loadSuppliers() {
+                try {
+                    setLoading(true);
+
+                    if (!isInOdooContext()) {
+                        console.log('🏭 Fornitori - usando dati demo (solo con prodotti critici)');
+
+                        // Mostra solo fornitori che hanno prodotti critici o in attenzione
+                        const productsNeedingReorder = mockData.products.filter(p => p.status !== 'ok');
+                        const relevantSupplierNames = [...new Set(productsNeedingReorder.map(p => p.supplier))];
+
+                        const relevantSuppliers = mockData.suppliers.filter(supplier =>
+                            relevantSupplierNames.includes(supplier.name)
+                        );
+
+                        setSuppliers(relevantSuppliers);
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Carica fornitori da Odoo - solo quelli con prodotti che necessitano riordino
+                    // Prima carica tutti i prodotti per identificare i fornitori rilevanti
+                    const productData = await searchRead('product.product',
+                        [['type', '=', 'product'], ['active', '=', true]],
+                        ['name', 'qty_available', 'seller_ids'],
+                        500
+                    );
+
+                    // Identifica prodotti che necessitano riordino (giacenza bassa)
+                    const lowStockProducts = productData.filter(product => {
+                        const avgDaily = Math.floor(Math.random() * 10) + 1; // Simula vendite
+                        const leadTime = 7;
+                        const status = getProductStatus(product.qty_available, avgDaily, leadTime);
+                        return status !== 'ok';
+                    });
+
+                    // Estrai IDs dei fornitori rilevanti
+                    const relevantSupplierIds = new Set();
+                    for (const product of lowStockProducts) {
+                        if (product.seller_ids && product.seller_ids.length > 0) {
+                            // Carica info fornitore
+                            const supplierInfo = await searchRead('product.supplierinfo',
+                                [['id', 'in', product.seller_ids]],
+                                ['partner_id']
+                            );
+                            supplierInfo.forEach(info => {
+                                if (info.partner_id) {
+                                    relevantSupplierIds.add(info.partner_id[0]);
+                                }
+                            });
+                        }
+                    }
+
+                    if (relevantSupplierIds.size === 0) {
+                        console.log('🏭 Nessun fornitore rilevante trovato');
+                        setSuppliers([]);
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Carica solo i fornitori rilevanti
+                    const supplierData = await searchRead('res.partner',
+                        [['id', 'in', Array.from(relevantSupplierIds)], ['is_company', '=', true]],
+                        ['name', 'supplier_rank', 'email', 'phone', 'city', 'country_id']
+                    );
+
+                    // Per ogni fornitore, calcola statistiche
+                    const enhancedSuppliers = await Promise.all(supplierData.map(async (supplier) => {
+                        try {
+                            // Conta ordini di acquisto
+                            const orderCount = await rpc('purchase.order', 'search_count', [
+                                [['partner_id', '=', supplier.id], ['state', '!=', 'cancel']]
+                            ]);
+
+                            // Simula affidabilità (da calcolare con dati reali)
+                            const reliability = Math.floor(Math.random() * 30) + 70; // 70-100%
+                            const avgLeadTime = Math.floor(Math.random() * 10) + 3; // 3-13 giorni
+
+                            return {
+                                id: supplier.id,
+                                name: supplier.name,
+                                reliability: reliability,
+                                avgLeadTime: avgLeadTime,
+                                orderCount: orderCount,
+                                contact: supplier.email || supplier.phone || 'N/A',
+                                location: supplier.city || (supplier.country_id ? supplier.country_id[1] : 'N/A')
+                            };
+                        } catch (error) {
+                            console.error('Errore elaborazione fornitore:', supplier.name, error);
+                            return {
+                                id: supplier.id,
+                                name: supplier.name,
+                                reliability: 85,
+                                avgLeadTime: 7,
+                                orderCount: 0,
+                                contact: 'N/A',
+                                location: 'N/A'
+                            };
+                        }
+                    }));
+
+                    setSuppliers(enhancedSuppliers);
+                } catch (error) {
+                    console.error('Errore caricamento fornitori:', error);
+                    // Fallback: mostra solo fornitori mock con prodotti rilevanti
+                    const productsNeedingReorder = mockData.products.filter(p => p.status !== 'ok');
+                    const relevantSupplierNames = [...new Set(productsNeedingReorder.map(p => p.supplier))];
+                    const relevantSuppliers = mockData.suppliers.filter(supplier =>
+                        relevantSupplierNames.includes(supplier.name)
+                    );
+                    setSuppliers(relevantSuppliers);
+                }
+                setLoading(false);
+            }
+
+            if (loading) {
+                return <div className="text-center py-8">🔄 Caricamento fornitori...</div>;
+            }
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white rounded-lg shadow">
+                        <div className="px-6 py-4 border-b border-gray-200">
+                            <h3 className="text-lg font-medium text-gray-900">
+                                🏭 Fornitori con Prodotti in Riordino
+                            </h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                                Visualizzando solo i fornitori che hanno prodotti critici o in attenzione
+                            </p>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Fornitore
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Affidabilità
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Lead Time Medio
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Prodotti Forniti
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Rating
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {suppliers.map((supplier) => {
+                                        const supplierProducts = mockData.products.filter(p => p.supplier === supplier.name);
+                                        return (
+                                            <tr key={supplier.id}>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="text-sm font-medium text-gray-900">
+                                                        {supplier.name}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center">
+                                                        <div className="w-16 bg-gray-200 rounded-full h-2">
+                                                            <div
+                                                                className={`h-2 rounded-full ${
+                                                                    supplier.reliability >= 90 ? 'bg-success-500' :
+                                                                    supplier.reliability >= 80 ? 'bg-warning-500' : 'bg-danger-500'
+                                                                }`}
+                                                                style={{ width: `${supplier.reliability}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="ml-2 text-sm text-gray-900">{supplier.reliability}%</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {formatNumber(supplier.avgLeadTime, 1)} giorni
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {supplier.orderCount || supplierProducts.length}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex">
+                                                        {[1,2,3,4,5].map(star => (
+                                                            <span
+                                                                key={star}
+                                                                className={`text-lg ${
+                                                                    star <= Math.round(supplier.reliability / 20)
+                                                                        ? 'text-yellow-400' : 'text-gray-300'
+                                                                }`}
+                                                            >
+                                                                ⭐
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {suppliers.slice(0, 3).map(supplier => {
+                            // Usa i dati mock per i prodotti del fornitore
+                            const supplierProducts = mockData.products.filter(p =>
+                                p.supplier === supplier.name ||
+                                (supplier.name.includes('Alpha') && p.supplier.includes('Alpha')) ||
+                                (supplier.name.includes('Beta') && p.supplier.includes('Beta')) ||
+                                (supplier.name.includes('Gamma') && p.supplier.includes('Gamma'))
+                            );
+                            const criticalCount = supplierProducts.filter(p => p.status === 'critical').length;
+
+                            return (
+                                <div key={supplier.id} className="bg-white rounded-lg shadow p-6">
+                                    <h4 className="font-medium text-gray-900 mb-4">{supplier.name}</h4>
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500">Prodotti critici:</span>
+                                            <span className={`text-sm font-medium ${
+                                                criticalCount > 0 ? 'text-danger-600' : 'text-success-600'
+                                            }`}>
+                                                {criticalCount}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500">Ordini suggeriti:</span>
+                                            <span className="text-sm font-medium text-primary-600">
+                                                {supplierProducts.filter(p => p.suggestedOrder > 0).length}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500">Valore totale:</span>
+                                            <span className="text-sm font-medium text-gray-900">
+                                                {formatCurrency(supplierProducts.reduce((sum, p) => sum + p.suggestedOrder * 10, 0))}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
+        function App() {
+            const [activeTab, setActiveTab] = useState('dashboard');
+
+            return (
+                <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+                    <Dashboard activeTab={activeTab} />
+                    <Products activeTab={activeTab} />
+                    <Orders activeTab={activeTab} />
+                    <Suppliers activeTab={activeTab} />
+                </Layout>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>

@@ -5,12 +5,15 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Eye, EyeOff, Save } from 'lucide-react';
 import Link from 'next/link';
 
+type VisibilityGroup = 'all' | 'internal' | 'portal' | 'none';
+
 interface AppVisibility {
   id: string;
   name: string;
   icon: string;
   category: string;
   visible: boolean;
+  visibilityGroup: VisibilityGroup;
 }
 
 export default function GestioneVisibilitaAppPage() {
@@ -57,6 +60,32 @@ export default function GestioneVisibilitaAppPage() {
     setApps(apps.map(app =>
       app.id === appId ? { ...app, visible: !app.visible } : app
     ));
+  };
+
+  const changeVisibilityGroup = (appId: string, group: VisibilityGroup) => {
+    setApps(apps.map(app =>
+      app.id === appId ? { ...app, visibilityGroup: group, visible: group !== 'none' } : app
+    ));
+  };
+
+  const getVisibilityGroupLabel = (group: VisibilityGroup) => {
+    const labels = {
+      all: 'Tutti gli utenti',
+      internal: 'Solo utenti interni',
+      portal: 'Solo utenti portale',
+      none: 'Nessuno'
+    };
+    return labels[group];
+  };
+
+  const getVisibilityGroupColor = (group: VisibilityGroup) => {
+    const colors = {
+      all: 'bg-green-500/20 text-green-400 border-green-500/30',
+      internal: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      portal: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+      none: 'bg-red-500/20 text-red-400 border-red-500/30'
+    };
+    return colors[group];
   };
 
   const handleSave = async () => {
@@ -164,7 +193,8 @@ export default function GestioneVisibilitaAppPage() {
                     <tr>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">App</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Nome</th>
-                      <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Stato</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Visibilità</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Gruppo</th>
                       <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Azione</th>
                     </tr>
                   </thead>
@@ -185,6 +215,18 @@ export default function GestioneVisibilitaAppPage() {
                           }`}>
                             {app.visible ? 'Visibile' : 'Nascosta'}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <select
+                            value={app.visibilityGroup}
+                            onChange={(e) => changeVisibilityGroup(app.id, e.target.value as VisibilityGroup)}
+                            className="px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          >
+                            <option value="all">👥 Tutti</option>
+                            <option value="internal">🏢 Solo Interni</option>
+                            <option value="portal">👤 Solo Portale</option>
+                            <option value="none">🚫 Nessuno</option>
+                          </select>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <button
@@ -219,11 +261,14 @@ export default function GestioneVisibilitaAppPage() {
 
         {/* Info box */}
         <div className="mt-8 bg-blue-500/10 border border-blue-500/30 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-blue-400 mb-2">ℹ️ Nota</h3>
-          <p className="text-slate-300">
-            Le app nascoste non saranno visibili nel dashboard principale per gli utenti.
-            Solo tu (paul@lapa.ch) puoi accedere a questa pagina di gestione.
-          </p>
+          <h3 className="text-lg font-semibold text-blue-400 mb-3">ℹ️ Come funziona la visibilità per gruppo</h3>
+          <div className="space-y-2 text-slate-300">
+            <p><strong>👥 Tutti:</strong> L'app è visibile a tutti gli utenti (interni e portale)</p>
+            <p><strong>🏢 Solo Interni:</strong> L'app è visibile solo a dipendenti e amministratori</p>
+            <p><strong>👤 Solo Portale:</strong> L'app è visibile solo a utenti del portale (clienti)</p>
+            <p><strong>🚫 Nessuno:</strong> L'app è nascosta a tutti</p>
+            <p className="mt-4 text-sm text-slate-400">Solo tu (paul@lapa.ch) puoi accedere a questa pagina di gestione.</p>
+          </div>
         </div>
       </div>
     </div>

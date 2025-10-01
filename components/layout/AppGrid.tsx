@@ -13,14 +13,16 @@ export function AppGrid() {
   const [visibilitySettings, setVisibilitySettings] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  // Carica impostazioni visibilità
+  // Carica impostazioni visibilità (ricarica quando cambia l'utente)
   useEffect(() => {
     loadVisibility();
-  }, []);
+  }, [user?.role]);
 
   const loadVisibility = async () => {
     try {
-      const response = await fetch('/api/apps/visibility');
+      // Passa il ruolo dell'utente per filtrare le app in base al gruppo
+      const userRole = user?.role || 'visitor';
+      const response = await fetch(`/api/apps/visibility?role=${userRole}`);
       const data = await response.json();
 
       if (data.success) {
