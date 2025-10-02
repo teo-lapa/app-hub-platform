@@ -84,6 +84,21 @@ export const mockApps: App[] = [
     createdAt: new Date('2023-08-01'),
     updatedAt: new Date('2023-12-25'),
   },
+  {
+    id: '7',
+    name: 'Ordini Fornitori Intelligenti',
+    description: 'Sistema AI per gestione automatica ordini fornitori. Analizza vendite, calcola fabbisogni e crea ordini ottimizzati per fornitore.',
+    icon: '🛒',
+    badge: 'PRO',
+    category: 'Business',
+    url: '/ordini-fornitori',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-01-15'),
+    updatedAt: new Date('2025-01-15'),
+  },
 ];
 
 export const categories = [

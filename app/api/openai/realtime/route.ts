@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
                 method: 'read',
                 args: [
                   [userData.parent_id[0]],
-                  ['name', 'phone', 'email', 'total_invoiced', 'street', 'city', 'vat', 'ref', 'x_studio_credit_limit']
+                  ['name', 'phone', 'email', 'total_invoiced', 'street', 'city', 'vat', 'ref']
                 ]
               })
             });
@@ -115,7 +115,6 @@ PROFILO UTENTE:`;
 - Codice Cliente: ${companyData.ref || 'non disponibile'}
 - Fatturato totale azienda: €${companyData.total_invoiced?.toFixed(2) || '0.00'}
 - Indirizzo azienda: ${companyData.street || 'non disponibile'}${companyData.city ? `, ${companyData.city}` : ''}
-- Limite credito: €${companyData.x_studio_credit_limit?.toFixed(2) || 'non impostato'}
 
 IMPORTANTE: Quando parli, saluta ${userData.name} per nome, ma fai riferimento ai dati dell'azienda "${companyData.name}" per ordini, fatturato e informazioni commerciali.`;
       } else {

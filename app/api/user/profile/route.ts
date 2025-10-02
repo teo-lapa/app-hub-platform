@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
           method: 'read',
           args: [
             [userData.parent_id[0]],
-            ['name', 'phone', 'email', 'total_invoiced', 'street', 'city', 'vat', 'ref', 'x_studio_credit_limit']
+            ['name', 'phone', 'email', 'total_invoiced', 'street', 'city', 'vat', 'ref']
           ]
         })
       });
@@ -112,8 +112,7 @@ export async function GET(request: NextRequest) {
           ref: companyData.ref,
           totalInvoiced: companyData.total_invoiced,
           street: companyData.street,
-          city: companyData.city,
-          creditLimit: companyData.x_studio_credit_limit
+          city: companyData.city
         } : null
       }
     });

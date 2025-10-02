@@ -6,19 +6,19 @@ import { cookies } from 'next/headers';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, actionType, actionTitle, userEmail } = body;
+    const { lastMessage, actionType, actionTitle, userEmail } = body;
 
-    if (!messages || messages.length === 0) {
+    if (!lastMessage) {
       return NextResponse.json({
         success: false,
         error: 'Nessun messaggio da salvare'
       }, { status: 400 });
     }
 
-    console.log('💾 Richiesta salvataggio conversazione Stella');
+    console.log('💾 Richiesta salvataggio ultimo messaggio Stella');
     console.log('📧 Cliente:', userEmail);
     console.log('🎯 Azione:', actionTitle);
-    console.log('💬 Messaggi:', messages.length);
+    console.log('💬 Ultimo messaggio:', lastMessage.text?.substring(0, 50) + '...');
 
     // 1. AUTENTICAZIONE ADMIN SU ODOO
     const odooUrl = process.env.ODOO_URL;
@@ -129,15 +129,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. FORMATTA LA CONVERSAZIONE PER IL TICKET
-    const conversationText = messages
-      .filter((msg: any) => !msg.isSystemPrompt) // Escludi prompt sistema
-      .map((msg: any) => {
-        const sender = msg.isUser ? '👤 Cliente' : '🌟 Stella';
-        const time = new Date(msg.timestamp).toLocaleTimeString('it-IT');
-        return `[${time}] ${sender}: ${msg.text}`;
-      })
-      .join('\n\n');
+    // 3. FORMATTA L'ULTIMO MESSAGGIO
+    const sender = lastMessage.isUser ? '👤 Cliente' : '🌟 Stella';
+    const time = new Date(lastMessage.timestamp).toLocaleTimeString('it-IT');
+    const newMessageText = `[${time}] ${sender}: ${lastMessage.text}`;
 
     // 4. CERCA SE ESISTE GIÀ UN TASK DI OGGI PER QUESTO CLIENTE
     const projectId = 108; // ID del progetto "Stella - Assistenza Clienti"
@@ -184,26 +179,13 @@ export async function POST(request: NextRequest) {
       console.log('📝 Nessun task trovato per oggi, ne creo uno nuovo');
     }
 
-    // Formatta la nuova conversazione da aggiungere
-    const now = new Date();
-    const conversationEntry = `
-=== CONVERSAZIONE #${existingTaskId ? 'AGGIUNTA' : '1'} - ${now.toLocaleTimeString('it-IT')} ===
-
-🎯 Azione: ${actionTitle}
-💬 Messaggi: ${messages.filter((m: any) => !m.isSystemPrompt).length}
-
-${conversationText}
-
----
-`;
-
     let taskId: number;
 
     if (existingTaskId) {
-      // AGGIORNA IL TASK ESISTENTE
-      console.log('📝 Aggiorno task esistente con nuova conversazione...');
+      // AGGIORNA IL TASK ESISTENTE aggiungendo solo il nuovo messaggio
+      console.log('📝 Aggiorno task esistente con nuovo messaggio...');
 
-      const updatedDescription = existingDescription + '\n\n' + conversationEntry;
+      const updatedDescription = existingDescription + '\n' + newMessageText;
 
       const updateTaskResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
         method: 'POST',
@@ -242,16 +224,18 @@ ${conversationText}
       console.log('✅ Task aggiornato con successo - ID:', taskId);
 
     } else {
-      // CREA NUOVO TASK
+      // CREA NUOVO TASK con il primo messaggio
+      const now = new Date();
       const taskName = `Conversazioni Stella - ${now.toLocaleDateString('it-IT')} - ${userEmail || 'Cliente sconosciuto'}`;
-      const taskDescription = `
-📅 Data: ${now.toLocaleDateString('it-IT')}
+      const taskDescription = `📅 Data: ${now.toLocaleDateString('it-IT')}
 📧 Cliente: ${userEmail || 'Non specificato'}
+🎯 Azione: ${actionTitle}
 
-${conversationEntry}
+=== CONVERSAZIONE ===
+${newMessageText}
 
-✅ Task creato automaticamente dal sistema Stella Assistant
-      `.trim();
+---
+✅ Task creato automaticamente dal sistema Stella Assistant`;
 
       console.log('📝 Creazione nuovo task in Odoo...');
       console.log('   Progetto ID:', projectId);

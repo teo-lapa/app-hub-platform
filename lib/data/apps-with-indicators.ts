@@ -331,6 +331,37 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2024-01-15'),
     updatedAt: new Date('2024-01-15'),
   },
+  // ACQUISTI
+  {
+    id: 's19',
+    name: 'Ordini Fornitori Intelligenti [P]',
+    description: 'Sistema AI per gestione automatica ordini fornitori. Analizza vendite, calcola fabbisogni e crea ordini ottimizzati per fornitore.',
+    icon: '🛒',
+    badge: 'PRO',
+    category: 'Acquisti',
+    url: '/ordini-fornitori',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-01-15'),
+    updatedAt: new Date('2025-01-15'),
+  },
+  {
+    id: 's20',
+    name: 'Product Creator AI [P]',
+    description: 'Crea prodotti automaticamente dalle fatture con Claude AI. Upload fattura, selezione prodotti, arricchimento automatico e creazione in Odoo.',
+    icon: '🤖',
+    badge: 'PRO',
+    category: 'Acquisti',
+    url: '/product-creator',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-10-01'),
+    updatedAt: new Date('2025-10-01'),
+  },
 ];
 
 // Combina tutte le app
@@ -347,7 +378,8 @@ export const categories = [
   'Vendite',
   'Logistica',
   'CRM',
-  'Comunicazioni'
+  'Comunicazioni',
+  'Acquisti'
 ];
 
 export const getAppsByCategory = (category: string): App[] => {

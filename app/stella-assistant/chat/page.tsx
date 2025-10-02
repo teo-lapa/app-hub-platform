@@ -140,6 +140,8 @@ function StellaChatContent() {
   const searchParams = useSearchParams();
   const { user } = useAuthStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<Message[]>([]);
+  const userProfileRef = useRef<any>(null);
 
   // Get action from URL params
   const actionId = searchParams.get('action') || 'other';
@@ -155,6 +157,52 @@ function StellaChatContent() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [fullPromptForAI, setFullPromptForAI] = useState(''); // Hidden prompt for AI
   const [isSavingConversation, setIsSavingConversation] = useState(false);
+
+  // Update refs when state changes
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    userProfileRef.current = userProfile;
+  }, [userProfile]);
+
+  // Auto-save ogni volta che arriva un nuovo messaggio
+  useEffect(() => {
+    // Skip se non ci sono abbastanza messaggi (solo il messaggio di benvenuto)
+    if (messages.length <= 1 || !userProfile) {
+      return;
+    }
+
+    // Salva solo l'ultimo messaggio (non tutta la conversazione)
+    const lastMessage = messages[messages.length - 1];
+
+    const autoSave = async () => {
+      try {
+        console.log(`💾 Auto-save ultimo messaggio: "${lastMessage.text.substring(0, 50)}..."`);
+        const response = await fetch('/api/stella/save-conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lastMessage: lastMessage, // Manda solo l'ultimo messaggio
+            actionType: selectedAction.id,
+            actionTitle: selectedAction.title,
+            userEmail: userProfile?.user?.email || user?.email
+          })
+        });
+
+        if (response.ok) {
+          console.log('✅ Auto-save completato');
+        } else {
+          console.error('❌ Auto-save fallito:', response.status);
+        }
+      } catch (error) {
+        console.error('❌ Errore auto-save:', error);
+      }
+    };
+
+    autoSave();
+  }, [messages, userProfile, selectedAction, user]);
 
   // Load user profile with company data on mount
   useEffect(() => {
@@ -186,35 +234,6 @@ function StellaChatContent() {
     loadUserProfile();
   }, []); // Empty deps - run once on mount
 
-  // Auto-save conversation every 60 seconds
-  useEffect(() => {
-    if (!userProfile || messages.length <= 1) return;
-
-    const saveConversation = async () => {
-      try {
-        console.log('💾 Auto-save conversazione in background...');
-        await fetch('/api/stella/save-conversation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: messages,
-            actionType: selectedAction.id,
-            actionTitle: selectedAction.title,
-            userEmail: userProfile?.user?.email || user?.email
-          })
-        });
-        console.log('✅ Auto-save completato');
-      } catch (error) {
-        console.error('❌ Errore auto-save:', error);
-      }
-    };
-
-    // Save every 60 seconds
-    const intervalId = setInterval(saveConversation, 60000);
-
-    // Cleanup on unmount
-    return () => clearInterval(intervalId);
-  }, [messages, userProfile, selectedAction, user]);
 
   // Welcome message on load with action context
   useEffect(() => {
