@@ -9,6 +9,7 @@ interface StellaRealTimeProps {
   action: any;
   userContext: any;
   onClose: () => void;
+  onMessageReceived?: (message: { text: string; isUser: boolean; timestamp: number }) => void;
 }
 
 interface RealtimeEvent {
@@ -16,7 +17,7 @@ interface RealtimeEvent {
   [key: string]: any;
 }
 
-export default function StellaRealTime({ action, userContext, onClose }: StellaRealTimeProps) {
+export default function StellaRealTime({ action, userContext, onClose, onMessageReceived }: StellaRealTimeProps) {
   // WebRTC refs COME NEL TUO HTML FUNZIONANTE
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
@@ -185,6 +186,14 @@ export default function StellaRealTime({ action, userContext, onClose }: StellaR
       if (data.transcript) {
         console.log('📝 Trascrizione cliente completata:', data.transcript);
         setConversation(prev => [...prev, `🎤 Tu: ${data.transcript}`]);
+        // Salva nel messaggio principale
+        if (onMessageReceived) {
+          onMessageReceived({
+            text: data.transcript,
+            isUser: true,
+            timestamp: Date.now()
+          });
+        }
       }
     }
     else if (data.type === 'input_audio_transcription.completed') {
@@ -240,6 +249,14 @@ export default function StellaRealTime({ action, userContext, onClose }: StellaR
       if (data.transcript) {
         console.log('🔊 Trascrizione risposta Stella:', data.transcript);
         setConversation(prev => [...prev, `🔊 Stella: ${data.transcript}`]);
+        // Salva nel messaggio principale
+        if (onMessageReceived) {
+          onMessageReceived({
+            text: data.transcript,
+            isUser: false,
+            timestamp: Date.now()
+          });
+        }
       }
     }
     else if (data.type === 'response.output_audio_transcript.done') {

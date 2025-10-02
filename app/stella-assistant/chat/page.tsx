@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
-import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
+import { AppHeader } from '@/components/layout/AppHeader';
 import toast from 'react-hot-toast';
 import StellaRealTime from '../components/StellaRealTime';
 
@@ -154,6 +154,7 @@ function StellaChatContent() {
   const [showRealTime, setShowRealTime] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [fullPromptForAI, setFullPromptForAI] = useState(''); // Hidden prompt for AI
+  const [isSavingConversation, setIsSavingConversation] = useState(false);
 
   // Load user profile with company data on mount
   useEffect(() => {
@@ -184,6 +185,36 @@ function StellaChatContent() {
     // Always try to load profile (relies on cookie auth, not Zustand state)
     loadUserProfile();
   }, []); // Empty deps - run once on mount
+
+  // Auto-save conversation every 60 seconds
+  useEffect(() => {
+    if (!userProfile || messages.length <= 1) return;
+
+    const saveConversation = async () => {
+      try {
+        console.log('💾 Auto-save conversazione in background...');
+        await fetch('/api/stella/save-conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: messages,
+            actionType: selectedAction.id,
+            actionTitle: selectedAction.title,
+            userEmail: userProfile?.user?.email || user?.email
+          })
+        });
+        console.log('✅ Auto-save completato');
+      } catch (error) {
+        console.error('❌ Errore auto-save:', error);
+      }
+    };
+
+    // Save every 60 seconds
+    const intervalId = setInterval(saveConversation, 60000);
+
+    // Cleanup on unmount
+    return () => clearInterval(intervalId);
+  }, [messages, userProfile, selectedAction, user]);
 
   // Welcome message on load with action context
   useEffect(() => {
@@ -405,9 +436,77 @@ function StellaChatContent() {
     }
   };
 
-  // Go back to action selection
-  const goBack = () => {
+  // Go back to action selection + Auto-save conversation
+  const goBack = async () => {
+    // Auto-save conversation if there are messages
+    if (messages.length > 1) {
+      console.log('💾 Salvataggio automatico conversazione...');
+
+      try {
+        await fetch('/api/stella/save-conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: messages,
+            actionType: selectedAction.id,
+            actionTitle: selectedAction.title,
+            userEmail: userProfile?.user?.email || user?.email
+          })
+        });
+        console.log('✅ Conversazione salvata automaticamente');
+      } catch (error) {
+        console.error('❌ Errore salvataggio automatico:', error);
+        // Non mostriamo errore all'utente, è un'operazione in background
+      }
+    }
+
     router.push('/stella-assistant');
+  };
+
+  // Save conversation to Odoo as ticket
+  const saveConversation = async () => {
+    if (messages.length <= 1) {
+      toast.error('Non ci sono abbastanza messaggi da salvare');
+      return;
+    }
+
+    setIsSavingConversation(true);
+
+    try {
+      console.log('💾 Salvataggio conversazione in Odoo...');
+
+      const response = await fetch('/api/stella/save-conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: messages,
+          actionType: selectedAction.id,
+          actionTitle: selectedAction.title,
+          userEmail: userProfile?.user?.email || user?.email
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('✅ Conversazione salvata - Task ID:', data.taskId);
+        toast.success('✅ Conversazione salvata come ticket!');
+
+        // Optional: Show link to Odoo task
+        if (data.taskUrl) {
+          console.log('🔗 Link task Odoo:', data.taskUrl);
+        }
+      } else {
+        console.error('❌ Errore salvataggio:', data.error);
+        toast.error('❌ Errore: ' + (data.error || 'Impossibile salvare'));
+      }
+
+    } catch (error) {
+      console.error('❌ Errore chiamata API save-conversation:', error);
+      toast.error('❌ Errore di connessione al server');
+    } finally {
+      setIsSavingConversation(false);
+    }
   };
 
   return (
@@ -416,7 +515,6 @@ function StellaChatContent() {
         title="🌟 Stella - Assistenza Clienti AI"
         subtitle="La tua assistente personale sempre disponibile"
       />
-      <MobileHomeButton />
 
       <div className="container mx-auto px-4 py-6 max-w-4xl">
 
@@ -475,15 +573,13 @@ function StellaChatContent() {
         >
           {/* Chat Header */}
           <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-4 rounded-t-xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                  <Bot className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Conversazione con Stella</h3>
-                  <p className="text-sm opacity-90">{selectedAction.title}</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                <Bot className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Conversazione con Stella</h3>
+                <p className="text-sm opacity-90">{selectedAction.title}</p>
               </div>
             </div>
           </div>
@@ -510,7 +606,7 @@ function StellaChatContent() {
                   }`}>
                     <p className="text-sm">{message.text}</p>
                     <p className={`text-xs mt-1 ${message.isUser ? 'text-blue-100' : 'text-gray-500'}`}>
-                      {message.timestamp.toLocaleTimeString()}
+                      {new Date(message.timestamp).toLocaleTimeString()}
                     </p>
                   </div>
                 </div>
@@ -609,6 +705,16 @@ function StellaChatContent() {
               companyName: userProfile?.company?.name
             }}
             onClose={closeRealTimeConversation}
+            onMessageReceived={(msg) => {
+              // Aggiungi i messaggi vocali all'array messages principale
+              setMessages(prev => [...prev, {
+                id: `voice-${Date.now()}`,
+                text: msg.text,
+                isUser: msg.isUser,
+                timestamp: msg.timestamp,
+                isSystemPrompt: false
+              }]);
+            }}
           />
         )}
       </AnimatePresence>

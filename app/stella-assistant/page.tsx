@@ -107,7 +107,7 @@ export default function StellaAssistant() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:bg-gradient-to-br dark:from-pink-900 dark:via-purple-900 dark:to-blue-900">
       <AppHeader
         title="🌟 Stella - Assistenza Clienti AI"
         subtitle="La tua assistente personale sempre disponibile"
@@ -127,8 +127,8 @@ export default function StellaAssistant() {
               🌟
             </div>
           </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">Stella</h2>
-          <p className="text-gray-600 text-lg">La tua assistente AI personale</p>
+          <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Stella</h2>
+          <p className="text-gray-600 dark:text-gray-300 text-lg">La tua assistente AI personale</p>
         </motion.div>
 
         {/* Welcome Message */}
@@ -136,12 +136,12 @@ export default function StellaAssistant() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl shadow-lg p-6 mb-8 border-2 border-purple-200"
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8 border-2 border-purple-200 dark:border-purple-700"
         >
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">
             Ciao{userProfile?.user?.name ? ` ${userProfile.user.name}` : ''}! 👋
           </h3>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-300">
             Sono Stella, la tua assistente personale. Come posso aiutarti oggi?
           </p>
         </motion.div>
