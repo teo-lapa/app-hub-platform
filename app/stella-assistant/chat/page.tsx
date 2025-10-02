@@ -730,7 +730,7 @@ function StellaChatContent() {
                 id: `voice-${Date.now()}`,
                 text: msg.text,
                 isUser: msg.isUser,
-                timestamp: msg.timestamp,
+                timestamp: new Date(msg.timestamp),
                 isSystemPrompt: false
               }]);
             }}

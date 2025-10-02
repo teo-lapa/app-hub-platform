@@ -196,7 +196,7 @@ async function loadRealSalesData(productId: number, days: number = 40) {
       throw new Error('Nessuna vendita trovata');
     }
 
-    const orderIds = [...new Set(salesLines.map((line: any) => line.order_id ? line.order_id[0] : null).filter((id: any) => id))];
+    const orderIds = Array.from(new Set(salesLines.map((line: any) => line.order_id ? line.order_id[0] : null).filter((id: any) => id)));
 
     const orders = await searchRead('sale.order', [
       ['id', 'in', orderIds],
@@ -569,7 +569,7 @@ export default function OrdiniFornitoriPage() {
     if (allSelected) {
       setSelectedProducts(prev => prev.filter(id => !supplierProductIds.includes(id)));
     } else {
-      setSelectedProducts(prev => [...new Set([...prev, ...supplierProductIds])]);
+      setSelectedProducts(prev => Array.from(new Set([...prev, ...supplierProductIds])));
     }
   };
 
@@ -732,7 +732,7 @@ export default function OrdiniFornitoriPage() {
     if (existingDrafts && existingDrafts.length > 0) {
       // Aggiorna preventivo esistente
       purchaseOrderId = existingDrafts[0].id;
-      toast.info(`Aggiornamento preventivo esistente: ${existingDrafts[0].name}`);
+      toast(`Aggiornamento preventivo esistente: ${existingDrafts[0].name}`);
     } else {
       // Crea nuovo ordine
       const orderValues = {
@@ -896,7 +896,7 @@ export default function OrdiniFornitoriPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              toast.info(`Apertura catalogo ${supplierName}...`);
+                              toast(`Apertura catalogo ${supplierName}...`);
                             }}
                             className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-semibold transition-colors"
                           >
