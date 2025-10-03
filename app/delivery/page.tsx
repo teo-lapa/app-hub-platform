@@ -116,27 +116,42 @@ export default function DeliveryPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (view === 'map') {
-      initMap();
-    }
-  }, [view]);
+  // REMOVED: useEffect for map - DeliveryMap component handles its own initialization
 
   // ==================== INITIALIZATION ====================
   async function initializeApp() {
     setLoading(true);
     try {
-      // Carica nome utente dall'API
-      const userResponse = await fetch('/api/auth/me');
-      const userData = await userResponse.json();
-      const userName = userData?.data?.user?.name || userData?.name || 'Driver';
+      // Carica nome utente dall'API con timeout per Android
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const userResponse = await fetch('/api/auth/me', {
+        signal: controller.signal
+      }).catch(() => null);
+
+      clearTimeout(timeoutId);
+
+      let userName = 'Driver';
+      if (userResponse?.ok) {
+        const userData = await userResponse.json();
+        userName = userData?.data?.user?.name || userData?.name || 'Driver';
+      }
 
       console.log('👤 [DELIVERY] Nome driver caricato:', userName);
       setSession({ name: userName, vehicle_name: null });
       await loadDeliveries();
     } catch (err: any) {
-      setError(err.message);
-      showToast('Errore di inizializzazione', 'error');
+      console.error('❌ [DELIVERY] Errore inizializzazione:', err);
+      // Continue with default session even if user fetch fails
+      setSession({ name: 'Driver', vehicle_name: null });
+      // Try to load deliveries anyway
+      try {
+        await loadDeliveries();
+      } catch (loadErr) {
+        setError('Impossibile caricare le consegne');
+        showToast('Errore caricamento consegne', 'error');
+      }
     } finally {
       setLoading(false);
     }
@@ -164,9 +179,16 @@ export default function DeliveryPage() {
             lng: position.coords.longitude
           });
         },
-        (error) => console.error('GPS error:', error),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+        (error) => {
+          console.error('GPS error:', error);
+          // Fallback position (Milan, Italy) if GPS fails on Android
+          setCurrentPosition({ lat: 45.4642, lng: 9.1900 });
+        },
+        { enableHighAccuracy: true, timeout: 30000, maximumAge: 60000 }
       );
+    } else {
+      // Fallback if geolocation not available
+      setCurrentPosition({ lat: 45.4642, lng: 9.1900 });
     }
   }
 

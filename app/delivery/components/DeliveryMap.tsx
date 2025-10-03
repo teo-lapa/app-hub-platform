@@ -34,6 +34,9 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || !window.google) return;
 
+    // Only initialize map once - don't re-create on position changes!
+    if (googleMapRef.current) return;
+
     // Initialize map
     const mapOptions: google.maps.MapOptions = {
       zoom: 12,
@@ -46,7 +49,7 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
     };
 
     googleMapRef.current = new google.maps.Map(mapRef.current, mapOptions);
-  }, [mapLoaded, currentPosition]);
+  }, [mapLoaded]);
 
   useEffect(() => {
     if (!googleMapRef.current) return;
