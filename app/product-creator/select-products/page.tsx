@@ -123,7 +123,10 @@ export default function SelectProducts() {
       const response = await fetch('/api/product-creator/enrich-product', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product: products[index] }),
+        body: JSON.stringify({
+          product: products[index],
+          invoiceData: invoiceData
+        }),
       });
 
       const result = await response.json();

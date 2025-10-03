@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Anthropic from '@anthropic-ai/sdk';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,24 +22,41 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
     const base64 = buffer.toString('base64');
 
-    // Determine MIME type for Gemini
-    let mimeType = file.type;
-    if (!mimeType) {
-      // Fallback based on file extension
-      if (file.name.endsWith('.pdf')) mimeType = 'application/pdf';
-      else if (file.name.endsWith('.png')) mimeType = 'image/png';
-      else if (file.name.endsWith('.jpg') || file.name.endsWith('.jpeg')) mimeType = 'image/jpeg';
-      else if (file.name.endsWith('.webp')) mimeType = 'image/webp';
-      else mimeType = 'image/jpeg'; // default
+    // Determine media type - Claude supports PDF and images
+    let mediaType: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' = 'application/pdf';
+
+    if (file.type === 'image/png') {
+      mediaType = 'image/png';
+    } else if (file.type === 'image/gif') {
+      mediaType = 'image/gif';
+    } else if (file.type === 'image/webp') {
+      mediaType = 'image/webp';
+    } else if (file.type.includes('image') || file.type.includes('jpeg') || file.type.includes('jpg')) {
+      mediaType = 'image/jpeg';
     }
 
-    console.log('📄 Parsing invoice with Gemini AI...');
-    console.log('📎 File type:', mimeType, '| Size:', (file.size / 1024).toFixed(2), 'KB');
+    console.log('📄 Parsing invoice with Claude Vision...');
+    console.log('📎 File type:', mediaType, '| Size:', (file.size / 1024).toFixed(2), 'KB');
 
-    // Use Gemini Pro Vision for document parsing with vision capabilities
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-
-    const prompt = `Analizza questa fattura e estrai TUTTI i prodotti presenti.
+    // Use Claude Sonnet with PDF support
+    const message = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 4096,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: mediaType as any,
+                data: base64,
+              },
+            },
+            {
+              type: 'text',
+              text: `Analizza questa fattura e estrai TUTTI i prodotti presenti.
 
 Per ogni prodotto, estrai:
 - nome: il nome completo del prodotto
@@ -51,8 +70,8 @@ Per ogni prodotto, estrai:
 IMPORTANTE:
 - Estrai TUTTI i prodotti dalla fattura, anche se sono molti
 - Se un campo non è presente, usa null
-- Per i numeri, usa il formato decimale (es: 10.50 non "10,50")
-- Rispondi SOLO con un JSON valido nel seguente formato:
+- Per i numeri, usa il formato decimale con punto (es: 10.50 non "10,50")
+- Rispondi SOLO con un JSON valido nel formato:
 
 {
   "fornitore": "nome fornitore dalla fattura",
@@ -71,22 +90,19 @@ IMPORTANTE:
   ]
 }
 
-NON aggiungere testo prima o dopo il JSON. SOLO il JSON.`;
-
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          mimeType: mimeType,
-          data: base64,
+NON aggiungere testo prima o dopo il JSON. SOLO il JSON.`,
+            },
+          ],
         },
-      },
-    ]);
+      ],
+    });
 
-    const response = await result.response;
-    const responseText = response.text();
+    // Extract JSON from response
+    const responseText = message.content[0].type === 'text'
+      ? message.content[0].text
+      : '';
 
-    console.log('📝 Gemini response:', responseText.substring(0, 500) + '...');
+    console.log('📝 Claude response:', responseText.substring(0, 500) + '...');
 
     // Parse JSON from response (handle markdown code blocks)
     let jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);

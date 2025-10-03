@@ -1,39 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const ODOO_URL = process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL;
-
-async function callOdoo(sessionId: string, model: string, method: string, args: any[], kwargs: any = {}) {
-  const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Openerp-Session-Id': sessionId
-    },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'call',
-      params: {
-        model,
-        method,
-        args,
-        kwargs
-      }
-    })
-  });
-
-  const data = await response.json();
-  if (data.error) {
-    throw new Error(data.error.data?.message || 'Errore Odoo');
-  }
-
-  return data.result;
-}
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const sessionId = request.cookies.get('session_id')?.value;
-    if (!sessionId) {
-      return NextResponse.json({ error: 'Non autenticato' }, { status: 401 });
+    const { cookies, uid } = await getOdooSession();
+    if (!uid) {
+      return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -54,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Create ir.attachment
     const attachmentId = await callOdoo(
-      sessionId,
+      cookies,
       'ir.attachment',
       'create',
       [{

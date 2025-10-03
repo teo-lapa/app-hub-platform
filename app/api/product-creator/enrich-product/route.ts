@@ -5,35 +5,106 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Helper function to search product info (simplified version without cheerio)
-async function searchProductInfo(productName: string, ean?: string) {
-  try {
-    // Build search query
-    const searchQuery = ean
-      ? `${productName} EAN ${ean}`
-      : productName;
+// Fetch data from Odoo
+async function fetchOdooData(invoiceData: any) {
+  const odooUrl = process.env.ODOO_URL;
+  const odooDb = process.env.ODOO_DB;
 
-    console.log('🔍 Searching for:', searchQuery);
+  // Authenticate
+  const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'call',
+      params: {
+        db: odooDb,
+        login: 'paul@lapa.ch',
+        password: 'lapa201180'
+      },
+      id: 1
+    })
+  });
 
-    // Use Wikipedia API for basic product info (free and reliable)
-    const wikiUrl = `https://it.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(productName)}&limit=3&format=json`;
-
-    const response = await fetch(wikiUrl);
-    const data = await response.json();
-
-    // Extract descriptions
-    const descriptions = data[2] || [];
-    return descriptions.join('\n');
-  } catch (error) {
-    console.error('❌ Error searching product info:', error);
-    return '';
+  const authData = await authResponse.json();
+  if (authData.error) {
+    throw new Error('Odoo authentication failed');
   }
+
+  const cookies = authResponse.headers.get('set-cookie');
+
+  // Fetch UoM, Categories, and Suppliers in parallel
+  const [uomRes, categoryRes, supplierRes] = await Promise.all([
+    // Get UoM
+    fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Cookie': cookies || '' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'uom.uom',
+          method: 'search_read',
+          args: [[], ['id', 'name', 'category_id']],
+          kwargs: { limit: 200 }
+        },
+        id: 1
+      })
+    }),
+    // Get Categories
+    fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Cookie': cookies || '' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'product.category',
+          method: 'search_read',
+          args: [[], ['id', 'name', 'complete_name']],
+          kwargs: { limit: 200, order: 'complete_name ASC' }
+        },
+        id: 2
+      })
+    }),
+    // Search for supplier by name from invoice
+    fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Cookie': cookies || '' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'res.partner',
+          method: 'search_read',
+          args: [
+            [['is_company', '=', true], ['supplier_rank', '>', 0], ['name', 'ilike', invoiceData.fornitore || '']],
+            ['id', 'name']
+          ],
+          kwargs: { limit: 5 }
+        },
+        id: 3
+      })
+    })
+  ]);
+
+  const [uomData, categoryData, supplierData] = await Promise.all([
+    uomRes.json(),
+    categoryRes.json(),
+    supplierRes.json()
+  ]);
+
+  return {
+    uom: uomData.result || [],
+    categories: categoryData.result || [],
+    suppliers: supplierData.result || []
+  };
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { product, additionalInfo } = body;
+    const { product, invoiceData } = body;
 
     if (!product || !product.nome) {
       return NextResponse.json(
@@ -44,82 +115,134 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 Enriching product:', product.nome);
 
-    // Search for product information online
-    const webInfo = await searchProductInfo(product.nome, product.codice);
+    // Fetch Odoo data
+    const odooData = await fetchOdooData(invoiceData || {});
 
-    // Use Claude to enrich product data
+    console.log(`📊 Odoo data fetched - UoM: ${odooData.uom.length}, Categories: ${odooData.categories.length}, Suppliers: ${odooData.suppliers.length}`);
+
+    // Filter main categories (parent categories only) - Frigo, Secco, Pingu, Non-Food
+    const mainCategories = odooData.categories.filter((c: any) => {
+      const name = c.complete_name.toLowerCase();
+      return name.includes('frigo') ||
+             name.includes('secco') ||
+             name.includes('pingu') ||
+             name.includes('congelat') ||
+             name.includes('non') && name.includes('food') ||
+             name.includes('non-food') ||
+             !name.includes('/'); // Root categories
+    });
+
+    console.log(`🏷️ Main categories found: ${mainCategories.length}`);
+    mainCategories.forEach((c: any) => console.log(`   - ${c.complete_name} (ID: ${c.id})`));
+
+    // Prepare context for Claude
+    const uomList = odooData.uom.map((u: any) => `${u.name} (ID: ${u.id})`).join(', ');
+
+    // Use main categories for initial selection
+    const mainCategoryList = mainCategories.map((c: any) => `${c.complete_name} (ID: ${c.id})`).join(', ');
+
+    // Also prepare all categories for secondary search
+    const allCategoryList = odooData.categories.map((c: any) => `${c.complete_name} (ID: ${c.id})`).slice(0, 100).join(', ');
+
+    const supplierInfo = odooData.suppliers.length > 0
+      ? `Fornitore trovato: ${odooData.suppliers[0].name} (ID: ${odooData.suppliers[0].id})`
+      : `Fornitore: ${invoiceData?.fornitore || 'Non specificato'}`;
+
+    console.log(`📦 UoM disponibili: ${uomList.substring(0, 200)}...`);
+    console.log(`🏭 ${supplierInfo}`);
+
+    // Use Claude to enrich product data with Odoo context
     const message = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 2048,
+      max_tokens: 3072,
       messages: [
         {
           role: 'user',
-          content: `Sei un esperto di prodotti commerciali. Devi arricchire le informazioni di questo prodotto per creare una scheda completa nel sistema.
+          content: `Sei un esperto di prodotti commerciali e di Odoo ERP. Devi arricchire questo prodotto per crearlo in Odoo.
 
 PRODOTTO DALLA FATTURA:
 Nome: ${product.nome}
-${product.codice ? `Codice/EAN: ${product.codice}` : ''}
+${product.codice ? `Codice: ${product.codice}` : ''}
 ${product.prezzo_unitario ? `Prezzo acquisto: €${product.prezzo_unitario}` : ''}
-${product.unita_misura ? `Unità: ${product.unita_misura}` : ''}
+${product.unita_misura ? `Unità dalla fattura: ${product.unita_misura}` : ''}
+${product.quantita ? `Quantità: ${product.quantita}` : ''}
 ${product.note ? `Note: ${product.note}` : ''}
 
-${webInfo ? `INFORMAZIONI TROVATE ONLINE:\n${webInfo}\n` : ''}
+CONTESTO ODOO:
+${supplierInfo}
 
-${additionalInfo ? `INFORMAZIONI AGGIUNTIVE FORNITE:\n${additionalInfo}\n` : ''}
+UNITÀ DI MISURA DISPONIBILI IN ODOO:
+${uomList}
+
+CATEGORIE PRINCIPALI DISPONIBILI (scegli una di queste):
+${mainCategoryList}
+
+IMPORTANTE CATEGORIE:
+- **FRIGO**: Prodotti refrigerati (salumi, latticini, freschi)
+- **SECCO**: Prodotti a temperatura ambiente (pasta, scatole, bottiglie)
+- **PINGU/CONGELATO**: Prodotti surgelati/congelati
+- **NON-FOOD**: Prodotti non alimentari (pulizia, carta, plastica)
+
+CATEGORIE DETTAGLIATE (opzionali, se trovi match più preciso):
+${allCategoryList.substring(0, 500)}...
 
 COMPITO:
-Genera una scheda prodotto completa con i seguenti campi:
+Analizza il prodotto e genera i seguenti dati.
 
-1. **nome_completo**: Nome completo e chiaro del prodotto
-2. **descrizione_breve**: Descrizione breve (1-2 frasi) per listing prodotto
-3. **descrizione_dettagliata**: Descrizione dettagliata con caratteristiche principali
-4. **categoria**: Categoria merceologica (es: "Alimentari > Bevande > Vino", "Elettronica > Computer > Accessori")
-5. **sottocategoria**: Sottocategoria specifica
-6. **marca**: Brand/Marca del prodotto (se identificabile)
-7. **codice_ean**: Codice EAN/barcode se presente
-8. **prezzo_vendita_suggerito**: Prezzo di vendita consigliato (se hai il prezzo acquisto, suggerisci con margine 30-50%)
-9. **caratteristiche**: Array di caratteristiche tecniche chiave
-10. **tags**: Array di tag per ricerca (es: ["biologico", "italiano", "premium"])
-11. **unita_misura**: Unità di misura standard (PZ, KG, LT, etc)
-12. **peso**: Peso stimato in KG (se applicabile)
-13. **dimensioni**: Dimensioni stimate in cm (se applicabile)
-14. **immagine_url_search**: Query di ricerca ottimizzata per trovare immagini del prodotto
+**IMPORTANTE**: Tutti i campi sono OPZIONALI. Se non sei sicuro, usa null. Il prodotto deve essere creato comunque!
 
-IMPORTANTE:
-- Se non hai certezza su un campo, usa il tuo miglior giudizio basato sul nome
-- Per il prezzo vendita, considera un margine commerciale standard
-- Sii specifico nelle descrizioni ma realistico
-- Rispondi SOLO con un JSON valido, senza commenti o testo aggiuntivo
+1. **nome_completo**: Nome completo e professionale
+2. **descrizione_breve**: 1-2 frasi per descrizione vendita
+3. **descrizione_dettagliata**: Descrizione completa con caratteristiche
+4. **categoria_odoo_id**: ID della categoria più appropriata (PRIMA scegli tra FRIGO/SECCO/PINGU/NON-FOOD, poi cerca sottocategoria se disponibile)
+5. **categoria_nome**: Nome categoria scelta
+6. **marca**: Brand/Marca del prodotto (se identificabile dal nome, altrimenti null)
+7. **codice_ean**: Codice EAN/barcode (usa quello dalla fattura)
+8. **prezzo_vendita_suggerito**: Prezzo vendita con margine 30-50%
+9. **caratteristiche**: Array di caratteristiche chiave (se identificabili)
+10. **tags**: Array di tag per ricerca
+11. **uom_odoo_id**: ID dell'unità di misura (default: cerca "Unità(i)" o "pz" se non sei sicuro)
+12. **uom_nome**: Nome unità scelta
+13. **peso**: Peso unitario stimato in KG (per singolo pezzo/unità venduta) - se non sei sicuro metti 0.1
+14. **dimensioni**: Dimensioni stimate (solo se chiaramente identificabili, altrimenti null)
+15. **immagine_search_query**: Query breve per generare immagine (es: "detergente spray bottiglia")
+16. **codice_sa**: Codice SA (Sistema Armonizzato) se lo conosci, altrimenti null
+17. **fornitore_odoo_id**: ID fornitore da contesto sopra (o null se non trovato)
 
-Formato JSON richiesto:
+LOGICA INTELLIGENTE:
+- **Categoria**: SEMPRE scegli tra Frigo/Secco/Pingu/Non-Food come prima scelta
+- **UoM**: Se compra a cartone ma vende a pezzo → usa "Unità(i)" o "pz". Default sicuro: ID 1
+- **Peso**: Per unità SINGOLA di vendita, non per cartone. Se incerto: 0.1 kg
+- **Non bloccare**: Se non trovi un campo, usa null o valori di default
+
+Rispondi SOLO con JSON valido:
 {
   "nome_completo": "...",
   "descrizione_breve": "...",
   "descrizione_dettagliata": "...",
-  "categoria": "...",
-  "sottocategoria": "...",
-  "marca": "...",
+  "categoria_odoo_id": 123,
+  "categoria_nome": "...",
+  "marca": "..." o null,
   "codice_ean": "...",
-  "prezzo_vendita_suggerito": 0,
+  "prezzo_vendita_suggerito": 0.00,
   "caratteristiche": ["...", "..."],
   "tags": ["...", "..."],
-  "unita_misura": "...",
-  "peso": 0,
+  "uom_odoo_id": 1,
+  "uom_nome": "...",
+  "peso": 0.0,
   "dimensioni": "...",
-  "immagine_url_search": "..."
+  "immagine_search_query": "...",
+  "codice_sa": "...",
+  "fornitore_odoo_id": 123 o null
 }`,
         },
       ],
     });
 
-    // Extract JSON from response
-    const responseText = message.content[0].type === 'text'
-      ? message.content[0].text
-      : '';
+    // Extract JSON
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+    console.log('📝 Claude full response:\n', responseText);
 
-    console.log('📝 Claude enrichment response:', responseText.substring(0, 200) + '...');
-
-    // Parse JSON from response (handle markdown code blocks)
     let jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
     if (!jsonMatch) {
       jsonMatch = responseText.match(/```\n([\s\S]*?)\n```/);
@@ -128,13 +251,17 @@ Formato JSON richiesto:
     const jsonStr = jsonMatch ? jsonMatch[1] : responseText;
     const enrichedData = JSON.parse(jsonStr.trim());
 
-    // Merge with original product data
+    console.log('🔍 Parsed enrichment data:', JSON.stringify(enrichedData, null, 2));
+
+    // Merge with original
     const finalProduct = {
       ...product,
       ...enrichedData,
-      // Keep original values if present
       codice_ean: product.codice || enrichedData.codice_ean,
       prezzo_acquisto: product.prezzo_unitario,
+      quantita_acquisto: product.quantita,
+      unita_misura_acquisto: product.unita_misura,
+      note_acquisto: product.note,
     };
 
     console.log('✅ Successfully enriched product:', finalProduct.nome_completo);

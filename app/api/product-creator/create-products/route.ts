@@ -3,19 +3,28 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 interface ProductData {
+  nome?: string;
   nome_completo: string;
   descrizione_breve?: string;
   descrizione_dettagliata?: string;
   categoria?: string;
+  categoria_odoo_id?: number;
+  categoria_nome?: string;
   sottocategoria?: string;
   marca?: string;
   codice_ean?: string;
+  codice_sa?: string;
   prezzo_acquisto?: number;
   prezzo_vendita_suggerito?: number;
   unita_misura?: string;
+  uom_odoo_id?: number;
+  uom_nome?: string;
   peso?: number;
+  dimensioni?: string;
   caratteristiche?: string[];
   tags?: string[];
+  fornitore_odoo_id?: number | null;
+  immagine_search_query?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -69,14 +78,14 @@ export async function POST(request: NextRequest) {
 
         // Prepare product data for Odoo
         const odooProduct: any = {
-          name: product.nome_completo,
+          name: product.nome_completo || product.nome || 'Prodotto senza nome',
           type: 'product', // Prodotto immagazzinabile
-          categ_id: 1, // Default category, TODO: map from product.categoria
+          categ_id: product.categoria_odoo_id || 1, // Use AI-selected category or default (1 = "All")
           sale_ok: true,
           purchase_ok: true,
         };
 
-        // Add optional fields
+        // Add optional fields only if they exist and are valid
         if (product.descrizione_dettagliata) {
           odooProduct.description = product.descrizione_dettagliata;
         }
@@ -90,21 +99,42 @@ export async function POST(request: NextRequest) {
           odooProduct.default_code = product.codice_ean; // Internal reference
         }
 
-        if (product.prezzo_vendita_suggerito) {
+        // Use AI-selected unit of measure (default to ID 1 if not provided)
+        if (product.uom_odoo_id && product.uom_odoo_id > 0) {
+          odooProduct.uom_id = product.uom_odoo_id; // Unit of measure for sales
+          odooProduct.uom_po_id = product.uom_odoo_id; // Unit of measure for purchase
+        }
+
+        if (product.prezzo_vendita_suggerito && product.prezzo_vendita_suggerito > 0) {
           odooProduct.list_price = product.prezzo_vendita_suggerito; // Sales price
         }
 
-        if (product.prezzo_acquisto) {
+        if (product.prezzo_acquisto && product.prezzo_acquisto > 0) {
           odooProduct.standard_price = product.prezzo_acquisto; // Cost price
         }
 
-        if (product.peso) {
+        if (product.peso && product.peso > 0) {
           odooProduct.weight = product.peso;
         }
 
-        // Add tags as notes
+        // Add SA fiscal code
+        if (product.codice_sa) {
+          odooProduct.hs_code = product.codice_sa; // Harmonized System Code
+        }
+
+        // Add tags and notes
+        let notes = [];
         if (product.tags && product.tags.length > 0) {
-          odooProduct.description_purchase = `Tags: ${product.tags.join(', ')}`;
+          notes.push(`Tags: ${product.tags.join(', ')}`);
+        }
+        if (product.caratteristiche && product.caratteristiche.length > 0) {
+          notes.push(`Caratteristiche: ${product.caratteristiche.join(', ')}`);
+        }
+        if (product.dimensioni) {
+          notes.push(`Dimensioni: ${product.dimensioni}`);
+        }
+        if (notes.length > 0) {
+          odooProduct.description_purchase = notes.join('\n');
         }
 
         // Create product in Odoo
@@ -138,11 +168,89 @@ export async function POST(request: NextRequest) {
             error: createData.error.message || 'Errore sconosciuto'
           });
         } else {
-          console.log('✅ Product created:', product.nome_completo, 'ID:', createData.result);
+          const productId = createData.result;
+          console.log('✅ Product created:', product.nome_completo, 'ID:', productId);
+
+          // STEP 3: Create supplier price list if supplier is available
+          if (product.fornitore_odoo_id && product.prezzo_acquisto) {
+            try {
+              console.log(`💰 Creating supplier price for product ${productId} with supplier ${product.fornitore_odoo_id}`);
+
+              const priceListData = {
+                partner_id: product.fornitore_odoo_id,
+                product_id: productId,
+                price: product.prezzo_acquisto,
+                min_qty: 1,
+              };
+
+              const priceResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Requested-With': 'XMLHttpRequest',
+                  'Cookie': cookies || ''
+                },
+                body: JSON.stringify({
+                  jsonrpc: '2.0',
+                  method: 'call',
+                  params: {
+                    model: 'product.supplierinfo',
+                    method: 'create',
+                    args: [priceListData],
+                    kwargs: {},
+                  },
+                  id: Math.floor(Math.random() * 1000000000)
+                })
+              });
+
+              const priceData = await priceResponse.json();
+
+              if (priceData.error) {
+                console.error('⚠️ Error creating supplier price:', priceData.error);
+              } else {
+                console.log('✅ Supplier price created with ID:', priceData.result);
+              }
+            } catch (priceError) {
+              console.error('⚠️ Exception creating supplier price:', priceError);
+            }
+          }
+
+          // STEP 4: Generate and upload product image with Gemini 2.5 Flash Image
+          if (product.nome_completo) {
+            try {
+              console.log(`🎨 Generating image for product ${productId}`);
+
+              // Call internal Gemini image generation API
+              const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3003';
+
+              const imageResponse = await fetch(`${baseUrl}/api/product-creator/generate-image-gemini`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  productName: product.nome_completo,
+                  productDescription: product.descrizione_breve || '',
+                  productId: productId
+                })
+              });
+
+              const imageData = await imageResponse.json();
+
+              if (imageData.success) {
+                console.log('✅ Product image generated and uploaded with Gemini 2.5 Flash Image');
+              } else {
+                console.error('⚠️ Image generation failed:', imageData.error);
+              }
+            } catch (imageError) {
+              console.error('⚠️ Exception generating image:', imageError);
+            }
+          }
+
           results.push({
             product: product.nome_completo,
-            odoo_id: createData.result,
-            success: true
+            odoo_id: productId,
+            success: true,
+            supplier_price_created: !!product.fornitore_odoo_id,
+            image_generated: !!product.immagine_search_query
           });
         }
 

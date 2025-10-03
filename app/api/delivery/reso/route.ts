@@ -1,39 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const ODOO_URL = process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL;
-
-async function callOdoo(sessionId: string, model: string, method: string, args: any[], kwargs: any = {}) {
-  const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Openerp-Session-Id': sessionId
-    },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'call',
-      params: {
-        model,
-        method,
-        args,
-        kwargs
-      }
-    })
-  });
-
-  const data = await response.json();
-  if (data.error) {
-    throw new Error(data.error.data?.message || 'Errore Odoo');
-  }
-
-  return data.result;
-}
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const sessionId = request.cookies.get('session_id')?.value;
-    if (!sessionId) {
-      return NextResponse.json({ error: 'Non autenticato' }, { status: 401 });
+    const { cookies, uid } = await getOdooSession();
+    if (!uid) {
+      return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -49,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     // Get original picking to reference
     const originalPickings = await callOdoo(
-      sessionId,
+      cookies,
       'stock.picking',
       'read',
       [[original_picking_id]],
@@ -60,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Find return picking type
     const returnPickingTypes = await callOdoo(
-      sessionId,
+      cookies,
       'stock.picking.type',
       'search_read',
       [[['code', '=', 'incoming'], ['warehouse_id', '!=', false]]],
@@ -85,7 +57,7 @@ export async function POST(request: NextRequest) {
     };
 
     const returnPickingId = await callOdoo(
-      sessionId,
+      cookies,
       'stock.picking',
       'create',
       [pickingData]
@@ -94,7 +66,7 @@ export async function POST(request: NextRequest) {
     // Create stock moves for each product
     for (const product of products) {
       await callOdoo(
-        sessionId,
+        cookies,
         'stock.move',
         'create',
         [{
@@ -111,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     // Confirm the return picking
     await callOdoo(
-      sessionId,
+      cookies,
       'stock.picking',
       'action_confirm',
       [[returnPickingId]]

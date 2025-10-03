@@ -1,14 +1,41 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-const ODOO_URL = process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL;
-const ODOO_DB = process.env.ODOO_DB || process.env.NEXT_PUBLIC_ODOO_DB;
+const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
+const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
 
-async function callOdoo(sessionId: string, model: string, method: string, args: any[], kwargs: any = {}) {
+// Helper per autenticazione e chiamate Odoo
+async function getOdooSession() {
+  const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'call',
+      params: {
+        db: ODOO_DB,
+        login: 'paul@lapa.ch',
+        password: 'lapa201180'
+      },
+      id: 1
+    })
+  });
+
+  const authData = await authResponse.json();
+  if (authData.error) {
+    throw new Error('Errore autenticazione Odoo');
+  }
+
+  const cookies = authResponse.headers.get('set-cookie');
+  return { cookies, uid: authData.result?.uid };
+}
+
+async function callOdoo(cookies: string | null, model: string, method: string, args: any[], kwargs: any = {}) {
   const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Openerp-Session-Id': sessionId
+      'X-Requested-With': 'XMLHttpRequest',
+      'Cookie': cookies || ''
     },
     body: JSON.stringify({
       jsonrpc: '2.0',
@@ -17,166 +44,178 @@ async function callOdoo(sessionId: string, model: string, method: string, args: 
         model,
         method,
         args,
-        kwargs
-      }
+        kwargs: kwargs || {}
+      },
+      id: Math.floor(Math.random() * 1000000000)
     })
   });
 
   const data = await response.json();
   if (data.error) {
-    throw new Error(data.error.data?.message || 'Errore Odoo');
+    throw new Error(data.error.data?.message || data.error.message || 'Errore Odoo');
   }
 
   return data.result;
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Get session from cookie or header
-    const sessionId = request.cookies.get('session_id')?.value;
-    if (!sessionId) {
-      return NextResponse.json({ error: 'Non autenticato' }, { status: 401 });
-    }
+    console.log('🚚 [DELIVERY-v3] Inizio caricamento consegne...');
 
-    // Get current user info
-    const userInfo = await fetch(`${ODOO_URL}/web/session/get_session_info`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Openerp-Session-Id': sessionId
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {}
-      })
-    });
-
-    const userInfoData = await userInfo.json();
-    const uid = userInfoData.result?.uid;
+    // Autenticazione con Odoo
+    const { cookies, uid } = await getOdooSession();
 
     if (!uid) {
+      console.error('❌ [DELIVERY] Sessione non valida');
       return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
     }
 
-    // Get vehicle assigned to current user (driver)
-    // Assuming there's a field vehicle_id on res.users or a separate fleet.driver model
-    const today = new Date();
-    const todayStart = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-    const todayEnd = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+    console.log('✅ [DELIVERY] Autenticato con Odoo, UID:', uid);
 
-    // Search for deliveries (stock.picking)
-    const deliveries = await callOdoo(
-      sessionId,
+    // Get employee info - ESATTAMENTE COME L'HTML
+    const employee = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
+      domain: [['user_id', '=', uid]],
+      fields: ['id', 'name'],
+      limit: 1
+    });
+
+    // Build domain with driver filter - SOLO DOCUMENTI PRONTI (assigned)
+    const domain = [
+      ['picking_type_id.code', '=', 'outgoing'],
+      ['state', '=', 'assigned']  // SOLO pronti, NON completati
+    ];
+
+    if (employee && employee.length > 0) {
+      console.log('👤 [DELIVERY] Employee trovato:', employee[0].name, 'ID:', employee[0].id);
+      domain.push(['driver_id', '=', employee[0].id]);
+    } else {
+      console.log('⚠️ [DELIVERY] Nessun employee, mostro tutti i documenti');
+    }
+
+    // COPIA ESATTA DELLA LOGICA HTML
+    // Load pickings - ESATTAMENTE COME L'HTML
+    const pickings = await callOdoo(
+      cookies,
       'stock.picking',
       'search_read',
-      [
-        [
-          ['picking_type_id.code', '=', 'outgoing'],
-          ['scheduled_date', '>=', todayStart],
-          ['scheduled_date', '<=', todayEnd],
-          ['state', 'in', ['assigned', 'done']]
-          // Add vehicle_id filter if you have it
-          // ['vehicle_id', '=', vehicleId]
-        ]
-      ],
+      [],
       {
+        domain: domain,
         fields: [
-          'id',
-          'name',
-          'partner_id',
-          'scheduled_date',
-          'state',
-          'origin',
-          'note',
-          'sale_id',
-          'move_lines',
-          'latitude',
-          'longitude'
+          'id', 'name', 'partner_id', 'scheduled_date',
+          'state', 'note', 'move_ids', 'origin',
+          'driver_id', 'vehicle_id', 'carrier_id',
+          'backorder_id'
         ],
-        order: 'scheduled_date ASC'
+        limit: 50,
+        order: 'scheduled_date DESC'
       }
     );
 
-    // For each delivery, get detailed product info and sale order data
-    const enrichedDeliveries = await Promise.all(
-      deliveries.map(async (delivery: any) => {
-        // Get move lines details
-        const moveLines = await callOdoo(
-          sessionId,
+    console.log(`📦 [DELIVERY] Trovati ${pickings.length} documenti`);
+
+    const deliveries = [];
+
+    // Process each picking - ESATTAMENTE COME L'HTML
+    for (const picking of pickings) {
+      if (!picking.partner_id) continue;
+
+      // Get partner details - ESATTAMENTE COME L'HTML
+      const partners = await callOdoo(
+        cookies,
+        'res.partner',
+        'search_read',
+        [],
+        {
+          domain: [['id', '=', picking.partner_id[0]]],
+          fields: ['name', 'street', 'street2', 'city', 'zip', 'phone', 'mobile', 'partner_latitude', 'partner_longitude'],
+          limit: 1
+        }
+      );
+
+      const partner = partners[0];
+      if (!partner) continue;
+
+      // Get products - ESATTAMENTE COME L'HTML
+      let products = [];
+      if (picking.move_ids && picking.move_ids.length > 0) {
+        const moves = await callOdoo(
+          cookies,
           'stock.move',
           'search_read',
-          [[['id', 'in', delivery.move_lines]]],
+          [],
           {
-            fields: [
-              'id',
-              'product_id',
-              'product_uom_qty',
-              'quantity_done',
-              'product_uom',
-              'name'
-            ]
+            domain: [['id', 'in', picking.move_ids]],
+            fields: ['product_id', 'product_uom_qty'],
+            limit: 100
           }
         );
 
-        // Get sale order data if exists
-        let saleOrderData = null;
-        if (delivery.sale_id) {
-          try {
-            const saleOrders = await callOdoo(
-              sessionId,
-              'sale.order',
-              'read',
-              [[delivery.sale_id[0]]],
-              {
-                fields: ['name', 'amount_total', 'payment_state', 'invoice_ids']
-              }
-            );
-            saleOrderData = saleOrders[0];
-          } catch (err) {
-            console.error('Error fetching sale order:', err);
+        // Get product details with images and category
+        for (const move of moves) {
+          const productDetails = await callOdoo(
+            cookies,
+            'product.product',
+            'search_read',
+            [],
+            {
+              domain: [['id', '=', move.product_id[0]]],
+              fields: ['id', 'name', 'image_128', 'categ_id'],
+              limit: 1
+            }
+          );
+
+          const product = productDetails[0];
+          if (product) {
+            products.push({
+              id: product.id,
+              name: move.product_id[1],
+              qty: move.product_uom_qty,
+              image: product.image_128 || null,
+              category: product.categ_id ? product.categ_id[1] : 'Altro',
+              delivered: 0 // Quantità scaricata
+            });
           }
         }
+      }
 
-        // Get partner details (address, phone, coordinates)
-        let partnerData: any = {};
-        if (delivery.partner_id) {
-          try {
-            const partners = await callOdoo(
-              sessionId,
-              'res.partner',
-              'read',
-              [[delivery.partner_id[0]]],
-              {
-                fields: ['street', 'city', 'zip', 'phone', 'mobile', 'partner_latitude', 'partner_longitude']
-              }
-            );
-            partnerData = partners[0];
-          } catch (err) {
-            console.error('Error fetching partner:', err);
-          }
-        }
+      // Build address - ESATTAMENTE COME L'HTML
+      let address = '';
+      if (partner.street) address += partner.street;
+      if (partner.street2) address += ', ' + partner.street2;
+      if (partner.zip || partner.city) {
+        address += ', ';
+        if (partner.zip) address += partner.zip + ' ';
+        if (partner.city) address += partner.city;
+      }
 
-        return {
-          ...delivery,
-          partner_street: partnerData.street,
-          partner_city: partnerData.city,
-          partner_zip: partnerData.zip,
-          partner_phone: partnerData.phone || partnerData.mobile,
-          latitude: delivery.latitude || partnerData.partner_latitude,
-          longitude: delivery.longitude || partnerData.partner_longitude,
-          move_lines: moveLines,
-          amount_total: saleOrderData?.amount_total,
-          payment_status: saleOrderData?.payment_state === 'paid' ? 'paid' :
-                         saleOrderData?.payment_state === 'partial' ? 'partial' :
-                         saleOrderData?.amount_total > 0 ? 'to_pay' : null
-        };
-      })
-    );
+      // Crea delivery - ESATTAMENTE COME L'HTML
+      deliveries.push({
+        id: picking.id,
+        name: picking.name,
+        customer: partner.name,
+        customerName: partner.name,
+        address: address.trim(),
+        phone: partner.phone || partner.mobile || '',
+        lat: partner.partner_latitude || null,
+        lng: partner.partner_longitude || null,
+        products: products,
+        note: picking.note || '',
+        state: picking.state,
+        origin: picking.origin || '',
+        carrier: picking.carrier_id ? picking.carrier_id[1] : '',
+        scheduledDate: picking.scheduled_date,
+        backorderId: picking.backorder_id,
+        isBackorder: picking.backorder_id ? true : false,
+        completed: picking.state === 'done'
+      });
+    }
 
-    return NextResponse.json(enrichedDeliveries);
+    console.log(`✅ [DELIVERY] Caricate ${deliveries.length} consegne con dettagli`);
+
+    return NextResponse.json(deliveries);
   } catch (error: any) {
-    console.error('Error loading deliveries:', error);
+    console.error('❌ [DELIVERY] Errore:', error);
     return NextResponse.json(
       { error: error.message || 'Errore caricamento consegne' },
       { status: 500 }
