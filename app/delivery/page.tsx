@@ -231,9 +231,27 @@ export default function DeliveryPage() {
   async function fetchAndUpdateDeliveries() {
     try {
       console.log('🔄 Aggiornamento consegne da server...');
-      const response = await fetch('/api/delivery/list');
-      if (!response.ok) throw new Error('Errore caricamento consegne');
+      const response = await fetch('/api/delivery/list', {
+        signal: AbortSignal.timeout(30000) // 30 second timeout for Android
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Errore caricamento consegne');
+      }
+
       const data = await response.json();
+
+      // Check if response contains error field
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Check if data is array
+      if (!Array.isArray(data)) {
+        throw new Error('Formato risposta non valido');
+      }
+
       console.log('📦 Consegne ricevute:', data.length);
 
       // Aggiorna stato

@@ -14,31 +14,57 @@ const ODOO_PASSWORD = 'lapa201180';
 
 /**
  * Autentica con Odoo e ritorna cookies e UID
- * @returns {Promise<{cookies: string, uid: number}>}
+ * @returns {Promise<{cookies: string | null, uid: number}>}
  */
 export async function getOdooSession() {
-  const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'call',
-      params: {
-        db: ODOO_DB,
-        login: ODOO_LOGIN,
-        password: ODOO_PASSWORD
+  try {
+    console.log('🔐 [ODOO-AUTH] Autenticazione con:', ODOO_URL);
+
+    const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
-      id: 1
-    })
-  });
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          db: ODOO_DB,
+          login: ODOO_LOGIN,
+          password: ODOO_PASSWORD
+        },
+        id: 1
+      })
+    });
 
-  const authData = await authResponse.json();
-  if (authData.error) {
-    throw new Error('Errore autenticazione Odoo');
+    if (!authResponse.ok) {
+      console.error('❌ [ODOO-AUTH] HTTP error:', authResponse.status, authResponse.statusText);
+      throw new Error(`Errore HTTP ${authResponse.status}: ${authResponse.statusText}`);
+    }
+
+    const authData = await authResponse.json();
+
+    if (authData.error) {
+      console.error('❌ [ODOO-AUTH] Errore Odoo:', authData.error);
+      throw new Error(authData.error.data?.message || authData.error.message || 'Errore autenticazione Odoo');
+    }
+
+    if (!authData.result) {
+      console.error('❌ [ODOO-AUTH] Risposta senza result:', authData);
+      throw new Error('Risposta autenticazione non valida');
+    }
+
+    const cookies = authResponse.headers.get('set-cookie');
+    const uid = authData.result.uid;
+
+    console.log('✅ [ODOO-AUTH] Autenticato con UID:', uid);
+
+    return { cookies, uid };
+  } catch (error: any) {
+    console.error('❌ [ODOO-AUTH] Errore completo:', error);
+    throw error;
   }
-
-  const cookies = authResponse.headers.get('set-cookie');
-  return { cookies, uid: authData.result?.uid };
 }
 
 /**
