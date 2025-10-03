@@ -31,10 +31,10 @@ export default function ProductCreator() {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Check file type
+      // Check file type - Gemini supports PDF + images
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
       if (!validTypes.includes(file.type)) {
-        toast.error('Tipo file non supportato. Usa JPG, PNG o PDF');
+        toast.error('Tipo file non supportato. Usa PDF, JPG, PNG o WEBP');
         return;
       }
 
@@ -148,7 +148,7 @@ export default function ProductCreator() {
                 <Sparkles className="w-6 h-6 text-blue-600" />
               </div>
               <p className="text-sm font-semibold text-gray-700">2. AI Estrae Dati</p>
-              <p className="text-xs text-gray-500 mt-1">Claude Vision</p>
+              <p className="text-xs text-gray-500 mt-1">Gemini AI</p>
             </div>
             <div className="flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2">
@@ -190,7 +190,7 @@ export default function ProductCreator() {
                         : 'Clicca per caricare la fattura'}
                     </p>
                     <p className="text-sm text-gray-500">
-                      PDF, JPG o PNG (max 10MB)
+                      PDF, JPG, PNG o WEBP (max 10MB)
                     </p>
                   </div>
                   <input

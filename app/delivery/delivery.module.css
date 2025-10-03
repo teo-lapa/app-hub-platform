@@ -1,0 +1,118 @@
+/* Ottimizzazioni per tablet Android */
+@media screen and (min-width: 768px) {
+  .delivery-container {
+    font-size: 18px;
+  }
+
+  .delivery-container button {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .delivery-container input,
+  .delivery-container textarea,
+  .delivery-container select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
+
+/* Prevent zoom on input focus for Android */
+.delivery-container input[type="text"],
+.delivery-container input[type="number"],
+.delivery-container input[type="email"],
+.delivery-container input[type="tel"],
+.delivery-container select,
+.delivery-container textarea {
+  font-size: 16px !important;
+}
+
+/* Better touch targets */
+.delivery-container button,
+.delivery-container .btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Canvas touch optimization */
+.signature-canvas {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Smooth scrolling */
+.delivery-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* Pulse animation for notifications */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Slide up animation for modals */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.modal-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.2s ease-in;
+}
+
+/* Safe area insets for iOS */
+@supports (padding: max(0px)) {
+  .delivery-container {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

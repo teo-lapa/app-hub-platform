@@ -99,6 +99,21 @@ export const mockApps: App[] = [
     createdAt: new Date('2025-01-15'),
     updatedAt: new Date('2025-01-15'),
   },
+  {
+    id: '8',
+    name: 'LAPA Delivery',
+    description: 'Sistema completo per gestione consegne. GPS tracking, firma digitale, scarico prodotti, pagamenti e resi. Ottimizzazione percorso automatica con ETA in tempo reale.',
+    icon: '🚚',
+    badge: 'PRO',
+    category: 'Business',
+    url: '/delivery',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-01-20'),
+    updatedAt: new Date('2025-01-20'),
+  },
 ];
 
 export const categories = [

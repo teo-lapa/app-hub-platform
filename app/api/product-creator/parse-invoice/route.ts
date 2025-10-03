@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,48 +20,39 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
     const base64 = buffer.toString('base64');
 
-    // Determine media type
-    const mediaType = file.type.includes('pdf')
-      ? 'application/pdf'
-      : file.type.includes('image')
-        ? (file.type as any)
-        : 'image/jpeg';
+    // Determine MIME type for Gemini
+    let mimeType = file.type;
+    if (!mimeType) {
+      // Fallback based on file extension
+      if (file.name.endsWith('.pdf')) mimeType = 'application/pdf';
+      else if (file.name.endsWith('.png')) mimeType = 'image/png';
+      else if (file.name.endsWith('.jpg') || file.name.endsWith('.jpeg')) mimeType = 'image/jpeg';
+      else if (file.name.endsWith('.webp')) mimeType = 'image/webp';
+      else mimeType = 'image/jpeg'; // default
+    }
 
-    console.log('📄 Parsing invoice with Claude Vision...');
+    console.log('📄 Parsing invoice with Gemini AI...');
+    console.log('📎 File type:', mimeType, '| Size:', (file.size / 1024).toFixed(2), 'KB');
 
-    // Use Claude Vision to extract products from invoice
-    const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: mediaType,
-                data: base64,
-              },
-            },
-            {
-              type: 'text',
-              text: `Analizza questa fattura e estrai TUTTI i prodotti presenti.
+    // Use Gemini Pro Vision for document parsing with vision capabilities
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+
+    const prompt = `Analizza questa fattura e estrai TUTTI i prodotti presenti.
 
 Per ogni prodotto, estrai:
 - nome: il nome completo del prodotto
 - codice: codice prodotto/SKU/EAN se presente
-- quantita: quantità ordinata
-- prezzo_unitario: prezzo unitario di acquisto
-- prezzo_totale: prezzo totale della riga
-- unita_misura: unità di misura (es: PZ, KG, LT)
+- quantita: quantità ordinata (numero)
+- prezzo_unitario: prezzo unitario di acquisto (numero decimale)
+- prezzo_totale: prezzo totale della riga (numero decimale)
+- unita_misura: unità di misura (es: PZ, KG, LT, CF, etc)
 - note: eventuali note o specifiche del prodotto
 
 IMPORTANTE:
 - Estrai TUTTI i prodotti dalla fattura, anche se sono molti
 - Se un campo non è presente, usa null
-- Rispondi SOLO con un JSON valido nel formato:
+- Per i numeri, usa il formato decimale (es: 10.50 non "10,50")
+- Rispondi SOLO con un JSON valido nel seguente formato:
 
 {
   "fornitore": "nome fornitore dalla fattura",
@@ -72,27 +61,32 @@ IMPORTANTE:
   "prodotti": [
     {
       "nome": "...",
-      "codice": "...",
+      "codice": "..." o null,
       "quantita": 0,
-      "prezzo_unitario": 0,
-      "prezzo_totale": 0,
-      "unita_misura": "...",
-      "note": "..."
+      "prezzo_unitario": 0.00,
+      "prezzo_totale": 0.00,
+      "unita_misura": "..." o null,
+      "note": "..." o null
     }
   ]
-}`,
-            },
-          ],
+}
+
+NON aggiungere testo prima o dopo il JSON. SOLO il JSON.`;
+
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          mimeType: mimeType,
+          data: base64,
         },
-      ],
-    });
+      },
+    ]);
 
-    // Extract JSON from response
-    const responseText = message.content[0].type === 'text'
-      ? message.content[0].text
-      : '';
+    const response = await result.response;
+    const responseText = response.text();
 
-    console.log('📝 Claude response:', responseText);
+    console.log('📝 Gemini response:', responseText.substring(0, 500) + '...');
 
     // Parse JSON from response (handle markdown code blocks)
     let jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
@@ -103,7 +97,23 @@ IMPORTANTE:
     const jsonStr = jsonMatch ? jsonMatch[1] : responseText;
     const parsedData = JSON.parse(jsonStr.trim());
 
-    console.log('✅ Successfully parsed invoice with', parsedData.prodotti?.length || 0, 'products');
+    // Validate and clean data
+    if (!parsedData.prodotti || !Array.isArray(parsedData.prodotti)) {
+      throw new Error('Formato risposta non valido: manca array prodotti');
+    }
+
+    // Clean and validate product data
+    parsedData.prodotti = parsedData.prodotti.map((p: any) => ({
+      nome: p.nome || 'Prodotto senza nome',
+      codice: p.codice || null,
+      quantita: parseFloat(p.quantita) || 0,
+      prezzo_unitario: parseFloat(p.prezzo_unitario) || 0,
+      prezzo_totale: parseFloat(p.prezzo_totale) || 0,
+      unita_misura: p.unita_misura || 'PZ',
+      note: p.note || null,
+    }));
+
+    console.log('✅ Successfully parsed invoice with', parsedData.prodotti.length, 'products');
 
     return NextResponse.json({
       success: true,
