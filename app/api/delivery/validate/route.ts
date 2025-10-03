@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
+export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
-    const { cookies, uid } = await getOdooSession();
+    // Get user cookies to use their Odoo session
+    const cookieHeader = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
     if (!uid) {
       return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
     }

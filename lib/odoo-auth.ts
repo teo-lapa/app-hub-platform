@@ -3,22 +3,56 @@
  *
  * Questo file contiene le funzioni per autenticarsi con Odoo
  * TUTTE le API devono usare queste funzioni per garantire coerenza
+ *
+ * IMPORTANTE: Usa la sessione Odoo dell'utente loggato dal cookie 'odoo_session'
+ * Se non disponibile, usa credenziali di fallback (solo per sviluppo)
  */
 
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
 
-// Credenziali Odoo - USATE DA TUTTE LE APP
-const ODOO_LOGIN = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+// Credenziali Odoo FALLBACK - solo se utente non loggato
+const ODOO_LOGIN = process.env.ODOO_USERNAME || 'paul@lapa.ch';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
 
 /**
- * Autentica con Odoo e ritorna cookies e UID
+ * Autentica con Odoo usando la sessione dell'utente loggato
+ * @param userCookies - Cookies dalla richiesta (contiene odoo_session se utente loggato)
  * @returns {Promise<{cookies: string | null, uid: number}>}
  */
-export async function getOdooSession() {
+export async function getOdooSession(userCookies?: string) {
   try {
     console.log('🔐 [ODOO-AUTH] Autenticazione con:', ODOO_URL);
+
+    // Se ci sono cookies dell'utente, prova a usare la sessione esistente
+    if (userCookies) {
+      console.log('🍪 [ODOO-AUTH] Trovati cookies utente, verifico sessione esistente');
+
+      // Prova a usare la sessione esistente
+      const sessionCheck = await fetch(`${ODOO_URL}/web/session/get_session_info`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': userCookies
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {}
+        })
+      });
+
+      if (sessionCheck.ok) {
+        const sessionData = await sessionCheck.json();
+        if (sessionData.result?.uid) {
+          console.log('✅ [ODOO-AUTH] Sessione utente valida, UID:', sessionData.result.uid);
+          return { cookies: userCookies, uid: sessionData.result.uid };
+        }
+      }
+    }
+
+    // Fallback: autentica con credenziali di default
+    console.log('⚠️ [ODOO-AUTH] Nessuna sessione utente, uso credenziali fallback');
 
     const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
       method: 'POST',
@@ -58,7 +92,7 @@ export async function getOdooSession() {
     const cookies = authResponse.headers.get('set-cookie');
     const uid = authData.result.uid;
 
-    console.log('✅ [ODOO-AUTH] Autenticato con UID:', uid);
+    console.log('✅ [ODOO-AUTH] Autenticato con credenziali fallback, UID:', uid);
 
     return { cookies, uid };
   } catch (error: any) {
