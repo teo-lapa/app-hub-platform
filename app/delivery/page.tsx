@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Dexie, { Table } from 'dexie';
 import dynamic from 'next/dynamic';
@@ -13,13 +13,17 @@ class DeliveryDatabase extends Dexie {
   attachments!: Table<Attachment>;
   deliveries!: Table<Delivery>;
   offline_actions!: Table<OfflineAction>;
+  cache!: Table<{ key: string; data: any; timestamp: number }>;
+  images!: Table<{ id: string; url: string; blob: Blob; timestamp: number }>;
 
   constructor() {
     super('LapaDeliveryDB');
-    this.version(1).stores({
+    this.version(2).stores({
       attachments: '++id, picking_id, context, timestamp, uploaded',
-      deliveries: 'id, scheduled_date, state',
-      offline_actions: '++id, timestamp, synced'
+      deliveries: 'id, scheduled_date, state, driver_id',
+      offline_actions: '++id, timestamp, synced',
+      cache: 'key, timestamp',
+      images: 'id, url, timestamp'
     });
   }
 }
@@ -47,6 +51,7 @@ export default function DeliveryPage() {
   const [showAttachmentModal, setShowAttachmentModal] = useState(false);
   const [showCalculatorModal, setShowCalculatorModal] = useState(false);
   const [showRouteOrganizerModal, setShowRouteOrganizerModal] = useState(false);
+  const [showCompletionOptionsModal, setShowCompletionOptionsModal] = useState(false);
 
   // Estados scarico
   const [scaricoProducts, setScaricoProducts] = useState<Product[]>([]);
@@ -55,7 +60,8 @@ export default function DeliveryPage() {
 
   // Estados firma
   const [signatureData, setSignatureData] = useState<string | null>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
+  const [signatureNote, setSignatureNote] = useState('');
+  const isDrawingRef = useRef(false);
   const [strokeCount, setStrokeCount] = useState(0);
 
   // Estados calcolatrice
@@ -72,6 +78,11 @@ export default function DeliveryPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'bank_transfer'>('cash');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
+  const [paymentReceiptPhoto, setPaymentReceiptPhoto] = useState<string | null>(null);
+
+  // Estados foto (cliente assente)
+  const [photoData, setPhotoData] = useState<string | null>(null);
+  const [photoNote, setPhotoNote] = useState('');
 
   // Estados reso
   const [resoProducts, setResoProducts] = useState<any[]>([]);
@@ -86,6 +97,8 @@ export default function DeliveryPage() {
   // Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const photoModalInputRef = useRef<HTMLInputElement>(null);
+  const paymentReceiptInputRef = useRef<HTMLInputElement>(null);
 
   // ==================== EFFECTS ====================
   useEffect(() => {
@@ -113,8 +126,13 @@ export default function DeliveryPage() {
   async function initializeApp() {
     setLoading(true);
     try {
-      const sessionData = await getSession();
-      setSession(sessionData);
+      // Carica nome utente dall'API
+      const userResponse = await fetch('/api/auth/me');
+      const userData = await userResponse.json();
+      const userName = userData?.data?.user?.name || userData?.name || 'Driver';
+
+      console.log('👤 [DELIVERY] Nome driver caricato:', userName);
+      setSession({ name: userName, vehicle_name: null });
       await loadDeliveries();
     } catch (err: any) {
       setError(err.message);
@@ -122,12 +140,6 @@ export default function DeliveryPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function getSession() {
-    const response = await fetch('/api/auth/current-user');
-    if (!response.ok) throw new Error('Sessione non valida');
-    return response.json();
   }
 
   function setupOnlineListener() {
@@ -162,37 +174,67 @@ export default function DeliveryPage() {
   async function loadDeliveries() {
     setLoading(true);
     try {
-      const response = await fetch('/api/delivery/list');
-      if (!response.ok) throw new Error('Errore caricamento consegne');
-      const data = await response.json();
+      // 1. PRIMA carica dalla cache per mostrare subito i dati
+      const cacheEntry = await db.cache.get('deliveries_list');
+      const now = Date.now();
+      const CACHE_DURATION = 2 * 60 * 1000; // 2 minuti
 
-      // Calcola backorder per ogni prodotto
-      const processedDeliveries = data.map((d: Delivery) => ({
-        ...d,
-        move_lines: d.move_lines.map(p => ({
-          ...p,
-          backorder_qty: p.product_uom_qty - p.quantity_done,
-          to_deliver: false
-        }))
-      }));
+      if (cacheEntry && (now - cacheEntry.timestamp) < CACHE_DURATION) {
+        console.log('⚡ Caricamento RAPIDO dalla cache');
+        setDeliveries(cacheEntry.data);
+        calculateETAsForDeliveries(cacheEntry.data);
+        setLoading(false);
 
-      setDeliveries(processedDeliveries);
+        // Poi aggiorna in background senza loading
+        setTimeout(() => fetchAndUpdateDeliveries(), 100);
+        return;
+      }
 
-      // Salva in cache locale
-      await db.deliveries.bulkPut(processedDeliveries);
+      // 2. Se cache scaduta o assente, carica dall'API
+      await fetchAndUpdateDeliveries();
 
-      // Calcola ETA per tutte
-      calculateETAsForDeliveries(processedDeliveries);
     } catch (err: any) {
       setError(err.message);
-      // Carica da cache se offline
+      // Fallback: carica comunque dalla cache anche se scaduta
       const cached = await db.deliveries.toArray();
       if (cached.length > 0) {
         setDeliveries(cached);
-        showToast('Caricati dati dalla cache', 'info');
+        showToast('Caricati dati dalla cache (offline)', 'info');
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchAndUpdateDeliveries() {
+    try {
+      console.log('🔄 Aggiornamento consegne da server...');
+      const response = await fetch('/api/delivery/list');
+      if (!response.ok) throw new Error('Errore caricamento consegne');
+      const data = await response.json();
+      console.log('📦 Consegne ricevute:', data.length);
+
+      // Aggiorna stato
+      setDeliveries(data);
+
+      // Salva in database locale
+      await db.deliveries.clear();
+      await db.deliveries.bulkPut(data);
+
+      // Salva in cache con timestamp
+      await db.cache.put({
+        key: 'deliveries_list',
+        data: data,
+        timestamp: Date.now()
+      });
+
+      // Calcola ETA
+      calculateETAsForDeliveries(data);
+
+      console.log('✅ Dati salvati in cache locale');
+    } catch (err: any) {
+      console.error('❌ Errore aggiornamento:', err);
+      throw err;
     }
   }
 
@@ -242,33 +284,66 @@ export default function DeliveryPage() {
     setAttachmentCounts(counts);
   }
 
+  // Helper per rimuovere HTML dai testi
+  function stripHtml(html: string): string {
+    if (!html) return '';
+    // Rimuovi tutti i tag HTML
+    const tmp = html.replace(/<[^>]*>/g, '');
+    // Decodifica entità HTML comuni
+    return tmp
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .trim();
+  }
+
   function navigateTo(lat?: number, lng?: number) {
-    if (!lat || !lng) return;
+    if (!lat || !lng) {
+      showToast('Coordinate non disponibili', 'error');
+      return;
+    }
 
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isAndroid = /Android/.test(navigator.userAgent);
 
     let url;
     if (isIOS) {
+      // Apple Maps con navigazione
       url = `maps://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
     } else if (isAndroid) {
-      url = `google.navigation:q=${lat},${lng}`;
+      // Google Maps app per Android
+      url = `google.navigation:q=${lat},${lng}&mode=d`;
     } else {
-      url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      // Browser desktop - Google Maps web
+      url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
     }
 
-    window.location.href = url;
-    setTimeout(() => {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
-    }, 1000);
+    console.log('🗺️ Apertura navigazione:', url);
+
+    // Prova ad aprire l'app nativa
+    const opened = window.open(url, '_blank');
+
+    // Fallback per browser
+    if (!opened && !isIOS && !isAndroid) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`, '_blank');
+    }
+
+    showToast('Navigazione avviata', 'success');
   }
 
   // ==================== SCARICO LOGIC ====================
   async function openScaricoView(delivery: Delivery) {
     setCurrentDelivery(delivery);
 
-    // Filtra solo prodotti con backorder
-    const productsToDeliver = delivery.move_lines.filter(p => (p.backorder_qty || 0) > 0);
+    // Usa i prodotti dalla consegna - inizializza delivered a 0 se non presente
+    const productsToDeliver = (delivery.products || []).map(p => ({
+      ...p,
+      delivered: p.delivered || 0,
+      picked: false,
+      completed: false
+    }));
     setScaricoProducts(productsToDeliver);
 
     setView('scarico');
@@ -282,44 +357,61 @@ export default function DeliveryPage() {
     loadDeliveries(); // Ricarica per aggiornare
   }
 
-  function updateScaricoQty(productId: number, qty: number) {
+  function toggleProductPicked(productId: number) {
     setScaricoProducts(prev => prev.map(p => {
       if (p.id === productId) {
-        const maxQty = p.backorder_qty || 0;
-        const newQty = Math.max(0, Math.min(qty, maxQty));
-        return { ...p, quantity_done: (p.quantity_done || 0) + newQty };
+        const newPicked = !p.picked;
+        // Se viene marcato come picked e delivered è 0, imposta qty richiesta
+        const newDelivered = newPicked && p.delivered === 0 ? p.qty : (newPicked ? p.delivered : 0);
+        return {
+          ...p,
+          picked: newPicked,
+          completed: newPicked,
+          delivered: newDelivered
+        };
       }
       return p;
     }));
   }
 
-  function toggleProductSelection(productId: number) {
-    setScaricoProducts(prev => prev.map(p =>
-      p.id === productId ? { ...p, to_deliver: !p.to_deliver } : p
-    ));
+  function updateProductDelivered(productId: number, qty: number) {
+    setScaricoProducts(prev => prev.map(p => {
+      if (p.id === productId) {
+        const newQty = Math.max(0, Math.min(qty, p.qty));
+        return { ...p, delivered: newQty, picked: newQty > 0, completed: newQty > 0 };
+      }
+      return p;
+    }));
   }
 
-  function selectAllProducts() {
-    setScaricoProducts(prev => prev.map(p => ({ ...p, to_deliver: true })));
-  }
+  // Categorizza prodotti
+  const categorizedProducts = useMemo(() => {
+    const categories: Record<string, { name: string; products: Product[]; color: string }> = {
+      Frigo: { name: '❄️ Frigo', products: [], color: '#3b82f6' },
+      Pingu: { name: '🧊 Pingu (Congelato)', products: [], color: '#06b6d4' },
+      Secco: { name: '📦 Secco', products: [], color: '#f59e0b' },
+      NonFood: { name: '🧹 Non Food', products: [], color: '#8b5cf6' }
+    };
 
-  function deselectAllProducts() {
-    setScaricoProducts(prev => prev.map(p => ({ ...p, to_deliver: false })));
-  }
+    scaricoProducts.forEach(product => {
+      const category = product.category || 'Secco';
+      if (categories[category]) {
+        categories[category].products.push(product);
+      } else {
+        categories.Secco.products.push(product);
+      }
+    });
 
-  const filteredScaricoProducts = scaricoProducts.filter(p => {
-    const matchSearch = !scaricoSearch ||
-      p.product_id[1].toLowerCase().includes(scaricoSearch.toLowerCase()) ||
-      p.product_code?.toLowerCase().includes(scaricoSearch.toLowerCase());
-    const matchFilter = !scaricoFilterSelected || p.to_deliver;
-    return matchSearch && matchFilter;
-  });
+    return categories;
+  }, [scaricoProducts]);
 
-  const scaricoStats = {
-    selected: scaricoProducts.filter(p => p.to_deliver).length,
-    total: scaricoProducts.length,
-    pieces: scaricoProducts.filter(p => p.to_deliver).reduce((sum, p) => sum + (p.backorder_qty || 0), 0)
-  };
+  // Stats scarico
+  const scaricoStats = useMemo(() => {
+    const total = scaricoProducts.reduce((sum, p) => sum + p.qty, 0);
+    const delivered = scaricoProducts.reduce((sum, p) => sum + p.delivered, 0);
+    const remaining = total - delivered;
+    return { total, delivered, remaining };
+  }, [scaricoProducts]);
 
   // ==================== CALCULATOR ====================
   function openCalculator(productId: number, maxQty: number) {
@@ -357,14 +449,17 @@ export default function DeliveryPage() {
     if (!calcProductId) return;
 
     const value = parseFloat(calcValue);
-    if (value > calcMaxQty) {
-      showToast(`Quantità massima: ${calcMaxQty}`, 'error');
-      return;
-    }
+    // Nessun limite massimo - permetti qualsiasi quantità
 
-    updateScaricoQty(calcProductId, value);
+    updateProductDelivered(calcProductId, value);
     setShowCalculatorModal(false);
     setCalcProductId(null);
+  }
+
+  function calcCancel() {
+    setShowCalculatorModal(false);
+    setCalcProductId(null);
+    setCalcValue('0');
   }
 
   // ==================== SIGNATURE ====================
@@ -380,7 +475,9 @@ export default function DeliveryPage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.lineWidth = 2;
+    // Clear previous canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#000000';
@@ -390,7 +487,7 @@ export default function DeliveryPage() {
 
     const startDrawing = (e: MouseEvent | TouchEvent) => {
       e.preventDefault();
-      setIsDrawing(true);
+      isDrawingRef.current = true;
 
       const rect = canvas.getBoundingClientRect();
       const touch = 'touches' in e ? e.touches[0] : e;
@@ -403,7 +500,7 @@ export default function DeliveryPage() {
     };
 
     const draw = (e: MouseEvent | TouchEvent) => {
-      if (!isDrawing) return;
+      if (!isDrawingRef.current) return;
       e.preventDefault();
 
       const rect = canvas.getBoundingClientRect();
@@ -421,11 +518,21 @@ export default function DeliveryPage() {
     };
 
     const stopDrawing = () => {
-      if (!isDrawing) return;
-      setIsDrawing(false);
+      if (!isDrawingRef.current) return;
+      isDrawingRef.current = false;
       ctx.closePath();
     };
 
+    // Remove old listeners
+    canvas.removeEventListener('touchstart', startDrawing as any);
+    canvas.removeEventListener('touchmove', draw as any);
+    canvas.removeEventListener('touchend', stopDrawing);
+    canvas.removeEventListener('mousedown', startDrawing as any);
+    canvas.removeEventListener('mousemove', draw as any);
+    canvas.removeEventListener('mouseup', stopDrawing);
+    canvas.removeEventListener('mouseleave', stopDrawing);
+
+    // Add new listeners
     canvas.addEventListener('touchstart', startDrawing as any);
     canvas.addEventListener('touchmove', draw as any);
     canvas.addEventListener('touchend', stopDrawing);
@@ -476,8 +583,92 @@ export default function DeliveryPage() {
     const signature = await saveSignature();
     if (!signature) return;
 
-    await completeScarico();
+    await completeScarico(signature);
     setShowSignatureModal(false);
+    setSignatureNote('');
+  }
+
+  // ==================== PHOTO MODAL ====================
+  async function handlePhotoModalCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const base64 = await fileToBase64(file);
+      const compressed = await compressImage(base64);
+      setPhotoData(compressed);
+      showToast('Foto caricata', 'success');
+    } catch (err) {
+      showToast('Errore caricamento foto', 'error');
+    }
+  }
+
+  async function completeWithPhoto() {
+    if (!currentDelivery) return;
+
+    if (!photoData) {
+      showToast('Scatta una foto prima di confermare', 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Salva foto in attachments
+      await db.attachments.add({
+        picking_id: currentDelivery.id,
+        context: 'photo',
+        data: photoData,
+        timestamp: new Date(),
+        uploaded: false
+      });
+
+      // Prepara payload
+      const payload = {
+        picking_id: currentDelivery.id,
+        products: scaricoProducts.map(p => ({
+          id: p.id,
+          name: p.name,
+          qty: p.qty,
+          delivered: p.delivered || 0,
+          picked: p.picked || false
+        })),
+        photo: photoData,
+        notes: photoNote,
+        completion_type: 'photo'
+      };
+
+      console.log('📸 [COMPLETE WITH PHOTO] Payload:', payload);
+
+      if (isOnline) {
+        await validateDeliveryOnServer(payload);
+        showToast('✅ Consegna completata con foto!', 'success');
+      } else {
+        await db.offline_actions.add({
+          action_type: 'validate',
+          payload,
+          timestamp: new Date(),
+          synced: false
+        });
+        showToast('💾 Azione salvata per sincronizzazione', 'info');
+      }
+
+      // Upload allegati
+      await uploadAllAttachments();
+
+      // Reset e chiudi
+      setPhotoData(null);
+      setPhotoNote('');
+      setShowPhotoModal(false);
+      closeScaricoView();
+      await loadDeliveries();
+
+    } catch (error: any) {
+      console.error('❌ [COMPLETE WITH PHOTO] Errore:', error);
+      showToast('Errore: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   // ==================== ATTACHMENTS ====================
@@ -577,41 +768,58 @@ export default function DeliveryPage() {
   }
 
   // ==================== VALIDATION ====================
-  async function completeScarico() {
+  async function completeScarico(signatureDataParam?: string | null) {
     if (!currentDelivery) return;
 
-    const selectedProducts = scaricoProducts.filter(p => p.to_deliver);
-    if (selectedProducts.length === 0) {
-      showToast('Seleziona almeno un prodotto', 'error');
-      return;
+    setLoading(true);
+
+    try {
+      // Prepara payload con TUTTI i prodotti e le quantità delivered
+      const payload = {
+        picking_id: currentDelivery.id,
+        products: scaricoProducts.map(p => ({
+          id: p.id,
+          name: p.name,
+          qty: p.qty,
+          delivered: p.delivered || 0,
+          picked: p.picked || false
+        })),
+        signature: signatureDataParam || signatureData,
+        notes: signatureNote,
+        completion_type: 'signature'
+      };
+
+      console.log('📦 [COMPLETE] Payload:', payload);
+
+      if (isOnline) {
+        await validateDeliveryOnServer(payload);
+        showToast('✅ Consegna completata e salvata in Odoo!', 'success');
+      } else {
+        // Salva azione per sync successivo
+        await db.offline_actions.add({
+          action_type: 'validate',
+          payload,
+          timestamp: new Date(),
+          synced: false
+        });
+        showToast('💾 Azione salvata per sincronizzazione', 'info');
+      }
+
+      // Upload allegati
+      await uploadAllAttachments();
+
+      // Chiudi vista e torna alla lista
+      closeScaricoView();
+
+      // Ricarica le consegne per aggiornare lo stato
+      await loadDeliveries();
+
+    } catch (error: any) {
+      console.error('❌ [COMPLETE] Errore:', error);
+      showToast('Errore: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
     }
-
-    const payload = {
-      picking_id: currentDelivery.id,
-      products: selectedProducts.map(p => ({
-        move_id: p.id,
-        quantity_done: p.quantity_done
-      }))
-    };
-
-    if (isOnline) {
-      await validateDeliveryOnServer(payload);
-    } else {
-      // Salva azione per sync successivo
-      await db.offline_actions.add({
-        action_type: 'validate',
-        payload,
-        timestamp: new Date(),
-        synced: false
-      });
-      showToast('Azione salvata per sincronizzazione', 'info');
-    }
-
-    // Upload allegati
-    await uploadAllAttachments();
-
-    closeScaricoView();
-    showToast('Consegna completata!', 'success');
   }
 
   async function validateDeliveryOnServer(payload: any) {
@@ -635,6 +843,20 @@ export default function DeliveryPage() {
     setShowPaymentModal(true);
   }
 
+  async function handlePaymentReceiptCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const base64 = await fileToBase64(file);
+      const compressed = await compressImage(base64);
+      setPaymentReceiptPhoto(compressed);
+      showToast('Ricevuta caricata', 'success');
+    } catch (err) {
+      showToast('Errore caricamento ricevuta', 'error');
+    }
+  }
+
   async function processPayment() {
     if (!currentDelivery) return;
 
@@ -644,28 +866,68 @@ export default function DeliveryPage() {
       return;
     }
 
-    const payload = {
-      picking_id: currentDelivery.id,
-      sale_id: currentDelivery.sale_id?.[0],
-      amount,
-      payment_method: paymentMethod,
-      note: paymentNote
-    };
-
-    if (isOnline) {
-      await processPaymentOnServer(payload);
-    } else {
-      await db.offline_actions.add({
-        action_type: 'payment',
-        payload,
-        timestamp: new Date(),
-        synced: false
-      });
-      showToast('Pagamento salvato per sincronizzazione', 'info');
+    if (!paymentNote || !paymentNote.trim()) {
+      showToast('Inserire una nota per il pagamento', 'error');
+      return;
     }
 
-    setShowPaymentModal(false);
-    showToast('Pagamento registrato', 'success');
+    if (!paymentReceiptPhoto) {
+      showToast('Scatta una foto della ricevuta', 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Salva ricevuta in attachments
+      await db.attachments.add({
+        picking_id: currentDelivery.id,
+        context: 'payment',
+        data: paymentReceiptPhoto,
+        timestamp: new Date(),
+        uploaded: false
+      });
+
+      const payload = {
+        picking_id: currentDelivery.id,
+        amount,
+        payment_method: paymentMethod,
+        note: paymentNote,
+        receipt_photo: paymentReceiptPhoto
+      };
+
+      console.log('💰 [PAYMENT] Invio payload incasso:', payload);
+
+      if (isOnline) {
+        await processPaymentOnServer(payload);
+        showToast('✅ Incasso registrato nel documento!', 'success');
+      } else {
+        await db.offline_actions.add({
+          action_type: 'payment',
+          payload,
+          timestamp: new Date(),
+          synced: false
+        });
+        showToast('💾 Pagamento salvato per sincronizzazione', 'info');
+      }
+
+      // Upload allegati
+      await uploadAllAttachments();
+
+      // Reset e chiudi
+      setPaymentReceiptPhoto(null);
+      setPaymentNote('');
+      setShowPaymentModal(false);
+
+      // Completa anche la consegna
+      await completeScarico(null);
+
+    } catch (error: any) {
+      console.error('❌ [PAYMENT] Errore:', error);
+      showToast('Errore: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function processPaymentOnServer(payload: any) {
@@ -687,7 +949,7 @@ export default function DeliveryPage() {
     if (!currentDelivery) return;
 
     // Prodotti già consegnati
-    const delivered = currentDelivery.move_lines.filter(p => p.quantity_done > 0);
+    const delivered = currentDelivery.products || [];
     setResoProducts(delivered.map(p => ({ ...p, reso_qty: 0 })));
     setShowResoModal(true);
   }
@@ -708,11 +970,11 @@ export default function DeliveryPage() {
 
     const payload = {
       original_picking_id: currentDelivery.id,
-      partner_id: currentDelivery.partner_id[0],
+      partner_id: currentDelivery.partner_id?.[0],
       products: productsToReturn.map(p => ({
-        product_id: p.product_id[0],
+        product_id: p.product_id?.[0],
         quantity: p.reso_qty,
-        name: p.product_id[1]
+        name: p.product_id?.[1]
       })),
       note: resoNote
     };
@@ -908,6 +1170,15 @@ export default function DeliveryPage() {
     <div className="min-h-screen bg-gray-50">
       {/* HEADER */}
       <header className="fixed top-0 left-0 right-0 h-[60px] bg-white border-b border-gray-200 flex items-center px-4 z-50 shadow-sm">
+        <button
+          onClick={() => window.location.href = '/'}
+          className="mr-3 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          title="Torna alla Dashboard"
+        >
+          <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </button>
         <div className="flex-1">
           <h1 className="text-lg font-semibold text-gray-900">🚚 LAPA Delivery</h1>
         </div>
@@ -969,8 +1240,13 @@ export default function DeliveryPage() {
               >
                 {/* Header */}
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                    {delivery.sequence || index + 1}
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                      {delivery.sequence || index + 1}
+                    </div>
+                    {delivery.note && (
+                      <div className="text-xl" title="Attenzione: Nota presente">⚠️</div>
+                    )}
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                     delivery.state === 'done' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'
@@ -980,7 +1256,7 @@ export default function DeliveryPage() {
                 </div>
 
                 {/* Customer */}
-                <div className="font-semibold text-gray-900 mb-2">{delivery.partner_id[1]}</div>
+                <div className="font-semibold text-gray-900 mb-2">{delivery.customerName}</div>
 
                 {/* Address */}
                 <div className="text-sm text-gray-600 mb-2 flex items-start gap-2">
@@ -1017,7 +1293,7 @@ export default function DeliveryPage() {
 
                 {/* Products summary */}
                 <div className="text-sm text-gray-600 mb-2">
-                  📦 {delivery.move_lines.length} articoli
+                  📦 {delivery.products?.length || 0} articoli
                 </div>
 
                 {/* Amount */}
@@ -1060,9 +1336,9 @@ export default function DeliveryPage() {
                       className="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold text-sm hover:bg-green-700 transition-colors relative"
                     >
                       📦 SCARICO
-                      {delivery.move_lines.filter(p => (p.backorder_qty || 0) > 0).length > 0 && (
+                      {(delivery.products?.length || 0) > 0 && (
                         <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
-                          {delivery.move_lines.filter(p => (p.backorder_qty || 0) > 0).length}
+                          {delivery.products?.length || 0}
                         </span>
                       )}
                     </button>
@@ -1119,160 +1395,82 @@ export default function DeliveryPage() {
 
         {/* VISTA SCARICO */}
         {view === 'scarico' && currentDelivery && (
-          <div className="h-full flex flex-col bg-white">
-            {/* Scarico Header */}
-            <div className="bg-indigo-600 text-white p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold">Scarico Prodotti</h2>
-                <button
-                  onClick={closeScaricoView}
-                  className="text-white text-2xl"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="text-sm opacity-90">{currentDelivery.partner_id[1]}</div>
-              <div className="text-sm opacity-75">{currentDelivery.name}</div>
-            </div>
-
-            {/* Search & Filters */}
-            <div className="p-4 border-b border-gray-200">
-              <input
-                type="text"
-                value={scaricoSearch}
-                onChange={(e) => setScaricoSearch(e.target.value)}
-                placeholder="🔍 Cerca prodotto..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-2"
-              />
-
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={scaricoFilterSelected}
-                    onChange={(e) => setScaricoFilterSelected(e.target.checked)}
-                    className="rounded"
-                  />
-                  Solo da scaricare
-                </label>
-
-                <div className="text-sm font-semibold text-gray-700">
-                  {scaricoStats.selected} di {scaricoStats.total} selezionati
+          <div className="fixed inset-0 top-[60px] bottom-[70px] bg-white flex flex-col">
+            {/* Header */}
+            <div className="bg-white p-3 border-b flex items-center gap-3">
+              <button onClick={closeScaricoView} className="w-10 h-10 flex items-center justify-center rounded-lg bg-red-500 text-white text-2xl font-bold hover:bg-red-600 shadow-md">←</button>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="font-semibold text-base">Scarico Prodotti</div>
+                  {currentDelivery.note && (
+                    <div className="text-xl" title={currentDelivery.note}>⚠️</div>
+                  )}
                 </div>
-              </div>
-
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={selectAllProducts}
-                  className="flex-1 px-3 py-1 bg-green-100 text-green-700 rounded text-sm font-semibold"
-                >
-                  Seleziona Tutti
-                </button>
-                <button
-                  onClick={deselectAllProducts}
-                  className="flex-1 px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-semibold"
-                >
-                  Deseleziona Tutti
-                </button>
+                <div className="text-sm text-gray-600">{currentDelivery.customerName}</div>
+                {currentDelivery.note && (
+                  <div className="text-xs italic text-yellow-700 bg-yellow-50 p-2 rounded mt-1">
+                    📝 {stripHtml(currentDelivery.note)}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Products List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {filteredScaricoProducts.map(product => (
-                <div key={product.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <div className="flex items-start gap-3 mb-3">
-                    <input
-                      type="checkbox"
-                      checked={product.to_deliver || false}
-                      onChange={() => toggleProductSelection(product.id)}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900">{product.product_id[1]}</div>
-                      {product.product_code && (
-                        <div className="text-sm text-gray-500">Codice: {product.product_code}</div>
-                      )}
+            {/* Products Grid per Categoria */}
+            <div className="flex-1 overflow-y-auto p-3 pb-20">
+              {Object.entries(categorizedProducts).map(([key, category]) => {
+                if (category.products.length === 0) return null;
+                return (
+                  <div key={key}>
+                    <div className="font-semibold py-2 border-b-2 mb-3" style={{color: category.color, borderColor: category.color + '33'}}>
+                      {category.name} ({category.products.length})
+                    </div>
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2 mb-4">
+                      {category.products.map(product => {
+                        const isModified = product.delivered !== product.qty;
+                        return (
+                          <div
+                            key={product.id}
+                            onClick={() => toggleProductPicked(product.id)}
+                            className={`border rounded-lg p-2 cursor-pointer ${product.completed ? 'bg-green-50 border-green-500' : 'border-gray-300'}`}
+                            style={{borderTopWidth: '3px', borderTopColor: category.color}}
+                          >
+                            {product.image ? (
+                              <img src={`data:image/png;base64,${product.image}`} alt={product.name} className="w-full h-20 object-cover rounded mb-2" />
+                            ) : (
+                              <div className="w-full h-20 bg-gray-100 rounded mb-2 flex items-center justify-center text-3xl">📦</div>
+                            )}
+                            <div className="text-xs font-semibold mb-1 line-clamp-2">{product.name}</div>
+                            <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                              <span>RICHIESTO</span>
+                              <span className="font-semibold">{product.qty}</span>
+                            </div>
+                            <div className="flex justify-between text-[10px] mb-2" style={{color: isModified ? '#f59e0b' : '#10b981'}}>
+                              <span>CONSEGNATO</span>
+                              <span className="font-bold text-base">{product.delivered}</span>
+                            </div>
+                            <button
+                              onClick={(e) => {e.stopPropagation(); openCalculator(product.id, product.qty);}}
+                              className="w-full py-1 text-xs rounded" style={{background: isModified ? '#fef3c7' : '#f3f4f6'}}
+                            >
+                              ✏️ Modifica: {product.delivered}
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-sm mb-3">
-                    <div>
-                      <div className="text-gray-500">Ordinata</div>
-                      <div className="font-semibold">{product.product_uom_qty}</div>
-                    </div>
-                    <div>
-                      <div className="text-gray-500">Consegnata</div>
-                      <div className="font-semibold">{product.quantity_done}</div>
-                    </div>
-                    <div>
-                      <div className="text-gray-500">Backorder</div>
-                      <div className="font-semibold text-orange-600">{product.backorder_qty || 0}</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => updateScaricoQty(product.id, -1)}
-                      className="w-10 h-10 bg-red-100 text-red-700 rounded-lg font-bold"
-                    >
-                      -
-                    </button>
-                    <input
-                      type="number"
-                      value={product.quantity_done || 0}
-                      onClick={() => openCalculator(product.id, product.backorder_qty || 0)}
-                      readOnly
-                      className="flex-1 text-center py-2 border border-gray-300 rounded-lg font-semibold"
-                    />
-                    <button
-                      onClick={() => updateScaricoQty(product.id, 1)}
-                      className="w-10 h-10 bg-green-100 text-green-700 rounded-lg font-bold"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <textarea
-                    placeholder="Note prodotto..."
-                    value={product.note || ''}
-                    onChange={(e) => {
-                      setScaricoProducts(prev => prev.map(p =>
-                        p.id === product.id ? { ...p, note: e.target.value } : p
-                      ));
-                    }}
-                    className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    rows={2}
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {/* Bottom Actions */}
-            <div className="border-t border-gray-200 p-4 bg-white">
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={openSignatureModal}
-                  className="bg-indigo-600 text-white py-3 rounded-lg font-semibold text-sm hover:bg-indigo-700"
-                >
-                  ✍️ Con Firma
-                </button>
-                <button
-                  onClick={() => {
-                    setAttachmentContext('photo');
-                    photoInputRef.current?.click();
-                  }}
-                  className="bg-blue-600 text-white py-3 rounded-lg font-semibold text-sm hover:bg-blue-700"
-                >
-                  📸 Solo Foto
-                </button>
-                <button
-                  onClick={openPaymentModal}
-                  className="bg-green-600 text-white py-3 rounded-lg font-semibold text-sm hover:bg-green-700"
-                >
-                  💰 Pagamento
-                </button>
+            {/* Footer Stats + Completa */}
+            <div className="fixed bottom-[70px] left-0 right-0 bg-white border-t p-3 flex items-center gap-3">
+              <div className="flex-1 flex gap-4">
+                <div className="text-center"><div className="text-xl font-bold text-gray-900">{scaricoStats.total.toFixed(2)}</div><div className="text-[10px] text-gray-500">Totali</div></div>
+                <div className="text-center"><div className="text-xl font-bold text-green-600">{scaricoStats.delivered.toFixed(2)}</div><div className="text-[10px] text-gray-500">Scaricati</div></div>
+                <div className="text-center"><div className="text-xl font-bold text-orange-500">{scaricoStats.remaining.toFixed(2)}</div><div className="text-[10px] text-gray-500">Mancanti</div></div>
               </div>
+              <button onClick={() => setShowCompletionOptionsModal(true)} className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold text-sm">✅ Completa</button>
             </div>
           </div>
         )}
@@ -1336,90 +1534,72 @@ export default function DeliveryPage() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white w-full md:max-w-2xl md:rounded-t-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-white w-full md:max-w-md md:rounded-t-2xl rounded-t-2xl"
             >
               {/* Header */}
-              <div className="sticky top-0 bg-indigo-600 text-white p-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">{currentDelivery.partner_id[1]}</h2>
-                <button onClick={closeModal} className="text-2xl">✕</button>
+              <div className="bg-indigo-600 text-white p-3 flex items-center justify-between rounded-t-2xl">
+                <h2 className="font-semibold text-base">{currentDelivery.customerName}</h2>
+                <button onClick={closeModal} className="text-xl">✕</button>
               </div>
 
-              <div className="p-4 space-y-4">
-                {/* Info Cliente */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold mb-2">Informazioni Cliente</h3>
-                  <div className="space-y-1 text-sm">
-                    <div>📍 {currentDelivery.partner_street}</div>
-                    {currentDelivery.partner_city && (
-                      <div>{currentDelivery.partner_city} {currentDelivery.partner_zip}</div>
-                    )}
-                    {currentDelivery.partner_phone && (
-                      <a href={`tel:${currentDelivery.partner_phone}`} className="text-blue-600">
-                        📞 {currentDelivery.partner_phone}
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                {/* Info Ordine */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold mb-2">Informazioni Ordine</h3>
-                  <div className="space-y-1 text-sm">
-                    <div>Picking: {currentDelivery.name}</div>
-                    {currentDelivery.origin && <div>Ordine: {currentDelivery.origin}</div>}
-                    {currentDelivery.amount_total && (
-                      <div className="text-lg font-bold">Totale: € {currentDelivery.amount_total.toFixed(2)}</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Prodotti */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold mb-2">Prodotti ({currentDelivery.move_lines.length})</h3>
-                  <div className="space-y-2">
-                    {currentDelivery.move_lines.map(product => (
-                      <div key={product.id} className="text-sm flex justify-between">
-                        <span>{product.product_id[1]}</span>
-                        <span className="font-semibold">x{product.product_uom_qty}</span>
+              <div className="p-4 space-y-3">
+                {/* Nota in evidenza se presente */}
+                {currentDelivery.note && (
+                  <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded">
+                    <div className="flex items-start gap-2">
+                      <div className="text-xl">⚠️</div>
+                      <div>
+                        <div className="font-semibold text-yellow-800 text-sm mb-1">ATTENZIONE - Nota importante:</div>
+                        <div className="text-sm text-yellow-700">{stripHtml(currentDelivery.note)}</div>
                       </div>
-                    ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Info Cliente compatto */}
+                <div className="text-sm text-gray-600 space-y-1">
+                  <div>📍 {currentDelivery.partner_street}</div>
+                  {currentDelivery.partner_city && (
+                    <div>{currentDelivery.partner_city} {currentDelivery.partner_zip}</div>
+                  )}
+                  {currentDelivery.partner_phone && (
+                    <a href={`tel:${currentDelivery.partner_phone}`} className="text-blue-600">
+                      📞 {currentDelivery.partner_phone}
+                    </a>
+                  )}
+                  <div className="font-semibold text-gray-900">
+                    📦 {currentDelivery.products?.length || 0} prodotti
                   </div>
                 </div>
 
-                {/* Allegati */}
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => openAttachmentModal('signature')}
-                    className="bg-indigo-100 text-indigo-700 py-3 rounded-lg font-semibold text-sm relative"
-                  >
-                    ✍️ Firme ({attachmentCounts.signature || 0})
-                  </button>
-                  <button
-                    onClick={() => openAttachmentModal('photo')}
-                    className="bg-blue-100 text-blue-700 py-3 rounded-lg font-semibold text-sm relative"
-                  >
-                    📸 Foto ({attachmentCounts.photo || 0})
-                  </button>
-                </div>
-
-                {/* Azioni */}
+                {/* Azioni - solo NAVIGA e SCARICO */}
                 <div className="space-y-2">
                   <button
-                    onClick={() => navigateTo(currentDelivery.latitude, currentDelivery.longitude)}
-                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold"
+                    onClick={() => {
+                      closeModal();
+                      navigateTo(currentDelivery.lat ?? currentDelivery.latitude, currentDelivery.lng ?? currentDelivery.longitude);
+                    }}
+                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700"
                   >
                     🗺️ NAVIGA
                   </button>
                   <button
-                    onClick={() => openScaricoView(currentDelivery)}
-                    className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold"
+                    onClick={() => {
+                      closeModal();
+                      openScaricoView(currentDelivery);
+                    }}
+                    className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700"
                   >
                     📦 APRI SCARICO
                   </button>
-                  {currentDelivery.state !== 'done' && (
+                  {/* RESI solo per consegne completate */}
+                  {(currentDelivery.state === 'done' || currentDelivery.completed) && (
                     <button
-                      onClick={openResoModal}
-                      className="w-full bg-orange-600 text-white py-3 rounded-lg font-semibold"
+                      onClick={() => {
+                        closeModal();
+                        openResoModal();
+                      }}
+                      className="w-full bg-orange-600 text-white py-3 rounded-lg font-semibold hover:bg-orange-700"
                     >
                       🔄 GESTIONE RESI
                     </button>
@@ -1458,6 +1638,17 @@ export default function DeliveryPage() {
                 style={{ maxHeight: '400px' }}
               />
 
+              <div className="mt-4">
+                <label className="block text-sm font-semibold mb-2">Note / Commento (opzionale)</label>
+                <textarea
+                  value={signatureNote}
+                  onChange={(e) => setSignatureNote(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  rows={3}
+                  placeholder="Aggiungi un commento o nota per questa consegna..."
+                />
+              </div>
+
               <div className="flex gap-3 mt-4">
                 <button
                   onClick={clearSignature}
@@ -1468,6 +1659,184 @@ export default function DeliveryPage() {
                 <button
                   onClick={confirmScaricoWithSignature}
                   className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold"
+                >
+                  ✓ Conferma e Completa
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Completion Options - 3 Scelte */}
+      <AnimatePresence>
+        {showCompletionOptionsModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowCompletionOptionsModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl p-6 max-w-lg w-full"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold">📦 Completa Consegna</h3>
+                <button
+                  onClick={() => setShowCompletionOptionsModal(false)}
+                  className="text-2xl text-gray-400 hover:text-gray-600"
+                >
+                  ×
+                </button>
+              </div>
+
+              <p className="text-center text-gray-600 mb-6">
+                Scegli come completare la consegna:
+              </p>
+
+              {/* Opzione 1: Firma Cliente */}
+              <button
+                onClick={() => {
+                  setShowCompletionOptionsModal(false);
+                  openSignatureModal();
+                }}
+                className="w-full p-5 mb-3 bg-green-600 text-white rounded-lg font-semibold text-lg flex items-center justify-center gap-3 hover:bg-green-700"
+              >
+                <span className="text-2xl">✍️</span>
+                <span>Firma Cliente</span>
+              </button>
+
+              {/* Opzione 2: Solo Foto (Cliente assente) */}
+              <button
+                onClick={() => {
+                  setShowCompletionOptionsModal(false);
+                  setShowPhotoModal(true);
+                }}
+                className="w-full p-5 mb-3 bg-blue-600 text-white rounded-lg font-semibold text-lg flex items-center justify-center gap-3 hover:bg-blue-700"
+              >
+                <span className="text-2xl">📸</span>
+                <span>Solo Foto (Cliente assente)</span>
+              </button>
+
+              {/* Opzione 3: Incasso Pagamento */}
+              <button
+                onClick={() => {
+                  setShowCompletionOptionsModal(false);
+                  setShowPaymentModal(true);
+                }}
+                className="w-full p-5 bg-orange-600 text-white rounded-lg font-semibold text-lg flex items-center justify-center gap-3 hover:bg-orange-700"
+              >
+                <span className="text-2xl">💰</span>
+                <span>Incasso Pagamento</span>
+              </button>
+
+              <button
+                onClick={() => setShowCompletionOptionsModal(false)}
+                className="w-full mt-4 p-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
+              >
+                Annulla
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Foto (Cliente assente) */}
+      <AnimatePresence>
+        {showPhotoModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowPhotoModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl p-6 max-w-lg w-full"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">📸 Solo Foto (Cliente assente)</h3>
+                <button
+                  onClick={() => setShowPhotoModal(false)}
+                  className="text-2xl text-gray-400 hover:text-gray-600"
+                >
+                  ×
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-4">
+                Scatta una foto della consegna effettuata (es. pacco lasciato davanti alla porta)
+              </p>
+
+              {/* Pulsante Scatta Foto */}
+              <button
+                onClick={() => photoModalInputRef.current?.click()}
+                className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold text-lg mb-4 hover:bg-blue-700 flex items-center justify-center gap-2"
+              >
+                <span className="text-2xl">📷</span>
+                <span>Scatta Foto</span>
+              </button>
+
+              {/* Anteprima Foto */}
+              {photoData && (
+                <div className="mb-4">
+                  <div className="relative">
+                    <img
+                      src={photoData}
+                      alt="Anteprima"
+                      className="w-full h-48 object-cover rounded-lg border-2 border-green-500"
+                    />
+                    <button
+                      onClick={() => setPhotoData(null)}
+                      className="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-semibold hover:bg-red-600"
+                    >
+                      🗑️ Rimuovi
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Note opzionali */}
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-2">Note (opzionale)</label>
+                <textarea
+                  value={photoNote}
+                  onChange={(e) => setPhotoNote(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  rows={3}
+                  placeholder="Es. Lasciato davanti alla porta, cliente non presente..."
+                />
+              </div>
+
+              {/* Pulsanti Azione */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setPhotoData(null);
+                    setPhotoNote('');
+                    setShowPhotoModal(false);
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={completeWithPhoto}
+                  disabled={!photoData}
+                  className={`flex-1 py-3 rounded-lg font-semibold ${
+                    photoData
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
                   ✓ Conferma e Completa
                 </button>
@@ -1494,7 +1863,7 @@ export default function DeliveryPage() {
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-xl p-6 max-w-md w-full"
             >
-              <div className="text-3xl font-bold text-right mb-6 p-4 bg-gray-100 rounded-lg">
+              <div className="text-3xl font-bold text-right mb-6 p-4 bg-gray-100 rounded-lg text-gray-900">
                 {calcValue}
               </div>
 
@@ -1508,21 +1877,23 @@ export default function DeliveryPage() {
                       else if (btn === '.') calcPressDecimal();
                       else calcPress(btn);
                     }}
-                    className="h-14 bg-gray-200 hover:bg-gray-300 rounded-lg font-bold text-lg"
+                    className="h-14 bg-gray-200 hover:bg-gray-300 rounded-lg font-bold text-lg text-gray-900"
                   >
                     {btn}
                   </button>
                 ))}
                 <button
+                  onClick={calcCancel}
+                  className="col-span-2 h-14 bg-red-500 text-white rounded-lg font-bold text-lg hover:bg-red-600"
+                >
+                  ✕ Annulla
+                </button>
+                <button
                   onClick={calcConfirm}
-                  className="col-span-2 h-14 bg-green-600 text-white rounded-lg font-bold text-lg"
+                  className="col-span-2 h-14 bg-green-600 text-white rounded-lg font-bold text-lg hover:bg-green-700"
                 >
                   ✓ OK
                 </button>
-              </div>
-
-              <div className="text-sm text-gray-500 mt-3 text-center">
-                Max: {calcMaxQty}
               </div>
             </motion.div>
           </motion.div>
@@ -1672,26 +2043,67 @@ export default function DeliveryPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-semibold mb-2">Note (opzionale)</label>
+                <label className="block text-sm font-semibold mb-2">Note *</label>
                 <textarea
                   value={paymentNote}
                   onChange={(e) => setPaymentNote(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   rows={3}
-                  placeholder="Note pagamento..."
+                  placeholder="Descrivi il pagamento (obbligatorio)..."
+                  required
                 />
+              </div>
+
+              {/* Foto Ricevuta */}
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-2">Foto Ricevuta *</label>
+                <button
+                  onClick={() => paymentReceiptInputRef.current?.click()}
+                  className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold mb-3 hover:bg-blue-700 flex items-center justify-center gap-2"
+                >
+                  <span className="text-xl">📷</span>
+                  <span>Scatta Foto Ricevuta</span>
+                </button>
+
+                {paymentReceiptPhoto && (
+                  <div className="relative">
+                    <img
+                      src={paymentReceiptPhoto}
+                      alt="Ricevuta"
+                      className="w-full h-32 object-cover rounded-lg border-2 border-green-500"
+                    />
+                    <button
+                      onClick={() => setPaymentReceiptPhoto(null)}
+                      className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold hover:bg-red-600"
+                    >
+                      🗑️
+                    </button>
+                    <div className="text-xs text-center mt-1 text-green-600 font-semibold">
+                      ✓ Ricevuta caricata
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowPaymentModal(false)}
+                  onClick={() => {
+                    setPaymentReceiptPhoto(null);
+                    setPaymentNote('');
+                    setShowPaymentModal(false);
+                  }}
                   className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold"
                 >
                   Annulla
                 </button>
                 <button
                   onClick={processPayment}
-                  className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold"
+                  disabled={!paymentReceiptPhoto || !paymentNote.trim()}
+                  className={`flex-1 py-3 rounded-lg font-semibold ${
+                    paymentReceiptPhoto && paymentNote.trim()
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
                   💰 Conferma Pagamento
                 </button>
@@ -1723,7 +2135,7 @@ export default function DeliveryPage() {
               <div className="space-y-3 mb-4">
                 {resoProducts.map(product => (
                   <div key={product.id} className="bg-gray-50 rounded-lg p-4">
-                    <div className="font-semibold mb-2">{product.product_id[1]}</div>
+                    <div className="font-semibold mb-2">{product.name}</div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600">Quantità da rendere:</span>
                       <input
@@ -1793,6 +2205,26 @@ export default function DeliveryPage() {
         accept="image/*"
         capture="environment"
         onChange={handlePhotoCapture}
+        className="hidden"
+      />
+
+      {/* Hidden file input for photo modal */}
+      <input
+        ref={photoModalInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handlePhotoModalCapture}
+        className="hidden"
+      />
+
+      {/* Hidden file input for payment receipt */}
+      <input
+        ref={paymentReceiptInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handlePaymentReceiptCapture}
         className="hidden"
       />
 

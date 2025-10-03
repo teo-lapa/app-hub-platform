@@ -1,34 +1,48 @@
 export interface Delivery {
   id: number;
   name: string;
-  partner_id: [number, string];
+  customer: string;
+  customerName: string;
+  address: string;
+  phone: string;
+  lat: number | null;
+  lng: number | null;
+  latitude?: number;
+  longitude?: number;
+  products: Product[];
+  note: string;
+  state: 'assigned' | 'done' | 'cancel';
+  origin: string;
+  carrier: string;
+  scheduledDate: string;
+  backorderId?: any;
+  isBackorder: boolean;
+  completed: boolean;
+  eta?: number;
+  sequence?: number;
+  amount_total?: number;
+  payment_status?: 'paid' | 'to_pay' | 'partial';
+  sale_id?: [number, string];
   partner_street?: string;
   partner_city?: string;
   partner_zip?: string;
   partner_phone?: string;
-  latitude?: number;
-  longitude?: number;
-  scheduled_date: string;
-  state: 'assigned' | 'done' | 'cancel';
-  origin?: string;
-  note?: string;
-  sale_id?: [number, string];
-  amount_total?: number;
-  payment_status?: 'paid' | 'to_pay' | 'partial';
-  move_lines: Product[];
-  eta?: number;
-  sequence?: number;
+  partner_id?: [number, string];
 }
 
 export interface Product {
   id: number;
-  product_id: [number, string];
-  product_uom_qty: number;
-  quantity_done: number;
-  backorder_qty?: number;
-  product_code?: string;
+  name: string;
+  qty: number;
+  image: string | null;
+  category: string;
+  delivered: number; // Quantità scaricata
   note?: string;
-  to_deliver?: boolean;
+  completed?: boolean;
+  picked?: boolean;
+  product_id?: [number, string];
+  quantity_done?: number;
+  reso_qty?: number;
 }
 
 export interface Attachment {
