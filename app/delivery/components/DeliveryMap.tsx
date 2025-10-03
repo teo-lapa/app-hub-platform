@@ -51,29 +51,61 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
   useEffect(() => {
     if (!googleMapRef.current) return;
 
+    console.log('🗺️ [MAP] Aggiornamento markers con', deliveries.length, 'consegne');
+
     // Clear existing markers
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
 
-    // Add current position marker
+    // Add current position marker - FURGONCINO ROSSO
     if (currentPosition) {
       const currentMarker = new google.maps.Marker({
         position: currentPosition,
         map: googleMapRef.current,
         icon: {
-          url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+          // SVG path di un furgone per delivery
+          path: 'M4,16 L4,6 C4,4.9 4.9,4 6,4 L10,4 L10,2 L14,2 L14,4 L18,4 C19.1,4 20,4.9 20,6 L20,16 M6,18.5 C6,17.67 6.67,17 7.5,17 C8.33,17 9,17.67 9,18.5 C9,19.33 8.33,20 7.5,20 C6.67,20 6,19.33 6,18.5 M15,18.5 C15,17.67 15.67,17 16.5,17 C17.33,17 18,17.67 18,18.5 C18,19.33 17.33,20 16.5,20 C15.67,20 15,19.33 15,18.5 M18,16 L18,11 L22,11 L22,13.5 L24,15 L24,16 M2,16 L2,15 L4,15 L4,16',
+          fillColor: '#dc2626',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+          scale: 1.2,
+          anchor: new google.maps.Point(12, 12)
         },
-        title: 'La tua posizione'
+        title: 'Il tuo furgone',
+        zIndex: 1000
       });
       markersRef.current.push(currentMarker);
     }
 
     // Add delivery markers
     deliveries.forEach((delivery, index) => {
-      if (!delivery.latitude || !delivery.longitude) return;
+      if (!delivery.lat || !delivery.lng) {
+        console.log('⚠️ [MAP] Consegna senza coordinate:', delivery.customerName);
+        return;
+      }
+
+      // Determina colore e opacità in base allo stato
+      // Blu = da consegnare (assigned)
+      // Verde = completato (done)
+      // Arancione = con residuo (isBackorder)
+      // Trasparente = completato o con residuo
+      const isBackorder = (delivery as any).isBackorder || false;
+      const isCompleted = delivery.completed || delivery.state === 'done';
+
+      let markerColor = '#3b82f6'; // Blu - da consegnare
+      let markerOpacity = 1.0;
+
+      if (isBackorder) {
+        markerColor = '#f59e0b'; // Arancione - residuo
+        markerOpacity = 0.5; // Trasparente
+      } else if (isCompleted) {
+        markerColor = '#10b981'; // Verde - completato
+        markerOpacity = 0.5; // Trasparente
+      }
 
       const marker = new google.maps.Marker({
-        position: { lat: delivery.latitude, lng: delivery.longitude },
+        position: { lat: delivery.lat, lng: delivery.lng },
         map: googleMapRef.current,
         label: {
           text: String(index + 1),
@@ -81,26 +113,23 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
           fontWeight: 'bold'
         },
         icon: {
-          url: delivery.state === 'done'
-            ? 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
-            : 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-          labelOrigin: new google.maps.Point(16, 16)
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: markerColor,
+          fillOpacity: markerOpacity,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+          scale: 12,
+          labelOrigin: new google.maps.Point(0, 0)
         },
-        title: delivery.partner_id[1]
+        title: delivery.customerName
       });
 
-      // Info window
+      // Info window - Compatto con solo nome cliente e note
       const infoWindow = new google.maps.InfoWindow({
         content: `
-          <div style="padding: 8px;">
-            <h3 style="font-weight: bold; margin-bottom: 4px;">${delivery.partner_id[1]}</h3>
-            ${delivery.eta ? `<p style="font-size: 14px;">ETA: ${delivery.eta} min</p>` : ''}
-            <button
-              onclick="window.navigateToDelivery(${delivery.latitude}, ${delivery.longitude})"
-              style="margin-top: 8px; padding: 6px 12px; background: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer;"
-            >
-              🗺️ Naviga
-            </button>
+          <div style="padding: 6px; max-width: 200px;">
+            <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px;">${delivery.customerName}</div>
+            ${(delivery as any).note ? `<div style="font-size: 11px; color: #666; margin-bottom: 6px; font-style: italic;">${(delivery as any).note}</div>` : ''}
           </div>
         `
       });
@@ -115,6 +144,8 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
       markersRef.current.push(marker);
     });
 
+    console.log('✅ [MAP] Creati', markersRef.current.length, 'markers sulla mappa');
+
     // Fit bounds to show all markers
     if (markersRef.current.length > 0) {
       const bounds = new google.maps.LatLngBounds();
@@ -125,6 +156,7 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
         }
       });
       googleMapRef.current.fitBounds(bounds);
+      console.log('🎯 [MAP] Bounds aggiustati per mostrare tutti i markers');
     }
   }, [deliveries, currentPosition, onMarkerClick]);
 
