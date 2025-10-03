@@ -1,9 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     console.log('🚚 [DELIVERY-v3] Inizio caricamento consegne...');
+
+    // Check JWT token from platform auth
+    const token = request.cookies.get('token')?.value;
+    if (!token) {
+      console.warn('⚠️ [DELIVERY] Nessun token JWT trovato - accesso senza autenticazione piattaforma');
+    } else {
+      console.log('✅ [DELIVERY] Token JWT presente');
+    }
 
     // Autenticazione con Odoo
     const { cookies, uid } = await getOdooSession();
