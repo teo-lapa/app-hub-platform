@@ -38,20 +38,23 @@ export async function GET(request: NextRequest) {
 
     console.log('📅 [DELIVERY] Filtro data: oggi da', todayStart, 'a', tomorrowStart);
 
-    // Build domain with driver filter - SOLO DOCUMENTI DI OGGI pronti (assigned)
-    const domain = [
+    // Build domain - CONSEGNE DI OGGI: pronti + completati, NO residui, SOLO del driver loggato
+    const domain: any[] = [
       ['picking_type_id.code', '=', 'outgoing'],
-      ['state', '=', 'assigned'],  // SOLO pronti, NON completati
+      ['state', 'in', ['assigned', 'done']],  // Pronti + Completati
       ['scheduled_date', '>=', todayStart],
-      ['scheduled_date', '<', tomorrowStart]
+      ['scheduled_date', '<', tomorrowStart],
+      ['backorder_id', '=', false]  // ESCLUDI residui (backorder_id deve essere vuoto)
     ];
 
     if (employee && employee.length > 0) {
       console.log('👤 [DELIVERY] Employee trovato:', employee[0].name, 'ID:', employee[0].id);
-      domain.push(['driver_id', '=', employee[0].id]);
+      domain.push(['driver_id', '=', employee[0].id]);  // SOLO consegne del driver loggato
     } else {
-      console.log('⚠️ [DELIVERY] Nessun employee, mostro tutti i documenti di oggi');
+      console.log('⚠️ [DELIVERY] Nessun employee associato, mostro TUTTE le consegne di oggi');
     }
+
+    console.log('🔍 [DELIVERY] Domain filtri:', JSON.stringify(domain));
 
     // COPIA ESATTA DELLA LOGICA HTML
     // Load pickings - ESATTAMENTE COME L'HTML
