@@ -24,41 +24,9 @@ export async function getOdooSession(userCookies?: string) {
   try {
     console.log('🔐 [ODOO-AUTH] Autenticazione con:', ODOO_URL);
 
-    // Se ci sono cookies dell'utente, prova a usare la sessione esistente
-    if (userCookies) {
-      console.log('🍪 [ODOO-AUTH] Trovati cookies utente, verifico sessione esistente');
-
-      // Prova a usare la sessione esistente
-      const sessionCheck = await fetch(`${ODOO_URL}/web/session/get_session_info`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': userCookies
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {}
-        })
-      });
-
-      if (sessionCheck.ok) {
-        const sessionData = await sessionCheck.json();
-        console.log('🔍 [ODOO-AUTH] Session check response:', JSON.stringify(sessionData, null, 2));
-
-        if (sessionData.result?.uid) {
-          console.log('✅ [ODOO-AUTH] Sessione utente valida, UID:', sessionData.result.uid);
-          return { cookies: userCookies, uid: sessionData.result.uid };
-        } else {
-          console.log('⚠️ [ODOO-AUTH] Sessione check OK ma UID non trovato in result');
-        }
-      } else {
-        console.log('❌ [ODOO-AUTH] Session check HTTP error:', sessionCheck.status);
-      }
-    }
-
-    // Fallback: autentica con credenziali di default
-    console.log('⚠️ [ODOO-AUTH] Nessuna sessione utente, uso credenziali fallback');
+    // TEMPORANEO FIX: Forza autenticazione con credenziali corrette
+    // Ignora i cookies dell'utente che potrebbero essere di Stella (uid=430)
+    console.log('🔧 [ODOO-AUTH] Forzo autenticazione con credenziali Paul (uid=7)');
 
     const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
       method: 'POST',
