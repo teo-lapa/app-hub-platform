@@ -24,6 +24,8 @@ export async function GET(request: NextRequest) {
     // Cerca employee_id dell'utente loggato
     const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
 
+    console.log(`🔍 [DELIVERY] Cerco hr.employee con user_id=${uidNum}...`);
+
     const employees = await callOdoo(
       cookies,
       'hr.employee',
@@ -31,21 +33,47 @@ export async function GET(request: NextRequest) {
       [],
       {
         domain: [['user_id', '=', uidNum]],
-        fields: ['id', 'name'],
+        fields: ['id', 'name', 'user_id'],
         limit: 1
       }
     );
 
-    console.log(`🔍 [DELIVERY] Dipendenti trovati: ${employees.length}`);
+    console.log(`📋 [DELIVERY] Dipendenti trovati: ${employees.length}`);
+    console.log(`📋 [DELIVERY] Risultato ricerca:`, JSON.stringify(employees, null, 2));
 
     if (employees.length === 0) {
-      console.warn(`⚠️ [DELIVERY] Nessun dipendente per uid=${uidNum}`);
-      return NextResponse.json({ error: 'Utente non ha dipendente collegato' }, { status: 403 });
+      console.error(`❌ [DELIVERY] Nessun dipendente trovato per user_id=${uidNum}`);
+
+      // DEBUG: Mostra TUTTI i dipendenti per capire il problema
+      console.log(`🔍 [DELIVERY] DEBUG - Carico TUTTI i dipendenti per analisi...`);
+      const allEmployees = await callOdoo(
+        cookies,
+        'hr.employee',
+        'search_read',
+        [],
+        {
+          domain: [],
+          fields: ['id', 'name', 'user_id'],
+          limit: 50
+        }
+      );
+      console.log(`📋 [DELIVERY] TUTTI i dipendenti (${allEmployees.length}):`, JSON.stringify(allEmployees, null, 2));
+
+      return NextResponse.json({
+        error: `Dipendente non trovato per user_id=${uidNum}. Controlla in Odoo che il campo "Utente collegato" del dipendente sia compilato.`,
+        debug: {
+          uid: uidNum,
+          employeesFound: 0,
+          hint: 'Vai in Odoo → Risorse Umane → Dipendenti → Trova il tuo dipendente → Compila campo "Utente collegato"'
+        }
+      }, { status: 403 });
     }
 
     const driverId = employees[0].id;
     const driverName = employees[0].name;
-    console.log(`✅ [DELIVERY] Driver: ${driverName} (ID=${driverId})`);
+    const userIdField = employees[0].user_id;
+    console.log(`✅ [DELIVERY] Driver trovato: ${driverName} (employee_id=${driverId})`);
+    console.log(`📋 [DELIVERY] user_id field value:`, JSON.stringify(userIdField));
 
     // Get today's date
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -91,9 +119,18 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    console.log(`📦 [DELIVERY] Trovati ${pickings.length} documenti`);
+    console.log(`📦 [DELIVERY] Odoo ha ritornato ${pickings.length} documenti per driver_id=${driverId}`);
+
+    // DEBUG: Mostra i primi 3 documenti con i loro driver_id
+    if (pickings.length > 0) {
+      console.log(`🔍 [DELIVERY] Primi 3 documenti con driver_id:`);
+      pickings.slice(0, 3).forEach((p: any) => {
+        console.log(`  - ${p.name}: driver_id=${p.driver_id ? p.driver_id[0] : 'NULL'} (${p.driver_id ? p.driver_id[1] : 'nessuno'})`);
+      });
+    }
 
     if (pickings.length === 0) {
+      console.warn(`⚠️ [DELIVERY] Nessun documento trovato per driver_id=${driverId} oggi`);
       return NextResponse.json([]);
     }
 
