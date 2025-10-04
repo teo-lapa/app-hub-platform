@@ -9,14 +9,29 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { original_picking_id, partner_id, products, note } = body;
+    const { original_picking_id, partner_id, products, note, photo } = body;
+
+    console.log('📦 RESO API: Ricevuto payload:', {
+      original_picking_id,
+      partner_id,
+      products_count: products?.length,
+      has_note: !!note,
+      has_photo: !!photo
+    });
 
     if (!original_picking_id || !partner_id || !products || products.length === 0) {
+      console.log('❌ RESO API: Dati reso mancanti');
       return NextResponse.json({ error: 'Dati reso mancanti' }, { status: 400 });
     }
 
     if (!note || note.trim() === '') {
+      console.log('❌ RESO API: Motivo reso mancante');
       return NextResponse.json({ error: 'Motivo reso obbligatorio' }, { status: 400 });
+    }
+
+    if (!photo) {
+      console.log('❌ RESO API: Foto danno mancante');
+      return NextResponse.json({ error: 'Foto del danno obbligatoria' }, { status: 400 });
     }
 
     // Get original picking to reference
@@ -89,6 +104,33 @@ export async function POST(request: NextRequest) {
       [[returnPickingId]]
     );
 
+    // Allega la foto del danno al picking di reso
+    if (photo) {
+      console.log('📸 RESO API: Allegando foto del danno...');
+      try {
+        // Rimuovi il prefixo "data:image/xxx;base64," se presente
+        const base64Data = photo.includes('base64,') ? photo.split('base64,')[1] : photo;
+
+        await callOdoo(
+          cookies,
+          'ir.attachment',
+          'create',
+          [{
+            name: `Foto_Danno_${originalPicking.name}.jpg`,
+            type: 'binary',
+            datas: base64Data,
+            res_model: 'stock.picking',
+            res_id: returnPickingId,
+            mimetype: 'image/jpeg'
+          }]
+        );
+        console.log('✅ RESO API: Foto allegata con successo');
+      } catch (photoError) {
+        console.error('⚠️ RESO API: Errore allegando foto (non bloccante):', photoError);
+      }
+    }
+
+    console.log('✅ RESO API: Reso creato con successo, ID:', returnPickingId);
     return NextResponse.json({
       success: true,
       return_picking_id: returnPickingId,

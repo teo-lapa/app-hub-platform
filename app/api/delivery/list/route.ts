@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       'read',
       [allMoveIds],
       {
-        fields: ['id', 'product_id', 'product_uom_qty', 'product_uom', 'picking_id', 'quantity_done']
+        fields: ['id', 'product_id', 'product_uom_qty', 'product_uom', 'picking_id']
       }
     ) : [];
 
@@ -182,14 +182,16 @@ export async function GET(request: NextRequest) {
       const isCompleted = picking.state === 'done';
       const products = pickingMoves.map((move: any) => {
         const productId = move.product_id?.[0];
-        const qtyDone = move.quantity_done || 0;
+        const requestedQty = move.product_uom_qty || 0;
+        // Per ordini completati, consideriamo la qty richiesta come consegnata
+        const deliveredQty = isCompleted ? requestedQty : 0;
         return {
           id: move.id,
           product_id: productId,
           name: move.product_id?.[1] || 'Prodotto',
-          qty: move.product_uom_qty || 0,
-          delivered: isCompleted ? qtyDone : 0,
-          picked: isCompleted ? (qtyDone === move.product_uom_qty) : false,
+          qty: requestedQty,
+          delivered: deliveredQty,
+          picked: isCompleted,
           unit: move.product_uom?.[1] || 'Unità',
           image: productImageMap.get(productId) || null
         };
