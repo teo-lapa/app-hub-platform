@@ -27,13 +27,16 @@ export async function GET(request: NextRequest) {
       limit: 1
     });
 
-    // Get today's date in Europe/Zurich and extract just the date part
-    const swissTime = new Date().toLocaleString('en-US', { timeZone: 'Europe/Zurich' });
-    const today = new Date(swissTime);
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayDateOnly = `${year}-${month}-${day}`;
+    // Get today's date in Europe/Zurich timezone
+    // Usa toLocaleString direttamente per ottenere la data corretta
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Zurich',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+
+    const todayDateOnly = formatter.format(new Date()); // Formato: YYYY-MM-DD
 
     console.log('📅 [DELIVERY] Data OGGI (Europe/Zurich):', todayDateOnly);
 
