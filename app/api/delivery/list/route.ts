@@ -54,23 +54,15 @@ export async function GET(request: NextRequest) {
     console.log('📅 [DELIVERY] Data OGGI (Europe/Zurich):', todayDateOnly);
     console.log('📅 [DELIVERY] Filtro Odoo:', todayStart, 'to', todayEnd);
 
-    // Build domain ODOO - ESATTAMENTE come nel tuo HTML
+    // Build domain ODOO - SOLO FILTRI ESSENZIALI
     const domain: any[] = [
+      ['driver_id', '=', 8],  // HARDCODE: SOLO documenti con driver_id = 8
       ['scheduled_date', '>=', todayStart],
       ['scheduled_date', '<=', todayEnd],
       ['state', 'in', ['assigned', 'done']],
       ['picking_type_id.code', '=', 'outgoing'],
       ['backorder_id', '=', false]
     ];
-
-    // Aggiungi filtro driver al domain Odoo
-    if (employee && employee.length > 0) {
-      console.log('👤 [DELIVERY] Employee trovato:', employee[0].name, 'ID:', employee[0].id);
-      domain.push(['driver_id', '=', employee[0].id]);  // FILTRO DRIVER ATTIVO
-      console.log('✅ [DELIVERY] Filtro driver aggiunto: driver_id =', employee[0].id);
-    } else {
-      console.log('⚠️ [DELIVERY] Nessun employee associato - mostro TUTTE le consegne');
-    }
 
     console.log('🔍 [DELIVERY] Domain Odoo:', JSON.stringify(domain));
 
@@ -94,35 +86,16 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    console.log(`📦 [DELIVERY] Odoo ha restituito ${pickings.length} documenti`);
+    console.log(`📦 [DELIVERY] Odoo ha restituito ${pickings.length} documenti (driver_id=8, oggi)`);
 
-    // FILTRO JAVASCRIPT per driver
-    console.log('🚗 [FILTER] Inizio filtro driver - driverId:', driverId, 'TYPE:', typeof driverId);
-
-    let filteredPickings = pickings;
-    if (driverId) {
-      console.log('🚗 [FILTER] Filtro ATTIVO per driver_id:', driverId);
-      filteredPickings = pickings.filter((p: any) => {
-        const pDriverId = p.driver_id ? p.driver_id[0] : null;
-        const match = pDriverId === driverId;
-        if (match) {
-          console.log(`✅ MATCH: ${p.name} ha driver_id ${pDriverId} = ${driverId}`);
-        }
-        return match;
-      });
-      console.log(`📦 [DELIVERY] Dopo filtro driver: ${filteredPickings.length} / ${pickings.length} documenti`);
-    } else {
-      console.log('⚠️ [FILTER] driverId è NULL/UNDEFINED - NESSUN FILTRO APPLICATO!');
-    }
-
-    if (filteredPickings.length === 0) {
-      console.log('⚠️ [DELIVERY] Nessun documento trovato dopo filtri');
+    if (pickings.length === 0) {
+      console.log('⚠️ [DELIVERY] Nessun documento trovato');
       return NextResponse.json([]);
     }
 
-    // OTTIMIZZAZIONE: Bulk reads invece di loop (usa filteredPickings!)
-    const partnerIds = filteredPickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
-    const allMoveIds = filteredPickings.flatMap((p: any) => p.move_ids || []);
+    // OTTIMIZZAZIONE: Bulk reads invece di loop
+    const partnerIds = pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
+    const allMoveIds = pickings.flatMap((p: any) => p.move_ids || []);
 
     // 2. Fetch TUTTI i partners in UNA chiamata
     const partnersMap = new Map();
@@ -168,7 +141,7 @@ export async function GET(request: NextRequest) {
 
     // 5. Assembla deliveries usando le mappe (NO LOOP ODOO!)
     const deliveries = [];
-    for (const picking of filteredPickings) {
+    for (const picking of pickings) {
       const partnerId = picking.partner_id?.[0];
       if (!partnerId) continue;
 
