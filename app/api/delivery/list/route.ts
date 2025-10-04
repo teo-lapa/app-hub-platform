@@ -132,6 +132,20 @@ export async function GET(request: NextRequest) {
       }
     ) : [];
 
+    // Carica immagini prodotti
+    const productIdsSet = new Set(allMoves.map((m: any) => m.product_id?.[0]).filter(Boolean));
+    const productIds = Array.from(productIdsSet);
+    const products = productIds.length > 0 ? await callOdoo(
+      cookies,
+      'product.product',
+      'read',
+      [productIds],
+      {
+        fields: ['id', 'image_128']
+      }
+    ) : [];
+    const productImageMap = new Map(products.map((p: any) => [p.id, p.image_128]));
+
     // Crea mappa per accesso rapido
     const partnerMap = new Map(allPartners.map((p: any) => [p.id, p]));
     const movesByPicking = new Map<number, any[]>();
@@ -165,14 +179,19 @@ export async function GET(request: NextRequest) {
 
       // Ottieni prodotti per questo picking
       const pickingMoves = movesByPicking.get(picking.id) || [];
-      const products = pickingMoves.map((move: any) => ({
-        id: move.id,
-        name: move.product_id?.[1] || 'Prodotto',
-        qty: move.product_uom_qty || 0,
-        delivered: 0,
-        picked: false,
-        unit: move.product_uom?.[1] || 'Unità'
-      }));
+      const products = pickingMoves.map((move: any) => {
+        const productId = move.product_id?.[0];
+        return {
+          id: move.id,
+          product_id: productId,
+          name: move.product_id?.[1] || 'Prodotto',
+          qty: move.product_uom_qty || 0,
+          delivered: 0,
+          picked: false,
+          unit: move.product_uom?.[1] || 'Unità',
+          image: productImageMap.get(productId) || null
+        };
+      });
 
       deliveries.push({
         id: picking.id,
