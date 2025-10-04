@@ -48,21 +48,16 @@ export async function GET(request: NextRequest) {
     console.log(`🔍 [DELIVERY] Numero dipendenti trovati: ${employees.length}`);
 
     if (employees.length === 0) {
-      console.error(`❌ [DELIVERY] ERRORE: Nessun dipendente trovato per user_id=${uidNum}`);
-      console.error(`❌ [DELIVERY] L'utente deve avere un record hr.employee con user_id collegato!`);
-
-      return NextResponse.json({
-        error: `Configurazione mancante: l'utente (uid=${uidNum}) non ha un dipendente collegato in Odoo. Contatta l'amministratore per collegare l'utente a un dipendente in Risorse Umane.`,
-        details: {
-          uid: uidNum,
-          required: 'hr.employee con campo user_id = questo uid'
-        }
-      }, { status: 403 });
+      console.warn(`⚠️ [DELIVERY] ATTENZIONE: Nessun dipendente trovato per user_id=${uidNum}`);
+      console.warn(`⚠️ [DELIVERY] FALLBACK: Mostro TUTTI i documenti senza filtro driver_id`);
+      console.warn(`⚠️ [DELIVERY] SOLUZIONE: In Odoo → Risorse Umane → collega utente al dipendente`);
+      driverId = null;
+      driverName = 'Tutti (no filtro)';
+    } else {
+      driverId = employees[0].id;
+      driverName = employees[0].name;
+      console.log(`✅ [DELIVERY] Driver trovato: user_id ${uidNum} → hr.employee ${driverId} (${driverName})`);
     }
-
-    driverId = employees[0].id;
-    driverName = employees[0].name;
-    console.log(`✅ [DELIVERY] Driver trovato: user_id ${uidNum} → hr.employee ${driverId} (${driverName})`);
 
     // Get today's date in Europe/Zurich timezone (Svizzera)
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -79,9 +74,8 @@ export async function GET(request: NextRequest) {
     console.log('📅 [DELIVERY] Data OGGI (Europe/Zurich):', todayDateOnly);
     console.log('📅 [DELIVERY] Filtro Odoo:', todayStart, 'to', todayEnd);
 
-    // Build domain ODOO - FILTRO STRICT con driver_id dell'utente loggato
+    // Build domain ODOO - FILTRO con driver_id dell'utente loggato
     const domain: any[] = [
-      ['driver_id', '=', driverId],  // FILTRO OBBLIGATORIO: solo documenti del driver
       ['scheduled_date', '>=', todayStart],
       ['scheduled_date', '<=', todayEnd],
       ['state', 'in', ['assigned', 'done']],
@@ -89,7 +83,13 @@ export async function GET(request: NextRequest) {
       ['backorder_id', '=', false]
     ];
 
-    console.log(`🔒 [DELIVERY] Filtro STRICT applicato: SOLO documenti con driver_id=${driverId} (${driverName})`);
+    // Aggiungi filtro driver_id SOLO se trovato
+    if (driverId !== null) {
+      domain.push(['driver_id', '=', driverId]);
+      console.log(`🔒 [DELIVERY] Filtro applicato: driver_id=${driverId} (${driverName})`);
+    } else {
+      console.warn(`⚠️ [DELIVERY] NESSUN FILTRO driver_id - mostro TUTTI i documenti di oggi!`);
+    }
 
     console.log('🔍 [DELIVERY] Domain Odoo:', JSON.stringify(domain));
 
