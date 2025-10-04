@@ -1475,9 +1475,9 @@ export default function DeliveryPage() {
                             style={{borderTopWidth: '3px', borderTopColor: category.color}}
                           >
                             {product.image ? (
-                              <img src={`data:image/png;base64,${product.image}`} alt={product.name} className="w-full h-20 object-cover rounded mb-2" />
+                              <img src={`data:image/png;base64,${product.image}`} alt={product.name} className="w-full h-14 object-contain rounded mb-2 bg-white p-1" />
                             ) : (
-                              <div className="w-full h-20 bg-gray-100 rounded mb-2 flex items-center justify-center text-3xl">📦</div>
+                              <div className="w-full h-14 bg-gray-100 rounded mb-2 flex items-center justify-center text-2xl">📦</div>
                             )}
                             <div className="text-xs font-semibold mb-1 line-clamp-2">{product.name}</div>
                             <div className="flex justify-between text-[10px] text-gray-500 mb-1">
