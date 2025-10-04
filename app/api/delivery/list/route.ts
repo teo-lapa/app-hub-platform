@@ -27,14 +27,15 @@ export async function GET(request: NextRequest) {
       limit: 1
     });
 
-    // Get today's date in Europe/Zurich timezone (Swiss time for Odoo)
-    const today = new Date();
+    // Get today's date in Europe/Zurich timezone (Swiss time)
+    const swissTime = new Date().toLocaleString('en-US', { timeZone: 'Europe/Zurich' });
+    const today = new Date(swissTime);
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     const todayDateOnly = `${year}-${month}-${day}`;
 
-    console.log('📅 [DELIVERY] Filtro data OGGI:', todayDateOnly);
+    console.log('📅 [DELIVERY] Filtro data OGGI (Europe/Zurich):', todayDateOnly);
 
     // Build domain - DEBUG: TOLGO FILTRO DATA TEMPORANEAMENTE per vedere quali date vengono caricate
     const domain: any[] = [
@@ -75,6 +76,13 @@ export async function GET(request: NextRequest) {
 
     console.log(`📦 [DELIVERY] Trovati ${pickings.length} documenti TOTALI da Odoo`);
 
+    // DEBUG: Mostra TUTTE le date per capire cosa sta arrivando
+    console.log('🔍 [DEBUG] Date dei documenti ricevuti:');
+    pickings.forEach((p: any) => {
+      const dateOnly = p.scheduled_date ? p.scheduled_date.split(' ')[0] : 'NO DATE';
+      console.log(`  - ${p.name}: ${dateOnly}`);
+    });
+
     // FILTRO LATO SERVER per data di OGGI (ignora timezone!)
     const filteredPickings = pickings.filter((p: any) => {
       if (!p.scheduled_date) return false;
@@ -84,6 +92,8 @@ export async function GET(request: NextRequest) {
 
       if (!isToday) {
         console.log(`❌ [FILTER] Escluso ${p.name}: data ${pickingDate} != ${todayDateOnly}`);
+      } else {
+        console.log(`✅ [FILTER] Incluso ${p.name}: data ${pickingDate} = ${todayDateOnly}`);
       }
 
       return isToday;
