@@ -8,28 +8,12 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🚚 [DELIVERY] Inizio caricamento consegne...');
 
-    // Get cookies from user request
-    let cookieHeader = request.headers.get('cookie');
+    // ⚠️ TEMPORANEO: Ignora SEMPRE i cookies del browser, usa SEMPRE credenziali Paul
+    // Questo evita problemi con uid=430 (Stella) o altre sessioni casuali
+    console.log('🔐 [DELIVERY] Forzo autenticazione con credenziali Paul (ignoro cookies browser)');
 
-    // 🚫 BLOCCA Stella (uid=430) - non usare i suoi cookies
-    if (cookieHeader && cookieHeader.includes('session_id')) {
-      // Fai un check veloce per vedere se è Stella
-      try {
-        const checkResponse = await fetch(`${process.env.ODOO_URL}/web/session/get_session_info`, {
-          headers: { 'Cookie': cookieHeader }
-        });
-        const checkData = await checkResponse.json();
-        if (checkData.result?.uid === 430) {
-          console.warn('⚠️ [DELIVERY] Rilevato uid=430 (Stella), ignoro cookies e uso credenziali di default');
-          cookieHeader = null; // Forza uso credenziali Paul
-        }
-      } catch (e) {
-        console.warn('⚠️ [DELIVERY] Errore controllo uid, uso cookies comunque');
-      }
-    }
-
-    // Autenticazione con Odoo
-    const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
+    // Autenticazione con Odoo - passa undefined per forzare nuova autenticazione
+    const { cookies, uid } = await getOdooSession(undefined);
 
     if (!uid) {
       console.error('❌ [DELIVERY] Sessione non valida');
