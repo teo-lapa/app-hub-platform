@@ -1475,9 +1475,9 @@ export default function DeliveryPage() {
                             style={{borderTopWidth: '3px', borderTopColor: category.color}}
                           >
                             {product.image ? (
-                              <img src={`data:image/png;base64,${product.image}`} alt={product.name} className="w-full h-14 object-contain rounded mb-2 bg-white p-1" />
+                              <img src={`data:image/png;base64,${product.image}`} alt={product.name} className="w-full h-20 object-contain rounded mb-2 bg-white p-1" />
                             ) : (
-                              <div className="w-full h-14 bg-gray-100 rounded mb-2 flex items-center justify-center text-2xl">📦</div>
+                              <div className="w-full h-20 bg-gray-100 rounded mb-2 flex items-center justify-center text-3xl">📦</div>
                             )}
                             <div className="text-xs font-semibold mb-1 line-clamp-2">{product.name}</div>
                             <div className="flex justify-between text-[10px] text-gray-500 mb-1">
@@ -1490,7 +1490,11 @@ export default function DeliveryPage() {
                             </div>
                             <button
                               onClick={(e) => {e.stopPropagation(); openCalculator(product.id, product.qty);}}
-                              className="w-full py-1 text-xs rounded" style={{background: isModified ? '#fef3c7' : '#f3f4f6'}}
+                              className="w-full py-1 text-xs rounded font-semibold"
+                              style={{
+                                background: isModified ? '#fef3c7' : '#f3f4f6',
+                                color: isModified ? '#92400e' : '#374151'
+                              }}
                             >
                               ✏️ Modifica: {product.delivered}
                             </button>
