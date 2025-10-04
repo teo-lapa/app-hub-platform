@@ -87,6 +87,7 @@ export default function DeliveryPage() {
   // Estados reso
   const [resoProducts, setResoProducts] = useState<any[]>([]);
   const [resoNote, setResoNote] = useState('');
+  const [resoPhoto, setResoPhoto] = useState<string | null>(null);
 
   // Estados mappa
   const mapRef = useRef<any>(null);
@@ -739,6 +740,11 @@ export default function DeliveryPage() {
         uploaded: false
       });
 
+      // Se è una foto RESO, salva anche nello stato
+      if (attachmentContext === 'reso') {
+        setResoPhoto(compressed);
+      }
+
       // Ricarica attachments
       const atts = await db.attachments
         .where({ picking_id: currentDelivery.id, context: attachmentContext })
@@ -997,26 +1003,27 @@ export default function DeliveryPage() {
   async function saveReso() {
     if (!currentDelivery) return;
 
-    const productsToReturn = resoProducts.filter(p => p.reso_qty > 0);
-    if (productsToReturn.length === 0) {
-      showToast('Seleziona prodotti da rendere', 'error');
-      return;
-    }
-
     if (!resoNote.trim()) {
-      showToast('Inserire motivo reso', 'error');
+      showToast('Inserisci il motivo del reso', 'error');
       return;
     }
 
+    if (!resoPhoto) {
+      showToast('Scatta una foto del danno', 'error');
+      return;
+    }
+
+    // Tutti i prodotti consegnati vengono considerati come resi
     const payload = {
       original_picking_id: currentDelivery.id,
       partner_id: currentDelivery.partner_id?.[0],
-      products: productsToReturn.map(p => ({
+      products: resoProducts.map(p => ({
         product_id: p.product_id?.[0],
-        quantity: p.reso_qty,
+        quantity: p.delivered || p.qty,
         name: p.product_id?.[1]
       })),
-      note: resoNote
+      note: resoNote,
+      photo: resoPhoto
     };
 
     if (isOnline) {
@@ -2180,31 +2187,6 @@ export default function DeliveryPage() {
               className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
             >
               <h2 className="text-xl font-bold mb-4">Gestione Resi</h2>
-
-              <div className="space-y-3 mb-4">
-                {resoProducts.map(product => (
-                  <div key={product.id} className="bg-gray-50 rounded-lg p-4">
-                    <div className="font-semibold mb-2">{product.name}</div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Quantità da rendere:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max={product.quantity_done}
-                        value={product.reso_qty || 0}
-                        onChange={(e) => {
-                          const qty = parseInt(e.target.value) || 0;
-                          setResoProducts(prev => prev.map(p =>
-                            p.id === product.id ? { ...p, reso_qty: Math.min(qty, p.quantity_done) } : p
-                          ));
-                        }}
-                        className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center"
-                      />
-                      <span className="text-sm text-gray-500">/ {product.quantity_done}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
 
               <div className="mb-4">
                 <label className="block text-sm font-semibold mb-2">Motivo Reso *</label>
