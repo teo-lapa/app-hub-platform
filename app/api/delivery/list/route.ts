@@ -36,14 +36,12 @@ export async function GET(request: NextRequest) {
 
     console.log('📅 [DELIVERY] Filtro data OGGI:', todayDateOnly);
 
-    // Build domain - CONSEGNE DI OGGI: pronti + completati, NO residui, SOLO del driver loggato
+    // Build domain - DEBUG: TOLGO FILTRO DATA TEMPORANEAMENTE per vedere quali date vengono caricate
     const domain: any[] = [
       ['picking_type_id.code', '=', 'outgoing'],
       ['state', 'in', ['assigned', 'done']],  // Pronti + Completati
-      '&',
-      ['scheduled_date', '>=', todayDateOnly + ' 00:00:00'],
-      ['scheduled_date', '<=', todayDateOnly + ' 23:59:59'],
       ['backorder_id', '=', false]  // ESCLUDI residui (backorder_id deve essere vuoto)
+      // NOTA: Filtro data TEMPORANEAMENTE DISABILITATO per debug
     ];
 
     if (employee && employee.length > 0) {
@@ -76,6 +74,11 @@ export async function GET(request: NextRequest) {
     );
 
     console.log(`📦 [DELIVERY] Trovati ${pickings.length} documenti`);
+
+    // DEBUG: Log delle date per capire il formato
+    pickings.forEach((p: any, idx: number) => {
+      console.log(`📅 [DEBUG] Picking #${idx + 1}: ${p.name} - scheduled_date: ${p.scheduled_date}`);
+    });
 
     if (pickings.length === 0) {
       return NextResponse.json([]);
