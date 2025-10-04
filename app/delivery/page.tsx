@@ -1015,8 +1015,7 @@ export default function DeliveryPage() {
     if (!currentDelivery) return;
 
     console.log('💾 RESO: Inizio salvataggio...');
-    console.log('💾 RESO: currentDelivery:', currentDelivery);
-    console.log('💾 RESO: partner_id raw:', currentDelivery.partner_id);
+    console.log('💾 RESO: Delivery ID:', currentDelivery.id);
     console.log('💾 RESO: Note:', resoNote);
     console.log('💾 RESO: Foto presente:', !!resoPhoto);
 
