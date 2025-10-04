@@ -122,6 +122,11 @@ export default function DeliveryPage() {
   async function initializeApp() {
     setLoading(true);
     try {
+      // CLEAR CACHE ALL'AVVIO per evitare dati vecchi
+      console.log('🗑️ Pulizia cache vecchia...');
+      await db.cache.clear();
+      console.log('✅ Cache pulita');
+
       // Carica nome utente dall'API con timeout per Android
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -196,32 +201,22 @@ export default function DeliveryPage() {
   async function loadDeliveries() {
     setLoading(true);
     try {
-      // 1. PRIMA carica dalla cache per mostrare subito i dati
-      const cacheEntry = await db.cache.get('deliveries_list');
-      const now = Date.now();
-      const CACHE_DURATION = 2 * 60 * 1000; // 2 minuti
-
-      if (cacheEntry && (now - cacheEntry.timestamp) < CACHE_DURATION) {
-        console.log('⚡ Caricamento RAPIDO dalla cache');
-        setDeliveries(cacheEntry.data);
-        calculateETAsForDeliveries(cacheEntry.data);
-        setLoading(false);
-
-        // Poi aggiorna in background senza loading
-        setTimeout(() => fetchAndUpdateDeliveries(), 100);
-        return;
-      }
-
-      // 2. Se cache scaduta o assente, carica dall'API
+      // SEMPRE carica dati FRESCHI dall'API (bypass cache)
+      console.log('🔄 Caricamento FRESCO dall\'API...');
       await fetchAndUpdateDeliveries();
 
     } catch (err: any) {
+      console.error('❌ Errore caricamento:', err);
       setError(err.message);
-      // Fallback: carica comunque dalla cache anche se scaduta
+
+      // Solo in caso di errore, usa cache come fallback
       const cached = await db.deliveries.toArray();
       if (cached.length > 0) {
+        console.log('⚠️ Caricamento da cache (fallback)');
         setDeliveries(cached);
         showToast('Caricati dati dalla cache (offline)', 'info');
+      } else {
+        showToast('Impossibile caricare le consegne', 'error');
       }
     } finally {
       setLoading(false);
