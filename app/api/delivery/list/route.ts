@@ -8,19 +8,40 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🚚 [DELIVERY] Inizio caricamento consegne...');
 
-    // ⚠️ TEMPORANEO: Ignora SEMPRE i cookies del browser, usa SEMPRE credenziali Paul
-    // Questo evita problemi con uid=430 (Stella) o altre sessioni casuali
-    console.log('🔐 [DELIVERY] Forzo autenticazione con credenziali Paul (ignoro cookies browser)');
+    // ⚠️ AUTENTICAZIONE DIRETTA - Ignora cookies browser, autentica SEMPRE con paul@lapa.ch
+    console.log('🔐 [DELIVERY] Autenticazione DIRETTA con paul@lapa.ch (ignoro cookies browser)');
 
-    // Autenticazione con Odoo - passa undefined per forzare nuova autenticazione
-    const { cookies, uid } = await getOdooSession(undefined);
+    const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
+    const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
+
+    const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          db: ODOO_DB,
+          login: 'paul@lapa.ch',
+          password: 'lapa201180'
+        },
+        id: 1
+      })
+    });
+
+    const authData = await authResponse.json();
+    const cookies = authResponse.headers.get('set-cookie');
+    const uid = authData.result?.uid;
 
     if (!uid) {
-      console.error('❌ [DELIVERY] Sessione non valida');
-      return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
+      console.error('❌ [DELIVERY] Autenticazione fallita');
+      return NextResponse.json({ error: 'Autenticazione fallita' }, { status: 401 });
     }
 
-    console.log('✅ [DELIVERY] Autenticato, UID:', uid);
+    console.log('✅ [DELIVERY] Autenticato DIRETTAMENTE, UID:', uid);
 
     // Cerca employee_id dell'utente loggato
     const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
