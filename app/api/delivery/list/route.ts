@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
       const partnerId = picking.partner_id?.[0];
       if (!partnerId) continue;
 
-      const partner = partnerMap.get(partnerId);
+      const partner: any = partnerMap.get(partnerId);
       if (!partner) continue;
 
       // Build address
