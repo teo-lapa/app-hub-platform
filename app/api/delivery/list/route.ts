@@ -20,24 +20,35 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ [DELIVERY] Autenticato con Odoo, UID:', uid, 'TYPE:', typeof uid);
 
-    // FORCE HARDCODE con conversione esplicita
+    // DINAMICO: Cerca employee_id dell'utente loggato
     let driverId: number | null = null;
     let driverName: string | null = null;
 
     // Converti UID a numero per sicurezza
     const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
-    console.log('🔍 [DELIVERY] UID convertito:', uidNum, 'TYPE:', typeof uidNum);
+    console.log('🔍 [DELIVERY] UID utente loggato:', uidNum);
 
-    // HARDCODE: Paul Teodorescu
-    if (uidNum === 7) {
-      driverId = 8;
-      driverName = 'Paul Teodorescu';
-      console.log('✅ [DELIVERY] Driver HARDCODED: UID 7 → driver_id 8 (Paul Teodorescu)');
+    // Leggi res.users per ottenere employee_id
+    const users = await callOdoo(
+      cookies,
+      'res.users',
+      'search_read',
+      [],
+      {
+        domain: [['id', '=', uidNum]],
+        fields: ['id', 'name', 'employee_id'],
+        limit: 1
+      }
+    );
+
+    if (users.length > 0 && users[0].employee_id) {
+      driverId = users[0].employee_id[0];  // employee_id è [ID, "Nome"]
+      driverName = users[0].employee_id[1];
+      console.log(`✅ [DELIVERY] Driver trovato: UID ${uidNum} → employee_id ${driverId} (${driverName})`);
     } else {
-      console.log('⚠️ [DELIVERY] UID non è 7, UID ricevuto:', uidNum);
+      console.log(`⚠️ [DELIVERY] UID ${uidNum} NON ha un dipendente collegato`);
+      return NextResponse.json({ error: 'Utente non ha un dipendente collegato' }, { status: 403 });
     }
-
-    const employee = driverId ? [{ id: driverId, name: driverName }] : [];
 
     // Get today's date in Europe/Zurich timezone (Svizzera)
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -54,9 +65,9 @@ export async function GET(request: NextRequest) {
     console.log('📅 [DELIVERY] Data OGGI (Europe/Zurich):', todayDateOnly);
     console.log('📅 [DELIVERY] Filtro Odoo:', todayStart, 'to', todayEnd);
 
-    // Build domain ODOO - SOLO FILTRI ESSENZIALI
+    // Build domain ODOO - FILTRO DINAMICO con driver_id dell'utente loggato
     const domain: any[] = [
-      ['driver_id', '=', 8],  // HARDCODE: SOLO documenti con driver_id = 8
+      ['driver_id', '=', driverId],  // DINAMICO: usa employee_id dell'utente loggato
       ['scheduled_date', '>=', todayStart],
       ['scheduled_date', '<=', todayEnd],
       ['state', 'in', ['assigned', 'done']],
