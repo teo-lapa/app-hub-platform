@@ -44,10 +44,16 @@ export async function getOdooSession(userCookies?: string) {
 
       if (sessionCheck.ok) {
         const sessionData = await sessionCheck.json();
+        console.log('🔍 [ODOO-AUTH] Session check response:', JSON.stringify(sessionData, null, 2));
+
         if (sessionData.result?.uid) {
           console.log('✅ [ODOO-AUTH] Sessione utente valida, UID:', sessionData.result.uid);
           return { cookies: userCookies, uid: sessionData.result.uid };
+        } else {
+          console.log('⚠️ [ODOO-AUTH] Sessione check OK ma UID non trovato in result');
         }
+      } else {
+        console.log('❌ [ODOO-AUTH] Session check HTTP error:', sessionCheck.status);
       }
     }
 
