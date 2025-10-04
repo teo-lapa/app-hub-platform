@@ -50,11 +50,12 @@ export async function GET(request: NextRequest) {
     if (employee && employee.length > 0) {
       console.log('👤 [DELIVERY] Employee trovato:', employee[0].name, 'ID:', employee[0].id);
       domain.push(['driver_id', '=', employee[0].id]);  // SOLO consegne del driver loggato
+      console.log('✅ [DELIVERY] Filtro driver aggiunto: driver_id =', employee[0].id);
     } else {
       console.log('⚠️ [DELIVERY] Nessun employee associato, mostro TUTTE le consegne di oggi');
     }
 
-    console.log('🔍 [DELIVERY] Domain filtri:', JSON.stringify(domain));
+    console.log('🔍 [DELIVERY] Domain filtri completo:', JSON.stringify(domain));
 
     // COPIA ESATTA DELLA LOGICA HTML
     // Load pickings - ESATTAMENTE COME L'HTML
@@ -201,6 +202,8 @@ export async function GET(request: NextRequest) {
         state: picking.state,
         origin: picking.origin || '',
         carrier: picking.carrier_id ? picking.carrier_id[1] : '',
+        driver: picking.driver_id ? picking.driver_id[1] : 'Nessun driver',  // AGGIUNGI DRIVER
+        driverId: picking.driver_id ? picking.driver_id[0] : null,
         scheduledDate: picking.scheduled_date,
         backorderId: picking.backorder_id,
         isBackorder: picking.backorder_id ? true : false,
@@ -209,6 +212,12 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`✅ [DELIVERY] Caricate ${deliveries.length} consegne con dettagli`);
+
+    // DEBUG: Mostra driver di ogni consegna
+    console.log('🚗 [DEBUG] Driver per ogni consegna:');
+    deliveries.forEach(d => {
+      console.log(`  - ${d.name}: ${d.driver} (ID: ${d.driverId})`);
+    });
 
     return NextResponse.json(deliveries);
   } catch (error: any) {
