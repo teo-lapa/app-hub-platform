@@ -41,12 +41,24 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    if (users.length > 0 && users[0].employee_id) {
-      driverId = users[0].employee_id[0];  // employee_id è [ID, "Nome"]
-      driverName = users[0].employee_id[1];
+    console.log(`🔍 [DELIVERY] Ricerca res.users per UID ${uidNum}:`);
+    console.log(`🔍 [DELIVERY] Risultato Odoo:`, JSON.stringify(users, null, 2));
+
+    if (users.length === 0) {
+      console.log(`❌ [DELIVERY] Nessun utente trovato con UID ${uidNum}`);
+      return NextResponse.json({ error: 'Utente non trovato in Odoo' }, { status: 404 });
+    }
+
+    const user = users[0];
+    console.log(`🔍 [DELIVERY] Utente trovato:`, user.name);
+    console.log(`🔍 [DELIVERY] employee_id campo:`, user.employee_id);
+
+    if (user.employee_id && user.employee_id.length > 0) {
+      driverId = user.employee_id[0];  // employee_id è [ID, "Nome"]
+      driverName = user.employee_id[1];
       console.log(`✅ [DELIVERY] Driver trovato: UID ${uidNum} → employee_id ${driverId} (${driverName})`);
     } else {
-      console.log(`⚠️ [DELIVERY] UID ${uidNum} NON ha un dipendente collegato`);
+      console.log(`⚠️ [DELIVERY] Campo employee_id è vuoto o false per UID ${uidNum}`);
       return NextResponse.json({ error: 'Utente non ha un dipendente collegato' }, { status: 403 });
     }
 
