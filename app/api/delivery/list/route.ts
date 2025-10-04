@@ -42,6 +42,12 @@ export async function GET(request: NextRequest) {
       console.log('✅ [DELIVERY] Driver (hr.employee) trovato! ID:', driverId, 'Nome:', driverName);
     } else {
       console.log('⚠️ [DELIVERY] NESSUN hr.employee trovato per user_id:', uid);
+      // FALLBACK: Per Paul Teodorescu usa ID hardcoded
+      if (uid === 7) {
+        driverId = 8;  // Paul Teodorescu hr.employee ID
+        driverName = 'Paul Teodorescu';
+        console.log('✅ [DELIVERY] FALLBACK: Uso driver ID hardcoded per Paul (UID 7 → driver 8)');
+      }
     }
 
     // Get today's date in Europe/Zurich timezone (Svizzera)
