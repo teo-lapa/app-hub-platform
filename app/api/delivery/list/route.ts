@@ -27,21 +27,20 @@ export async function GET(request: NextRequest) {
       limit: 1
     });
 
-    // Get today's date in Europe/Zurich timezone
-    // Usa toLocaleString direttamente per ottenere la data corretta
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Europe/Zurich',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
+    // Get today's date for Odoo filter
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStart = `${year}-${month}-${day} 00:00:00`;
+    const todayEnd = `${year}-${month}-${day} 23:59:59`;
 
-    const todayDateOnly = formatter.format(new Date()); // Formato: YYYY-MM-DD
+    console.log('📅 [DELIVERY] Filtro data:', todayStart, 'to', todayEnd);
 
-    console.log('📅 [DELIVERY] Data OGGI (Europe/Zurich):', todayDateOnly);
-
-    // Build domain - SENZA filtro data (lo faremo lato server)
+    // Build domain ODOO - ESATTAMENTE come nel tuo HTML
     const domain: any[] = [
+      ['scheduled_date', '>=', todayStart],
+      ['scheduled_date', '<=', todayEnd],
       ['state', 'in', ['assigned', 'done']],
       ['picking_type_id.code', '=', 'outgoing'],
       ['backorder_id', '=', false]
@@ -49,13 +48,13 @@ export async function GET(request: NextRequest) {
 
     if (employee && employee.length > 0) {
       console.log('👤 [DELIVERY] Employee trovato:', employee[0].name, 'ID:', employee[0].id);
-      domain.push(['driver_id', '=', employee[0].id]);  // SOLO consegne del driver loggato
+      domain.push(['driver_id', '=', employee[0].id]);
       console.log('✅ [DELIVERY] Filtro driver aggiunto: driver_id =', employee[0].id);
     } else {
-      console.log('⚠️ [DELIVERY] Nessun employee associato, mostro TUTTE le consegne di oggi');
+      console.log('⚠️ [DELIVERY] Nessun employee associato');
     }
 
-    console.log('🔍 [DELIVERY] Domain filtri completo:', JSON.stringify(domain));
+    console.log('🔍 [DELIVERY] Domain Odoo:', JSON.stringify(domain));
 
     // COPIA ESATTA DELLA LOGICA HTML
     // Load pickings - ESATTAMENTE COME L'HTML
@@ -77,57 +76,16 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    console.log(`📦 [DELIVERY] Trovati ${pickings.length} documenti da Odoo`);
+    console.log(`📦 [DELIVERY] Odoo ha restituito ${pickings.length} documenti`);
 
-    // FILTRO LATO SERVER per data di OGGI (evita problemi timezone con Odoo)
-    let filteredPickings = pickings.filter((p: any) => {
-      if (!p.scheduled_date) {
-        console.log(`❌ [FILTER DATE] ${p.name}: nessuna data programmata`);
-        return false;
-      }
-
-      // Estrae solo YYYY-MM-DD ignorando ora e timezone
-      const pickingDateOnly = p.scheduled_date.split(' ')[0];
-      const isToday = pickingDateOnly === todayDateOnly;
-
-      if (isToday) {
-        console.log(`✅ [FILTER DATE] ${p.name}: ${pickingDateOnly} = ${todayDateOnly}`);
-      } else {
-        console.log(`❌ [FILTER DATE] ${p.name}: ${pickingDateOnly} != ${todayDateOnly}`);
-      }
-
-      return isToday;
-    });
-
-    // FILTRO LATO SERVER per DRIVER (se employee trovato)
-    if (employee && employee.length > 0) {
-      const employeeId = employee[0].id;
-      console.log(`🚗 [FILTER DRIVER] Filtro per driver ID: ${employeeId} (${employee[0].name})`);
-
-      filteredPickings = filteredPickings.filter((p: any) => {
-        const driverId = p.driver_id ? p.driver_id[0] : null;
-        const driverName = p.driver_id ? p.driver_id[1] : 'Nessun driver';
-
-        if (driverId === employeeId) {
-          console.log(`✅ [FILTER DRIVER] ${p.name}: driver ${driverName} (ID: ${driverId}) = ${employeeId}`);
-          return true;
-        } else {
-          console.log(`❌ [FILTER DRIVER] ${p.name}: driver ${driverName} (ID: ${driverId}) != ${employeeId}`);
-          return false;
-        }
-      });
-    }
-
-    console.log(`📦 [DELIVERY] Dopo filtro data: ${filteredPickings.length} consegne di OGGI`);
-
-    if (filteredPickings.length === 0) {
+    if (pickings.length === 0) {
+      console.log('⚠️ [DELIVERY] Nessun documento trovato con i filtri Odoo');
       return NextResponse.json([]);
     }
 
     // OTTIMIZZAZIONE: Bulk reads invece di loop
-    // 1. Raccogli tutti gli ID (da filteredPickings!)
-    const partnerIds = filteredPickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
-    const allMoveIds = filteredPickings.flatMap((p: any) => p.move_ids || []);
+    const partnerIds = pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
+    const allMoveIds = pickings.flatMap((p: any) => p.move_ids || []);
 
     // 2. Fetch TUTTI i partners in UNA chiamata
     const partnersMap = new Map();
@@ -173,7 +131,7 @@ export async function GET(request: NextRequest) {
 
     // 5. Assembla deliveries usando le mappe (NO LOOP ODOO!)
     const deliveries = [];
-    for (const picking of filteredPickings) {
+    for (const picking of pickings) {
       const partnerId = picking.partner_id?.[0];
       if (!partnerId) continue;
 
