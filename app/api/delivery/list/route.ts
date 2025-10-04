@@ -46,13 +46,14 @@ export async function GET(request: NextRequest) {
     console.log(`🔍 [DELIVERY] Risultato:`, JSON.stringify(employees, null, 2));
 
     if (employees.length === 0) {
-      console.log(`❌ [DELIVERY] Nessun dipendente trovato per user_id=${uidNum}`);
-      return NextResponse.json({ error: 'Utente non ha un dipendente collegato' }, { status: 403 });
+      console.log(`⚠️ [DELIVERY] Nessun dipendente trovato per user_id=${uidNum} - mostro TUTTI i documenti di oggi`);
+      driverId = null;
+      driverName = null;
+    } else {
+      driverId = employees[0].id;
+      driverName = employees[0].name;
+      console.log(`✅ [DELIVERY] Driver trovato: user_id ${uidNum} → hr.employee ${driverId} (${driverName})`);
     }
-
-    driverId = employees[0].id;
-    driverName = employees[0].name;
-    console.log(`✅ [DELIVERY] Driver trovato: user_id ${uidNum} → hr.employee ${driverId} (${driverName})`);
 
     // Get today's date in Europe/Zurich timezone (Svizzera)
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -71,13 +72,20 @@ export async function GET(request: NextRequest) {
 
     // Build domain ODOO - FILTRO DINAMICO con driver_id dell'utente loggato
     const domain: any[] = [
-      ['driver_id', '=', driverId],  // DINAMICO: usa employee_id dell'utente loggato
       ['scheduled_date', '>=', todayStart],
       ['scheduled_date', '<=', todayEnd],
       ['state', 'in', ['assigned', 'done']],
       ['picking_type_id.code', '=', 'outgoing'],
       ['backorder_id', '=', false]
     ];
+
+    // Aggiungi filtro driver_id SOLO se trovato
+    if (driverId !== null) {
+      domain.push(['driver_id', '=', driverId]);
+      console.log(`🔒 [DELIVERY] Filtro applicato: SOLO documenti driver_id=${driverId}`);
+    } else {
+      console.log(`🌍 [DELIVERY] Filtro applicato: TUTTI i documenti di oggi (nessun driver trovato)`);
+    }
 
     console.log('🔍 [DELIVERY] Domain Odoo:', JSON.stringify(domain));
 
@@ -101,7 +109,7 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    console.log(`📦 [DELIVERY] Odoo ha restituito ${pickings.length} documenti (driver_id=8, oggi)`);
+    console.log(`📦 [DELIVERY] Odoo ha restituito ${pickings.length} documenti (driver_id=${driverId || 'TUTTI'}, oggi)`);
 
     if (pickings.length === 0) {
       console.log('⚠️ [DELIVERY] Nessun documento trovato');
