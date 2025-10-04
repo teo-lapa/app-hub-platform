@@ -28,39 +28,31 @@ export async function GET(request: NextRequest) {
     const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
     console.log('🔍 [DELIVERY] UID utente loggato:', uidNum);
 
-    // Leggi res.users per ottenere employee_id - TUTTI I CAMPI per debug
-    const users = await callOdoo(
+    // APPROCCIO ALTERNATIVO: Cerca hr.employee con user_id = UID loggato
+    // (evita permessi res.users che richiedono Administration/Settings)
+    const employees = await callOdoo(
       cookies,
-      'res.users',
+      'hr.employee',
       'search_read',
       [],
       {
-        domain: [['id', '=', uidNum]],
-        fields: [],  // VUOTO = tutti i campi
+        domain: [['user_id', '=', uidNum]],
+        fields: ['id', 'name'],
         limit: 1
       }
     );
 
-    console.log(`🔍 [DELIVERY] Ricerca res.users per UID ${uidNum}:`);
-    console.log(`🔍 [DELIVERY] TUTTI I CAMPI:`, JSON.stringify(users, null, 2));
+    console.log(`🔍 [DELIVERY] Ricerca hr.employee con user_id=${uidNum}`);
+    console.log(`🔍 [DELIVERY] Risultato:`, JSON.stringify(employees, null, 2));
 
-    if (users.length === 0) {
-      console.log(`❌ [DELIVERY] Nessun utente trovato con UID ${uidNum}`);
-      return NextResponse.json({ error: 'Utente non trovato in Odoo' }, { status: 404 });
-    }
-
-    const user = users[0];
-    console.log(`🔍 [DELIVERY] Utente trovato:`, user.name);
-    console.log(`🔍 [DELIVERY] employee_id campo:`, user.employee_id);
-
-    if (user.employee_id && user.employee_id.length > 0) {
-      driverId = user.employee_id[0];  // employee_id è [ID, "Nome"]
-      driverName = user.employee_id[1];
-      console.log(`✅ [DELIVERY] Driver trovato: UID ${uidNum} → employee_id ${driverId} (${driverName})`);
-    } else {
-      console.log(`⚠️ [DELIVERY] Campo employee_id è vuoto o false per UID ${uidNum}`);
+    if (employees.length === 0) {
+      console.log(`❌ [DELIVERY] Nessun dipendente trovato per user_id=${uidNum}`);
       return NextResponse.json({ error: 'Utente non ha un dipendente collegato' }, { status: 403 });
     }
+
+    driverId = employees[0].id;
+    driverName = employees[0].name;
+    console.log(`✅ [DELIVERY] Driver trovato: user_id ${uidNum} → hr.employee ${driverId} (${driverName})`);
 
     // Get today's date in Europe/Zurich timezone (Svizzera)
     const formatter = new Intl.DateTimeFormat('en-CA', {
