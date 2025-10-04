@@ -66,10 +66,11 @@ export async function GET(request: NextRequest) {
       ['backorder_id', '=', false]
     ];
 
+    // TEMPORANEAMENTE DISABILITATO per debug
     if (employee && employee.length > 0) {
       console.log('👤 [DELIVERY] Employee trovato:', employee[0].name, 'ID:', employee[0].id);
-      domain.push(['driver_id', '=', employee[0].id]);
-      console.log('✅ [DELIVERY] Filtro driver aggiunto: driver_id =', employee[0].id);
+      // domain.push(['driver_id', '=', employee[0].id]);  // COMMENTATO PER DEBUG
+      console.log('⚠️ [DEBUG] Filtro driver DISABILITATO per test - mostro TUTTI i driver');
     } else {
       console.log('⚠️ [DELIVERY] Nessun employee associato');
     }
