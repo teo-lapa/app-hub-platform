@@ -44,15 +44,20 @@ export async function GET(request: NextRequest) {
       console.log('⚠️ [DELIVERY] NESSUN hr.employee trovato per user_id:', uid);
     }
 
-    // Get today's date for Odoo filter
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayStart = `${year}-${month}-${day} 00:00:00`;
-    const todayEnd = `${year}-${month}-${day} 23:59:59`;
+    // Get today's date in Europe/Zurich timezone (Svizzera)
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Zurich',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
 
-    console.log('📅 [DELIVERY] Filtro data:', todayStart, 'to', todayEnd);
+    const todayDateOnly = formatter.format(new Date()); // YYYY-MM-DD in Swiss time
+    const todayStart = `${todayDateOnly} 00:00:00`;
+    const todayEnd = `${todayDateOnly} 23:59:59`;
+
+    console.log('📅 [DELIVERY] Data OGGI (Europe/Zurich):', todayDateOnly);
+    console.log('📅 [DELIVERY] Filtro Odoo:', todayStart, 'to', todayEnd);
 
     // Build domain ODOO - ESATTAMENTE come nel tuo HTML
     const domain: any[] = [
