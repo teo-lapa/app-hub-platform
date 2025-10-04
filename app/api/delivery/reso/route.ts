@@ -9,19 +9,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { original_picking_id, partner_id, products, note, photo } = body;
+    const { original_picking_id, note, photo } = body;
 
     console.log('📦 RESO API: Ricevuto payload:', {
       original_picking_id,
-      partner_id,
-      products_count: products?.length,
       has_note: !!note,
       has_photo: !!photo
     });
 
-    if (!original_picking_id || !partner_id || !products || products.length === 0) {
-      console.log('❌ RESO API: Dati reso mancanti');
-      return NextResponse.json({ error: 'Dati reso mancanti' }, { status: 400 });
+    if (!original_picking_id) {
+      console.log('❌ RESO API: ID consegna mancante');
+      return NextResponse.json({ error: 'ID consegna mancante' }, { status: 400 });
     }
 
     if (!note || note.trim() === '') {
@@ -34,112 +32,66 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Foto del danno obbligatoria' }, { status: 400 });
     }
 
-    // Get original picking to reference
-    const originalPickings = await callOdoo(
+    // Leggi il picking originale
+    const pickings = await callOdoo(
       cookies,
       'stock.picking',
       'read',
       [[original_picking_id]],
-      { fields: ['name', 'picking_type_id', 'location_id', 'location_dest_id'] }
+      { fields: ['name', 'note'] }
     );
 
-    const originalPicking = originalPickings[0];
-
-    // Find return picking type
-    const returnPickingTypes = await callOdoo(
-      cookies,
-      'stock.picking.type',
-      'search_read',
-      [[['code', '=', 'incoming'], ['warehouse_id', '!=', false]]],
-      { fields: ['id'], limit: 1 }
-    );
-
-    const returnPickingTypeId = returnPickingTypes[0]?.id;
-
-    if (!returnPickingTypeId) {
-      return NextResponse.json({ error: 'Tipo picking reso non trovato' }, { status: 404 });
+    const picking = pickings[0];
+    if (!picking) {
+      return NextResponse.json({ error: 'Consegna non trovata' }, { status: 404 });
     }
 
-    // Create return picking
-    const pickingData = {
-      picking_type_id: returnPickingTypeId,
-      partner_id: partner_id,
-      origin: `Reso da ${originalPicking.name}`,
-      note: note,
-      location_id: originalPicking.location_dest_id[0], // Customer location
-      location_dest_id: originalPicking.location_id[0], // Warehouse location
-      move_lines: []
-    };
+    console.log('📦 RESO API: Picking trovato:', picking.name);
 
-    const returnPickingId = await callOdoo(
-      cookies,
-      'stock.picking',
-      'create',
-      [pickingData]
-    );
+    // Aggiorna il picking con nota RESO e completalo
+    const notaCompleta = `RESO - ${note}\n\n${picking.note || ''}`.trim();
 
-    // Create stock moves for each product
-    for (const product of products) {
-      await callOdoo(
-        cookies,
-        'stock.move',
-        'create',
-        [{
-          name: `Reso: ${product.name}`,
-          product_id: product.product_id,
-          product_uom_qty: product.quantity,
-          product_uom: 1, // Unit of measure - should be fetched from product
-          picking_id: returnPickingId,
-          location_id: originalPicking.location_dest_id[0],
-          location_dest_id: originalPicking.location_id[0]
-        }]
-      );
-    }
-
-    // Confirm the return picking
     await callOdoo(
       cookies,
       'stock.picking',
-      'action_confirm',
-      [[returnPickingId]]
+      'write',
+      [[original_picking_id], {
+        note: notaCompleta
+      }]
     );
 
-    // Allega la foto del danno al picking di reso
-    if (photo) {
-      console.log('📸 RESO API: Allegando foto del danno...');
-      try {
-        // Rimuovi il prefixo "data:image/xxx;base64," se presente
-        const base64Data = photo.includes('base64,') ? photo.split('base64,')[1] : photo;
+    console.log('✅ RESO API: Nota RESO aggiunta al picking');
 
-        await callOdoo(
-          cookies,
-          'ir.attachment',
-          'create',
-          [{
-            name: `Foto_Danno_${originalPicking.name}.jpg`,
-            type: 'binary',
-            datas: base64Data,
-            res_model: 'stock.picking',
-            res_id: returnPickingId,
-            mimetype: 'image/jpeg'
-          }]
-        );
-        console.log('✅ RESO API: Foto allegata con successo');
-      } catch (photoError) {
-        console.error('⚠️ RESO API: Errore allegando foto (non bloccante):', photoError);
-      }
-    }
+    // Allega la foto del danno al picking
+    console.log('📸 RESO API: Allegando foto del danno...');
+    const base64Data = photo.includes('base64,') ? photo.split('base64,')[1] : photo;
 
-    console.log('✅ RESO API: Reso creato con successo, ID:', returnPickingId);
+    await callOdoo(
+      cookies,
+      'ir.attachment',
+      'create',
+      [{
+        name: `RESO_Foto_Danno_${picking.name}.jpg`,
+        type: 'binary',
+        datas: base64Data,
+        res_model: 'stock.picking',
+        res_id: original_picking_id,
+        mimetype: 'image/jpeg'
+      }]
+    );
+
+    console.log('✅ RESO API: Foto allegata con successo');
+    console.log('✅ RESO API: RESO registrato con successo per picking:', picking.name);
+
     return NextResponse.json({
       success: true,
-      return_picking_id: returnPickingId,
-      message: 'Reso creato con successo'
+      picking_id: original_picking_id,
+      message: 'Reso registrato con successo'
     });
   } catch (error: any) {
-    console.error('Error creating return:', error);
+    console.error('❌ RESO API: Errore:', error);
     return NextResponse.json(
-      { error: error.message || 'Errore creazione reso' },
+      { error: error.message || 'Errore registrazione reso' },
       { status: 500 }
     );
   }

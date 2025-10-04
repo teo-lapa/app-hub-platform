@@ -1032,31 +1032,14 @@ export default function DeliveryPage() {
       return;
     }
 
-    // Tutti i prodotti consegnati vengono considerati come resi
-    // partner_id può essere [id, name] oppure solo id
-    const partnerId = Array.isArray(currentDelivery.partner_id)
-      ? currentDelivery.partner_id[0]
-      : currentDelivery.partner_id;
-
-    if (!partnerId) {
-      console.log('❌ RESO: Partner ID mancante');
-      showToast('Errore: cliente non trovato', 'error');
-      return;
-    }
-
+    // Payload semplificato: solo ID consegna, nota e foto
     const payload = {
       original_picking_id: currentDelivery.id,
-      partner_id: partnerId,
-      products: resoProducts.map(p => ({
-        product_id: p.product_id?.[0],
-        quantity: p.delivered || p.qty,
-        name: p.product_id?.[1]
-      })),
       note: resoNote,
       photo: resoPhoto
     };
 
-    console.log('💾 RESO: Payload preparato:', { ...payload, photo: 'BASE64_DATA' });
+    console.log('💾 RESO: Payload preparato (semplificato):', { ...payload, photo: 'BASE64_DATA' });
 
     try {
       if (isOnline) {
