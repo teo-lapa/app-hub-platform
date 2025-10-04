@@ -992,23 +992,40 @@ export default function DeliveryPage() {
 
   // ==================== RESO ====================
   async function openResoModal() {
-    if (!currentDelivery) return;
+    if (!currentDelivery) {
+      console.log('❌ RESO: currentDelivery non trovato');
+      return;
+    }
+
+    console.log('📦 RESO: Apertura modal per delivery:', currentDelivery.id);
+    console.log('📦 RESO: Prodotti disponibili:', currentDelivery.products);
 
     // Prodotti già consegnati
     const delivered = currentDelivery.products || [];
+    console.log('📦 RESO: Prodotti consegnati da processare:', delivered.length);
+
     setResoProducts(delivered.map(p => ({ ...p, reso_qty: 0 })));
+    setResoNote('');
+    setResoPhoto(null);
     setShowResoModal(true);
+    console.log('✅ RESO: Modal aperto');
   }
 
   async function saveReso() {
     if (!currentDelivery) return;
 
+    console.log('💾 RESO: Inizio salvataggio...');
+    console.log('💾 RESO: Note:', resoNote);
+    console.log('💾 RESO: Foto presente:', !!resoPhoto);
+
     if (!resoNote.trim()) {
+      console.log('❌ RESO: Note mancanti');
       showToast('Inserisci il motivo del reso', 'error');
       return;
     }
 
     if (!resoPhoto) {
+      console.log('❌ RESO: Foto mancante');
       showToast('Scatta una foto del danno', 'error');
       return;
     }
@@ -1026,20 +1043,35 @@ export default function DeliveryPage() {
       photo: resoPhoto
     };
 
-    if (isOnline) {
-      await createResoOnServer(payload);
-    } else {
-      await db.offline_actions.add({
-        action_type: 'reso',
-        payload,
-        timestamp: new Date(),
-        synced: false
-      });
-      showToast('Reso salvato per sincronizzazione', 'info');
-    }
+    console.log('💾 RESO: Payload preparato:', { ...payload, photo: 'BASE64_DATA' });
 
-    setShowResoModal(false);
-    showToast('Reso registrato', 'success');
+    try {
+      if (isOnline) {
+        console.log('🌐 RESO: Salvataggio online...');
+        await createResoOnServer(payload);
+        console.log('✅ RESO: Salvato online con successo');
+      } else {
+        console.log('💤 RESO: Salvataggio offline...');
+        await db.offline_actions.add({
+          action_type: 'reso',
+          payload,
+          timestamp: new Date(),
+          synced: false
+        });
+        console.log('✅ RESO: Salvato offline per sincronizzazione');
+        showToast('Reso salvato per sincronizzazione', 'info');
+      }
+
+      setShowResoModal(false);
+      setResoNote('');
+      setResoPhoto(null);
+      setResoProducts([]);
+      showToast('Reso registrato', 'success');
+      console.log('✅ RESO: Processo completato');
+    } catch (error) {
+      console.error('❌ RESO: Errore durante salvataggio:', error);
+      showToast('Errore durante il salvataggio del reso', 'error');
+    }
   }
 
   async function createResoOnServer(payload: any) {
