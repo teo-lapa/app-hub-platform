@@ -1,5 +1,5 @@
 'use client';
-// Force rebuild v2
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Dexie, { Table } from 'dexie';
@@ -115,8 +115,6 @@ export default function DeliveryPage() {
       delete (window as any).navigateToDelivery;
     };
   }, []);
-
-  // REMOVED: useEffect for map - DeliveryMap component handles its own initialization
 
   // ==================== INITIALIZATION ====================
   async function initializeApp() {

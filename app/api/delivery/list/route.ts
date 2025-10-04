@@ -6,10 +6,7 @@ export const maxDuration = 60; // Aumenta timeout a 60 secondi
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🚚 [DELIVERY] Inizio caricamento consegne...');
-
-    // ⚠️ AUTENTICAZIONE DIRETTA - Ignora cookies browser, autentica SEMPRE con paul@lapa.ch
-    console.log('🔐 [DELIVERY] Autenticazione DIRETTA con paul@lapa.ch (ignoro cookies browser)');
+    // Autenticazione diretta con credenziali Paul
 
     const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
     const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
@@ -37,16 +34,11 @@ export async function GET(request: NextRequest) {
     const uid = authData.result?.uid;
 
     if (!uid) {
-      console.error('❌ [DELIVERY] Autenticazione fallita');
       return NextResponse.json({ error: 'Autenticazione fallita' }, { status: 401 });
     }
 
-    console.log('✅ [DELIVERY] Autenticato DIRETTAMENTE, UID:', uid);
-
     // Cerca employee_id dell'utente loggato
     const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
-
-    console.log(`🔍 [DELIVERY] Cerco hr.employee con user_id=${uidNum}...`);
 
     const employees = await callOdoo(
       cookies,
@@ -55,47 +47,19 @@ export async function GET(request: NextRequest) {
       [],
       {
         domain: [['user_id', '=', uidNum]],
-        fields: ['id', 'name', 'user_id'],
+        fields: ['id', 'name'],
         limit: 1
       }
     );
 
-    console.log(`📋 [DELIVERY] Dipendenti trovati: ${employees.length}`);
-    console.log(`📋 [DELIVERY] Risultato ricerca:`, JSON.stringify(employees, null, 2));
-
     if (employees.length === 0) {
-      console.error(`❌ [DELIVERY] Nessun dipendente trovato per user_id=${uidNum}`);
-
-      // DEBUG: Mostra TUTTI i dipendenti per capire il problema
-      console.log(`🔍 [DELIVERY] DEBUG - Carico TUTTI i dipendenti per analisi...`);
-      const allEmployees = await callOdoo(
-        cookies,
-        'hr.employee',
-        'search_read',
-        [],
-        {
-          domain: [],
-          fields: ['id', 'name', 'user_id'],
-          limit: 50
-        }
-      );
-      console.log(`📋 [DELIVERY] TUTTI i dipendenti (${allEmployees.length}):`, JSON.stringify(allEmployees, null, 2));
-
       return NextResponse.json({
-        error: `Dipendente non trovato per user_id=${uidNum}. Controlla in Odoo che il campo "Utente collegato" del dipendente sia compilato.`,
-        debug: {
-          uid: uidNum,
-          employeesFound: 0,
-          hint: 'Vai in Odoo → Risorse Umane → Dipendenti → Trova il tuo dipendente → Compila campo "Utente collegato"'
-        }
+        error: 'Dipendente non trovato. Verifica configurazione in Odoo.'
       }, { status: 403 });
     }
 
     const driverId = employees[0].id;
     const driverName = employees[0].name;
-    const userIdField = employees[0].user_id;
-    console.log(`✅ [DELIVERY] Driver trovato: ${driverName} (employee_id=${driverId})`);
-    console.log(`📋 [DELIVERY] user_id field value:`, JSON.stringify(userIdField));
 
     // Get today's date
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -109,9 +73,7 @@ export async function GET(request: NextRequest) {
     const todayStart = `${todayDateOnly} 00:00:00`;
     const todayEnd = `${todayDateOnly} 23:59:59`;
 
-    console.log('📅 [DELIVERY] Oggi:', todayDateOnly);
-
-    // Domain semplice - SOLO documenti di oggi con driver_id
+    // Filtra documenti di oggi per questo driver
     const domain: any[] = [
       ['driver_id', '=', driverId],
       ['scheduled_date', '>=', todayStart],
@@ -121,9 +83,7 @@ export async function GET(request: NextRequest) {
       ['backorder_id', '=', false]
     ];
 
-    console.log('🔍 [DELIVERY] Domain:', JSON.stringify(domain));
-
-    // Load pickings - SEMPLICE
+    // Load pickings con move_ids (prodotti)
     const pickings = await callOdoo(
       cookies,
       'stock.picking',
@@ -134,49 +94,63 @@ export async function GET(request: NextRequest) {
         fields: [
           'id', 'name', 'partner_id', 'scheduled_date',
           'state', 'note', 'origin', 'driver_id',
-          'backorder_id'
+          'backorder_id', 'move_ids'
         ],
         limit: 50,
         order: 'scheduled_date ASC'
       }
     );
 
-    console.log(`📦 [DELIVERY] Odoo ha ritornato ${pickings.length} documenti per driver_id=${driverId}`);
-
-    // DEBUG: Mostra i primi 3 documenti con i loro driver_id
-    if (pickings.length > 0) {
-      console.log(`🔍 [DELIVERY] Primi 3 documenti con driver_id:`);
-      pickings.slice(0, 3).forEach((p: any) => {
-        console.log(`  - ${p.name}: driver_id=${p.driver_id ? p.driver_id[0] : 'NULL'} (${p.driver_id ? p.driver_id[1] : 'nessuno'})`);
-      });
-    }
-
     if (pickings.length === 0) {
-      console.warn(`⚠️ [DELIVERY] Nessun documento trovato per driver_id=${driverId} oggi`);
       return NextResponse.json([]);
     }
 
-    // Assembla deliveries - LOOP SEMPLICE come HTML
+    // Carica partner e prodotti in BULK (performance)
+    const partnerIds = [...new Set(pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean))];
+    const allMoveIds = pickings.flatMap((p: any) => p.move_ids || []);
+
+    // Carica tutti i partner in una chiamata
+    const allPartners = await callOdoo(
+      cookies,
+      'res.partner',
+      'read',
+      [partnerIds],
+      {
+        fields: ['name', 'street', 'street2', 'city', 'zip', 'phone', 'mobile', 'partner_latitude', 'partner_longitude']
+      }
+    );
+
+    // Carica tutti i move (prodotti) in una chiamata
+    const allMoves = allMoveIds.length > 0 ? await callOdoo(
+      cookies,
+      'stock.move',
+      'read',
+      [allMoveIds],
+      {
+        fields: ['id', 'product_id', 'product_uom_qty', 'product_uom', 'picking_id']
+      }
+    ) : [];
+
+    // Crea mappa per accesso rapido
+    const partnerMap = new Map(allPartners.map((p: any) => [p.id, p]));
+    const movesByPicking = new Map<number, any[]>();
+    allMoves.forEach((move: any) => {
+      const pickingId = move.picking_id?.[0];
+      if (!movesByPicking.has(pickingId)) {
+        movesByPicking.set(pickingId, []);
+      }
+      movesByPicking.get(pickingId)!.push(move);
+    });
+
+    // Assembla deliveries
     const deliveries = [];
 
     for (const picking of pickings) {
       const partnerId = picking.partner_id?.[0];
       if (!partnerId) continue;
 
-      // Carica partner singolo
-      const partners = await callOdoo(
-        cookies,
-        'res.partner',
-        'read',
-        [[partnerId]],
-        {
-          fields: ['name', 'street', 'street2', 'city', 'zip', 'phone', 'mobile', 'partner_latitude', 'partner_longitude']
-        }
-      );
-
-      if (!partners || partners.length === 0) continue;
-
-      const partner = partners[0];
+      const partner = partnerMap.get(partnerId);
+      if (!partner) continue;
 
       // Build address
       let address = '';
@@ -187,6 +161,17 @@ export async function GET(request: NextRequest) {
         if (partner.zip) address += partner.zip + ' ';
         if (partner.city) address += partner.city;
       }
+
+      // Ottieni prodotti per questo picking
+      const pickingMoves = movesByPicking.get(picking.id) || [];
+      const products = pickingMoves.map((move: any) => ({
+        id: move.id,
+        name: move.product_id?.[1] || 'Prodotto',
+        qty: move.product_uom_qty || 0,
+        delivered: 0,
+        picked: false,
+        unit: move.product_uom?.[1] || 'Unità'
+      }));
 
       deliveries.push({
         id: picking.id,
@@ -203,7 +188,7 @@ export async function GET(request: NextRequest) {
         partner_city: partner.city || '',
         partner_zip: partner.zip || '',
         partner_phone: partner.phone || partner.mobile || '',
-        products: [], // Caricati dopo se serve
+        products: products,
         note: picking.note || '',
         state: picking.state,
         origin: picking.origin || '',
@@ -216,12 +201,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.log(`✅ [DELIVERY] Ritorno ${deliveries.length} consegne`);
-
     return NextResponse.json(deliveries);
 
   } catch (error: any) {
-    console.error('❌ [DELIVERY] Errore:', error);
+    console.error('[DELIVERY] Errore:', error.message);
     return NextResponse.json(
       { error: error.message || 'Errore caricamento consegne' },
       { status: 500 }

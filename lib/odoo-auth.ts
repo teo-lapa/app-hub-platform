@@ -46,14 +46,9 @@ export async function getOdooSession(userCookies?: string) {
         const sessionData = await sessionCheck.json();
         const uid = sessionData.result?.uid;
 
-        console.log('🔍 [ODOO-AUTH] Session check UID:', uid);
-
-        if (uid && uid !== 430) {
-          // UID valido e NON è Stella (430) → usa la sessione
+        if (uid) {
           console.log('✅ [ODOO-AUTH] Sessione utente valida, UID:', uid);
           return { cookies: userCookies, uid: uid };
-        } else if (uid === 430) {
-          console.warn('⚠️ [ODOO-AUTH] UID=430 (Stella) rilevato, uso fallback');
         }
       }
     }

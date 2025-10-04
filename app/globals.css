@@ -222,3 +222,18 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
 }
+
+/* Android/Touch optimizations */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  min-height: 44px; /* iOS minimum touch target */
+  min-width: 44px;
+}
+
+/* Smooth scrolling on mobile */
+* {
+  -webkit-overflow-scrolling: touch;
+}
