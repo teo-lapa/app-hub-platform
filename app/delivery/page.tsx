@@ -1015,6 +1015,8 @@ export default function DeliveryPage() {
     if (!currentDelivery) return;
 
     console.log('💾 RESO: Inizio salvataggio...');
+    console.log('💾 RESO: currentDelivery:', currentDelivery);
+    console.log('💾 RESO: partner_id raw:', currentDelivery.partner_id);
     console.log('💾 RESO: Note:', resoNote);
     console.log('💾 RESO: Foto presente:', !!resoPhoto);
 
@@ -1031,9 +1033,20 @@ export default function DeliveryPage() {
     }
 
     // Tutti i prodotti consegnati vengono considerati come resi
+    // partner_id può essere [id, name] oppure solo id
+    const partnerId = Array.isArray(currentDelivery.partner_id)
+      ? currentDelivery.partner_id[0]
+      : currentDelivery.partner_id;
+
+    if (!partnerId) {
+      console.log('❌ RESO: Partner ID mancante');
+      showToast('Errore: cliente non trovato', 'error');
+      return;
+    }
+
     const payload = {
       original_picking_id: currentDelivery.id,
-      partner_id: currentDelivery.partner_id?.[0],
+      partner_id: partnerId,
       products: resoProducts.map(p => ({
         product_id: p.product_id?.[0],
         quantity: p.delivered || p.qty,
