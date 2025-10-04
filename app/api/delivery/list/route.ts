@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
 
     console.log('📋 [DELIVERY] Employee search result:', JSON.stringify(employee));
 
-    let driverId = null;
-    let driverName = null;
+    let driverId: number | null = null;
+    let driverName: string | null = null;
 
     if (employee && employee.length > 0) {
       driverId = employee[0].id;  // hr.employee ID (es. 8)
