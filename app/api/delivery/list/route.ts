@@ -18,23 +18,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
     }
 
-    console.log('✅ [DELIVERY] Autenticato con Odoo, UID:', uid);
+    console.log('✅ [DELIVERY] Autenticato con Odoo, UID:', uid, 'TYPE:', typeof uid);
 
-    // FORCE HARDCODE: Mappa diretta UID → driver_id
-    const userDriverMap: Record<number, { driverId: number; name: string }> = {
-      7: { driverId: 8, name: 'Paul Teodorescu' }  // Paul
-      // Aggiungi altri utenti qui se necessario
-    };
-
+    // FORCE HARDCODE con conversione esplicita
     let driverId: number | null = null;
     let driverName: string | null = null;
 
-    if (userDriverMap[uid]) {
-      driverId = userDriverMap[uid].driverId;
-      driverName = userDriverMap[uid].name;
-      console.log('✅ [DELIVERY] Driver HARDCODED per UID', uid, '→ driver_id:', driverId, '(', driverName, ')');
+    // Converti UID a numero per sicurezza
+    const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
+    console.log('🔍 [DELIVERY] UID convertito:', uidNum, 'TYPE:', typeof uidNum);
+
+    // HARDCODE: Paul Teodorescu
+    if (uidNum === 7) {
+      driverId = 8;
+      driverName = 'Paul Teodorescu';
+      console.log('✅ [DELIVERY] Driver HARDCODED: UID 7 → driver_id 8 (Paul Teodorescu)');
     } else {
-      console.log('⚠️ [DELIVERY] Nessun driver configurato per UID:', uid);
+      console.log('⚠️ [DELIVERY] UID non è 7, UID ricevuto:', uidNum);
     }
 
     const employee = driverId ? [{ id: driverId, name: driverName }] : [];
@@ -96,14 +96,23 @@ export async function GET(request: NextRequest) {
 
     console.log(`📦 [DELIVERY] Odoo ha restituito ${pickings.length} documenti`);
 
-    // FILTRO JAVASCRIPT per driver (perché filtro Odoo non funziona)
+    // FILTRO JAVASCRIPT per driver
+    console.log('🚗 [FILTER] Inizio filtro driver - driverId:', driverId, 'TYPE:', typeof driverId);
+
     let filteredPickings = pickings;
     if (driverId) {
+      console.log('🚗 [FILTER] Filtro ATTIVO per driver_id:', driverId);
       filteredPickings = pickings.filter((p: any) => {
         const pDriverId = p.driver_id ? p.driver_id[0] : null;
-        return pDriverId === driverId;
+        const match = pDriverId === driverId;
+        if (match) {
+          console.log(`✅ MATCH: ${p.name} ha driver_id ${pDriverId} = ${driverId}`);
+        }
+        return match;
       });
-      console.log(`📦 [DELIVERY] Dopo filtro driver (${driverId}): ${filteredPickings.length} documenti`);
+      console.log(`📦 [DELIVERY] Dopo filtro driver: ${filteredPickings.length} / ${pickings.length} documenti`);
+    } else {
+      console.log('⚠️ [FILTER] driverId è NULL/UNDEFINED - NESSUN FILTRO APPLICATO!');
     }
 
     if (filteredPickings.length === 0) {
