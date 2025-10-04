@@ -75,72 +75,84 @@ export async function GET(request: NextRequest) {
 
     console.log(`📦 [DELIVERY] Trovati ${pickings.length} documenti`);
 
+    if (pickings.length === 0) {
+      return NextResponse.json([]);
+    }
+
+    // OTTIMIZZAZIONE: Bulk reads invece di loop
+    // 1. Raccogli tutti gli ID
+    const partnerIds = pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
+    const allMoveIds = pickings.flatMap((p: any) => p.move_ids || []);
+
+    // 2. Fetch TUTTI i partners in UNA chiamata
+    const partnersMap = new Map();
+    if (partnerIds.length > 0) {
+      const partners = await callOdoo(cookies, 'res.partner', 'search_read', [], {
+        domain: [['id', 'in', partnerIds]],
+        fields: ['id', 'name', 'street', 'street2', 'city', 'zip', 'phone', 'mobile', 'partner_latitude', 'partner_longitude']
+      });
+      partners.forEach((p: any) => partnersMap.set(p.id, p));
+    }
+
+    // 3. Fetch TUTTI i moves in UNA chiamata
+    const movesMap = new Map();
+    if (allMoveIds.length > 0) {
+      const moves = await callOdoo(cookies, 'stock.move', 'search_read', [], {
+        domain: [['id', 'in', allMoveIds]],
+        fields: ['id', 'picking_id', 'product_id', 'product_uom_qty']
+      });
+      moves.forEach((m: any) => {
+        const pickingId = Array.isArray(m.picking_id) ? m.picking_id[0] : m.picking_id;
+        if (!movesMap.has(pickingId)) movesMap.set(pickingId, []);
+        movesMap.get(pickingId).push(m);
+      });
+    }
+
+    // 4. Fetch TUTTI i products in UNA chiamata
+    const productIds = allMoveIds.length > 0 ?
+      (await callOdoo(cookies, 'stock.move', 'search_read', [], {
+        domain: [['id', 'in', allMoveIds]],
+        fields: ['product_id']
+      })).map((m: any) => m.product_id[0]).filter(Boolean) : [];
+
+    const productsMap = new Map();
+    if (productIds.length > 0) {
+      const products = await callOdoo(cookies, 'product.product', 'search_read', [], {
+        domain: [['id', 'in', productIds]],
+        fields: ['id', 'name', 'image_128', 'categ_id']
+      });
+      products.forEach((p: any) => productsMap.set(p.id, p));
+    }
+
+    console.log(`✅ [DELIVERY] Caricati ${partnersMap.size} partners, ${movesMap.size} pickings con moves, ${productsMap.size} products`);
+
+    // 5. Assembla deliveries usando le mappe (NO LOOP ODOO!)
     const deliveries = [];
-
-    // Process each picking - ESATTAMENTE COME L'HTML
     for (const picking of pickings) {
-      if (!picking.partner_id) continue;
+      const partnerId = picking.partner_id?.[0];
+      if (!partnerId) continue;
 
-      // Get partner details - ESATTAMENTE COME L'HTML
-      const partners = await callOdoo(
-        cookies,
-        'res.partner',
-        'search_read',
-        [],
-        {
-          domain: [['id', '=', picking.partner_id[0]]],
-          fields: ['name', 'street', 'street2', 'city', 'zip', 'phone', 'mobile', 'partner_latitude', 'partner_longitude'],
-          limit: 1
-        }
-      );
-
-      const partner = partners[0];
+      const partner = partnersMap.get(partnerId);
       if (!partner) continue;
 
-      // Get products - ESATTAMENTE COME L'HTML
-      let products = [];
-      if (picking.move_ids && picking.move_ids.length > 0) {
-        const moves = await callOdoo(
-          cookies,
-          'stock.move',
-          'search_read',
-          [],
-          {
-            domain: [['id', 'in', picking.move_ids]],
-            fields: ['product_id', 'product_uom_qty'],
-            limit: 100
-          }
-        );
+      // Get products from map
+      const pickingMoves = movesMap.get(picking.id) || [];
+      const products = pickingMoves.map((move: any) => {
+        const productId = move.product_id[0];
+        const product = productsMap.get(productId);
+        if (!product) return null;
 
-        // Get product details with images and category
-        for (const move of moves) {
-          const productDetails = await callOdoo(
-            cookies,
-            'product.product',
-            'search_read',
-            [],
-            {
-              domain: [['id', '=', move.product_id[0]]],
-              fields: ['id', 'name', 'image_128', 'categ_id'],
-              limit: 1
-            }
-          );
+        return {
+          id: product.id,
+          name: move.product_id[1],
+          qty: move.product_uom_qty,
+          image: product.image_128 || null,
+          category: product.categ_id ? product.categ_id[1] : 'Altro',
+          delivered: 0
+        };
+      }).filter(Boolean);
 
-          const product = productDetails[0];
-          if (product) {
-            products.push({
-              id: product.id,
-              name: move.product_id[1],
-              qty: move.product_uom_qty,
-              image: product.image_128 || null,
-              category: product.categ_id ? product.categ_id[1] : 'Altro',
-              delivered: 0 // Quantità scaricata
-            });
-          }
-        }
-      }
-
-      // Build address - ESATTAMENTE COME L'HTML
+      // Build address
       let address = '';
       if (partner.street) address += partner.street;
       if (partner.street2) address += ', ' + partner.street2;
@@ -150,7 +162,6 @@ export async function GET(request: NextRequest) {
         if (partner.city) address += partner.city;
       }
 
-      // Crea delivery - ESATTAMENTE COME L'HTML
       deliveries.push({
         id: picking.id,
         name: picking.name,
