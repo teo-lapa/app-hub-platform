@@ -1,5 +1,5 @@
 'use client';
-
+// Force rebuild v2
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Dexie, { Table } from 'dexie';
@@ -18,7 +18,7 @@ class DeliveryDatabase extends Dexie {
 
   constructor() {
     super('LapaDeliveryDB');
-    this.version(2).stores({
+    this.version(31).stores({
       attachments: '++id, picking_id, context, timestamp, uploaded',
       deliveries: 'id, scheduled_date, state, driver_id',
       offline_actions: '++id, timestamp, synced',
