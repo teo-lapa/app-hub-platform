@@ -1467,11 +1467,12 @@ export default function DeliveryPage() {
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2 mb-4">
                       {category.products.map(product => {
                         const isModified = product.delivered !== product.qty;
+                        const isCompleted = currentDelivery?.state === 'done';
                         return (
                           <div
                             key={product.id}
-                            onClick={() => toggleProductPicked(product.id)}
-                            className={`border rounded-lg p-2 cursor-pointer ${product.completed ? 'bg-green-50 border-green-500' : 'border-gray-300'}`}
+                            onClick={() => !isCompleted && toggleProductPicked(product.id)}
+                            className={`border rounded-lg p-2 ${!isCompleted ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'} ${product.completed ? 'bg-green-50 border-green-500' : 'border-gray-300'}`}
                             style={{borderTopWidth: '3px', borderTopColor: category.color}}
                           >
                             {product.image ? (
@@ -1489,14 +1490,16 @@ export default function DeliveryPage() {
                               <span className="font-bold text-base">{product.delivered}</span>
                             </div>
                             <button
-                              onClick={(e) => {e.stopPropagation(); openCalculator(product.id, product.qty);}}
+                              onClick={(e) => {e.stopPropagation(); !isCompleted && openCalculator(product.id, product.qty);}}
+                              disabled={isCompleted}
                               className="w-full py-1 text-xs rounded font-semibold"
                               style={{
-                                background: isModified ? '#fef3c7' : '#f3f4f6',
-                                color: isModified ? '#92400e' : '#374151'
+                                background: isCompleted ? '#e5e7eb' : (isModified ? '#fef3c7' : '#f3f4f6'),
+                                color: isCompleted ? '#9ca3af' : (isModified ? '#92400e' : '#374151'),
+                                cursor: isCompleted ? 'not-allowed' : 'pointer'
                               }}
                             >
-                              ✏️ Modifica: {product.delivered}
+                              {isCompleted ? '🔒 Bloccato' : `✏️ Modifica: ${product.delivered}`}
                             </button>
                           </div>
                         );
@@ -1514,7 +1517,9 @@ export default function DeliveryPage() {
                 <div className="text-center"><div className="text-xl font-bold text-green-600">{scaricoStats.delivered.toFixed(2)}</div><div className="text-[10px] text-gray-500">Scaricati</div></div>
                 <div className="text-center"><div className="text-xl font-bold text-orange-500">{scaricoStats.remaining.toFixed(2)}</div><div className="text-[10px] text-gray-500">Mancanti</div></div>
               </div>
-              <button onClick={() => setShowCompletionOptionsModal(true)} className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold text-sm">✅ Completa</button>
+              {currentDelivery?.state !== 'done' && (
+                <button onClick={() => setShowCompletionOptionsModal(true)} className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold text-sm">✅ Completa</button>
+              )}
             </div>
           </div>
         )}
