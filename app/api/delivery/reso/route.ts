@@ -3,7 +3,10 @@ import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { cookies, uid } = await getOdooSession();
+    // Passa i cookies dell'utente per usare la sua sessione Odoo
+    const userCookies = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(userCookies || undefined);
+
     if (!uid) {
       return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
     }
