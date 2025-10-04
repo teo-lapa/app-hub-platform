@@ -73,21 +73,32 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    console.log(`📦 [DELIVERY] Trovati ${pickings.length} documenti`);
+    console.log(`📦 [DELIVERY] Trovati ${pickings.length} documenti TOTALI da Odoo`);
 
-    // DEBUG: Log delle date per capire il formato
-    pickings.forEach((p: any, idx: number) => {
-      console.log(`📅 [DEBUG] Picking #${idx + 1}: ${p.name} - scheduled_date: ${p.scheduled_date}`);
+    // FILTRO LATO SERVER per data di OGGI (ignora timezone!)
+    const filteredPickings = pickings.filter((p: any) => {
+      if (!p.scheduled_date) return false;
+      // Estrae solo la parte DATA (YYYY-MM-DD) ignorando ora e timezone
+      const pickingDate = p.scheduled_date.split(' ')[0];
+      const isToday = pickingDate === todayDateOnly;
+
+      if (!isToday) {
+        console.log(`❌ [FILTER] Escluso ${p.name}: data ${pickingDate} != ${todayDateOnly}`);
+      }
+
+      return isToday;
     });
 
-    if (pickings.length === 0) {
+    console.log(`✅ [DELIVERY] Dopo filtro data: ${filteredPickings.length} consegne di OGGI (${todayDateOnly})`);
+
+    if (filteredPickings.length === 0) {
       return NextResponse.json([]);
     }
 
     // OTTIMIZZAZIONE: Bulk reads invece di loop
-    // 1. Raccogli tutti gli ID
-    const partnerIds = pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
-    const allMoveIds = pickings.flatMap((p: any) => p.move_ids || []);
+    // 1. Raccogli tutti gli ID (da filteredPickings, non da pickings!)
+    const partnerIds = filteredPickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
+    const allMoveIds = filteredPickings.flatMap((p: any) => p.move_ids || []);
 
     // 2. Fetch TUTTI i partners in UNA chiamata
     const partnersMap = new Map();
@@ -133,7 +144,7 @@ export async function GET(request: NextRequest) {
 
     // 5. Assembla deliveries usando le mappe (NO LOOP ODOO!)
     const deliveries = [];
-    for (const picking of pickings) {
+    for (const picking of filteredPickings) {
       const partnerId = picking.partner_id?.[0];
       if (!partnerId) continue;
 
