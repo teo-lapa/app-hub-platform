@@ -27,22 +27,18 @@ export async function GET(request: NextRequest) {
       limit: 1
     });
 
-    // Get today's date range for Odoo filter (00:00:00 to 23:59:59)
+    // Get today's date in Europe/Zurich and extract just the date part
     const swissTime = new Date().toLocaleString('en-US', { timeZone: 'Europe/Zurich' });
     const today = new Date(swissTime);
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
+    const todayDateOnly = `${year}-${month}-${day}`;
 
-    const todayStart = `${year}-${month}-${day} 00:00:00`;
-    const todayEnd = `${year}-${month}-${day} 23:59:59`;
+    console.log('📅 [DELIVERY] Data OGGI (Europe/Zurich):', todayDateOnly);
 
-    console.log('📅 [DELIVERY] Filtro data OGGI:', todayStart, 'to', todayEnd);
-
-    // Build domain - SEMPLIFICATO senza Polish notation complessa
+    // Build domain - SENZA filtro data (lo faremo lato server)
     const domain: any[] = [
-      ['scheduled_date', '>=', todayStart],
-      ['scheduled_date', '<=', todayEnd],
       ['state', 'in', ['assigned', 'done']],
       ['picking_type_id.code', '=', 'outgoing'],
       ['backorder_id', '=', false]
@@ -77,16 +73,38 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    console.log(`📦 [DELIVERY] Trovati ${pickings.length} consegne di OGGI da Odoo`);
+    console.log(`📦 [DELIVERY] Trovati ${pickings.length} documenti da Odoo`);
 
-    if (pickings.length === 0) {
+    // FILTRO LATO SERVER per data di OGGI (evita problemi timezone con Odoo)
+    const filteredPickings = pickings.filter((p: any) => {
+      if (!p.scheduled_date) {
+        console.log(`❌ [FILTER] ${p.name}: nessuna data programmata`);
+        return false;
+      }
+
+      // Estrae solo YYYY-MM-DD ignorando ora e timezone
+      const pickingDateOnly = p.scheduled_date.split(' ')[0];
+      const isToday = pickingDateOnly === todayDateOnly;
+
+      if (isToday) {
+        console.log(`✅ [FILTER] ${p.name}: ${pickingDateOnly} = ${todayDateOnly}`);
+      } else {
+        console.log(`❌ [FILTER] ${p.name}: ${pickingDateOnly} != ${todayDateOnly}`);
+      }
+
+      return isToday;
+    });
+
+    console.log(`📦 [DELIVERY] Dopo filtro data: ${filteredPickings.length} consegne di OGGI`);
+
+    if (filteredPickings.length === 0) {
       return NextResponse.json([]);
     }
 
     // OTTIMIZZAZIONE: Bulk reads invece di loop
-    // 1. Raccogli tutti gli ID
-    const partnerIds = pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
-    const allMoveIds = pickings.flatMap((p: any) => p.move_ids || []);
+    // 1. Raccogli tutti gli ID (da filteredPickings!)
+    const partnerIds = filteredPickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
+    const allMoveIds = filteredPickings.flatMap((p: any) => p.move_ids || []);
 
     // 2. Fetch TUTTI i partners in UNA chiamata
     const partnersMap = new Map();
@@ -132,7 +150,7 @@ export async function GET(request: NextRequest) {
 
     // 5. Assembla deliveries usando le mappe (NO LOOP ODOO!)
     const deliveries = [];
-    for (const picking of pickings) {
+    for (const picking of filteredPickings) {
       const partnerId = picking.partner_id?.[0];
       if (!partnerId) continue;
 
