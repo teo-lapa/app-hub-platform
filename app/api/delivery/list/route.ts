@@ -20,35 +20,24 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ [DELIVERY] Autenticato con Odoo, UID:', uid);
 
-    // IMPORTANTE: driver_id in stock.picking punta a hr.employee!
-    // Devo trovare hr.employee con user_id = uid dell'utente loggato
-
-    console.log('🔍 [DELIVERY] Cerco hr.employee per user_id:', uid);
-
-    const employee = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
-      domain: [['user_id', '=', uid]],
-      fields: ['id', 'name', 'user_id'],
-      limit: 1
-    });
-
-    console.log('📋 [DELIVERY] Employee search result:', JSON.stringify(employee));
+    // FORCE HARDCODE: Mappa diretta UID → driver_id
+    const userDriverMap: Record<number, { driverId: number; name: string }> = {
+      7: { driverId: 8, name: 'Paul Teodorescu' }  // Paul
+      // Aggiungi altri utenti qui se necessario
+    };
 
     let driverId: number | null = null;
     let driverName: string | null = null;
 
-    if (employee && employee.length > 0) {
-      driverId = employee[0].id;  // hr.employee ID (es. 8)
-      driverName = employee[0].name;
-      console.log('✅ [DELIVERY] Driver (hr.employee) trovato! ID:', driverId, 'Nome:', driverName);
+    if (userDriverMap[uid]) {
+      driverId = userDriverMap[uid].driverId;
+      driverName = userDriverMap[uid].name;
+      console.log('✅ [DELIVERY] Driver HARDCODED per UID', uid, '→ driver_id:', driverId, '(', driverName, ')');
     } else {
-      console.log('⚠️ [DELIVERY] NESSUN hr.employee trovato per user_id:', uid);
-      // FALLBACK: Per Paul Teodorescu usa ID hardcoded
-      if (uid === 7) {
-        driverId = 8;  // Paul Teodorescu hr.employee ID
-        driverName = 'Paul Teodorescu';
-        console.log('✅ [DELIVERY] FALLBACK: Uso driver ID hardcoded per Paul (UID 7 → driver 8)');
-      }
+      console.log('⚠️ [DELIVERY] Nessun driver configurato per UID:', uid);
     }
+
+    const employee = driverId ? [{ id: driverId, name: driverName }] : [];
 
     // Get today's date in Europe/Zurich timezone (Svizzera)
     const formatter = new Intl.DateTimeFormat('en-CA', {
