@@ -27,17 +27,30 @@ export async function GET(request: NextRequest) {
       limit: 1
     });
 
-    // Build domain with driver filter - SOLO DOCUMENTI PRONTI (assigned)
+    // Get today's date range (start and end of day in UTC)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStart = today.toISOString().split('T')[0] + ' 00:00:00';
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStart = tomorrow.toISOString().split('T')[0] + ' 00:00:00';
+
+    console.log('📅 [DELIVERY] Filtro data: oggi da', todayStart, 'a', tomorrowStart);
+
+    // Build domain with driver filter - SOLO DOCUMENTI DI OGGI pronti (assigned)
     const domain = [
       ['picking_type_id.code', '=', 'outgoing'],
-      ['state', '=', 'assigned']  // SOLO pronti, NON completati
+      ['state', '=', 'assigned'],  // SOLO pronti, NON completati
+      ['scheduled_date', '>=', todayStart],
+      ['scheduled_date', '<', tomorrowStart]
     ];
 
     if (employee && employee.length > 0) {
       console.log('👤 [DELIVERY] Employee trovato:', employee[0].name, 'ID:', employee[0].id);
       domain.push(['driver_id', '=', employee[0].id]);
     } else {
-      console.log('⚠️ [DELIVERY] Nessun employee, mostro tutti i documenti');
+      console.log('⚠️ [DELIVERY] Nessun employee, mostro tutti i documenti di oggi');
     }
 
     // COPIA ESATTA DELLA LOGICA HTML
