@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
     console.log('🔍 [DELIVERY] UID utente loggato:', uidNum);
 
-    // Leggi res.users per ottenere employee_id
+    // Leggi res.users per ottenere employee_id - TUTTI I CAMPI per debug
     const users = await callOdoo(
       cookies,
       'res.users',
@@ -36,13 +36,13 @@ export async function GET(request: NextRequest) {
       [],
       {
         domain: [['id', '=', uidNum]],
-        fields: ['id', 'name', 'employee_id'],
+        fields: [],  // VUOTO = tutti i campi
         limit: 1
       }
     );
 
     console.log(`🔍 [DELIVERY] Ricerca res.users per UID ${uidNum}:`);
-    console.log(`🔍 [DELIVERY] Risultato Odoo:`, JSON.stringify(users, null, 2));
+    console.log(`🔍 [DELIVERY] TUTTI I CAMPI:`, JSON.stringify(users, null, 2));
 
     if (users.length === 0) {
       console.log(`❌ [DELIVERY] Nessun utente trovato con UID ${uidNum}`);
