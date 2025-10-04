@@ -20,12 +20,35 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ [DELIVERY] Autenticato con Odoo, UID:', uid);
 
-    // Get employee info - ESATTAMENTE COME L'HTML
+    // Get employee info
+    console.log('🔍 [DELIVERY] Cerco employee per user_id:', uid);
+
     const employee = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
       domain: [['user_id', '=', uid]],
-      fields: ['id', 'name'],
+      fields: ['id', 'name', 'user_id'],
       limit: 1
     });
+
+    console.log('📋 [DELIVERY] Employee search result:', JSON.stringify(employee));
+
+    if (!employee || employee.length === 0) {
+      console.log('⚠️ [DELIVERY] NESSUN employee trovato per user_id:', uid);
+      console.log('⚠️ [DELIVERY] Cercherò per nome: Paul Teodorescu');
+
+      // Fallback: cerca per nome
+      const employeeByName = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
+        domain: [['name', 'ilike', 'Paul Teodorescu']],
+        fields: ['id', 'name', 'user_id'],
+        limit: 1
+      });
+
+      console.log('📋 [DELIVERY] Employee by name result:', JSON.stringify(employeeByName));
+
+      if (employeeByName && employeeByName.length > 0) {
+        employee.push(employeeByName[0]);
+        console.log('✅ [DELIVERY] Employee trovato per nome!');
+      }
+    }
 
     // Get today's date for Odoo filter
     const today = new Date();
