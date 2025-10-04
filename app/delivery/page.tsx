@@ -226,8 +226,15 @@ export default function DeliveryPage() {
   async function fetchAndUpdateDeliveries() {
     try {
       console.log('🔄 Aggiornamento consegne da server...');
-      const response = await fetch('/api/delivery/list', {
-        signal: AbortSignal.timeout(30000) // 30 second timeout for Android
+      // Add timestamp to bypass ALL caches (browser + Vercel)
+      const cacheBuster = `?t=${Date.now()}`;
+      const response = await fetch(`/api/delivery/list${cacheBuster}`, {
+        signal: AbortSignal.timeout(30000), // 30 second timeout for Android
+        cache: 'no-store', // Force no caching
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
 
       if (!response.ok) {
