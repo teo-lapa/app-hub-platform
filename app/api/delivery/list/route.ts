@@ -68,13 +68,13 @@ export async function GET(request: NextRequest) {
       ['backorder_id', '=', false]
     ];
 
-    // TEMPORANEAMENTE DISABILITATO per debug
+    // Aggiungi filtro driver al domain Odoo
     if (employee && employee.length > 0) {
       console.log('👤 [DELIVERY] Employee trovato:', employee[0].name, 'ID:', employee[0].id);
-      // domain.push(['driver_id', '=', employee[0].id]);  // COMMENTATO PER DEBUG
-      console.log('⚠️ [DEBUG] Filtro driver DISABILITATO per test - mostro TUTTI i driver');
+      domain.push(['driver_id', '=', employee[0].id]);  // FILTRO DRIVER ATTIVO
+      console.log('✅ [DELIVERY] Filtro driver aggiunto: driver_id =', employee[0].id);
     } else {
-      console.log('⚠️ [DELIVERY] Nessun employee associato');
+      console.log('⚠️ [DELIVERY] Nessun employee associato - mostro TUTTE le consegne');
     }
 
     console.log('🔍 [DELIVERY] Domain Odoo:', JSON.stringify(domain));
@@ -101,36 +101,14 @@ export async function GET(request: NextRequest) {
 
     console.log(`📦 [DELIVERY] Odoo ha restituito ${pickings.length} documenti`);
 
-    // DEBUG: Mostra driver_id di tutti i documenti per capire quale usare
-    console.log('🚗 [DEBUG] Driver nei documenti:');
-    const driverCounts: Record<string, number> = {};
-    pickings.forEach((p: any) => {
-      const dId = p.driver_id ? p.driver_id[0] : null;
-      const dName = p.driver_id ? p.driver_id[1] : 'Nessun driver';
-      const key = `${dName} (ID: ${dId})`;
-      driverCounts[key] = (driverCounts[key] || 0) + 1;
-    });
-    console.log('Driver trovati:', JSON.stringify(driverCounts, null, 2));
-
-    // FILTRO per driver SE employee trovato
-    let filteredPickings = pickings;
-    if (employee && employee.length > 0 && driverId) {
-      console.log(`🚗 [FILTER] Filtro per driver ID: ${driverId} (${driverName})`);
-      filteredPickings = pickings.filter((p: any) => {
-        const pDriverId = p.driver_id ? p.driver_id[0] : null;
-        return pDriverId === driverId;
-      });
-      console.log(`📦 [DELIVERY] Dopo filtro driver: ${filteredPickings.length} documenti`);
-    }
-
-    if (filteredPickings.length === 0) {
-      console.log('⚠️ [DELIVERY] Nessun documento trovato dopo i filtri');
+    if (pickings.length === 0) {
+      console.log('⚠️ [DELIVERY] Nessun documento trovato con i filtri Odoo');
       return NextResponse.json([]);
     }
 
-    // OTTIMIZZAZIONE: Bulk reads invece di loop (usa filteredPickings!)
-    const partnerIds = filteredPickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
-    const allMoveIds = filteredPickings.flatMap((p: any) => p.move_ids || []);
+    // OTTIMIZZAZIONE: Bulk reads invece di loop
+    const partnerIds = pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
+    const allMoveIds = pickings.flatMap((p: any) => p.move_ids || []);
 
     // 2. Fetch TUTTI i partners in UNA chiamata
     const partnersMap = new Map();
@@ -176,7 +154,7 @@ export async function GET(request: NextRequest) {
 
     // 5. Assembla deliveries usando le mappe (NO LOOP ODOO!)
     const deliveries = [];
-    for (const picking of filteredPickings) {
+    for (const picking of pickings) {
       const partnerId = picking.partner_id?.[0];
       if (!partnerId) continue;
 
@@ -234,12 +212,6 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`✅ [DELIVERY] Caricate ${deliveries.length} consegne con dettagli`);
-
-    // DEBUG: Mostra driver di ogni consegna
-    console.log('🚗 [DEBUG] Driver per ogni consegna:');
-    deliveries.forEach(d => {
-      console.log(`  - ${d.name}: ${d.driver} (ID: ${d.driverId})`);
-    });
 
     return NextResponse.json(deliveries);
   } catch (error: any) {
