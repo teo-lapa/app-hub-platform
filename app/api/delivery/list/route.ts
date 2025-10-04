@@ -101,14 +101,24 @@ export async function GET(request: NextRequest) {
 
     console.log(`📦 [DELIVERY] Odoo ha restituito ${pickings.length} documenti`);
 
-    if (pickings.length === 0) {
-      console.log('⚠️ [DELIVERY] Nessun documento trovato con i filtri Odoo');
+    // FILTRO JAVASCRIPT per driver (perché filtro Odoo non funziona)
+    let filteredPickings = pickings;
+    if (driverId) {
+      filteredPickings = pickings.filter((p: any) => {
+        const pDriverId = p.driver_id ? p.driver_id[0] : null;
+        return pDriverId === driverId;
+      });
+      console.log(`📦 [DELIVERY] Dopo filtro driver (${driverId}): ${filteredPickings.length} documenti`);
+    }
+
+    if (filteredPickings.length === 0) {
+      console.log('⚠️ [DELIVERY] Nessun documento trovato dopo filtri');
       return NextResponse.json([]);
     }
 
-    // OTTIMIZZAZIONE: Bulk reads invece di loop
-    const partnerIds = pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
-    const allMoveIds = pickings.flatMap((p: any) => p.move_ids || []);
+    // OTTIMIZZAZIONE: Bulk reads invece di loop (usa filteredPickings!)
+    const partnerIds = filteredPickings.map((p: any) => p.partner_id?.[0]).filter(Boolean);
+    const allMoveIds = filteredPickings.flatMap((p: any) => p.move_ids || []);
 
     // 2. Fetch TUTTI i partners in UNA chiamata
     const partnersMap = new Map();
@@ -154,7 +164,7 @@ export async function GET(request: NextRequest) {
 
     // 5. Assembla deliveries usando le mappe (NO LOOP ODOO!)
     const deliveries = [];
-    for (const picking of pickings) {
+    for (const picking of filteredPickings) {
       const partnerId = picking.partner_id?.[0];
       if (!partnerId) continue;
 
