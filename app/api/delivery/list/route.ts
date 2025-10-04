@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       'read',
       [allMoveIds],
       {
-        fields: ['id', 'product_id', 'product_uom_qty', 'product_uom', 'picking_id']
+        fields: ['id', 'product_id', 'product_uom_qty', 'product_uom', 'picking_id', 'quantity_done']
       }
     ) : [];
 
@@ -179,15 +179,17 @@ export async function GET(request: NextRequest) {
 
       // Ottieni prodotti per questo picking
       const pickingMoves = movesByPicking.get(picking.id) || [];
+      const isCompleted = picking.state === 'done';
       const products = pickingMoves.map((move: any) => {
         const productId = move.product_id?.[0];
+        const qtyDone = move.quantity_done || 0;
         return {
           id: move.id,
           product_id: productId,
           name: move.product_id?.[1] || 'Prodotto',
           qty: move.product_uom_qty || 0,
-          delivered: 0,
-          picked: false,
+          delivered: isCompleted ? qtyDone : 0,
+          picked: isCompleted ? (qtyDone === move.product_uom_qty) : false,
           unit: move.product_uom?.[1] || 'Unità',
           image: productImageMap.get(productId) || null
         };
