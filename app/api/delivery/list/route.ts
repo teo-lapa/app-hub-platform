@@ -20,32 +20,29 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ [DELIVERY] Autenticato con Odoo, UID:', uid);
 
-    // IMPORTANTE: driver_id in stock.picking punta a res.partner, NON hr.employee!
-    // Devo trovare il res.partner associato all'utente loggato
+    // IMPORTANTE: driver_id in stock.picking punta a hr.employee!
+    // Devo trovare hr.employee con user_id = uid dell'utente loggato
 
-    console.log('🔍 [DELIVERY] Cerco res.partner per user_id:', uid);
+    console.log('🔍 [DELIVERY] Cerco hr.employee per user_id:', uid);
 
-    // Prima cerco res.users per ottenere il partner_id
-    const users = await callOdoo(cookies, 'res.users', 'search_read', [], {
-      domain: [['id', '=', uid]],
-      fields: ['id', 'name', 'partner_id'],
+    const employee = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
+      domain: [['user_id', '=', uid]],
+      fields: ['id', 'name', 'user_id'],
       limit: 1
     });
 
-    console.log('📋 [DELIVERY] Users search result:', JSON.stringify(users));
+    console.log('📋 [DELIVERY] Employee search result:', JSON.stringify(employee));
 
     let driverId = null;
     let driverName = null;
 
-    if (users && users.length > 0 && users[0].partner_id) {
-      driverId = users[0].partner_id[0];  // res.partner ID
-      driverName = users[0].partner_id[1];
-      console.log('✅ [DELIVERY] Driver trovato! ID:', driverId, 'Nome:', driverName);
+    if (employee && employee.length > 0) {
+      driverId = employee[0].id;  // hr.employee ID (es. 8)
+      driverName = employee[0].name;
+      console.log('✅ [DELIVERY] Driver (hr.employee) trovato! ID:', driverId, 'Nome:', driverName);
     } else {
-      console.log('⚠️ [DELIVERY] NESSUN partner_id trovato per user:', uid);
+      console.log('⚠️ [DELIVERY] NESSUN hr.employee trovato per user_id:', uid);
     }
-
-    const employee = driverId ? [{ id: driverId, name: driverName }] : [];
 
     // Get today's date for Odoo filter
     const today = new Date();
