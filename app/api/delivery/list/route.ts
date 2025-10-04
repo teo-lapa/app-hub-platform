@@ -80,9 +80,9 @@ export async function GET(request: NextRequest) {
     console.log(`📦 [DELIVERY] Trovati ${pickings.length} documenti da Odoo`);
 
     // FILTRO LATO SERVER per data di OGGI (evita problemi timezone con Odoo)
-    const filteredPickings = pickings.filter((p: any) => {
+    let filteredPickings = pickings.filter((p: any) => {
       if (!p.scheduled_date) {
-        console.log(`❌ [FILTER] ${p.name}: nessuna data programmata`);
+        console.log(`❌ [FILTER DATE] ${p.name}: nessuna data programmata`);
         return false;
       }
 
@@ -91,13 +91,32 @@ export async function GET(request: NextRequest) {
       const isToday = pickingDateOnly === todayDateOnly;
 
       if (isToday) {
-        console.log(`✅ [FILTER] ${p.name}: ${pickingDateOnly} = ${todayDateOnly}`);
+        console.log(`✅ [FILTER DATE] ${p.name}: ${pickingDateOnly} = ${todayDateOnly}`);
       } else {
-        console.log(`❌ [FILTER] ${p.name}: ${pickingDateOnly} != ${todayDateOnly}`);
+        console.log(`❌ [FILTER DATE] ${p.name}: ${pickingDateOnly} != ${todayDateOnly}`);
       }
 
       return isToday;
     });
+
+    // FILTRO LATO SERVER per DRIVER (se employee trovato)
+    if (employee && employee.length > 0) {
+      const employeeId = employee[0].id;
+      console.log(`🚗 [FILTER DRIVER] Filtro per driver ID: ${employeeId} (${employee[0].name})`);
+
+      filteredPickings = filteredPickings.filter((p: any) => {
+        const driverId = p.driver_id ? p.driver_id[0] : null;
+        const driverName = p.driver_id ? p.driver_id[1] : 'Nessun driver';
+
+        if (driverId === employeeId) {
+          console.log(`✅ [FILTER DRIVER] ${p.name}: driver ${driverName} (ID: ${driverId}) = ${employeeId}`);
+          return true;
+        } else {
+          console.log(`❌ [FILTER DRIVER] ${p.name}: driver ${driverName} (ID: ${driverId}) != ${employeeId}`);
+          return false;
+        }
+      });
+    }
 
     console.log(`📦 [DELIVERY] Dopo filtro data: ${filteredPickings.length} consegne di OGGI`);
 
