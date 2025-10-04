@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
 
     // APPROCCIO ALTERNATIVO: Cerca hr.employee con user_id = UID loggato
     // (evita permessi res.users che richiedono Administration/Settings)
+    console.log(`🔍 [DELIVERY] Cerco hr.employee con user_id=${uidNum}...`);
+
     const employees = await callOdoo(
       cookies,
       'hr.employee',
@@ -37,23 +39,30 @@ export async function GET(request: NextRequest) {
       [],
       {
         domain: [['user_id', '=', uidNum]],
-        fields: ['id', 'name'],
+        fields: ['id', 'name', 'user_id'],
         limit: 1
       }
     );
 
-    console.log(`🔍 [DELIVERY] Ricerca hr.employee con user_id=${uidNum}`);
-    console.log(`🔍 [DELIVERY] Risultato:`, JSON.stringify(employees, null, 2));
+    console.log(`🔍 [DELIVERY] Risultato ricerca hr.employee:`, JSON.stringify(employees, null, 2));
+    console.log(`🔍 [DELIVERY] Numero dipendenti trovati: ${employees.length}`);
 
     if (employees.length === 0) {
-      console.log(`⚠️ [DELIVERY] Nessun dipendente trovato per user_id=${uidNum} - mostro TUTTI i documenti di oggi`);
-      driverId = null;
-      driverName = null;
-    } else {
-      driverId = employees[0].id;
-      driverName = employees[0].name;
-      console.log(`✅ [DELIVERY] Driver trovato: user_id ${uidNum} → hr.employee ${driverId} (${driverName})`);
+      console.error(`❌ [DELIVERY] ERRORE: Nessun dipendente trovato per user_id=${uidNum}`);
+      console.error(`❌ [DELIVERY] L'utente deve avere un record hr.employee con user_id collegato!`);
+
+      return NextResponse.json({
+        error: `Configurazione mancante: l'utente (uid=${uidNum}) non ha un dipendente collegato in Odoo. Contatta l'amministratore per collegare l'utente a un dipendente in Risorse Umane.`,
+        details: {
+          uid: uidNum,
+          required: 'hr.employee con campo user_id = questo uid'
+        }
+      }, { status: 403 });
     }
+
+    driverId = employees[0].id;
+    driverName = employees[0].name;
+    console.log(`✅ [DELIVERY] Driver trovato: user_id ${uidNum} → hr.employee ${driverId} (${driverName})`);
 
     // Get today's date in Europe/Zurich timezone (Svizzera)
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -70,8 +79,9 @@ export async function GET(request: NextRequest) {
     console.log('📅 [DELIVERY] Data OGGI (Europe/Zurich):', todayDateOnly);
     console.log('📅 [DELIVERY] Filtro Odoo:', todayStart, 'to', todayEnd);
 
-    // Build domain ODOO - FILTRO DINAMICO con driver_id dell'utente loggato
+    // Build domain ODOO - FILTRO STRICT con driver_id dell'utente loggato
     const domain: any[] = [
+      ['driver_id', '=', driverId],  // FILTRO OBBLIGATORIO: solo documenti del driver
       ['scheduled_date', '>=', todayStart],
       ['scheduled_date', '<=', todayEnd],
       ['state', 'in', ['assigned', 'done']],
@@ -79,13 +89,7 @@ export async function GET(request: NextRequest) {
       ['backorder_id', '=', false]
     ];
 
-    // Aggiungi filtro driver_id SOLO se trovato
-    if (driverId !== null) {
-      domain.push(['driver_id', '=', driverId]);
-      console.log(`🔒 [DELIVERY] Filtro applicato: SOLO documenti driver_id=${driverId}`);
-    } else {
-      console.log(`🌍 [DELIVERY] Filtro applicato: TUTTI i documenti di oggi (nessun driver trovato)`);
-    }
+    console.log(`🔒 [DELIVERY] Filtro STRICT applicato: SOLO documenti con driver_id=${driverId} (${driverName})`);
 
     console.log('🔍 [DELIVERY] Domain Odoo:', JSON.stringify(domain));
 
@@ -110,6 +114,15 @@ export async function GET(request: NextRequest) {
     );
 
     console.log(`📦 [DELIVERY] Odoo ha restituito ${pickings.length} documenti (driver_id=${driverId || 'TUTTI'}, oggi)`);
+
+    // DEBUG: Mostra i driver_id dei primi 5 documenti
+    if (pickings.length > 0) {
+      console.log('🔍 [DEBUG] Primi 5 documenti con driver_id:');
+      pickings.slice(0, 5).forEach((p: any) => {
+        console.log(`  - ${p.name}: driver_id=${p.driver_id ? p.driver_id[0] : 'NULL'} (${p.driver_id ? p.driver_id[1] : 'nessuno'})`);
+      });
+      console.log(`🔍 [DEBUG] Filtro cercava driver_id=${driverId}`);
+    }
 
     if (pickings.length === 0) {
       console.log('⚠️ [DELIVERY] Nessun documento trovato');
