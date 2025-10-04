@@ -39,9 +39,10 @@ export async function GET(request: NextRequest) {
 
     console.log('📅 [DELIVERY] Filtro data OGGI:', todayStart, 'to', todayEnd);
 
-    // Build domain - FILTRO ODOO CORRETTO
+    // Build domain - FILTRO ODOO CORRETTO con operatori Polish notation
+    // & combina le prime 2 condizioni, poi le altre sono AND impliciti
     const domain: any[] = [
-      '&',
+      '&', '&', '&', '&',  // 4 operatori & per 5 condizioni
       ['scheduled_date', '>=', todayStart],
       ['scheduled_date', '<=', todayEnd],
       ['state', 'in', ['assigned', 'done']],
@@ -51,6 +52,8 @@ export async function GET(request: NextRequest) {
 
     if (employee && employee.length > 0) {
       console.log('👤 [DELIVERY] Employee trovato:', employee[0].name, 'ID:', employee[0].id);
+      // Aggiungi un altro operatore & perché stiamo aggiungendo una condizione
+      domain.unshift('&');
       domain.push(['driver_id', '=', employee[0].id]);  // SOLO consegne del driver loggato
     } else {
       console.log('⚠️ [DELIVERY] Nessun employee associato, mostro TUTTE le consegne di oggi');
