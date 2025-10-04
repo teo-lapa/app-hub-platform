@@ -27,23 +27,22 @@ export async function GET(request: NextRequest) {
       limit: 1
     });
 
-    // Get today's date range (start and end of day in UTC)
+    // Get today's date in Europe/Zurich timezone (Swiss time for Odoo)
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStart = today.toISOString().split('T')[0] + ' 00:00:00';
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayDateOnly = `${year}-${month}-${day}`;
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStart = tomorrow.toISOString().split('T')[0] + ' 00:00:00';
-
-    console.log('📅 [DELIVERY] Filtro data: oggi da', todayStart, 'a', tomorrowStart);
+    console.log('📅 [DELIVERY] Filtro data OGGI:', todayDateOnly);
 
     // Build domain - CONSEGNE DI OGGI: pronti + completati, NO residui, SOLO del driver loggato
     const domain: any[] = [
       ['picking_type_id.code', '=', 'outgoing'],
       ['state', 'in', ['assigned', 'done']],  // Pronti + Completati
-      ['scheduled_date', '>=', todayStart],
-      ['scheduled_date', '<', tomorrowStart],
+      '&',
+      ['scheduled_date', '>=', todayDateOnly + ' 00:00:00'],
+      ['scheduled_date', '<=', todayDateOnly + ' 23:59:59'],
       ['backorder_id', '=', false]  // ESCLUDI residui (backorder_id deve essere vuoto)
     ];
 
