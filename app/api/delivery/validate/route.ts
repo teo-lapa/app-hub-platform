@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
         // Aggiorna solo i prodotti modificati
         for (const product of productsToUpdate) {
-          const move = allMoves.find(m => m.product_id[0] === product.product_id);
+          const move = allMoves.find((m: any) => m.product_id[0] === product.product_id);
 
           if (move?.move_line_ids?.[0]) {
             await callOdoo(cookies, 'stock.move.line', 'write', [
