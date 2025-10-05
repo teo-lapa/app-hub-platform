@@ -789,6 +789,7 @@ export default function DeliveryPage() {
         const response = await fetch('/api/delivery/upload-attachment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             picking_id: att.picking_id,
             context: att.context,
@@ -875,6 +876,7 @@ export default function DeliveryPage() {
     const response = await fetch('/api/delivery/validate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // IMPORTANTE: Invia cookie utente per autenticazione
       body: JSON.stringify(payload)
     });
 
@@ -983,6 +985,7 @@ export default function DeliveryPage() {
     const response = await fetch('/api/delivery/payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     });
 
@@ -1076,6 +1079,7 @@ export default function DeliveryPage() {
     const response = await fetch('/api/delivery/reso', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     });
 
@@ -1105,6 +1109,7 @@ export default function DeliveryPage() {
       const response = await fetch('/api/delivery/print', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           deliveryId: deliveryId,
           deliveryName: delivery.name
