@@ -40,7 +40,8 @@ export interface Product {
   note?: string;
   completed?: boolean;
   picked?: boolean;
-  product_id?: [number, string];
+  product_id?: number;
+  move_line_id?: number; // ID della stock.move.line
   quantity_done?: number;
   reso_qty?: number;
 }

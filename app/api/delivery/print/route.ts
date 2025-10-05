@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
 
     // Scarica il PDF da Odoo con i cookie di sessione
     const pdfResponse = await fetch(pdfUrl, {
-      headers: {
+      headers: cookies ? {
         'Cookie': cookies
-      }
+      } : {}
     });
 
     if (!pdfResponse.ok) {
