@@ -93,22 +93,26 @@ export default function PickResiduiPage() {
   }, [theme]);
 
   const callKw = async (model: string, method: string, args: any[] = [], kwargs: any = {}) => {
-    const response = await fetch('/api/odoo-proxy', {
+    const odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
+
+    const response = await fetch(`${odooUrl}/web/dataset/call_kw/${model}/${method}`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
       },
       body: JSON.stringify({
-        model,
-        method,
-        args,
-        kwargs,
+        jsonrpc: '2.0',
+        method: 'call',
+        params: { model, method, args, kwargs },
+        id: Date.now(),
       }),
     });
 
     const data = await response.json();
     if (data.error) {
-      throw new Error(data.error);
+      throw new Error(data.error.data?.message || data.error.message);
     }
     return data.result;
   };

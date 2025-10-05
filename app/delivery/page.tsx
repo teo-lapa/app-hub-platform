@@ -1098,25 +1098,36 @@ export default function DeliveryPage() {
     showToast('🖨️ Generazione PDF in corso...', 'info');
 
     try {
-      // URL Odoo corretto (NON usare window.location.origin!)
-      const odooUrl = 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
-      const reportName = 'invoice_pdf_custom.report_deliveryslip_customization_80mm';
+      // Chiama API proxy per scaricare PDF
+      const response = await fetch('/api/delivery/print', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deliveryId: deliveryId,
+          deliveryName: delivery.name
+        })
+      });
 
-      // URL completo per il PDF
-      const pdfUrl = `${odooUrl}/report/pdf/${reportName}/${deliveryId}`;
+      if (!response.ok) {
+        throw new Error('Errore generazione PDF');
+      }
 
-      console.log('📄 Download PDF da:', pdfUrl);
+      // Crea blob dal PDF
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
 
-      // Crea un link invisibile per forzare il download
+      // Download automatico
       const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.download = `Consegna_${delivery?.name || deliveryId}.pdf`;
-      link.target = '_blank';
+      link.href = url;
+      link.download = `Consegna_${delivery.name || deliveryId}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      showToast('✅ Download PDF avviato...', 'success');
+      // Libera memoria
+      URL.revokeObjectURL(url);
+
+      showToast('✅ Download completato', 'success');
 
     } catch (error: any) {
       console.error('❌ Errore stampa:', error);
