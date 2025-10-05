@@ -21,26 +21,31 @@ export async function POST(request: NextRequest) {
 
     // Tentativo 1: Leggi da odoo_session cookie (set da /api/auth/odoo-login)
     const odooSessionCookie = cookieStore.get('odoo_session');
+    console.log('🔍 [API-ODOO-RPC] odoo_session cookie presente?', !!odooSessionCookie);
+
     if (odooSessionCookie?.value) {
       try {
         const sessionData = JSON.parse(odooSessionCookie.value);
         sessionId = sessionData.session_id || sessionData.sessionId;
-        console.log('🍪 [API-ODOO-RPC] Session ID da odoo_session cookie');
+        console.log('🍪 [API-ODOO-RPC] Session ID da odoo_session cookie:', sessionId?.substring(0, 20) + '...');
       } catch (e) {
-        console.log('⚠️ [API-ODOO-RPC] Errore parsing odoo_session cookie');
+        console.log('⚠️ [API-ODOO-RPC] Errore parsing odoo_session cookie:', e);
       }
     }
 
     // Tentativo 2: Estrai sessionId dal JWT token
     if (!sessionId) {
       const tokenCookie = cookieStore.get('token');
+      console.log('🔍 [API-ODOO-RPC] token cookie presente?', !!tokenCookie);
+
       if (tokenCookie?.value) {
         try {
           const decoded = jwt.verify(tokenCookie.value, JWT_SECRET) as any;
           sessionId = decoded.sessionId;
           console.log('🔑 [API-ODOO-RPC] Session ID da JWT token - Utente:', decoded.name, '(UID:', decoded.odooUid, ')');
-        } catch (e) {
-          console.log('⚠️ [API-ODOO-RPC] Errore verifica JWT token');
+          console.log('🔑 [API-ODOO-RPC] Session ID:', sessionId?.substring(0, 20) + '...');
+        } catch (e: any) {
+          console.log('⚠️ [API-ODOO-RPC] Errore verifica JWT token:', e.message);
         }
       }
     }
@@ -49,7 +54,10 @@ export async function POST(request: NextRequest) {
     if (!sessionId) {
       console.error('❌ [API-ODOO-RPC] Nessuna sessione Odoo trovata');
       return NextResponse.json(
-        { error: 'Non autenticato. Effettua il login alla piattaforma.' },
+        {
+          success: false,
+          error: 'Non autenticato. Effettua il login alla piattaforma.'
+        },
         { status: 401 }
       );
     }
@@ -77,19 +85,41 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
       console.error('❌ [API-ODOO-RPC] HTTP Error:', response.status, response.statusText);
+      console.error('❌ [API-ODOO-RPC] Response body:', errorText);
       return NextResponse.json(
-        { error: `Errore HTTP ${response.status}: ${response.statusText}` },
+        {
+          success: false,
+          error: `Errore HTTP ${response.status}: ${response.statusText}`
+        },
         { status: response.status }
       );
     }
 
     const data = await response.json();
+    console.log('📦 [API-ODOO-RPC] Response data:', JSON.stringify(data).substring(0, 200));
 
     if (data.error) {
-      console.error('❌ [API-ODOO-RPC] Errore Odoo:', data.error);
+      console.error('❌ [API-ODOO-RPC] Errore Odoo:', JSON.stringify(data.error));
+
+      // Se la sessione è scaduta, chiediamo di rifare login
+      const errorMessage = data.error.data?.message || data.error.message || 'Errore chiamata Odoo';
+      if (errorMessage.includes('Session expired') || errorMessage.includes('session_id')) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Sessione scaduta. Effettua nuovamente il login alla piattaforma.'
+          },
+          { status: 401 }
+        );
+      }
+
       return NextResponse.json(
-        { error: data.error.data?.message || data.error.message || 'Errore chiamata Odoo' },
+        {
+          success: false,
+          error: errorMessage
+        },
         { status: 400 }
       );
     }
