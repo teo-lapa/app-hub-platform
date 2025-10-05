@@ -131,7 +131,13 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('ERRORE VALIDATE:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('❌ ERRORE VALIDATE:', error);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Error details:', JSON.stringify(error, null, 2));
+    return NextResponse.json({
+      error: error.message || 'Errore validazione',
+      details: error.toString(),
+      stack: error.stack
+    }, { status: 500 });
   }
 }

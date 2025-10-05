@@ -45,9 +45,46 @@ export async function getOdooSession(userCookies?: string) {
     console.error('❌ [ODOO-AUTH] userCookies è undefined o vuoto');
   }
 
-  // Se non ci sono cookies, errore
-  console.error('❌ [ODOO-AUTH] Nessun cookie valido trovato');
-  throw new Error('Sessione Odoo non trovata. Utente non autenticato.');
+  // Se non ci sono cookies, usa autenticazione con credenziali
+  console.warn('⚠️ [ODOO-AUTH] Nessun cookie trovato, uso credenziali fallback');
+
+  try {
+    const response = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        params: {
+          db: ODOO_DB,
+          login: ODOO_LOGIN,
+          password: ODOO_PASSWORD
+        }
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      console.error('❌ [ODOO-AUTH] Autenticazione fallita:', data.error);
+      throw new Error('Autenticazione Odoo fallita');
+    }
+
+    const sessionCookie = response.headers.get('set-cookie');
+    const uid = data.result?.uid;
+
+    if (!uid || !sessionCookie) {
+      throw new Error('Autenticazione fallita - no uid or session');
+    }
+
+    console.log('✅ [ODOO-AUTH] Autenticazione con credenziali riuscita, uid:', uid);
+    return { cookies: sessionCookie, uid };
+
+  } catch (error: any) {
+    console.error('❌ [ODOO-AUTH] Errore autenticazione:', error);
+    throw new Error('Sessione Odoo non trovata. Utente non autenticato.');
+  }
 }
 
 /**
@@ -66,6 +103,8 @@ export async function callOdoo(
   args: any[] = [],
   kwargs: any = {}
 ) {
+  console.log(`🔵 [ODOO-CALL] ${model}.${method}`, { args: args.length, kwargs: Object.keys(kwargs).length });
+
   const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
     method: 'POST',
     headers: {
@@ -88,9 +127,12 @@ export async function callOdoo(
 
   const data = await response.json();
   if (data.error) {
+    console.error(`❌ [ODOO-CALL] ${model}.${method} FAILED:`, data.error);
+    console.error(`❌ [ODOO-CALL] Error data:`, JSON.stringify(data.error, null, 2));
     throw new Error(data.error.data?.message || data.error.message || 'Errore Odoo');
   }
 
+  console.log(`✅ [ODOO-CALL] ${model}.${method} SUCCESS`);
   return data.result;
 }
 

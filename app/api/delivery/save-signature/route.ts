@@ -51,8 +51,10 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Errore salvataggio firma:', error);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Error details:', JSON.stringify(error, null, 2));
     return NextResponse.json(
-      { error: error.message || 'Errore salvataggio firma' },
+      { error: error.message || 'Errore salvataggio firma', details: error.toString() },
       { status: 500 }
     );
   }
