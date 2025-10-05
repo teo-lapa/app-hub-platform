@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
     // Carica partner e prodotti in BULK (performance)
     const partnerIdsSet = new Set(pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean));
     const partnerIds = Array.from(partnerIdsSet);
-    const allMoveIds = pickings.flatMap((p: any) => p.move_ids || []);
+    const allPickingIds = pickings.map((p: any) => p.id);
 
     // Carica tutti i partner in una chiamata
     const allPartners = await callOdoo(
