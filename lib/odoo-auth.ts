@@ -53,10 +53,47 @@ export async function getOdooSession(userCookies?: string) {
       }
     }
 
-    // NESSUN FALLBACK - Se utente non loggato, ERRORE!
-    // App Hub Bot può essere usato SOLO per Stella, non per altre app
-    console.error('❌ [ODOO-AUTH] Utente non loggato - NESSUN FALLBACK');
-    throw new Error('Utente non autenticato. Effettua il login in Odoo prima di usare questa app.');
+    // Fallback: autentica con credenziali di default
+    console.log('⚠️ [ODOO-AUTH] Nessuna sessione utente trovata, uso credenziali fallback');
+    console.log('📧 [ODOO-AUTH] Login con:', ODOO_LOGIN);
+
+    const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          db: ODOO_DB,
+          login: ODOO_LOGIN,
+          password: ODOO_PASSWORD,
+        }
+      })
+    });
+
+    if (!authResponse.ok) {
+      throw new Error(`Errore autenticazione: ${authResponse.status}`);
+    }
+
+    const authData = await authResponse.json();
+
+    if (authData.error || !authData.result?.uid) {
+      throw new Error('Errore autenticazione Odoo: credenziali non valide');
+    }
+
+    console.log('✅ [ODOO-AUTH] Autenticato con fallback, UID:', authData.result.uid);
+
+    // Estrai session_id dai cookies della risposta
+    const setCookie = authResponse.headers.get('set-cookie');
+    const sessionMatch = setCookie?.match(/session_id=([^;]+)/);
+    const sessionId = sessionMatch ? sessionMatch[1] : null;
+
+    return {
+      cookies: sessionId ? `session_id=${sessionId}` : null,
+      uid: authData.result.uid
+    };
   } catch (error: any) {
     console.error('❌ [ODOO-AUTH] Errore completo:', error);
     throw error;
