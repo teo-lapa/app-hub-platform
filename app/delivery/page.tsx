@@ -1083,6 +1083,49 @@ export default function DeliveryPage() {
     return response.json();
   }
 
+  // ==================== STAMPA PDF ====================
+  async function printDelivery(deliveryId: number) {
+    const delivery = deliveries.find(d => d.id === deliveryId);
+    if (!delivery) return;
+
+    // Verifica che sia completata
+    if (delivery.state !== 'done' && !delivery.completed) {
+      showToast('⚠️ Puoi stampare solo consegne completate', 'warning');
+      return;
+    }
+
+    setLoading(true);
+    showToast('🖨️ Generazione PDF in corso...', 'info');
+
+    try {
+      // Costruisci URL per scaricare il PDF
+      const reportName = 'invoice_pdf_custom.report_delivery_document_customization_80mm';
+      const baseUrl = window.location.origin;
+
+      // URL Odoo per il report PDF
+      const pdfUrl = `${process.env.NEXT_PUBLIC_ODOO_URL || baseUrl}/report/pdf/${reportName}/${deliveryId}`;
+
+      console.log('📄 Scaricando PDF da:', pdfUrl);
+
+      // Apri in nuova finestra per scaricare
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = `Consegna_${delivery.name?.replace(/\//g, '_')}.pdf`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showToast('✅ Download PDF avviato!', 'success');
+
+    } catch (error: any) {
+      console.error('❌ Errore stampa:', error);
+      showToast('❌ Errore generazione PDF: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   // ==================== ETA & OPTIMIZATION ====================
   async function calculateETAsForDeliveries(delivs: Delivery[]) {
     if (!currentPosition) return;
@@ -1677,15 +1720,25 @@ export default function DeliveryPage() {
                   </button>
                   {/* RESI solo per consegne completate */}
                   {(currentDelivery.state === 'done' || currentDelivery.completed) && (
-                    <button
-                      onClick={() => {
-                        closeModal();
-                        openResoModal();
-                      }}
-                      className="w-full bg-orange-600 text-white py-3 rounded-lg font-semibold hover:bg-orange-700"
-                    >
-                      🔄 GESTIONE RESI
-                    </button>
+                    <>
+                      <button
+                        onClick={() => {
+                          closeModal();
+                          openResoModal();
+                        }}
+                        className="w-full bg-orange-600 text-white py-3 rounded-lg font-semibold hover:bg-orange-700"
+                      >
+                        🔄 GESTIONE RESI
+                      </button>
+                      <button
+                        onClick={() => {
+                          printDelivery(currentDelivery.id);
+                        }}
+                        className="w-full bg-gray-700 text-white py-3 rounded-lg font-semibold hover:bg-gray-800 flex items-center justify-center gap-2"
+                      >
+                        🖨️ STAMPA PDF
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
