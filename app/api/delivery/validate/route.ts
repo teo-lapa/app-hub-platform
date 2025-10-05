@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     // AGGIORNA QUANTITÀ se necessario (VELOCE - max 2-3 sec)
     if (products && products.length > 0) {
-      const productsToUpdate = products.filter(p =>
+      const productsToUpdate = products.filter((p: any) =>
         p.delivered !== undefined && p.delivered !== p.qty
       );
 
