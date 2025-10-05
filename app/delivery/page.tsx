@@ -37,6 +37,7 @@ export default function DeliveryPage() {
   const [currentDelivery, setCurrentDelivery] = useState<Delivery | null>(null);
   const [view, setView] = useState<'list' | 'map' | 'stats' | 'scarico'>('list');
   const [loading, setLoading] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(true);
@@ -725,6 +726,13 @@ export default function DeliveryPage() {
       return;
     }
 
+    // Previeni chiamate multiple
+    if (isValidating) {
+      console.log('⚠️ Validazione già in corso, ignoro chiamata duplicata');
+      return;
+    }
+
+    setIsValidating(true);
     setLoading(true);
 
     try {
@@ -783,6 +791,7 @@ export default function DeliveryPage() {
       showToast('Errore: ' + error.message, 'error');
     } finally {
       setLoading(false);
+      setIsValidating(false);
     }
   }
 
@@ -892,6 +901,13 @@ export default function DeliveryPage() {
   async function completeScarico(signatureDataParam?: string | null) {
     if (!currentDelivery) return;
 
+    // Previeni chiamate multiple
+    if (isValidating) {
+      console.log('⚠️ Validazione già in corso, ignoro chiamata duplicata');
+      return;
+    }
+
+    setIsValidating(true);
     setLoading(true);
 
     try {
@@ -941,6 +957,7 @@ export default function DeliveryPage() {
       showToast('Errore: ' + error.message, 'error');
     } finally {
       setLoading(false);
+      setIsValidating(false);
     }
   }
 
@@ -999,6 +1016,13 @@ export default function DeliveryPage() {
       return;
     }
 
+    // Previeni chiamate multiple
+    if (isValidating) {
+      console.log('⚠️ Validazione già in corso, ignoro chiamata duplicata');
+      return;
+    }
+
+    setIsValidating(true);
     setLoading(true);
 
     try {
@@ -1050,6 +1074,7 @@ export default function DeliveryPage() {
       showToast('Errore: ' + error.message, 'error');
     } finally {
       setLoading(false);
+      setIsValidating(false);
     }
   }
 
@@ -1109,6 +1134,14 @@ export default function DeliveryPage() {
       return;
     }
 
+    // Previeni chiamate multiple
+    if (isValidating) {
+      console.log('⚠️ Validazione già in corso, ignoro chiamata duplicata');
+      return;
+    }
+
+    setIsValidating(true);
+
     // Payload semplificato: solo ID consegna, nota e foto
     const payload = {
       original_picking_id: currentDelivery.id,
@@ -1144,6 +1177,8 @@ export default function DeliveryPage() {
     } catch (error) {
       console.error('❌ RESO: Errore durante salvataggio:', error);
       showToast('Errore durante il salvataggio del reso', 'error');
+    } finally {
+      setIsValidating(false);
     }
   }
 
