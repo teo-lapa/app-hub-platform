@@ -21,44 +21,25 @@ const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
  * @returns {Promise<{cookies: string | null, uid: number}>}
  */
 export async function getOdooSession(userCookies?: string) {
-  try {
-    console.log('🔐 [ODOO-AUTH] Autenticazione con:', ODOO_URL);
+  console.log('🔐 [ODOO-AUTH] Autenticazione con:', ODOO_URL);
 
-    // Se ci sono cookies dell'utente, prova a usare la sessione esistente
-    if (userCookies) {
-      console.log('🍪 [ODOO-AUTH] Trovati cookies utente, verifico sessione esistente');
+  // Se ci sono cookies dell'utente, usali direttamente
+  if (userCookies) {
+    console.log('🍪 [ODOO-AUTH] Trovati cookies utente, li uso direttamente');
 
-      // Prova a usare la sessione esistente
-      const sessionCheck = await fetch(`${ODOO_URL}/web/session/get_session_info`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': userCookies
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {}
-        })
-      });
-
-      if (sessionCheck.ok) {
-        const sessionData = await sessionCheck.json();
-        const uid = sessionData.result?.uid;
-
-        if (uid) {
-          console.log('✅ [ODOO-AUTH] Sessione utente valida, UID:', uid);
-          return { cookies: userCookies, uid: uid };
-        }
-      }
+    // Estrai session_id dai cookies
+    const sessionMatch = userCookies.match(/session_id=([^;]+)/);
+    if (sessionMatch) {
+      console.log('✅ [ODOO-AUTH] Sessione trovata nei cookies');
+      // Ritorna i cookies così come sono, senza verificare con Odoo
+      // La verifica verrà fatta automaticamente quando chiamiamo Odoo
+      return { cookies: userCookies, uid: 1 }; // uid fittizio, non serve
     }
-
-    // Se non c'è sessione valida, lancia errore
-    throw new Error('Sessione Odoo non valida. Utente non autenticato.');
-  } catch (error: any) {
-    console.error('❌ [ODOO-AUTH] Errore completo:', error);
-    throw error;
   }
+
+  // Se non ci sono cookies, errore
+  console.error('❌ [ODOO-AUTH] Nessun cookie trovato');
+  throw new Error('Sessione Odoo non trovata. Utente non autenticato.');
 }
 
 /**
