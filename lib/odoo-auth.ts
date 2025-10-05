@@ -22,23 +22,31 @@ const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
  */
 export async function getOdooSession(userCookies?: string) {
   console.log('🔐 [ODOO-AUTH] Autenticazione con:', ODOO_URL);
+  console.log('🔐 [ODOO-AUTH] Cookies ricevuti:', userCookies ? 'SI' : 'NO');
 
   // Se ci sono cookies dell'utente, usali direttamente
   if (userCookies) {
-    console.log('🍪 [ODOO-AUTH] Trovati cookies utente, li uso direttamente');
+    console.log('🍪 [ODOO-AUTH] Trovati cookies utente, cerco session_id');
+    console.log('🍪 [ODOO-AUTH] Cookies:', userCookies.substring(0, 100) + '...');
 
     // Estrai session_id dai cookies
     const sessionMatch = userCookies.match(/session_id=([^;]+)/);
+
     if (sessionMatch) {
-      console.log('✅ [ODOO-AUTH] Sessione trovata nei cookies');
+      console.log('✅ [ODOO-AUTH] session_id trovato:', sessionMatch[1].substring(0, 20) + '...');
       // Ritorna i cookies così come sono, senza verificare con Odoo
       // La verifica verrà fatta automaticamente quando chiamiamo Odoo
       return { cookies: userCookies, uid: 1 }; // uid fittizio, non serve
+    } else {
+      console.error('❌ [ODOO-AUTH] session_id NON trovato nei cookies!');
+      console.error('❌ [ODOO-AUTH] Cookies completi:', userCookies);
     }
+  } else {
+    console.error('❌ [ODOO-AUTH] userCookies è undefined o vuoto');
   }
 
   // Se non ci sono cookies, errore
-  console.error('❌ [ODOO-AUTH] Nessun cookie trovato');
+  console.error('❌ [ODOO-AUTH] Nessun cookie valido trovato');
   throw new Error('Sessione Odoo non trovata. Utente non autenticato.');
 }
 
