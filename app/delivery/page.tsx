@@ -1829,8 +1829,9 @@ export default function DeliveryPage() {
                     <>
                       <button
                         onClick={() => {
-                          closeModal();
+                          console.log('🔄 Click su GESTIONE RESI');
                           openResoModal();
+                          setTimeout(() => closeModal(), 100); // Chiudi dopo aver aperto il reso
                         }}
                         className="w-full bg-orange-600 text-white py-3 rounded-lg font-semibold hover:bg-orange-700"
                       >

@@ -15,6 +15,9 @@ const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-240633
 const ODOO_LOGIN = process.env.ODOO_USERNAME || 'paul@lapa.ch';
 const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
 
+// Cache sessione fallback per evitare re-autenticazioni multiple
+let cachedFallbackSession: { cookie: string; expires: number } | null = null;
+
 /**
  * Autentica con Odoo usando la sessione dell'utente loggato
  * @param userCookies - Cookies dalla richiesta (contiene odoo_session se utente loggato)
@@ -114,44 +117,61 @@ export async function callOdoo(
       console.warn('⚠️ [ODOO-CALL] Sessione scaduta, tentativo autenticazione fallback...');
 
       try {
-        // Autentica con credenziali
-        const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            params: {
-              db: ODOO_DB,
-              login: ODOO_LOGIN,
-              password: ODOO_PASSWORD
-            }
-          })
-        });
+        let newCookie: string;
 
-        const authData = await authResponse.json();
+        // Usa sessione cached se ancora valida (cache 5 minuti)
+        if (cachedFallbackSession && cachedFallbackSession.expires > Date.now()) {
+          console.log('✅ [ODOO-CALL] Uso sessione fallback cached');
+          newCookie = cachedFallbackSession.cookie;
+        } else {
+          // Autentica con credenziali
+          const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              params: {
+                db: ODOO_DB,
+                login: ODOO_LOGIN,
+                password: ODOO_PASSWORD
+              }
+            })
+          });
 
-        if (authData.error || !authData.result?.uid) {
-          throw new Error('Autenticazione fallback fallita');
+          const authData = await authResponse.json();
+
+          if (authData.error || !authData.result?.uid) {
+            throw new Error('Autenticazione fallback fallita');
+          }
+
+          // Estrai il cookie dalla risposta
+          const setCookie = authResponse.headers.get('set-cookie');
+          const sessionMatch = setCookie?.match(/session_id=([^;]+)/);
+
+          if (!sessionMatch) {
+            throw new Error('Nessun session_id ricevuto');
+          }
+
+          newCookie = `session_id=${sessionMatch[1]}`;
+
+          // Salva in cache per 5 minuti
+          cachedFallbackSession = {
+            cookie: newCookie,
+            expires: Date.now() + 5 * 60 * 1000 // 5 minuti
+          };
+
+          console.log('✅ [ODOO-CALL] Autenticazione fallback riuscita e cached');
         }
-
-        // Estrai il cookie dalla risposta
-        const setCookie = authResponse.headers.get('set-cookie');
-        const sessionMatch = setCookie?.match(/session_id=([^;]+)/);
-
-        if (!sessionMatch) {
-          throw new Error('Nessun session_id ricevuto');
-        }
-
-        const newCookie = `session_id=${sessionMatch[1]}`;
-        console.log('✅ [ODOO-CALL] Autenticazione fallback riuscita, retry chiamata...');
 
         // Riprova la chiamata con la nuova sessione (senza retry per evitare loop infinito)
         return await callOdoo(newCookie, model, method, args, kwargs, false);
 
       } catch (fallbackError: any) {
         console.error('❌ [ODOO-CALL] Autenticazione fallback fallita:', fallbackError);
+        // Invalida cache se fallisce
+        cachedFallbackSession = null;
       }
     }
 
