@@ -1105,12 +1105,18 @@ export default function DeliveryPage() {
       // URL completo per il PDF
       const pdfUrl = `${odooUrl}/report/pdf/${reportName}/${deliveryId}`;
 
-      console.log('📄 Tentativo download PDF da:', pdfUrl);
+      console.log('📄 Download PDF da:', pdfUrl);
 
-      // Apri in nuova finestra (Odoo gestisce autenticazione tramite cookie di sessione)
-      window.open(pdfUrl, '_blank');
+      // Crea un link invisibile per forzare il download
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = `Consegna_${delivery?.name || deliveryId}.pdf`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-      showToast('✅ Apertura PDF in nuova finestra...', 'success');
+      showToast('✅ Download PDF avviato...', 'success');
 
     } catch (error: any) {
       console.error('❌ Errore stampa:', error);

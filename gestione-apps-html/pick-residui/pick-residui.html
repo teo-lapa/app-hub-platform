@@ -1,0 +1,637 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pick Residui – Edit rapido</title>
+
+<style>
+  /* ---------- Design tokens (DARK) ---------- */
+  :root{
+    --bg: #0b1220;
+    --text: #e5e7eb;
+    --muted: #94a3b8;
+    --card: #0f172a;
+    --border: #1f2937;
+    --chip: #0b1220;
+    --ok:#16a34a; --err:#ef4444;
+    --accent:#22c55e; --accent2:#2563eb;
+    --btnText:#052112; --btnText2:#eaf2ff;
+  }
+  /* ---------- LIGHT THEME OVERRIDES ---------- */
+  [data-theme="light"]{
+    --bg: #f6f8fc;
+    --text:#0a1628;
+    --muted:#5b6a7f;
+    --card:#ffffff;
+    --border:#e5e9f2;
+    --chip:#eef3fb;
+    --accent:#0ea5e9;
+    --accent2:#7c3aed;
+    --btnText:#04212b; --btnText2:#f1eaff;
+  }
+
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,Segoe UI,Arial}
+
+  /* Overlay full-screen */
+  #app{position:fixed; inset:0; z-index:999999; overflow:auto;
+       background:radial-gradient(1200px 800px at 20% -10%, #111827 0%, var(--bg) 55%, var(--bg) 100%)}
+
+  @keyframes gradientShift{
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    [data-theme="light"] #app{
+      background:linear-gradient(120deg,#e6f3ff 0%,#fff5f9 40%,#f5f7ff 70%,#eaf9ff 100%);
+      background-size:200% 200%;
+      animation:gradientShift 18s ease infinite;
+    }
+  }
+
+  /* Nascondo header/footer Odoo */
+  #oe_main_menu_navbar, header, footer, #wrapwrap > header, #wrapwrap > footer,
+  .navbar, .o_footer, .o_footer_copyright { display:none !important; }
+
+  *{box-sizing:border-box}
+  .wrap{max-width:1200px;margin:22px auto;padding:0 18px 40px}
+
+  .topbar{position:sticky; top:0; z-index:5; backdrop-filter:blur(8px);
+          background:color-mix(in oklab, var(--bg) 80%, transparent);
+          border-bottom:1px solid var(--border);
+          padding:12px 16px; margin:0 -18px 18px; display:flex; gap:10px; align-items:center}
+  .title{font-size:22px;font-weight:800;letter-spacing:.2px;margin-right:auto}
+  .btn{padding:12px 16px;border:0;border-radius:14px;cursor:pointer;font-weight:800;transition:.15s transform}
+  .btn:active{transform:translateY(1px)}
+  .btn.green{background:var(--accent); color:var(--btnText)}
+  .btn.blue{background:var(--accent2); color:var(--btnText2)}
+  .btn.ghost{background:var(--chip); color:var(--muted); border:1px solid var(--border)}
+  .btn.slim{padding:8px 12px;font-size:12px;border-radius:10px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .info{color:var(--muted);font-size:13px;margin-left:8px}
+
+  .group{margin:18px 0}
+  .ghead{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;
+        background:var(--chip);border:1px solid var(--border);color:var(--muted);font-size:12px}
+  .pill.strong{color:var(--text)}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;
+        padding:14px 14px 10px;margin:10px 0;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+  .pick-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+
+  .list .row{display:grid;
+             grid-template-columns:minmax(280px,1fr) 120px 160px auto auto;
+             gap:10px;align-items:center;padding:10px;border:1px dashed var(--border);
+             border-radius:12px;margin:10px 0}
+  .prod{font-weight:800;color:var(--text)}
+  [data-theme="light"] .prod{color:#09121d}
+  .sub{font-size:12px;color:var(--muted);margin-top:4px}
+  .qty{color:var(--text)}
+
+  input[type="number"]{width:140px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+                       background:color-mix(in oklab, var(--bg) 92%, white 8%); color:var(--text); font-weight:600}
+
+  .status{font-size:12px}
+  .ok{color:var(--ok)} .err{color:var(--err)} .muted{color:var(--muted)}
+  .bar{height:8px;background:color-mix(in oklab, var(--bg) 85%, white 15%);border-radius:999px;overflow:hidden}
+  .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#16a34a);width:0%}
+
+  .toast{position:fixed;right:18px;bottom:18px;z-index:10;background:var(--card);border:1px solid var(--border);
+         color:var(--text);padding:10px 14px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.15);
+         opacity:0;transform:translateY(6px);transition:.2s}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .loading{width:16px;height:16px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);
+           animation:spin 1s linear infinite;display:inline-block;vertical-align:-3px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ======== SUPER SEARCH (modal) ======== */
+  .qa-modal{position:fixed;inset:0;background:rgba(0,0,0,.68);display:none;align-items:center;justify-content:center;z-index:1000000}
+  .qa-dialog{width:720px;max-width:95vw;background:#0b1220;color:#e5e7eb;border:1px solid #26314a;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.55)}
+  [data-theme="light"] .qa-dialog{background:#0b1220;color:#e5e7eb;border-color:#26314a}
+  .qa-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #1f2a44}
+  .qa-head h3{margin:0;font-size:18px}
+  .qa-body{padding:14px 16px}
+  .qa-search{display:flex;gap:8px}
+  .qa-search input[type=text]{flex:1;padding:10px 12px;border-radius:10px;border:1px solid #334061;background:#0f172a;color:#e5e7eb}
+  .qa-search input[type=number]{width:110px;padding:10px 12px;border-radius:10px;border:1px solid #334061;background:#0f172a;color:#e5e7eb}
+  .qa-suggest{margin-top:12px;max-height:50vh;overflow:auto;display:flex;flex-direction:column;gap:8px}
+  .qa-sugg{display:block;width:100%;text-align:left;padding:12px;border-radius:10px;border:1px solid #2b3755;background:#101a33;color:#e5e7eb;cursor:pointer}
+  .qa-sugg:hover,.qa-sugg.active{border-color:#4f46e5;background:#121f3f}
+  .qa-sugg .name{font-weight:700}
+  .qa-sugg .meta{font-size:12px;color:#b6c2da}
+  .qa-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid #1f2a44}
+  .btn.light{background:#1f2a44;border-color:#1f2a44}
+  .qa-close{background:transparent;border:none;color:#94a3b8;cursor:pointer;font-weight:700}
+</style>
+
+<div id="app">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">Pick Residui – Edit rapido</div>
+      <button id="themeBtn" class="btn ghost" type="button" title="Cambia tema">🌙 Scuro</button>
+      <button id="btnLoad" class="btn green" type="button">CERCA</button>
+      <button id="btnSaveAll" class="btn blue" type="button">SALVA TUTTO</button>
+      <div class="info">Invio salva la riga • Raggruppo per <b>Autista</b> e <b>Giro</b></div>
+    </div>
+    <div id="out" class="info">Pronto.</div>
+  </div>
+  <div id="toast" class="toast"></div>
+</div>
+
+
+<div class="qa-modal" id="qs-modal">
+  <div class="qa-dialog">
+    <div class="qa-head">
+      <h3 id="qs-title">🔎 Aggiungi prodotto all’ordine</h3>
+      <button class="qa-close" id="qs-x">✕</button>
+    </div>
+    <div class="qa-body">
+      <div class="qa-search">
+        <input type="text" id="qs-term" placeholder="Nome, codice interno o barcode…">
+        <input type="number" id="qs-qty" min="1" step="1" value="1" title="Quantità">
+      </div>
+      <div class="qa-suggest" id="qs-list"></div>
+    </div>
+    <div class="qa-foot">
+      <button class="btn light" id="qs-cancel">Annulla</button>
+      <button class="btn blue" id="qs-confirm" disabled="">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- Tema Chiaro/Scuro ---------------- */
+(function initTheme(){
+  const html=document.documentElement;
+  const stored=localStorage.getItem('lapa_theme');
+  if(stored) html.setAttribute('data-theme', stored);
+  else if(matchMedia('(prefers-color-scheme: light)').matches) html.setAttribute('data-theme','light');
+  updateThemeBtn();
+})();
+function toggleTheme(){
+  const html=document.documentElement;
+  const cur=html.getAttribute('data-theme')==='light'?'dark':'light';
+  html.setAttribute('data-theme',cur);
+  localStorage.setItem('lapa_theme',cur);
+  updateThemeBtn();
+}
+function updateThemeBtn(){
+  const html=document.documentElement;
+  const isLight=html.getAttribute('data-theme')==='light';
+  const btn=document.getElementById('themeBtn');
+  btn.textContent = isLight ? '☀️ Chiaro' : '🌙 Scuro';
+}
+document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+
+/* ---------------- RPC ---------------- */
+function getCSRF(){
+  try{
+    if(window.odoo?.csrf_token) return window.odoo.csrf_token;
+    const m=document.cookie.match(/(?:^|;)\s*csrf_token=([^;]+)/);
+    if(m) return decodeURIComponent(m[1]);
+  }catch(e){}
+  return null;
+}
+async function callKw(model,method,args=[],kwargs={}){
+  const h={'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'};
+  const t=getCSRF(); if(t) h['X-CSRFToken']=t;
+  const r=await fetch(`/web/dataset/call_kw/${model}/${method}`,{
+    method:'POST',credentials:'include',headers:h,
+    body:JSON.stringify({jsonrpc:'2.0',method:'call',params:{model,method,args,kwargs},id:Date.now()})
+  });
+  const d=await r.json();
+  if(d.error) throw new Error((d.error.data&&d.error.data.message)||d.error.message);
+  return d.result;
+}
+async function searchRead(model,domain,fields=[],limit=0,order=""){
+  return callKw(model,'search_read',[domain],{fields,limit,order});
+}
+
+/* ---------------- Toast ---------------- */
+let toastTimer=null;
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1600);
+}
+
+/* ---------------- Stato ---------------- */
+let STATE={
+  picks:[], moves:[], linesByMove:{}, doneByMove:{}, metaByMove:{}, lineInfoByMove:{},
+  groups:new Map()
+};
+function ratio(done,plan){ if(!plan) return 0; return Math.max(0,Math.min(100,(done/plan)*100)); }
+
+/* ===== Helpers dominio OR “piatto” per Odoo ===== */
+function orDomain(leaves){
+  if(!leaves || !leaves.length) return [];
+  if(leaves.length===1) return leaves[0];
+  const out=[]; for(let i=0;i<leaves.length-1;i++) out.push('|');
+  leaves.forEach(l=>out.push(l));
+  return out;
+}
+
+/* ---------------- Carica ---------------- */
+async function load(){
+  const out=document.getElementById('out'); const b1=document.getElementById('btnLoad'); const b2=document.getElementById('btnSaveAll');
+  b1.disabled=b2.disabled=true; out.innerHTML='<span class="loading"></span> Carico…';
+  try{
+    // Prendo anche sale_id, origin, group_id per agganciare l'ordine
+    const picks=await searchRead(
+      'stock.picking',
+      [['backorder_id','!=',false],['name','ilike','PICK'],['state','not in',['done','cancel']]],
+      ['id','name','state','partner_id','driver_id','carrier_id','sale_id','origin','group_id'],
+      0,'name asc'
+    );
+    if(!picks.length){ out.innerHTML='Nessun pick residuo.'; STATE={picks:[],moves:[],linesByMove:{},doneByMove:{},metaByMove:{},lineInfoByMove:{},groups:new Map()}; return; }
+
+    const pickIds=picks.map(p=>p.id);
+    const moves=await searchRead('stock.move',[['picking_id','in',pickIds]],
+      ['id','picking_id','product_id','product_uom_qty','location_id','location_dest_id','product_uom'],0,'picking_id,id');
+
+    const moveIds=moves.map(m=>m.id);
+    const lines=moveIds.length?await searchRead('stock.move.line',[['move_id','in',moveIds]],
+      ['id','move_id','qty_done','location_id','lot_id'],0):[];
+
+    const doneByMove={}, linesByMove={}, lineInfoByMove={};
+    lines.forEach(l=>{
+      const mid=l.move_id && l.move_id[0];
+      doneByMove[mid]=(doneByMove[mid]||0)+Number(l.qty_done||0);
+      (linesByMove[mid]||(linesByMove[mid]=[])).push(l.id);
+      (lineInfoByMove[mid]||(lineInfoByMove[mid]=[])).push({qty_done:Number(l.qty_done||0), location:l.location_id, lot:l.lot_id});
+    });
+    const metaByMove={}; moves.forEach(m=>metaByMove[m.id]=m);
+
+    const groups=new Map();
+    const label=(x,prefix)=> x&&x[1] ? x[1] : prefix+' -';
+    for(const p of picks){
+      const driver=label(p.driver_id,'Autista');
+      const giro=label(p.carrier_id,'Giro');
+      const key=`${driver}||${giro}`; if(!groups.has(key)) groups.set(key,{driver,carrier:giro,pickings:[]});
+      groups.get(key).pickings.push(p);
+    }
+
+    STATE={picks,moves,linesByMove,doneByMove,metaByMove,lineInfoByMove,groups};
+    render();
+  }catch(e){
+    out.innerHTML=`<div class="card" style="color:#ef4444"><b>ERRORE:</b> ${e.message}</div>`;
+  }finally{
+    b1.disabled=b2.disabled=false;
+  }
+}
+
+/* ---------------- Render ---------------- */
+function bestLocationForMove(moveId){
+  const arr = STATE.lineInfoByMove[moveId]||[];
+  if(arr.length){
+    arr.sort((a,b)=>(b.qty_done||0)-(a.qty_done||0));
+    const top=arr[0];
+    let txt = top.location ? top.location[1] : '-';
+    if(top.lot) txt += ' - ' + top.lot[1];
+    return txt;
+  }
+  const m = STATE.metaByMove[moveId];
+  return m && m.location_id ? m.location_id[1] : '-';
+}
+
+function render(){
+  const out=document.getElementById('out'); const {groups,moves}=STATE; let html='';
+  for(const [key,grp] of groups){
+    html+=`<div class="group">
+      <div class="ghead">
+        <span class="pill strong">👤 ${grp.driver}</span>
+        <span class="pill strong">🧭 ${grp.carrier}</span>
+        <button class="btn slim blue" type="button" onclick="saveGroup('${encodeURIComponent(key)}')">SALVA GRUPPO</button>
+      </div>`;
+    for(const p of grp.pickings){
+      const saleName = p.sale_id ? p.sale_id[1] : (p.origin||'-');
+      html+=`<div class="card">
+        <div class="pick-head">
+          <span class="pill">📦 <b>${p.name}</b></span>
+          <span class="pill">Cliente: <b>${p.partner_id?p.partner_id[1]:'-'}</b></span>
+          <span class="pill">${p.state}</span>
+          <span class="pill">🧾 Ordine: <b>${saleName||'-'}</b></span>
+          <button class="btn slim ghost" type="button" onclick="openQuickAddForPick(${p.id})" ${saleName? '' : 'disabled'}>AGGIUNGI PRODOTTO</button>
+        </div>
+        <div class="list">`;
+      const righe=moves.filter(m=>m.picking_id&&m.picking_id[0]===p.id);
+      if(!righe.length){ html+=`<div class="row"><span class="muted">Nessuna riga</span></div>`; }
+      else{
+        for(const m of righe){
+          const done=Number(STATE.doneByMove[m.id]||0), plan=Number(m.product_uom_qty||0), perc=ratio(done,plan).toFixed(0);
+          const uom = m.product_uom ? m.product_uom[1] : '-';
+          const ubic = bestLocationForMove(m.id);
+          html+=`<div class="row" data-move="${m.id}">
+            <div class="prod">
+              ${m.product_id[1]}
+              <div class="sub">U.M.: <b>${uom}</b> — Ubic.: <b>${ubic}</b></div>
+            </div>
+            <div class="qty">Previsto: <b>${plan}</b></div>
+            <div>Fatto:
+              <input type="number" step="0.01" min="0" value="${done}" id="done_${m.id}"
+                     onkeydown="if(event.key==='Enter'){saveOne(${m.id})}">
+            </div>
+            <div><button class="btn slim green" type="button" onclick="saveOne(${m.id})">SALVA</button></div>
+            <div class="status" id="st_${m.id}"></div>
+            <div class="bar" style="grid-column:1 / -1"><span id="bar_${m.id}" style="width:${perc}%"></span></div>
+          </div>`;
+        }
+      }
+      html+=`</div></div>`;
+    }
+    html+=`</div>`;
+  }
+  out.innerHTML = html || '<div class="card">Nessun pick residuo.</div>';
+}
+
+/* ---------------- Update (senza perdere valori) ---------------- */
+async function updateOne(moveId, value, {refreshUI=true}={}){
+  const st=document.getElementById(`st_${moveId}`);
+  try{
+    if(st){ st.className='status muted'; st.textContent='Salvo…'; }
+    let lineIds=STATE.linesByMove[moveId]||[];
+    if(lineIds.length){
+      await callKw('stock.move.line','write',[[lineIds[0]],{qty_done:value}]);
+    }else{
+      const m=STATE.metaByMove[moveId];
+      const vals={move_id:moveId,picking_id:m.picking_id[0],product_id:m.product_id[0],qty_done:value,
+                  location_id:m.location_id[0],location_dest_id:m.location_dest_id[0],product_uom_id:m.product_uom[0]};
+      const newId=await callKw('stock.move.line','create',[vals]); STATE.linesByMove[moveId]=[newId];
+      (STATE.lineInfoByMove[moveId]||(STATE.lineInfoByMove[moveId]=[])).push({qty_done:value,location:m.location_id,lot:null});
+    }
+    STATE.doneByMove[moveId]=value;
+
+    if(refreshUI){
+      const plan=Number(STATE.metaByMove[moveId].product_uom_qty||0);
+      const perc=plan?Math.max(0,Math.min(100,(value/plan)*100)):0;
+      const bar=document.getElementById(`bar_${moveId}`); if(bar) bar.style.width=perc.toFixed(0)+'%';
+      if(st){ st.className='status ok'; st.textContent='✓ salvato'; }
+      toast('Riga aggiornata');
+      render();
+    }else{
+      if(st){ st.className='status ok'; st.textContent='✓'; }
+    }
+  }catch(e){
+    if(st){ st.className='status err'; st.textContent='✗ '+e.message; }
+    toast('Errore: '+e.message); throw e;
+  }
+}
+
+/* ---------------- Save singola / gruppo / tutto ---------------- */
+async function saveOne(moveId){
+  const val=Number(document.getElementById(`done_${moveId}`).value||0);
+  await updateOne(moveId,val,{refreshUI:true});
+}
+async function saveAll(){
+  const btn=document.getElementById('btnSaveAll'); btn.disabled=true;
+  try{
+    const pairs=[...document.querySelectorAll('input[id^="done_"]')]
+      .map(el=>[Number(el.id.replace('done_','')), Number(el.value||0)]);
+    for(const [id,val] of pairs){ await updateOne(id,val,{refreshUI:false}); }
+    render(); toast('Tutte le righe salvate');
+  }finally{ btn.disabled=false; }
+}
+async function saveGroup(encodedKey){
+  const key=decodeURIComponent(encodedKey);
+  const grp=STATE.groups.get(key); if(!grp) return;
+  const ids=[];
+  for(const p of grp.pickings){
+    STATE.moves.filter(m=>m.picking_id&&m.picking_id[0]===p.id).forEach(m=>ids.push(m.id));
+  }
+  for(const id of ids){
+    const inp=document.getElementById(`done_${id}`);
+    const val = inp ? Number(inp.value||0) : Number(STATE.doneByMove[id]||0);
+    await updateOne(id,val,{refreshUI:false});
+  }
+  render(); toast(`Gruppo salvato: ${grp.driver} • ${grp.carrier}`);
+}
+
+/* ======= QUICK ADD PRODOTTO su SALE ORDER (super-ricerca) ======= */
+const QS = {
+  order: null,
+  list: [],
+  selected: null,
+  cache: { products:{} }
+};
+
+function openQuickAdd(order){
+  QS.order = order;
+  document.getElementById('qs-title').textContent = `🔎 Aggiungi prodotto a ${order.name}`;
+  document.getElementById('qs-term').value='';
+  document.getElementById('qs-qty').value='1';
+  document.getElementById('qs-list').innerHTML='';
+  document.getElementById('qs-confirm').disabled=true;
+  document.getElementById('qs-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('qs-term').focus(), 50);
+}
+function closeQuickAdd(){
+  document.getElementById('qs-modal').style.display='none';
+  QS.order=null; QS.list=[]; QS.selected=null;
+}
+async function ensureOrderForPick(pick){
+  if(pick.sale_id) {
+    const o = await searchRead('sale.order',[['id','=',pick.sale_id[0]]],['id','name','pricelist_id','partner_id','state'],1);
+    return o && o[0];
+  }
+  if(pick.origin){
+    const o = await searchRead('sale.order',[['name','=',pick.origin]],['id','name','pricelist_id','partner_id','state'],1);
+    if(o.length) return o[0];
+  }
+  if(pick.group_id){
+    const o = await searchRead('sale.order',[['procurement_group_id','=',pick.group_id[0]]],['id','name','pricelist_id','partner_id','state'],1);
+    if(o.length) return o[0];
+  }
+  return null;
+}
+async function openQuickAddForPick(pickId){
+  const pick = STATE.picks.find(p=>p.id===pickId);
+  if(!pick){ toast('PICK non trovato'); return; }
+  const order = await ensureOrderForPick(pick);
+  if(!order){ toast('Ordine di vendita non trovato per questo PICK'); return; }
+  openQuickAdd(order);
+}
+window.openQuickAddForPick = openQuickAddForPick;  // usato in onclick inline
+
+// Ricerca prodotti (nome/codice/barcode) con OR piatto
+async function superSearch(term){
+  const key=term.toLowerCase();
+  if(QS.cache.products[key]) return QS.cache.products[key];
+
+  if(/^[0-9A-Za-z\-\.]{6,}$/.test(term)){
+    const exactLeaves = [['barcode','=',term],['default_code','=',term]];
+    const exactDomain = ['&',['sale_ok','=',true]].concat(orDomain(exactLeaves));
+    const exact = await searchRead('product.product', exactDomain,
+      ['id','display_name','name','default_code','barcode','uom_id','lst_price'], 20);
+    if(exact.length){ QS.cache.products[key]=exact; return exact; }
+  }
+  try{
+    const leaves = [['name','ilike',term],['default_code','ilike',term],['barcode','ilike',term]];
+    const domain = ['&',['sale_ok','=',true]].concat(orDomain(leaves));
+    const out = await searchRead('product.product', domain,
+      ['id','display_name','name','default_code','barcode','uom_id','lst_price'], 20);
+    QS.cache.products[key]=out; return out;
+  }catch(e){
+    try{
+      const pairs = await callKw('product.product','name_search',[term, [['sale_ok','=',true]], 'ilike', 20],{});
+      const ids = (pairs||[]).map(p=>p[0]);
+      if(!ids.length){ QS.cache.products[key]=[]; return []; }
+      const rich = await searchRead('product.product',[['id','in',ids]],
+        ['id','display_name','name','default_code','barcode','uom_id','lst_price'],ids.length);
+      const byId=new Map(rich.map(r=>[r.id,r])); const ordered=ids.map(id=>byId.get(id)).filter(Boolean);
+      QS.cache.products[key]=ordered; return ordered;
+    }catch(_){
+      QS.cache.products[key]=[]; return [];
+    }
+  }
+}
+function renderSuggestions(list){
+  const box=document.getElementById('qs-list'); box.innerHTML='';
+  if(!list.length){ box.innerHTML='<div class="qa-sugg" disabled>Nessun risultato</div>'; return; }
+  list.forEach((p,idx)=>{
+    const btn=document.createElement('button'); btn.type='button'; btn.className='qa-sugg'; btn.dataset.pid=p.id;
+    const uom = p.uom_id ? p.uom_id[1] : '';
+    const code = p.default_code ? ` • Cod.: ${p.default_code}` : '';
+    const bar  = p.barcode ? ` • Barcode: ${p.barcode}` : '';
+    btn.innerHTML = `<div class="name">${p.display_name||p.name}</div><div class="meta">${uom}${code}${bar}</div>`;
+    btn.addEventListener('click',()=>selectProduct(p,btn));
+    if(idx===0) btn.classList.add('active');
+    box.appendChild(btn);
+  });
+  QS.selected = list[0] || null;
+  document.getElementById('qs-confirm').disabled = !QS.selected;
+}
+function selectProduct(p,node){
+  QS.selected = p;
+  [...document.querySelectorAll('.qa-sugg')].forEach(b=>b.classList.remove('active'));
+  if(node) node.classList.add('active');
+  document.getElementById('qs-confirm').disabled = !p;
+}
+async function getPrice(order, productId, qty){
+  try{
+    const pl = order.pricelist_id ? order.pricelist_id[0] : null;
+    if(!pl) return null;
+    try{
+      const price = await callKw('product.pricelist','_get_product_price',[[pl], productId, qty, order.partner_id?order.partner_id[0]:false],{});
+      if(typeof price==='number') return price;
+    }catch(_){}
+    try{
+      const price = await callKw('product.pricelist','get_product_price',[[pl], productId, qty, order.partner_id?order.partner_id[0]:false],{});
+      if(typeof price==='number') return price;
+    }catch(_){}
+    try{
+      const res = await callKw('product.pricelist','price_get',[[pl],[productId], qty, order.partner_id?order.partner_id[0]:false],{});
+      if(res && typeof res[productId] !== 'undefined') return Number(res[productId]);
+    }catch(_){}
+    return null;
+  }catch(_){ return null; }
+}
+async function confirmAdd(){
+  const sel = QS.selected; if(!sel){ toast('Seleziona un prodotto'); return; }
+  const qty = Math.max(1, parseFloat(document.getElementById('qs-qty').value||'1'));
+  const order = QS.order; if(!order){ toast('Ordine non valido'); return; }
+  try{
+    const pdet = await searchRead('product.product',[["id","=",sel.id]],["id","name","uom_id","lst_price","product_tmpl_id"],1);
+    const uomId = pdet.length && pdet[0].uom_id ? pdet[0].uom_id[0] : null;
+    let price = await getPrice(order, sel.id, qty);
+    if(price == null) price = (pdet.length ? Number(pdet[0].lst_price)||0 : 0);
+    const vals = {
+      order_id: order.id,
+      product_id: sel.id,
+      product_uom_qty: qty,
+      name: sel.name||sel.display_name,
+      price_unit: price,
+      ...(uomId?{product_uom:uomId}:{})
+    };
+    await callKw('sale.order.line','create',[vals],{});
+    toast(`Aggiunto ${sel.display_name||sel.name} × ${qty} a ${order.name}`);
+    closeQuickAdd();
+  }catch(e){ console.error(e); toast('Errore: ordine bloccato o permessi'); }
+}
+
+/* Bind principali */
+document.getElementById('btnLoad').addEventListener('click', load);
+document.getElementById('btnSaveAll').addEventListener('click', saveAll);
+
+/* Modal events */
+document.getElementById('qs-x').addEventListener('click', closeQuickAdd);
+document.getElementById('qs-cancel').addEventListener('click', closeQuickAdd);
+document.getElementById('qs-confirm').addEventListener('click', confirmAdd);
+
+/* Digitazione nel modal → suggerimenti */
+let qsTimer=null, qsLast='';
+document.getElementById('qs-term').addEventListener('keyup', async (e)=>{
+  if(e.key==='Enter'){
+    const first = QS.list && QS.list[0];
+    if(!QS.selected && first){ selectProduct(first, document.querySelector('.qa-sugg')); }
+    if(QS.selected){ await confirmAdd(); }
+    return;
+  }
+  const term=document.getElementById('qs-term').value.trim(); clearTimeout(qsTimer);
+  qsTimer=setTimeout(async ()=>{
+    if(term.length<2){
+      document.getElementById('qs-list').innerHTML='';
+      document.getElementById('qs-confirm').disabled=true;
+      QS.selected=null; QS.list=[];
+      return;
+    }
+    if(term===qsLast) return; qsLast=term;
+    const list = await superSearch(term);
+    QS.list=list; renderSuggestions(list);
+  },160);
+});
+document.addEventListener('keydown',(ev)=>{
+  if(document.getElementById('qs-modal').style.display!=='flex') return;
+  if(!QS.list.length) return;
+  const items=[...document.querySelectorAll('.qa-sugg')];
+  let idx = items.findIndex(n=>n.classList.contains('active'));
+  if(ev.key==='ArrowDown'){ ev.preventDefault(); idx=Math.min(items.length-1,idx+1); selectProduct(QS.list[idx],items[idx]); }
+  if(ev.key==='ArrowUp'){ ev.preventDefault(); idx=Math.max(0,idx-1); selectProduct(QS.list[idx],items[idx]); }
+});
+
+/* opzionale: carica subito */
+// load();
+
+/* Esporta funzioni globali usate negli onclick inline */
+window.saveOne = saveOne;
+window.saveGroup = saveGroup;
+</script>
+
+
+<style>
+  :root{ --fs-base:14px; }
+  body{ font-size: var(--fs-base); }
+  .wrap{ max-width:1080px; padding:0 12px 28px; }
+  .topbar{ padding:8px 12px; margin:0 -12px 12px; }
+  .title{ font-size:19px; }
+  .btn{ padding:9px 12px; border-radius:10px; }
+  .btn.slim{ padding:6px 10px; font-size:11px; border-radius:9px; }
+  .pill{ padding:4px 8px; font-size:11px; }
+  .card{ padding:10px 10px 8px; margin:8px 0; border-radius:12px; }
+  .pick-head{ gap:6px; margin-bottom:6px; }
+  .list .row{
+    grid-template-columns: minmax(240px,1fr) 100px 140px auto auto;
+    gap:8px; padding:8px; margin:8px 0; border-radius:10px;
+  }
+  .sub{ margin-top:2px; font-size:11px; }
+  input[type="number"]{ width:120px; padding:8px 10px; border-radius:8px; }
+  .bar{ height:6px; }
+  .toast{ right:12px; bottom:12px; padding:8px 10px; border-radius:10px; }
+  .qa-dialog{ width:640px; max-width:95vw; border-radius:12px; }
+  .qa-head{ padding:10px 12px; }
+  .qa-body{ padding:10px 12px; }
+  .qa-search input[type=text], .qa-search input[type=number]{ padding:8px 10px; border-radius:8px; }
+  .qa-sugg{ padding:10px; border-radius:10px; }
+  .qa-foot{ padding:10px 12px; }
+
+  @media (max-width: 1024px){
+    .wrap{ padding:0 10px 24px; }
+    .title{ font-size:18px; }
+    .list .row{ grid-template-columns: 1fr 1fr; }
+    .row .prod, .row .bar{ grid-column:1 / -1; }
+  }
+  @media (max-width: 768px){
+    :root{ --fs-base:13px; }
+    .btn{ padding:8px 10px; }
+    .btn.slim{ padding:5px 9px; font-size:10.5px; }
+    input[type="number"]{ width:110px; }
+  }
+</style>

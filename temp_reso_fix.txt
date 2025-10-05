@@ -1,0 +1,10 @@
+Ho capito la tua richiesta. Nel modal RESO devo:
+1. Aggiungere stato resoPhoto
+2. Rimuovere il blocco prodotti con quantità da rendere
+3. Lasciare solo: campo testo (motivo) + pulsante foto
+4. Entrambi obbligatori
+
+Modifiche da fare in app/delivery/page.tsx:
+- Riga 89: aggiungere const [resoPhoto, setResoPhoto] = useState<string | null>(null);
+- Riga 726: aggiungere handler per catturare foto reso
+- Riga 2185-2208: rimuovere tutto il blocco dei prodotti
