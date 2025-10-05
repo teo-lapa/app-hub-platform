@@ -608,13 +608,46 @@ export default function DeliveryPage() {
     const dataUrl = canvas.toDataURL('image/png');
 
     if (currentDelivery) {
-      await db.attachments.add({
-        picking_id: currentDelivery.id,
-        context: 'signature',
-        data: dataUrl,
-        timestamp: new Date(),
-        uploaded: false
-      });
+      // SALVA IMMEDIATAMENTE IN ODOO (CRITICO - non perdere la firma!)
+      try {
+        const signatureBase64 = dataUrl.split(',')[1];
+
+        // Salva firma nel campo signature del picking
+        await fetch('/api/delivery/save-signature', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            picking_id: currentDelivery.id,
+            signature: signatureBase64,
+            notes: signatureNote
+          })
+        });
+
+        console.log('✅ Firma salvata immediatamente in Odoo');
+        showToast('✅ Firma salvata!', 'success');
+
+        // Salva anche in locale per backup
+        await db.attachments.add({
+          picking_id: currentDelivery.id,
+          context: 'signature',
+          data: dataUrl,
+          timestamp: new Date(),
+          uploaded: true // Già caricata!
+        });
+      } catch (error) {
+        console.error('❌ Errore salvataggio firma:', error);
+        showToast('⚠️ Firma salvata in locale, sincronizzerò dopo', 'warning');
+
+        // Fallback: salva in locale
+        await db.attachments.add({
+          picking_id: currentDelivery.id,
+          context: 'signature',
+          data: dataUrl,
+          timestamp: new Date(),
+          uploaded: false
+        });
+      }
     }
 
     setSignatureData(dataUrl);
@@ -633,13 +666,52 @@ export default function DeliveryPage() {
   // ==================== PHOTO MODAL ====================
   async function handlePhotoModalCapture(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !currentDelivery) return;
 
     try {
       const base64 = await fileToBase64(file);
       const compressed = await compressImage(base64);
       setPhotoData(compressed);
-      showToast('Foto caricata', 'success');
+
+      // SALVA IMMEDIATAMENTE IN ODOO (CRITICO - non perdere la foto!)
+      try {
+        const photoBase64 = compressed.split(',')[1];
+
+        await fetch('/api/delivery/save-photo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            picking_id: currentDelivery.id,
+            photo: photoBase64,
+            notes: photoNote
+          })
+        });
+
+        console.log('✅ Foto salvata immediatamente in Odoo');
+        showToast('✅ Foto salvata!', 'success');
+
+        // Salva anche in locale per backup
+        await db.attachments.add({
+          picking_id: currentDelivery.id,
+          context: 'photo',
+          data: compressed,
+          timestamp: new Date(),
+          uploaded: true // Già caricata!
+        });
+      } catch (error) {
+        console.error('❌ Errore salvataggio foto:', error);
+        showToast('⚠️ Foto salvata in locale, sincronizzerò dopo', 'warning');
+
+        // Fallback: salva in locale
+        await db.attachments.add({
+          picking_id: currentDelivery.id,
+          context: 'photo',
+          data: compressed,
+          timestamp: new Date(),
+          uploaded: false
+        });
+      }
     } catch (err) {
       showToast('Errore caricamento foto', 'error');
     }
