@@ -79,7 +79,8 @@ export async function callOdoo(
   model: string,
   method: string,
   args: any[] = [],
-  kwargs: any = {}
+  kwargs: any = {},
+  retryWithFallback: boolean = true
 ) {
   console.log(`🔵 [ODOO-CALL] ${model}.${method}`, { args: args.length, kwargs: Object.keys(kwargs).length });
 
@@ -107,6 +108,53 @@ export async function callOdoo(
   if (data.error) {
     console.error(`❌ [ODOO-CALL] ${model}.${method} FAILED:`, data.error);
     console.error(`❌ [ODOO-CALL] Error data:`, JSON.stringify(data.error, null, 2));
+
+    // Se la sessione è scaduta E abbiamo credenziali fallback, prova a riautenticare
+    if (retryWithFallback && data.error.data?.name === 'odoo.http.SessionExpiredException') {
+      console.warn('⚠️ [ODOO-CALL] Sessione scaduta, tentativo autenticazione fallback...');
+
+      try {
+        // Autentica con credenziali
+        const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            params: {
+              db: ODOO_DB,
+              login: ODOO_LOGIN,
+              password: ODOO_PASSWORD
+            }
+          })
+        });
+
+        const authData = await authResponse.json();
+
+        if (authData.error || !authData.result?.uid) {
+          throw new Error('Autenticazione fallback fallita');
+        }
+
+        // Estrai il cookie dalla risposta
+        const setCookie = authResponse.headers.get('set-cookie');
+        const sessionMatch = setCookie?.match(/session_id=([^;]+)/);
+
+        if (!sessionMatch) {
+          throw new Error('Nessun session_id ricevuto');
+        }
+
+        const newCookie = `session_id=${sessionMatch[1]}`;
+        console.log('✅ [ODOO-CALL] Autenticazione fallback riuscita, retry chiamata...');
+
+        // Riprova la chiamata con la nuova sessione (senza retry per evitare loop infinito)
+        return await callOdoo(newCookie, model, method, args, kwargs, false);
+
+      } catch (fallbackError: any) {
+        console.error('❌ [ODOO-CALL] Autenticazione fallback fallita:', fallbackError);
+      }
+    }
+
     throw new Error(data.error.data?.message || data.error.message || 'Errore Odoo');
   }
 
