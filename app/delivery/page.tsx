@@ -1098,25 +1098,19 @@ export default function DeliveryPage() {
     showToast('🖨️ Generazione PDF in corso...', 'info');
 
     try {
-      // Costruisci URL per scaricare il PDF
+      // URL Odoo corretto (NON usare window.location.origin!)
+      const odooUrl = 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
       const reportName = 'invoice_pdf_custom.report_delivery_document_customization_80mm';
-      const baseUrl = window.location.origin;
 
-      // URL Odoo per il report PDF
-      const pdfUrl = `${process.env.NEXT_PUBLIC_ODOO_URL || baseUrl}/report/pdf/${reportName}/${deliveryId}`;
+      // URL completo per il PDF
+      const pdfUrl = `${odooUrl}/report/pdf/${reportName}/${deliveryId}`;
 
-      console.log('📄 Scaricando PDF da:', pdfUrl);
+      console.log('📄 Tentativo download PDF da:', pdfUrl);
 
-      // Apri in nuova finestra per scaricare
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.download = `Consegna_${delivery.name?.replace(/\//g, '_')}.pdf`;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Apri in nuova finestra (Odoo gestisce autenticazione tramite cookie di sessione)
+      window.open(pdfUrl, '_blank');
 
-      showToast('✅ Download PDF avviato!', 'success');
+      showToast('✅ Apertura PDF in nuova finestra...', 'success');
 
     } catch (error: any) {
       console.error('❌ Errore stampa:', error);
