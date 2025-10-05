@@ -30,14 +30,15 @@ export async function POST(request: NextRequest) {
       if (productsToUpdate.length > 0) {
         console.log(`📝 Aggiornamento ${productsToUpdate.length} prodotti con quantità modificate...`);
 
-        // Aggiorna direttamente ogni move_line
-        for (const product of productsToUpdate) {
-          await callOdoo(cookies, 'stock.move.line', 'write', [
+        // Aggiorna tutti i move_line IN PARALLELO (veloce!)
+        await Promise.all(productsToUpdate.map((product: any) =>
+          callOdoo(cookies, 'stock.move.line', 'write', [
             [product.move_line_id],
             { qty_done: product.delivered }
-          ]);
-          console.log(`✅ ${product.name}: ${product.delivered} (move_line_id: ${product.move_line_id})`);
-        }
+          ]).then(() => {
+            console.log(`✅ ${product.name}: ${product.delivered} (move_line_id: ${product.move_line_id})`);
+          })
+        ));
       }
     }
 
