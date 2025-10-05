@@ -93,24 +93,22 @@ export default function PickResiduiPage() {
   }, [theme]);
 
   const callKw = async (model: string, method: string, args: any[] = [], kwargs: any = {}) => {
-    const response = await fetch(`/web/dataset/call_kw/${model}/${method}`, {
+    const response = await fetch('/api/odoo-proxy', {
       method: 'POST',
-      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
       },
       body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: { model, method, args, kwargs },
-        id: Date.now(),
+        model,
+        method,
+        args,
+        kwargs,
       }),
     });
 
     const data = await response.json();
     if (data.error) {
-      throw new Error(data.error.data?.message || data.error.message);
+      throw new Error(data.error);
     }
     return data.result;
   };

@@ -1100,7 +1100,7 @@ export default function DeliveryPage() {
     try {
       // URL Odoo corretto (NON usare window.location.origin!)
       const odooUrl = 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
-      const reportName = 'invoice_pdf_custom.report_delivery_document_customization_80mm';
+      const reportName = 'invoice_pdf_custom.report_deliveryslip_customization_80mm';
 
       // URL completo per il PDF
       const pdfUrl = `${odooUrl}/report/pdf/${reportName}/${deliveryId}`;
