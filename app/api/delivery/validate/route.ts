@@ -21,32 +21,22 @@ export async function POST(request: NextRequest) {
     console.log('✅ VALIDATE picking_id:', picking_id, 'type:', completion_type, 'notes:', notes);
     console.log('📦 VALIDATE products:', products?.length || 0, 'prodotti');
 
-    // AGGIORNA QUANTITÀ se necessario (VELOCE - max 2-3 sec)
+    // AGGIORNA QUANTITÀ in stock.move.line (VELOCE - usa move_line_id diretto)
     if (products && products.length > 0) {
       const productsToUpdate = products.filter((p: any) =>
-        p.delivered !== undefined && p.delivered !== p.qty
+        p.move_line_id && p.delivered !== undefined
       );
 
       if (productsToUpdate.length > 0) {
         console.log(`📝 Aggiornamento ${productsToUpdate.length} prodotti con quantità modificate...`);
 
-        // Cerca tutti i move in una chiamata
-        const allMoves = await callOdoo(cookies, 'stock.move', 'search_read', [], {
-          domain: [['picking_id', '=', picking_id]],
-          fields: ['id', 'product_id', 'move_line_ids']
-        });
-
-        // Aggiorna solo i prodotti modificati
+        // Aggiorna direttamente ogni move_line
         for (const product of productsToUpdate) {
-          const move = allMoves.find((m: any) => m.product_id[0] === product.product_id);
-
-          if (move?.move_line_ids?.[0]) {
-            await callOdoo(cookies, 'stock.move.line', 'write', [
-              [move.move_line_ids[0]],
-              { qty_done: product.delivered }
-            ]);
-            console.log(`✅ ${product.name}: ${product.delivered}`);
-          }
+          await callOdoo(cookies, 'stock.move.line', 'write', [
+            [product.move_line_id],
+            { qty_done: product.delivered }
+          ]);
+          console.log(`✅ ${product.name}: ${product.delivered} (move_line_id: ${product.move_line_id})`);
         }
       }
     }

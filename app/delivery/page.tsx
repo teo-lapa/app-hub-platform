@@ -418,7 +418,8 @@ export default function DeliveryPage() {
   function updateProductDelivered(productId: number, qty: number) {
     setScaricoProducts(prev => prev.map(p => {
       if (p.id === productId) {
-        const newQty = Math.max(0, Math.min(qty, p.qty));
+        // Permetti qualsiasi quantità (anche maggiore della richiesta)
+        const newQty = Math.max(0, qty);
         return { ...p, delivered: newQty, picked: newQty > 0, completed: newQty > 0 };
       }
       return p;
@@ -668,7 +669,8 @@ export default function DeliveryPage() {
       const payload = {
         picking_id: currentDelivery.id,
         products: scaricoProducts.map(p => ({
-          id: p.id,
+          move_line_id: p.move_line_id || p.id,  // ID della stock.move.line
+          product_id: p.product_id,
           name: p.name,
           qty: p.qty,
           delivered: p.delivered || 0,
@@ -824,7 +826,8 @@ export default function DeliveryPage() {
       const payload = {
         picking_id: currentDelivery.id,
         products: scaricoProducts.map(p => ({
-          id: p.id,
+          move_line_id: p.move_line_id || p.id,  // ID della stock.move.line
+          product_id: p.product_id,
           name: p.name,
           qty: p.qty,
           delivered: p.delivered || 0,

@@ -121,19 +121,21 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // Carica tutti i move (prodotti) in una chiamata
-    const allMoves = allMoveIds.length > 0 ? await callOdoo(
+    // IMPORTANTE: Carica stock.move.line (operazioni dettagliate) invece di stock.move
+    // Questo permette di modificare le quantità effettive (qty_done)
+    const allMoveLines = allPickingIds.length > 0 ? await callOdoo(
       cookies,
-      'stock.move',
-      'read',
-      [allMoveIds],
+      'stock.move.line',
+      'search_read',
+      [],
       {
-        fields: ['id', 'product_id', 'product_uom_qty', 'product_uom', 'picking_id']
+        domain: [['picking_id', 'in', allPickingIds]],
+        fields: ['id', 'product_id', 'quantity', 'qty_done', 'product_uom_id', 'picking_id', 'move_id']
       }
     ) : [];
 
     // Carica immagini prodotti
-    const productIdsSet = new Set(allMoves.map((m: any) => m.product_id?.[0]).filter(Boolean));
+    const productIdsSet = new Set(allMoveLines.map((m: any) => m.product_id?.[0]).filter(Boolean));
     const productIds = Array.from(productIdsSet);
     const products = productIds.length > 0 ? await callOdoo(
       cookies,
@@ -148,13 +150,13 @@ export async function GET(request: NextRequest) {
 
     // Crea mappa per accesso rapido
     const partnerMap = new Map(allPartners.map((p: any) => [p.id, p]));
-    const movesByPicking = new Map<number, any[]>();
-    allMoves.forEach((move: any) => {
-      const pickingId = move.picking_id?.[0];
-      if (!movesByPicking.has(pickingId)) {
-        movesByPicking.set(pickingId, []);
+    const moveLinesByPicking = new Map<number, any[]>();
+    allMoveLines.forEach((moveLine: any) => {
+      const pickingId = moveLine.picking_id?.[0];
+      if (!moveLinesByPicking.has(pickingId)) {
+        moveLinesByPicking.set(pickingId, []);
       }
-      movesByPicking.get(pickingId)!.push(move);
+      moveLinesByPicking.get(pickingId)!.push(moveLine);
     });
 
     // Assembla deliveries
@@ -177,22 +179,22 @@ export async function GET(request: NextRequest) {
         if (partner.city) address += partner.city;
       }
 
-      // Ottieni prodotti per questo picking
-      const pickingMoves = movesByPicking.get(picking.id) || [];
+      // Ottieni prodotti per questo picking (da stock.move.line)
+      const pickingMoveLines = moveLinesByPicking.get(picking.id) || [];
       const isCompleted = picking.state === 'done';
-      const products = pickingMoves.map((move: any) => {
-        const productId = move.product_id?.[0];
-        const requestedQty = move.product_uom_qty || 0;
-        // Per ordini completati, consideriamo la qty richiesta come consegnata
-        const deliveredQty = isCompleted ? requestedQty : 0;
+      const products = pickingMoveLines.map((moveLine: any) => {
+        const productId = moveLine.product_id?.[0];
+        const requestedQty = moveLine.quantity || 0;  // quantity = quantità pianificata
+        const deliveredQty = moveLine.qty_done || 0;  // qty_done = quantità effettiva
         return {
-          id: move.id,
+          id: moveLine.id,  // Questo è il move_line_id!
+          move_line_id: moveLine.id,  // ID della stock.move.line
           product_id: productId,
-          name: move.product_id?.[1] || 'Prodotto',
+          name: moveLine.product_id?.[1] || 'Prodotto',
           qty: requestedQty,
           delivered: deliveredQty,
-          picked: isCompleted,
-          unit: move.product_uom?.[1] || 'Unità',
+          picked: deliveredQty > 0,
+          unit: moveLine.product_uom_id?.[1] || 'Unità',
           image: productImageMap.get(productId) || null
         };
       });
