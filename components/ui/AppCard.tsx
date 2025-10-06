@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { App, UserRole } from '@/lib/types';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useAppStore } from '@/lib/store/appStore';
@@ -14,6 +15,7 @@ interface AppCardProps {
 
 export function AppCard({ app, index }: AppCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
   const { setShowUpgradeModal } = useAppStore();
 
@@ -36,7 +38,7 @@ export function AppCard({ app, index }: AppCardProps) {
     }
 
     if (app.url) {
-      window.location.href = app.url;
+      router.push(app.url);
     }
   };
 

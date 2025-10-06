@@ -3,11 +3,16 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
 const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
+const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+
+// Credenziali per login automatico (come fa catalogo-lapa)
+const ODOO_LOGIN = 'paul@lapa.ch';
+const ODOO_PASSWORD = 'lapa201180';
 
 /**
  * API generica per chiamare Odoo RPC
- * Usa SOLO la sessione Odoo dell'utente loggato (NO fallback ad App Hub Bot)
+ * Fa login automatico ogni volta per avere una sessione fresca (come catalogo-lapa)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -15,52 +20,54 @@ export async function POST(request: NextRequest) {
 
     console.log('🔧 [API-ODOO-RPC] Chiamata:', model, method);
 
-    // Recupera session da cookies
-    const cookieStore = await cookies();
-    let sessionId: string | null = null;
+    // STESSO METODO DEL CATALOGO: Fa sempre login fresco
+    console.log('🔐 [API-ODOO-RPC] Autenticazione fresca a Odoo...');
 
-    // Tentativo 1: Leggi da odoo_session cookie (set da /api/auth/odoo-login)
-    const odooSessionCookie = cookieStore.get('odoo_session');
-    console.log('🔍 [API-ODOO-RPC] odoo_session cookie presente?', !!odooSessionCookie);
+    const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          db: ODOO_DB,
+          login: ODOO_LOGIN,
+          password: ODOO_PASSWORD
+        },
+        id: 1
+      })
+    });
 
-    if (odooSessionCookie?.value) {
-      try {
-        const sessionData = JSON.parse(odooSessionCookie.value);
-        sessionId = sessionData.session_id || sessionData.sessionId;
-        console.log('🍪 [API-ODOO-RPC] Session ID da odoo_session cookie:', sessionId?.substring(0, 20) + '...');
-      } catch (e) {
-        console.log('⚠️ [API-ODOO-RPC] Errore parsing odoo_session cookie:', e);
-      }
-    }
+    const authData = await authResponse.json();
 
-    // Tentativo 2: Estrai sessionId dal JWT token
-    if (!sessionId) {
-      const tokenCookie = cookieStore.get('token');
-      console.log('🔍 [API-ODOO-RPC] token cookie presente?', !!tokenCookie);
-
-      if (tokenCookie?.value) {
-        try {
-          const decoded = jwt.verify(tokenCookie.value, JWT_SECRET) as any;
-          sessionId = decoded.sessionId;
-          console.log('🔑 [API-ODOO-RPC] Session ID da JWT token - Utente:', decoded.name, '(UID:', decoded.odooUid, ')');
-          console.log('🔑 [API-ODOO-RPC] Session ID:', sessionId?.substring(0, 20) + '...');
-        } catch (e: any) {
-          console.log('⚠️ [API-ODOO-RPC] Errore verifica JWT token:', e.message);
-        }
-      }
-    }
-
-    // Se non troviamo session ID, errore 401
-    if (!sessionId) {
-      console.error('❌ [API-ODOO-RPC] Nessuna sessione Odoo trovata');
+    if (authData.error || !authData.result || !authData.result.uid) {
+      console.error('❌ [API-ODOO-RPC] Autenticazione fallita:', authData.error);
       return NextResponse.json(
         {
           success: false,
-          error: 'Non autenticato. Effettua il login alla piattaforma.'
+          error: 'Autenticazione Odoo fallita'
         },
         { status: 401 }
       );
     }
+
+    // Estrai session_id dal cookie Set-Cookie (come fa catalogo)
+    const setCookieHeader = authResponse.headers.get('set-cookie');
+    const sessionMatch = setCookieHeader?.match(/session_id=([^;]+)/);
+    const sessionId = sessionMatch ? sessionMatch[1] : null;
+
+    if (!sessionId) {
+      console.error('❌ [API-ODOO-RPC] Session ID non trovato nei cookie');
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Session ID non trovato'
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ [API-ODOO-RPC] Autenticato! Session ID:', sessionId.substring(0, 20) + '...');
 
     // Chiama Odoo con session ID dell'utente
     console.log('📡 [API-ODOO-RPC] Chiamata a Odoo:', `${ODOO_URL}/web/dataset/call_kw/${model}/${method}`);
