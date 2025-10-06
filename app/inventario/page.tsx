@@ -128,7 +128,7 @@ export default function InventarioPage() {
         image: item.image_128 ? `data:image/png;base64,${item.image_128}` : null,
         quantity: item.quantity || 0,
         reserved: item.reserved_quantity || 0,
-        uom: 'PZ',
+        uom: item.uom_id ? item.uom_id[1] : (item.product_uom_id ? item.product_uom_id[1] : 'PZ'),
         totalQty: item.quantity || 0,
         lots: item.lot_id ? [{
           id: item.lot_id[0],
@@ -290,13 +290,40 @@ export default function InventarioPage() {
     scanLocation(result);
   };
 
-  const handleCalculatorConfirm = (value: string) => {
+  const handleCalculatorConfirm = async (value: string) => {
     setCountedQuantity(value);
     const quantity = parseFloat(value) || 0;
 
     // Se stiamo aggiungendo un nuovo prodotto dalla ricerca
     if (selectedNewProduct) {
       console.log('➕ Aggiungendo nuovo prodotto con quantità:', quantity);
+
+      // Salva su Odoo
+      if (appState.currentLocation) {
+        try {
+          const saveResponse = await fetch('/api/inventory/update-quantity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              productId: selectedNewProduct.id,
+              locationId: appState.currentLocation.id,
+              quantity: quantity
+            })
+          });
+
+          const saveData = await saveResponse.json();
+          if (!saveData.success) {
+            throw new Error(saveData.error || 'Errore salvataggio');
+          }
+
+          console.log('✅ Quantità salvata su Odoo:', saveData);
+        } catch (error: any) {
+          console.error('❌ Errore salvataggio su Odoo:', error);
+          toast.error('Errore salvataggio: ' + error.message);
+          return;
+        }
+      }
 
       // Crea un nuovo oggetto Product dal BasicProduct
       const newProduct: Product = {
@@ -332,13 +359,40 @@ export default function InventarioPage() {
       setSelectedNewProduct(null);
 
     } else if (appState.selectedProduct) {
+      // Salva su Odoo la quantità contata
+      if (appState.currentLocation) {
+        try {
+          const saveResponse = await fetch('/api/inventory/update-quantity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              productId: appState.selectedProduct.id,
+              locationId: appState.currentLocation.id,
+              quantity: quantity
+            })
+          });
+
+          const saveData = await saveResponse.json();
+          if (!saveData.success) {
+            throw new Error(saveData.error || 'Errore salvataggio');
+          }
+
+          console.log('✅ Quantità salvata su Odoo:', saveData);
+        } catch (error: any) {
+          console.error('❌ Errore salvataggio su Odoo:', error);
+          toast.error('Errore salvataggio: ' + error.message);
+          return;
+        }
+      }
+
       // Aggiorna locationProducts se stiamo modificando un prodotto esistente
       setLocationProducts(prev => prev.map(p =>
         p.id === appState.selectedProduct?.id
           ? { ...p, countedQuantity: quantity, difference: quantity - p.stockQuantity }
           : p
       ));
-      toast.success(`Quantità aggiornata: ${quantity}`);
+      toast.success(`✅ Quantità salvata: ${quantity}`);
     }
   };
 

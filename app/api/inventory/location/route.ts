@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
             ]
           ],
           kwargs: {
-            fields: ['product_id', 'quantity', 'reserved_quantity', 'lot_id'],
+            fields: ['product_id', 'quantity', 'reserved_quantity', 'lot_id', 'product_uom_id', 'inventory_quantity', 'inventory_diff_quantity'],
             limit: 100
           }
         },
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
               [['id', 'in', productIds]]
             ],
             kwargs: {
-              fields: ['id', 'image_128', 'default_code', 'barcode'],
+              fields: ['id', 'image_128', 'default_code', 'barcode', 'uom_id'],
               limit: 100
             }
           },
@@ -180,24 +180,26 @@ export async function POST(request: NextRequest) {
       const productsDetailData = await productsDetailResponse.json();
 
       if (!productsDetailData.error && productsDetailData.result) {
-        // Crea una mappa per accesso rapido alle immagini
+        // Crea una mappa per accesso rapido alle immagini e UoM
         const productDetailsMap = new Map();
         productsDetailData.result.forEach((p: any) => {
           productDetailsMap.set(p.id, {
             image_128: p.image_128,
             default_code: p.default_code,
-            barcode: p.barcode
+            barcode: p.barcode,
+            uom_id: p.uom_id
           });
         });
 
-        // Aggiungi le immagini ai prodotti
+        // Aggiungi le immagini e UoM ai prodotti
         products = products.map((p: any) => {
           const details = productDetailsMap.get(p.product_id[0]);
           return {
             ...p,
             image_128: details?.image_128 || null,
             default_code: details?.default_code || p.default_code,
-            barcode: details?.barcode || p.barcode
+            barcode: details?.barcode || p.barcode,
+            uom_id: details?.uom_id || p.product_uom_id // Prende uom_id dal prodotto o product_uom_id dal quant
           };
         });
 
