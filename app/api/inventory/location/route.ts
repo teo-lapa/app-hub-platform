@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
             ]
           ],
           kwargs: {
-            fields: ['product_id', 'quantity', 'reserved_quantity', 'lot_id', 'product_uom_id', 'inventory_quantity', 'inventory_diff_quantity'],
+            fields: ['product_id', 'quantity', 'reserved_quantity', 'lot_id', 'product_uom_id', 'inventory_quantity', 'inventory_diff_quantity', 'inventory_date', 'write_date'],
             limit: 100
           }
         },
@@ -250,6 +250,8 @@ export async function POST(request: NextRequest) {
           reserved_quantity: q.reserved_quantity || 0,
           inventory_quantity: q.inventory_quantity,
           inventory_diff_quantity: q.inventory_diff_quantity,
+          inventory_date: q.inventory_date,
+          write_date: q.write_date,
 
           // Dettagli prodotto
           image_128: productDetails?.image_128 || null,

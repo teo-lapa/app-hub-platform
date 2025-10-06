@@ -31,6 +31,8 @@ export interface Product extends BasicProduct {
   // Stato inventario
   inventory_quantity?: number | null; // Quantità contata
   inventory_diff_quantity?: number | null; // Differenza
+  inventory_date?: string | null; // Data inventario
+  write_date?: string | null; // Ultima modifica
   lastCountDate?: string | null;
   lastCountUser?: string | null;
   isCounted: boolean;

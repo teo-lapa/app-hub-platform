@@ -19,6 +19,8 @@ interface ProductItem {
     name: string;
     expiration_date?: string;
   };
+  write_date?: string; // Data ultima modifica
+  inventory_date?: string; // Data inventario
   isSelected?: boolean;
 }
 
@@ -109,16 +111,26 @@ export function ProductList({ products, onSelectProduct, onUpdateQuantity, onOpe
                     <p className="text-sm text-gray-400">Codice: {product.code}</p>
                   )}
 
+                  {/* Info lotto e scadenza */}
                   {product.lot && (
-                    <div className="mt-1">
+                    <div className="mt-1 flex flex-wrap gap-2 items-center">
                       <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
                         Lotto: {product.lot.name}
                       </span>
                       {product.lot.expiration_date && (
-                        <span className="text-xs text-gray-400 ml-2">
+                        <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded">
                           Scad: {new Date(product.lot.expiration_date).toLocaleDateString('it-IT')}
                         </span>
                       )}
+                    </div>
+                  )}
+
+                  {/* Data ultima modifica/conteggio */}
+                  {(product.inventory_date || product.write_date) && (
+                    <div className="mt-1">
+                      <span className="text-xs text-gray-500">
+                        Ultimo conteggio: {new Date(product.inventory_date || product.write_date || '').toLocaleString('it-IT')}
+                      </span>
                     </div>
                   )}
 

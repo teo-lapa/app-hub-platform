@@ -141,6 +141,8 @@ export default function InventarioPage() {
         // Stato conteggio
         inventory_quantity: item.inventory_quantity,
         inventory_diff_quantity: item.inventory_diff_quantity,
+        inventory_date: item.inventory_date,
+        write_date: item.write_date,
         isCounted: item.inventory_quantity !== null && item.inventory_quantity !== undefined,
         isCountedRecent: false
       }));
@@ -575,7 +577,9 @@ export default function InventarioPage() {
                 id: p.lot_id,
                 name: p.lot_name || '',
                 expiration_date: p.lot_expiration_date || undefined
-              } : undefined
+              } : undefined,
+              inventory_date: p.inventory_date,
+              write_date: p.write_date
             }))}
             onSelectProduct={(product) => {
               const selectedProd = appState.products.find(p => p.id === product.id);
