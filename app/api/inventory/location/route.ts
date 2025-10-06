@@ -145,13 +145,17 @@ export async function POST(request: NextRequest) {
       throw new Error(inventoryData.error.message || 'Errore ricerca inventario');
     }
 
-    let products = inventoryData.result || [];
-    console.log(`📦 Trovati ${products.length} record inventario nell'ubicazione`);
+    let quants = inventoryData.result || [];
+    console.log(`📦 Trovati ${quants.length} quant (righe inventario) nell'ubicazione`);
 
-    // Se ci sono prodotti, recupera anche le loro immagini
-    if (products.length > 0) {
-      const productIds = Array.from(new Set(products.map((p: any) => p.product_id[0])));
-      console.log(`🖼️ Recupero immagini per ${productIds.length} prodotti...`);
+    let products: any[] = [];
+
+    // Se ci sono quants, recupera dettagli prodotti E lotti
+    if (quants.length > 0) {
+      const productIds = Array.from(new Set(quants.map((q: any) => q.product_id[0])));
+      const lotIds = Array.from(new Set(quants.filter((q: any) => q.lot_id).map((q: any) => q.lot_id[0])));
+
+      console.log(`🖼️ Recupero dettagli per ${productIds.length} prodotti e ${lotIds.length} lotti...`);
 
       const productsDetailResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
         method: 'POST',
@@ -179,9 +183,11 @@ export async function POST(request: NextRequest) {
 
       const productsDetailData = await productsDetailResponse.json();
 
+      // Crea mappe per accesso rapido
+      const productDetailsMap = new Map();
+      const lotDetailsMap = new Map();
+
       if (!productsDetailData.error && productsDetailData.result) {
-        // Crea una mappa per accesso rapido alle immagini e UoM
-        const productDetailsMap = new Map();
         productsDetailData.result.forEach((p: any) => {
           productDetailsMap.set(p.id, {
             image_128: p.image_128,
@@ -190,21 +196,75 @@ export async function POST(request: NextRequest) {
             uom_id: p.uom_id
           });
         });
+      }
 
-        // Aggiungi le immagini e UoM ai prodotti
-        products = products.map((p: any) => {
-          const details = productDetailsMap.get(p.product_id[0]);
-          return {
-            ...p,
-            image_128: details?.image_128 || null,
-            default_code: details?.default_code || p.default_code,
-            barcode: details?.barcode || p.barcode,
-            uom_id: details?.uom_id || p.product_uom_id // Prende uom_id dal prodotto o product_uom_id dal quant
-          };
+      // Recupera dettagli lotti con scadenze
+      if (lotIds.length > 0) {
+        const lotsDetailResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': `session_id=${sessionId}`
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {
+              model: 'stock.lot',
+              method: 'search_read',
+              args: [
+                [['id', 'in', lotIds]]
+              ],
+              kwargs: {
+                fields: ['id', 'name', 'expiration_date', 'product_id'],
+                limit: 100
+              }
+            },
+            id: Math.random()
+          })
         });
 
-        console.log(`✅ Immagini aggiunte ai prodotti`);
+        const lotsDetailData = await lotsDetailResponse.json();
+
+        if (!lotsDetailData.error && lotsDetailData.result) {
+          lotsDetailData.result.forEach((lot: any) => {
+            lotDetailsMap.set(lot.id, {
+              name: lot.name,
+              expiration_date: lot.expiration_date,
+              product_id: lot.product_id
+            });
+          });
+        }
       }
+
+      // Combina tutti i dati: quant + prodotto + lotto
+      products = quants.map((q: any) => {
+        const productDetails = productDetailsMap.get(q.product_id[0]);
+        const lotDetails = q.lot_id ? lotDetailsMap.get(q.lot_id[0]) : null;
+
+        return {
+          quant_id: q.id,
+          product_id: q.product_id[0],
+          product_name: q.product_id[1],
+          quantity: q.quantity || 0,
+          reserved_quantity: q.reserved_quantity || 0,
+          inventory_quantity: q.inventory_quantity,
+          inventory_diff_quantity: q.inventory_diff_quantity,
+
+          // Dettagli prodotto
+          image_128: productDetails?.image_128 || null,
+          default_code: productDetails?.default_code || null,
+          barcode: productDetails?.barcode || null,
+          uom_id: productDetails?.uom_id || q.product_uom_id,
+
+          // Dettagli lotto
+          lot_id: q.lot_id ? q.lot_id[0] : null,
+          lot_name: q.lot_id ? q.lot_id[1] : null,
+          lot_expiration_date: lotDetails?.expiration_date || null,
+        };
+      });
+
+      console.log(`✅ Dati combinati: ${products.length} righe con prodotti, lotti e scadenze`);
     }
 
     // Se non ci sono prodotti, cerca alcuni prodotti del catalogo per gestione inventario

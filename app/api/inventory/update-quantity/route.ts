@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooClient } from '@/lib/odoo-client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,29 +11,45 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const client = await getOdooClient();
+    // Helper per chiamate RPC tramite /api/odoo/rpc
+    const odooRpc = async (model: string, method: string, args: any[] = [], kwargs: any = {}) => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/odoo/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, method, args, kwargs })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Errore chiamata Odoo');
+      }
+
+      return await response.json();
+    };
 
     // Gestisci creazione lotto se necessario
     let actualLotId = lotId;
     if (!lotId && lotNumber && quantity > 0) {
       // Cerca lotto esistente o creane uno nuovo
-      const existingLots = await client.searchRead(
+      const existingLotsData = await odooRpc(
         'stock.lot',
-        [
+        'search_read',
+        [[
           ['product_id', '=', productId],
           ['name', '=', lotNumber]
-        ],
-        ['id'],
-        1
+        ]],
+        { fields: ['id'], limit: 1 }
       );
 
-      if (existingLots && existingLots.length > 0) {
+      const existingLots = existingLotsData.result || [];
+
+      if (existingLots.length > 0) {
         actualLotId = existingLots[0].id;
         // Aggiorna scadenza se fornita
         if (expiryDate) {
-          await client.write('stock.lot', [actualLotId], {
+          await odooRpc('stock.lot', 'write', [[actualLotId], {
             expiration_date: expiryDate
-          });
+          }]);
         }
       } else {
         // Crea nuovo lotto
@@ -48,8 +63,8 @@ export async function POST(req: NextRequest) {
           lotData.expiration_date = expiryDate;
         }
 
-        const newLotIds = await client.create('stock.lot', [lotData]);
-        actualLotId = newLotIds[0];
+        const newLotData = await odooRpc('stock.lot', 'create', [[lotData]]);
+        actualLotId = newLotData.result[0];
       }
     }
 
@@ -65,23 +80,25 @@ export async function POST(req: NextRequest) {
       domain.push(['lot_id', '=', false]);
     }
 
-    const quants = await client.searchRead(
+    const quantsData = await odooRpc(
       'stock.quant',
-      domain,
-      ['id'],
-      1
+      'search_read',
+      [domain],
+      { fields: ['id'], limit: 1 }
     );
 
-    if (quants && quants.length > 0) {
+    const quants = quantsData.result || [];
+
+    if (quants.length > 0) {
       const quantId = quants[0].id;
 
       // Aggiorna la quantità inventario
-      await client.write('stock.quant', [quantId], {
+      await odooRpc('stock.quant', 'write', [[quantId], {
         inventory_quantity: quantity
-      });
+      }]);
 
       // Applica l'inventario
-      await client.call('stock.quant', 'action_apply_inventory', [[quantId]]);
+      await odooRpc('stock.quant', 'action_apply_inventory', [[quantId]]);
 
       return NextResponse.json({
         success: true,
@@ -89,16 +106,18 @@ export async function POST(req: NextRequest) {
       });
     } else {
       // Se non esiste il quant, crealo
-      const newQuant = await client.create('stock.quant', [{
+      const newQuantData = await odooRpc('stock.quant', 'create', [[{
         product_id: productId,
         location_id: locationId,
         lot_id: actualLotId || false,
         inventory_quantity: quantity
-      }]);
+      }]]);
 
-      if (newQuant && newQuant.length > 0) {
+      const newQuant = newQuantData.result || [];
+
+      if (newQuant.length > 0) {
         // Applica l'inventario
-        await client.call('stock.quant', 'action_apply_inventory', [newQuant]);
+        await odooRpc('stock.quant', 'action_apply_inventory', [newQuant]);
 
         return NextResponse.json({
           success: true,
