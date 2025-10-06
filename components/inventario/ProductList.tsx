@@ -6,12 +6,14 @@ import { Package, AlertTriangle, Check, X, Calculator } from 'lucide-react';
 
 interface ProductItem {
   id: number;
+  quant_id?: number; // ID univoco del quant (prodotto+ubicazione+lotto)
   name: string;
   code?: string;
   image?: string;
   stockQuantity: number;
   countedQuantity: number;
   difference?: number;
+  uom?: string; // Unità di misura
   lot?: {
     id: number;
     name: string;
@@ -76,7 +78,7 @@ export function ProductList({ products, onSelectProduct, onUpdateQuantity, onOpe
       <AnimatePresence>
         {localProducts.map((product) => (
           <motion.div
-            key={product.id}
+            key={product.quant_id || `${product.id}-${product.lot?.id || 'no-lot'}`}
             layout
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -124,7 +126,7 @@ export function ProductList({ products, onSelectProduct, onUpdateQuantity, onOpe
                   <div className="flex items-center gap-4 mt-3">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-400">Stock:</span>
-                      <span className="font-bold">{product.stockQuantity} PZ</span>
+                      <span className="font-bold">{product.stockQuantity} {product.uom || 'PZ'}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -161,11 +163,11 @@ export function ProductList({ products, onSelectProduct, onUpdateQuantity, onOpe
                     <div className={`mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-lg ${getDifferenceBg(product.difference)}`}>
                       {product.difference > 0 ? (
                         <span className={`text-sm font-semibold ${getDifferenceColor(product.difference)}`}>
-                          +{product.difference} PZ
+                          +{product.difference} {product.uom || 'PZ'}
                         </span>
                       ) : (
                         <span className={`text-sm font-semibold ${getDifferenceColor(product.difference)}`}>
-                          {product.difference} PZ
+                          {product.difference} {product.uom || 'PZ'}
                         </span>
                       )}
                       {Math.abs(product.difference) > 10 && (

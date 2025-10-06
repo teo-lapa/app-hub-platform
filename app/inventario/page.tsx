@@ -118,28 +118,34 @@ export default function InventarioPage() {
 
       const { location, inventory } = result;
 
-      // Convertiamo i prodotti dell'inventory nel formato Product corretto
+      // L'API ora restituisce righe separate per ogni lotto (quant)
+      // Ogni item è già un prodotto+lotto specifico
       const products: Product[] = inventory.map((item: any) => ({
-        id: item.product_id[0],
-        name: item.product_id[1],
+        id: item.product_id,
+        quant_id: item.quant_id,
+        name: item.product_name,
         code: item.default_code || '',
         barcode: item.barcode || '',
         default_code: item.default_code || '',
         image: item.image_128 ? `data:image/png;base64,${item.image_128}` : null,
         quantity: item.quantity || 0,
         reserved: item.reserved_quantity || 0,
-        uom: item.uom_id ? item.uom_id[1] : (item.product_uom_id ? item.product_uom_id[1] : 'PZ'),
+        uom: item.uom_id ? item.uom_id[1] : 'PZ',
         totalQty: item.quantity || 0,
-        lots: item.lot_id ? [{
-          id: item.lot_id[0],
-          name: item.lot_id[1],
-          quantity: item.quantity || 0
-        }] : [],
-        isCounted: false,
+
+        // Dati lotto
+        lot_id: item.lot_id,
+        lot_name: item.lot_name,
+        lot_expiration_date: item.lot_expiration_date,
+
+        // Stato conteggio
+        inventory_quantity: item.inventory_quantity,
+        inventory_diff_quantity: item.inventory_diff_quantity,
+        isCounted: item.inventory_quantity !== null && item.inventory_quantity !== undefined,
         isCountedRecent: false
       }));
 
-      console.log('📦 [React] Prodotti convertiti:', products.length, products);
+      console.log('📦 [React] Quants caricati (prodotto+lotto):', products.length, products);
 
       setAppState(prev => ({
         ...prev,
@@ -557,11 +563,19 @@ export default function InventarioPage() {
           <ProductList
             products={appState.products.map(p => ({
               id: p.id,
+              quant_id: p.quant_id,
               name: p.name,
               code: p.code,
+              image: p.image || undefined,
+              uom: p.uom,
               stockQuantity: p.totalQty || 0,
-              countedQuantity: p.totalQty || 0,
-              difference: 0
+              countedQuantity: p.inventory_quantity ?? p.totalQty || 0,
+              difference: p.inventory_diff_quantity ?? 0,
+              lot: p.lot_id ? {
+                id: p.lot_id,
+                name: p.lot_name || '',
+                expiration_date: p.lot_expiration_date || undefined
+              } : undefined
             }))}
             onSelectProduct={(product) => {
               const selectedProd = appState.products.find(p => p.id === product.id);

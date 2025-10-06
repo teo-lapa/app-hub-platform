@@ -17,15 +17,29 @@ export interface BasicProduct {
 }
 
 export interface Product extends BasicProduct {
+  quant_id?: number; // ID del quant Odoo (stock.quant)
+  quantity: number; // Quantità attuale in stock
+  reserved: number; // Quantità riservata
   uom_id?: number;
   totalQty: number;
-  lots: Lot[];
+
+  // Dati lotto (ogni Product ora rappresenta un solo lotto)
+  lot_id?: number | null;
+  lot_name?: string | null;
+  lot_expiration_date?: string | null;
+
+  // Stato inventario
+  inventory_quantity?: number | null; // Quantità contata
+  inventory_diff_quantity?: number | null; // Differenza
   lastCountDate?: string | null;
   lastCountUser?: string | null;
-  inventoryQuantity?: number | null;
-  inventoryDiff?: number | null;
   isCounted: boolean;
   isCountedRecent: boolean;
+
+  // Legacy (per compatibilità temporanea)
+  lots?: Lot[];
+  inventoryQuantity?: number | null;
+  inventoryDiff?: number | null;
 }
 
 export interface Lot {
