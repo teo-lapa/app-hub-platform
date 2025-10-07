@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       ],
       [
         'id', 'product_id', 'location_id', 'lot_id', 'quantity',
-        'inventory_quantity', 'inventory_date', 'inventory_diff_quantity',
+        'inventory_quantity', 'inventory_date', 'last_count_date', 'inventory_diff_quantity',
         'user_id', 'product_uom_id'
       ],
       100
@@ -81,12 +81,13 @@ export async function POST(req: NextRequest) {
           productData.inventoryQuantity = quant.inventory_quantity;
           productData.inventoryDiff = quant.inventory_diff_quantity || 0;
 
-          if (quant.inventory_date) {
-            productData.lastCountDate = quant.inventory_date;
+          // Usa last_count_date invece di inventory_date
+          if (quant.last_count_date) {
+            productData.lastCountDate = quant.last_count_date;
             productData.isCounted = true;
 
             // Verifica se contato negli ultimi 5 giorni
-            const countDate = new Date(quant.inventory_date);
+            const countDate = new Date(quant.last_count_date);
             const today = new Date();
             const fiveDaysAgo = new Date(today.getTime() - (5 * 24 * 60 * 60 * 1000));
             productData.isCountedRecent = countDate >= fiveDaysAgo;
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest) {
               qty: quant.quantity,
               expiry_date: lots && lots[0] ? lots[0].expiration_date : null,
               inventoryQuantity: quant.inventory_quantity,
-              lastCountDate: quant.inventory_date,
+              lastCountDate: quant.last_count_date,
               lastCountUser: quant.user_id ? quant.user_id[1] : null,
               inventoryDiff: quant.inventory_diff_quantity || null,
               isCountedRecent: false
