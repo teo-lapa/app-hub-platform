@@ -23,9 +23,9 @@ export async function POST(req: NextRequest) {
         baseUrl = `https://${process.env.VERCEL_URL}`;
       } else if (process.env.NEXT_PUBLIC_APP_URL) {
         baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-      } else if (typeof window !== 'undefined') {
-        baseUrl = window.location.origin;
       }
+
+      console.log(`🌐 [odooRpc] URL: ${baseUrl}/api/odoo/rpc - Model: ${model} - Method: ${method}`);
 
       const response = await fetch(`${baseUrl}/api/odoo/rpc`, {
         method: 'POST',
@@ -36,8 +36,11 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({ model, method, args, kwargs })
       });
 
+      console.log(`📡 [odooRpc] Response status: ${response.status}`);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error(`❌ [odooRpc] Error response:`, errorData);
         throw new Error(errorData.error || 'Errore chiamata Odoo');
       }
 
