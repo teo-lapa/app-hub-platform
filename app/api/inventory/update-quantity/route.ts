@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('🚀 [update-quantity] Starting request');
+    console.log('🌍 [update-quantity] VERCEL_URL:', process.env.VERCEL_URL);
+    console.log('🌍 [update-quantity] NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL);
+
     const { productId, locationId, quantId, quantity, lotId, lotNumber, lotName, expiryDate, isNewProduct } = await req.json();
 
     if (!productId || !locationId || quantity === undefined) {
@@ -27,24 +31,29 @@ export async function POST(req: NextRequest) {
 
       console.log(`🌐 [odooRpc] URL: ${baseUrl}/api/odoo/rpc - Model: ${model} - Method: ${method}`);
 
-      const response = await fetch(`${baseUrl}/api/odoo/rpc`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': req.headers.get('cookie') || ''
-        },
-        body: JSON.stringify({ model, method, args, kwargs })
-      });
+      try {
+        const response = await fetch(`${baseUrl}/api/odoo/rpc`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': req.headers.get('cookie') || ''
+          },
+          body: JSON.stringify({ model, method, args, kwargs })
+        });
 
-      console.log(`📡 [odooRpc] Response status: ${response.status}`);
+        console.log(`📡 [odooRpc] Response status: ${response.status}`);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error(`❌ [odooRpc] Error response:`, errorData);
-        throw new Error(errorData.error || 'Errore chiamata Odoo');
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ [odooRpc] Error response (${response.status}):`, errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
+        }
+
+        return await response.json();
+      } catch (error: any) {
+        console.error(`❌ [odooRpc] Fetch error:`, error.message);
+        throw error;
       }
-
-      return await response.json();
     };
 
     // SE abbiamo quantId, aggiorna QUELLA riga specifica
