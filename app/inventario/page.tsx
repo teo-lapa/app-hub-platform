@@ -418,14 +418,27 @@ export default function InventarioPage() {
   const handleProductSelect = (product: BasicProduct) => {
     console.log('🆕 Prodotto selezionato dalla ricerca:', product);
 
-    // Salva il prodotto selezionato
-    setSelectedNewProduct(product);
+    // Crea un oggetto compatibile con ProductEditModal
+    const productForEdit = {
+      id: product.id,
+      name: product.name,
+      code: product.code || '',
+      barcode: product.barcode || '',
+      image: product.image,
+      uom: product.uom || 'PZ',
+      stockQuantity: 0, // Nuovo prodotto, quindi stock 0
+      countedQuantity: 0,
+      difference: 0,
+      lot: undefined
+    };
 
-    // Apri la calcolatrice per inserire la quantità
-    setCountedQuantity('0');
-    setShowCalculator(true);
+    // Apri il popup di modifica prodotto
+    setSelectedProductForEdit(productForEdit);
+    setCountedQuantity('0'); // Inizializza la quantità per il modal
+    setShowProductEditModal(true);
+    setShowSearchPanel(false); // Chiudi il pannello di ricerca
 
-    showNotification(`📦 Inserisci quantità per: ${product.name}`, 'info');
+    showNotification(`📦 Configura: ${product.name}`, 'info');
   };
 
   const openQRScanner = () => {
@@ -521,13 +534,6 @@ export default function InventarioPage() {
             >
               <Search className="w-4 h-4" />
               <span className="hidden sm:inline">Aggiungi</span>
-            </button>
-            <button
-              onClick={() => setShowBufferTransfer(true)}
-              className="glass-strong px-4 py-3 rounded-xl hover:bg-white/20 transition-colors flex items-center gap-2 bg-blue-600/20 border border-blue-500/30"
-            >
-              <Package className="w-4 h-4" />
-              <span className="hidden sm:inline">Buffer</span>
             </button>
           </div>
         </div>
@@ -815,23 +821,38 @@ export default function InventarioPage() {
               throw new Error(saveData.error || 'Errore salvataggio');
             }
 
-            // Aggiorna la lista prodotti locale
-            setLocationProducts(prev => prev.map(p =>
-              p.id === selectedProductForEdit.id
-                ? {
-                    ...p,
-                    countedQuantity: data.quantity,
-                    difference: data.quantity - p.stockQuantity,
-                    lot: data.lotName ? {
-                      id: p.lot?.id || 0,
-                      name: data.lotName,
-                      expiration_date: data.expiryDate
-                    } : p.lot
-                  }
-                : p
-            ));
+            // Se è un nuovo prodotto (stockQuantity === 0), aggiungilo alla lista
+            if (selectedProductForEdit.stockQuantity === 0) {
+              const newProduct = {
+                ...selectedProductForEdit,
+                countedQuantity: data.quantity,
+                difference: data.quantity,
+                lot: data.lotName ? {
+                  id: 0,
+                  name: data.lotName,
+                  expiration_date: data.expiryDate
+                } : undefined
+              };
+              setLocationProducts(prev => [...prev, newProduct]);
+            } else {
+              // Aggiorna prodotto esistente
+              setLocationProducts(prev => prev.map(p =>
+                p.id === selectedProductForEdit.id
+                  ? {
+                      ...p,
+                      countedQuantity: data.quantity,
+                      difference: data.quantity - p.stockQuantity,
+                      lot: data.lotName ? {
+                        id: p.lot?.id || 0,
+                        name: data.lotName,
+                        expiration_date: data.expiryDate
+                      } : p.lot
+                    }
+                  : p
+              ));
+            }
 
-            toast.success(`✅ ${selectedProductForEdit.name} aggiornato!`);
+            toast.success(`✅ ${selectedProductForEdit.name} ${selectedProductForEdit.stockQuantity === 0 ? 'aggiunto' : 'aggiornato'}!`);
             setShowProductEditModal(false);
           } catch (error: any) {
             console.error('❌ Errore salvataggio:', error);
