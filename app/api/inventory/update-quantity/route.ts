@@ -16,9 +16,23 @@ export async function POST(req: NextRequest) {
 
     // Helper per chiamate RPC tramite /api/odoo/rpc
     const odooRpc = async (model: string, method: string, args: any[] = [], kwargs: any = {}) => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/odoo/rpc`, {
+      // Determina l'URL base corretto
+      let baseUrl = 'http://localhost:3000';
+
+      if (process.env.VERCEL_URL) {
+        baseUrl = `https://${process.env.VERCEL_URL}`;
+      } else if (process.env.NEXT_PUBLIC_APP_URL) {
+        baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+      } else if (typeof window !== 'undefined') {
+        baseUrl = window.location.origin;
+      }
+
+      const response = await fetch(`${baseUrl}/api/odoo/rpc`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': req.headers.get('cookie') || ''
+        },
         body: JSON.stringify({ model, method, args, kwargs })
       });
 
