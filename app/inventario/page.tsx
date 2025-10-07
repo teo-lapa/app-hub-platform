@@ -809,7 +809,9 @@ export default function InventarioPage() {
             });
 
             const saveData = await saveResponse.json();
+            console.log('📡 [onConfirm] Response from API:', saveData);
             if (!saveData.success) {
+              console.error('❌ [onConfirm] API returned error:', saveData.error);
               throw new Error(saveData.error || 'Errore salvataggio');
             }
 
