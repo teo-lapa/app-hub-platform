@@ -222,11 +222,11 @@ export async function POST(req: NextRequest) {
       error: 'Impossibile aggiornare la giacenza'
     });
 
-  } catch (error) {
-    console.error('Errore aggiornamento giacenza:', error);
+  } catch (error: any) {
+    console.error('❌ [update-quantity] Errore aggiornamento giacenza:', error);
     return NextResponse.json({
       success: false,
-      error: 'Errore nell\'aggiornamento della giacenza'
+      error: `Errore: ${error.message || String(error)}`
     });
   }
 }
