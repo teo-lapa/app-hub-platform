@@ -7,10 +7,22 @@ const anthropic = new Anthropic({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔄 Parse invoice API called');
+
+    // Check API key
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('❌ ANTHROPIC_API_KEY not found in environment');
+      return NextResponse.json(
+        { success: false, error: 'Configurazione API non valida' },
+        { status: 500 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('invoice') as File;
 
     if (!file) {
+      console.log('❌ No file uploaded');
       return NextResponse.json(
         { success: false, error: 'Nessun file caricato' },
         { status: 400 }
@@ -138,10 +150,13 @@ NON aggiungere testo prima o dopo il JSON. SOLO il JSON.`,
 
   } catch (error: any) {
     console.error('❌ Error parsing invoice:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error details:', JSON.stringify(error, null, 2));
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Errore durante il parsing della fattura'
+        error: error.message || 'Errore durante il parsing della fattura',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },
       { status: 500 }
     );
