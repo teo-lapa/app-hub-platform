@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getOdooClient } from '@/lib/odoo/client';
+import { getServerSession } from '@/lib/auth/session';
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('🚀 [update-quantity] Starting request');
-    console.log('🌍 [update-quantity] VERCEL_URL:', process.env.VERCEL_URL);
-    console.log('🌍 [update-quantity] NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL);
-
     const { productId, locationId, quantId, quantity, lotId, lotNumber, lotName, expiryDate, isNewProduct } = await req.json();
 
     if (!productId || !locationId || quantity === undefined) {
@@ -15,42 +13,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Usa lotName se fornito, altrimenti lotNumber (retrocompatibilità)
+    // Ottieni sessione Odoo
+    const session = await getServerSession(req);
+    if (!session) {
+      return NextResponse.json({
+        success: false,
+        error: 'Non autenticato'
+      });
+    }
+
+    const client = getOdooClient();
     const actualLotName = lotName || lotNumber;
-
-    // Helper per chiamate RPC tramite /api/odoo/rpc
-    const odooRpc = async (model: string, method: string, args: any[] = [], kwargs: any = {}) => {
-      // Determina l'URL base corretto usando l'host della richiesta
-      const host = req.headers.get('host');
-      const protocol = host?.includes('localhost') ? 'http' : 'https';
-      const baseUrl = `${protocol}://${host}`;
-
-      console.log(`🌐 [odooRpc] Host: ${host}, URL: ${baseUrl}/api/odoo/rpc - Model: ${model} - Method: ${method}`);
-
-      try {
-        const response = await fetch(`${baseUrl}/api/odoo/rpc`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cookie': req.headers.get('cookie') || ''
-          },
-          body: JSON.stringify({ model, method, args, kwargs })
-        });
-
-        console.log(`📡 [odooRpc] Response status: ${response.status}`);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`❌ [odooRpc] Error response (${response.status}):`, errorText);
-          throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
-        }
-
-        return await response.json();
-      } catch (error: any) {
-        console.error(`❌ [odooRpc] Fetch error:`, error.message);
-        throw error;
-      }
-    };
 
     // SE abbiamo quantId, aggiorna QUELLA riga specifica
     if (quantId) {
@@ -60,25 +33,21 @@ export async function POST(req: NextRequest) {
       let actualLotId = lotId;
       if (actualLotName) {
         // Cerca o crea il lotto
-        const existingLotsData = await odooRpc(
+        const existingLots = await client.searchRead(
           'stock.lot',
-          'search_read',
-          [[
-            ['product_id', '=', productId],
-            ['name', '=', actualLotName]
-          ]],
-          { fields: ['id'], limit: 1 }
+          [[['product_id', '=', productId], ['name', '=', actualLotName]]],
+          ['id'],
+          session,
+          1
         );
 
-        const existingLots = existingLotsData.result || [];
-
-        if (existingLots.length > 0) {
+        if (existingLots && existingLots.length > 0) {
           actualLotId = existingLots[0].id;
           // Aggiorna scadenza se fornita
           if (expiryDate) {
-            await odooRpc('stock.lot', 'write', [[actualLotId], {
+            await client.write('stock.lot', [actualLotId], {
               expiration_date: expiryDate
-            }]);
+            }, session);
           }
         } else {
           // Crea nuovo lotto
@@ -92,26 +61,19 @@ export async function POST(req: NextRequest) {
             lotData.expiration_date = expiryDate;
           }
 
-          const newLotData = await odooRpc('stock.lot', 'create', [[lotData]]);
-          actualLotId = newLotData.result[0];
+          const newLotId = await client.create('stock.lot', [lotData], session);
+          actualLotId = newLotId;
         }
       }
 
-      // Aggiorna il quant specifico con la quantità di conteggio inventario
-      const updateData: any = {
-        inventory_quantity: quantity
-      };
-
       console.log(`📝 Scrivo inventory_quantity: ${quantity} sul quant ${quantId}`);
 
-      // IMPORTANTE: Scrivo SOLO inventory_quantity, NON applico l'inventario automaticamente
-      // L'utente vedrà la differenza in Odoo e potrà applicare manualmente
-      await odooRpc('stock.quant', 'write', [[quantId], updateData]);
+      // Aggiorna il quant specifico con la quantità di conteggio inventario
+      await client.write('stock.quant', [quantId], {
+        inventory_quantity: quantity
+      }, session);
 
       console.log(`✅ inventory_quantity scritto correttamente`);
-
-      // NON chiamare action_apply_inventory qui!
-      // L'utente applicherà l'inventario manualmente da Odoo quando ha finito tutto il conteggio
 
       return NextResponse.json({
         success: true,
@@ -120,29 +82,24 @@ export async function POST(req: NextRequest) {
     }
 
     // ALTRIMENTI: Logica vecchia per nuovi prodotti o senza quantId
-    // Gestisci creazione lotto se necessario
     let actualLotId = lotId;
     if (!lotId && actualLotName && quantity > 0) {
       // Cerca lotto esistente o creane uno nuovo
-      const existingLotsData = await odooRpc(
+      const existingLots = await client.searchRead(
         'stock.lot',
-        'search_read',
-        [[
-          ['product_id', '=', productId],
-          ['name', '=', actualLotName]
-        ]],
-        { fields: ['id'], limit: 1 }
+        [[['product_id', '=', productId], ['name', '=', actualLotName]]],
+        ['id'],
+        session,
+        1
       );
 
-      const existingLots = existingLotsData.result || [];
-
-      if (existingLots.length > 0) {
+      if (existingLots && existingLots.length > 0) {
         actualLotId = existingLots[0].id;
         // Aggiorna scadenza se fornita
         if (expiryDate) {
-          await odooRpc('stock.lot', 'write', [[actualLotId], {
+          await client.write('stock.lot', [actualLotId], {
             expiration_date: expiryDate
-          }]);
+          }, session);
         }
       } else {
         // Crea nuovo lotto
@@ -156,8 +113,8 @@ export async function POST(req: NextRequest) {
           lotData.expiration_date = expiryDate;
         }
 
-        const newLotData = await odooRpc('stock.lot', 'create', [[lotData]]);
-        actualLotId = newLotData.result[0];
+        const newLotId = await client.create('stock.lot', [lotData], session);
+        actualLotId = newLotId;
       }
     }
 
@@ -173,24 +130,21 @@ export async function POST(req: NextRequest) {
       domain.push(['lot_id', '=', false]);
     }
 
-    const quantsData = await odooRpc(
+    const quants = await client.searchRead(
       'stock.quant',
-      'search_read',
       [domain],
-      { fields: ['id'], limit: 1 }
+      ['id'],
+      session,
+      1
     );
 
-    const quants = quantsData.result || [];
-
-    if (quants.length > 0) {
+    if (quants && quants.length > 0) {
       const foundQuantId = quants[0].id;
 
       // Aggiorna la quantità inventario
-      await odooRpc('stock.quant', 'write', [[foundQuantId], {
+      await client.write('stock.quant', [foundQuantId], {
         inventory_quantity: quantity
-      }]);
-
-      // NON applicare automaticamente - l'utente applicherà da Odoo
+      }, session);
 
       return NextResponse.json({
         success: true,
@@ -198,32 +152,21 @@ export async function POST(req: NextRequest) {
       });
     } else {
       // Se non esiste il quant, crealo
-      const newQuantData = await odooRpc('stock.quant', 'create', [[{
+      await client.create('stock.quant', [{
         product_id: productId,
         location_id: locationId,
         lot_id: actualLotId || false,
         inventory_quantity: quantity
-      }]]);
+      }], session);
 
-      const newQuant = newQuantData.result || [];
-
-      if (newQuant.length > 0) {
-        // NON applicare automaticamente - l'utente applicherà da Odoo
-
-        return NextResponse.json({
-          success: true,
-          message: 'Conteggio inventario creato'
-        });
-      }
+      return NextResponse.json({
+        success: true,
+        message: 'Conteggio inventario creato'
+      });
     }
 
-    return NextResponse.json({
-      success: false,
-      error: 'Impossibile aggiornare la giacenza'
-    });
-
   } catch (error: any) {
-    console.error('❌ [update-quantity] Errore aggiornamento giacenza:', error);
+    console.error('❌ [update-quantity] Errore:', error);
     return NextResponse.json({
       success: false,
       error: `Errore: ${error.message || String(error)}`
