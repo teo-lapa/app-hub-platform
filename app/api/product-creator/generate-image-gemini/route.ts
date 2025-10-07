@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import sharp from 'sharp';
-import path from 'path';
-import fs from 'fs';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -75,59 +72,6 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Image generated successfully with Gemini 2.5 Flash Image');
     console.log('📊 Image format:', imageMimeType);
-
-    // Apply watermark (logo) to the image
-    try {
-      console.log('🏷️ Adding LAPA logo watermark...');
-
-      // Convert base64 to buffer
-      const imageBuffer = Buffer.from(imageBase64, 'base64');
-
-      // Load logo from public folder
-      const logoPath = path.join(process.cwd(), 'public', 'logo-lapa.png');
-
-      if (fs.existsSync(logoPath)) {
-        // Get image dimensions
-        const imageMetadata = await sharp(imageBuffer).metadata();
-        const imageWidth = imageMetadata.width || 1024;
-        const imageHeight = imageMetadata.height || 1024;
-
-        // Calculate logo size (15% of image width)
-        const logoWidth = Math.floor(imageWidth * 0.15);
-
-        // Resize logo
-        const resizedLogo = await sharp(logoPath)
-          .resize(logoWidth, null, {
-            fit: 'contain',
-            background: { r: 0, g: 0, b: 0, alpha: 0 }
-          })
-          .toBuffer();
-
-        // Get resized logo dimensions
-        const logoMetadata = await sharp(resizedLogo).metadata();
-        const logoHeight = logoMetadata.height || 0;
-
-        // Position: bottom-right with 20px margin
-        const watermarkedImage = await sharp(imageBuffer)
-          .composite([{
-            input: resizedLogo,
-            top: imageHeight - logoHeight - 20,
-            left: imageWidth - logoWidth - 20,
-            blend: 'over'
-          }])
-          .toBuffer();
-
-        // Convert back to base64
-        imageBase64 = watermarkedImage.toString('base64');
-
-        console.log('✅ Logo watermark applied successfully');
-      } else {
-        console.warn('⚠️ Logo file not found at:', logoPath);
-      }
-    } catch (watermarkError) {
-      console.error('⚠️ Error applying watermark:', watermarkError);
-      // Continue without watermark if there's an error
-    }
 
     // If productId is provided, upload to Odoo
     if (productId) {
