@@ -12,6 +12,7 @@ import { ProductSearch } from '@/components/inventario/ProductSearch';
 import { BufferTransfer } from '@/components/inventario/BufferTransfer';
 import { LotManager } from '@/components/inventario/LotManager';
 import { ProductList } from '@/components/inventario/ProductList';
+import { ProductEditModal } from '@/components/inventario/ProductEditModal';
 import { ConnectionStatus } from '@/components/inventario/ConnectionStatus';
 import { getInventoryClient } from '@/lib/odoo/inventoryClient';
 import { Location, Product, BasicProduct, AppState, InventoryConfig } from '@/lib/types/inventory';
@@ -54,6 +55,8 @@ export default function InventarioPage() {
   const [selectedProductForLot, setSelectedProductForLot] = useState<any>(null);
   const [selectedNewProduct, setSelectedNewProduct] = useState<BasicProduct | null>(null);
   const [locationProducts, setLocationProducts] = useState<any[]>([]);
+  const [showProductEditModal, setShowProductEditModal] = useState(false);
+  const [selectedProductForEdit, setSelectedProductForEdit] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
@@ -161,7 +164,13 @@ export default function InventarioPage() {
         image: p.image,
         stockQuantity: p.totalQty || 0,
         countedQuantity: p.totalQty || 0,
-        difference: 0
+        difference: 0,
+        // Aggiungi dati lotto in formato corretto per ProductEditModal
+        lot: p.lot_id ? {
+          id: p.lot_id,
+          name: p.lot_name || '',
+          expiration_date: p.lot_expiration_date || undefined
+        } : undefined
       }));
 
       console.log('🏪 [React] Setting locationProducts:', locationProductsData.length);
@@ -542,23 +551,14 @@ export default function InventarioPage() {
           <ProductList
             products={locationProducts}
             onSelectProduct={(product) => {
-              setSelectedProductForLot(product);
-              setShowLotManager(true);
+              setSelectedProductForEdit(product);
+              setShowProductEditModal(true);
             }}
             onUpdateQuantity={(productId, quantity) => {
               setLocationProducts(prev => prev.map(p =>
                 p.id === productId ? { ...p, countedQuantity: quantity } : p
               ));
               toast.success('Quantità aggiornata');
-            }}
-            onOpenCalculator={(productId, currentQuantity) => {
-              const selectedProd = locationProducts.find(p => p.id === productId);
-              setAppState(prev => ({
-                ...prev,
-                selectedProduct: selectedProd || null
-              }));
-              setCountedQuantity(currentQuantity.toString());
-              setShowCalculator(true);
             }}
           />
         ) : appState.currentLocation && appState.products.length > 0 ? (
@@ -582,23 +582,11 @@ export default function InventarioPage() {
               write_date: p.write_date
             }))}
             onSelectProduct={(product) => {
-              const selectedProd = appState.products.find(p => p.id === product.id);
-              if (selectedProd) {
-                setAppState(prev => ({ ...prev, selectedProduct: selectedProd }));
-                setShowBottomPanel(true);
-              }
+              setSelectedProductForEdit(product);
+              setShowProductEditModal(true);
             }}
             onUpdateQuantity={(productId, quantity) => {
               console.log('Update quantity:', productId, quantity);
-            }}
-            onOpenCalculator={(productId, currentQuantity) => {
-              const selectedProd = appState.products.find(p => p.id === productId);
-              setAppState(prev => ({
-                ...prev,
-                selectedProduct: selectedProd || null
-              }));
-              setCountedQuantity(currentQuantity.toString());
-              setShowCalculator(true);
             }}
           />
         ) : appState.currentLocation ? (
@@ -740,7 +728,15 @@ export default function InventarioPage() {
       <CalculatorComponent
         isOpen={showCalculator}
         onClose={() => setShowCalculator(false)}
-        onConfirm={handleCalculatorConfirm}
+        onConfirm={(value) => {
+          setCountedQuantity(value);
+          setShowCalculator(false);
+
+          // Se non stiamo usando il ProductEditModal, usa la vecchia logica
+          if (!showProductEditModal) {
+            handleCalculatorConfirm(value);
+          }
+        }}
         title="Inserisci Quantità"
         initialValue={countedQuantity || "0"}
       />
@@ -784,6 +780,65 @@ export default function InventarioPage() {
           toast.success(`Lotto ${lot.name} selezionato`);
         }}
         currentLocationId={appState.currentLocation?.id}
+      />
+
+      {/* Product Edit Modal */}
+      <ProductEditModal
+        isOpen={showProductEditModal}
+        onClose={() => setShowProductEditModal(false)}
+        product={selectedProductForEdit}
+        onConfirm={async (data) => {
+          if (!selectedProductForEdit || !appState.currentLocation) return;
+
+          try {
+            // Salva su Odoo la quantità, lotto e scadenza
+            const saveResponse = await fetch('/api/inventory/update-quantity', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                productId: selectedProductForEdit.id,
+                locationId: appState.currentLocation.id,
+                quantId: selectedProductForEdit.quant_id, // ID della riga specifica
+                quantity: data.quantity,
+                lotName: data.lotName,
+                expiryDate: data.expiryDate
+              })
+            });
+
+            const saveData = await saveResponse.json();
+            if (!saveData.success) {
+              throw new Error(saveData.error || 'Errore salvataggio');
+            }
+
+            // Aggiorna la lista prodotti locale
+            setLocationProducts(prev => prev.map(p =>
+              p.id === selectedProductForEdit.id
+                ? {
+                    ...p,
+                    countedQuantity: data.quantity,
+                    difference: data.quantity - p.stockQuantity,
+                    lot: data.lotName ? {
+                      id: p.lot?.id || 0,
+                      name: data.lotName,
+                      expiration_date: data.expiryDate
+                    } : p.lot
+                  }
+                : p
+            ));
+
+            toast.success(`✅ ${selectedProductForEdit.name} aggiornato!`);
+            setShowProductEditModal(false);
+          } catch (error: any) {
+            console.error('❌ Errore salvataggio:', error);
+            toast.error('Errore salvataggio: ' + error.message);
+          }
+        }}
+        onOpenCalculator={(currentValue) => {
+          setCountedQuantity(currentValue);
+          setShowCalculator(true);
+        }}
+        calculatorValue={countedQuantity}
       />
 
       {/* Connection Status */}

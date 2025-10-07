@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, AlertTriangle, Check, X, Calculator } from 'lucide-react';
+import { Package, AlertTriangle, Check } from 'lucide-react';
 
 interface ProductItem {
   id: number;
@@ -28,10 +28,9 @@ interface ProductListProps {
   products: ProductItem[];
   onSelectProduct: (product: ProductItem) => void;
   onUpdateQuantity: (productId: number, quantity: number) => void;
-  onOpenCalculator?: (productId: number, currentQuantity: number) => void;
 }
 
-export function ProductList({ products, onSelectProduct, onUpdateQuantity, onOpenCalculator }: ProductListProps) {
+export function ProductList({ products, onSelectProduct, onUpdateQuantity }: ProductListProps) {
   const [localProducts, setLocalProducts] = useState<ProductItem[]>(products);
 
   useEffect(() => {
@@ -53,15 +52,6 @@ export function ProductList({ products, onSelectProduct, onUpdateQuantity, onOpe
     return 'bg-red-500/10';
   };
 
-  const handleQuantityChange = (productId: number, value: string) => {
-    const quantity = parseFloat(value) || 0;
-    setLocalProducts(prev => prev.map(p =>
-      p.id === productId
-        ? { ...p, countedQuantity: quantity, difference: quantity - p.stockQuantity }
-        : p
-    ));
-    onUpdateQuantity(productId, quantity);
-  };
 
   if (localProducts.length === 0) {
     return (
@@ -134,40 +124,19 @@ export function ProductList({ products, onSelectProduct, onUpdateQuantity, onOpe
                     </div>
                   )}
 
-                  {/* Quantità */}
+                  {/* Quantità - Solo visualizzazione */}
                   <div className="flex items-center gap-4 mt-3">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-400">Stock:</span>
                       <span className="font-bold">{product.stockQuantity} {product.uom || 'PZ'}</span>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-400">Contato:</span>
-                      <input
-                        type="text"
-                        value={product.countedQuantity}
-                        readOnly
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onOpenCalculator) {
-                            onOpenCalculator(product.id, product.countedQuantity);
-                          }
-                        }}
-                        className="w-20 glass px-2 py-1 rounded text-center font-bold cursor-pointer hover:bg-white/10"
-                        placeholder="0"
-                      />
-                      {onOpenCalculator && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenCalculator(product.id, product.countedQuantity);
-                          }}
-                          className="glass p-2 rounded-lg hover:bg-white/10"
-                        >
-                          <Calculator className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
+                    {product.countedQuantity !== product.stockQuantity && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-400">Contato:</span>
+                        <span className="font-bold text-blue-400">{product.countedQuantity} {product.uom || 'PZ'}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Indicatore differenza */}
