@@ -350,6 +350,8 @@ export default function InventarioPage() {
         barcode: selectedNewProduct.barcode || '',
         image: selectedNewProduct.image,
         uom: selectedNewProduct.uom || 'PZ',
+        quantity: 0, // Nuovo prodotto in inventario
+        reserved: 0,
         totalQty: quantity,
         lots: [],
         isCounted: true,
@@ -571,15 +573,15 @@ export default function InventarioPage() {
               image: p.image || undefined,
               uom: p.uom,
               stockQuantity: p.totalQty || 0,
-              countedQuantity: p.inventory_quantity ?? p.totalQty || 0,
+              countedQuantity: p.inventory_quantity ?? (p.totalQty || 0),
               difference: p.inventory_diff_quantity ?? 0,
               lot: p.lot_id ? {
                 id: p.lot_id,
                 name: p.lot_name || '',
                 expiration_date: p.lot_expiration_date || undefined
               } : undefined,
-              inventory_date: p.inventory_date,
-              write_date: p.write_date
+              inventory_date: p.inventory_date || undefined,
+              write_date: p.write_date || undefined
             }))}
             onSelectProduct={(product) => {
               setSelectedProductForEdit(product);
