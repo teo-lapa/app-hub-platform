@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
-const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
-const ODOO_LOGIN = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
-
 export async function POST(req: NextRequest) {
   try {
     const { productId, locationId, quantId, quantity, lotId, lotNumber, lotName, expiryDate, isNewProduct } = await req.json();
@@ -16,68 +11,33 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Login automatico a Odoo
-    const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          db: ODOO_DB,
-          login: ODOO_LOGIN,
-          password: ODOO_PASSWORD
-        },
-        id: 1
-      })
-    });
-
-    const authData = await authResponse.json();
-    if (authData.error || !authData.result || !authData.result.uid) {
-      return NextResponse.json({
-        success: false,
-        error: 'Autenticazione Odoo fallita'
-      }, { status: 401 });
-    }
-
-    const setCookieHeader = authResponse.headers.get('set-cookie');
-    const sessionMatch = setCookieHeader?.match(/session_id=([^;]+)/);
-    const sessionId = sessionMatch ? sessionMatch[1] : null;
-
-    if (!sessionId) {
-      return NextResponse.json({
-        success: false,
-        error: 'Session ID non trovato'
-      }, { status: 500 });
-    }
-
     const actualLotName = lotName || lotNumber;
 
-    // Helper per chiamate Odoo
-    const callOdoo = async (model: string, method: string, args: any[] = [], kwargs: any = {}) => {
-      const response = await fetch(`${ODOO_URL}/web/dataset/call_kw/${model}/${method}`, {
+    // Ottieni URL base dalla richiesta
+    const url = new URL(req.url);
+    const baseUrl = `${url.protocol}//${url.host}`;
+
+    // Helper per chiamate RPC tramite /api/odoo/rpc
+    const odooRpc = async (model: string, method: string, args: any[] = [], kwargs: any = {}) => {
+      const response = await fetch(`${baseUrl}/api/odoo/rpc`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Cookie': `session_id=${sessionId}`,
+          'Cookie': req.headers.get('cookie') || ''
         },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {
-            model,
-            method,
-            args,
-            kwargs
-          },
-          id: Date.now()
-        })
+        body: JSON.stringify({ model, method, args, kwargs })
       });
 
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error.data?.message || data.error.message || 'Errore chiamata Odoo');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
       }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Errore chiamata Odoo');
+      }
+
       return data.result;
     };
 
@@ -89,18 +49,21 @@ export async function POST(req: NextRequest) {
       let actualLotId = lotId;
       if (actualLotName) {
         // Cerca o crea il lotto
-        const existingLots = await callOdoo(
+        const existingLotsData = await odooRpc(
           'stock.lot',
           'search_read',
-          [[['product_id', '=', productId], ['name', '=', actualLotName]]],
+          [[
+            ['product_id', '=', productId],
+            ['name', '=', actualLotName]
+          ]],
           { fields: ['id'], limit: 1 }
         );
 
-        if (existingLots && existingLots.length > 0) {
-          actualLotId = existingLots[0].id;
+        if (existingLotsData && existingLotsData.length > 0) {
+          actualLotId = existingLotsData[0].id;
           // Aggiorna scadenza se fornita
           if (expiryDate) {
-            await callOdoo('stock.lot', 'write', [[actualLotId], {
+            await odooRpc('stock.lot', 'write', [[actualLotId], {
               expiration_date: expiryDate
             }]);
           }
@@ -116,15 +79,15 @@ export async function POST(req: NextRequest) {
             lotData.expiration_date = expiryDate;
           }
 
-          const newLotIds = await callOdoo('stock.lot', 'create', [[lotData]]);
-          actualLotId = newLotIds[0];
+          const newLotData = await odooRpc('stock.lot', 'create', [[lotData]]);
+          actualLotId = newLotData[0];
         }
       }
 
       console.log(`📝 Scrivo inventory_quantity: ${quantity} sul quant ${quantId}`);
 
       // Aggiorna il quant specifico con la quantità di conteggio inventario
-      await callOdoo('stock.quant', 'write', [[quantId], {
+      await odooRpc('stock.quant', 'write', [[quantId], {
         inventory_quantity: quantity
       }]);
 
@@ -139,21 +102,27 @@ export async function POST(req: NextRequest) {
     // ALTRIMENTI: Logica vecchia per nuovi prodotti o senza quantId
     let actualLotId = lotId;
     if (!lotId && actualLotName && quantity > 0) {
-      const existingLots = await callOdoo(
+      // Cerca lotto esistente o creane uno nuovo
+      const existingLotsData = await odooRpc(
         'stock.lot',
         'search_read',
-        [[['product_id', '=', productId], ['name', '=', actualLotName]]],
+        [[
+          ['product_id', '=', productId],
+          ['name', '=', actualLotName]
+        ]],
         { fields: ['id'], limit: 1 }
       );
 
-      if (existingLots && existingLots.length > 0) {
-        actualLotId = existingLots[0].id;
+      if (existingLotsData && existingLotsData.length > 0) {
+        actualLotId = existingLotsData[0].id;
+        // Aggiorna scadenza se fornita
         if (expiryDate) {
-          await callOdoo('stock.lot', 'write', [[actualLotId], {
+          await odooRpc('stock.lot', 'write', [[actualLotId], {
             expiration_date: expiryDate
           }]);
         }
       } else {
+        // Crea nuovo lotto
         const lotData: any = {
           product_id: productId,
           name: actualLotName,
@@ -164,8 +133,8 @@ export async function POST(req: NextRequest) {
           lotData.expiration_date = expiryDate;
         }
 
-        const newLotIds = await callOdoo('stock.lot', 'create', [[lotData]]);
-        actualLotId = newLotIds[0];
+        const newLotData = await odooRpc('stock.lot', 'create', [[lotData]]);
+        actualLotId = newLotData[0];
       }
     }
 
@@ -181,17 +150,18 @@ export async function POST(req: NextRequest) {
       domain.push(['lot_id', '=', false]);
     }
 
-    const quants = await callOdoo(
+    const quantsData = await odooRpc(
       'stock.quant',
       'search_read',
       [domain],
       { fields: ['id'], limit: 1 }
     );
 
-    if (quants && quants.length > 0) {
-      const foundQuantId = quants[0].id;
+    if (quantsData && quantsData.length > 0) {
+      const foundQuantId = quantsData[0].id;
 
-      await callOdoo('stock.quant', 'write', [[foundQuantId], {
+      // Aggiorna la quantità inventario
+      await odooRpc('stock.quant', 'write', [[foundQuantId], {
         inventory_quantity: quantity
       }]);
 
@@ -200,7 +170,8 @@ export async function POST(req: NextRequest) {
         message: 'Conteggio inventario salvato'
       });
     } else {
-      await callOdoo('stock.quant', 'create', [[{
+      // Se non esiste il quant, crealo
+      const newQuantData = await odooRpc('stock.quant', 'create', [[{
         product_id: productId,
         location_id: locationId,
         lot_id: actualLotId || false,
