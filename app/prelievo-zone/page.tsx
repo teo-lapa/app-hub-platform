@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, Truck, MapPin, BarChart3, Settings, ChevronRight, Clock, CheckCircle2, Camera, Sun, Moon, RefreshCw, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -483,61 +483,46 @@ export default function PrelievoZonePage() {
     setShowNumericKeyboard(true);
   };
 
-  // Listener per scanner pistola quando sei nella lista ubicazioni
+  // State per input scanner invisibile
+  const [scannerInput, setScannerInput] = useState('');
+  const scannerInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus sull'input scanner quando si apre la lista ubicazioni
   useEffect(() => {
-    if (!showLocationList) return;
+    if (showLocationList && scannerInputRef.current) {
+      scannerInputRef.current.focus();
+    }
+  }, [showLocationList]);
 
-    let scanBuffer = '';
-    let scanTimeout: NodeJS.Timeout;
+  // Handler per input scanner pistola
+  const handleScannerInput = (value: string) => {
+    if (value.trim().length === 0) return;
 
-    const handleKeyPress = (e: KeyboardEvent) => {
-      // Ignora se ci sono modali aperti
-      if (showQRScanner || showNumericKeyboard || showProductSelector) return;
+    console.log('🔫 Codice scansionato dalla pistola:', value);
 
-      // Enter significa fine scansione
-      if (e.key === 'Enter' && scanBuffer.length > 0) {
-        console.log('🔫 Codice scansionato dalla pistola:', scanBuffer);
+    // Cerca l'ubicazione nella lista corrente
+    const foundLocation = locations.find(
+      loc => loc.barcode === value ||
+             loc.name === value ||
+             loc.name.includes(value) ||
+             value.includes(loc.name)
+    );
 
-        // Cerca l'ubicazione nella lista corrente
-        const foundLocation = locations.find(
-          loc => loc.barcode === scanBuffer ||
-                 loc.name === scanBuffer ||
-                 loc.name.includes(scanBuffer) ||
-                 scanBuffer.includes(loc.name)
-        );
+    if (foundLocation) {
+      console.log('✅ Ubicazione trovata:', foundLocation.name);
+      toast.success(`📍 Apertura ${foundLocation.name}...`);
+      selectLocation(foundLocation);
+    } else {
+      console.log('❌ Ubicazione non trovata nella zona corrente');
+      toast.error('Ubicazione non trovata in questa zona');
+    }
 
-        if (foundLocation) {
-          console.log('✅ Ubicazione trovata:', foundLocation.name);
-          toast.success(`📍 Apertura ${foundLocation.name}...`);
-          selectLocation(foundLocation);
-        } else {
-          console.log('❌ Ubicazione non trovata nella zona corrente');
-          toast.error('Ubicazione non trovata in questa zona');
-        }
-
-        scanBuffer = '';
-        return;
-      }
-
-      // Accumula caratteri (ignora tasti speciali)
-      if (e.key.length === 1) {
-        scanBuffer += e.key;
-
-        // Reset buffer dopo 100ms di inattività
-        clearTimeout(scanTimeout);
-        scanTimeout = setTimeout(() => {
-          scanBuffer = '';
-        }, 100);
-      }
-    };
-
-    window.addEventListener('keypress', handleKeyPress);
-
-    return () => {
-      window.removeEventListener('keypress', handleKeyPress);
-      clearTimeout(scanTimeout);
-    };
-  }, [showLocationList, locations, showQRScanner, showNumericKeyboard, showProductSelector]);
+    // Reset input
+    setScannerInput('');
+    if (scannerInputRef.current) {
+      scannerInputRef.current.focus();
+    }
+  };
 
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -898,6 +883,23 @@ export default function PrelievoZonePage() {
                 {currentZone?.displayName}
               </div>
             </div>
+
+            {/* Input invisibile per scanner pistola */}
+            <input
+              ref={scannerInputRef}
+              type="text"
+              value={scannerInput}
+              onChange={(e) => setScannerInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleScannerInput(scannerInput);
+                }
+              }}
+              className="absolute opacity-0 w-1 h-1 pointer-events-none"
+              autoFocus
+              placeholder="Scanner input"
+            />
 
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Ubicazioni disponibili</h2>
