@@ -20,18 +20,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (!lotName || !lotName.trim()) {
-      return NextResponse.json({
-        success: false,
-        error: 'Lotto obbligatorio'
-      }, { status: 400 });
-    }
+    // Il lotto non è più obbligatorio - viene gestito solo se presente
 
-    // Se è dal catalogo, deve creare il lotto con scadenza obbligatoria
-    if (isFromCatalog && !expiryDate) {
+    // Se è dal catalogo con lotto, la scadenza è obbligatoria
+    if (isFromCatalog && lotName && lotName.trim() && !expiryDate) {
       return NextResponse.json({
         success: false,
-        error: 'Scadenza obbligatoria per nuovi prodotti'
+        error: 'Scadenza obbligatoria quando si specifica un lotto'
       }, { status: 400 });
     }
 
@@ -106,10 +101,44 @@ export async function POST(request: NextRequest) {
 
     const pickingTypeId = pickingTypes[0].id;
 
-    // 2. Se dal catalogo, crea o trova il lotto
+    // 2. Controlla se il prodotto ha tracking attivo
+    const productResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'product.product',
+          method: 'read',
+          args: [[productId], ['tracking']],
+          kwargs: {}
+        },
+        id: 2.5
+      })
+    });
+
+    const productData = await productResponse.json();
+    const tracking = productData.result?.[0]?.tracking || 'none';
+    const hasTracking = tracking === 'lot' || tracking === 'serial';
+
+    console.log(`📦 Prodotto ${productId} - tracking: ${tracking}, hasTracking: ${hasTracking}`);
+
+    // Se il prodotto ha tracking, il lotto è obbligatorio
+    if (hasTracking && (!lotName || !lotName.trim())) {
+      return NextResponse.json({
+        success: false,
+        error: 'Questo prodotto richiede un numero di lotto obbligatorio'
+      }, { status: 400 });
+    }
+
+    // 3. Se dal catalogo, crea o trova il lotto (solo se c'è tracking o lotto specificato)
     let finalLotId = lotId;
 
-    if (isFromCatalog || !finalLotId) {
+    if (lotName && lotName.trim() && (isFromCatalog || !finalLotId)) {
       // Cerca se esiste già un lotto con questo nome per questo prodotto
       const lotSearchResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
         method: 'POST',
@@ -177,6 +206,9 @@ export async function POST(request: NextRequest) {
         finalLotId = lotCreateData.result;
         console.log('📦 Nuovo lotto creato:', finalLotId);
       }
+    } else if (!lotName || !lotName.trim()) {
+      finalLotId = null; // Nessun lotto specificato
+      console.log('📦 Trasferimento senza lotto (prodotto non tracciato)');
     }
 
     // 3. Crea stock.picking
@@ -239,7 +271,21 @@ export async function POST(request: NextRequest) {
     const moveId = moveCreateData.result;
     console.log('📦 Move creato:', moveId);
 
-    // 4. Crea move line con lotto
+    // 4. Crea move line con o senza lotto
+    const moveLineData: any = {
+      move_id: moveId,
+      picking_id: pickingId,
+      product_id: productId,
+      qty_done: quantity,
+      location_id: sourceLocationId,
+      location_dest_id: destLocationId
+    };
+
+    // Aggiungi il lotto solo se presente
+    if (finalLotId) {
+      moveLineData.lot_id = finalLotId;
+    }
+
     await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
@@ -252,22 +298,14 @@ export async function POST(request: NextRequest) {
         params: {
           model: 'stock.move.line',
           method: 'create',
-          args: [{
-            move_id: moveId,
-            picking_id: pickingId,
-            product_id: productId,
-            qty_done: quantity,
-            location_id: sourceLocationId,
-            location_dest_id: destLocationId,
-            lot_id: finalLotId
-          }],
+          args: [moveLineData],
           kwargs: {}
         },
         id: 5
       })
     });
 
-    console.log('📦 Move line creata con lotto:', finalLotId);
+    console.log('📦 Move line creata', finalLotId ? `con lotto: ${finalLotId}` : 'senza lotto');
 
     // 5. Conferma picking
     await fetch(`${odooUrl}/web/dataset/call_kw`, {

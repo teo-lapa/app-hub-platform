@@ -292,19 +292,16 @@ export default function UbicazioniPage() {
       return;
     }
 
-    if (!lotNumber.trim()) {
-      toast.error('Il lotto è obbligatorio');
+    // Il lotto non è più obbligatorio - può essere vuoto per prodotti senza tracking
+
+    // Per prodotti dal catalogo, la scadenza è obbligatoria solo se c'è il lotto
+    if (isFromCatalog && lotNumber.trim() && !expiryDate) {
+      toast.error('La scadenza è obbligatoria quando si specifica un lotto');
       return;
     }
 
-    // Per prodotti dal catalogo, la scadenza è obbligatoria
-    if (isFromCatalog && !expiryDate) {
-      toast.error('La scadenza è obbligatoria per nuovi prodotti');
-      return;
-    }
-
-    // Per prodotti dal buffer, il lot_id deve esistere
-    if (!isFromCatalog && !selectedProduct.lot_id) {
+    // Per prodotti dal buffer con lotto, il lot_id deve esistere
+    if (!isFromCatalog && lotNumber.trim() && !selectedProduct.lot_id) {
       toast.error('Lotto ID mancante - riprova la selezione del prodotto');
       return;
     }
@@ -639,14 +636,14 @@ export default function UbicazioniPage() {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm text-muted-foreground mb-2">
-                            LOTTO *
+                            LOTTO
                           </label>
                           <input
                             type="text"
                             value={lotNumber}
                             onChange={(e) => setLotNumber(e.target.value)}
-                            placeholder="Numero lotto (obbligatorio)"
-                            className="w-full glass px-4 py-2 rounded-lg border-2 border-yellow-500/50 focus:border-yellow-500 focus:outline-none"
+                            placeholder="Numero lotto (opzionale)"
+                            className="w-full glass px-4 py-2 rounded-lg border-2 border-white/20 focus:border-blue-500 focus:outline-none"
                           />
                         </div>
 
@@ -742,8 +739,7 @@ export default function UbicazioniPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   onClick={confirmTransfer}
-                  disabled={!lotNumber.trim()}
-                  className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 px-6 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white py-4 px-6 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2"
                 >
                   ✅ CONFERMA TRASFERIMENTO
                   <ArrowRight className="w-5 h-5" />
