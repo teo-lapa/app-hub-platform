@@ -480,6 +480,62 @@ export default function PrelievoZonePage() {
     return Math.round((workStats.completedOperations / workStats.totalOperations) * 100);
   };
 
+  // Genera e salva report zona completata
+  const generateAndSaveZoneReport = async () => {
+    if (!currentBatch || !currentZone || !user) {
+      console.log('⚠️ Mancano dati per generare report');
+      return;
+    }
+
+    try {
+      const now = new Date();
+      const dateStr = now.toLocaleString('it-IT');
+
+      // Calcola tempo totale zona
+      const zoneTime = workStats.currentZoneTime || 0;
+      const zoneTimeStr = formatTime(zoneTime);
+
+      // Conta prodotti prelevati e peso totale
+      let productsCount = 0;
+      let totalWeight = 0;
+      const locationTimes: { [key: string]: number } = {};
+
+      // Raccogli statistiche dalle operazioni completate
+      currentOperations.forEach(op => {
+        if (op.qty_done > 0) {
+          productsCount++;
+          // Qui potresti calcolare il peso se disponibile nei dati del prodotto
+        }
+      });
+
+      // Genera report testuale
+      const report = `📊 REPORT LAVORO - ${currentZone.displayName.toUpperCase()}
+
+👤 Operatore: ${user.name || 'Operatore'}
+📅 Data: ${dateStr}
+⏱️ Tempo totale zona: ${zoneTimeStr}
+
+📦 STATISTICHE:
+- Prodotti prelevati: ${productsCount}
+- Peso totale: ${totalWeight.toFixed(2)} kg
+- Operazioni completate: ${workStats.completedOperations}`;
+
+      console.log('📊 Report generato:\n', report);
+
+      // Salva il report nel batch
+      const saved = await pickingClient.saveBatchReport(currentBatch.id, report);
+
+      if (saved) {
+        toast.success('Report salvato nel batch! ✅');
+        console.log('✅ Report salvato con successo nel batch');
+      }
+
+    } catch (error) {
+      console.error('❌ Errore generazione/salvataggio report:', error);
+      toast.error('Errore nel salvataggio del report');
+    }
+  };
+
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
       darkMode
@@ -747,9 +803,13 @@ export default function PrelievoZonePage() {
           >
             <div className="mb-6 flex items-center justify-between">
               <button
-                onClick={() => {
+                onClick={async () => {
+                  // Genera e salva report prima di tornare alle zone
+                  await generateAndSaveZoneReport();
+
                   setShowLocationList(false);
                   setShowZoneSelector(true);
+                  setCurrentZone(null);
                 }}
                 className="glass px-4 py-2 rounded-lg hover:bg-white/20 transition-colors"
               >

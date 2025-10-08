@@ -529,6 +529,42 @@ export class PickingOdooClient {
     }
   }
 
+  // Salva report di lavoro nel batch
+  async saveBatchReport(batchId: number, reportText: string): Promise<boolean> {
+    try {
+      // Leggi la nota attuale del batch
+      const batchData = await this.rpc(
+        'stock.picking.batch',
+        'read',
+        [[batchId], ['note']]
+      );
+
+      if (!batchData || batchData.length === 0) {
+        throw new Error('Batch non trovato');
+      }
+
+      const currentNote = batchData[0].note || '';
+
+      // Aggiungi il nuovo report alla nota esistente
+      const separator = currentNote ? '\n\n---\n\n' : '';
+      const updatedNote = currentNote + separator + reportText;
+
+      // Aggiorna il batch con la nuova nota
+      const result = await this.rpc(
+        'stock.picking.batch',
+        'write',
+        [[batchId], { note: updatedNote }]
+      );
+
+      console.log('✅ Report salvato nel batch:', batchId);
+      return result === true;
+
+    } catch (error) {
+      console.error('❌ Errore salvataggio report nel batch:', error);
+      throw error;
+    }
+  }
+
   // Helper: carica prodotti
   private async getProducts(productIds: number[]): Promise<OdooProduct[]> {
     if (productIds.length === 0) return [];
