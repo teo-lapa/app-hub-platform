@@ -339,22 +339,29 @@ export default function DeliveryPage() {
     if (isIOS) {
       // Apple Maps con navigazione
       url = `maps://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
+      console.log('🗺️ [iOS] Apertura Apple Maps:', url);
+      window.location.href = url;
+
+      // Fallback a Google Maps web dopo 1 secondo se Apple Maps non si apre
+      setTimeout(() => {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`, '_blank');
+      }, 1000);
     } else if (isAndroid) {
-      // Google Maps app per Android
-      url = `google.navigation:q=${lat},${lng}&mode=d`;
+      // OPZIONE 1: Prova prima l'app Google Maps nativa (più affidabile)
+      url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+      console.log('🗺️ [Android] Apertura Google Maps:', url);
+
+      // Su Android, questo URL funziona sia nell'app che nel browser
+      window.location.href = url;
+
+      // ALTERNATIVA: Se vuoi forzare l'app nativa con fallback
+      // const intentUrl = `intent://maps.google.com/maps?daddr=${lat},${lng}&directionsmode=driving#Intent;scheme=https;package=com.google.android.apps.maps;end`;
+      // window.location.href = intentUrl;
     } else {
       // Browser desktop - Google Maps web
       url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-    }
-
-    console.log('🗺️ Apertura navigazione:', url);
-
-    // Prova ad aprire l'app nativa
-    const opened = window.open(url, '_blank');
-
-    // Fallback per browser
-    if (!opened && !isIOS && !isAndroid) {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`, '_blank');
+      console.log('🗺️ [Desktop] Apertura Google Maps web:', url);
+      window.open(url, '_blank');
     }
 
     showToast('Navigazione avviata', 'success');
