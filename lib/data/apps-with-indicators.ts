@@ -166,6 +166,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2023-09-01'),
     updatedAt: new Date('2023-12-28'),
   },
+  {
+    id: 's21',
+    name: 'Gestione Ubicazioni [P]',
+    description: 'Trasferisci prodotti dal buffer alle ubicazioni di stoccaggio. Gestione zone (Secco, Frigo, Pingu) con scanner barcode e tracking lotti.',
+    icon: '🏭',
+    badge: 'PRO',
+    category: 'Magazzino',
+    url: '/ubicazioni',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-01-23'),
+    updatedAt: new Date('2025-01-23'),
+  },
   // VENDITE
   {
     id: 's6',
