@@ -1,0 +1,329 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function POST(request: NextRequest) {
+  try {
+    const {
+      productId,
+      sourceLocationId,
+      destLocationId,
+      quantity,
+      lotName,
+      lotId,
+      expiryDate,
+      isFromCatalog
+    } = await request.json();
+
+    if (!productId || !sourceLocationId || !destLocationId || !quantity) {
+      return NextResponse.json({
+        success: false,
+        error: 'Parametri mancanti'
+      }, { status: 400 });
+    }
+
+    if (!lotName || !lotName.trim()) {
+      return NextResponse.json({
+        success: false,
+        error: 'Lotto obbligatorio'
+      }, { status: 400 });
+    }
+
+    // Se è dal catalogo, deve creare il lotto con scadenza obbligatoria
+    if (isFromCatalog && !expiryDate) {
+      return NextResponse.json({
+        success: false,
+        error: 'Scadenza obbligatoria per nuovi prodotti'
+      }, { status: 400 });
+    }
+
+    const odooUrl = process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL;
+    const odooDb = process.env.ODOO_DB || process.env.NEXT_PUBLIC_ODOO_DB;
+
+    console.log('🚚 Trasferimento interno:', {
+      productId,
+      from: sourceLocationId,
+      to: destLocationId,
+      qty: quantity,
+      lot: lotName,
+      lotId,
+      isFromCatalog,
+      expiryDate
+    });
+
+    // Autenticazione
+    const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          db: odooDb,
+          login: process.env.ODOO_USERNAME || 'paul@lapa.ch',
+          password: process.env.ODOO_PASSWORD || 'lapa201180'
+        },
+        id: 1
+      })
+    });
+
+    const authData = await authResponse.json();
+    if (!authData.result || !authData.result.uid) {
+      throw new Error('Autenticazione fallita');
+    }
+
+    const setCookieHeader = authResponse.headers.get('set-cookie');
+    const sessionMatch = setCookieHeader?.match(/session_id=([^;]+)/);
+    const sessionId = sessionMatch ? sessionMatch[1] : null;
+
+    // 1. Ottieni picking type interno
+    const pickingTypeResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking.type',
+          method: 'search_read',
+          args: [[['code', '=', 'internal']]],
+          kwargs: {
+            fields: ['id'],
+            limit: 1
+          }
+        },
+        id: 2
+      })
+    });
+
+    const pickingTypeData = await pickingTypeResponse.json();
+    const pickingTypes = pickingTypeData.result || [];
+
+    if (!pickingTypes || pickingTypes.length === 0) {
+      throw new Error('Picking type interno non trovato');
+    }
+
+    const pickingTypeId = pickingTypes[0].id;
+
+    // 2. Se dal catalogo, crea o trova il lotto
+    let finalLotId = lotId;
+
+    if (isFromCatalog || !finalLotId) {
+      // Cerca se esiste già un lotto con questo nome per questo prodotto
+      const lotSearchResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'stock.lot',
+            method: 'search_read',
+            args: [[
+              ['name', '=', lotName],
+              ['product_id', '=', productId]
+            ]],
+            kwargs: {
+              fields: ['id'],
+              limit: 1
+            }
+          },
+          id: 3
+        })
+      });
+
+      const lotSearchData = await lotSearchResponse.json();
+      const existingLots = lotSearchData.result || [];
+
+      if (existingLots.length > 0) {
+        finalLotId = existingLots[0].id;
+        console.log('📦 Lotto esistente trovato:', finalLotId);
+      } else {
+        // Crea nuovo lotto
+        const lotData: any = {
+          name: lotName,
+          product_id: productId,
+          company_id: 1
+        };
+
+        if (expiryDate) {
+          lotData.expiration_date = expiryDate;
+        }
+
+        const lotCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': `session_id=${sessionId}`
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {
+              model: 'stock.lot',
+              method: 'create',
+              args: [lotData],
+              kwargs: {}
+            },
+            id: 4
+          })
+        });
+
+        const lotCreateData = await lotCreateResponse.json();
+        finalLotId = lotCreateData.result;
+        console.log('📦 Nuovo lotto creato:', finalLotId);
+      }
+    }
+
+    // 3. Crea stock.picking
+    const pickingCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking',
+          method: 'create',
+          args: [{
+            picking_type_id: pickingTypeId,
+            location_id: sourceLocationId,
+            location_dest_id: destLocationId,
+            origin: `WEB-UBICAZIONI-${Date.now()}`
+          }],
+          kwargs: {}
+        },
+        id: 3
+      })
+    });
+
+    const pickingCreateData = await pickingCreateResponse.json();
+    const pickingId = pickingCreateData.result;
+    console.log('📋 Picking creato:', pickingId);
+
+    // 3. Crea stock.move
+    const moveCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.move',
+          method: 'create',
+          args: [{
+            picking_id: pickingId,
+            product_id: productId,
+            name: `Transfer from ${lotName}`,
+            product_uom_qty: quantity,
+            location_id: sourceLocationId,
+            location_dest_id: destLocationId
+          }],
+          kwargs: {}
+        },
+        id: 4
+      })
+    });
+
+    const moveCreateData = await moveCreateResponse.json();
+    const moveId = moveCreateData.result;
+    console.log('📦 Move creato:', moveId);
+
+    // 4. Crea move line con lotto
+    await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.move.line',
+          method: 'create',
+          args: [{
+            move_id: moveId,
+            picking_id: pickingId,
+            product_id: productId,
+            qty_done: quantity,
+            location_id: sourceLocationId,
+            location_dest_id: destLocationId,
+            lot_id: finalLotId
+          }],
+          kwargs: {}
+        },
+        id: 5
+      })
+    });
+
+    console.log('📦 Move line creata con lotto:', finalLotId);
+
+    // 5. Conferma picking
+    await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking',
+          method: 'action_confirm',
+          args: [[pickingId]],
+          kwargs: {}
+        },
+        id: 6
+      })
+    });
+
+    console.log('✅ Picking confermato');
+
+    // 6. Valida picking
+    await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking',
+          method: 'button_validate',
+          args: [[pickingId]],
+          kwargs: {}
+        },
+        id: 7
+      })
+    });
+
+    console.log('✅ Picking validato - trasferimento completato');
+
+    return NextResponse.json({
+      success: true,
+      pickingId,
+      moveId
+    });
+
+  } catch (error: any) {
+    console.error('❌ Errore trasferimento:', error);
+    return NextResponse.json({
+      success: false,
+      error: error.message || 'Errore nel trasferimento'
+    }, { status: 500 });
+  }
+}
