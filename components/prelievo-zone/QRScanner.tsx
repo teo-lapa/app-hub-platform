@@ -8,7 +8,7 @@ import QrScanner from 'qr-scanner';
 interface QRScannerProps {
   isOpen: boolean;
   onClose: () => void;
-  onScan: (result: string, type: 'product' | 'location') => void;
+  onScan: (result: string, type: 'product' | 'location') => boolean; // Ritorna true se la scansione è valida
   scanMode: 'product' | 'location';
   expectedCode?: string; // Per verificare se il codice scansionato è quello atteso
   title?: string;
@@ -85,9 +85,27 @@ export function QRScanner({
               navigator.vibrate(200);
             }
 
-            onScan(result.data, scanMode);
-            stopScanner();
-            onClose();
+            // Chiama onScan e controlla se è valido
+            const isValid = onScan(result.data, scanMode);
+
+            if (isValid) {
+              // Solo se valido, chiudi lo scanner
+              stopScanner();
+              onClose();
+            } else {
+              // Se non valido, permetti nuova scansione e mostra errore visivo
+              setHasScanned(false);
+              setWrongCodeScanned(true);
+
+              // Vibrazione per feedback errore
+              if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 100]);
+              }
+
+              setTimeout(() => {
+                setWrongCodeScanned(false);
+              }, 2000);
+            }
           }
         },
         {
@@ -207,8 +225,14 @@ export function QRScanner({
                       exit={{ opacity: 0, y: -20 }}
                       className="absolute top-4 left-4 right-4 bg-red-500/90 text-white p-3 rounded-lg"
                     >
-                      <p className="font-semibold">❌ Prodotto errato!</p>
-                      <p className="text-sm">Scansiona il prodotto corretto</p>
+                      <p className="font-semibold">
+                        ❌ {scanMode === 'product' ? 'Prodotto errato!' : 'Ubicazione non trovata!'}
+                      </p>
+                      <p className="text-sm">
+                        {scanMode === 'product'
+                          ? 'Scansiona il prodotto corretto'
+                          : 'Scansiona un\'ubicazione valida per questa zona'}
+                      </p>
                     </motion.div>
                   )}
 

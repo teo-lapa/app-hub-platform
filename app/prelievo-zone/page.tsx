@@ -404,7 +404,7 @@ export default function PrelievoZonePage() {
   };
 
   // Handler per QR Scanner
-  const handleQRScan = (code: string, type: 'product' | 'location') => {
+  const handleQRScan = (code: string, type: 'product' | 'location'): boolean => {
     if (type === 'product') {
       // Trova l'operazione con questo codice prodotto
       const operation = currentOperations.find(
@@ -416,20 +416,27 @@ export default function PrelievoZonePage() {
         setSelectedOperation(operation);
         setShowNumericKeyboard(true);
         toast.success(`Prodotto verificato: ${operation.productName}`);
+        return true;
       } else {
         toast.error('Prodotto non trovato in questa ubicazione');
+        return false;
       }
     } else {
       // Gestione scansione ubicazione
       const location = locations.find(
-        loc => loc.barcode === code || loc.name === code
+        loc => loc.barcode === code ||
+               loc.name === code ||
+               loc.name.includes(code) ||
+               code.includes(loc.name)
       );
 
       if (location) {
-        toast.success(`QR Ubicazione scansionato: ${location.name}`);
+        toast.success(`📍 Ubicazione trovata: ${location.name}`);
         selectLocation(location);
+        return true;
       } else {
-        toast.error('Ubicazione non trovata');
+        toast.error('❌ Ubicazione non trovata in questa zona');
+        return false;
       }
     }
   };
