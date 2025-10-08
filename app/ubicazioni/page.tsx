@@ -526,8 +526,17 @@ export default function UbicazioniPage() {
                       key={`${product.id}-${product.lot_name}`}
                       className="glass p-3 rounded-xl cursor-pointer hover:scale-105 transition-transform"
                       onClick={() => {
-                        setProductCode(product.code || product.barcode);
-                        handleProductScan(product.code || product.barcode);
+                        // Seleziona direttamente il prodotto dalla griglia
+                        setSelectedProduct(product);
+                        setLotNumber(product.lot_name || '');
+                        const expiryDateStr = product.expiration_date ? product.expiration_date.split(' ')[0] : '';
+                        setExpiryDate(expiryDateStr);
+                        setQuantity(product.quantity?.toString() || '1');
+                        setIsFromCatalog(false);
+                        toast.success(`Prodotto selezionato: ${product.name}`);
+
+                        // Focus automatico sul campo ubicazione
+                        setTimeout(() => locationInputRef.current?.focus(), 300);
                       }}
                     >
                       {product.image ? (
