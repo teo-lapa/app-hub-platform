@@ -8,8 +8,8 @@ export async function GET(request: NextRequest) {
   try {
     // Autenticazione diretta con credenziali Paul
 
-    const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
-    const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
+    const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24339752.dev.odoo.com';
+    const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24339752';
 
     const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
       method: 'POST',
@@ -61,6 +61,8 @@ export async function GET(request: NextRequest) {
     const driverId = employees[0].id;
     const driverName = employees[0].name;
 
+    console.log('🚚 [DELIVERY] Driver trovato:', { driverId, driverName });
+
     // Get today's date
     const formatter = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Europe/Zurich',
@@ -73,15 +75,19 @@ export async function GET(request: NextRequest) {
     const todayStart = `${todayDateOnly} 00:00:00`;
     const todayEnd = `${todayDateOnly} 23:59:59`;
 
-    // Filtra documenti di oggi per questo driver
+    console.log('📅 [DELIVERY] Range date:', { todayStart, todayEnd });
+
+    // Mostra consegne di oggi (TUTTI gli stati tranne cancel)
     const domain: any[] = [
       ['driver_id', '=', driverId],
       ['scheduled_date', '>=', todayStart],
       ['scheduled_date', '<=', todayEnd],
-      ['state', 'in', ['assigned', 'done']],
+      ['state', '!=', 'cancel'],  // Escludi solo quelle cancellate
       ['picking_type_id.code', '=', 'outgoing'],
       ['backorder_id', '=', false]
     ];
+
+    console.log('🔍 [DELIVERY] Domain filtro con driver_id=' + driverId + ':', JSON.stringify(domain));
 
     // Load pickings con move_ids (prodotti)
     const pickings = await callOdoo(
@@ -101,8 +107,80 @@ export async function GET(request: NextRequest) {
       }
     );
 
+    console.log('📦 [DELIVERY] Pickings trovati per ' + driverName + ':', pickings.length);
+
+    // DEBUG: Stampa TUTTI i pickings trovati per analizzare il problema
+    if (pickings.length > 0) {
+      console.log('🔍 [DEBUG] TUTTI I PICKINGS TROVATI:');
+      pickings.forEach((p: any) => {
+        console.log(`   - ID: ${p.id}, Name: ${p.name}, State: ${p.state}, Scheduled: ${p.scheduled_date}, Driver: ${p.driver_id?.[1]}`);
+      });
+    }
+
     if (pickings.length === 0) {
-      return NextResponse.json([]);
+      console.log('⚠️ [DELIVERY] Nessuna consegna assegnata a ' + driverName + ' (ID: ' + driverId + ') per oggi');
+
+      // DEBUG: Cerca TUTTI i documenti di questa settimana per TUTTI gli autisti
+      console.log('🔍 [DEBUG] Cerco TUTTI i documenti di questa settimana (2-8 ottobre)...');
+      const weekStart = '2025-10-02 00:00:00';
+      const weekEnd = '2025-10-08 23:59:59';
+
+      const allWeekPickings = await callOdoo(
+        cookies,
+        'stock.picking',
+        'search_read',
+        [],
+        {
+          domain: [
+            ['scheduled_date', '>=', weekStart],
+            ['scheduled_date', '<=', weekEnd],
+            ['picking_type_id.code', '=', 'outgoing']
+          ],
+          fields: ['id', 'name', 'state', 'scheduled_date', 'driver_id', 'partner_id'],
+          limit: 100,
+          order: 'scheduled_date DESC'
+        }
+      );
+
+      console.log('🔍 [DEBUG] Documenti trovati questa settimana:', allWeekPickings.length);
+      allWeekPickings.forEach((p: any) => {
+        const driverInfo = p.driver_id ? `${p.driver_id[1]} (ID: ${p.driver_id[0]})` : 'NESSUN DRIVER';
+        const partnerInfo = p.partner_id ? p.partner_id[1] : 'N/A';
+        console.log(`   - ID: ${p.id}, Name: ${p.name}, State: ${p.state}, Scheduled: ${p.scheduled_date}, Driver: ${driverInfo}, Cliente: ${partnerInfo}`);
+      });
+
+      // DEBUG: Cerca i 3 documenti specifici che l'utente ha menzionato
+      console.log('🔍 [DEBUG] Cerco i 3 documenti specifici: WH/OUT/33118, WH/OUT/33110, WH/OUT/32991');
+      const specificDocs = await callOdoo(
+        cookies,
+        'stock.picking',
+        'search_read',
+        [],
+        {
+          domain: [
+            ['name', 'in', ['WH/OUT/33118', 'WH/OUT/33110', 'WH/OUT/32991']]
+          ],
+          fields: ['id', 'name', 'state', 'scheduled_date', 'driver_id', 'partner_id'],
+          limit: 10
+        }
+      );
+
+      console.log('🔍 [DEBUG] Documenti specifici trovati:', specificDocs.length);
+      specificDocs.forEach((p: any) => {
+        const driverInfo = p.driver_id ? `${p.driver_id[1]} (ID: ${p.driver_id[0]})` : 'NESSUN DRIVER ASSEGNATO';
+        const partnerInfo = p.partner_id ? p.partner_id[1] : 'N/A';
+        console.log(`   ⭐ ID: ${p.id}, Name: ${p.name}, State: ${p.state}, Scheduled: ${p.scheduled_date}`);
+        console.log(`      Driver: ${driverInfo}`);
+        console.log(`      Cliente: ${partnerInfo}`);
+      });
+
+      return NextResponse.json({
+        deliveries: [],
+        driver: {
+          id: driverId,
+          name: driverName
+        }
+      });
     }
 
     // Carica partner e prodotti in BULK (performance)
@@ -227,7 +305,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(deliveries);
+    return NextResponse.json({
+      deliveries,
+      driver: {
+        id: driverId,
+        name: driverName
+      }
+    });
 
   } catch (error: any) {
     console.error('[DELIVERY] Errore:', error.message);
@@ -237,3 +321,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

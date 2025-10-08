@@ -41,6 +41,7 @@ export default function DeliveryPage() {
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(true);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   // Estados modales
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -127,36 +128,12 @@ export default function DeliveryPage() {
       await db.cache.clear();
       console.log('✅ Cache pulita');
 
-      // Carica nome utente dall'API con timeout per Android
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      const userResponse = await fetch('/api/auth/me', {
-        signal: controller.signal
-      }).catch(() => null);
-
-      clearTimeout(timeoutId);
-
-      let userName = 'Driver';
-      if (userResponse?.ok) {
-        const userData = await userResponse.json();
-        userName = userData?.data?.user?.name || userData?.name || 'Driver';
-      }
-
-      console.log('👤 [DELIVERY] Nome driver caricato:', userName);
-      setSession({ name: userName, vehicle_name: null });
+      // Carica consegne (l'API ritorna anche il nome del driver)
       await loadDeliveries();
     } catch (err: any) {
       console.error('❌ [DELIVERY] Errore inizializzazione:', err);
-      // Continue with default session even if user fetch fails
-      setSession({ name: 'Driver', vehicle_name: null });
-      // Try to load deliveries anyway
-      try {
-        await loadDeliveries();
-      } catch (loadErr) {
-        setError('Impossibile caricare le consegne');
-        showToast('Errore caricamento consegne', 'error');
-      }
+      setError('Impossibile caricare le consegne');
+      showToast('Errore caricamento consegne', 'error');
     } finally {
       setLoading(false);
     }
@@ -242,12 +219,16 @@ export default function DeliveryPage() {
         throw new Error(errorData.error || 'Errore caricamento consegne');
       }
 
-      const data = await response.json();
+      const responseData = await response.json();
 
       // Check if response contains error field
-      if (data.error) {
-        throw new Error(data.error);
+      if (responseData.error) {
+        throw new Error(responseData.error);
       }
+
+      // Supporta sia il nuovo formato {deliveries, driver} che il vecchio array
+      const data = responseData.deliveries || responseData;
+      const driverInfo = responseData.driver;
 
       // Check if data is array
       if (!Array.isArray(data)) {
@@ -255,6 +236,10 @@ export default function DeliveryPage() {
       }
 
       console.log('📦 Consegne ricevute:', data.length);
+      if (driverInfo) {
+        console.log('👤 Driver:', driverInfo.name);
+        setSession({ name: driverInfo.name, vehicle_name: null });
+      }
 
       // Aggiorna stato
       setDeliveries(data);
@@ -1378,6 +1363,23 @@ export default function DeliveryPage() {
     });
   }
 
+  // ==================== FILTERED DELIVERIES ====================
+  const filteredDeliveries = useMemo(() => {
+    // Ordina: assigned prima, done dopo
+    const sorted = [...deliveries].sort((a, b) => {
+      if (a.state === 'assigned' && b.state === 'done') return -1;
+      if (a.state === 'done' && b.state === 'assigned') return 1;
+      return 0;
+    });
+
+    // Se showCompleted è false, mostra solo assigned
+    if (!showCompleted) {
+      return sorted.filter(d => d.state === 'assigned');
+    }
+
+    return sorted;
+  }, [deliveries, showCompleted]);
+
   // ==================== STATS ====================
   const stats = {
     total: deliveries.length,
@@ -1433,24 +1435,53 @@ export default function DeliveryPage() {
               <div className="text-xs text-gray-500 mt-1">Pendenti</div>
             </div>
           </div>
+
+          {/* Toggle completate */}
+          {stats.completed > 0 && (
+            <div className="px-4 pb-3">
+              <button
+                onClick={() => setShowCompleted(!showCompleted)}
+                className={`w-full py-2 px-4 rounded-lg text-sm font-semibold transition-colors ${
+                  showCompleted
+                    ? 'bg-green-100 text-green-700 border border-green-300'
+                    : 'bg-gray-100 text-gray-700 border border-gray-300'
+                }`}
+              >
+                {showCompleted ? '✓ Mostrando completate' : 'Mostra completate'} ({stats.completed})
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {/* MAIN CONTENT */}
-      <main className={`${view === 'list' ? 'pt-[190px]' : 'pt-[60px]'} pb-[70px] overflow-y-auto`}>
+      <main className={`${view === 'list' ? 'pt-[240px]' : 'pt-[60px]'} pb-[70px] overflow-y-auto`}>
         {/* LISTA CONSEGNE */}
         {view === 'list' && (
           <div className="space-y-3 p-4">
             {loading && <div className="text-center py-8 text-gray-500">Caricamento...</div>}
 
-            {!loading && deliveries.length === 0 && (
+            {!loading && filteredDeliveries.length === 0 && stats.pending === 0 && (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">📦</div>
-                <div className="text-gray-600">Nessuna consegna per oggi</div>
+                <div className="text-gray-600">Nessuna consegna pendente</div>
               </div>
             )}
 
-            {deliveries.map((delivery, index) => (
+            {!loading && filteredDeliveries.length === 0 && stats.pending > 0 && !showCompleted && (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">✅</div>
+                <div className="text-gray-600">Tutte le consegne completate!</div>
+                <button
+                  onClick={() => setShowCompleted(true)}
+                  className="mt-4 px-6 py-2 bg-green-500 text-white rounded-lg font-semibold"
+                >
+                  Mostra completate
+                </button>
+              </div>
+            )}
+
+            {filteredDeliveries.map((delivery, index) => (
               <motion.div
                 key={delivery.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -1830,8 +1861,8 @@ export default function DeliveryPage() {
                       <button
                         onClick={() => {
                           console.log('🔄 Click su GESTIONE RESI');
-                          openResoModal();
-                          setTimeout(() => closeModal(), 100); // Chiudi dopo aver aperto il reso
+                          openResoModal(); // Apri modal Resi PRIMA
+                          setShowDetailModal(false); // Chiudi SOLO il modal di dettaglio (senza cancellare currentDelivery)
                         }}
                         className="w-full bg-orange-600 text-white py-3 rounded-lg font-semibold hover:bg-orange-700"
                       >
@@ -1895,15 +1926,36 @@ export default function DeliveryPage() {
               <div className="flex gap-3 mt-4">
                 <button
                   onClick={clearSignature}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold"
+                  disabled={isValidating}
+                  className={`flex-1 py-3 rounded-lg font-semibold ${
+                    isValidating
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
                 >
                   🗑️ Cancella
                 </button>
                 <button
                   onClick={confirmScaricoWithSignature}
-                  className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold"
+                  disabled={isValidating}
+                  className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+                    isValidating
+                      ? 'bg-green-400 cursor-not-allowed'
+                      : 'bg-green-600 hover:bg-green-700'
+                  } text-white`}
                 >
-                  ✓ Conferma e Completa
+                  {isValidating ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                      />
+                      <span>Salvando...</span>
+                    </>
+                  ) : (
+                    '✓ Conferma e Completa'
+                  )}
                 </button>
               </div>
             </motion.div>
@@ -2068,20 +2120,38 @@ export default function DeliveryPage() {
                     setPhotoNote('');
                     setShowPhotoModal(false);
                   }}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300"
+                  disabled={isValidating}
+                  className={`flex-1 py-3 rounded-lg font-semibold ${
+                    isValidating
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
                 >
                   Annulla
                 </button>
                 <button
                   onClick={completeWithPhoto}
-                  disabled={!photoData}
-                  className={`flex-1 py-3 rounded-lg font-semibold ${
-                    photoData
+                  disabled={!photoData || isValidating}
+                  className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+                    isValidating
+                      ? 'bg-green-400 cursor-not-allowed text-white'
+                      : photoData
                       ? 'bg-green-600 text-white hover:bg-green-700'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
-                  ✓ Conferma e Completa
+                  {isValidating ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                      />
+                      <span>Salvando...</span>
+                    </>
+                  ) : (
+                    '✓ Conferma e Completa'
+                  )}
                 </button>
               </div>
             </motion.div>
@@ -2335,20 +2405,38 @@ export default function DeliveryPage() {
                     setPaymentNote('');
                     setShowPaymentModal(false);
                   }}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold"
+                  disabled={isValidating}
+                  className={`flex-1 py-3 rounded-lg font-semibold ${
+                    isValidating
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
                 >
                   Annulla
                 </button>
                 <button
                   onClick={processPayment}
-                  disabled={!paymentReceiptPhoto || !paymentNote.trim()}
-                  className={`flex-1 py-3 rounded-lg font-semibold ${
-                    paymentReceiptPhoto && paymentNote.trim()
+                  disabled={!paymentReceiptPhoto || !paymentNote.trim() || isValidating}
+                  className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+                    isValidating
+                      ? 'bg-green-400 cursor-not-allowed text-white'
+                      : paymentReceiptPhoto && paymentNote.trim()
                       ? 'bg-green-600 text-white hover:bg-green-700'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
-                  💰 Conferma Pagamento
+                  {isValidating ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                      />
+                      <span>Salvando...</span>
+                    </>
+                  ) : (
+                    '💰 Conferma Pagamento'
+                  )}
                 </button>
               </div>
             </motion.div>
@@ -2400,15 +2488,36 @@ export default function DeliveryPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowResoModal(false)}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold"
+                  disabled={isValidating}
+                  className={`flex-1 py-3 rounded-lg font-semibold ${
+                    isValidating
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
                 >
                   Annulla
                 </button>
                 <button
                   onClick={saveReso}
-                  className="flex-1 bg-orange-600 text-white py-3 rounded-lg font-semibold"
+                  disabled={isValidating}
+                  className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+                    isValidating
+                      ? 'bg-orange-400 cursor-not-allowed'
+                      : 'bg-orange-600 hover:bg-orange-700'
+                  } text-white`}
                 >
-                  ✓ Conferma Reso
+                  {isValidating ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                      />
+                      <span>Salvando...</span>
+                    </>
+                  ) : (
+                    '✓ Conferma Reso'
+                  )}
                 </button>
               </div>
             </motion.div>
@@ -2447,7 +2556,7 @@ export default function DeliveryPage() {
       />
 
       {/* Floating Action Button - Optimize Route */}
-      {view === 'list' && deliveries.filter(d => d.state === 'assigned').length > 1 && (
+      {view === 'list' && stats.pending > 1 && (
         <button
           onClick={optimizeRoute}
           className="fixed bottom-24 right-4 bg-indigo-600 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-2xl hover:bg-indigo-700 transition-colors z-40"
