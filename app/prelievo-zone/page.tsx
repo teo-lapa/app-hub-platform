@@ -483,6 +483,62 @@ export default function PrelievoZonePage() {
     setShowNumericKeyboard(true);
   };
 
+  // Listener per scanner pistola quando sei nella lista ubicazioni
+  useEffect(() => {
+    if (!showLocationList) return;
+
+    let scanBuffer = '';
+    let scanTimeout: NodeJS.Timeout;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Ignora se ci sono modali aperti
+      if (showQRScanner || showNumericKeyboard || showProductSelector) return;
+
+      // Enter significa fine scansione
+      if (e.key === 'Enter' && scanBuffer.length > 0) {
+        console.log('🔫 Codice scansionato dalla pistola:', scanBuffer);
+
+        // Cerca l'ubicazione nella lista corrente
+        const foundLocation = locations.find(
+          loc => loc.barcode === scanBuffer ||
+                 loc.name === scanBuffer ||
+                 loc.name.includes(scanBuffer) ||
+                 scanBuffer.includes(loc.name)
+        );
+
+        if (foundLocation) {
+          console.log('✅ Ubicazione trovata:', foundLocation.name);
+          toast.success(`📍 Apertura ${foundLocation.name}...`);
+          selectLocation(foundLocation);
+        } else {
+          console.log('❌ Ubicazione non trovata nella zona corrente');
+          toast.error('Ubicazione non trovata in questa zona');
+        }
+
+        scanBuffer = '';
+        return;
+      }
+
+      // Accumula caratteri (ignora tasti speciali)
+      if (e.key.length === 1) {
+        scanBuffer += e.key;
+
+        // Reset buffer dopo 100ms di inattività
+        clearTimeout(scanTimeout);
+        scanTimeout = setTimeout(() => {
+          scanBuffer = '';
+        }, 100);
+      }
+    };
+
+    window.addEventListener('keypress', handleKeyPress);
+
+    return () => {
+      window.removeEventListener('keypress', handleKeyPress);
+      clearTimeout(scanTimeout);
+    };
+  }, [showLocationList, locations, showQRScanner, showNumericKeyboard, showProductSelector]);
+
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
