@@ -493,6 +493,7 @@ export default function PrelievoZonePage() {
   // State per input scanner invisibile
   const [scannerInput, setScannerInput] = useState('');
   const scannerInputRef = useRef<HTMLInputElement>(null);
+  const [scannerError, setScannerError] = useState<string | null>(null);
 
   // Auto-focus sull'input scanner quando si apre la lista ubicazioni
   useEffect(() => {
@@ -521,7 +522,22 @@ export default function PrelievoZonePage() {
       selectLocation(foundLocation);
     } else {
       console.log('❌ Ubicazione non trovata nella zona corrente');
+
+      // Mostra errore visivo grande sulla schermata
+      setScannerError(`❌ Ubicazione "${value}" non trovata in questa zona!`);
+
+      // Vibrazione per feedback errore (se supportata)
+      if ('vibrate' in navigator) {
+        navigator.vibrate([200, 100, 200]);
+      }
+
+      // Toast come backup
       toast.error('Ubicazione non trovata in questa zona');
+
+      // Rimuovi errore dopo 3 secondi
+      setTimeout(() => {
+        setScannerError(null);
+      }, 3000);
     }
 
     // Reset input
@@ -907,6 +923,31 @@ export default function PrelievoZonePage() {
               autoFocus
               placeholder="Scanner input"
             />
+
+            {/* Overlay errore scanner pistola */}
+            <AnimatePresence>
+              {scannerError && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+                  onClick={() => setScannerError(null)}
+                >
+                  <motion.div
+                    initial={{ y: -50 }}
+                    animate={{ y: 0 }}
+                    exit={{ y: 50 }}
+                    className="bg-red-500/95 text-white p-8 rounded-2xl shadow-2xl max-w-lg text-center"
+                  >
+                    <div className="text-6xl mb-4">❌</div>
+                    <h3 className="text-2xl font-bold mb-3">Ubicazione Non Trovata!</h3>
+                    <p className="text-lg mb-4">{scannerError}</p>
+                    <p className="text-sm opacity-90">Scansiona un'ubicazione valida per questa zona</p>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Ubicazioni disponibili</h2>
