@@ -365,6 +365,7 @@ export class PickingOdooClient {
       for (const line of relevantLines) {
         const locationId = line.location_id[0];
         const locationName = line.location_id[1];
+        const productName = line.product_id && Array.isArray(line.product_id) ? line.product_id[1] : 'Prodotto sconosciuto';
 
         if (!sublocationMap.has(locationId)) {
           sublocationMap.set(locationId, {
@@ -372,12 +373,18 @@ export class PickingOdooClient {
             name: locationName,
             complete_name: locationName,
             barcode: '',
-            operationCount: 0
+            operationCount: 0,
+            productPreview: []
           });
         }
 
         const subloc = sublocationMap.get(locationId);
         subloc.operationCount++;
+
+        // Aggiungi nome prodotto se non già presente
+        if (!subloc.productPreview.includes(productName)) {
+          subloc.productPreview.push(productName);
+        }
       }
 
       const result = Array.from(sublocationMap.values());

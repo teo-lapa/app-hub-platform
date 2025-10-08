@@ -250,7 +250,21 @@ export default function PrelievoZonePage() {
 
       console.log(`📍 Ubicazioni con operazioni caricate per zona ${zone.displayName}:`, odooLocations.length);
 
-      setLocations(odooLocations);
+      // Ordina ubicazioni per ultimi caratteri/cifre (es. A01, A02, B01, C04)
+      const sortedLocations = odooLocations.sort((a, b) => {
+        // Estrai l'ultima parte del nome (dopo l'ultimo punto o slash)
+        const getLastPart = (name: string) => {
+          const parts = name.split(/[\/\.]/);
+          return parts[parts.length - 1] || name;
+        };
+
+        const lastA = getLastPart(a.name);
+        const lastB = getLastPart(b.name);
+
+        return lastA.localeCompare(lastB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      setLocations(sortedLocations);
 
       if (odooLocations.length === 0) {
         toast(`Nessuna operazione da prelevare nella zona ${zone.displayName}`, { icon: 'ℹ️' });
@@ -312,10 +326,15 @@ export default function PrelievoZonePage() {
 
       console.log(`📦 Operazioni caricate per ${location.name}:`, odooOperations.length);
 
-      // Salva in cache per future selezioni
+      // Ordina operazioni alfabeticamente per nome prodotto
+      const sortedOperations = odooOperations.sort((a, b) => {
+        return a.productName.localeCompare(b.productName, 'it-IT');
+      });
+
+      // Salva in cache per future selezioni (usa versione ordinata)
       const newCache = {
         ...operationsCache,
-        [cacheKey]: odooOperations
+        [cacheKey]: sortedOperations
       };
       const newTimestamps = {
         ...cacheTimestamps,
@@ -332,7 +351,7 @@ export default function PrelievoZonePage() {
         console.warn('Impossibile salvare in localStorage:', e);
       }
 
-      setCurrentOperations(odooOperations);
+      setCurrentOperations(sortedOperations);
 
       // Aggiorna statistiche
       setWorkStats(prev => ({
@@ -824,7 +843,21 @@ export default function PrelievoZonePage() {
               </div>
             </div>
 
-            <h2 className="text-2xl font-bold mb-6">Ubicazioni disponibili</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Ubicazioni disponibili</h2>
+
+              {/* Scanner QR Globale */}
+              <button
+                onClick={() => {
+                  setScannerMode('location');
+                  setShowQRScanner(true);
+                }}
+                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white py-3 px-6 rounded-xl font-bold transition-all shadow-lg flex items-center gap-3"
+              >
+                <Camera className="w-6 h-6" />
+                Scansiona Ubicazione
+              </button>
+            </div>
 
             <div className="space-y-3">
               {locations.map((location, index) => (
@@ -835,36 +868,33 @@ export default function PrelievoZonePage() {
                   transition={{ delay: index * 0.05 }}
                   className="w-full glass-strong p-4 rounded-xl flex items-center justify-between"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-1">
                     <MapPin className={`w-5 h-5 ${darkMode ? 'text-blue-300' : 'text-muted-foreground'}`} />
-                    <div className="text-left">
+                    <div className="text-left flex-1">
                       <h3 className="font-semibold">{location.name}</h3>
-                      <p className={`text-sm ${darkMode ? 'text-gray-200' : 'text-muted-foreground'}`}>
-                        {location.barcode} • {(location as any).operationCount || 0} operazioni
+                      <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-muted-foreground'}`}>
+                        {(location as any).operationCount || 0} operazioni
                       </p>
+                      {/* Preview prodotti - mostra primi 3 */}
+                      {(location as any).productPreview && (location as any).productPreview.length > 0 && (
+                        <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-muted-foreground'} line-clamp-2`}>
+                          📦 {(location as any).productPreview.slice(0, 3).join(', ')}
+                          {(location as any).productPreview.length > 3 && ` +${(location as any).productPreview.length - 3} altri`}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        // Apri QR scanner per l'ubicazione
-                        setScannerMode('location');
-                        setShowQRScanner(true);
-                      }}
-                      className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 mr-2"
-                    >
-                      <Camera className="w-4 h-4" />
-                      QR
-                    </button>
+                    <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm font-bold mr-2">
+                      {(location as any).operationCount || 0} op.
+                    </div>
                     <button
                       onClick={() => selectLocation(location)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                      className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                     >
+                      <ChevronRight className="w-4 h-4" />
                       Apri
                     </button>
-                    <div className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full text-xs font-bold">
-                      {(location as any).operationCount || 0}
-                    </div>
                   </div>
                 </motion.div>
               ))}
