@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Estrai IDs prodotti unici
-    const productIds = [...new Set(quants.map((q: any) => q.product_id[0]))];
+    const productIds = Array.from(new Set(quants.map((q: any) => q.product_id[0])));
 
     // Carica dettagli prodotti
     const productsResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
