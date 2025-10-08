@@ -842,13 +842,18 @@ export default function PrelievoZonePage() {
 
               <div className="flex items-center gap-2">
                 <div
-                  className="px-3 py-1 rounded-lg text-sm font-medium"
-                  style={{ backgroundColor: `${currentZone?.color}20`, color: currentZone?.color }}
+                  className="px-4 py-2 rounded-xl text-lg font-black shadow-lg border-2"
+                  style={{
+                    backgroundColor: currentZone?.color,
+                    color: '#ffffff',
+                    borderColor: currentZone?.color,
+                    textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                  }}
                 >
                   {currentZone?.displayName}
                 </div>
-                <div className="px-3 py-1 rounded-lg text-sm font-medium bg-gray-700">
-                  {currentLocation?.name}
+                <div className="px-4 py-2 rounded-lg text-base font-bold bg-gray-700">
+                  📍 {currentLocation?.name?.split('/').pop() || currentLocation?.name}
                 </div>
               </div>
             </div>
