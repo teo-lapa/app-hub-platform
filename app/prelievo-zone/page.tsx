@@ -1537,7 +1537,7 @@ export default function PrelievoZonePage() {
                     <div className="text-lg">Operazioni</div>
                   </div>
                   <div>
-                    <div className="text-5xl font-black">{formatTime(workStats.totalTime)}</div>
+                    <div className="text-5xl font-black">{formatTime(workStats.totalTime || 0)}</div>
                     <div className="text-lg">Tempo</div>
                   </div>
                 </div>
