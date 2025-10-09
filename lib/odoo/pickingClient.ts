@@ -517,10 +517,10 @@ export class PickingOdooClient {
       const productImageMap = new Map(products.map(p => [p.id, p.image_128]));
 
       // Aggiungi immagini ai prodotti
-      for (const [productId, product] of productMap) {
+      productMap.forEach((product, productId) => {
         const imageBase64 = productImageMap.get(productId);
         product.image = imageBase64 ? `data:image/png;base64,${imageBase64}` : null;
-      }
+      });
 
       // Carica info picking per i clienti
       const pickingIds = Array.from(new Set(relevantLines
