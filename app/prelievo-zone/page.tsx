@@ -42,6 +42,7 @@ export default function PrelievoZonePage() {
   const [showNumericKeyboard, setShowNumericKeyboard] = useState(false);
   const [selectedOperation, setSelectedOperation] = useState<Operation | null>(null);
   const [showProductSelector, setShowProductSelector] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   // Statistiche
   const [workStats, setWorkStats] = useState<WorkStats>({
@@ -65,6 +66,9 @@ export default function PrelievoZonePage() {
   const [operationsCache, setOperationsCache] = useState<{ [key: string]: Operation[] }>({});
   const [cacheTimestamps, setCacheTimestamps] = useState<{ [key: string]: number }>({});
 
+  // Cache per stato ubicazioni (completamento)
+  const [locationStatusCache, setLocationStatusCache] = useState<{ [key: string]: { completedOps: number, totalOps: number, isFullyCompleted: boolean } }>({});
+
   // Configurazione
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(true);
@@ -85,7 +89,6 @@ export default function PrelievoZonePage() {
       if (savedCache) {
         const cache = JSON.parse(savedCache);
         setOperationsCache(cache);
-        console.log('💾 Cache caricata dal localStorage:', Object.keys(cache).length, 'entries');
       }
 
       if (savedTimestamps) {
@@ -93,7 +96,7 @@ export default function PrelievoZonePage() {
         setCacheTimestamps(timestamps);
       }
     } catch (e) {
-      console.warn('Errore caricamento cache:', e);
+      // Ignora errori cache
     }
 
     // Carica batch solo se l'utente è disponibile, altrimenti usa token mock
@@ -155,31 +158,15 @@ export default function PrelievoZonePage() {
   };
 
   const loadBatches = async () => {
-    console.log('🔄 Inizio caricamento batch...');
     setIsLoading(true);
     try {
-      // Verifica utente autenticato
-      console.log('👤 Utente corrente:', user);
-
-      // Carica batch reali da Odoo
-      console.log('📞 Chiamata a pickingClient.getBatches()...');
       const odoBatches = await pickingClient.getBatches();
-
-      console.log('📦 Batch caricati da Odoo:', odoBatches.length, odoBatches);
-
       setBatches(odoBatches);
 
       if (odoBatches.length === 0) {
-        console.log('⚠️ Nessun batch trovato');
         toast('Nessun batch disponibile al momento', { icon: 'ℹ️' });
-      } else {
-        console.log('✅ Batch caricati con successo');
       }
     } catch (error: any) {
-      console.error('❌ Errore caricamento batch:', error);
-      console.error('❌ Stack trace:', error.stack);
-
-      // Se è un errore di autenticazione, reindirizza al login
       if (error.message?.includes('Session') || error.message?.includes('401')) {
         toast.error('Sessione scaduta, reindirizzamento al login...');
         router.push('/');
@@ -188,7 +175,6 @@ export default function PrelievoZonePage() {
       }
     } finally {
       setIsLoading(false);
-      console.log('🏁 Fine caricamento batch');
     }
   };
 
@@ -213,12 +199,9 @@ export default function PrelievoZonePage() {
 
   const loadZoneCounts = async (batchId: number) => {
     try {
-      console.log('🔄 Caricamento conteggi zone per batch:', batchId);
       const counts = await pickingClient.getBatchZoneCounts(batchId);
       setZoneCounts(counts);
-      console.log('✅ Conteggi zone caricati:', counts);
     } catch (error) {
-      console.error('Errore caricamento conteggi zone:', error);
       toast.error('Errore nel caricamento dei conteggi zone');
     }
   };
@@ -242,17 +225,14 @@ export default function PrelievoZonePage() {
         return;
       }
 
-      // Carica solo le ubicazioni che hanno operazioni nel batch corrente per questa zona
+      // Carica SOLO le ubicazioni, NON le operazioni (molto più veloce!)
       const odooLocations = await pickingClient.getZoneLocationsWithOperations(
         currentBatch.id,
         zone.id
       );
 
-      console.log(`📍 Ubicazioni con operazioni caricate per zona ${zone.displayName}:`, odooLocations.length);
-
       // Ordina ubicazioni per ultimi caratteri/cifre (es. A01, A02, B01, C04)
       const sortedLocations = odooLocations.sort((a, b) => {
-        // Estrai l'ultima parte del nome (dopo l'ultimo punto o slash)
         const getLastPart = (name: string) => {
           const parts = name.split(/[\/\.]/);
           return parts[parts.length - 1] || name;
@@ -269,10 +249,9 @@ export default function PrelievoZonePage() {
       if (odooLocations.length === 0) {
         toast(`Nessuna operazione da prelevare nella zona ${zone.displayName}`, { icon: 'ℹ️' });
       } else {
-        toast.success(`${odooLocations.length} ubicazioni con operazioni trovate`);
+        toast.success(`${odooLocations.length} ubicazioni caricate`);
       }
     } catch (error: any) {
-      console.error('Errore caricamento ubicazioni:', error);
       toast.error('Errore nel caricamento delle ubicazioni');
     } finally {
       setIsLoading(false);
@@ -307,16 +286,11 @@ export default function PrelievoZonePage() {
         const cacheAge = now - cacheTimestamps[cacheKey];
 
         if (cacheAge < CACHE_EXPIRE_TIME) {
-          console.log(`🚀 Cache HIT per ${location.name}: ${operationsCache[cacheKey].length} operazioni (età: ${Math.round(cacheAge/1000)}s)`);
           setCurrentOperations(operationsCache[cacheKey]);
           setIsLoading(false);
           return;
-        } else {
-          console.log(`⏰ Cache EXPIRED per ${location.name} (età: ${Math.round(cacheAge/1000)}s) - ricaricamento`);
         }
       }
-
-      console.log(`📡 Cache MISS - Caricamento da Odoo per ${location.name}`);
 
       // Carica operazioni reali da Odoo per l'ubicazione selezionata
       const odooOperations = await pickingClient.getLocationOperations(
@@ -324,14 +298,12 @@ export default function PrelievoZonePage() {
         location.id
       );
 
-      console.log(`📦 Operazioni caricate per ${location.name}:`, odooOperations.length);
-
       // Ordina operazioni alfabeticamente per nome prodotto
       const sortedOperations = odooOperations.sort((a, b) => {
         return a.productName.localeCompare(b.productName, 'it-IT');
       });
 
-      // Salva in cache per future selezioni (usa versione ordinata)
+      // Salva in cache per future selezioni
       const newCache = {
         ...operationsCache,
         [cacheKey]: sortedOperations
@@ -343,13 +315,15 @@ export default function PrelievoZonePage() {
       setOperationsCache(newCache);
       setCacheTimestamps(newTimestamps);
 
-      // Salva anche in localStorage per persistenza
-      try {
-        localStorage.setItem('pickingOperationsCache', JSON.stringify(newCache));
-        localStorage.setItem('pickingCacheTimestamps', JSON.stringify(newTimestamps));
-      } catch (e) {
-        console.warn('Impossibile salvare in localStorage:', e);
-      }
+      // Calcola e salva stato completamento nella cache
+      const completedOps = sortedOperations.filter(op => op.qty_done >= op.quantity).length;
+      const totalOps = sortedOperations.length;
+      const isFullyCompleted = totalOps > 0 && completedOps === totalOps;
+
+      setLocationStatusCache(prev => ({
+        ...prev,
+        [location.id]: { completedOps, totalOps, isFullyCompleted }
+      }));
 
       setCurrentOperations(sortedOperations);
 
@@ -363,7 +337,6 @@ export default function PrelievoZonePage() {
         toast(`Nessuna operazione da prelevare in ${location.name}`, { icon: 'ℹ️' });
       }
     } catch (error: any) {
-      console.error('Errore caricamento operazioni:', error);
       toast.error('Errore nel caricamento delle operazioni');
     } finally {
       setIsLoading(false);
@@ -372,35 +345,122 @@ export default function PrelievoZonePage() {
 
   const updateOperation = async (operationId: number, qtyDone: number) => {
     // Aggiorna UI immediatamente, permettendo quantità superiori a quella richiesta
-    setCurrentOperations(prev => prev.map(op => {
-      if (op.id === operationId) {
-        const updated = { ...op, qty_done: qtyDone };
+    setCurrentOperations(prev => {
+      const updated = prev.map(op => {
+        if (op.id === operationId) {
+          const updatedOp = { ...op, qty_done: qtyDone };
 
-        // Se completata, aggiorna statistiche
-        if (qtyDone >= op.quantity && op.qty_done < op.quantity) {
-          setWorkStats(prevStats => ({
-            ...prevStats,
-            completedOperations: prevStats.completedOperations + 1
-          }));
-          toast.success(`✅ ${op.productName} completato!`);
+          // Se completata, aggiorna statistiche
+          if (qtyDone >= op.quantity && op.qty_done < op.quantity) {
+            setWorkStats(prevStats => ({
+              ...prevStats,
+              completedOperations: prevStats.completedOperations + 1
+            }));
+            toast.success(`✅ ${op.productName} completato!`);
+          }
+
+          return updatedOp;
         }
+        return op;
+      });
 
-        return updated;
+      // Aggiorna cache stato ubicazione corrente
+      if (currentLocation) {
+        const completedOps = updated.filter(op => op.qty_done >= op.quantity).length;
+        const totalOps = updated.length;
+        const isFullyCompleted = totalOps > 0 && completedOps === totalOps;
+
+        setLocationStatusCache(prevCache => ({
+          ...prevCache,
+          [currentLocation.id]: { completedOps, totalOps, isFullyCompleted }
+        }));
+
+        // Se ubicazione completata al 100%, chiudi e apri la prossima
+        if (isFullyCompleted) {
+          setTimeout(() => {
+            openNextLocation();
+          }, 1000); // Delay di 1 secondo per far vedere il completamento
+        }
       }
-      return op;
-    }));
+
+      return updated;
+    });
 
     // Salva su Odoo in background
     try {
       const success = await pickingClient.updateOperationQuantity(operationId, qtyDone);
       if (!success) {
         toast.error('Errore salvataggio quantità su Odoo');
-        // Potremmo fare rollback qui se necessario
       }
     } catch (error) {
-      console.error('Errore aggiornamento Odoo:', error);
       toast.error('Errore sincronizzazione con Odoo');
     }
+  };
+
+  // Funzione per tornare alla lista e scrollare alla prossima ubicazione
+  const openNextLocation = async () => {
+    if (!currentLocation) return;
+
+    toast.success('✅ Ubicazione completata!');
+
+    // Torna alla lista ubicazioni
+    setShowOperations(false);
+    setShowLocationList(true);
+
+    // Ricarica ubicazioni per aggiornare gli stati
+    if (currentZone) {
+      await loadZoneLocations(currentZone);
+    }
+
+    // Trova l'indice dell'ubicazione corrente
+    const currentIndex = locations.findIndex(loc => loc.id === currentLocation.id);
+
+    if (currentIndex === -1) return;
+
+    // Trova la prossima ubicazione non completata
+    let nextLocationIndex = -1;
+    for (let i = currentIndex + 1; i < locations.length; i++) {
+      const loc = locations[i];
+      const cachedStatus = locationStatusCache[loc.id];
+      const isCompleted = cachedStatus?.isFullyCompleted || (loc as any).isFullyCompleted || false;
+
+      if (!isCompleted) {
+        nextLocationIndex = i;
+        break;
+      }
+    }
+
+    // Scrolla alla prossima ubicazione dopo un breve delay
+    setTimeout(() => {
+      if (nextLocationIndex !== -1) {
+        const locationCards = document.querySelectorAll('.location-card');
+        if (locationCards[nextLocationIndex]) {
+          locationCards[nextLocationIndex].scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+
+          // Highlight temporaneo della card
+          locationCards[nextLocationIndex].classList.add('highlight-pulse');
+          setTimeout(() => {
+            locationCards[nextLocationIndex].classList.remove('highlight-pulse');
+          }, 2000);
+        }
+      } else {
+        // TUTTE LE UBICAZIONI COMPLETATE - CELEBRAZIONE!
+        setShowCelebration(true);
+
+        // Vibrazione di successo
+        if ('vibrate' in navigator) {
+          navigator.vibrate([200, 100, 200, 100, 400]);
+        }
+
+        // Chiudi celebrazione dopo 5 secondi
+        setTimeout(() => {
+          setShowCelebration(false);
+        }, 5000);
+      }
+    }, 500);
   };
 
   // Handler per QR Scanner
@@ -448,7 +508,6 @@ export default function PrelievoZonePage() {
     localStorage.removeItem('pickingOperationsCache');
     localStorage.removeItem('pickingCacheTimestamps');
     toast.success('Cache pulita - prossimi caricamenti saranno da Odoo');
-    console.log('🧹 Cache pulita completamente');
   };
 
   const refreshCurrentLocation = async () => {
@@ -498,15 +557,23 @@ export default function PrelievoZonePage() {
   // Auto-focus sull'input scanner quando si apre la lista ubicazioni
   useEffect(() => {
     if (showLocationList && scannerInputRef.current) {
+      // Focus immediato
       scannerInputRef.current.focus();
+
+      // Ri-focus periodico per evitare perdita focus su tablet
+      const refocusInterval = setInterval(() => {
+        if (scannerInputRef.current && document.activeElement !== scannerInputRef.current) {
+          scannerInputRef.current.focus();
+        }
+      }, 500);
+
+      return () => clearInterval(refocusInterval);
     }
   }, [showLocationList]);
 
   // Handler per input scanner pistola
   const handleScannerInput = (value: string) => {
     if (value.trim().length === 0) return;
-
-    console.log('🔫 Codice scansionato dalla pistola:', value);
 
     // Cerca l'ubicazione nella lista corrente
     const foundLocation = locations.find(
@@ -517,12 +584,9 @@ export default function PrelievoZonePage() {
     );
 
     if (foundLocation) {
-      console.log('✅ Ubicazione trovata:', foundLocation.name);
       toast.success(`📍 Apertura ${foundLocation.name}...`);
       selectLocation(foundLocation);
     } else {
-      console.log('❌ Ubicazione non trovata nella zona corrente');
-
       // Mostra errore visivo grande sulla schermata
       setScannerError(`❌ Ubicazione "${value}" non trovata in questa zona!`);
 
@@ -566,7 +630,6 @@ export default function PrelievoZonePage() {
   // Genera e salva report zona completata
   const generateAndSaveZoneReport = async () => {
     if (!currentBatch || !currentZone || !user) {
-      console.log('⚠️ Mancano dati per generare report');
       return;
     }
 
@@ -581,13 +644,11 @@ export default function PrelievoZonePage() {
       // Conta prodotti prelevati e peso totale
       let productsCount = 0;
       let totalWeight = 0;
-      const locationTimes: { [key: string]: number } = {};
 
       // Raccogli statistiche dalle operazioni completate
       currentOperations.forEach(op => {
         if (op.qty_done > 0) {
           productsCount++;
-          // Qui potresti calcolare il peso se disponibile nei dati del prodotto
         }
       });
 
@@ -603,18 +664,14 @@ export default function PrelievoZonePage() {
 - Peso totale: ${totalWeight.toFixed(2)} kg
 - Operazioni completate: ${workStats.completedOperations}`;
 
-      console.log('📊 Report generato:\n', report);
-
       // Salva il report nel batch
       const saved = await pickingClient.saveBatchReport(currentBatch.id, report);
 
       if (saved) {
         toast.success('Report salvato nel batch! ✅');
-        console.log('✅ Report salvato con successo nel batch');
       }
 
     } catch (error) {
-      console.error('❌ Errore generazione/salvataggio report:', error);
       toast.error('Errore nel salvataggio del report');
     }
   };
@@ -919,8 +976,18 @@ export default function PrelievoZonePage() {
                   handleScannerInput(scannerInput);
                 }
               }}
-              className="absolute opacity-0 w-1 h-1 pointer-events-none"
+              onBlur={(e) => {
+                // Ripristina focus immediatamente se perso
+                setTimeout(() => {
+                  if (scannerInputRef.current) {
+                    scannerInputRef.current.focus();
+                  }
+                }, 100);
+              }}
+              className="fixed top-0 left-0 opacity-0 w-1 h-1 pointer-events-none -z-10"
               autoFocus
+              autoComplete="off"
+              inputMode="none"
               placeholder="Scanner input"
             />
 
@@ -965,45 +1032,97 @@ export default function PrelievoZonePage() {
               </button>
             </div>
 
-            <div className="space-y-3">
-              {locations.map((location, index) => (
-                <motion.div
-                  key={location.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="w-full glass-strong p-4 rounded-xl flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <MapPin className={`w-5 h-5 ${darkMode ? 'text-blue-300' : 'text-muted-foreground'}`} />
-                    <div className="text-left flex-1">
-                      <h3 className="font-semibold">{location.name}</h3>
-                      <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-muted-foreground'}`}>
-                        {(location as any).operationCount || 0} operazioni
+            <div className="space-y-4">
+              {locations.map((location, index) => {
+                const locData = location as any;
+
+                // Usa la cache dello stato se disponibile, altrimenti usa i dati dalla location
+                const cachedStatus = locationStatusCache[location.id];
+                const isCompleted = cachedStatus?.isFullyCompleted || locData.isFullyCompleted || false;
+                const completedOps = cachedStatus?.completedOps || locData.completedOps || 0;
+                const totalOps = cachedStatus?.totalOps || locData.totalOps || locData.operationCount || 0;
+                const remaining = totalOps - completedOps;
+
+                return (
+                  <motion.div
+                    key={location.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`location-card w-full p-4 rounded-xl flex items-center justify-between gap-4 transition-all ${
+                      isCompleted
+                        ? 'bg-green-500/30 border-4 border-green-500'
+                        : remaining > 0 && completedOps > 0
+                        ? 'bg-orange-500/20 border-4 border-orange-500'
+                        : 'glass-strong border-4 border-blue-500/50'
+                    }`}
+                  >
+                    {/* STATO VISIVO ENORME - ICONA */}
+                    <div className="flex-shrink-0">
+                      {isCompleted ? (
+                        <div className="w-24 h-24 rounded-2xl bg-green-500 flex flex-col items-center justify-center shadow-2xl">
+                          <CheckCircle2 className="w-12 h-12 text-white mb-1" />
+                          <span className="text-white font-black text-xs">OK</span>
+                        </div>
+                      ) : remaining > 0 && completedOps > 0 ? (
+                        <div className="w-24 h-24 rounded-2xl bg-orange-500 flex flex-col items-center justify-center shadow-2xl">
+                          <div className="text-white font-black text-3xl">{remaining}</div>
+                          <span className="text-white font-bold text-xs">DA FARE</span>
+                        </div>
+                      ) : (
+                        <div className="w-24 h-24 rounded-2xl bg-red-500 flex flex-col items-center justify-center shadow-2xl">
+                          <div className="text-white font-black text-3xl">{totalOps}</div>
+                          <span className="text-white font-bold text-xs">DA FARE</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* INFO UBICAZIONE */}
+                    <div className="flex-1">
+                      <h3 className="font-bold text-xl mb-2">{location.name}</h3>
+
+                      {/* STATO TESTUALE GRANDE */}
+                      {isCompleted ? (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-2xl font-black text-green-400">✓ TUTTO FATTO</span>
+                        </div>
+                      ) : remaining > 0 && completedOps > 0 ? (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-2xl font-black text-orange-400">⚠️ {remaining} PRODOTTI DA PRELEVARE</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-2xl font-black text-red-400">🔴 {totalOps} PRODOTTI DA PRELEVARE</span>
+                        </div>
+                      )}
+
+                      {/* Dettaglio contatore */}
+                      <p className="text-lg text-gray-300">
+                        {completedOps}/{totalOps} completati
                       </p>
-                      {/* Preview prodotti - mostra primi 3 */}
-                      {(location as any).productPreview && (location as any).productPreview.length > 0 && (
-                        <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-muted-foreground'} line-clamp-2`}>
-                          📦 {(location as any).productPreview.slice(0, 3).join(', ')}
-                          {(location as any).productPreview.length > 3 && ` +${(location as any).productPreview.length - 3} altri`}
+
+                      {/* Preview prodotti */}
+                      {locData.productPreview && locData.productPreview.length > 0 && (
+                        <p className={`text-sm mt-2 ${darkMode ? 'text-gray-400' : 'text-muted-foreground'} line-clamp-1`}>
+                          📦 {locData.productPreview.slice(0, 2).join(', ')}
                         </p>
                       )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm font-bold mr-2">
-                      {(location as any).operationCount || 0} op.
-                    </div>
+
+                    {/* PULSANTE */}
                     <button
                       onClick={() => selectLocation(location)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                      className={`py-4 px-8 rounded-xl font-black text-xl transition-all shadow-2xl ${
+                        isCompleted
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      }`}
                     >
-                      <ChevronRight className="w-4 h-4" />
-                      Apri
+                      <ChevronRight className="w-6 h-6" />
                     </button>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </div>
 
             {locations.length === 0 && !isLoading && (
@@ -1027,9 +1146,14 @@ export default function PrelievoZonePage() {
           >
             <div className="mb-6 flex items-center justify-between">
               <button
-                onClick={() => {
+                onClick={async () => {
                   setShowOperations(false);
                   setShowLocationList(true);
+
+                  // RICARICA le ubicazioni per aggiornare lo stato di completamento
+                  if (currentZone) {
+                    await loadZoneLocations(currentZone);
+                  }
                 }}
                 className="glass px-4 py-2 rounded-lg hover:bg-white/20 transition-colors"
               >
@@ -1195,11 +1319,16 @@ export default function PrelievoZonePage() {
                 className="mt-6"
               >
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     toast.success('Ubicazione completata! ✅');
                     setShowOperations(false);
                     setShowLocationList(true);
                     setCurrentOperations([]);
+
+                    // RICARICA le ubicazioni per aggiornare lo stato di completamento
+                    if (currentZone) {
+                      await loadZoneLocations(currentZone);
+                    }
                   }}
                   className="w-full bg-green-600 hover:bg-green-700 text-white py-4 px-6 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
                 >
@@ -1312,6 +1441,124 @@ export default function PrelievoZonePage() {
           </motion.div>
         </motion.div>
       )}
+
+      {/* CELEBRATION MODAL - Tutte le ubicazioni completate! */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-gradient-to-br from-green-900/95 via-emerald-900/95 to-teal-900/95 flex items-center justify-center p-4 overflow-hidden"
+            onClick={() => setShowCelebration(false)}
+          >
+            {/* Fuochi d'artificio animati */}
+            <div className="fireworks-container">
+              {[...Array(20)].map((_, i) => (
+                <div
+                  key={i}
+                  className="firework"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 2}s`
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Contenuto celebrativo */}
+            <motion.div
+              initial={{ scale: 0.5, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.5, y: 50 }}
+              transition={{ type: "spring", duration: 0.8 }}
+              className="relative z-10 text-center"
+            >
+              {/* Trofeo animato */}
+              <motion.div
+                animate={{
+                  rotate: [0, -10, 10, -10, 0],
+                  scale: [1, 1.1, 1, 1.1, 1]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  repeatType: "loop"
+                }}
+                className="text-9xl mb-6"
+              >
+                🏆
+              </motion.div>
+
+              {/* Messaggio principale */}
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-6xl md:text-8xl font-black text-white mb-4"
+                style={{ textShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
+              >
+                FANTASTICO!
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="text-3xl md:text-4xl font-bold text-green-100 mb-8"
+              >
+                🎉 Zona {currentZone?.displayName} Completata! 🎉
+              </motion.p>
+
+              {/* Emoji celebrative */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.7 }}
+                className="flex justify-center gap-4 text-5xl mb-8"
+              >
+                <motion.span animate={{ y: [0, -20, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0 }}>⭐</motion.span>
+                <motion.span animate={{ y: [0, -20, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}>✨</motion.span>
+                <motion.span animate={{ y: [0, -20, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}>🎊</motion.span>
+                <motion.span animate={{ y: [0, -20, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0.6 }}>🎈</motion.span>
+              </motion.div>
+
+              {/* Statistiche */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.9 }}
+                className="bg-white/20 backdrop-blur-lg rounded-2xl p-6 mb-8 inline-block"
+              >
+                <div className="grid grid-cols-2 gap-6 text-white">
+                  <div>
+                    <div className="text-5xl font-black">{workStats.completedOperations}</div>
+                    <div className="text-lg">Operazioni</div>
+                  </div>
+                  <div>
+                    <div className="text-5xl font-black">{formatTime(workStats.totalTime)}</div>
+                    <div className="text-lg">Tempo</div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Pulsante */}
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 1.1 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowCelebration(false)}
+                className="bg-white text-green-700 font-black text-2xl py-4 px-12 rounded-full shadow-2xl hover:bg-green-50 transition-colors"
+              >
+                Continua 🚀
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
