@@ -428,6 +428,115 @@ export class PickingOdooClient {
     }
   }
 
+  // Carica le operazioni raggruppate per prodotto (per controllo diretto)
+  async getProductGroupedOperations(batchId: number, zone: string): Promise<any[]> {
+    try {
+      console.log(`🔄 [Picking] Caricamento prodotti raggruppati per zona: ${zone}, batch: ${batchId}`);
+
+      // Prima ottieni i picking del batch
+      const batch: OdooPickingBatch = await this.rpc(
+        'stock.picking.batch',
+        'read',
+        [[batchId], ['picking_ids']]
+      ).then(res => res[0]);
+
+      if (!batch.picking_ids || !Array.isArray(batch.picking_ids) || batch.picking_ids.length === 0) {
+        return [];
+      }
+
+      // Carica le move lines per questa zona
+      const moveLines = await this.rpc(
+        'stock.move.line',
+        'search_read',
+        [[['picking_id', 'in', batch.picking_ids], ['state', 'not in', ['done', 'cancel']]], ['location_id', 'product_id', 'quantity', 'qty_done', 'picking_id', 'product_uom_id']],
+        {}
+      );
+
+      // Filtra per zona
+      let relevantLines = [];
+      for (const line of moveLines) {
+        if (line.location_id && Array.isArray(line.location_id)) {
+          const locationPath = line.location_id[1].toLowerCase();
+          let belongsToZone = false;
+
+          if (zone === 'secco' && locationPath.includes('secco') && !locationPath.includes('sopra')) {
+            belongsToZone = true;
+          } else if (zone === 'secco_sopra' && locationPath.includes('secco sopra')) {
+            belongsToZone = true;
+          } else if (zone === 'pingu' && locationPath.includes('pingu')) {
+            belongsToZone = true;
+          } else if (zone === 'frigo' && locationPath.includes('frigo')) {
+            belongsToZone = true;
+          }
+
+          if (belongsToZone) {
+            relevantLines.push(line);
+          }
+        }
+      }
+
+      // Raggruppa per prodotto
+      const productMap = new Map();
+
+      for (const line of relevantLines) {
+        const productId = line.product_id[0];
+        const productName = line.product_id[1];
+        const qty = line.quantity || 0;
+        const qtyDone = line.qty_done || 0;
+
+        if (!productMap.has(productId)) {
+          productMap.set(productId, {
+            productId: productId,
+            productName: productName,
+            totalQtyRequested: 0,
+            totalQtyPicked: 0,
+            clientCount: 0,
+            lines: []
+          });
+        }
+
+        const product = productMap.get(productId);
+        product.totalQtyRequested += qty;
+        product.totalQtyPicked += qtyDone;
+        product.clientCount++;
+        product.lines.push({
+          id: line.id,
+          locationName: line.location_id[1],
+          pickingId: line.picking_id ? line.picking_id[0] : null,
+          pickingName: line.picking_id ? line.picking_id[1] : '',
+          quantity: qty,
+          qty_done: qtyDone,
+          uom: line.product_uom_id && typeof line.product_uom_id[1] === 'string' ? line.product_uom_id[1].split(' ')[0] : 'PZ'
+        });
+      }
+
+      // Carica info picking per i clienti
+      const pickingIds = Array.from(new Set(relevantLines
+        .filter(l => l.picking_id)
+        .map(l => l.picking_id[0])
+      ));
+
+      const pickings = await this.getPickings(pickingIds as number[]);
+      const pickingMap = new Map(pickings.map(p => [p.id, p]));
+
+      // Aggiungi info cliente a ogni linea
+      const result = Array.from(productMap.values()).map(product => {
+        product.lines = product.lines.map((line: any) => ({
+          ...line,
+          customerName: line.pickingId ? pickingMap.get(line.pickingId)?.partner_name || 'N/A' : 'N/A'
+        }));
+        return product;
+      });
+
+      console.log(`✅ [Picking] Trovati ${result.length} prodotti raggruppati`);
+      return result;
+
+    } catch (error) {
+      console.error('Errore caricamento prodotti raggruppati:', error);
+      throw error;
+    }
+  }
+
   // Carica le operazioni per un'ubicazione specifica
   async getLocationOperations(batchId: number, locationId: number): Promise<Operation[]> {
     try {

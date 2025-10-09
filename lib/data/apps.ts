@@ -144,6 +144,21 @@ export const mockApps: App[] = [
     createdAt: new Date('2025-01-23'),
     updatedAt: new Date('2025-01-23'),
   },
+  {
+    id: '11',
+    name: 'Controllo Diretto',
+    description: 'Controllo veloce dei prelievi raggruppati per prodotto. Vedi totali richiesti vs prelevati senza girare per le ubicazioni.',
+    icon: '✅',
+    badge: 'PRO',
+    category: 'Business',
+    url: '/controllo-diretto',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-01-24'),
+    updatedAt: new Date('2025-01-24'),
+  },
 ];
 
 export const categories = [
