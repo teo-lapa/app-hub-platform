@@ -452,20 +452,28 @@ export class PickingOdooClient {
         {}
       );
 
-      // Carica i moves per ottenere la quantità richiesta REALE dal cliente
-      const moveIds = Array.from(new Set(moveLines
-        .filter((ml: any) => ml.move_id)
-        .map((ml: any) => ml.move_id[0])
-      ));
-
-      const moves = moveIds.length > 0 ? await this.rpc(
+      // Carica TUTTI i moves dai pickings per ottenere la quantità richiesta
+      // Non ci fidiamo solo delle move_id nelle move lines perché potrebbero essere null
+      const allMoves = await this.rpc(
         'stock.move',
-        'read',
-        [moveIds, ['id', 'product_uom_qty', 'product_id', 'picking_id']],
+        'search_read',
+        [[
+          ['picking_id', 'in', batch.picking_ids],
+          ['state', 'not in', ['done', 'cancel']]
+        ], ['id', 'product_uom_qty', 'product_id', 'picking_id']],
         {}
-      ) : [];
+      );
 
-      const moveMap = new Map(moves.map((m: any) => [m.id, m]));
+      // Crea una mappa: picking_id + product_id => move
+      const moveByPickingProductMap = new Map();
+      allMoves.forEach((m: any) => {
+        const pickingId = Array.isArray(m.picking_id) ? m.picking_id[0] : m.picking_id;
+        const productId = Array.isArray(m.product_id) ? m.product_id[0] : m.product_id;
+        const key = `${pickingId}_${productId}`;
+        moveByPickingProductMap.set(key, m);
+      });
+
+      const moveMap = new Map(allMoves.map((m: any) => [m.id, m]));
 
       // Filtra per zona
       let relevantLines = [];
@@ -501,7 +509,18 @@ export class PickingOdooClient {
         const qtyDone = line.qty_done || 0;
 
         // Ottieni la quantità richiesta dal move, non dalla move line!
-        const move: any = moveId ? moveMap.get(moveId) : null;
+        let move: any = null;
+
+        // Prima prova con move_id
+        if (moveId) {
+          move = moveMap.get(moveId);
+        }
+
+        // Se non trovato, cerca per picking_id + product_id
+        if (!move) {
+          const moveKey = `${pickingId}_${productId}`;
+          move = moveByPickingProductMap.get(moveKey);
+        }
 
         if (!productPickingMap.has(key)) {
           // Prendi la qty richiesta dal move.product_uom_qty (non dalla move line!)
