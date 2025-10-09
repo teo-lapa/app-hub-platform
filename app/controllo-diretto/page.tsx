@@ -16,6 +16,7 @@ interface ProductGroup {
   totalQtyRequested: number;
   totalQtyPicked: number;
   clientCount: number;
+  image: string | null;
   lines: ProductLine[];
 }
 
@@ -359,15 +360,27 @@ export default function ControlloDirettoPage() {
                           className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
                         >
                           <div className="flex items-center gap-4 flex-1">
-                            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                              isComplete ? 'bg-green-100' : 'bg-blue-100'
-                            }`}>
-                              {isComplete ? (
-                                <CheckCircle2 className="w-6 h-6 text-green-600" />
-                              ) : (
-                                <Package className="w-6 h-6 text-blue-600" />
-                              )}
-                            </div>
+                            {/* Immagine prodotto */}
+                            {product.image ? (
+                              <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                                <img
+                                  src={product.image}
+                                  alt={product.productName}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div className={`flex-shrink-0 w-16 h-16 rounded-lg flex items-center justify-center ${
+                                isComplete ? 'bg-green-100' : 'bg-blue-100'
+                              }`}>
+                                {isComplete ? (
+                                  <CheckCircle2 className="w-8 h-8 text-green-600" />
+                                ) : (
+                                  <Package className="w-8 h-8 text-blue-600" />
+                                )}
+                              </div>
+                            )}
+
                             <div className="flex-1 text-left">
                               <h3 className="font-semibold text-gray-900">{product.productName}</h3>
                               <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">

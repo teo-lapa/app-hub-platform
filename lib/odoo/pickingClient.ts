@@ -491,6 +491,7 @@ export class PickingOdooClient {
             totalQtyRequested: 0,
             totalQtyPicked: 0,
             clientCount: 0,
+            image: null,
             lines: []
           });
         }
@@ -508,6 +509,17 @@ export class PickingOdooClient {
           qty_done: qtyDone,
           uom: line.product_uom_id && typeof line.product_uom_id[1] === 'string' ? line.product_uom_id[1].split(' ')[0] : 'PZ'
         });
+      }
+
+      // Carica immagini prodotti
+      const productIds = Array.from(productMap.keys());
+      const products = await this.getProducts(productIds);
+      const productImageMap = new Map(products.map(p => [p.id, p.image_128]));
+
+      // Aggiungi immagini ai prodotti
+      for (const [productId, product] of productMap) {
+        const imageBase64 = productImageMap.get(productId);
+        product.image = imageBase64 ? `data:image/png;base64,${imageBase64}` : null;
       }
 
       // Carica info picking per i clienti
