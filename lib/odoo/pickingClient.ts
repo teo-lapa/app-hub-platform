@@ -592,6 +592,9 @@ export class PickingOdooClient {
         product.totalQtyRequested += group.totalQtyRequested;
         product.totalQtyPicked += group.totalQtyPicked;
         product.clientCount++;
+
+        console.log(`[Picking] 📊 Creando line per cliente. Picking: ${group.pickingId}, Qty Richiesta: ${group.totalQtyRequested}, Qty Prelevata: ${group.totalQtyPicked}`);
+
         product.lines.push({
           pickingId: group.pickingId,
           pickingName: group.pickingName,
