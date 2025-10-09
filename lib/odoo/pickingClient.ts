@@ -448,9 +448,24 @@ export class PickingOdooClient {
       const moveLines = await this.rpc(
         'stock.move.line',
         'search_read',
-        [[['picking_id', 'in', batch.picking_ids], ['state', 'not in', ['done', 'cancel']]], ['location_id', 'product_id', 'quantity', 'qty_done', 'picking_id', 'product_uom_id']],
+        [[['picking_id', 'in', batch.picking_ids], ['state', 'not in', ['done', 'cancel']]], ['location_id', 'product_id', 'quantity', 'qty_done', 'picking_id', 'product_uom_id', 'move_id']],
         {}
       );
+
+      // Carica i moves per ottenere la quantità richiesta REALE dal cliente
+      const moveIds = Array.from(new Set(moveLines
+        .filter(ml => ml.move_id)
+        .map(ml => ml.move_id[0])
+      ));
+
+      const moves = moveIds.length > 0 ? await this.rpc(
+        'stock.move',
+        'read',
+        [moveIds, ['id', 'product_uom_qty', 'product_id', 'picking_id']],
+        {}
+      ) : [];
+
+      const moveMap = new Map(moves.map((m: any) => [m.id, m]));
 
       // Filtra per zona
       let relevantLines = [];
@@ -475,19 +490,63 @@ export class PickingOdooClient {
         }
       }
 
-      // Raggruppa per prodotto
-      const productMap = new Map();
+      // Prima raggruppa per prodotto + picking (cliente) usando move_id per la qty richiesta
+      const productPickingMap = new Map();
 
       for (const line of relevantLines) {
         const productId = line.product_id[0];
-        const productName = line.product_id[1];
-        const qty = line.quantity || 0;
+        const pickingId = line.picking_id ? line.picking_id[0] : 0;
+        const moveId = line.move_id ? line.move_id[0] : null;
+        const key = `${productId}_${pickingId}`;
         const qtyDone = line.qty_done || 0;
+
+        // Ottieni la quantità richiesta dal move, non dalla move line!
+        const move = moveId ? moveMap.get(moveId) : null;
+        const qtyRequested = move ? move.product_uom_qty : (line.quantity || 0);
+
+        if (!productPickingMap.has(key)) {
+          productPickingMap.set(key, {
+            productId: productId,
+            productName: line.product_id[1],
+            pickingId: pickingId,
+            pickingName: line.picking_id ? line.picking_id[1] : '',
+            customerName: '', // Verrà riempito dopo
+            totalQtyRequested: qtyRequested, // Prendi dal move, non sommare!
+            totalQtyPicked: 0,
+            moveLines: [],
+            moveIdProcessed: moveId ? new Set([moveId]) : new Set()
+          });
+        }
+
+        const group = productPickingMap.get(key);
+
+        // Se il move non è stato ancora processato, usa la sua qty
+        // Altrimenti non sommare di nuovo (evita duplicati)
+        if (moveId && !group.moveIdProcessed.has(moveId)) {
+          group.totalQtyRequested = qtyRequested;
+          group.moveIdProcessed.add(moveId);
+        }
+
+        group.totalQtyPicked += qtyDone;
+        group.moveLines.push({
+          id: line.id,
+          locationName: line.location_id[1],
+          quantity: line.quantity || 0, // Qty della singola move line
+          qty_done: qtyDone,
+          uom: line.product_uom_id && typeof line.product_uom_id[1] === 'string' ? line.product_uom_id[1].split(' ')[0] : 'PZ'
+        });
+      }
+
+      // Ora raggruppa per prodotto
+      const productMap = new Map();
+
+      productPickingMap.forEach((group) => {
+        const productId = group.productId;
 
         if (!productMap.has(productId)) {
           productMap.set(productId, {
             productId: productId,
-            productName: productName,
+            productName: group.productName,
             totalQtyRequested: 0,
             totalQtyPicked: 0,
             clientCount: 0,
@@ -497,19 +556,18 @@ export class PickingOdooClient {
         }
 
         const product = productMap.get(productId);
-        product.totalQtyRequested += qty;
-        product.totalQtyPicked += qtyDone;
+        product.totalQtyRequested += group.totalQtyRequested;
+        product.totalQtyPicked += group.totalQtyPicked;
         product.clientCount++;
         product.lines.push({
-          id: line.id,
-          locationName: line.location_id[1],
-          pickingId: line.picking_id ? line.picking_id[0] : null,
-          pickingName: line.picking_id ? line.picking_id[1] : '',
-          quantity: qty,
-          qty_done: qtyDone,
-          uom: line.product_uom_id && typeof line.product_uom_id[1] === 'string' ? line.product_uom_id[1].split(' ')[0] : 'PZ'
+          pickingId: group.pickingId,
+          pickingName: group.pickingName,
+          customerName: '', // Verrà riempito dopo
+          quantityRequested: group.totalQtyRequested,
+          quantityPicked: group.totalQtyPicked,
+          moveLines: group.moveLines
         });
-      }
+      });
 
       // Carica immagini prodotti
       const productIds = Array.from(productMap.keys());

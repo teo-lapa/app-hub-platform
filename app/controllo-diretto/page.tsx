@@ -20,15 +20,21 @@ interface ProductGroup {
   lines: ProductLine[];
 }
 
-interface ProductLine {
+interface MoveLine {
   id: number;
   locationName: string;
-  pickingId: number;
-  pickingName: string;
-  customerName: string;
   quantity: number;
   qty_done: number;
   uom: string;
+}
+
+interface ProductLine {
+  pickingId: number;
+  pickingName: string;
+  customerName: string;
+  quantityRequested: number;
+  quantityPicked: number;
+  moveLines: MoveLine[];
 }
 
 export default function ControlloDirettoPage() {
@@ -141,12 +147,21 @@ export default function ControlloDirettoPage() {
     setCheckedProducts(newChecked);
   }
 
-  function startEditLine(line: ProductLine) {
-    setEditingLine(line.id);
-    setEditValue(line.qty_done.toString());
+  function startEditLine(moveLineId: number) {
+    setEditingLine(moveLineId);
+    // Trova la qty_done della moveLine specifica
+    for (const product of productGroups) {
+      for (const clientLine of product.lines) {
+        const moveLine = clientLine.moveLines.find(ml => ml.id === moveLineId);
+        if (moveLine) {
+          setEditValue(moveLine.qty_done.toString());
+          return;
+        }
+      }
+    }
   }
 
-  async function saveEditLine(lineId: number) {
+  async function saveEditLine(moveLineId: number) {
     const newQty = parseFloat(editValue);
     if (isNaN(newQty) || newQty < 0) {
       toast.error('Quantità non valida');
@@ -155,18 +170,30 @@ export default function ControlloDirettoPage() {
 
     setIsLoading(true);
     try {
-      await pickingClient.updateOperationQuantity(lineId, newQty);
+      await pickingClient.updateOperationQuantity(moveLineId, newQty);
 
       // Aggiorna i dati localmente
-      setProductGroups(prev => prev.map(product => ({
-        ...product,
-        lines: product.lines.map(line =>
-          line.id === lineId ? { ...line, qty_done: newQty } : line
-        ),
-        totalQtyPicked: product.lines.reduce((sum, line) =>
-          sum + (line.id === lineId ? newQty : line.qty_done), 0
-        )
-      })));
+      setProductGroups(prev => prev.map(product => {
+        const updatedLines = product.lines.map(clientLine => {
+          const updatedMoveLines = clientLine.moveLines.map(ml =>
+            ml.id === moveLineId ? { ...ml, qty_done: newQty } : ml
+          );
+          const totalPicked = updatedMoveLines.reduce((sum, ml) => sum + ml.qty_done, 0);
+          return {
+            ...clientLine,
+            moveLines: updatedMoveLines,
+            quantityPicked: totalPicked
+          };
+        });
+
+        const totalQtyPicked = updatedLines.reduce((sum, cl) => sum + cl.quantityPicked, 0);
+
+        return {
+          ...product,
+          lines: updatedLines,
+          totalQtyPicked
+        };
+      }));
 
       setEditingLine(null);
       toast.success('Quantità aggiornata');
@@ -443,51 +470,72 @@ export default function ControlloDirettoPage() {
                               exit={{ height: 0, opacity: 0 }}
                               className="border-t border-gray-200"
                             >
-                              <div className="p-4 bg-gray-50 space-y-2">
-                                {product.lines.map(line => (
-                                  <div key={line.id} className="bg-white rounded-lg p-3 flex items-center justify-between">
-                                    <div className="flex-1">
-                                      <div className="font-medium text-gray-900">{line.customerName}</div>
-                                      <div className="text-xs text-gray-500 mt-1">
-                                        {line.locationName} • {line.pickingName}
+                              <div className="p-4 bg-gray-50 space-y-3">
+                                {product.lines.map((clientLine, clientIdx) => (
+                                  <div key={clientIdx} className="bg-white rounded-lg p-3">
+                                    {/* Header Cliente */}
+                                    <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                                      <div>
+                                        <div className="font-semibold text-gray-900">{clientLine.customerName}</div>
+                                        <div className="text-xs text-gray-500">{clientLine.pickingName}</div>
+                                      </div>
+                                      <div className="text-sm">
+                                        <span className="text-gray-600">Richiesto: </span>
+                                        <strong>{clientLine.quantityRequested}</strong>
+                                        <span className="mx-2">•</span>
+                                        <span className="text-gray-600">Prelevato: </span>
+                                        <strong className={clientLine.quantityPicked >= clientLine.quantityRequested ? 'text-green-600' : 'text-blue-600'}>
+                                          {clientLine.quantityPicked}
+                                        </strong>
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                      {editingLine === line.id ? (
-                                        <div className="flex items-center gap-2">
-                                          <input
-                                            type="number"
-                                            value={editValue}
-                                            onChange={(e) => setEditValue(e.target.value)}
-                                            className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
-                                            autoFocus
-                                          />
-                                          <button
-                                            onClick={() => saveEditLine(line.id)}
-                                            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-                                          >
-                                            Salva
-                                          </button>
-                                          <button
-                                            onClick={() => setEditingLine(null)}
-                                            className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm"
-                                          >
-                                            Annulla
-                                          </button>
+
+                                    {/* Move Lines (Ubicazioni) */}
+                                    <div className="space-y-1">
+                                      {clientLine.moveLines.map((moveLine) => (
+                                        <div key={moveLine.id} className="flex items-center justify-between py-1 px-2 hover:bg-gray-50 rounded">
+                                          <div className="flex-1 text-sm text-gray-600">
+                                            📍 {moveLine.locationName}
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {editingLine === moveLine.id ? (
+                                              <>
+                                                <input
+                                                  type="number"
+                                                  value={editValue}
+                                                  onChange={(e) => setEditValue(e.target.value)}
+                                                  className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm"
+                                                  autoFocus
+                                                />
+                                                <button
+                                                  onClick={() => saveEditLine(moveLine.id)}
+                                                  className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-xs"
+                                                >
+                                                  ✓
+                                                </button>
+                                                <button
+                                                  onClick={() => setEditingLine(null)}
+                                                  className="px-2 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-xs"
+                                                >
+                                                  ✕
+                                                </button>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <span className="text-sm text-gray-900">
+                                                  {moveLine.qty_done} {moveLine.uom}
+                                                </span>
+                                                <button
+                                                  onClick={() => startEditLine(moveLine.id)}
+                                                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                                >
+                                                  <Edit2 className="w-3 h-3 text-gray-500" />
+                                                </button>
+                                              </>
+                                            )}
+                                          </div>
                                         </div>
-                                      ) : (
-                                        <>
-                                          <span className="text-sm text-gray-600">
-                                            {line.qty_done} / {line.quantity} {line.uom}
-                                          </span>
-                                          <button
-                                            onClick={() => startEditLine(line)}
-                                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                          >
-                                            <Edit2 className="w-4 h-4 text-gray-600" />
-                                          </button>
-                                        </>
-                                      )}
+                                      ))}
                                     </div>
                                   </div>
                                 ))}
