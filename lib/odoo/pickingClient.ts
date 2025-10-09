@@ -528,16 +528,9 @@ export class PickingOdooClient {
 
           if (move && move.product_uom_qty != null) {
             qtyRequested = move.product_uom_qty;
-            console.log(`[Picking] ✅ Move trovato! Picking ${pickingId}, Prodotto ${productId}, Qty richiesta: ${qtyRequested}`);
           } else {
             // Fallback: se il move non c'è, usa la qty della move line
             qtyRequested = line.quantity || 0;
-            console.warn(`[Picking] ⚠️ Move NON trovato! Picking ${pickingId}, Prodotto ${productId}, Fallback qty: ${qtyRequested}`, {
-              moveId,
-              moveFound: !!move,
-              moveQty: move?.product_uom_qty,
-              lineQty: line.quantity
-            });
           }
 
           productPickingMap.set(key, {
@@ -593,8 +586,6 @@ export class PickingOdooClient {
         product.totalQtyPicked += group.totalQtyPicked;
         product.clientCount++;
 
-        console.log(`[Picking] 📊 Creando line per cliente. Picking: ${group.pickingId}, Qty Richiesta: ${group.totalQtyRequested}, Qty Prelevata: ${group.totalQtyPicked}`);
-
         product.lines.push({
           pickingId: group.pickingId,
           pickingName: group.pickingName,
@@ -625,23 +616,25 @@ export class PickingOdooClient {
       const pickings = await this.getPickings(pickingIds as number[]);
       const pickingMap = new Map(pickings.map(p => [p.id, p]));
 
-      // Aggiungi info cliente a ogni linea
+      // Aggiungi info cliente a ogni linea e CREA NUOVO OGGETTO
       const result = Array.from(productMap.values()).map(product => {
-        product.lines = product.lines.map((line: any) => ({
-          ...line,
-          customerName: line.pickingId ? pickingMap.get(line.pickingId)?.partner_name || 'N/A' : 'N/A'
-        }));
-        return product;
-      });
-
-      console.log(`✅ [Picking] Trovati ${result.length} prodotti raggruppati`);
-
-      // DEBUG: Log dettagliato dei prodotti finali
-      result.forEach((product: any) => {
-        console.log(`📦 [FINAL] Prodotto: ${product.productName}, Tot Richiesto: ${product.totalQtyRequested}, Tot Prelevato: ${product.totalQtyPicked}`);
-        product.lines.forEach((line: any, idx: number) => {
-          console.log(`  👤 [FINAL] Cliente ${idx + 1}: ${line.customerName}, Richiesto: ${line.quantityRequested}, Prelevato: ${line.quantityPicked}`);
+        const linesWithCustomers = product.lines.map((line: any) => {
+          const customerName = line.pickingId ? pickingMap.get(line.pickingId)?.partner_name || 'N/A' : 'N/A';
+          // CREA NUOVO OGGETTO invece di modificare product
+          return {
+            pickingId: line.pickingId,
+            pickingName: line.pickingName,
+            customerName: customerName,
+            quantityRequested: line.quantityRequested,
+            quantityPicked: line.quantityPicked,
+            moveLines: line.moveLines
+          };
         });
+
+        return {
+          ...product,
+          lines: linesWithCustomers
+        };
       });
 
       return result;
