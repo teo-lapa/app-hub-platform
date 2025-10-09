@@ -8,6 +8,7 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { QRScanner } from '@/components/inventario/QRScanner';
 import { ProductSearch } from '@/components/inventario/ProductSearch';
+import { Calculator } from '@/components/inventario/Calculator';
 import toast from 'react-hot-toast';
 
 // Configurazione zone magazzino
@@ -79,21 +80,20 @@ export default function UbicazioniPage() {
   const [zoneCounts, setZoneCounts] = useState<Record<string, number>>({});
 
   // Stati form
-  const [productCode, setProductCode] = useState('');
   const [lotNumber, setLotNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [locationCode, setLocationCode] = useState('');
   const [locationData, setLocationData] = useState<any>(null);
-  const [isFromCatalog, setIsFromCatalog] = useState(false); // Modalità: buffer o catalogo
+  const [isFromCatalog, setIsFromCatalog] = useState(false);
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showBlockModal, setShowBlockModal] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const [showLocationScanner, setShowLocationScanner] = useState(false);
 
-  const productInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -112,21 +112,23 @@ export default function UbicazioniPage() {
 
   const loadBufferCounts = async () => {
     try {
-      const counts: Record<string, number> = {};
-
-      for (const zone of ZONES) {
+      // Carica tutti i counts in parallelo per velocizzare
+      const countPromises = ZONES.map(async (zone) => {
         const response = await fetch('/api/ubicazioni/buffer-count', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ locationId: zone.bufferId })
         });
-
         const data = await response.json();
-        if (data.success) {
-          counts[zone.id] = data.count || 0;
-        }
-      }
+        return { zoneId: zone.id, count: data.success ? (data.count || 0) : 0 };
+      });
+
+      const results = await Promise.all(countPromises);
+      const counts: Record<string, number> = {};
+      results.forEach(({ zoneId, count }) => {
+        counts[zoneId] = count;
+      });
 
       setZoneCounts(counts);
     } catch (error) {
@@ -168,49 +170,6 @@ export default function UbicazioniPage() {
     }
   };
 
-  const handleProductScan = async (code: string) => {
-    if (!code || !selectedZone) return;
-
-    const zone = ZONES.find(z => z.id === selectedZone);
-    if (!zone) return;
-
-    setLoading(true);
-
-    try {
-      // Cerca il prodotto nel buffer di questa zona
-      const response = await fetch('/api/ubicazioni/find-product', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          code,
-          locationId: zone.bufferId
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.product) {
-        setSelectedProduct(data.product);
-        setLotNumber(data.product.lot_name || '');
-        // Converti la data da formato Odoo (YYYY-MM-DD HH:MM:SS) a YYYY-MM-DD per input date
-        const expiryDateStr = data.product.expiration_date ? data.product.expiration_date.split(' ')[0] : '';
-        setExpiryDate(expiryDateStr);
-        setQuantity(data.product.quantity?.toString() || '1');
-        toast.success(`Prodotto trovato: ${data.product.name}`);
-
-        // Focus automatico sul campo ubicazione
-        setTimeout(() => locationInputRef.current?.focus(), 300);
-      } else {
-        toast.error('Prodotto non trovato nel buffer di questa zona');
-      }
-    } catch (error: any) {
-      toast.error('Errore: ' + error.message);
-    } finally {
-      setLoading(false);
-      setProductCode('');
-    }
-  };
 
   const handleProductSelectFromCatalog = (product: any) => {
     // Prodotto selezionato dal catalogo (non dal buffer)
@@ -356,9 +315,6 @@ export default function UbicazioniPage() {
           await selectZone(selectedZone);
           await loadBufferCounts();
         }
-
-        // Focus su scanner prodotto
-        setTimeout(() => productInputRef.current?.focus(), 300);
       } else {
         toast.error(data.error || 'Errore trasferimento');
       }
@@ -520,11 +476,11 @@ export default function UbicazioniPage() {
                   Prodotti disponibili in {ZONES.find(z => z.id === selectedZone)?.bufferName}
                 </h3>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
                   {bufferProducts.map((product) => (
                     <div
                       key={`${product.id}-${product.lot_name}`}
-                      className="glass p-3 rounded-xl cursor-pointer hover:scale-105 transition-transform"
+                      className="glass p-3 rounded-xl cursor-pointer active:scale-95 hover:scale-105 transition-transform touch-manipulation"
                       onClick={() => {
                         // Seleziona direttamente il prodotto dalla griglia
                         setSelectedProduct(product);
@@ -587,29 +543,12 @@ export default function UbicazioniPage() {
                   1️⃣ Trova il Prodotto
                 </h4>
 
-                <div className="flex gap-3 mb-3">
-                  <input
-                    ref={productInputRef}
-                    type="text"
-                    value={productCode}
-                    onChange={(e) => setProductCode(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleProductScan(productCode);
-                      }
-                    }}
-                    placeholder="Scansiona o digita il codice prodotto..."
-                    className="flex-1 glass px-4 py-3 rounded-xl border-2 border-white/20 focus:border-blue-500 focus:outline-none"
-                    autoFocus
-                  />
-                </div>
-
                 <button
                   onClick={() => setShowProductSearch(true)}
-                  className="w-full glass-strong px-4 py-3 rounded-xl hover:bg-white/20 transition-colors flex items-center justify-center gap-2 text-sm"
+                  className="w-full glass-strong px-6 py-4 rounded-xl hover:bg-white/20 transition-colors flex items-center justify-center gap-2"
                 >
-                  <Search className="w-4 h-4" />
-                  <span>Oppure cerca dal catalogo prodotti</span>
+                  <Search className="w-5 h-5" />
+                  <span className="font-semibold">🔍 Cerca dal catalogo prodotti</span>
                 </button>
               </div>
 
@@ -620,29 +559,29 @@ export default function UbicazioniPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="glass p-6 rounded-xl mb-6"
                 >
-                  <div className="flex gap-4">
-                    <div>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-shrink-0 mx-auto sm:mx-0">
                       {selectedProduct.image ? (
                         <img
                           src={selectedProduct.image}
                           alt={selectedProduct.name}
-                          className="w-32 h-32 object-cover rounded-lg"
+                          className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-lg"
                         />
                       ) : (
-                        <div className="w-32 h-32 bg-gray-700 rounded-lg flex items-center justify-center">
-                          <Package className="w-16 h-16 text-gray-400" />
+                        <div className="w-24 h-24 sm:w-32 sm:h-32 bg-gray-700 rounded-lg flex items-center justify-center">
+                          <Package className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400" />
                         </div>
                       )}
                     </div>
 
                     <div className="flex-1">
-                      <h4 className="text-xl font-bold mb-2">{selectedProduct.name}</h4>
-                      <p className="text-muted-foreground mb-4">
+                      <h4 className="text-lg sm:text-xl font-bold mb-2">{selectedProduct.name}</h4>
+                      <p className="text-muted-foreground mb-4 text-sm sm:text-base">
                         Codice: {selectedProduct.code}
                         {isFromCatalog && <span className="ml-2 text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">📚 Dal Catalogo</span>}
                       </p>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm text-muted-foreground mb-2">
                             LOTTO
@@ -677,12 +616,12 @@ export default function UbicazioniPage() {
                             QUANTITÀ
                           </label>
                           <div className="flex gap-2">
-                            <input
-                              type="number"
-                              value={quantity}
-                              onChange={(e) => setQuantity(e.target.value)}
-                              className="flex-1 glass px-4 py-2 rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none"
-                            />
+                            <button
+                              onClick={() => setShowCalculator(true)}
+                              className="flex-1 glass px-4 py-2 rounded-lg border border-blue-500/50 hover:border-blue-500 hover:bg-white/10 transition-colors text-left font-mono text-lg"
+                            >
+                              {quantity}
+                            </button>
                             <span className="glass px-4 py-2 rounded-lg font-semibold">
                               {selectedProduct.uom}
                             </span>
@@ -713,11 +652,12 @@ export default function UbicazioniPage() {
                         }
                       }}
                       placeholder="Scansiona il codice ubicazione..."
-                      className="flex-1 glass px-4 py-3 rounded-xl border-2 border-white/20 focus:border-blue-500 focus:outline-none"
+                      className="flex-1 glass px-4 py-3 rounded-xl border-2 border-white/20 focus:border-blue-500 focus:outline-none text-base"
+                      inputMode="text"
                     />
                     <button
                       onClick={() => setShowLocationScanner(true)}
-                      className="glass-strong px-4 py-3 rounded-xl hover:bg-white/20 transition-colors flex items-center gap-2"
+                      className="glass-strong px-4 py-3 rounded-xl hover:bg-white/20 active:scale-95 transition-all flex items-center gap-2 touch-manipulation"
                     >
                       <Camera className="w-5 h-5" />
                       <span className="hidden sm:inline">Camera</span>
@@ -748,7 +688,8 @@ export default function UbicazioniPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   onClick={confirmTransfer}
-                  className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white py-4 px-6 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2"
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 px-6 rounded-xl font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 active:scale-95 touch-manipulation"
                 >
                   ✅ CONFERMA TRASFERIMENTO
                   <ArrowRight className="w-5 h-5" />
@@ -777,6 +718,15 @@ export default function UbicazioniPage() {
         onClose={() => setShowProductSearch(false)}
         onSelectProduct={handleProductSelectFromCatalog}
         currentLocationName={locationData?.complete_name || locationData?.name}
+      />
+
+      {/* Calcolatrice per quantità */}
+      <Calculator
+        isOpen={showCalculator}
+        onClose={() => setShowCalculator(false)}
+        onConfirm={(value) => setQuantity(value)}
+        title="Quantità"
+        initialValue={quantity}
       />
 
       {/* Modal di blocco - prodotto già esistente */}
