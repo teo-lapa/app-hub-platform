@@ -502,30 +502,24 @@ export class PickingOdooClient {
 
         // Ottieni la quantità richiesta dal move, non dalla move line!
         const move: any = moveId ? moveMap.get(moveId) : null;
-        const qtyRequested = move ? move.product_uom_qty : (line.quantity || 0);
 
         if (!productPickingMap.has(key)) {
+          // Prendi la qty richiesta dal move.product_uom_qty (non dalla move line!)
+          const qtyRequested = move ? move.product_uom_qty : (line.quantity || 0);
+
           productPickingMap.set(key, {
             productId: productId,
             productName: line.product_id[1],
             pickingId: pickingId,
             pickingName: line.picking_id ? line.picking_id[1] : '',
             customerName: '', // Verrà riempito dopo
-            totalQtyRequested: qtyRequested, // Prendi dal move, non sommare!
+            totalQtyRequested: qtyRequested, // Qty richiesta dal cliente (dal move!)
             totalQtyPicked: 0,
-            moveLines: [],
-            moveIdProcessed: moveId ? new Set([moveId]) : new Set()
+            moveLines: []
           });
         }
 
         const group = productPickingMap.get(key);
-
-        // Se il move non è stato ancora processato, usa la sua qty
-        // Altrimenti non sommare di nuovo (evita duplicati)
-        if (moveId && !group.moveIdProcessed.has(moveId)) {
-          group.totalQtyRequested = qtyRequested;
-          group.moveIdProcessed.add(moveId);
-        }
 
         group.totalQtyPicked += qtyDone;
         group.moveLines.push({
