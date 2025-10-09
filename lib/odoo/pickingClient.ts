@@ -635,6 +635,15 @@ export class PickingOdooClient {
       });
 
       console.log(`✅ [Picking] Trovati ${result.length} prodotti raggruppati`);
+
+      // DEBUG: Log dettagliato dei prodotti finali
+      result.forEach((product: any) => {
+        console.log(`📦 [FINAL] Prodotto: ${product.productName}, Tot Richiesto: ${product.totalQtyRequested}, Tot Prelevato: ${product.totalQtyPicked}`);
+        product.lines.forEach((line: any, idx: number) => {
+          console.log(`  👤 [FINAL] Cliente ${idx + 1}: ${line.customerName}, Richiesto: ${line.quantityRequested}, Prelevato: ${line.quantityPicked}`);
+        });
+      });
+
       return result;
 
     } catch (error) {
