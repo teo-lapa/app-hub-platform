@@ -55,6 +55,7 @@ export default function ControlloDirettoPage() {
   const [showZoneSelector, setShowZoneSelector] = useState(false);
   const [showProductList, setShowProductList] = useState(false);
   const [expandedProducts, setExpandedProducts] = useState<Set<number>>(new Set());
+  const [checkedProducts, setCheckedProducts] = useState<Set<number>>(new Set());
   const [editingLine, setEditingLine] = useState<number | null>(null);
   const [editValue, setEditValue] = useState<string>('');
 
@@ -126,6 +127,18 @@ export default function ControlloDirettoPage() {
       newExpanded.add(productId);
     }
     setExpandedProducts(newExpanded);
+  }
+
+  function toggleProductCheck(productId: number) {
+    const newChecked = new Set(checkedProducts);
+    if (newChecked.has(productId)) {
+      newChecked.delete(productId);
+      toast.success('Prodotto non controllato');
+    } else {
+      newChecked.add(productId);
+      toast.success('✓ Prodotto controllato');
+    }
+    setCheckedProducts(newChecked);
   }
 
   function startEditLine(line: ProductLine) {
@@ -351,15 +364,16 @@ export default function ControlloDirettoPage() {
                   {productGroups.map(product => {
                     const isExpanded = expandedProducts.has(product.productId);
                     const isComplete = product.totalQtyPicked >= product.totalQtyRequested;
+                    const isChecked = checkedProducts.has(product.productId);
 
                     return (
-                      <div key={product.productId} className="bg-white rounded-xl shadow-sm overflow-hidden">
+                      <div key={product.productId} className={`rounded-xl shadow-sm overflow-hidden transition-all ${
+                        isChecked ? 'bg-green-50 border-2 border-green-500' : 'bg-white'
+                      }`}>
                         {/* Header Prodotto */}
-                        <button
-                          onClick={() => toggleProductExpand(product.productId)}
-                          className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                        >
-                          <div className="flex items-center gap-4 flex-1">
+                        <div className="p-4">
+                          {/* Riga principale con immagine e info */}
+                          <div className="flex items-center gap-4 mb-3">
                             {/* Immagine prodotto */}
                             {product.image ? (
                               <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
@@ -381,7 +395,7 @@ export default function ControlloDirettoPage() {
                               </div>
                             )}
 
-                            <div className="flex-1 text-left">
+                            <div className="flex-1">
                               <h3 className="font-semibold text-gray-900">{product.productName}</h3>
                               <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
                                 <span>Richiesto: <strong>{product.totalQtyRequested}</strong></span>
@@ -394,12 +408,31 @@ export default function ControlloDirettoPage() {
                               </div>
                             </div>
                           </div>
-                          {isExpanded ? (
-                            <ChevronUp className="w-5 h-5 text-gray-400" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-gray-400" />
-                          )}
-                        </button>
+
+                          {/* Riga pulsanti */}
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleProductCheck(product.productId)}
+                              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
+                                isChecked
+                                  ? 'bg-green-600 text-white hover:bg-green-700'
+                                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                              }`}
+                            >
+                              {isChecked ? '✓ Controllato' : 'Controlla'}
+                            </button>
+                            <button
+                              onClick={() => toggleProductExpand(product.productId)}
+                              className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2"
+                            >
+                              {isExpanded ? (
+                                <>Chiudi <ChevronUp className="w-4 h-4" /></>
+                              ) : (
+                                <>Dettagli <ChevronDown className="w-4 h-4" /></>
+                              )}
+                            </button>
+                          </div>
+                        </div>
 
                         {/* Dettagli Espansi */}
                         <AnimatePresence>
