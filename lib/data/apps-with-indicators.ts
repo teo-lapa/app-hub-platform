@@ -284,14 +284,17 @@ export const standaloneApps: App[] = [
   {
     id: 's14',
     name: 'Controllo Diretto [S]',
-    description: 'Supervisione diretta operazioni',
-    icon: '👁️',
+    description: 'Controllo veloce dei prelievi raggruppati per prodotto. Vedi totali richiesti vs prelevati senza girare per le ubicazioni.',
+    icon: '✅',
     badge: 'PRO',
-    category: 'Logistica',
-    url: '/apps/logistica/controllo-diretto',
+    category: 'Magazzino',
+    url: '/controllo-diretto',
     requiredRole: 'cliente_premium',
-    createdAt: new Date('2023-09-01'),
-    updatedAt: new Date('2023-12-28'),
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-01-24'),
+    updatedAt: new Date('2025-01-24'),
   },
   // CLIENTI
   {
