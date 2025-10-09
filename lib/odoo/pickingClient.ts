@@ -528,10 +528,16 @@ export class PickingOdooClient {
 
           if (move && move.product_uom_qty != null) {
             qtyRequested = move.product_uom_qty;
+            console.log(`[Picking] ✅ Move trovato! Picking ${pickingId}, Prodotto ${productId}, Qty richiesta: ${qtyRequested}`);
           } else {
             // Fallback: se il move non c'è, usa la qty della move line
             qtyRequested = line.quantity || 0;
-            console.warn(`[Picking] Move non trovato per picking ${pickingId}, prodotto ${productId}, usando fallback qty:`, qtyRequested);
+            console.warn(`[Picking] ⚠️ Move NON trovato! Picking ${pickingId}, Prodotto ${productId}, Fallback qty: ${qtyRequested}`, {
+              moveId,
+              moveFound: !!move,
+              moveQty: move?.product_uom_qty,
+              lineQty: line.quantity
+            });
           }
 
           productPickingMap.set(key, {
