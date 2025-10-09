@@ -454,8 +454,8 @@ export class PickingOdooClient {
 
       // Carica i moves per ottenere la quantità richiesta REALE dal cliente
       const moveIds = Array.from(new Set(moveLines
-        .filter(ml => ml.move_id)
-        .map(ml => ml.move_id[0])
+        .filter((ml: any) => ml.move_id)
+        .map((ml: any) => ml.move_id[0])
       ));
 
       const moves = moveIds.length > 0 ? await this.rpc(
@@ -501,7 +501,7 @@ export class PickingOdooClient {
         const qtyDone = line.qty_done || 0;
 
         // Ottieni la quantità richiesta dal move, non dalla move line!
-        const move = moveId ? moveMap.get(moveId) : null;
+        const move: any = moveId ? moveMap.get(moveId) : null;
         const qtyRequested = move ? move.product_uom_qty : (line.quantity || 0);
 
         if (!productPickingMap.has(key)) {
