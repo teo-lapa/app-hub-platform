@@ -505,7 +505,15 @@ export class PickingOdooClient {
 
         if (!productPickingMap.has(key)) {
           // Prendi la qty richiesta dal move.product_uom_qty (non dalla move line!)
-          const qtyRequested = move ? move.product_uom_qty : (line.quantity || 0);
+          let qtyRequested = 0;
+
+          if (move && move.product_uom_qty != null) {
+            qtyRequested = move.product_uom_qty;
+          } else {
+            // Fallback: se il move non c'è, usa la qty della move line
+            qtyRequested = line.quantity || 0;
+            console.warn(`[Picking] Move non trovato per picking ${pickingId}, prodotto ${productId}, usando fallback qty:`, qtyRequested);
+          }
 
           productPickingMap.set(key, {
             productId: productId,
@@ -517,6 +525,12 @@ export class PickingOdooClient {
             totalQtyPicked: 0,
             moveLines: []
           });
+        } else {
+          // Se il gruppo esiste già ma totalQtyRequested è 0, prova ad aggiornarlo
+          const group = productPickingMap.get(key);
+          if (group.totalQtyRequested === 0 && move && move.product_uom_qty != null) {
+            group.totalQtyRequested = move.product_uom_qty;
+          }
         }
 
         const group = productPickingMap.get(key);
