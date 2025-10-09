@@ -307,7 +307,7 @@ export async function GET(request: NextRequest) {
 
         // Ottieni categoria Odoo e mappa alla categoria dell'app
         const categId = productCategMap.get(productId);
-        const odooCategName = categId ? categoryNameMap.get(categId[0]) : undefined;
+        const odooCategName = categId && Array.isArray(categId) ? categoryNameMap.get(categId[0]) : undefined;
         const appCategory = mapCategoryToAppCategory(odooCategName);
 
         return {
