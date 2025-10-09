@@ -4,6 +4,36 @@ import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Aumenta timeout a 60 secondi
 
+// Funzione per mappare la categoria Odoo alle categorie dell'app
+function mapCategoryToAppCategory(odooCategName: string | undefined): string {
+  if (!odooCategName) return 'Secco';
+
+  const categLower = odooCategName.toLowerCase();
+
+  // Frigo
+  if (categLower.includes('frigo') || categLower.includes('fresco') ||
+      categLower.includes('refrigerat') || categLower.includes('latticini') ||
+      categLower.includes('fresc')) {
+    return 'Frigo';
+  }
+
+  // Pingu (Congelato)
+  if (categLower.includes('congel') || categLower.includes('surgel') ||
+      categLower.includes('frozen') || categLower.includes('pingu')) {
+    return 'Pingu';
+  }
+
+  // Non Food
+  if (categLower.includes('non food') || categLower.includes('nonfood') ||
+      categLower.includes('pulizia') || categLower.includes('igiene') ||
+      categLower.includes('detersiv') || categLower.includes('cosmet')) {
+    return 'NonFood';
+  }
+
+  // Default: Secco
+  return 'Secco';
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Usa la sessione dell'utente loggato invece di credenziali hardcoded
@@ -209,10 +239,32 @@ export async function GET(request: NextRequest) {
       'read',
       [productIds],
       {
-        fields: ['id', 'image_128']
+        fields: ['id', 'image_128', 'categ_id']
       }
     ) : [];
     const productImageMap = new Map(products.map((p: any) => [p.id, p.image_128]));
+    const productCategMap = new Map(products.map((p: any) => [p.id, p.categ_id]));
+
+    // Carica dettagli categorie con parent_id
+    const categIdsSet = new Set(products.map((p: any) => p.categ_id?.[0]).filter(Boolean));
+    const categIds = Array.from(categIdsSet);
+    const categories = categIds.length > 0 ? await callOdoo(
+      cookies,
+      'product.category',
+      'read',
+      [categIds],
+      {
+        fields: ['id', 'name', 'parent_id']
+      }
+    ) : [];
+
+    // Costruisci mappa categorie con nomi completi (risalendo alla categoria padre)
+    const categoryNameMap = new Map();
+    for (const cat of categories) {
+      // Se ha parent, prendi il nome del parent, altrimenti usa il proprio
+      const categoryName = cat.parent_id ? cat.parent_id[1] : cat.name;
+      categoryNameMap.set(cat.id, categoryName);
+    }
 
     // Crea mappa per accesso rapido
     const partnerMap = new Map(allPartners.map((p: any) => [p.id, p]));
@@ -252,6 +304,12 @@ export async function GET(request: NextRequest) {
         const productId = moveLine.product_id?.[0];
         const requestedQty = moveLine.quantity || 0;  // quantity = quantità pianificata
         const deliveredQty = moveLine.qty_done || 0;  // qty_done = quantità effettiva
+
+        // Ottieni categoria Odoo e mappa alla categoria dell'app
+        const categId = productCategMap.get(productId);
+        const odooCategName = categId ? categoryNameMap.get(categId[0]) : undefined;
+        const appCategory = mapCategoryToAppCategory(odooCategName);
+
         return {
           id: moveLine.id,  // Questo è il move_line_id!
           move_line_id: moveLine.id,  // ID della stock.move.line
@@ -261,7 +319,8 @@ export async function GET(request: NextRequest) {
           delivered: deliveredQty,
           picked: deliveredQty > 0,
           unit: moveLine.product_uom_id?.[1] || 'Unità',
-          image: productImageMap.get(productId) || null
+          image: productImageMap.get(productId) || null,
+          category: appCategory
         };
       });
 

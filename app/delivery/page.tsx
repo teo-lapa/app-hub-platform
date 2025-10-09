@@ -1654,7 +1654,7 @@ export default function DeliveryPage() {
                             ) : (
                               <div className="w-full h-20 bg-gray-100 rounded mb-2 flex items-center justify-center text-3xl">📦</div>
                             )}
-                            <div className="text-xs font-semibold mb-1 line-clamp-2">{product.name}</div>
+                            <div className="text-xs font-semibold mb-1 line-clamp-2 text-gray-900">{product.name}</div>
                             <div className="flex justify-between text-[10px] text-gray-500 mb-1">
                               <span>RICHIESTO</span>
                               <span className="font-semibold">{product.qty}</span>
