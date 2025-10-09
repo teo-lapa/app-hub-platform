@@ -6,36 +6,24 @@ export const maxDuration = 60; // Aumenta timeout a 60 secondi
 
 export async function GET(request: NextRequest) {
   try {
-    // Autenticazione diretta con credenziali Paul
+    // Usa la sessione dell'utente loggato invece di credenziali hardcoded
+    const userCookies = request.headers.get('cookie');
 
-    const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24339752.dev.odoo.com';
-    const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24339752';
-
-    const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          db: ODOO_DB,
-          login: 'paul@lapa.ch',
-          password: 'lapa201180'
-        },
-        id: 1
-      })
-    });
-
-    const authData = await authResponse.json();
-    const cookies = authResponse.headers.get('set-cookie');
-    const uid = authData.result?.uid;
-
-    if (!uid) {
-      return NextResponse.json({ error: 'Autenticazione fallita' }, { status: 401 });
+    if (!userCookies) {
+      return NextResponse.json({
+        error: 'Devi effettuare il login sulla piattaforma prima di usare l\'app delivery'
+      }, { status: 401 });
     }
+
+    const { cookies, uid } = await getOdooSession(userCookies);
+
+    if (!uid || !cookies) {
+      return NextResponse.json({
+        error: 'Sessione non valida. Effettua nuovamente il login.'
+      }, { status: 401 });
+    }
+
+    console.log('✅ [DELIVERY] Utente autenticato con UID:', uid);
 
     // Cerca employee_id dell'utente loggato
     const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
