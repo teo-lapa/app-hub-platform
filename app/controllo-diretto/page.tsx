@@ -481,7 +481,7 @@ export default function ControlloDirettoPage() {
                                       </div>
                                       <div className="text-sm">
                                         <span className="text-gray-600">Richiesto: </span>
-                                        <strong>{clientLine.quantityRequested}</strong>
+                                        <strong className="text-red-600">{clientLine.quantityRequested ?? 'N/A'}</strong>
                                         <span className="mx-2">•</span>
                                         <span className="text-gray-600">Prelevato: </span>
                                         <strong className={clientLine.quantityPicked >= clientLine.quantityRequested ? 'text-green-600' : 'text-blue-600'}>
