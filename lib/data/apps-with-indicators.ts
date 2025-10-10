@@ -199,7 +199,7 @@ export const standaloneApps: App[] = [
     name: 'Dashboard Venditori [S]',
     description: 'Pannello di controllo venditori',
     icon: '📊',
-    badge: 'PREMIUM',
+    badge: 'PRO',
     category: 'Vendite',
     url: '/dashboard-venditori',
     requiredRole: 'cliente_premium',
