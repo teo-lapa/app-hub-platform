@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { TeamSelector } from './components/TeamSelector';
 import { StatsGrid } from './components/StatsGrid';
 import { ClientFilters } from './components/ClientFilters';
@@ -9,8 +10,10 @@ import { ClientPopup } from './components/ClientPopup';
 import { AdvancedDashboard } from './components/AdvancedDashboard';
 import { FinancialDashboard } from './components/FinancialDashboard';
 import { useOdooData } from './hooks/useOdooData';
+import { MobileNavigation } from '@/components/mobile/MobileNavigation';
 
 export default function DashboardVenditori() {
+  const router = useRouter();
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [activeFilter, setActiveFilter] = useState<string>('all');
@@ -77,8 +80,19 @@ export default function DashboardVenditori() {
       {/* Header */}
       <header className="bg-white shadow-md rounded-xl mb-8 p-5">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          <div className="text-2xl font-bold text-blue-600">
-            📊 Gestione Clienti Vendite
+          <div className="flex items-center gap-4">
+            {/* Home Button */}
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+              title="Torna alla home"
+            >
+              🏠 Home
+            </button>
+
+            <div className="text-2xl font-bold text-blue-600">
+              📊 Gestione Clienti Vendite
+            </div>
           </div>
 
           <TeamSelector
@@ -199,6 +213,11 @@ export default function DashboardVenditori() {
           onClose={() => setShowFinancialDashboard(false)}
         />
       )}
+
+      {/* Mobile Navigation */}
+      <div className="md:hidden">
+        <MobileNavigation />
+      </div>
     </div>
   );
 }
