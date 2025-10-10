@@ -14,6 +14,7 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const vehicleMarkerRef = useRef<google.maps.Marker | null>(null);
+  const hasInitializedBounds = useRef(false); // Per fare fitBounds solo la prima volta
   const [mapLoaded, setMapLoaded] = useState(false);
 
   useEffect(() => {
@@ -70,20 +71,20 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
           map: googleMapRef.current,
           icon: {
             url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 64 64">
                 <!-- Ombra -->
                 <ellipse cx="32" cy="58" rx="18" ry="4" fill="#000000" opacity="0.3"/>
 
                 <!-- Cerchio blu di sfondo -->
                 <circle cx="32" cy="30" r="26" fill="#3b82f6" stroke="#1e40af" stroke-width="3"/>
 
-                <!-- Emoji camion gigante -->
+                <!-- Emoji camion -->
                 <text x="32" y="42" font-size="36" text-anchor="middle" font-family="Arial, sans-serif">🚚</text>
               </svg>
             `),
-            scaledSize: new google.maps.Size(64, 64),
-            anchor: new google.maps.Point(32, 58),
-            labelOrigin: new google.maps.Point(32, 30)
+            scaledSize: new google.maps.Size(40, 40),
+            anchor: new google.maps.Point(20, 36),
+            labelOrigin: new google.maps.Point(20, 20)
           },
           title: '🚚 Il tuo furgone',
           zIndex: 1000,
@@ -192,8 +193,8 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
 
     console.log('✅ [MAP] Creati', markersRef.current.length, 'markers sulla mappa');
 
-    // Fit bounds to show all markers solo al primo caricamento
-    if (markersRef.current.length > 0 && deliveries.length > 0) {
+    // Fit bounds to show all markers SOLO la prima volta (non ogni volta che cambiano i deliveries)
+    if (markersRef.current.length > 0 && deliveries.length > 0 && !hasInitializedBounds.current) {
       const bounds = new google.maps.LatLngBounds();
 
       // Aggiungi tutti i marker delle consegne
@@ -218,7 +219,8 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
         bottom: 50,
         left: 50
       });
-      console.log('🎯 [MAP] Bounds aggiustati per mostrare tutti i markers');
+      hasInitializedBounds.current = true; // Segna come inizializzato
+      console.log('🎯 [MAP] Bounds aggiustati per mostrare tutti i markers (SOLO PRIMA VOLTA)');
     }
   }, [deliveries, onMarkerClick, mapLoaded]);
 
