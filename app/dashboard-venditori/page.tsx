@@ -105,12 +105,6 @@ export default function DashboardVenditori() {
               <div>
                 <div className="font-semibold">{user?.name || 'Caricamento...'}</div>
               </div>
-              <button
-                onClick={() => window.open('/sistema-ordini-lapa', '_blank')}
-                className="px-4 py-2 bg-white border border-slate-300 rounded-lg hover:shadow-md transition"
-              >
-                📝 Inserisci ordini
-              </button>
             </div>
           </div>
         </div>
