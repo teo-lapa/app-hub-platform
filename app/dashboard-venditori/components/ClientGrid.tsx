@@ -13,6 +13,10 @@ interface Client {
   status: 'active' | 'warning' | 'inactive';
   lastOrderDays: number;
   weeklyData?: number[];
+  monthlyData?: number[];
+  invoicesPaid?: number;
+  invoicesPending?: number;
+  invoicesOverdue?: number;
 }
 
 interface ClientGridProps {
