@@ -13,11 +13,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ID consegna mancante' }, { status: 400 });
     }
 
-    const odooUrl = 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
+    // Usa sempre il nuovo URL Odoo corretto
+    const odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24339752.dev.odoo.com';
     const reportName = 'invoice_pdf_custom.report_deliveryslip_customization_80mm';
     const pdfUrl = `${odooUrl}/report/pdf/${reportName}/${deliveryId}`;
 
-    console.log('📄 Download PDF da Odoo:', pdfUrl);
+    console.log('📄 [PRINT] Download PDF da Odoo:', pdfUrl);
+    console.log('📄 [PRINT] Cookie presente:', !!cookies);
 
     // Scarica il PDF da Odoo con i cookie di sessione
     const pdfResponse = await fetch(pdfUrl, {
@@ -26,8 +28,12 @@ export async function POST(request: NextRequest) {
       } : {}
     });
 
+    console.log('📄 [PRINT] Response status:', pdfResponse.status);
+
     if (!pdfResponse.ok) {
-      throw new Error(`Errore Odoo: ${pdfResponse.status}`);
+      const errorText = await pdfResponse.text();
+      console.error('❌ [PRINT] Errore Odoo response:', errorText.substring(0, 300));
+      throw new Error(`Errore Odoo: ${pdfResponse.status} - ${errorText.substring(0, 200)}`);
     }
 
     const pdfBuffer = await pdfResponse.arrayBuffer();
