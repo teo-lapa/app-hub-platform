@@ -15,33 +15,39 @@ interface StatsGridProps {
 }
 
 export function StatsGrid({ stats, loading }: StatsGridProps) {
-  const statCards = [
+  const statCards: Array<{
+    number: number | string;
+    label: string;
+    change: string;
+    changeType: 'positive' | 'negative' | 'neutral';
+    borderColor: string;
+  }> = [
     {
       number: stats.totalClients,
       label: 'Clienti',
       change: stats.clientsChange || 'Caricamento...',
-      changeType: 'neutral' as const,
+      changeType: 'neutral',
       borderColor: 'border-l-blue-600'
     },
     {
       number: `CHF ${Math.round(stats.weeklyRevenue).toLocaleString()}`,
       label: 'Fatturato',
       change: stats.revenueChange || 'Caricamento...',
-      changeType: 'neutral' as const,
+      changeType: 'neutral',
       borderColor: 'border-l-green-600'
     },
     {
       number: stats.totalOrders,
       label: 'Ordini',
       change: stats.ordersChange || 'Caricamento...',
-      changeType: 'neutral' as const,
+      changeType: 'neutral',
       borderColor: 'border-l-purple-600'
     },
     {
       number: stats.alertCount,
       label: 'Allerte',
       change: stats.alertsChange || 'Caricamento...',
-      changeType: 'negative' as const,
+      changeType: 'negative',
       borderColor: 'border-l-red-600'
     }
   ];
