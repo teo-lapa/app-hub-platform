@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 
 // Cache semplice per pagina
 const pageCache = new Map<string, { data: any; timestamp: number }>();
@@ -6,6 +7,15 @@ const CACHE_DURATION = 30 * 60 * 1000; // 30 minuti
 
 export async function POST(request: NextRequest) {
   try {
+    // Ottieni session_id utente
+    const sessionId = await getOdooSessionId();
+    if (!sessionId) {
+      return NextResponse.json(
+        { success: false, error: 'Sessione non valida. Effettua il login.' },
+        { status: 401 }
+      );
+    }
+
     const { page = 1, limit = 50, search = '', category = null } = await request.json();
 
     // Crea chiave cache (include anche categoria)
@@ -25,37 +35,6 @@ export async function POST(request: NextRequest) {
     console.log(`🛒 Caricamento prodotti pagina ${page}...`);
 
     const odooUrl = process.env.ODOO_URL!;
-    const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
-
-    // Autenticazione
-    const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          db: odooDb,
-          login: 'paul@lapa.ch',
-          password: 'lapa201180'
-        },
-        id: 1
-      })
-    });
-
-    const authData = await authResponse.json();
-
-    if (authData.error || !authData.result || !authData.result.uid) {
-      throw new Error('Autenticazione fallita');
-    }
-
-    const setCookieHeader = authResponse.headers.get('set-cookie');
-    const sessionMatch = setCookieHeader?.match(/session_id=([^;]+)/);
-    const sessionId = sessionMatch ? sessionMatch[1] : null;
-
-    if (!sessionId) {
-      throw new Error('Session ID non trovato');
-    }
 
     // Prepara dominio ricerca
     let domain: any[] = [['sale_ok', '=', true]];

@@ -10,6 +10,7 @@
  */
 
 import { getClaudeAIService, ProductAnalysisInput, BulkAnalysisResult } from './claude-service';
+import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 
 // ============================================================================
 // TYPES
@@ -78,48 +79,24 @@ class OdooDataLoader {
   }
 
   /**
-   * Autentica con Odoo
+   * Autentica con Odoo usando session_id utente
    */
   private async authenticate(): Promise<void> {
-    if (this.sessionId && this.uid) {
+    if (this.sessionId) {
       return; // Già autenticato
     }
 
-    console.log('🔑 Autenticazione Odoo...');
+    console.log('🔑 Ottengo session_id utente...');
 
-    const authResponse = await fetch(`${this.odooUrl}/web/session/authenticate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          db: this.dbName,
-          login: 'paul@lapa.ch',
-          password: 'lapa201180'
-        },
-        id: 1
-      })
-    });
-
-    const authData = await authResponse.json();
-
-    if (authData.error || !authData.result || !authData.result.uid) {
-      throw new Error('Autenticazione Odoo fallita');
+    const userSessionId = await getOdooSessionId();
+    if (!userSessionId) {
+      throw new Error('Sessione Odoo non valida. L\'utente deve effettuare il login.');
     }
 
-    this.uid = authData.result.uid;
+    this.sessionId = userSessionId;
+    this.uid = 1; // UID non più necessario con session_id utente
 
-    // Estrai session_id dai cookie
-    const setCookie = authResponse.headers.get('set-cookie');
-    if (setCookie) {
-      const match = setCookie.match(/session_id=([^;]+)/);
-      if (match) {
-        this.sessionId = match[1];
-      }
-    }
-
-    console.log('✅ Autenticato con Odoo (UID:', this.uid, ')');
+    console.log('✅ Session ID utente ottenuto');
   }
 
   /**

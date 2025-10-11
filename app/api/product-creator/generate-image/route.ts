@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 
 export async function POST(request: NextRequest) {
   try {
+    const sessionId = await getOdooSessionId();
+    if (!sessionId) {
+      return NextResponse.json(
+        { success: false, error: 'Sessione non valida. Effettua il login.' },
+        { status: 401 }
+      );
+    }
+
     const { prompt, productId } = await request.json();
 
     if (!prompt) {
@@ -59,37 +68,13 @@ export async function POST(request: NextRequest) {
         const base64Image = Buffer.from(imageBuffer).toString('base64');
 
         const odooUrl = process.env.ODOO_URL;
-        const odooDb = process.env.ODOO_DB;
-
-        // Authenticate
-        const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'call',
-            params: {
-              db: odooDb,
-              login: 'paul@lapa.ch',
-              password: 'lapa201180'
-            },
-            id: 1
-          })
-        });
-
-        const authData = await authResponse.json();
-        if (authData.error) {
-          throw new Error('Odoo authentication failed');
-        }
-
-        const cookies = authResponse.headers.get('set-cookie');
 
         // Update product with image
         const updateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Cookie': cookies || ''
+            'Cookie': `session_id=${sessionId}`
           },
           body: JSON.stringify({
             jsonrpc: '2.0',

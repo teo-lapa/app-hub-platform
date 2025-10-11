@@ -1,44 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 // Fetch data from Odoo
-async function fetchOdooData(invoiceData: any) {
+async function fetchOdooData(invoiceData: any, sessionId: string) {
   const odooUrl = process.env.ODOO_URL;
-  const odooDb = process.env.ODOO_DB;
-
-  // Authenticate
-  const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'call',
-      params: {
-        db: odooDb,
-        login: 'paul@lapa.ch',
-        password: 'lapa201180'
-      },
-      id: 1
-    })
-  });
-
-  const authData = await authResponse.json();
-  if (authData.error) {
-    throw new Error('Odoo authentication failed');
-  }
-
-  const cookies = authResponse.headers.get('set-cookie');
 
   // Fetch UoM, Categories, and Suppliers in parallel
   const [uomRes, categoryRes, supplierRes] = await Promise.all([
     // Get UoM
     fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cookie': cookies || '' },
+      headers: { 'Content-Type': 'application/json', 'Cookie': `session_id=${sessionId}` },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'call',
@@ -54,7 +31,7 @@ async function fetchOdooData(invoiceData: any) {
     // Get Categories
     fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cookie': cookies || '' },
+      headers: { 'Content-Type': 'application/json', 'Cookie': `session_id=${sessionId}` },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'call',
@@ -70,7 +47,7 @@ async function fetchOdooData(invoiceData: any) {
     // Search for supplier by name from invoice
     fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cookie': cookies || '' },
+      headers: { 'Content-Type': 'application/json', 'Cookie': `session_id=${sessionId}` },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'call',
@@ -103,6 +80,14 @@ async function fetchOdooData(invoiceData: any) {
 
 export async function POST(request: NextRequest) {
   try {
+    const sessionId = await getOdooSessionId();
+    if (!sessionId) {
+      return NextResponse.json(
+        { success: false, error: 'Sessione non valida. Effettua il login.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { product, invoiceData } = body;
 
@@ -116,7 +101,7 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Enriching product:', product.nome);
 
     // Fetch Odoo data
-    const odooData = await fetchOdooData(invoiceData || {});
+    const odooData = await fetchOdooData(invoiceData || {}, sessionId);
 
     console.log(`📊 Odoo data fetched - UoM: ${odooData.uom.length}, Categories: ${odooData.categories.length}, Suppliers: ${odooData.suppliers.length}`);
 

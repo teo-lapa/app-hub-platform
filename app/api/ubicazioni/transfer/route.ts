@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 
 export async function POST(request: NextRequest) {
   try {
+    const sessionId = await getOdooSessionId();
+    if (!sessionId) {
+      return NextResponse.json(
+        { success: false, error: 'Sessione non valida. Effettua il login.' },
+        { status: 401 }
+      );
+    }
+
     const {
       productId,
       sourceLocationId,
@@ -31,7 +40,6 @@ export async function POST(request: NextRequest) {
     }
 
     const odooUrl = process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL;
-    const odooDb = process.env.ODOO_DB || process.env.NEXT_PUBLIC_ODOO_DB;
 
     console.log('🚚 Trasferimento interno:', {
       productId,
@@ -43,31 +51,6 @@ export async function POST(request: NextRequest) {
       isFromCatalog,
       expiryDate
     });
-
-    // Autenticazione
-    const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          db: odooDb,
-          login: process.env.ODOO_USERNAME || 'paul@lapa.ch',
-          password: process.env.ODOO_PASSWORD || 'lapa201180'
-        },
-        id: 1
-      })
-    });
-
-    const authData = await authResponse.json();
-    if (!authData.result || !authData.result.uid) {
-      throw new Error('Autenticazione fallita');
-    }
-
-    const setCookieHeader = authResponse.headers.get('set-cookie');
-    const sessionMatch = setCookieHeader?.match(/session_id=([^;]+)/);
-    const sessionId = sessionMatch ? sessionMatch[1] : null;
 
     // 1. Ottieni picking type interno
     const pickingTypeResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
