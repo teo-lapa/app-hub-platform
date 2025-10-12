@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { cookies } from 'next/headers';
+
+const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
 
 // Cache semplice per pagina
 const pageCache = new Map<string, { data: any; timestamp: number }>();
@@ -7,16 +9,22 @@ const CACHE_DURATION = 30 * 60 * 1000; // 30 minuti
 
 export async function POST(request: NextRequest) {
   try {
-    // Ottieni session_id utente
-    const sessionId = await getOdooSessionId();
+    console.log('🛍️ [CATALOGO] API chiamata - caricamento prodotti...');
+    const { page = 1, limit = 50, search = '', category = null } = await request.json();
+
+    // ========== OTTIENI SESSION_ID DELL'UTENTE LOGGATO ==========
+    const cookieStore = cookies();
+    const sessionId = cookieStore.get('odoo_session_id')?.value;
+
     if (!sessionId) {
+      console.error('❌ [CATALOGO] Utente NON loggato - accesso negato');
       return NextResponse.json(
-        { success: false, error: 'Sessione non valida. Effettua il login.' },
+        { success: false, error: 'Devi fare login per accedere al catalogo' },
         { status: 401 }
       );
     }
 
-    const { page = 1, limit = 50, search = '', category = null } = await request.json();
+    console.log('✅ [CATALOGO] Usando session_id dell\'utente loggato');
 
     // Crea chiave cache (include anche categoria)
     const cacheKey = `${page}-${limit}-${search}-${category || ''}`;
@@ -33,8 +41,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`🛒 Caricamento prodotti pagina ${page}...`);
-
-    const odooUrl = process.env.ODOO_URL!;
 
     // Prepara dominio ricerca
     let domain: any[] = [['sale_ok', '=', true]];
@@ -67,7 +73,7 @@ export async function POST(request: NextRequest) {
     // Carica prodotti
     const offset = (page - 1) * limit;
 
-    const productsResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+    const productsResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -105,7 +111,7 @@ export async function POST(request: NextRequest) {
     const products = productsData.result;
 
     // Conta totale
-    const countResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+    const countResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
+    const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
     const cookies = authData.cookies || [];
 
     // Chiama Odoo con le credenziali

@@ -40,7 +40,7 @@ export async function callOdoo(
     throw new Error('Session Odoo non valida. Effettua nuovamente il login.');
   }
 
-  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
+  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
 
   const response = await fetch(`${odooUrl}/web/dataset/call_kw`, {
     method: 'POST',
