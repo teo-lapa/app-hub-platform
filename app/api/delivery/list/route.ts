@@ -70,14 +70,38 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    if (employees.length === 0) {
-      return NextResponse.json({
-        error: 'Dipendente non trovato. Verifica configurazione in Odoo.'
-      }, { status: 403 });
-    }
+    let driverId: number;
+    let driverName: string;
 
-    const driverId = employees[0].id;
-    const driverName = employees[0].name;
+    if (employees.length === 0) {
+      // Fallback: usa l'utente come "driver virtuale"
+      console.log('⚠️ [DELIVERY] Nessun hr.employee trovato per UID:', uidNum);
+
+      // Carica info utente da res.users
+      const users = await callOdoo(
+        cookies,
+        'res.users',
+        'read',
+        [[uidNum]],
+        {
+          fields: ['name', 'partner_id']
+        }
+      );
+
+      if (users.length === 0) {
+        return NextResponse.json({
+          error: 'Utente non trovato in Odoo.'
+        }, { status: 403 });
+      }
+
+      driverId = users[0].partner_id[0]; // Usa partner_id come driver_id
+      driverName = users[0].name;
+
+      console.log('✅ [DELIVERY] Usando utente come driver:', { driverId, driverName });
+    } else {
+      driverId = employees[0].id;
+      driverName = employees[0].name;
+    }
 
     console.log('🚚 [DELIVERY] Driver trovato:', { driverId, driverName });
 

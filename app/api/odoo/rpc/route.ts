@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
 
 const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 
-// Configurazione timeout per route API - 2 minuti
-export const maxDuration = 120; // Timeout 2 minuti per chiamate Odoo pesanti
-export const dynamic = 'force-dynamic';
+// Credenziali per login automatico (come fa catalogo-lapa)
+const ODOO_LOGIN = 'paul@lapa.ch';
+const ODOO_PASSWORD = 'lapa201180';
 
 /**
  * API generica per chiamare Odoo RPC
- * USA IL SESSION_ID DELL'UTENTE LOGGATO (no credenziali hardcoded!)
+ * Fa login automatico ogni volta per avere una sessione fresca (come catalogo-lapa)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -18,28 +20,57 @@ export async function POST(request: NextRequest) {
 
     console.log('🔧 [API-ODOO-RPC] Chiamata:', model, method);
 
-    // NUOVO: Usa il session_id dell'utente loggato
-    const sessionId = await getOdooSessionId();
+    // STESSO METODO DEL CATALOGO: Fa sempre login fresco
+    console.log('🔐 [API-ODOO-RPC] Autenticazione fresca a Odoo...');
 
-    if (!sessionId) {
-      console.error('❌ [API-ODOO-RPC] Nessun session_id trovato. L\'utente deve fare login.');
+    const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          db: ODOO_DB,
+          login: ODOO_LOGIN,
+          password: ODOO_PASSWORD
+        },
+        id: 1
+      })
+    });
+
+    const authData = await authResponse.json();
+
+    if (authData.error || !authData.result || !authData.result.uid) {
+      console.error('❌ [API-ODOO-RPC] Autenticazione fallita:', authData.error);
       return NextResponse.json(
         {
           success: false,
-          error: 'Sessione non valida. Effettua nuovamente il login alla piattaforma.'
+          error: 'Autenticazione Odoo fallita'
         },
         { status: 401 }
       );
     }
 
-    console.log('✅ [API-ODOO-RPC] Usando session_id dell\'utente loggato');
+    // Estrai session_id dal cookie Set-Cookie (come fa catalogo)
+    const setCookieHeader = authResponse.headers.get('set-cookie');
+    const sessionMatch = setCookieHeader?.match(/session_id=([^;]+)/);
+    const sessionId = sessionMatch ? sessionMatch[1] : null;
+
+    if (!sessionId) {
+      console.error('❌ [API-ODOO-RPC] Session ID non trovato nei cookie');
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Session ID non trovato'
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ [API-ODOO-RPC] Autenticato! Session ID:', sessionId.substring(0, 20) + '...');
 
     // Chiama Odoo con session ID dell'utente
     console.log('📡 [API-ODOO-RPC] Chiamata a Odoo:', `${ODOO_URL}/web/dataset/call_kw/${model}/${method}`);
-
-    // Timeout controller per chiamate RPC - 60 secondi
-    const rpcController = new AbortController();
-    const rpcTimeout = setTimeout(() => rpcController.abort(), 60000); // 60 secondi per chiamate pesanti
 
     const response = await fetch(`${ODOO_URL}/web/dataset/call_kw/${model}/${method}`, {
       method: 'POST',
@@ -47,7 +78,6 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
         'Cookie': `session_id=${sessionId}`,
       },
-      signal: rpcController.signal,
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'call',
@@ -60,8 +90,6 @@ export async function POST(request: NextRequest) {
         id: Date.now(),
       }),
     });
-
-    clearTimeout(rpcTimeout);
 
     if (!response.ok) {
       const errorText = await response.text();
