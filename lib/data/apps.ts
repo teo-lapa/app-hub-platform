@@ -164,7 +164,7 @@ export const mockApps: App[] = [
     name: 'Pick Residui [S]',
     description: 'Gestione rapida dei pick residui (backorder). Modifica quantità, salva per gruppo (Autista/Giro) e aggiungi prodotti agli ordini.',
     icon: '📋',
-    badge: 'GRATUITO',
+    badge: 'FREE',
     category: 'Business',
     url: '/apps/magazzino/pick-residui',
     requiredRole: 'cliente_gratuito',
