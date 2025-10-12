@@ -159,6 +159,21 @@ export const mockApps: App[] = [
     createdAt: new Date('2025-01-24'),
     updatedAt: new Date('2025-01-24'),
   },
+  {
+    id: '12',
+    name: 'Pick Residui',
+    description: 'Gestione rapida dei pick residui (backorder). Modifica quantità, salva per gruppo (Autista/Giro) e aggiungi prodotti agli ordini.',
+    icon: '📦',
+    badge: 'PRO',
+    category: 'Business',
+    url: '/apps/magazzino/pick-residui',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-01-25'),
+    updatedAt: new Date('2025-01-25'),
+  },
 ];
 
 export const categories = [
