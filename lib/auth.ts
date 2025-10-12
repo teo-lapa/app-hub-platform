@@ -10,6 +10,8 @@ export const generateToken = (user: User): string => {
       id: user.id,
       email: user.email,
       role: user.role,
+      name: user.name,
+      azienda: user.azienda,
     },
     JWT_SECRET,
     { expiresIn: '7d' }

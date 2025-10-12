@@ -980,22 +980,34 @@ export default function DeliveryPage() {
         uploaded: false
       });
 
+      // Prepara payload completo con prodotti e dati pagamento
       const payload = {
         picking_id: currentDelivery.id,
-        amount,
-        payment_method: paymentMethod,
-        note: paymentNote,
-        receipt_photo: paymentReceiptPhoto
+        products: scaricoProducts.map(p => ({
+          move_line_id: p.move_line_id || p.id,  // ID della stock.move.line
+          product_id: p.product_id,
+          name: p.name,
+          qty: p.qty,
+          delivered: p.delivered || 0,
+          picked: p.picked || false
+        })),
+        completion_type: 'payment',
+        notes: paymentNote,
+        payment_data: {
+          amount,
+          payment_method: paymentMethod,
+          receipt_photo: paymentReceiptPhoto
+        }
       };
 
-      console.log('💰 [PAYMENT] Invio payload incasso:', payload);
+      console.log('💰 [PAYMENT] Invio payload completo per validazione:', payload);
 
       if (isOnline) {
-        await processPaymentOnServer(payload);
-        showToast('✅ Incasso registrato nel documento!', 'success');
+        await validateDeliveryOnServer(payload);
+        showToast('✅ Incasso registrato e consegna completata!', 'success');
       } else {
         await db.offline_actions.add({
-          action_type: 'payment',
+          action_type: 'validate',
           payload,
           timestamp: new Date(),
           synced: false
@@ -1011,8 +1023,8 @@ export default function DeliveryPage() {
       setPaymentNote('');
       setShowPaymentModal(false);
 
-      // Completa anche la consegna
-      await completeScarico(null);
+      // Chiudi vista e torna alla lista
+      closeScaricoView();
 
     } catch (error: any) {
       console.error('❌ [PAYMENT] Errore:', error);
@@ -1087,14 +1099,22 @@ export default function DeliveryPage() {
 
     setIsValidating(true);
 
-    // Payload semplificato: solo ID consegna, nota e foto
+    // Payload completo con array prodotti da rendere
     const payload = {
       original_picking_id: currentDelivery.id,
       note: resoNote,
-      photo: resoPhoto
+      photo: resoPhoto,
+      products: resoProducts.filter(p => p.reso_qty && p.reso_qty > 0).map(p => ({
+        product_id: p.product_id,
+        quantity: p.reso_qty
+      }))
     };
 
-    console.log('💾 RESO: Payload preparato (semplificato):', { ...payload, photo: 'BASE64_DATA' });
+    console.log('💾 RESO: Payload preparato:', {
+      ...payload,
+      photo: 'BASE64_DATA',
+      products_count: payload.products.length
+    });
 
     try {
       if (isOnline) {

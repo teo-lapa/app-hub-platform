@@ -18,7 +18,6 @@ const publicRoutes = [
   '/auth',
   '/api/auth/login',
   '/api/auth/register',
-  '/api/auth/odoo-login',
   '/api/auth/logout'
 ];
 
@@ -74,7 +73,7 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api/auth/login, api/auth/register, api/auth/odoo-login (auth endpoints)
+     * - api/auth/login, api/auth/register (auth endpoints)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
