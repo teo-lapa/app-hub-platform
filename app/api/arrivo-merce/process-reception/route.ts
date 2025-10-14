@@ -183,21 +183,28 @@ NON aggiungere testo. SOLO il JSON array.`;
           }
 
           if (match.expiry_date) {
-            updateData.expiry_date = match.expiry_date;
+            // Converti la data in formato datetime per Odoo (YYYY-MM-DD HH:MM:SS)
+            updateData.expiration_date = `${match.expiry_date} 00:00:00`;
           }
 
+          // Aggiorna la move line
           await callOdoo(cookies, 'stock.move.line', 'write', [
             [match.move_line_id],
             updateData
           ]);
 
+          // Trova il prodotto per aggiungere il nome nei dettagli
+          const moveLine = move_lines.find((ml: OdooMoveLine) => ml.id === match.move_line_id);
+          const productName = moveLine ? moveLine.product_name : `Riga ${match.move_line_id}`;
+
           results.updated++;
           results.details.push({
             action: 'updated',
             move_line_id: match.move_line_id,
+            product_name: productName,
             quantity: match.quantity,
-            lot: match.lot_number,
-            expiry: match.expiry_date
+            lot: match.lot_number || 'N/A',
+            expiry: match.expiry_date || 'N/A'
           });
 
           console.log(`✅ Aggiornata riga ${match.move_line_id}: qty=${match.quantity}, lotto=${match.lot_number}`);
@@ -227,7 +234,8 @@ NON aggiungere testo. SOLO il JSON array.`;
           }
 
           if (match.expiry_date) {
-            newLineData.expiry_date = match.expiry_date;
+            // Converti la data in formato datetime per Odoo (YYYY-MM-DD HH:MM:SS)
+            newLineData.expiration_date = `${match.expiry_date} 00:00:00`;
           }
 
           const newLineId = await callOdoo(cookies, 'stock.move.line', 'create', [newLineData]);
@@ -236,9 +244,10 @@ NON aggiungere testo. SOLO il JSON array.`;
           results.details.push({
             action: 'created',
             move_line_id: newLineId,
+            product_name: originalLine.product_name,
             quantity: match.quantity,
-            lot: match.lot_number,
-            expiry: match.expiry_date
+            lot: match.lot_number || 'N/A',
+            expiry: match.expiry_date || 'N/A'
           });
 
           console.log(`✅ Creata nuova riga ${newLineId}: qty=${match.quantity}, lotto=${match.lot_number}`);

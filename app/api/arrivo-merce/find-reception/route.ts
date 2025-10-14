@@ -14,10 +14,166 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { supplier_name, supplier_vat, document_number, document_date } = body;
+    const { supplier_name, supplier_vat, document_number, document_date, picking_id } = body;
 
+    // Se è fornito picking_id, carica direttamente quella ricezione
+    if (picking_id) {
+      console.log('🔍 Caricamento diretto ricezione ID:', picking_id);
+
+      const pickings = await callOdoo(cookies, 'stock.picking', 'search_read', [
+        [['id', '=', picking_id]],
+        [
+          'id',
+          'name',
+          'partner_id',
+          'scheduled_date',
+          'state',
+          'origin',
+          'move_line_ids_without_package',
+          'move_ids_without_package'
+        ]
+      ]);
+
+      if (pickings.length === 0) {
+        return NextResponse.json({ error: 'Ricezione non trovata' }, { status: 404 });
+      }
+
+      const selectedPicking = pickings[0];
+
+      // Recupera partner info
+      const partners = await callOdoo(cookies, 'res.partner', 'search_read', [
+        [['id', '=', selectedPicking.partner_id[0]]],
+        ['id', 'name', 'vat']
+      ]);
+
+      const partner = partners[0];
+
+      // Continua con il caricamento dei dettagli (move_lines, etc)
+      const moveIds = selectedPicking.move_ids_without_package || [];
+      console.log('📦 Move IDs trovati:', moveIds.length);
+
+      let moves = [];
+      if (moveIds.length > 0) {
+        moves = await callOdoo(cookies, 'stock.move', 'search_read', [
+          [['id', 'in', moveIds]],
+          [
+            'id',
+            'product_id',
+            'product_uom',
+            'product_uom_qty',
+            'quantity',
+            'move_line_ids',
+            'location_id',
+            'location_dest_id',
+            'state'
+          ]
+        ]);
+        console.log('✅ Movimenti stock trovati:', moves.length);
+      }
+
+      // Recupera tutte le move_line_ids per ottenere lotti e scadenze
+      const allMoveLineIds: number[] = [];
+      moves.forEach((move: any) => {
+        if (move.move_line_ids && Array.isArray(move.move_line_ids)) {
+          allMoveLineIds.push(...move.move_line_ids);
+        }
+      });
+
+      console.log('📋 Move Line IDs da recuperare:', allMoveLineIds.length);
+
+      let moveLines: any[] = [];
+      if (allMoveLineIds.length > 0) {
+        moveLines = await callOdoo(cookies, 'stock.move.line', 'search_read', [
+          [['id', 'in', allMoveLineIds]],
+          [
+            'id',
+            'move_id',
+            'product_id',
+            'product_uom_id',
+            'lot_id',
+            'lot_name',
+            'qty_done',
+            'quantity',
+            'location_id',
+            'location_dest_id'
+          ]
+        ]);
+        console.log('✅ Move Lines recuperate:', moveLines.length);
+      }
+
+      // Recupera informazioni sui lotti (per le scadenze)
+      const lotIds = moveLines
+        .filter((ml: any) => ml.lot_id && ml.lot_id[0])
+        .map((ml: any) => ml.lot_id[0]);
+
+      let lots: any[] = [];
+      if (lotIds.length > 0) {
+        lots = await callOdoo(cookies, 'stock.lot', 'search_read', [
+          [['id', 'in', lotIds]],
+          ['id', 'name', 'expiration_date', 'use_date', 'removal_date', 'alert_date']
+        ]);
+        console.log('✅ Lotti recuperati:', lots.length);
+      }
+
+      // Recupera anche informazioni sui prodotti
+      const productIds = moves.map((m: any) => m.product_id[0]);
+      const products = await callOdoo(cookies, 'product.product', 'search_read', [
+        [['id', 'in', productIds]],
+        [
+          'id',
+          'name',
+          'display_name',
+          'default_code',
+          'product_tmpl_id',
+          'product_template_variant_value_ids'
+        ]
+      ]);
+
+      // Arricchisci le move lines con prodotti e lotti
+      const enrichedMoveLines = moveLines.map((ml: any) => {
+        const product = products.find((p: any) => p.id === ml.product_id[0]);
+        const lot = ml.lot_id && ml.lot_id[0] ? lots.find((l: any) => l.id === ml.lot_id[0]) : null;
+
+        return {
+          id: ml.id,
+          move_id: ml.move_id,
+          product_id: ml.product_id,
+          product_name: product?.display_name || ml.product_id[1],
+          product_code: product?.default_code || '',
+          product_tmpl_id: product?.product_tmpl_id || [],
+          variant_ids: product?.product_template_variant_value_ids || [],
+          product_uom_id: ml.product_uom_id,
+          qty_done: ml.qty_done || 0,
+          product_uom_qty: ml.quantity || 0,
+          lot_id: ml.lot_id,
+          lot_name: ml.lot_name || (lot ? lot.name : false),
+          expiry_date: lot ? (lot.expiration_date || lot.use_date || false) : false,
+          location_id: ml.location_id,
+          location_dest_id: ml.location_dest_id
+        };
+      });
+
+      console.log('📋 Move Lines arricchite:', enrichedMoveLines.length);
+
+      return NextResponse.json({
+        success: true,
+        picking: {
+          id: selectedPicking.id,
+          name: selectedPicking.name,
+          partner_id: selectedPicking.partner_id,
+          partner_name: partner.name,
+          scheduled_date: selectedPicking.scheduled_date,
+          state: selectedPicking.state,
+          origin: selectedPicking.origin
+        },
+        move_lines: enrichedMoveLines,
+        alternatives: []
+      });
+    }
+
+    // Flusso normale con supplier_name
     if (!supplier_name) {
-      return NextResponse.json({ error: 'supplier_name mancante' }, { status: 400 });
+      return NextResponse.json({ error: 'supplier_name o picking_id mancante' }, { status: 400 });
     }
 
     console.log('🔍 Ricerca ricezione per fornitore:', supplier_name);
@@ -143,29 +299,75 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Ricezione selezionata:', selectedPicking.name, '(ID:', selectedPicking.id, ')');
 
-    // Step 3: Recupera le righe dettagliate (stock.move.line)
-    const moveLineIds = selectedPicking.move_line_ids_without_package || [];
+    // Step 3: Recupera i movimenti stock (stock.move) - sono i prodotti da ricevere
+    const moveIds = selectedPicking.move_ids_without_package || [];
+    console.log('📦 Move IDs trovati:', moveIds.length);
 
-    let moveLines = [];
-    if (moveLineIds.length > 0) {
-      moveLines = await callOdoo(cookies, 'stock.move.line', 'search_read', [
-        [['id', 'in', moveLineIds]],
+    let moves = [];
+    if (moveIds.length > 0) {
+      moves = await callOdoo(cookies, 'stock.move', 'search_read', [
+        [['id', 'in', moveIds]],
         [
           'id',
           'product_id',
+          'product_uom',
+          'product_uom_qty',
+          'quantity',
+          'move_line_ids',
+          'location_id',
+          'location_dest_id',
+          'state'
+        ]
+      ]);
+      console.log('✅ Movimenti stock trovati:', moves.length);
+    }
+
+    // Recupera tutte le move_line_ids per ottenere lotti e scadenze
+    const allMoveLineIds: number[] = [];
+    moves.forEach((move: any) => {
+      if (move.move_line_ids && Array.isArray(move.move_line_ids)) {
+        allMoveLineIds.push(...move.move_line_ids);
+      }
+    });
+
+    console.log('📋 Move Line IDs da recuperare:', allMoveLineIds.length);
+
+    let moveLines: any[] = [];
+    if (allMoveLineIds.length > 0) {
+      moveLines = await callOdoo(cookies, 'stock.move.line', 'search_read', [
+        [['id', 'in', allMoveLineIds]],
+        [
+          'id',
+          'move_id',
+          'product_id',
           'product_uom_id',
-          'qty_done',
           'lot_id',
           'lot_name',
-          'move_id',
+          'qty_done',
+          'quantity',
           'location_id',
           'location_dest_id'
         ]
       ]);
+      console.log('✅ Move Lines recuperate:', moveLines.length);
+    }
+
+    // Recupera informazioni sui lotti (per le scadenze)
+    const lotIds = moveLines
+      .filter((ml: any) => ml.lot_id && ml.lot_id[0])
+      .map((ml: any) => ml.lot_id[0]);
+
+    let lots: any[] = [];
+    if (lotIds.length > 0) {
+      lots = await callOdoo(cookies, 'stock.lot', 'search_read', [
+        [['id', 'in', lotIds]],
+        ['id', 'name', 'expiration_date', 'use_date', 'removal_date', 'alert_date']
+      ]);
+      console.log('✅ Lotti recuperati:', lots.length);
     }
 
     // Recupera anche informazioni sui prodotti
-    const productIds = moveLines.map((ml: any) => ml.product_id[0]);
+    const productIds = moves.map((m: any) => m.product_id[0]);
     const products = await callOdoo(cookies, 'product.product', 'search_read', [
       [['id', 'in', productIds]],
       [
@@ -178,35 +380,31 @@ export async function POST(request: NextRequest) {
       ]
     ]);
 
-    // Recupera informazioni sui lotti (per date di scadenza)
-    const lotIds = moveLines
-      .filter((ml: any) => ml.lot_id && ml.lot_id[0])
-      .map((ml: any) => ml.lot_id[0]);
-
-    let lots: any[] = [];
-    if (lotIds.length > 0) {
-      lots = await callOdoo(cookies, 'stock.lot', 'search_read', [
-        [['id', 'in', lotIds]],
-        ['id', 'name', 'expiration_date', 'use_date', 'removal_date', 'alert_date']
-      ]);
-    }
-
-    // Arricchisci le move lines con i dati prodotto e lotto
+    // Arricchisci le move lines con prodotti e lotti
     const enrichedMoveLines = moveLines.map((ml: any) => {
       const product = products.find((p: any) => p.id === ml.product_id[0]);
       const lot = ml.lot_id && ml.lot_id[0] ? lots.find((l: any) => l.id === ml.lot_id[0]) : null;
 
       return {
-        ...ml,
+        id: ml.id,
+        move_id: ml.move_id,
+        product_id: ml.product_id,
         product_name: product?.display_name || ml.product_id[1],
         product_code: product?.default_code || '',
         product_tmpl_id: product?.product_tmpl_id || [],
         variant_ids: product?.product_template_variant_value_ids || [],
-        expiry_date: lot?.expiration_date || lot?.use_date || false
+        product_uom_id: ml.product_uom_id,
+        qty_done: ml.qty_done || 0,
+        product_uom_qty: ml.quantity || 0,
+        lot_id: ml.lot_id,
+        lot_name: ml.lot_name || (lot ? lot.name : false),
+        expiry_date: lot ? (lot.expiration_date || lot.use_date || false) : false,
+        location_id: ml.location_id,
+        location_dest_id: ml.location_dest_id
       };
     });
 
-    console.log('📋 Righe dettagliate:', enrichedMoveLines.length);
+    console.log('📋 Move Lines arricchite:', enrichedMoveLines.length);
 
     return NextResponse.json({
       success: true,

@@ -68,9 +68,32 @@ export async function POST(request: NextRequest) {
 IMPORTANTE:
 - Estrai TUTTI i prodotti, anche se sono tanti
 - Per ogni prodotto, estrai TUTTE le varianti (forma, colore, grammatura, ecc.)
-- Cerca i lotti e le date di scadenza se presenti
 - Sii ESTREMAMENTE preciso nei numeri e nelle quantità
 - **FONDAMENTALE**: Cerca la PARTITA IVA del fornitore (P.IVA, VAT, Partita IVA, ecc.)
+
+⚠️ ATTENZIONE AI LOTTI E SCADENZE:
+- Cerca le scritte "Lotto/Scadenza:" o "Lotto:" o numeri di lotto espliciti
+- Il formato delle date potrebbe essere gg/mm/aaaa (es: 02/11/2025) - converti in YYYY-MM-DD
+- **LOTTO**: Cerca prima un vero numero di lotto (es: "197040/00", "LOTTO123")
+- Se NON trovi un lotto esplicito MA c'è "NOMENCLATURA: XXXXXXXX", usa il codice NOMENCLATURA come lotto temporaneo
+- Solo se non c'è né lotto né nomenclatura, metti null per lot_number
+- Possono esserci più righe dello stesso prodotto con lotti/scadenze diverse - crea prodotti separati!
+
+ESEMPIO DI PARSING CORRETTO:
+Testo: "Julienne Taglio Napoli in vasc. da kg 2,5 - Monella
+NOMENCLATURA: 04061030
+Lotto/Scadenza: 02/11/2025"
+
+Output corretto:
+{
+  "article_code": "VI2500JN1MN",
+  "description": "Julienne Taglio Napoli in vasc. da kg 2,5 - Monella",
+  "quantity": 330.0,
+  "unit": "KG",
+  "lot_number": "04061030",  // ← CORRETTO: uso NOMENCLATURA come lotto se non c'è altro
+  "expiry_date": "2025-11-02",  // ← CORRETTO: convertito da 02/11/2025
+  "variant": ""
+}
 
 Rispondi SOLO con un JSON valido in questo formato esatto:
 
@@ -85,8 +108,8 @@ Rispondi SOLO con un JSON valido in questo formato esatto:
       "description": "descrizione completa del prodotto",
       "quantity": numero_quantità,
       "unit": "unità di misura (KG, PZ, ecc.)",
-      "lot_number": "numero lotto se presente",
-      "expiry_date": "data scadenza in formato YYYY-MM-DD se presente",
+      "lot_number": null o "numero lotto vero",
+      "expiry_date": "YYYY-MM-DD o null",
       "variant": "varianti del prodotto (es: Quadrato, Verde, 250gr)"
     }
   ]

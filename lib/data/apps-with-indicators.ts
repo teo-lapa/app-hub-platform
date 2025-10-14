@@ -384,6 +384,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-10-01'),
     updatedAt: new Date('2025-10-01'),
   },
+  {
+    id: 's22',
+    name: 'Arrivo Merce [P]',
+    description: 'Sistema intelligente per ricezione merce. Carica la fattura (PDF o foto), il sistema la analizza con AI e compila automaticamente la ricezione in Odoo con lotti e scadenze.',
+    icon: '📥',
+    badge: 'PRO',
+    category: 'Acquisti',
+    url: '/arrivo-merce',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-10-09'),
+    updatedAt: new Date('2025-10-09'),
+  },
 ];
 
 // Combina tutte le app

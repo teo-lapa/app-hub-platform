@@ -31,9 +31,17 @@ interface ParsedProduct {
 
 interface ParsedInvoice {
   supplier_name: string;
+  supplier_vat?: string;
   document_number: string;
   document_date: string;
   products: ParsedProduct[];
+}
+
+interface IdentifiedSupplier {
+  id: number;
+  name: string;
+  vat: string;
+  match_score: number;
 }
 
 interface OdooPicking {
@@ -43,6 +51,9 @@ interface OdooPicking {
   scheduled_date: string;
   state: string;
   origin: string;
+  products_count?: number;
+  total_qty?: number;
+  date_match_score?: number;
 }
 
 export default function ArrivoMercePage() {
@@ -57,8 +68,11 @@ export default function ArrivoMercePage() {
 
   // Step 2: Parsed data
   const [parsedInvoice, setParsedInvoice] = useState<ParsedInvoice | null>(null);
+  const [identifiedSuppliers, setIdentifiedSuppliers] = useState<IdentifiedSupplier[]>([]);
+  const [selectedSupplier, setSelectedSupplier] = useState<IdentifiedSupplier | null>(null);
 
   // Step 3: Odoo picking found
+  const [availableReceptions, setAvailableReceptions] = useState<OdooPicking[]>([]);
   const [odooPicking, setOdooPicking] = useState<OdooPicking | null>(null);
   const [odooMoveLines, setOdooMoveLines] = useState<any[]>([]);
   const [alternatives, setAlternatives] = useState<any[]>([]);
@@ -118,7 +132,8 @@ export default function ArrivoMercePage() {
     }
   };
 
-  const handleFindReception = async () => {
+  // Sistema temporaneo: usa il vecchio find-reception che funziona
+  const handleIdentifySupplier = async () => {
     if (!parsedInvoice) return;
 
     setLoading(true);
@@ -154,6 +169,92 @@ export default function ArrivoMercePage() {
     } catch (err: any) {
       console.error('❌ Errore ricerca ricezione:', err);
       setError(err.message || 'Errore durante la ricerca della ricezione');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFindReceptionsBySupplier = async (supplierId: number) => {
+    if (!parsedInvoice) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // STEP 2: Cerca ricezioni per questo fornitore
+      const receptionsResponse = await fetch('/api/arrivo-merce/find-receptions-by-supplier', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          supplier_id: supplierId,
+          document_date: parsedInvoice.document_date,
+          document_number: parsedInvoice.document_number,
+          search_days: 7,
+        }),
+      });
+
+      const receptionsData = await receptionsResponse.json();
+
+      if (!receptionsResponse.ok) {
+        throw new Error(receptionsData.error || 'Errore durante la ricerca delle ricezioni');
+      }
+
+      console.log('✅ Ricezioni trovate:', receptionsData);
+
+      const receptions = receptionsData.receptions || [];
+      setAvailableReceptions(receptions);
+
+      if (receptions.length === 1 || receptionsData.suggested_action === 'use_first') {
+        // Usa automaticamente la prima ricezione
+        await handleLoadReceptionDetails(receptions[0].id);
+      } else if (receptions.length > 1) {
+        // Mostra la lista per selezione manuale
+        setStep(2.75); // Step intermedio per selezione ricezione
+      } else {
+        throw new Error('Nessuna ricezione in attesa trovata per questo fornitore.');
+      }
+
+    } catch (err: any) {
+      console.error('❌ Errore ricerca ricezioni:', err);
+      setError(err.message || 'Errore durante la ricerca delle ricezioni');
+      setLoading(false);
+    }
+  };
+
+  const handleLoadReceptionDetails = async (pickingId: number) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // STEP 3: Carica i dettagli completi della ricezione
+      const detailsResponse = await fetch('/api/arrivo-merce/find-reception', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          picking_id: pickingId,
+        }),
+      });
+
+      const detailsData = await detailsResponse.json();
+
+      if (!detailsResponse.ok) {
+        throw new Error(detailsData.error || 'Errore durante il caricamento dei dettagli');
+      }
+
+      console.log('✅ Dettagli ricezione caricati:', detailsData.picking);
+      setOdooPicking(detailsData.picking);
+      setOdooMoveLines(detailsData.move_lines);
+      setStep(3);
+
+    } catch (err: any) {
+      console.error('❌ Errore caricamento dettagli:', err);
+      setError(err.message || 'Errore durante il caricamento dei dettagli della ricezione');
     } finally {
       setLoading(false);
     }
@@ -470,7 +571,7 @@ export default function ArrivoMercePage() {
                   Ricarica
                 </button>
                 <button
-                  onClick={handleFindReception}
+                  onClick={handleIdentifySupplier}
                   disabled={loading}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
@@ -641,19 +742,29 @@ export default function ArrivoMercePage() {
                             : 'bg-yellow-50 border-yellow-200'
                         }`}
                       >
-                        <p className="font-medium">
-                          {detail.action === 'updated' && '✏️ Aggiornata'}
-                          {detail.action === 'created' && '➕ Creata'}
-                          {detail.action === 'no_match' && '⚠️ Nessun match'}
-                        </p>
-                        {detail.quantity && (
-                          <p className="text-xs mt-1">
-                            Quantità: {detail.quantity} | Lotto: {detail.lot || 'N/A'} | Scadenza: {detail.expiry || 'N/A'}
-                          </p>
-                        )}
-                        {detail.reason && (
-                          <p className="text-xs mt-1 text-gray-600">{detail.reason}</p>
-                        )}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <p className="font-medium">
+                              {detail.action === 'updated' && '✏️ Aggiornata'}
+                              {detail.action === 'created' && '➕ Creata'}
+                              {detail.action === 'no_match' && '⚠️ Nessun match'}
+                            </p>
+                            {detail.product_name && (
+                              <p className="text-xs mt-1 font-semibold text-gray-700">
+                                {detail.product_name}
+                              </p>
+                            )}
+                            <p className="text-xs mt-1 text-gray-600">
+                              Quantità: {detail.quantity || 'N/A'} | Lotto: {detail.lot || 'N/A'} | Scadenza: {detail.expiry ? (() => {
+                                const [year, month, day] = detail.expiry.split('-');
+                                return `${day}/${month}/${year}`;
+                              })() : 'N/A'}
+                            </p>
+                            {detail.reason && (
+                              <p className="text-xs mt-1 text-gray-600">{detail.reason}</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -23,6 +23,7 @@
     "clsx": "^2.0.0",
     "dexie": "^3.2.7",
     "framer-motion": "^10.16.16",
+    "fuse.js": "^7.1.0",
     "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.294.0",

@@ -1,0 +1,2567 @@
+{
+  "analysis_date": "2025-10-14",
+  "period_start": "2025-04-14",
+  "total_active_suppliers": 256,
+  "suppliers": [
+    {
+      "id": 1593,
+      "name": "ALIGRO",
+      "vat": "CHE-105.968.205 MWST",
+      "country": "Switzerland",
+      "email": "WARENRESERVATIONZH@ALIGRO.CH;LILIANE.ZIMMERMANN@ALIGRO.CH",
+      "phone": "+41 44 732 42 42",
+      "receptions_count": 94,
+      "last_reception_date": "2025-10-13 18:14:33"
+    },
+    {
+      "id": 1490,
+      "name": "LATTICINI MOLISANI TAMBURRO SRL",
+      "vat": "IT00895100709",
+      "country": "Italy",
+      "email": "ORDINI@TAMBURROSRL.IT",
+      "phone": "+39 0874 460077",
+      "receptions_count": 54,
+      "last_reception_date": "2025-10-13 15:38:05"
+    },
+    {
+      "id": 979,
+      "name": "MACELLERIA SALUMERIA FULVI",
+      "vat": "CHE-109.938.605 MWST",
+      "country": "Switzerland",
+      "email": "INFO@METZGEREI-FULVI.CH",
+      "phone": "+41 44 242 89 57",
+      "receptions_count": 53,
+      "last_reception_date": "2025-10-09 18:36:35"
+    },
+    {
+      "id": 1522,
+      "name": "FERRAIUOLO FOODS SRL",
+      "vat": "IT09212020961",
+      "country": "Italy",
+      "email": "ORDINI@FERRAIUOLOFOODS.IT",
+      "phone": "+39 344 178 3575",
+      "receptions_count": 47,
+      "last_reception_date": "2025-07-17 16:43:20"
+    },
+    {
+      "id": 1526,
+      "name": "PASTIFICIO MARCELLO",
+      "vat": null,
+      "country": "Italy",
+      "email": "ORDINI@PASTIFICIOMARCELLO.IT",
+      "phone": "+39 02 3654 6340",
+      "receptions_count": 45,
+      "last_reception_date": "2025-10-10 10:17:52"
+    },
+    {
+      "id": 1622,
+      "name": "MEYERHANS MUEHLEN AG",
+      "vat": ".",
+      "country": "Switzerland",
+      "email": "INFO@MEYERHANS-MUEHLEN.CH",
+      "phone": "+41 71 626 35 35",
+      "receptions_count": 39,
+      "last_reception_date": "2025-10-07 17:24:31"
+    },
+    {
+      "id": 1631,
+      "name": "PRODEGA MARKT TRANSGOURMET SCHWEIZ AG",
+      "vat": "CHE-116.311.185 MWST",
+      "country": "Switzerland",
+      "email": "CC05-MOLKEREI@TRANSGOURMET.CH",
+      "phone": "+41 44 704 65 65",
+      "receptions_count": 39,
+      "last_reception_date": "2025-10-09 13:47:16"
+    },
+    {
+      "id": 2304,
+      "name": "Polo SpA",
+      "vat": null,
+      "country": "Italy",
+      "email": "giovanni.albini@poloristorazione.it",
+      "phone": "+39 049 999 8411",
+      "receptions_count": 34,
+      "last_reception_date": "2025-10-09 18:13:22"
+    },
+    {
+      "id": 1493,
+      "name": "SORI' ITALIA S.R.L.",
+      "vat": "IT06416370630",
+      "country": "Italy",
+      "email": "segreteria@soritalia.com",
+      "phone": "+39 0823 658013",
+      "receptions_count": 30,
+      "last_reception_date": "2025-10-14 09:26:03"
+    },
+    {
+      "id": 8751,
+      "name": "jirrolle Hygieneartikel",
+      "vat": "CHE-366.630.498 MWST",
+      "country": "Switzerland",
+      "email": "info@jirrolle.ch",
+      "phone": "+41 44 865 11 60",
+      "receptions_count": 27,
+      "last_reception_date": "2025-10-14 05:59:32"
+    },
+    {
+      "id": 9509,
+      "name": "GIFFONIELLO S.R.L.",
+      "vat": "IT05946020657",
+      "country": "Italy",
+      "email": "irene.zonta@caseificiogiffoniello.it",
+      "phone": "+39 089 287 4947",
+      "receptions_count": 21,
+      "last_reception_date": "2025-10-09 16:44:10"
+    },
+    {
+      "id": 5725,
+      "name": "DAGO PINSA GMBH",
+      "vat": "CHE-366.510.701 MWST",
+      "country": "Switzerland",
+      "email": "ordini@dagopinsa.ch",
+      "phone": null,
+      "receptions_count": 20,
+      "last_reception_date": "2025-10-06 15:38:43"
+    },
+    {
+      "id": 9564,
+      "name": "Doppio Gusto (consegna)",
+      "vat": "CHE-332.574.577 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 19,
+      "last_reception_date": "2025-09-02 05:51:13"
+    },
+    {
+      "id": 1550,
+      "name": "RISTORIS SRL",
+      "vat": "IT09017940967",
+      "country": "Italy",
+      "email": "export2@ristoris.it",
+      "phone": "+39 0385 25601",
+      "receptions_count": 17,
+      "last_reception_date": "2025-10-13 15:32:04"
+    },
+    {
+      "id": 8116,
+      "name": "Caterina (CONSEGNA)",
+      "vat": "CHE-479.841.668 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 78 925 12 85",
+      "receptions_count": 16,
+      "last_reception_date": "2025-08-21 18:53:28"
+    },
+    {
+      "id": 1497,
+      "name": "GENNARO AURICCHIO S.P.A.",
+      "vat": "IT01037330196",
+      "country": "Italy",
+      "email": "EXPORT.EUROPA@AURICCHIO.IT",
+      "phone": "+39 0372 403311",
+      "receptions_count": 16,
+      "last_reception_date": "2025-10-13 15:51:41"
+    },
+    {
+      "id": 6301,
+      "name": "ItaEmpire S.r.l.",
+      "vat": "IT13445940961",
+      "country": "Italy",
+      "email": "info@itaempire.com",
+      "phone": "+39 02 006 0997",
+      "receptions_count": 16,
+      "last_reception_date": "2025-10-13 12:47:54"
+    },
+    {
+      "id": 9637,
+      "name": "PASTIFICIO STROPPA SRL",
+      "vat": "IT03611370960",
+      "country": "Italy",
+      "email": "ordini@pastificiostroppa.it",
+      "phone": "+39 02 9078 2432",
+      "receptions_count": 16,
+      "last_reception_date": "2025-10-06 15:59:25"
+    },
+    {
+      "id": 8494,
+      "name": "aMA Pasticceria AG (CONSEGNA)",
+      "vat": "CHE-447.335.415 MWST",
+      "country": "Switzerland",
+      "email": "admin@ama-chitiama.ch",
+      "phone": "+41 44 492 40 97",
+      "receptions_count": 16,
+      "last_reception_date": "2025-08-11 18:48:51"
+    },
+    {
+      "id": 8382,
+      "name": "Neapolis Ristorante Pizzeria (Consegna)",
+      "vat": "CHE-494.950.477 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 15,
+      "last_reception_date": "2025-08-31 16:13:04"
+    },
+    {
+      "id": 8659,
+      "name": "Grandin Trattoria Pizzeria - Tennis Club (CONSEGNA)",
+      "vat": "CHE-192.621.067 MWST",
+      "country": "Switzerland",
+      "email": "Info@grandinpizzeria.ch",
+      "phone": "+41 78 892 93 91",
+      "receptions_count": 15,
+      "last_reception_date": "2025-09-19 03:52:31"
+    },
+    {
+      "id": 6375,
+      "name": "1) Consegna - Napule Zollikon",
+      "vat": "CHE-364.675.314 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 391 26 27",
+      "receptions_count": 15,
+      "last_reception_date": "2025-09-02 06:18:14"
+    },
+    {
+      "id": 8049,
+      "name": "PIZZERIA M2 (CONSEGNA)",
+      "vat": "CHE-290.388.995 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 13,
+      "last_reception_date": "2025-10-10 13:24:19"
+    },
+    {
+      "id": 7847,
+      "name": "SALUMIFICIO F.LLI COATI S.P.A.",
+      "vat": "IT02451960237",
+      "country": "Italy",
+      "email": "ordini@salumificiocoati.it",
+      "phone": "+39 045 775 5265",
+      "receptions_count": 13,
+      "last_reception_date": "2025-10-09 16:53:58"
+    },
+    {
+      "id": 9513,
+      "name": "Jason Chef (per Ordini)",
+      "vat": "CHE-359.914.186 MWST",
+      "country": "Switzerland",
+      "email": "chefjasonlee.zega@gmail.com",
+      "phone": "+41 77 959 79 04",
+      "receptions_count": 12,
+      "last_reception_date": "2025-08-14 04:49:42"
+    },
+    {
+      "id": 2629,
+      "name": "BIRMENSDORFERSTRASSE IL BASILICO (consegna)",
+      "vat": "CHE-104.212.085 MWST",
+      "country": "Switzerland",
+      "email": "info@ilbasilico.ch",
+      "phone": "+41 44 450 88 99",
+      "receptions_count": 12,
+      "last_reception_date": "2025-08-11 18:44:54"
+    },
+    {
+      "id": 1576,
+      "name": "MUSATI SAGL",
+      "vat": "327.073.275",
+      "country": "Switzerland",
+      "email": "MUSATI@TICINO.COM",
+      "phone": "+41 76 594 74 74",
+      "receptions_count": 12,
+      "last_reception_date": "2025-09-20 04:29:30"
+    },
+    {
+      "id": 1530,
+      "name": "LATTERIA SOCIALE MANTOVA SOCIETA' AGRICOLA COOPERATIVA",
+      "vat": "IT00156130205",
+      "country": "Italy",
+      "email": "CLAUDIA.DEODATI@LSMGROUP.IT",
+      "phone": "+39 0376 390808",
+      "receptions_count": 11,
+      "last_reception_date": "2025-10-02 16:43:42"
+    },
+    {
+      "id": 1560,
+      "name": "SAN GIORGIO SPA",
+      "vat": "IT02834120657",
+      "country": "Italy",
+      "email": "marialuciadavino@sangiorgiospa.eu",
+      "phone": "+39 081 953 5125",
+      "receptions_count": 11,
+      "last_reception_date": "2025-10-09 14:22:26"
+    },
+    {
+      "id": 7103,
+      "name": "Restaurant Letzigrund (CONSEGNA)",
+      "vat": "CHE-218.435.597 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 10,
+      "last_reception_date": "2025-09-08 06:36:03"
+    },
+    {
+      "id": 1554,
+      "name": "INNOVACTION S.R.L.",
+      "vat": "IT04169420876",
+      "country": "Italy",
+      "email": "ORDINI@INNOVACTIONITALIA.IT",
+      "phone": "+39 0932 667879",
+      "receptions_count": 10,
+      "last_reception_date": "2025-10-02 16:25:49"
+    },
+    {
+      "id": 5932,
+      "name": "Marina Lachen (CONSEGNA)",
+      "vat": "CHE-102.019.726 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 55 451 73 65",
+      "receptions_count": 10,
+      "last_reception_date": "2025-09-02 06:05:52"
+    },
+    {
+      "id": 1494,
+      "name": "SALUMIFICIO SORRENTINO SRL",
+      "vat": "IT02027290697",
+      "country": "Italy",
+      "email": "EXPORT@SALUMISORRENTINO.COM",
+      "phone": "+39 0872 57162",
+      "receptions_count": 10,
+      "last_reception_date": "2025-10-09 16:58:07"
+    },
+    {
+      "id": 9385,
+      "name": "Osteria dei poeti 1 (Consegna)",
+      "vat": "CHE-372.540.001 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 9,
+      "last_reception_date": "2025-08-21 18:46:35"
+    },
+    {
+      "id": 6069,
+      "name": "La Vista Feusisberg (CONSEGNA)",
+      "vat": "CHE-202.490.768 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 784 00 11",
+      "receptions_count": 9,
+      "last_reception_date": "2025-08-18 13:24:07"
+    },
+    {
+      "id": 2734,
+      "name": "PIZZERIA NAPULE JOSEFSTRASSE (consegna)",
+      "vat": "CHE-364.675.314 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 43 366 82 61",
+      "receptions_count": 9,
+      "last_reception_date": "2025-10-07 13:11:34"
+    },
+    {
+      "id": 1484,
+      "name": "PROSCIUTTIFICIO MONTEVECCHIO S.R.L.",
+      "vat": "IT02280521200",
+      "country": "Italy",
+      "email": "ordini@prosciuttificiomontevecchio.it",
+      "phone": "+39 051 670 8245",
+      "receptions_count": 9,
+      "last_reception_date": "2025-09-18 19:17:44"
+    },
+    {
+      "id": 1639,
+      "name": "SUNN FARM AG",
+      "vat": "CHE-105.864.072 MWST",
+      "country": "Switzerland",
+      "email": "info@sunnfarm.ch",
+      "phone": "+41 44 850 52 62",
+      "receptions_count": 9,
+      "last_reception_date": "2025-05-26 08:05:31"
+    },
+    {
+      "id": 2426,
+      "name": "LUIGIA ADALBIRO (consegna)",
+      "vat": "CHE-192.900.260 MWST",
+      "country": "Switzerland",
+      "email": "KEOMA.BIGON@LUIGIA.CH",
+      "phone": "+41 22 788 77 70",
+      "receptions_count": 8,
+      "last_reception_date": "2025-06-13 12:18:31"
+    },
+    {
+      "id": 2353,
+      "name": "BADALAMENTI SOCIETA' A RESPONSABILITA' LIMITATA SEMPLIFICATA",
+      "vat": "IT06527000829",
+      "country": "Italy",
+      "email": "badalamentisrls@gmail.com;info@doricream.it",
+      "phone": "+39 324 996 0096",
+      "receptions_count": 8,
+      "last_reception_date": "2025-10-13 15:24:36"
+    },
+    {
+      "id": 2490,
+      "name": "LUIGIA CAMILLA (consegna)",
+      "vat": "CHE-197.182.543 IVA",
+      "country": "Switzerland",
+      "email": "camilla.invoicing@luigia.ch",
+      "phone": "+41 44 700 22 22",
+      "receptions_count": 8,
+      "last_reception_date": "2025-05-30 07:30:24"
+    },
+    {
+      "id": 1528,
+      "name": "TEAM TARTUFI SRLS",
+      "vat": "IT10548790962",
+      "country": "Italy",
+      "email": "ordini@teamtartufi.com",
+      "phone": null,
+      "receptions_count": 8,
+      "last_reception_date": "2025-10-13 08:13:18"
+    },
+    {
+      "id": 7016,
+      "name": "CON GUSTO PIZZERIA (CONSEGNA)",
+      "vat": "MWST356.777.970",
+      "country": "Switzerland",
+      "email": "terzoangolo@gmail.com",
+      "phone": "+41 43 229 90 32",
+      "receptions_count": 8,
+      "last_reception_date": "2025-08-13 18:22:15"
+    },
+    {
+      "id": 9479,
+      "name": "Cibò Caffe Ristorante (consegna)",
+      "vat": "CHE-150.202.983 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 7,
+      "last_reception_date": "2025-09-02 05:48:54"
+    },
+    {
+      "id": 8293,
+      "name": "Just-Good (CONSEGNA)",
+      "vat": "CHE-100.675.316 MWST",
+      "country": "Switzerland",
+      "email": "imperialfoodag@gmail.com",
+      "phone": "+41 79 945 13 34",
+      "receptions_count": 7,
+      "last_reception_date": "2025-09-19 10:13:25"
+    },
+    {
+      "id": 6901,
+      "name": "Cafe Albarosa (consegna)",
+      "vat": "CHE-468.517.011 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 79 932 10 10",
+      "receptions_count": 7,
+      "last_reception_date": "2025-08-21 18:51:27"
+    },
+    {
+      "id": 8852,
+      "name": "test",
+      "vat": "CHE-357.325.599 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 76 361 70 21",
+      "receptions_count": 7,
+      "last_reception_date": "2025-09-06 09:53:30"
+    },
+    {
+      "id": 1519,
+      "name": "LINER ITALIA INTERNATIONAL SPA",
+      "vat": "IT02698220965",
+      "country": "Italy",
+      "email": "s.fazzari@linerit.com",
+      "phone": "+39 02 9905 1704",
+      "receptions_count": 7,
+      "last_reception_date": "2025-10-09 16:34:02"
+    },
+    {
+      "id": 2804,
+      "name": "RISTORANTE MIRABELLO DA FRANCESCO (consegna)",
+      "vat": null,
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 55 212 49 45",
+      "receptions_count": 7,
+      "last_reception_date": "2025-08-14 05:54:23"
+    },
+    {
+      "id": 2739,
+      "name": "PIZZERIA NAPULE AG MEILEN (consegna)",
+      "vat": "CHE-364.675.314 MWST",
+      "country": "Switzerland",
+      "email": "meilen@napule.ch",
+      "phone": "+41 44 923 02 02",
+      "receptions_count": 7,
+      "last_reception_date": "2025-07-25 15:35:36"
+    },
+    {
+      "id": 1498,
+      "name": "OLEIFICIO ZUCCHI S.P.A. O ABBREVIATO O.Z. S.P.A. CR",
+      "vat": "IT00106510191",
+      "country": "Italy",
+      "email": "commerciale@zucchi.com",
+      "phone": "+39 0372 532111",
+      "receptions_count": 7,
+      "last_reception_date": "2025-10-13 15:27:04"
+    },
+    {
+      "id": 9189,
+      "name": "Restaurant Alchimia (Consegna)",
+      "vat": "CHE-436.998.652 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 516 84 60",
+      "receptions_count": 6,
+      "last_reception_date": "2025-07-09 06:01:38"
+    },
+    {
+      "id": 8951,
+      "name": "Al Delicato (CONSEGNA)",
+      "vat": "CHE-257.365.983 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+39 379 208 4161",
+      "receptions_count": 6,
+      "last_reception_date": "2025-09-02 06:21:00"
+    },
+    {
+      "id": 1652,
+      "name": "CAFFE BILLO",
+      "vat": null,
+      "country": "Switzerland",
+      "email": "CAFFE.BILLO@GMAIL.COM",
+      "phone": "+41 76 443 77 72",
+      "receptions_count": 6,
+      "last_reception_date": "2025-09-26 05:33:48"
+    },
+    {
+      "id": 1534,
+      "name": "DOLCIARIA MARIGLIANO SRL",
+      "vat": "08367041210",
+      "country": "Italy",
+      "email": "EXPORT.DOLCIARIAMARIGLIANO@GMAIL.COM",
+      "phone": "+39 081 028 2178",
+      "receptions_count": 6,
+      "last_reception_date": "2025-10-09 14:47:57"
+    },
+    {
+      "id": 9278,
+      "name": "Osteria Schwanen (CONSEGNA)",
+      "vat": "CHE-383.003.517 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 61 401 52 20",
+      "receptions_count": 6,
+      "last_reception_date": "2025-07-07 13:01:18"
+    },
+    {
+      "id": 8262,
+      "name": "Dolce Fermata Famigliolo (CONSEGNA)",
+      "vat": "CHE-237.369.914 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 6,
+      "last_reception_date": "2025-10-12 12:02:34"
+    },
+    {
+      "id": 1483,
+      "name": "FIRSTPACK IT SRL",
+      "vat": "IT03333711202",
+      "country": "Italy",
+      "email": "CONTACT@FIRSTPACK.IT",
+      "phone": "+39 051 532602",
+      "receptions_count": 6,
+      "last_reception_date": "2025-09-25 16:44:59"
+    },
+    {
+      "id": 6745,
+      "name": "Il Fagottino (CONSEGNA)",
+      "vat": "CHE-201.394.240 IVA",
+      "country": "Switzerland",
+      "email": "savarese.gennaro@hotmail.com",
+      "phone": "+41 55 245 57 57",
+      "receptions_count": 6,
+      "last_reception_date": "2025-08-16 12:53:18"
+    },
+    {
+      "id": 9887,
+      "name": "ITJUST EUROPE SRL",
+      "vat": "IT08834001219",
+      "country": "Italy",
+      "email": "amministrazione@itjust.eu",
+      "phone": null,
+      "receptions_count": 6,
+      "last_reception_date": "2025-10-10 13:02:52"
+    },
+    {
+      "id": 8485,
+      "name": "PASSION BY VALENTINA GMBH (CONSEGNA)",
+      "vat": "CHE-431.269.296 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 6,
+      "last_reception_date": "2025-08-27 06:33:19"
+    },
+    {
+      "id": 5786,
+      "name": "TREMONDI B&B GMBH (CONSEGNA)",
+      "vat": "CHE-202.630.176 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 79 833 74 78",
+      "receptions_count": 6,
+      "last_reception_date": "2025-07-04 10:21:05"
+    },
+    {
+      "id": 1471,
+      "name": "VIVANDO WEINE",
+      "vat": "110187194",
+      "country": "Switzerland",
+      "email": "INFO@VIVANDOWEINE.CH",
+      "phone": "+41 41 781 11 73",
+      "receptions_count": 6,
+      "last_reception_date": "2025-09-20 04:20:53"
+    },
+    {
+      "id": 1804,
+      "name": "LUIGIA ACADEMY AGINULFO (consegna)",
+      "vat": "CHE-434.529.944 MWST",
+      "country": "Switzerland",
+      "email": "order.meyrin@luigia.ch",
+      "phone": "+41 22 782 55 86",
+      "receptions_count": 5,
+      "last_reception_date": "2025-06-10 11:53:34"
+    },
+    {
+      "id": 8679,
+      "name": "DOLCE E SALATO (CONSEGNA)",
+      "vat": "CHE-264.498.632 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 76 442 48 17",
+      "receptions_count": 5,
+      "last_reception_date": "2025-06-06 08:24:19"
+    },
+    {
+      "id": 7351,
+      "name": "Spicy's 2006 Rheinfelden (CONSEGNA)",
+      "vat": "CHE-245.457.331 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 76 370 14 22",
+      "receptions_count": 5,
+      "last_reception_date": "2025-08-21 18:47:32"
+    },
+    {
+      "id": 3103,
+      "name": "GIOIE SALENTINE GMBH (CONSEGNA)",
+      "vat": "CHE-174.563.710 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 5,
+      "last_reception_date": "2025-08-18 03:59:47"
+    },
+    {
+      "id": 1662,
+      "name": "MARINELLO & CO. AG",
+      "vat": null,
+      "country": "Switzerland",
+      "email": "transport@marinello.ch",
+      "phone": "+41 43 444 45 00",
+      "receptions_count": 5,
+      "last_reception_date": "2025-09-23 12:05:32"
+    },
+    {
+      "id": 7867,
+      "name": "NURAGHES PIZZA CONSEGNA",
+      "vat": "CHE-474.949.761 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 77 464 96 89",
+      "receptions_count": 5,
+      "last_reception_date": "2025-08-21 18:52:09"
+    },
+    {
+      "id": 1501,
+      "name": "SOC. AGR. SPIRITO CONTADINO DE PALMA SAS",
+      "vat": "IT03457900714",
+      "country": "Italy",
+      "email": "INFO@SPIRITOCONTADINO.COM",
+      "phone": "+39 0885 418626",
+      "receptions_count": 5,
+      "last_reception_date": "2025-09-23 15:16:27"
+    },
+    {
+      "id": 1546,
+      "name": "AGUGIARO & FIGNA MOLINI S.P.A.",
+      "vat": "IT02257630349",
+      "country": "Italy",
+      "email": "F.COBIANCHI@AGUGIAROFIGNA.COM",
+      "phone": "+39 0521 301713",
+      "receptions_count": 4,
+      "last_reception_date": "2025-08-28 16:24:31"
+    },
+    {
+      "id": 1650,
+      "name": "ALDI SUISSE",
+      "vat": null,
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 4,
+      "last_reception_date": "2025-10-04 06:11:39"
+    },
+    {
+      "id": 2530,
+      "name": "DA GIO (consegna)",
+      "vat": "CHE-369.829.949 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 865 33 88",
+      "receptions_count": 4,
+      "last_reception_date": "2025-08-23 13:31:27"
+    },
+    {
+      "id": 9319,
+      "name": "Carbone Locanda - Pasticceria (Consegna)",
+      "vat": "CHE-110.488.744 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 61 402 06 63",
+      "receptions_count": 4,
+      "last_reception_date": "2025-05-21 16:03:43"
+    },
+    {
+      "id": 3179,
+      "name": "B.P. SRLS",
+      "vat": "IT03901640791",
+      "country": "Italy",
+      "email": "pastificiobrizzi@gmail.com",
+      "phone": "+39 0963 195 2573",
+      "receptions_count": 4,
+      "last_reception_date": "2025-05-28 10:48:16"
+    },
+    {
+      "id": 2462,
+      "name": "CAFE BELLA STREGA (CONSEGNA)",
+      "vat": "CHE-447.169.424 MWST",
+      "country": "Switzerland",
+      "email": "rossi@bella-strega.ch",
+      "phone": "+41 76 320 68 11",
+      "receptions_count": 4,
+      "last_reception_date": "2025-09-02 05:53:01"
+    },
+    {
+      "id": 9805,
+      "name": "Buontempi Bella Vita",
+      "vat": "CHE-205.124.484 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 4,
+      "last_reception_date": "2025-08-28 06:07:32"
+    },
+    {
+      "id": 5981,
+      "name": "CASA GOURMET (CONSEGNA)",
+      "vat": "CHE-489.852.998 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 78 220 02 85",
+      "receptions_count": 4,
+      "last_reception_date": "2025-08-04 05:02:26"
+    },
+    {
+      "id": 1604,
+      "name": "DENNER",
+      "vat": null,
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 4,
+      "last_reception_date": "2025-10-02 05:49:52"
+    },
+    {
+      "id": 1556,
+      "name": "F.LLI GARUTI - SOCIETA' A RESPONSABILITA' LIMITATA",
+      "vat": "IT01237141005",
+      "country": "Italy",
+      "email": "COMMERCIALE@PAVONEGARUTI.IT",
+      "phone": "+39 06 991 1129",
+      "receptions_count": 4,
+      "last_reception_date": "2025-08-28 17:37:41"
+    },
+    {
+      "id": 2630,
+      "name": "HöNGGERSTRASSE IL BASILICO (consegna)",
+      "vat": "CHE-104.212.085 MWST",
+      "country": "Switzerland",
+      "email": "ajjshddhhd",
+      "phone": "+41 44 450 88 99",
+      "receptions_count": 4,
+      "last_reception_date": "2025-09-02 06:20:24"
+    },
+    {
+      "id": 972,
+      "name": "LA TERRA DEL BUON GUSTO GMBH",
+      "vat": "CHE-114.904.440 MWST",
+      "country": "Switzerland",
+      "email": "info@laterradelbuongusto.ch",
+      "phone": "+41 43 411 59 50",
+      "receptions_count": 4,
+      "last_reception_date": "2025-10-03 05:48:05"
+    },
+    {
+      "id": 8483,
+      "name": "LE VERE DELIZIE GMBH (CONSEGNA)",
+      "vat": "CHE-207.592.927 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 4,
+      "last_reception_date": "2025-06-21 04:07:23"
+    },
+    {
+      "id": 9652,
+      "name": "LEGAMI RESTAURANT (CONSEGNA)",
+      "vat": "CHE-219.816.269 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 4,
+      "last_reception_date": "2025-08-26 05:54:38"
+    },
+    {
+      "id": 9628,
+      "name": "Luma Bar",
+      "vat": "CHE-332.508.675 MWST",
+      "country": "Switzerland",
+      "email": "stefania_branca88@yahoo.com",
+      "phone": "+41 78 256 94 76",
+      "receptions_count": 4,
+      "last_reception_date": "2025-07-04 16:20:08"
+    },
+    {
+      "id": 8484,
+      "name": "MARGHERI GMBH (CONSEGNA)",
+      "vat": "CHE-338.187.776 MWST",
+      "country": "Switzerland",
+      "email": "info@margheri.ch",
+      "phone": null,
+      "receptions_count": 4,
+      "last_reception_date": "2025-10-02 17:06:53"
+    },
+    {
+      "id": 5099,
+      "name": "MOLINI PIZZUTI SRL",
+      "vat": "01222510651",
+      "country": "Italy",
+      "email": "federicobuffetti@gmail.com",
+      "phone": "+39 0828 355150",
+      "receptions_count": 4,
+      "last_reception_date": "2025-10-10 12:47:27"
+    },
+    {
+      "id": 2741,
+      "name": "PIZZERIA NAPULE NETSTAL (consegna)",
+      "vat": "CHE-364.675.314 MWST",
+      "country": "Switzerland",
+      "email": "netstal@napule.ch",
+      "phone": "+41 55 650 12 46",
+      "receptions_count": 4,
+      "last_reception_date": "2025-06-28 07:49:27"
+    },
+    {
+      "id": 1087,
+      "name": "PACOVIS AG",
+      "vat": "CHE-102.999.830 MWST",
+      "country": "Switzerland",
+      "email": "info@pacovis.ch",
+      "phone": "+41 56 485 93 93",
+      "receptions_count": 4,
+      "last_reception_date": "2025-09-16 13:03:48"
+    },
+    {
+      "id": 9226,
+      "name": "Nonna Jo' (CONSEGNA 2)",
+      "vat": "CHE-175.070.628 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 4,
+      "last_reception_date": "2025-06-26 18:06:06"
+    },
+    {
+      "id": 2815,
+      "name": "LUIGIA ROSOLINO (consegna)",
+      "vat": "CHE-427.868.890 MWST",
+      "country": "Switzerland",
+      "email": "rosolino.invoicing@luigia.ch",
+      "phone": "+41 26 322 21 30",
+      "receptions_count": 4,
+      "last_reception_date": "2025-06-10 11:53:41"
+    },
+    {
+      "id": 9268,
+      "name": "Restaurant Sonnenberg (CONSEGNA)",
+      "vat": "CHE-388.467.864 MWST",
+      "country": "Switzerland",
+      "email": "caputomax66@gmail.com",
+      "phone": "+41 71 966 44 22",
+      "receptions_count": 4,
+      "last_reception_date": "2025-09-06 11:40:11"
+    },
+    {
+      "id": 8096,
+      "name": "Ristorante Gusto Mediterraneo (CONSEGNA)",
+      "vat": "CHE-302.226.628 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 524 15 20",
+      "receptions_count": 4,
+      "last_reception_date": "2025-09-20 08:47:47"
+    },
+    {
+      "id": 5097,
+      "name": "SIFA S.P.A.",
+      "vat": "IT01242720447",
+      "country": "Italy",
+      "email": "morena.trasarti@sifaspa.eu",
+      "phone": "+39 0733 556360",
+      "receptions_count": 4,
+      "last_reception_date": "2025-09-25 16:32:18"
+    },
+    {
+      "id": 1488,
+      "name": "SOLUZIONI ALIMENTARI DI BONOMINI LUIGI",
+      "vat": "IT02224300984",
+      "country": "Italy",
+      "email": "INFO@SOLUZIONIALIMENTARI.IT",
+      "phone": "+39 030 689 7159",
+      "receptions_count": 4,
+      "last_reception_date": "2025-09-25 16:36:39"
+    },
+    {
+      "id": 9357,
+      "name": "A.I.A. AGRICOLA ITALIANA ALIMENTARE S.P.A.",
+      "vat": "IT00233470236",
+      "country": "Italy",
+      "email": "Andrea.Tonetti@negroni.com",
+      "phone": "+39 045 879 4111",
+      "receptions_count": 3,
+      "last_reception_date": "2025-10-08 10:04:20"
+    },
+    {
+      "id": 6538,
+      "name": "AMAZON EU SARL",
+      "vat": "IT08973230967",
+      "country": "Italy",
+      "email": null,
+      "phone": null,
+      "receptions_count": 3,
+      "last_reception_date": "2025-10-02 16:40:25"
+    },
+    {
+      "id": 2438,
+      "name": "L ORO DI NAPOLI (consegna)",
+      "vat": "CHE-106.068.391 MWST",
+      "country": "Switzerland",
+      "email": "kueche.lorodinapoli@autogrill.net",
+      "phone": null,
+      "receptions_count": 3,
+      "last_reception_date": "2025-09-17 09:53:35"
+    },
+    {
+      "id": 8490,
+      "name": "BACCO (CONSEGNA)",
+      "vat": "CHE-106.092.194 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 825 16 16",
+      "receptions_count": 3,
+      "last_reception_date": "2025-08-31 17:12:27"
+    },
+    {
+      "id": 1545,
+      "name": "BERNARDINI GASTONE SRL",
+      "vat": "IT01511390500",
+      "country": "Italy",
+      "email": "CLIENTI@BERNARDINIGASTONE.IT",
+      "phone": "+39 050 644100",
+      "receptions_count": 3,
+      "last_reception_date": "2025-06-03 12:24:50"
+    },
+    {
+      "id": 8045,
+      "name": "Les Trois Verres (CONSEGNA)",
+      "vat": "CHE-191.977.886 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 22 320 84 62",
+      "receptions_count": 3,
+      "last_reception_date": "2025-06-13 12:19:34"
+    },
+    {
+      "id": 5519,
+      "name": "BISTROT (CONSEGNA)",
+      "vat": "CHE-499.171.931 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 76 260 27 75",
+      "receptions_count": 3,
+      "last_reception_date": "2025-06-13 12:21:34"
+    },
+    {
+      "id": 9806,
+      "name": "Pizzeria Arcade",
+      "vat": "CHE-115.882.634 MWST",
+      "country": "Switzerland",
+      "email": "info@arcadepizzeria.ch",
+      "phone": "+41 44 241 21 63",
+      "receptions_count": 3,
+      "last_reception_date": "2025-09-02 06:12:59"
+    },
+    {
+      "id": 2491,
+      "name": "LUIGIA OPFIKON (consegna)",
+      "vat": "CHE-197.182.543 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 43 211 36 24",
+      "receptions_count": 3,
+      "last_reception_date": "2025-06-10 07:53:17"
+    },
+    {
+      "id": 1502,
+      "name": "CASANOVA TOSCANA FOOD S.R.L.",
+      "vat": "06435720484",
+      "country": "Italy",
+      "email": "INFO@CASANOVATOSCANAFOOD.IT",
+      "phone": "+39 0571 677124",
+      "receptions_count": 3,
+      "last_reception_date": "2025-10-09 16:55:37"
+    },
+    {
+      "id": 9983,
+      "name": "Al Delicato (consegna)",
+      "vat": "CHE-284.405.705 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 3,
+      "last_reception_date": "2025-10-12 12:01:31"
+    },
+    {
+      "id": 2522,
+      "name": "CUMANO SA (Rive Gauche) (consegna)",
+      "vat": "CHE-115.256.313 MWST",
+      "country": "Switzerland",
+      "email": "cumano.invoicing@luigia.ch",
+      "phone": "+41 22 840 15 15",
+      "receptions_count": 3,
+      "last_reception_date": "2025-06-14 14:00:16"
+    },
+    {
+      "id": 9175,
+      "name": "Il Borgo (CONSEGNA)",
+      "vat": "CHE-498.373.142 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 3,
+      "last_reception_date": "2025-06-06 15:53:26"
+    },
+    {
+      "id": 9459,
+      "name": "Pizzeria acqua e farina (consegna)",
+      "vat": "CHE-342.685.244 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 62 844 00 66",
+      "receptions_count": 3,
+      "last_reception_date": "2025-08-13 18:28:31"
+    },
+    {
+      "id": 9007,
+      "name": "DON LEONE BELLA VISTA AG (Consegna)",
+      "vat": "CHE-353.508.422 MWST",
+      "country": "Switzerland",
+      "email": "Giovanna@donleone.ch",
+      "phone": "+41 76 243 49 30",
+      "receptions_count": 3,
+      "last_reception_date": "2025-05-23 11:04:49"
+    },
+    {
+      "id": 9771,
+      "name": "EFFEPI SRL",
+      "vat": "IT01053460059",
+      "country": "Italy",
+      "email": "export@effepigelati.it",
+      "phone": "+39 0141 209433",
+      "receptions_count": 3,
+      "last_reception_date": "2025-09-08 07:41:26"
+    },
+    {
+      "id": 8479,
+      "name": "EMMA'S CAFE' GMBH (CONSEGNA)",
+      "vat": "CHE-397.387.253 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 3,
+      "last_reception_date": "2025-08-04 13:26:36"
+    },
+    {
+      "id": 1514,
+      "name": "EUROFOOD ICE SRL",
+      "vat": "04876220759",
+      "country": "Italy",
+      "email": "antonio.ancora@eurofoodservice.it",
+      "phone": "+39 0836 521511",
+      "receptions_count": 3,
+      "last_reception_date": "2025-10-01 08:52:52"
+    },
+    {
+      "id": 9323,
+      "name": "Etna Pasticceria - Tavola calda (Consegna)",
+      "vat": "CHE-172.757.479 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 61 229 08 72",
+      "receptions_count": 3,
+      "last_reception_date": "2025-10-02 17:08:13"
+    },
+    {
+      "id": 2565,
+      "name": "LUIGIA NYON FILOMENO (consegna)",
+      "vat": "CHE-423.252.158 MWST",
+      "country": "Switzerland",
+      "email": "filomeno.invoicing@luigia.ch",
+      "phone": "+41 22 310 09 00",
+      "receptions_count": 3,
+      "last_reception_date": "2025-05-20 15:03:12"
+    },
+    {
+      "id": 1508,
+      "name": "FREDDITALIA INTERNATIONAL SPA",
+      "vat": "IT00640480539",
+      "country": "Italy",
+      "email": "SALVATORE_MIRANDA@HOTMAIL.COM",
+      "phone": "+39 0564 933666",
+      "receptions_count": 3,
+      "last_reception_date": "2025-09-08 10:07:02"
+    },
+    {
+      "id": 1582,
+      "name": "GELATI PEPINO 1884 SPA",
+      "vat": "IT10497030014",
+      "country": "Italy",
+      "email": "ORDINI@GELATIPEPINO.IT",
+      "phone": "+39 011 936 7615",
+      "receptions_count": 3,
+      "last_reception_date": "2025-05-09 11:17:45"
+    },
+    {
+      "id": 9889,
+      "name": "GROMAS s.r.l.",
+      "vat": "IT11061880156",
+      "country": "Italy",
+      "email": "gromasmilano@gmail.com",
+      "phone": "+39 390 271 3120",
+      "receptions_count": 3,
+      "last_reception_date": "2025-10-10 08:47:01"
+    },
+    {
+      "id": 8042,
+      "name": "Street Food by gustoetradizione (CONSEGNA)",
+      "vat": "CHE-142.899.011 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 770 22 33",
+      "receptions_count": 3,
+      "last_reception_date": "2025-06-27 15:50:36"
+    },
+    {
+      "id": 8789,
+      "name": "Le Delizie di Marcella Carrozza (CONSEGNA)",
+      "vat": "CHE-419.598.145 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 3,
+      "last_reception_date": "2025-08-13 18:20:48"
+    },
+    {
+      "id": 6384,
+      "name": "LOCANDA TRIVISANO (CONSEGNA)",
+      "vat": "CHE-216.556.853 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 3,
+      "last_reception_date": "2025-09-05 06:58:10"
+    },
+    {
+      "id": 8004,
+      "name": "Restaurant Freilager (CONSEGNA)",
+      "vat": "CHE-170.835.631 MWST",
+      "country": "Switzerland",
+      "email": "essen@restaurant-freilager.ch",
+      "phone": "+41 44 492 09 09",
+      "receptions_count": 3,
+      "last_reception_date": "2025-08-14 16:33:24"
+    },
+    {
+      "id": 9813,
+      "name": "Consegna Effretikon Angelo Ristorante",
+      "vat": "CHE-364.675.314 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+39 328 168 3895",
+      "receptions_count": 3,
+      "last_reception_date": "2025-09-02 06:16:55"
+    },
+    {
+      "id": 9169,
+      "name": "Napule Effretikon (CONSEGNA)",
+      "vat": "CHE-364.675.314 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 3,
+      "last_reception_date": "2025-06-10 11:53:59"
+    },
+    {
+      "id": 8486,
+      "name": "PIZZERIA ARTECHIARA GMBH (CONSEGNA)",
+      "vat": "CHE-343.298.737 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 3,
+      "last_reception_date": "2025-07-11 05:12:57"
+    },
+    {
+      "id": 2514,
+      "name": "CON GUSTO (consegna)",
+      "vat": "CHE-354.768.397 MWST",
+      "country": "Switzerland",
+      "email": "info@con-gusto.ch",
+      "phone": "+41 41 218 68 16",
+      "receptions_count": 3,
+      "last_reception_date": "2025-08-04 13:34:32"
+    },
+    {
+      "id": 9542,
+      "name": "AMBOSS RAMPE RESTAURANT/BRUNCH",
+      "vat": "CHE-183.573.452 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 43 558 20 00",
+      "receptions_count": 3,
+      "last_reception_date": "2025-07-17 06:48:27"
+    },
+    {
+      "id": 9247,
+      "name": "La Qualità (CONSEGNA)",
+      "vat": "CHE-267.092.522 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 3,
+      "last_reception_date": "2025-06-05 13:46:30"
+    },
+    {
+      "id": 9857,
+      "name": "REGA FOOD SRL",
+      "vat": "IT08073371216",
+      "country": "Italy",
+      "email": "antonio.rendina@regafoodsrl.com",
+      "phone": "+39 081 827 7883",
+      "receptions_count": 3,
+      "last_reception_date": "2025-09-13 07:15:30"
+    },
+    {
+      "id": 6057,
+      "name": "Restaurant Kronenhof (consegna)",
+      "vat": "CHE-112.836.342 IVA",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 61 731 34 68",
+      "receptions_count": 3,
+      "last_reception_date": "2025-09-02 06:26:25"
+    },
+    {
+      "id": 7089,
+      "name": "Restaurant Pizzeria Linde (CONSEGNA)",
+      "vat": "CHE-115.129.040 MWST",
+      "country": "Switzerland",
+      "email": "raffaelejuniormerola@gmail.com",
+      "phone": "+41 77 216 13 21",
+      "receptions_count": 3,
+      "last_reception_date": "2025-07-06 15:12:29"
+    },
+    {
+      "id": 2994,
+      "name": "SILA MARKET",
+      "vat": "CHE-477.775.380",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 310 39 66",
+      "receptions_count": 3,
+      "last_reception_date": "2025-09-20 06:42:19"
+    },
+    {
+      "id": 2992,
+      "name": "ANTICA NAPOLI PIZZA E PANUOZZO C/O HOTEL RESIDENCE LOREN (Consegna)",
+      "vat": "CHE-112.975.771 MWST",
+      "country": "Switzerland",
+      "email": "info@hotel-residence-loren.ch",
+      "phone": "+41 77 420 62 42",
+      "receptions_count": 3,
+      "last_reception_date": "2025-06-13 16:49:08"
+    },
+    {
+      "id": 9901,
+      "name": "ENOTECA DA BARTOLO",
+      "vat": "CHE-250.610.532 MWST",
+      "country": "Switzerland",
+      "email": "bar_1965@hotmail.com",
+      "phone": null,
+      "receptions_count": 3,
+      "last_reception_date": "2025-08-11 18:50:30"
+    },
+    {
+      "id": 2855,
+      "name": "LUIGIA TREBELLICO (consegna)",
+      "vat": "CHE-303.551.568 MWST",
+      "country": "Switzerland",
+      "email": "lausanne@luigia.ch",
+      "phone": "+41 21 552 03 03",
+      "receptions_count": 3,
+      "last_reception_date": "2025-06-10 11:54:26"
+    },
+    {
+      "id": 8877,
+      "name": "RESTAURANT CONCORDIA (CONSEGNA)",
+      "vat": "CHE-366.543.072 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 52 517 12 34",
+      "receptions_count": 3,
+      "last_reception_date": "2025-08-14 04:47:11"
+    },
+    {
+      "id": 9125,
+      "name": "AL BACIO Catering di Vincenzo Pellerito (FATTURAZIONE)",
+      "vat": "CHE-295.663.708 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 76 582 51 03",
+      "receptions_count": 2,
+      "last_reception_date": "2025-06-13 11:08:10"
+    },
+    {
+      "id": 1597,
+      "name": "BAUHAUS FACHCENTREN AG",
+      "vat": null,
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 738 18 18",
+      "receptions_count": 2,
+      "last_reception_date": "2025-05-05 12:38:36"
+    },
+    {
+      "id": 1547,
+      "name": "BP Cartotecnica SRL",
+      "vat": "IT-00489490474",
+      "country": "Italy",
+      "email": "commerciale@bpcartotecnica.it",
+      "phone": "+39 0572 33656",
+      "receptions_count": 2,
+      "last_reception_date": "2025-09-18 18:26:17"
+    },
+    {
+      "id": 1542,
+      "name": "CASANOVA FOOD SRL(pastadivenezia.it)",
+      "vat": "04751650286",
+      "country": "Italy",
+      "email": "export@casanovafood.it",
+      "phone": "+39 049 635482",
+      "receptions_count": 2,
+      "last_reception_date": "2025-09-08 08:02:51"
+    },
+    {
+      "id": 1655,
+      "name": "COOP",
+      "vat": ".",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 2,
+      "last_reception_date": "2025-06-21 12:00:11"
+    },
+    {
+      "id": 9669,
+      "name": "Non usare Cigro",
+      "vat": "CHE-372.540.001 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 2,
+      "last_reception_date": "2025-07-04 16:17:28"
+    },
+    {
+      "id": 2841,
+      "name": "SPAR SUPERMARKT BERNINAPLATZ (consegna)",
+      "vat": "CHE-484.216.134 MWST",
+      "country": "Switzerland",
+      "email": "bernina@spar.ch",
+      "phone": "+41 44 317 15 00",
+      "receptions_count": 2,
+      "last_reception_date": "2025-07-13 13:52:17"
+    },
+    {
+      "id": 893,
+      "name": "DA GIUSEPPE PASTICCERIA GMBH",
+      "vat": "CHE-187.546.483 MWST",
+      "country": "Switzerland",
+      "email": "ciao@dagiuseppe.ch",
+      "phone": "+41 56 221 63 55",
+      "receptions_count": 2,
+      "last_reception_date": "2025-06-03 12:00:40"
+    },
+    {
+      "id": 1690,
+      "name": "DIANA VINCENZO CANNOLIFICIO PADRE GIOACCHINO",
+      "vat": "02938530843",
+      "country": "Italy",
+      "email": "CANNOLIFICIODIANA@GMAIL.COM",
+      "phone": "+39 0922 832961",
+      "receptions_count": 2,
+      "last_reception_date": "2025-09-11 16:49:43"
+    },
+    {
+      "id": 9139,
+      "name": "Don Leone Delivery (CONSEGNA)",
+      "vat": "CHE-207.376.743 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 2,
+      "last_reception_date": "2025-09-02 05:45:47"
+    },
+    {
+      "id": 9934,
+      "name": "Emme l'Italia che ami",
+      "vat": "CHE-397.632.381 MWST",
+      "country": "Switzerland",
+      "email": "info@emmefood.ch",
+      "phone": "+41 44 451 05 05",
+      "receptions_count": 2,
+      "last_reception_date": "2025-09-03 18:48:16"
+    },
+    {
+      "id": 2299,
+      "name": "FOCACCINO DES MOULINS SARL",
+      "vat": "CHE-463.152.089 MWST",
+      "country": "Switzerland",
+      "email": "focaccinodesmoulins@gmail.com",
+      "phone": null,
+      "receptions_count": 2,
+      "last_reception_date": "2025-05-27 15:54:28"
+    },
+    {
+      "id": 2570,
+      "name": "CORE MIO (CONSEGNA)",
+      "vat": "CHE-205.861.915 MWST",
+      "country": "Switzerland",
+      "email": "aarau@coremio.ch",
+      "phone": null,
+      "receptions_count": 2,
+      "last_reception_date": "2025-07-13 17:39:37"
+    },
+    {
+      "id": 8909,
+      "name": "Hasenstrick Alpen Event (CONSEGNA)",
+      "vat": "CHE-260.621.968 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 73 831 86 68",
+      "receptions_count": 2,
+      "last_reception_date": "2025-09-09 12:16:26"
+    },
+    {
+      "id": 8960,
+      "name": "Homerunner Gmbh (Windelshop)",
+      "vat": "CHE-115.059.511 MWST",
+      "country": "Switzerland",
+      "email": "info@windelshop.ch.",
+      "phone": null,
+      "receptions_count": 2,
+      "last_reception_date": "2025-06-05 13:12:29"
+    },
+    {
+      "id": 5518,
+      "name": "IL FORNO (CONSEGNA)",
+      "vat": "CHE-499.171.931 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 77 450 97 18",
+      "receptions_count": 2,
+      "last_reception_date": "2025-06-06 08:29:48"
+    },
+    {
+      "id": 6151,
+      "name": "PIZZA FORTE (CONSEGNA)",
+      "vat": "CHE-353.763.842 MWST",
+      "country": "Switzerland",
+      "email": "info@pizzaforte.ch",
+      "phone": null,
+      "receptions_count": 2,
+      "last_reception_date": "2025-08-21 18:52:44"
+    },
+    {
+      "id": 2644,
+      "name": "HOTEL & RESTAURANT JAKOB (consegna)",
+      "vat": "CHE-210.679.902 MWST",
+      "country": "Switzerland",
+      "email": "info@jakob-rapperswil.ch",
+      "phone": "+41 55 220 00 50",
+      "receptions_count": 2,
+      "last_reception_date": "2025-08-23 05:51:34"
+    },
+    {
+      "id": 9230,
+      "name": "L'Arco dei Sapori (CONSEGNA)",
+      "vat": "CHE-472.116.508 MWST",
+      "country": "Switzerland",
+      "email": "info@larcodeisapori.ch",
+      "phone": null,
+      "receptions_count": 2,
+      "last_reception_date": "2025-06-12 09:06:46"
+    },
+    {
+      "id": 2274,
+      "name": "LA FONTANA UNO GMBH",
+      "vat": "CHE-109.452.544 MWST",
+      "country": "Switzerland",
+      "email": "info@lafontanauno.ch",
+      "phone": "+41 44 725 83 80",
+      "receptions_count": 2,
+      "last_reception_date": "2025-06-26 18:01:17"
+    },
+    {
+      "id": 11,
+      "name": "Paul Teodorescu",
+      "vat": "CHE-357.325.599 MWST",
+      "country": "Switzerland",
+      "email": "paul@lapa.ch",
+      "phone": "+41 76 399 85 15",
+      "receptions_count": 2,
+      "last_reception_date": "2025-06-12 15:17:21"
+    },
+    {
+      "id": 9941,
+      "name": "La bottega del caffè GmbH",
+      "vat": "CHE-202.034.063 MWST",
+      "country": "Switzerland",
+      "email": "info@labottegadelcaffe.ch",
+      "phone": "+41 62 892 43 43",
+      "receptions_count": 2,
+      "last_reception_date": "2025-08-21 18:20:12"
+    },
+    {
+      "id": 1531,
+      "name": "MOLINO PASINI S.P.A.",
+      "vat": "00137190203",
+      "country": "Italy",
+      "email": "m.bertuzzi@molinopasini.com",
+      "phone": "+39 0376 969015",
+      "receptions_count": 2,
+      "last_reception_date": "2025-07-17 16:54:31"
+    },
+    {
+      "id": 1575,
+      "name": "MULINO MAROGGIA",
+      "vat": "102474450",
+      "country": "Switzerland",
+      "email": "INFO@MULINOMAROGGIA.CH",
+      "phone": "+41 91 649 75 02",
+      "receptions_count": 2,
+      "last_reception_date": "2025-09-11 05:05:23"
+    },
+    {
+      "id": 1665,
+      "name": "Migros",
+      "vat": "CHE-105.970.604 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 58 563 53 00",
+      "receptions_count": 2,
+      "last_reception_date": "2025-06-23 09:48:40"
+    },
+    {
+      "id": 1577,
+      "name": "OLEIFICIO SABO",
+      "vat": ".",
+      "country": "Switzerland",
+      "email": "ORDERS@SABO1845.CH",
+      "phone": "+41 91 610 70 50",
+      "receptions_count": 2,
+      "last_reception_date": "2025-05-07 09:30:35"
+    },
+    {
+      "id": 7650,
+      "name": "Osteria da Francesco (CONSEGNA)",
+      "vat": "CHE-439.461.288 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 721 93 93",
+      "receptions_count": 2,
+      "last_reception_date": "2025-09-02 05:46:57"
+    },
+    {
+      "id": 5024,
+      "name": "P&F - PACKAGING & FOOD S.R.L.",
+      "vat": "11042740966",
+      "country": "Italy",
+      "email": "info@packaging-online.it",
+      "phone": "+39 02 3045 1996",
+      "receptions_count": 2,
+      "last_reception_date": "2025-04-22 14:03:04"
+    },
+    {
+      "id": 8710,
+      "name": "La Perla Ristorante (consegna)",
+      "vat": "CHE-491.624.662 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 2,
+      "last_reception_date": "2025-10-11 05:08:41"
+    },
+    {
+      "id": 1527,
+      "name": "SALUMIFICIO SOSIO SRL",
+      "vat": "IT00656770146",
+      "country": "Italy",
+      "email": "ORDINI@SALUMIFICIOSOSIO.IT",
+      "phone": "+39 0342 489005",
+      "receptions_count": 2,
+      "last_reception_date": "2025-06-10 08:51:21"
+    },
+    {
+      "id": 1579,
+      "name": "SAM SA",
+      "vat": ".",
+      "country": "Switzerland",
+      "email": "logistica@samswiss.com",
+      "phone": "+41 91 640 40 10",
+      "receptions_count": 2,
+      "last_reception_date": "2025-09-18 14:28:28"
+    },
+    {
+      "id": 5416,
+      "name": "Restaurant Kreuz (CONSEGNA)",
+      "vat": "CHE-166.364.858 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 61 983 80 00",
+      "receptions_count": 2,
+      "last_reception_date": "2025-05-21 16:04:42"
+    },
+    {
+      "id": 8683,
+      "name": "Zi Maria 3 (CONSEGNA 3)",
+      "vat": "CHE-400.554.312 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 2,
+      "last_reception_date": "2025-06-02 10:32:05"
+    },
+    {
+      "id": 8244,
+      "name": "La Piazzetta (CONSEGNA)",
+      "vat": "CHE-191.435.906 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 2,
+      "last_reception_date": "2025-06-25 13:03:54"
+    },
+    {
+      "id": 1521,
+      "name": "AGENZIA LOMBARDA RAPPRESENTANZE E DEPOSITI SRL",
+      "vat": "IT00887790152",
+      "country": "Italy",
+      "email": "ORDINI@AGENZIALOMBARDA.COM",
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-04-30 07:59:23"
+    },
+    {
+      "id": 835,
+      "name": "AL DENTE GASTRO AG",
+      "vat": "CHE-114.269.744 MWST",
+      "country": "Switzerland",
+      "email": "aldente.cucina1@gmail.com",
+      "phone": "+41 43 211 35 91",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-17 18:13:38"
+    },
+    {
+      "id": 9802,
+      "name": "Ristorante al dente",
+      "vat": "CHE-114.269.744 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-07-29 10:37:08"
+    },
+    {
+      "id": 3086,
+      "name": "ALEN GROUP S.R.L. UNICO SOCIO",
+      "vat": "IT06685951219",
+      "country": "Italy",
+      "email": "alengroupsrl@libero.it",
+      "phone": "+39 081 1984 6292",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-08 09:24:28"
+    },
+    {
+      "id": 3128,
+      "name": "AMÒ ITA SÀRL (CONSEGNA)",
+      "vat": "CHE-211.360.923 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 78 312 93 92",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-28 10:46:45"
+    },
+    {
+      "id": 7631,
+      "name": "AnaMiRa (CONSEGNA)",
+      "vat": "CHE-414.231.915 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 463 90 90",
+      "receptions_count": 1,
+      "last_reception_date": "2025-08-04 13:20:51"
+    },
+    {
+      "id": 9170,
+      "name": "Gate Gourmet Gate 101 - Zurich Airport (CONSEGNA)",
+      "vat": "CHE-290.578.082 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 78 737 01 60",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-03 08:04:00"
+    },
+    {
+      "id": 9524,
+      "name": "BISSOLO CASA S.R.L.",
+      "vat": "IT02811710231",
+      "country": "Italy",
+      "email": "assistenzaclienti@bissolocasa.it",
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-08-12 11:12:04"
+    },
+    {
+      "id": 9987,
+      "name": "MIrella",
+      "vat": "CHE-352.852.130 MWST",
+      "country": "Switzerland",
+      "email": "bistronordsud@gmail.com",
+      "phone": "+41 76 790 99 19",
+      "receptions_count": 1,
+      "last_reception_date": "2025-09-08 04:04:07"
+    },
+    {
+      "id": 1648,
+      "name": "BLUEPEAOFFICIAL",
+      "vat": null,
+      "country": "Italy",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-04-25 13:07:51"
+    },
+    {
+      "id": 2801,
+      "name": "RISTORANTE BELLUCCI (consegna)",
+      "vat": "CHE-360.880.861 MWST",
+      "country": "Switzerland",
+      "email": "info@bellucci.ch",
+      "phone": "+41 43 300 60 33",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-12 08:57:54"
+    },
+    {
+      "id": 1680,
+      "name": "BUXTRADE GMBH",
+      "vat": "DE",
+      "country": "Germany",
+      "email": null,
+      "phone": "+49 4161 8004179",
+      "receptions_count": 1,
+      "last_reception_date": "2025-04-24 15:26:43"
+    },
+    {
+      "id": 5693,
+      "name": "Bontempi Bella Vita KLG",
+      "vat": "CHE-205.124.484 MWST",
+      "country": "Switzerland",
+      "email": "info@bellavita-frohsinn.ch",
+      "phone": "+41 52 364 17 56",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-19 16:42:15"
+    },
+    {
+      "id": 9936,
+      "name": "Cons. 1 - KAFFEE FRECH ZUG",
+      "vat": "CHE-191.372.358 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 79 593 99 33",
+      "receptions_count": 1,
+      "last_reception_date": "2025-09-13 05:51:01"
+    },
+    {
+      "id": 1759,
+      "name": "SIMONE CLAUDIO GANDOLFO",
+      "vat": "CHE-115.882.634 MWST",
+      "country": "Switzerland",
+      "email": "info@arcadepizzeria.ch",
+      "phone": "+41 78 703 56 11",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-27 16:06:54"
+    },
+    {
+      "id": 1533,
+      "name": "CAFFE' BORBONE S.R.L.",
+      "vat": "IT07097160639",
+      "country": "Italy",
+      "email": "INFO@CAFFEBORBONE.IT",
+      "phone": "+39 081 752 8822",
+      "receptions_count": 1,
+      "last_reception_date": "2025-09-30 17:31:08"
+    },
+    {
+      "id": 851,
+      "name": "CANDRIAN CATERING AG RESTAURANT BAUSCHäNZLI",
+      "vat": "CHE-206.767.064 MWST",
+      "country": "Switzerland",
+      "email": "S.MANSFELD@BAUSCHAENZLI.COM",
+      "phone": "+41 44 217 15 14",
+      "receptions_count": 1,
+      "last_reception_date": "2025-04-22 13:14:19"
+    },
+    {
+      "id": 2053,
+      "name": "Carmelo Russo",
+      "vat": null,
+      "country": "Switzerland",
+      "email": "shop@carmelo-shop.ch",
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-07-24 09:09:44"
+    },
+    {
+      "id": 5013,
+      "name": "A CASA DI GIANLUCA",
+      "vat": "CHE-445.702.000 MWST",
+      "country": "Switzerland",
+      "email": "info@casadigianluca.ch",
+      "phone": "+41 44 585 96 90",
+      "receptions_count": 1,
+      "last_reception_date": "2025-10-01 09:06:16"
+    },
+    {
+      "id": 8505,
+      "name": "Franco's Pizzeria (CONSEGNA)",
+      "vat": "CHE-397.461.659 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 312 04 40",
+      "receptions_count": 1,
+      "last_reception_date": "2025-07-20 08:34:14"
+    },
+    {
+      "id": 2512,
+      "name": "PINSERIA INCANTO (consegna)",
+      "vat": "CHE-145.595.257 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 62 534 07 72",
+      "receptions_count": 1,
+      "last_reception_date": "2025-10-03 04:02:02"
+    },
+    {
+      "id": 5010,
+      "name": "Coppola Enterprice S.r.l",
+      "vat": "02630351217",
+      "country": "Italy",
+      "email": "info@valgri.it",
+      "phone": "+39 081 842 4300",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-28 12:32:30"
+    },
+    {
+      "id": 9522,
+      "name": "Ghost Kitchen (CONSEGNA)",
+      "vat": "CHE-176.526.111 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 76 482 66 24",
+      "receptions_count": 1,
+      "last_reception_date": "2025-10-01 09:05:37"
+    },
+    {
+      "id": 9877,
+      "name": "Cuisimat",
+      "vat": "BE0883355838",
+      "country": "Belgium",
+      "email": "info@cuisimat.be",
+      "phone": "+32 87 30 07 17",
+      "receptions_count": 1,
+      "last_reception_date": "2025-07-21 14:54:15"
+    },
+    {
+      "id": 5353,
+      "name": "DA GIANNI ( CONSEGNA)",
+      "vat": "CHE-216.549.020 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 61 773 11 11",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-31 08:11:53"
+    },
+    {
+      "id": 5126,
+      "name": "DAI DAI GELATERIA ARTIGIANALE",
+      "vat": "01648470498",
+      "country": "Italy",
+      "email": "info@gelateriadaidai.it",
+      "phone": "+39 0586 752754",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-13 10:43:47"
+    },
+    {
+      "id": 903,
+      "name": "DON LEONE GASTRO AG",
+      "vat": "CHE-112.200.931 MWST",
+      "country": "Switzerland",
+      "email": "info@donleone.ch",
+      "phone": "+41 44 241 01 01",
+      "receptions_count": 1,
+      "last_reception_date": "2025-04-25 11:01:13"
+    },
+    {
+      "id": 2665,
+      "name": "LA BOTTEGA DA PINA (CONSEGNA)",
+      "vat": "CHE-449.601.378 MWST",
+      "country": "Switzerland",
+      "email": "bevilacquapina@gmail.com",
+      "phone": "+41 44 540 40 50",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-23 14:31:54"
+    },
+    {
+      "id": 9194,
+      "name": "Restaurant Mediterraneo (Consegna)",
+      "vat": "CHE-455.073.140 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 62 891 15 44",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-17 06:01:01"
+    },
+    {
+      "id": 2973,
+      "name": "CONSEGNA MAMI PIZZA",
+      "vat": "CHE-183.782.607 MWST",
+      "country": "Switzerland",
+      "email": "contact@mamipizza.ch",
+      "phone": "+41 21 625 48 48",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-26 16:13:49"
+    },
+    {
+      "id": 9836,
+      "name": "Feinbäckerei Steiger GmbH",
+      "vat": "CHE-357.034.280 MWST",
+      "country": "Switzerland",
+      "email": "info@steigerfeinbaeckerei.ch",
+      "phone": "+41 61 209 07 01",
+      "receptions_count": 1,
+      "last_reception_date": "2025-07-20 08:35:32"
+    },
+    {
+      "id": 7825,
+      "name": "da PONE (CONSEGNA)",
+      "vat": "CHE-195.894.704 MWST",
+      "country": "Switzerland",
+      "email": "info@dapone.ch",
+      "phone": "+41 43 344 55 44",
+      "receptions_count": 1,
+      "last_reception_date": "2025-09-03 18:30:46"
+    },
+    {
+      "id": 1548,
+      "name": "GI.METAL SRL",
+      "vat": "IT01888690979",
+      "country": "Italy",
+      "email": "Hadasahs@gimetal.it",
+      "phone": "+39 0573 194 3680",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-26 13:30:01"
+    },
+    {
+      "id": 3073,
+      "name": "GIANNINO RISTORANTE",
+      "vat": "CHE-313.826.726 MWST",
+      "country": "Switzerland",
+      "email": "info@sternengiannino.ch",
+      "phone": "+41 44 821 71 61",
+      "receptions_count": 1,
+      "last_reception_date": "2025-04-14 10:42:30"
+    },
+    {
+      "id": 2602,
+      "name": "RISTORANTE MASANIELLO (consegna)",
+      "vat": "CHE-320.152.904 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 21 799 54 00",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-14 14:02:19"
+    },
+    {
+      "id": 8611,
+      "name": "GUSTO Vésenaz – Gastronomia Italiana (consegna)",
+      "vat": "CHE-250.635.360 MWST",
+      "country": "Switzerland",
+      "email": "info@gustovesenaz.ch",
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-13 12:20:21"
+    },
+    {
+      "id": 9294,
+      "name": "Golfclub Schloss Goldenberg (Consegna)",
+      "vat": "CHE-103.813.112 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 52 305 23 33",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-24 09:47:54"
+    },
+    {
+      "id": 6900,
+      "name": "I Sapori di Roberta (consegna)",
+      "vat": "CHE-203.035.846 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-29 07:48:10"
+    },
+    {
+      "id": 6829,
+      "name": "Il Gran Sasso Pizzeria (CONSEGNA)",
+      "vat": "MWSTCHE-222.073.729",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-08-13 18:30:05"
+    },
+    {
+      "id": 2633,
+      "name": "IL GUSTO SCHWEIZ (consegna)",
+      "vat": "CHE-438.724.427 MWST",
+      "country": "Switzerland",
+      "email": "info@ilgusto-schweiz.ch",
+      "phone": "+41 71 571 50 09",
+      "receptions_count": 1,
+      "last_reception_date": "2025-07-24 10:33:32"
+    },
+    {
+      "id": 1615,
+      "name": "JUMBO",
+      "vat": null,
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-09-01 15:45:41"
+    },
+    {
+      "id": 8872,
+      "name": "Lake Side (CONSEGNA 1)",
+      "vat": "CHE-326.577.107 MWST",
+      "country": "Switzerland",
+      "email": "kuechenchef@lake-side.ch",
+      "phone": "+41 44 385 86 30",
+      "receptions_count": 1,
+      "last_reception_date": "2025-07-22 08:11:55"
+    },
+    {
+      "id": 1076,
+      "name": "LY & Co. GmbH",
+      "vat": "CHE-239.915.590 MWST",
+      "country": "Switzerland",
+      "email": "table@lylai.ch",
+      "phone": "+41 44 521 66 88",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-26 18:20:01"
+    },
+    {
+      "id": 8693,
+      "name": "Antonio Vecchio",
+      "vat": null,
+      "country": "Switzerland",
+      "email": "latrafila2025@gmail.com",
+      "phone": "+41 76 608 34 10",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-10 11:52:09"
+    },
+    {
+      "id": 7389,
+      "name": "Antica Osteria Haus Zum Raben (CONSEGNA)",
+      "vat": "CHE-388.480.801 MWST",
+      "country": "Switzerland",
+      "email": "info@anticaosteria-raben.ch",
+      "phone": "+41 44 784 05 22",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-16 10:32:11"
+    },
+    {
+      "id": 9603,
+      "name": "Le Village joie - Gavin Merico",
+      "vat": "CHE-271.616.807 IVA",
+      "country": "Switzerland",
+      "email": "Village.joie2206@gmail.com",
+      "phone": "+41 32 857 29 23",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-17 15:59:48"
+    },
+    {
+      "id": 9242,
+      "name": "Macelleria Salumeria Fulvi (CONSEGNA)",
+      "vat": "CHE-109.938.605 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 242 89 57",
+      "receptions_count": 1,
+      "last_reception_date": "2025-09-06 04:14:44"
+    },
+    {
+      "id": 6610,
+      "name": "Mani Restaurant (CONSEGNA)",
+      "vat": "CHE-490.685.106 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 76 252 65 95",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-12 07:52:27"
+    },
+    {
+      "id": 10060,
+      "name": "MASSERIA CHINUNNO SOCIETA' AGRICOLA A RESPONSABILITA' LIMITATA",
+      "vat": "IT07972250729",
+      "country": "Italy",
+      "email": "info@cibonum.it",
+      "phone": "+39 080 314 0185",
+      "receptions_count": 1,
+      "last_reception_date": "2025-10-03 05:51:42"
+    },
+    {
+      "id": 8575,
+      "name": "MILLE DELIZIE (CONSEGNA)",
+      "vat": "CHE-405.615.487 MWST",
+      "country": "Switzerland",
+      "email": "milledelizie8800@gmail.com",
+      "phone": "+41 79 865 49 84",
+      "receptions_count": 1,
+      "last_reception_date": "2025-09-12 13:08:22"
+    },
+    {
+      "id": 9829,
+      "name": "MOLINI SPIGADORO SPA",
+      "vat": "IT02848000549",
+      "country": "Italy",
+      "email": "info@molinispigadoro.com",
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-07-17 14:36:40"
+    },
+    {
+      "id": 1482,
+      "name": "MUTRIA FUNGHI S.R.L. UNIPERSONALE",
+      "vat": "IT01501020620",
+      "country": "Italy",
+      "email": "INFO@MUTRIAFUNGHI.IT/mutria.funghi@hotmail.it",
+      "phone": "+39 0824 171 7280",
+      "receptions_count": 1,
+      "last_reception_date": "2025-08-21 17:37:52"
+    },
+    {
+      "id": 6313,
+      "name": "Andulino (CONSEGNA)",
+      "vat": "CHE-243.556.867 MWST",
+      "country": "Switzerland",
+      "email": "info@andulino.com",
+      "phone": "+41 44 830 21 21",
+      "receptions_count": 1,
+      "last_reception_date": "2025-09-02 05:49:57"
+    },
+    {
+      "id": 5880,
+      "name": "NAPULE AG DIETIKON (CONSEGNA)",
+      "vat": "CHE-364.675.314 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-27 16:09:35"
+    },
+    {
+      "id": 9910,
+      "name": "Napule Lachen",
+      "vat": "CHE-364.675.314 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 55 552 52 72",
+      "receptions_count": 1,
+      "last_reception_date": "2025-09-13 06:44:23"
+    },
+    {
+      "id": 1989,
+      "name": "NOCINO PIZZERIA",
+      "vat": null,
+      "country": "Switzerland",
+      "email": "ciao@nocinopizzeria.com",
+      "phone": "+41 22 743 02 18",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-06 15:28:14"
+    },
+    {
+      "id": 9107,
+      "name": "Street Food Morges (CONSEGNA)",
+      "vat": "CHE-310.578.905 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-26 14:03:58"
+    },
+    {
+      "id": 1537,
+      "name": "PASTIFICIO DI MARTINO GAETANO & FLLI SPA",
+      "vat": "IT01271661215",
+      "country": "Italy",
+      "email": "giulio.pepe@pastadimartino.it",
+      "phone": "+39 081 801 8276",
+      "receptions_count": 1,
+      "last_reception_date": "2025-04-24 08:56:20"
+    },
+    {
+      "id": 1702,
+      "name": "PEREIRA SA",
+      "vat": ".",
+      "country": "Spain",
+      "email": "MALONSO@GRUPOPEREIRA.COM",
+      "phone": "+34 986 44 62 65",
+      "receptions_count": 1,
+      "last_reception_date": "2025-08-04 14:30:53"
+    },
+    {
+      "id": 9592,
+      "name": "PESCANOVA HELLAS L.T.D.",
+      "vat": "EL999290668",
+      "country": "Greece",
+      "email": "pescanova@pescanova.gr",
+      "phone": "+30 21 0803 7250",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-11 10:59:03"
+    },
+    {
+      "id": 9995,
+      "name": "PIACERI DEL PALATO SRL",
+      "vat": "IT02471700647",
+      "country": "Italy",
+      "email": "info@pinsastore.it",
+      "phone": "+39 0825 446532",
+      "receptions_count": 1,
+      "last_reception_date": "2025-09-17 14:30:44"
+    },
+    {
+      "id": 2764,
+      "name": "PIZZA BINZ (consegna)",
+      "vat": "CHE-367.393.361 MWST",
+      "country": "Switzerland",
+      "email": "TOMMASINO.DEBORA@GMAIL.COM",
+      "phone": "+41 43 333 00 76",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-13 10:41:36"
+    },
+    {
+      "id": 5883,
+      "name": "PIZZERIA PICCOLA GMBH",
+      "vat": "CHE-134.809.230 MWST",
+      "country": "Switzerland",
+      "email": "info@pizzeria-piccola.ch",
+      "phone": "+41 71 910 23 77",
+      "receptions_count": 1,
+      "last_reception_date": "2025-10-01 09:09:11"
+    },
+    {
+      "id": 1516,
+      "name": "PRIMICERI OLIO DELLO JONIO - S.R.L.' IN SIGLA 'PRIM.OL.JO. S",
+      "vat": "IT03371960752",
+      "country": "Italy",
+      "email": "INFO@PRIMOLJO.COM",
+      "phone": "+39 0833 513433",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-12 11:48:26"
+    },
+    {
+      "id": 1671,
+      "name": "PURAVITA DROGERIE",
+      "vat": null,
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-07 14:51:37"
+    },
+    {
+      "id": 1145,
+      "name": "Pizza da Pino GmbH",
+      "vat": "CHE-115.676.046 MWST",
+      "country": "Switzerland",
+      "email": "cupino69@freesurf.ch",
+      "phone": "+41 56 250 10 10",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-05 14:35:39"
+    },
+    {
+      "id": 7528,
+      "name": "RISTORANTE VIRTÙ (CONSEGNA)",
+      "vat": "CHE-246.620.007 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 44 554 18 78",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-04 15:57:53"
+    },
+    {
+      "id": 6229,
+      "name": "RISTORANTE PIZZERIA PULCINELLA (CONSEGNA)",
+      "vat": "CHE-109.471.240 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-07-24 10:42:50"
+    },
+    {
+      "id": 9947,
+      "name": "Ristorante 40 (consegna)",
+      "vat": "CHE-272.415.080 MWST",
+      "country": "Switzerland",
+      "email": "info@40-ristorante.ch",
+      "phone": "+41 44 870 11 00",
+      "receptions_count": 1,
+      "last_reception_date": "2025-09-18 05:07:19"
+    },
+    {
+      "id": 3035,
+      "name": "Rotes Haus Da Aldo",
+      "vat": "CHE-112.307.405 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-08-11 18:46:35"
+    },
+    {
+      "id": 1538,
+      "name": "RICO DOLCE S.R.L.",
+      "vat": "IT06561981215",
+      "country": "Italy",
+      "email": "INFO@RICODOLCE.IT",
+      "phone": "+39 081 827 7290",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-11 08:55:29"
+    },
+    {
+      "id": 8497,
+      "name": "Ristorante La Scala (CONSEGNA)",
+      "vat": "CHE-112.396.544 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 55 214 12 22",
+      "receptions_count": 1,
+      "last_reception_date": "2025-07-13 13:51:24"
+    },
+    {
+      "id": 7462,
+      "name": "ROKABAR (CONSEGNA)",
+      "vat": "CHE-390.379.258 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 77 916 67 55",
+      "receptions_count": 1,
+      "last_reception_date": "2025-09-25 10:43:03"
+    },
+    {
+      "id": 9433,
+      "name": "ROSSELLA LOMBARDO",
+      "vat": "LMPRSO75B68B780D",
+      "country": null,
+      "email": "rossella75lombardo@gmail.com",
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-06 12:21:23"
+    },
+    {
+      "id": 5434,
+      "name": "Pizzeria-Restaurant Bonanza (CONSEGNA)",
+      "vat": "CHE-382.571.055 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": "+41 61 411 01 34",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-19 16:47:45"
+    },
+    {
+      "id": 9643,
+      "name": "Restaurant Pavy lounge",
+      "vat": "CHE-463.081.360 MWST",
+      "country": "Switzerland",
+      "email": "Scaliamarco10@gmail.com",
+      "phone": "+41 26 673 04 95",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-23 15:51:49"
+    },
+    {
+      "id": 2689,
+      "name": "LA LAITERIE DE CAROUGE (consegna)",
+      "vat": "CHE-365.895.479 MWST",
+      "country": "Switzerland",
+      "email": "lalaiteriedecarouge@gmail.com",
+      "phone": "+41 22 342 22 55",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-10 10:02:24"
+    },
+    {
+      "id": 3027,
+      "name": "SALUMIFICIO FRANCESCHINI SRL",
+      "vat": "IT00645201203",
+      "country": "Italy",
+      "email": "a.pedrini@salumificiofranceschini.it",
+      "phone": "+39 051 670 8010",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-15 11:27:58"
+    },
+    {
+      "id": 1561,
+      "name": "SICA S.R.L.",
+      "vat": "02742610658",
+      "country": "Italy",
+      "email": "commerciale@sicaconserve.it",
+      "phone": "+39 081 518 7187",
+      "receptions_count": 1,
+      "last_reception_date": "2025-07-09 16:37:39"
+    },
+    {
+      "id": 5312,
+      "name": "NAPOLI STORIES KREUZ (consegna)",
+      "vat": "CHE-283.587.934 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-07-08 05:12:15"
+    },
+    {
+      "id": 8847,
+      "name": "Tuscany Italian Restaurant",
+      "vat": "CHE-195.759.584 MWST",
+      "country": "Switzerland",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-04-14 10:39:12"
+    },
+    {
+      "id": 1686,
+      "name": "THUN GOURMET",
+      "vat": "DE",
+      "country": "Germany",
+      "email": null,
+      "phone": null,
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-05 14:31:35"
+    },
+    {
+      "id": 2858,
+      "name": "LUIGIA TRIFOLINO (consegna)",
+      "vat": "CHE-420.810.530 MWST",
+      "country": "Switzerland",
+      "email": "sion@luigia.ch;trifolino.invoicing@luigia.ch",
+      "phone": "+41 27 322 77 00",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-16 09:41:52"
+    },
+    {
+      "id": 9022,
+      "name": "TreValli Cooperlat",
+      "vat": "IT00807560420",
+      "country": "Italy",
+      "email": "r.botto@trevalli.cooperlat.it",
+      "phone": "+39 0731 2381",
+      "receptions_count": 1,
+      "last_reception_date": "2025-05-29 12:33:26"
+    },
+    {
+      "id": 7883,
+      "name": "Adler Il Vero Gusto (CONSEGNA)",
+      "vat": "CHE-393.955.891 MWST",
+      "country": "Switzerland",
+      "email": "orders@adlermagden.ch",
+      "phone": "+41 61 841 11 09",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-14 13:55:38"
+    },
+    {
+      "id": 1676,
+      "name": "WAMASCH TRADE SA",
+      "vat": "CHE-108.436.703",
+      "country": "Switzerland",
+      "email": "info@wamasch.ch",
+      "phone": "+41 91 858 24 34",
+      "receptions_count": 1,
+      "last_reception_date": "2025-06-13 16:30:43"
+    }
+  ]
+}
