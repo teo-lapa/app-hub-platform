@@ -82,27 +82,42 @@ IMPORTANTE:
 - Sii ESTREMAMENTE preciso nei numeri e nelle quantità
 - **FONDAMENTALE**: Cerca la PARTITA IVA del fornitore (P.IVA, VAT, Partita IVA, ecc.)
 
-⚠️ ATTENZIONE AI LOTTI E SCADENZE:
+⚠️ ATTENZIONE AI LOTTI E SCADENZE (PRIORITÀ MASSIMA):
 - Cerca le scritte "Lotto/Scadenza:" o "Lotto:" o numeri di lotto espliciti
 - Il formato delle date potrebbe essere gg/mm/aaaa (es: 02/11/2025) - converti in YYYY-MM-DD
-- **LOTTO**: Cerca prima un vero numero di lotto (es: "197040/00", "LOTTO123")
-- Se NON trovi un lotto esplicito MA c'è "NOMENCLATURA: XXXXXXXX", usa il codice NOMENCLATURA come lotto temporaneo
-- Solo se non c'è né lotto né nomenclatura, metti null per lot_number
+- **LOTTO - ORDINE DI PRIORITÀ**:
+  1. Cerca prima un vero numero di lotto (es: "197040/00", "LOTTO123", "L123456")
+  2. Se NON trovi un lotto esplicito MA c'è "NOMENCLATURA: XXXXXXXX", usa il codice NOMENCLATURA come lotto
+  3. **SE NON trovi né lotto né nomenclatura MA c'è una scadenza, USA LA DATA DI SCADENZA come lot_number** (es: se scadenza è "2025-11-02", metti lot_number: "2025-11-02")
+  4. Solo se non c'è né lotto né nomenclatura né scadenza, metti null per lot_number
 - Possono esserci più righe dello stesso prodotto con lotti/scadenze diverse - crea prodotti separati!
 
-ESEMPIO DI PARSING CORRETTO:
+ESEMPI DI PARSING CORRETTO:
+
+Esempio 1 - Con nomenclatura:
 Testo: "Julienne Taglio Napoli in vasc. da kg 2,5 - Monella
 NOMENCLATURA: 04061030
 Lotto/Scadenza: 02/11/2025"
-
-Output corretto:
-{
+Output: {
   "article_code": "VI2500JN1MN",
   "description": "Julienne Taglio Napoli in vasc. da kg 2,5 - Monella",
   "quantity": 330.0,
   "unit": "KG",
-  "lot_number": "04061030",  // ← CORRETTO: uso NOMENCLATURA come lotto se non c'è altro
-  "expiry_date": "2025-11-02",  // ← CORRETTO: convertito da 02/11/2025
+  "lot_number": "04061030",  // ← Usa NOMENCLATURA come lotto
+  "expiry_date": "2025-11-02",
+  "variant": ""
+}
+
+Esempio 2 - Solo scadenza (SENZA lotto):
+Testo: "Parmigiano Reggiano DOP 24 mesi
+Scadenza: 15/06/2026"
+Output: {
+  "article_code": "PARM24",
+  "description": "Parmigiano Reggiano DOP 24 mesi",
+  "quantity": 10.0,
+  "unit": "KG",
+  "lot_number": "2026-06-15",  // ← USA LA SCADENZA come lotto quando manca!
+  "expiry_date": "2026-06-15",
   "variant": ""
 }
 
@@ -119,7 +134,7 @@ Rispondi SOLO con un JSON valido in questo formato esatto:
       "description": "descrizione completa del prodotto",
       "quantity": numero_quantità,
       "unit": "unità di misura (KG, PZ, ecc.)",
-      "lot_number": null o "numero lotto vero",
+      "lot_number": "numero lotto (o NOMENCLATURA o DATA SCADENZA se lotto manca) oppure null",
       "expiry_date": "YYYY-MM-DD o null",
       "variant": "varianti del prodotto (es: Quadrato, Verde, 250gr)"
     }
