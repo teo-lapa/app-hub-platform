@@ -45,7 +45,25 @@ export async function POST(request: NextRequest) {
 
     console.log('🤖 Invio a Claude per analisi...');
 
-    // Call Claude API with vision
+    // Determine content type based on file format
+    const isPDF = mediaType === 'application/pdf';
+    const contentBlock: any = isPDF ? {
+      type: 'document',
+      source: {
+        type: 'base64',
+        media_type: 'application/pdf',
+        data: base64,
+      },
+    } : {
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: mediaType,
+        data: base64,
+      },
+    };
+
+    // Call Claude API with vision/document
     const message = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4096,
@@ -53,14 +71,7 @@ export async function POST(request: NextRequest) {
         {
           role: 'user',
           content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: mediaType as any,
-                data: base64,
-              },
-            },
+            contentBlock,
             {
               type: 'text',
               text: `Analizza questa fattura/documento di trasporto e estrai TUTTE le informazioni con MASSIMA PRECISIONE.
