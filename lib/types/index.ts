@@ -79,10 +79,13 @@ export interface AppStore {
   selectedCategory: string;
   searchQuery: string;
   showUpgradeModal: boolean;
+  favoriteApps: string[]; // Array di ID delle app preferite
   setApps: (apps: App[]) => void;
   setCategory: (category: string) => void;
   setSearchQuery: (query: string) => void;
   setShowUpgradeModal: (show: boolean) => void;
+  toggleFavorite: (appId: string) => void; // Aggiungi/rimuovi preferito
+  isFavorite: (appId: string) => boolean; // Controlla se è preferito
   filterApps: () => void;
 }
 

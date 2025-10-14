@@ -17,7 +17,8 @@ export function AppCard({ app, index }: AppCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
-  const { setShowUpgradeModal } = useAppStore();
+  const { setShowUpgradeModal, toggleFavorite, isFavorite } = useAppStore();
+  const isFav = isFavorite(app.id);
 
   const userRole = user?.role || 'visitor';
   const hasAccess =
@@ -40,6 +41,11 @@ export function AppCard({ app, index }: AppCardProps) {
     if (app.url) {
       router.push(app.url);
     }
+  };
+
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Evita di aprire l'app quando clicchi sulla stella
+    toggleFavorite(app.id);
   };
 
   const getBadgeColor = () => {
@@ -114,6 +120,22 @@ export function AppCard({ app, index }: AppCardProps) {
       }`}
     >
       <div className="glass-strong rounded-2xl p-6 h-full border transition-all duration-300 hover:border-white/30 dark:hover:border-white/20 hover:shadow-xl hover:shadow-blue-500/10 mobile-card md:glass-strong md:rounded-2xl">
+        {/* Stella Preferiti - Angolo in alto a sinistra */}
+        <motion.button
+          onClick={handleFavoriteClick}
+          whileHover={{ scale: 1.2 }}
+          whileTap={{ scale: 0.9 }}
+          className="absolute top-2 left-2 z-10 p-2 rounded-full glass-strong hover:bg-white/20 dark:hover:bg-black/20 transition-colors"
+        >
+          <Star
+            className={`w-5 h-5 transition-all ${
+              isFav
+                ? 'text-yellow-400 fill-yellow-400'
+                : 'text-gray-400 hover:text-yellow-400'
+            }`}
+          />
+        </motion.button>
+
         {/* Badge Status */}
         <div className="flex items-center justify-between mb-4">
           <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getBadgeColor()}`}>
