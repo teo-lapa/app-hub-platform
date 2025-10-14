@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Package, Truck, MapPin, BarChart3, Settings, ChevronRight, Clock, CheckCircle2, Camera, Sun, Moon, RefreshCw, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -11,57 +11,6 @@ import { ZONES, Zone, Batch, StockLocation, Operation, WorkStats, DEFAULT_CONFIG
 import { getPickingClient } from '@/lib/odoo/pickingClient';
 import toast from 'react-hot-toast';
 import './picking-styles.css';
-
-// Timer Component separato per evitare re-renders del componente principale
-const TimerDisplay = memo(({ startTime }: { startTime: Date | undefined }) => {
-  const [time, setTime] = useState(0);
-
-  useEffect(() => {
-    if (!startTime) return;
-    let rafId: number;
-    let lastUpdate = Date.now();
-
-    const updateTimer = () => {
-      const now = Date.now();
-      if (now - lastUpdate >= 1000) {
-        const diff = Math.floor((now - startTime.getTime()) / 1000);
-        setTime(diff);
-        lastUpdate = now;
-      }
-      rafId = requestAnimationFrame(updateTimer);
-    };
-
-    rafId = requestAnimationFrame(updateTimer);
-    return () => cancelAnimationFrame(rafId);
-  }, [startTime]);
-
-  const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    return `${minutes}m ${secs}s`;
-  };
-
-  return <span>{formatTime(time)}</span>;
-});
-
-TimerDisplay.displayName = 'TimerDisplay';
-
-// Custom hook per debounce sessionStorage
-const useDebouncedSessionStorage = (key: string, delay = 2000) => {
-  const timeoutRef = useRef<NodeJS.Timeout>();
-
-  return useCallback((value: any) => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      sessionStorage.setItem(key, JSON.stringify(value));
-    }, delay);
-  }, [key, delay]);
-};
 
 export default function PrelievoZonePage() {
   const router = useRouter();
@@ -94,14 +43,14 @@ export default function PrelievoZonePage() {
   const [showProductSelector, setShowProductSelector] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
 
-  // Statistiche (totalTime rimosso - ora calcolato dal TimerDisplay)
+  // Statistiche
   const [workStats, setWorkStats] = useState<WorkStats>({
     zonesCompleted: 0,
     totalOperations: 0,
     completedOperations: 0,
     startTime: undefined,
     currentZoneTime: 0,
-    totalTime: 0 // Mantenuto per compatibilità ma non più aggiornato da effect
+    totalTime: 0
   });
 
   // Conteggi per zona usando gli ID
@@ -158,7 +107,18 @@ export default function PrelievoZonePage() {
     }
   }, [user]);
 
-  // Timer rimosso - ora gestito dal componente TimerDisplay separato
+  // Timer per statistiche
+  useEffect(() => {
+    if (workStats.startTime) {
+      const interval = setInterval(() => {
+        const now = new Date();
+        const diff = Math.floor((now.getTime() - workStats.startTime!.getTime()) / 1000);
+        setWorkStats(prev => ({ ...prev, totalTime: diff }));
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [workStats.startTime]);
 
   // Background refresh automatico ogni 30 secondi quando sei nella lista ubicazioni
   useEffect(() => {
@@ -316,8 +276,12 @@ export default function PrelievoZonePage() {
         toast('Nessun batch disponibile al momento', { icon: 'ℹ️' });
       }
     } catch (error: any) {
-      // Gestisci errori generici
-      toast.error(`Errore nel caricamento dei batch: ${error.message || 'Errore sconosciuto'}`);
+      if (error.message?.includes('Session') || error.message?.includes('401')) {
+        toast.error('Sessione scaduta, reindirizzamento al login...');
+        router.push('/');
+      } else {
+        toast.error(`Errore nel caricamento dei batch: ${error.message}`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -668,8 +632,8 @@ export default function PrelievoZonePage() {
     }, 500);
   };
 
-  // Handler per QR Scanner - memoizzato per evitare ri-creazione
-  const handleQRScan = useCallback((code: string, type: 'product' | 'location'): boolean => {
+  // Handler per QR Scanner
+  const handleQRScan = (code: string, type: 'product' | 'location'): boolean => {
     if (type === 'product') {
       // Trova l'operazione con questo codice prodotto
       const operation = currentOperations.find(
@@ -704,7 +668,7 @@ export default function PrelievoZonePage() {
         return false;
       }
     }
-  }, [currentOperations, locations, selectLocation]);
+  };
 
   // Funzione per pulire la cache e forzare refresh
   const clearCache = () => {
@@ -734,13 +698,13 @@ export default function PrelievoZonePage() {
     }
   };
 
-  // Handler per tastiera numerica - memoizzato
-  const handleNumericConfirm = useCallback((value: number) => {
+  // Handler per tastiera numerica
+  const handleNumericConfirm = (value: number) => {
     if (selectedOperation) {
       updateOperation(selectedOperation.id, value);
       setSelectedOperation(null);
     }
-  }, [selectedOperation]);
+  };
 
   // Apri scanner per prodotto
   const openProductScanner = (operation: Operation) => {
@@ -832,11 +796,10 @@ export default function PrelievoZonePage() {
     return `${minutes}m ${secs}s`;
   };
 
-  // Memoizza il calcolo del progresso per evitare ricalcoli inutili
-  const progress = useMemo(() => {
+  const calculateProgress = (): number => {
     if (workStats.totalOperations === 0) return 0;
     return Math.round((workStats.completedOperations / workStats.totalOperations) * 100);
-  }, [workStats.completedOperations, workStats.totalOperations]);
+  };
 
   // Genera e salva report zona completata
   const generateAndSaveZoneReport = async () => {
@@ -986,7 +949,7 @@ export default function PrelievoZonePage() {
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-blue-400" />
                 <span className="text-sm">
-                  Tempo: <strong><TimerDisplay startTime={workStats.startTime} /></strong>
+                  Tempo: <strong>{formatTime(workStats.totalTime || 0)}</strong>
                 </span>
               </div>
 
@@ -1012,11 +975,11 @@ export default function PrelievoZonePage() {
               <div className="bg-gray-700 rounded-full h-2 overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-500"
-                  style={{ width: `${progress}%` }}
+                  style={{ width: `${calculateProgress()}%` }}
                 />
               </div>
               <p className="text-xs text-muted-foreground mt-1 text-center">
-                {progress}% completato
+                {calculateProgress()}% completato
               </p>
             </div>
           </div>
@@ -1098,8 +1061,8 @@ export default function PrelievoZonePage() {
 
         {/* Zone Selector */}
         {showZoneSelector && (
-          <div className="slide-in-right"
-            
+          <div
+            {...getAnimationProps({ initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } })}
           >
             <div className="mb-6">
               <button
@@ -1119,7 +1082,7 @@ export default function PrelievoZonePage() {
               {ZONES.map(zone => (
                 <button
                   key={zone.id}
-                  
+                  {...(performanceMode ? {} : { whileHover: { scale: 1.02 }, whileTap: { scale: 0.98 } })}
                   onClick={() => selectZone(zone)}
                   className="glass-strong p-8 rounded-xl hover:bg-white/20 transition-all"
                   style={{
@@ -1145,8 +1108,8 @@ export default function PrelievoZonePage() {
 
         {/* Locations List */}
         {showLocationList && (
-          <div className="slide-in-right"
-            
+          <div
+            {...getAnimationProps({ initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } })}
           >
             <div className="mb-6 flex items-center justify-between">
               <button
@@ -1199,21 +1162,29 @@ export default function PrelievoZonePage() {
             />
 
             {/* Overlay errore scanner pistola */}
-            {scannerError && (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 fade-in"
-                onClick={() => setScannerError(null)}
-              >
+            <AnimatePresence>
+              {scannerError && (
                 <div
-                  className="bg-red-500/95 text-white p-8 rounded-2xl shadow-2xl max-w-lg text-center"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+                  onClick={() => setScannerError(null)}
                 >
-                  <div className="text-6xl mb-4">❌</div>
-                  <h3 className="text-2xl font-bold mb-3">Ubicazione Non Trovata!</h3>
-                  <p className="text-lg mb-4">{scannerError}</p>
-                  <p className="text-sm opacity-90">Scansiona un'ubicazione valida per questa zona</p>
+                  <div
+                    initial={{ y: -50 }}
+                    animate={{ y: 0 }}
+                    exit={{ y: 50 }}
+                    className="bg-red-500/95 text-white p-8 rounded-2xl shadow-2xl max-w-lg text-center"
+                  >
+                    <div className="text-6xl mb-4">❌</div>
+                    <h3 className="text-2xl font-bold mb-3">Ubicazione Non Trovata!</h3>
+                    <p className="text-lg mb-4">{scannerError}</p>
+                    <p className="text-sm opacity-90">Scansiona un'ubicazione valida per questa zona</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </AnimatePresence>
 
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Ubicazioni disponibili</h2>
@@ -1245,7 +1216,11 @@ export default function PrelievoZonePage() {
                 return (
                   <div
                     key={location.id}
-                    
+                    {...getAnimationProps({
+                      initial: { opacity: 0, y: 20 },
+                      animate: { opacity: 1, y: 0 },
+                      transition: { delay: index * 0.05 }
+                    })}
                     className={`location-card w-full p-4 rounded-xl flex items-center justify-between gap-4 transition-all ${
                       isCompleted
                         ? 'bg-green-500/30 border-4 border-green-500'
@@ -1336,8 +1311,8 @@ export default function PrelievoZonePage() {
 
         {/* Operations List */}
         {showOperations && (
-          <div className="slide-in-right"
-            
+          <div
+            {...getAnimationProps({ initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } })}
           >
             <div className="mb-6 flex items-center justify-between">
               <button
@@ -1375,7 +1350,11 @@ export default function PrelievoZonePage() {
               {currentOperations.map((operation, index) => (
                 <div
                   key={operation.id}
-                  
+                  {...getAnimationProps({
+                    initial: { opacity: 0, y: 20 },
+                    animate: { opacity: 1, y: 0 },
+                    transition: { delay: index * 0.05 }
+                  })}
                   className={`${darkMode ? 'card-product-dark' : 'glass-strong'} p-4 md:p-5 rounded-xl transition-all ${
                     operation.qty_done >= operation.quantity
                       ? 'bg-green-500/10 border border-green-500/30'
@@ -1477,8 +1456,13 @@ export default function PrelievoZonePage() {
                   {/* Progress bar ridotta (opzionale) */}
                   <div className="mt-2 bg-gray-700 rounded-full h-0.5 overflow-hidden opacity-60">
                     <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-300"
-                      style={{ width: `${(operation.qty_done / operation.quantity) * 100}%` }}
+                      className="h-full bg-gradient-to-r from-blue-500 to-green-500"
+                      {...getAnimationProps({
+                        initial: { width: 0 },
+                        animate: { width: `${(operation.qty_done / operation.quantity) * 100}%` },
+                        transition: { duration: 0.3 }
+                      })}
+                      style={performanceMode ? { width: `${(operation.qty_done / operation.quantity) * 100}%` } : {}}
                     />
                   </div>
                 </div>
@@ -1499,7 +1483,7 @@ export default function PrelievoZonePage() {
             {currentOperations.length > 0 &&
              currentOperations.every(op => op.qty_done >= op.quantity) && (
               <div
-                
+                {...getAnimationProps({ initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } })}
                 className="mt-6"
               >
                 <button
@@ -1555,12 +1539,12 @@ export default function PrelievoZonePage() {
       {/* Product Selector Modal */}
       {showProductSelector && (
         <div
-          
+          {...getAnimationProps({ initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } })}
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
           onClick={() => setShowProductSelector(false)}
         >
           <div
-            
+            {...getAnimationProps({ initial: { scale: 0.9, opacity: 0 }, animate: { scale: 1, opacity: 1 }, exit: { scale: 0.9, opacity: 0 } })}
             className="w-full max-w-lg glass-strong rounded-xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1572,7 +1556,7 @@ export default function PrelievoZonePage() {
               {currentOperations.map((operation) => (
                 <button
                   key={operation.id}
-                  
+                  {...(performanceMode ? {} : { whileHover: { scale: 1.02 }, whileTap: { scale: 0.98 } })}
                   onClick={() => {
                     setSelectedOperation(operation);
                     setShowProductSelector(false);
@@ -1618,10 +1602,10 @@ export default function PrelievoZonePage() {
       )}
 
       {/* CELEBRATION MODAL - Tutte le ubicazioni completate! */}
-      
+      <AnimatePresence>
         {showCelebration && (
           <div
-            
+            {...getAnimationProps({ initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } })}
             className="fixed inset-0 z-[100] bg-gradient-to-br from-green-900/95 via-emerald-900/95 to-teal-900/95 flex items-center justify-center p-4 overflow-hidden"
             onClick={() => setShowCelebration(false)}
           >
@@ -1644,7 +1628,12 @@ export default function PrelievoZonePage() {
 
             {/* Contenuto celebrativo */}
             <div
-              
+              {...getAnimationProps({
+                initial: { scale: 0.5, y: 50 },
+                animate: { scale: 1, y: 0 },
+                exit: { scale: 0.5, y: 50 },
+                transition: { type: "spring", duration: 0.8 }
+              })}
               className="relative z-10 text-center"
             >
               {/* Trofeo animato */}
@@ -1667,7 +1656,11 @@ export default function PrelievoZonePage() {
 
               {/* Messaggio principale */}
               <h1
-                
+                {...getAnimationProps({
+                  initial: { opacity: 0, y: 20 },
+                  animate: { opacity: 1, y: 0 },
+                  transition: { delay: 0.3 }
+                })}
                 className="text-6xl md:text-8xl font-black text-white mb-4"
                 style={{ textShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
               >
@@ -1675,7 +1668,11 @@ export default function PrelievoZonePage() {
               </h1>
 
               <p
-                
+                {...getAnimationProps({
+                  initial: { opacity: 0, y: 20 },
+                  animate: { opacity: 1, y: 0 },
+                  transition: { delay: 0.5 }
+                })}
                 className="text-3xl md:text-4xl font-bold text-green-100 mb-8"
               >
                 🎉 Zona {currentZone?.displayName} Completata! 🎉
@@ -1683,7 +1680,11 @@ export default function PrelievoZonePage() {
 
               {/* Emoji celebrative */}
               <div
-                
+                {...getAnimationProps({
+                  initial: { opacity: 0, scale: 0 },
+                  animate: { opacity: 1, scale: 1 },
+                  transition: { delay: 0.7 }
+                })}
                 className="flex justify-center gap-4 text-5xl mb-8"
               >
                 <span {...(performanceMode ? {} : { animate: { y: [0, -20, 0] }, transition: { duration: 1, repeat: Infinity, delay: 0 } })}>⭐</span>
@@ -1694,7 +1695,11 @@ export default function PrelievoZonePage() {
 
               {/* Statistiche */}
               <div
-                
+                {...getAnimationProps({
+                  initial: { opacity: 0, y: 20 },
+                  animate: { opacity: 1, y: 0 },
+                  transition: { delay: 0.9 }
+                })}
                 className="bg-white/20 backdrop-blur-lg rounded-2xl p-6 mb-8 inline-block"
               >
                 <div className="grid grid-cols-2 gap-6 text-white">
@@ -1711,8 +1716,12 @@ export default function PrelievoZonePage() {
 
               {/* Pulsante */}
               <button
-                
-                
+                {...getAnimationProps({
+                  initial: { opacity: 0, scale: 0.8 },
+                  animate: { opacity: 1, scale: 1 },
+                  transition: { delay: 1.1 }
+                })}
+                {...(performanceMode ? {} : { whileHover: { scale: 1.05 }, whileTap: { scale: 0.95 } })}
                 onClick={() => setShowCelebration(false)}
                 className="bg-white text-green-700 font-black text-2xl py-4 px-12 rounded-full shadow-2xl hover:bg-green-50 transition-colors"
               >
@@ -1721,7 +1730,7 @@ export default function PrelievoZonePage() {
             </div>
           </div>
         )}
-      
+      </AnimatePresence>
     </div>
   );
 }

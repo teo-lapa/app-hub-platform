@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
 
     // Modify the HTML to use the correct Odoo URL from our environment
     const modifiedHtml = htmlContent.replace(
-      /https:\/\/lapadevadmin-lapa-v2-staging-2406-24063382\.dev\.odoo\.com/g,
-      process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com'
+      /https:\/\/lapadevadmin-lapa-v2-staging-2406-24517859\.dev\.odoo\.com/g,
+      process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com'
     );
 
     return new NextResponse(modifiedHtml, {

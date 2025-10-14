@@ -298,6 +298,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-01-24'),
     updatedAt: new Date('2025-01-24'),
   },
+  {
+    id: 's22',
+    name: 'Resi Furgoni [P]',
+    description: 'Gestione resi massivi dai furgoni. Traccia documento, cliente e autista. Riporta prodotti nelle ubicazioni buffer (Secco, Frigo, Pingu).',
+    icon: '🔄',
+    badge: 'FREE',
+    category: 'Logistica',
+    url: '/resi-furgoni',
+    requiredRole: 'cliente_gratuito',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-10-12'),
+    updatedAt: new Date('2025-10-12'),
+  },
   // CLIENTI
   {
     id: 's15',

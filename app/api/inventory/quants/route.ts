@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
 
     console.log('📦 Caricamento quants per ubicazione:', locationId);
 
-    const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
-    const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
+    const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+    const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24517859';
 
     // Verifica autenticazione utente (stesso pattern del Catalogo LAPA)
     const token = request.cookies.get('token')?.value;

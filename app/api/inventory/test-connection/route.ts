@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
-const ODOO_DB = process.env.NEXT_PUBLIC_ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
+const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+const ODOO_DB = process.env.NEXT_PUBLIC_ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24517859';
 
 export async function GET() {
   try {

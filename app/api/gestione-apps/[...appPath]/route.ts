@@ -73,7 +73,7 @@ export async function GET(
     // Modifica l'HTML per usare l'URL Odoo corretto e aggiungere il header di integrazione
     let modifiedHtml = htmlContent.replace(
       /https:\/\/lapadevadmin-lapa-v2-staging-2406-24063382\.dev\.odoo\.com/g,
-      process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com'
+      process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com'
     );
 
     // Aggiungi header di navigazione per l'integrazione con la piattaforma
