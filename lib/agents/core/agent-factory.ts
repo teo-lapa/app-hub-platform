@@ -291,7 +291,7 @@ export class AgentFactory {
     this.agentInstances.delete(appName);
 
     // Find and remove old definition
-    for (const [id, def] of this.agentRegistry.entries()) {
+    for (const [id, def] of Array.from(this.agentRegistry.entries())) {
       if (def.appContext?.appName === appName) {
         this.agentRegistry.delete(id);
         break;
@@ -313,7 +313,7 @@ export class AgentFactory {
     this.agentInstances.delete(appName);
 
     // Find and remove definition
-    for (const [id, def] of this.agentRegistry.entries()) {
+    for (const [id, def] of Array.from(this.agentRegistry.entries())) {
       if (def.appContext?.appName === appName) {
         this.agentRegistry.delete(id);
         break;
@@ -342,7 +342,7 @@ export class AgentFactory {
   private getAgentsByCategory(): Record<string, number> {
     const byCategory: Record<string, number> = {};
 
-    for (const def of this.agentRegistry.values()) {
+    for (const def of Array.from(this.agentRegistry.values())) {
       if (def.appContext) {
         const cat = def.appContext.category;
         byCategory[cat] = (byCategory[cat] || 0) + 1;
@@ -358,7 +358,7 @@ export class AgentFactory {
   private getAgentsByStatus(): Record<string, number> {
     const byStatus: Record<string, number> = {};
 
-    for (const def of this.agentRegistry.values()) {
+    for (const def of Array.from(this.agentRegistry.values())) {
       byStatus[def.status] = (byStatus[def.status] || 0) + 1;
     }
 
@@ -371,7 +371,7 @@ export class AgentFactory {
   private getTotalTasksCompleted(): number {
     let total = 0;
 
-    for (const def of this.agentRegistry.values()) {
+    for (const def of Array.from(this.agentRegistry.values())) {
       total += def.stats.tasksCompleted;
     }
 
@@ -386,7 +386,7 @@ export class AgentFactory {
 
     let total = 0;
 
-    for (const def of this.agentRegistry.values()) {
+    for (const def of Array.from(this.agentRegistry.values())) {
       total += def.stats.successRate;
     }
 

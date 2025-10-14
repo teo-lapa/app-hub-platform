@@ -72,7 +72,7 @@ export class Orchestrator {
       console.log(`✅ Created ${agents.size} agents`);
 
       // 3. Register agents in state
-      for (const [appName, agent] of agents.entries()) {
+      for (const [appName, agent] of Array.from(agents.entries())) {
         const definition = agent.getInfo();
         this.state.activeAgents.set(definition.id, definition);
       }

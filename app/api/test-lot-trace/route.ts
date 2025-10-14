@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     console.log(`\n🔍 ===== TEST TRACCIABILITÀ LOTTO "${lotName}" =====\n`);
 
     // Helper per chiamate Odoo
-    async function odooCall(model: string, method: string, args: any[] = [], kwargs: any = {}) {
+    const odooCall = async (model: string, method: string, args: any[] = [], kwargs: any = {}) => {
       const response = await fetch(`${odooUrl}/web/dataset/call_kw`, {
         method: 'POST',
         headers: authHeaders,

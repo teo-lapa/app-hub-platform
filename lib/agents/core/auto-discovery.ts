@@ -214,7 +214,7 @@ export class AutoDiscovery {
         const content = await fs.readFile(path.join(process.cwd(), file), 'utf-8');
 
         // Extract Odoo models
-        const odooMatches = content.matchAll(/['"`]([a-z]+\.[a-z.]+)['"`]/g);
+        const odooMatches = Array.from(content.matchAll(/['"`]([a-z]+\.[a-z.]+)['"`]/g));
         for (const match of odooMatches) {
           const model = match[1];
           if (model.includes('.') && !dependencies.odoo.includes(model)) {
@@ -223,7 +223,7 @@ export class AutoDiscovery {
         }
 
         // Extract external imports
-        const importMatches = content.matchAll(/from ['"]([^.][^'"]+)['"]/g);
+        const importMatches = Array.from(content.matchAll(/from ['"]([^.][^'"]+)['"]/g));
         for (const match of importMatches) {
           const pkg = match[1].split('/')[0];
           if (pkg.startsWith('@') || !pkg.startsWith('.')) {
@@ -307,7 +307,7 @@ export class AutoDiscovery {
     }
 
     // Remove duplicates
-    return [...new Set(capabilities)];
+    return Array.from(new Set(capabilities));
   }
 
   /**

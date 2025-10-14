@@ -259,7 +259,10 @@ ${ctx.capabilities.map(c => `- ${c}`).join('\n')}
     return Array.from(this.tools.values()).map(tool => ({
       name: tool.name,
       description: tool.description,
-      input_schema: tool.inputSchema
+      input_schema: {
+        type: 'object' as const,
+        ...tool.inputSchema
+      }
     }));
   }
 

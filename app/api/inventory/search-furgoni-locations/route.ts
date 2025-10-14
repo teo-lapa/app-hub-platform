@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Carica dettagli prodotti
-        const productIds = [...new Set(quants.map((q: any) => q.product_id[0]))];
+        const productIds = Array.from(new Set(quants.map((q: any) => q.product_id[0])));
 
         const productsResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
           method: 'POST',
@@ -202,7 +202,7 @@ export async function GET(request: NextRequest) {
         // Cache per i picking già caricati
         const pickingCache = new Map();
 
-        async function getOrderInfoFromPicking(pickingId: number | null, moveDate: string, moveId: number | null = null) {
+        const getOrderInfoFromPicking = async (pickingId: number | null, moveDate: string, moveId: number | null = null) => {
           try {
             if (!pickingId) return null;
 
@@ -326,13 +326,13 @@ export async function GET(request: NextRequest) {
           return {
             productId: quant.product_id[0],
             productName: quant.product_id[1],
-            productCode: product?.default_code || '',
-            productBarcode: product?.barcode || '',
+            productCode: (product as any)?.default_code || '',
+            productBarcode: (product as any)?.barcode || '',
             quantity: quant.quantity - (quant.reserved_quantity || 0), // Qty disponibile
-            uom: product?.uom_id?.[1] || 'PZ',
-            image: product?.image_128 ? `data:image/png;base64,${product.image_128}` : null,
-            lotName: lot?.name || undefined,
-            expiryDate: lot?.expiration_date || undefined,
+            uom: (product as any)?.uom_id?.[1] || 'PZ',
+            image: (product as any)?.image_128 ? `data:image/png;base64,${(product as any).image_128}` : null,
+            lotName: (lot as any)?.name || undefined,
+            expiryDate: (lot as any)?.expiration_date || undefined,
             orders: orders.length > 0 ? orders : undefined
           };
         }));

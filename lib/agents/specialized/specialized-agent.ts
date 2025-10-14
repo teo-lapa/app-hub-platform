@@ -378,6 +378,6 @@ export class SpecializedAgent extends BaseAgent {
       suggestedFiles.push(...ctx.structure.types);
     }
 
-    return [...new Set(suggestedFiles)];  // Remove duplicates
+    return Array.from(new Set(suggestedFiles));  // Remove duplicates
   }
 }

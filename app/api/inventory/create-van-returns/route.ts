@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 interface ReturnItem {
   productId: number;
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'api-key': odooApiKey
+        'Cookie': `session_id=${sessionId}`
       },
       body: JSON.stringify({
         jsonrpc: '2.0',
