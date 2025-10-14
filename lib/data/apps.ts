@@ -159,6 +159,21 @@ export const mockApps: App[] = [
     createdAt: new Date('2025-01-24'),
     updatedAt: new Date('2025-01-24'),
   },
+  {
+    id: '12',
+    name: 'Arrivo Merce',
+    description: 'Sistema intelligente per ricezione merce. Carica la fattura (PDF o foto), il sistema la analizza con AI e compila automaticamente la ricezione in Odoo con lotti e scadenze.',
+    icon: '📥',
+    badge: 'PRO',
+    category: 'Business',
+    url: '/arrivo-merce',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-10-09'),
+    updatedAt: new Date('2025-10-09'),
+  },
 ];
 
 export const categories = [

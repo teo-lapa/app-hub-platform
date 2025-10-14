@@ -63,9 +63,49 @@ export async function getOdooSession(userCookies?: string) {
     console.error('❌ [ODOO-AUTH] userCookies è undefined o vuoto');
   }
 
-  // Se non ci sono cookies validi, ERRORE - l'utente deve fare login
-  console.error('❌ [ODOO-AUTH] Nessuna sessione Odoo valida trovata');
-  throw new Error('Sessione Odoo non trovata. Devi fare login prima di usare questa funzione.');
+  // Se non ci sono cookies validi, usa autenticazione fallback
+  console.warn('⚠️ [ODOO-AUTH] Nessuna sessione utente, uso credenziali fallback');
+
+  // Autentica con credenziali fallback
+  try {
+    const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        params: {
+          db: ODOO_DB,
+          login: ODOO_LOGIN,
+          password: ODOO_PASSWORD
+        }
+      })
+    });
+
+    const authData = await authResponse.json();
+
+    if (authData.error || !authData.result?.uid) {
+      throw new Error('Autenticazione fallback fallita');
+    }
+
+    // Estrai il cookie dalla risposta
+    const setCookie = authResponse.headers.get('set-cookie');
+    const sessionMatch = setCookie?.match(/session_id=([^;]+)/);
+
+    if (!sessionMatch) {
+      throw new Error('Nessun session_id ricevuto');
+    }
+
+    const newCookie = `session_id=${sessionMatch[1]}`;
+    console.log('✅ [ODOO-AUTH] Autenticazione fallback riuscita');
+
+    return { cookies: newCookie, uid: authData.result.uid };
+
+  } catch (fallbackError: any) {
+    console.error('❌ [ODOO-AUTH] Autenticazione fallback fallita:', fallbackError);
+    throw new Error('Impossibile autenticarsi con Odoo. Verifica le credenziali.');
+  }
 }
 
 /**
