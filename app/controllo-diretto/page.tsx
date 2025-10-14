@@ -92,6 +92,10 @@ export default function ControlloDirettoPage() {
     setShowBatchSelector(false);
     setIsLoading(true);
 
+    // Reset dello stato dei prodotti controllati quando cambi batch
+    setCheckedProducts(new Set());
+    setExpandedProducts(new Set());
+
     try {
       const counts = await pickingClient.getBatchZoneCounts(batch.id);
       setZoneCounts(counts);
@@ -111,6 +115,10 @@ export default function ControlloDirettoPage() {
     setCurrentZone(zone);
     setShowZoneSelector(false);
     setIsLoading(true);
+
+    // Reset dello stato dei prodotti controllati quando cambi zona
+    setCheckedProducts(new Set());
+    setExpandedProducts(new Set());
 
     try {
       const products = await pickingClient.getProductGroupedOperations(currentBatch.id, zone.id);
