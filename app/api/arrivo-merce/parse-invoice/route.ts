@@ -43,9 +43,9 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('🤖 Invio a Claude per analisi...');
+    console.log('🤖 Invio a Claude per analisi...', 'Format:', mediaType);
 
-    // Determine content type based on file format
+    // Determine content type based on file format (PDF uses 'document', images use 'image')
     const isPDF = mediaType === 'application/pdf';
     const contentBlock: any = isPDF ? {
       type: 'document',
