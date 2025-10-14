@@ -1,91 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-import { cookies } from 'next/headers';
+import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic';
 
+/**
+ * API per ottenere i dati della sessione Odoo dell'utente loggato
+ * USA SOLO IL SESSION_ID DELL'UTENTE (no credenziali hardcoded!)
+ */
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = cookies();
-    const token = cookieStore.get('auth-token')?.value;
+    // NUOVO: Usa il session_id dell'utente loggato
+    const sessionId = await getOdooSessionId();
 
-    if (!token) {
-      // Se non c'è token, usa credenziali di default (stesso del catalogo)
-      return await authenticateWithCredentials('paul@lapa.ch', 'lapa201180');
-    }
-
-    // Verifica il token JWT per ottenere le credenziali dell'utente
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-
-    if (!decoded || !decoded.email) {
-      // Se token non valido, usa credenziali di default
-      return await authenticateWithCredentials('paul@lapa.ch', 'lapa201180');
-    }
-
-    // Usa le credenziali dell'utente loggato
-    // Per ora usiamo la password di default, in futuro si potrebbe salvare nel JWT
-    return await authenticateWithCredentials(decoded.email, decoded.password || 'lapa201180');
-
-  } catch (error) {
-    console.error('Errore autenticazione unificata:', error);
-    // Fallback alle credenziali di default
-    return await authenticateWithCredentials('paul@lapa.ch', 'lapa201180');
-  }
-}
-
-async function authenticateWithCredentials(email: string, password: string) {
-  try {
-    const odooUrl = process.env.ODOO_URL!;
-    const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
-
-    console.log('🔑 Autenticazione unificata per:', email);
-
-    const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          db: odooDb,
-          login: email,
-          password: password
+    if (!sessionId) {
+      console.error('❌ [UNIFIED-ODOO] Nessun session_id trovato. L\'utente deve fare login.');
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Sessione non valida. Effettua nuovamente il login alla piattaforma.'
         },
-        id: 1
-      })
+        { status: 401 }
+      );
+    }
+
+    console.log('✅ [UNIFIED-ODOO] Session ID trovato, utente autenticato');
+
+    // Ritorna i dati della sessione
+    return NextResponse.json({
+      success: true,
+      data: {
+        session_id: sessionId,
+        authenticated: true
+      },
+      method: 'user_session'
     });
 
-    const authData = await authResponse.json();
-
-    if (authData.result && authData.result.uid) {
-      console.log('✅ Autenticazione unificata riuscita');
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          uid: authData.result.uid,
-          session_id: authData.result.session_id,
-          user: authData.result
-        },
-        method: 'unified_authentication'
-      });
-    } else {
-      console.error('❌ Autenticazione unificata fallita');
-
-      return NextResponse.json({
-        success: false,
-        error: 'Autenticazione fallita',
-        details: authData.error || 'UID non ricevuto'
-      }, { status: 401 });
-    }
-
   } catch (error) {
-    console.error('❌ Errore autenticazione unificata:', error);
+    console.error('❌ [UNIFIED-ODOO] Errore:', error);
 
     return NextResponse.json({
       success: false,
-      error: 'Errore di connessione',
+      error: 'Errore di autenticazione',
       details: error instanceof Error ? error.message : 'Errore sconosciuto'
     }, { status: 500 });
   }

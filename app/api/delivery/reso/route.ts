@@ -12,12 +12,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { original_picking_id, note, photo } = body;
+    const { original_picking_id, note, photo, products } = body;
 
     console.log('📦 RESO API: Ricevuto payload:', {
       original_picking_id,
       has_note: !!note,
-      has_photo: !!photo
+      has_photo: !!photo,
+      products_count: products?.length || 0
     });
 
     if (!original_picking_id) {
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
       'stock.picking',
       'read',
       [[original_picking_id]],
-      { fields: ['name', 'note'] }
+      { fields: ['name', 'note', 'picking_type_id', 'location_id', 'location_dest_id'] }
     );
 
     const picking = pickings[0];
@@ -51,25 +52,22 @@ export async function POST(request: NextRequest) {
 
     console.log('📦 RESO API: Picking trovato:', picking.name);
 
-    // Aggiorna il picking con nota RESO e completalo
+    // VERSIONE SEMPLICE: Aggiungi solo nota al picking originale
     const notaCompleta = `RESO - ${note}\n\n${picking.note || ''}`.trim();
-
     await callOdoo(
       cookies,
       'stock.picking',
       'write',
-      [[original_picking_id], {
-        note: notaCompleta
-      }]
+      [[original_picking_id], { note: notaCompleta }]
     );
 
-    console.log('✅ RESO API: Nota RESO aggiunta al picking');
+    console.log('✅ RESO API: Nota aggiunta al picking originale');
 
-    // Allega la foto del danno al picking
+    // Allega la foto del danno al picking originale
     console.log('📸 RESO API: Allegando foto del danno...');
     const base64Data = photo.includes('base64,') ? photo.split('base64,')[1] : photo;
 
-    await callOdoo(
+    const attachmentId = await callOdoo(
       cookies,
       'ir.attachment',
       'create',
@@ -83,12 +81,32 @@ export async function POST(request: NextRequest) {
       }]
     );
 
-    console.log('✅ RESO API: Foto allegata con successo');
-    console.log('✅ RESO API: RESO registrato con successo per picking:', picking.name);
+    console.log('✅ RESO API: Foto allegata con ID:', attachmentId);
+
+    // Crea messaggio nel chatter
+    const messageHtml = `<p><strong>📦 RESO REGISTRATO</strong></p>
+<p><strong>Motivo:</strong> ${note}</p>
+<p><strong>Data:</strong> ${new Date().toLocaleString('it-IT')}</p>`;
+
+    await callOdoo(
+      cookies,
+      'mail.message',
+      'create',
+      [{
+        body: messageHtml,
+        message_type: 'comment',
+        model: 'stock.picking',
+        res_id: original_picking_id,
+        attachment_ids: [[6, 0, [attachmentId]]]
+      }]
+    );
+
+    console.log('✅ RESO API: Messaggio chatter creato');
+    console.log('✅ RESO API: RESO registrato con successo');
 
     return NextResponse.json({
       success: true,
-      picking_id: original_picking_id,
+      original_picking_id: original_picking_id,
       message: 'Reso registrato con successo'
     });
   } catch (error: any) {

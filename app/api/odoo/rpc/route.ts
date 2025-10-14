@@ -1,18 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
 
-const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
-const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
 
-// Credenziali per login automatico (come fa catalogo-lapa)
-const ODOO_LOGIN = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+// Configurazione timeout per route API - 2 minuti
+export const maxDuration = 120;
+export const dynamic = 'force-dynamic';
 
 /**
- * API generica per chiamare Odoo RPC
- * Fa login automatico ogni volta per avere una sessione fresca (come catalogo-lapa)
+ * ⚠️⚠️⚠️ IMPORTANTE - SISTEMA DI AUTENTICAZIONE ODOO ⚠️⚠️⚠️
+ *
+ * QUESTA API USA **SOLO** LE CREDENZIALI DELL'UTENTE LOGGATO.
+ *
+ * ❌ NON ESISTE NESSUN FALLBACK
+ * ❌ NON ESISTONO CREDENZIALI HARDCODED
+ * ❌ SE L'UTENTE NON È LOGGATO → 401 UNAUTHORIZED
+ *
+ * COME FUNZIONA:
+ * 1. L'utente fa login sulla piattaforma con email/password
+ * 2. Il sistema verifica le credenziali sulla piattaforma
+ * 3. Il sistema autentica ANCHE su Odoo con le STESSE credenziali
+ * 4. Salva il session_id di Odoo in un cookie (odoo_session_id)
+ * 5. Questa API usa quel session_id per tutte le chiamate Odoo
+ *
+ * REQUISITO FONDAMENTALE:
+ * - Le credenziali dell'utente DEVONO essere uguali su Piattaforma e Odoo
+ * - Stesso email, stessa password
+ * - Se l'utente esiste solo sulla piattaforma ma non su Odoo, il login fallisce
+ * - Se l'utente non è loggato, TUTTE le chiamate falliscono con 401
  */
 export async function POST(request: NextRequest) {
   try {
@@ -20,56 +35,60 @@ export async function POST(request: NextRequest) {
 
     console.log('🔧 [API-ODOO-RPC] Chiamata:', model, method);
 
-    // STESSO METODO DEL CATALOGO: Fa sempre login fresco
-    console.log('🔐 [API-ODOO-RPC] Autenticazione fresca a Odoo...');
+    // ========== OTTIENI SESSION_ID DELL'UTENTE LOGGATO ==========
+    const cookieStore = cookies();
+    const sessionId = cookieStore.get('odoo_session_id')?.value;
 
-    const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          db: ODOO_DB,
-          login: ODOO_LOGIN,
-          password: ODOO_PASSWORD
-        },
-        id: 1
-      })
-    });
-
-    const authData = await authResponse.json();
-
-    if (authData.error || !authData.result || !authData.result.uid) {
-      console.error('❌ [API-ODOO-RPC] Autenticazione fallita:', authData.error);
+    if (!sessionId) {
+      console.error('❌ [API-ODOO-RPC] Utente NON loggato - accesso negato');
       return NextResponse.json(
         {
           success: false,
-          error: 'Autenticazione Odoo fallita'
+          error: 'Devi fare login per accedere a questa risorsa'
         },
         { status: 401 }
       );
     }
 
-    // Estrai session_id dal cookie Set-Cookie (come fa catalogo)
-    const setCookieHeader = authResponse.headers.get('set-cookie');
-    const sessionMatch = setCookieHeader?.match(/session_id=([^;]+)/);
-    const sessionId = sessionMatch ? sessionMatch[1] : null;
+    console.log('✅ [API-ODOO-RPC] Usando session_id dell\'utente loggato');
 
-    if (!sessionId) {
-      console.error('❌ [API-ODOO-RPC] Session ID non trovato nei cookie');
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Session ID non trovato'
-        },
-        { status: 500 }
-      );
+    // Fai la chiamata con il session_id dell'utente
+    const result = await makeOdooCall(model, method, args, kwargs, sessionId);
+
+    if (!result.success) {
+      // Se la sessione è scaduta, ritorna 401
+      if (result.error?.includes('scaduta') || result.error?.includes('expired')) {
+        return NextResponse.json(result, { status: 401 });
+      }
+      // Altri errori
+      return NextResponse.json(result, { status: 500 });
     }
 
-    console.log('✅ [API-ODOO-RPC] Autenticato! Session ID:', sessionId.substring(0, 20) + '...');
+    return NextResponse.json(result);
 
-    // Chiama Odoo con session ID dell'utente
+  } catch (error: any) {
+    console.error('💥 [API-ODOO-RPC] Errore:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || 'Errore server'
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Funzione helper per fare chiamate RPC a Odoo
+ */
+async function makeOdooCall(
+  model: string,
+  method: string,
+  args: any[],
+  kwargs: any,
+  sessionId: string
+): Promise<{ success: boolean; result?: any; error?: string }> {
+  try {
     console.log('📡 [API-ODOO-RPC] Chiamata a Odoo:', `${ODOO_URL}/web/dataset/call_kw/${model}/${method}`);
 
     const response = await fetch(`${ODOO_URL}/web/dataset/call_kw/${model}/${method}`, {
@@ -95,13 +114,10 @@ export async function POST(request: NextRequest) {
       const errorText = await response.text();
       console.error('❌ [API-ODOO-RPC] HTTP Error:', response.status, response.statusText);
       console.error('❌ [API-ODOO-RPC] Response body:', errorText);
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Errore HTTP ${response.status}: ${response.statusText}`
-        },
-        { status: response.status }
-      );
+      return {
+        success: false,
+        error: `Errore HTTP ${response.status}: ${response.statusText}`
+      };
     }
 
     const data = await response.json();
@@ -110,38 +126,34 @@ export async function POST(request: NextRequest) {
     if (data.error) {
       console.error('❌ [API-ODOO-RPC] Errore Odoo:', JSON.stringify(data.error));
 
-      // Se la sessione è scaduta, chiediamo di rifare login
+      // Se la sessione è scaduta, ritorna un errore specifico
       const errorMessage = data.error.data?.message || data.error.message || 'Errore chiamata Odoo';
-      if (errorMessage.includes('Session expired') || errorMessage.includes('session_id')) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Sessione scaduta. Effettua nuovamente il login alla piattaforma.'
-          },
-          { status: 401 }
-        );
+      if (errorMessage.includes('Session expired') ||
+          errorMessage.includes('session_id') ||
+          errorMessage.includes('SessionExpiredException')) {
+        return {
+          success: false,
+          error: 'Sessione Odoo scaduta. Effettua nuovamente il login alla piattaforma.'
+        };
       }
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: errorMessage
-        },
-        { status: 400 }
-      );
+      return {
+        success: false,
+        error: errorMessage
+      };
     }
 
     console.log('✅ [API-ODOO-RPC] Successo');
-    return NextResponse.json({
+    return {
       success: true,
       result: data.result
-    });
+    };
 
   } catch (error: any) {
-    console.error('💥 [API-ODOO-RPC] Errore:', error);
-    return NextResponse.json(
-      { error: error.message || 'Errore server' },
-      { status: 500 }
-    );
+    console.error('💥 [API-ODOO-RPC] Errore nella chiamata:', error);
+    return {
+      success: false,
+      error: error.message || 'Errore nella chiamata Odoo'
+    };
   }
 }

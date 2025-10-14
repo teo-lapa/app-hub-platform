@@ -2,7 +2,37 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Aumenta timeout a 60 secondi
+export const maxDuration = 30; // Timeout 30 secondi (ottimizzato)
+
+// Funzione per mappare la categoria Odoo alle categorie dell'app
+function mapCategoryToAppCategory(odooCategName: string | undefined): string {
+  if (!odooCategName) return 'Secco';
+
+  const categLower = odooCategName.toLowerCase();
+
+  // Frigo
+  if (categLower.includes('frigo') || categLower.includes('fresco') ||
+      categLower.includes('refrigerat') || categLower.includes('latticini') ||
+      categLower.includes('fresc')) {
+    return 'Frigo';
+  }
+
+  // Pingu (Congelato)
+  if (categLower.includes('congel') || categLower.includes('surgel') ||
+      categLower.includes('frozen') || categLower.includes('pingu')) {
+    return 'Pingu';
+  }
+
+  // Non Food
+  if (categLower.includes('non food') || categLower.includes('nonfood') ||
+      categLower.includes('pulizia') || categLower.includes('igiene') ||
+      categLower.includes('detersiv') || categLower.includes('cosmet')) {
+    return 'NonFood';
+  }
+
+  // Default: Secco
+  return 'Secco';
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,14 +70,38 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    if (employees.length === 0) {
-      return NextResponse.json({
-        error: 'Dipendente non trovato. Verifica configurazione in Odoo.'
-      }, { status: 403 });
-    }
+    let driverId: number;
+    let driverName: string;
 
-    const driverId = employees[0].id;
-    const driverName = employees[0].name;
+    if (employees.length === 0) {
+      // Fallback: usa l'utente come "driver virtuale"
+      console.log('⚠️ [DELIVERY] Nessun hr.employee trovato per UID:', uidNum);
+
+      // Carica info utente da res.users
+      const users = await callOdoo(
+        cookies,
+        'res.users',
+        'read',
+        [[uidNum]],
+        {
+          fields: ['name', 'partner_id']
+        }
+      );
+
+      if (users.length === 0) {
+        return NextResponse.json({
+          error: 'Utente non trovato in Odoo.'
+        }, { status: 403 });
+      }
+
+      driverId = users[0].partner_id[0]; // Usa partner_id come driver_id
+      driverName = users[0].name;
+
+      console.log('✅ [DELIVERY] Usando utente come driver:', { driverId, driverName });
+    } else {
+      driverId = employees[0].id;
+      driverName = employees[0].name;
+    }
 
     console.log('🚚 [DELIVERY] Driver trovato:', { driverId, driverName });
 
@@ -97,70 +151,8 @@ export async function GET(request: NextRequest) {
 
     console.log('📦 [DELIVERY] Pickings trovati per ' + driverName + ':', pickings.length);
 
-    // DEBUG: Stampa TUTTI i pickings trovati per analizzare il problema
-    if (pickings.length > 0) {
-      console.log('🔍 [DEBUG] TUTTI I PICKINGS TROVATI:');
-      pickings.forEach((p: any) => {
-        console.log(`   - ID: ${p.id}, Name: ${p.name}, State: ${p.state}, Scheduled: ${p.scheduled_date}, Driver: ${p.driver_id?.[1]}`);
-      });
-    }
-
     if (pickings.length === 0) {
       console.log('⚠️ [DELIVERY] Nessuna consegna assegnata a ' + driverName + ' (ID: ' + driverId + ') per oggi');
-
-      // DEBUG: Cerca TUTTI i documenti di questa settimana per TUTTI gli autisti
-      console.log('🔍 [DEBUG] Cerco TUTTI i documenti di questa settimana (2-8 ottobre)...');
-      const weekStart = '2025-10-02 00:00:00';
-      const weekEnd = '2025-10-08 23:59:59';
-
-      const allWeekPickings = await callOdoo(
-        cookies,
-        'stock.picking',
-        'search_read',
-        [],
-        {
-          domain: [
-            ['scheduled_date', '>=', weekStart],
-            ['scheduled_date', '<=', weekEnd],
-            ['picking_type_id.code', '=', 'outgoing']
-          ],
-          fields: ['id', 'name', 'state', 'scheduled_date', 'driver_id', 'partner_id'],
-          limit: 100,
-          order: 'scheduled_date DESC'
-        }
-      );
-
-      console.log('🔍 [DEBUG] Documenti trovati questa settimana:', allWeekPickings.length);
-      allWeekPickings.forEach((p: any) => {
-        const driverInfo = p.driver_id ? `${p.driver_id[1]} (ID: ${p.driver_id[0]})` : 'NESSUN DRIVER';
-        const partnerInfo = p.partner_id ? p.partner_id[1] : 'N/A';
-        console.log(`   - ID: ${p.id}, Name: ${p.name}, State: ${p.state}, Scheduled: ${p.scheduled_date}, Driver: ${driverInfo}, Cliente: ${partnerInfo}`);
-      });
-
-      // DEBUG: Cerca i 3 documenti specifici che l'utente ha menzionato
-      console.log('🔍 [DEBUG] Cerco i 3 documenti specifici: WH/OUT/33118, WH/OUT/33110, WH/OUT/32991');
-      const specificDocs = await callOdoo(
-        cookies,
-        'stock.picking',
-        'search_read',
-        [],
-        {
-          domain: [
-            ['name', 'in', ['WH/OUT/33118', 'WH/OUT/33110', 'WH/OUT/32991']]
-          ],
-          fields: ['id', 'name', 'state', 'scheduled_date', 'driver_id', 'partner_id'],
-          limit: 10
-        }
-      );
-
-      console.log('🔍 [DEBUG] Documenti specifici trovati:', specificDocs.length);
-      specificDocs.forEach((p: any) => {
-        const driverInfo = p.driver_id ? `${p.driver_id[1]} (ID: ${p.driver_id[0]})` : 'NESSUN DRIVER ASSEGNATO';
-        const partnerInfo = p.partner_id ? p.partner_id[1] : 'N/A';
-        console.log(`   ⭐ ID: ${p.id}, Name: ${p.name}, State: ${p.state}, Scheduled: ${p.scheduled_date}`);
-        console.log(`      Driver: ${driverInfo}`);
-        console.log(`      Cliente: ${partnerInfo}`);
-      });
 
       return NextResponse.json({
         deliveries: [],
@@ -200,7 +192,7 @@ export async function GET(request: NextRequest) {
       }
     ) : [];
 
-    // Carica immagini prodotti
+    // Carica prodotti con immagini e categorie
     const productIdsSet = new Set(allMoveLines.map((m: any) => m.product_id?.[0]).filter(Boolean));
     const productIds = Array.from(productIdsSet);
     const products = productIds.length > 0 ? await callOdoo(
@@ -209,10 +201,32 @@ export async function GET(request: NextRequest) {
       'read',
       [productIds],
       {
-        fields: ['id', 'image_128']
+        fields: ['id', 'image_128', 'categ_id']
       }
     ) : [];
     const productImageMap = new Map(products.map((p: any) => [p.id, p.image_128]));
+    const productCategMap = new Map(products.map((p: any) => [p.id, p.categ_id]));
+
+    // Carica dettagli categorie con parent_id
+    const categIdsSet = new Set(products.map((p: any) => p.categ_id?.[0]).filter(Boolean));
+    const categIds = Array.from(categIdsSet);
+    const categories = categIds.length > 0 ? await callOdoo(
+      cookies,
+      'product.category',
+      'read',
+      [categIds],
+      {
+        fields: ['id', 'name', 'parent_id']
+      }
+    ) : [];
+
+    // Costruisci mappa categorie con nomi completi (risalendo alla categoria padre)
+    const categoryNameMap = new Map();
+    for (const cat of categories) {
+      // Se ha parent, prendi il nome del parent, altrimenti usa il proprio
+      const categoryName = cat.parent_id ? cat.parent_id[1] : cat.name;
+      categoryNameMap.set(cat.id, categoryName);
+    }
 
     // Crea mappa per accesso rapido
     const partnerMap = new Map(allPartners.map((p: any) => [p.id, p]));
@@ -252,6 +266,12 @@ export async function GET(request: NextRequest) {
         const productId = moveLine.product_id?.[0];
         const requestedQty = moveLine.quantity || 0;  // quantity = quantità pianificata
         const deliveredQty = moveLine.qty_done || 0;  // qty_done = quantità effettiva
+
+        // Ottieni categoria Odoo e mappa alla categoria dell'app
+        const categId = productCategMap.get(productId);
+        const odooCategName = categId && Array.isArray(categId) ? categoryNameMap.get(categId[0]) : undefined;
+        const appCategory = mapCategoryToAppCategory(odooCategName);
+
         return {
           id: moveLine.id,  // Questo è il move_line_id!
           move_line_id: moveLine.id,  // ID della stock.move.line
@@ -261,7 +281,8 @@ export async function GET(request: NextRequest) {
           delivered: deliveredQty,
           picked: deliveredQty > 0,
           unit: moveLine.product_uom_id?.[1] || 'Unità',
-          image: productImageMap.get(productId) || null
+          image: productImageMap.get(productId) || null,
+          category: appCategory
         };
       });
 

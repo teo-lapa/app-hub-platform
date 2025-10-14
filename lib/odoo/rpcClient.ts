@@ -192,6 +192,6 @@ export class OdooRPCClient {
 
 // Factory per creare client RPC
 export function createOdooRPCClient(sessionId?: string): OdooRPCClient {
-  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
+  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
   return new OdooRPCClient(odooUrl, sessionId);
 }

@@ -13,6 +13,8 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
+  const vehicleMarkerRef = useRef<google.maps.Marker | null>(null);
+  const hasInitializedBounds = useRef(false); // Per fare fitBounds solo la prima volta
   const [mapLoaded, setMapLoaded] = useState(false);
 
   useEffect(() => {
@@ -45,41 +47,61 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: true,
-      gestureHandling: 'greedy'
+      gestureHandling: 'greedy',
+      // Disabilita animazioni eccessive per evitare tremolii
+      disableDefaultUI: false,
+      clickableIcons: false
     };
 
     googleMapRef.current = new google.maps.Map(mapRef.current, mapOptions);
   }, [mapLoaded]);
 
+  // Aggiorna il marker del veicolo separatamente per evitare tremolii
   useEffect(() => {
-    if (!googleMapRef.current) return;
+    if (!googleMapRef.current || !mapLoaded) return;
+
+    if (currentPosition) {
+      // Se il marker esiste già, aggiorna solo la posizione
+      if (vehicleMarkerRef.current) {
+        vehicleMarkerRef.current.setPosition(currentPosition);
+      } else {
+        // Altrimenti crea il marker
+        vehicleMarkerRef.current = new google.maps.Marker({
+          position: currentPosition,
+          map: googleMapRef.current,
+          icon: {
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 64 64">
+                <!-- Ombra -->
+                <ellipse cx="32" cy="58" rx="18" ry="4" fill="#000000" opacity="0.3"/>
+
+                <!-- Cerchio blu di sfondo -->
+                <circle cx="32" cy="30" r="26" fill="#3b82f6" stroke="#1e40af" stroke-width="3"/>
+
+                <!-- Emoji camion -->
+                <text x="32" y="42" font-size="36" text-anchor="middle" font-family="Arial, sans-serif">🚚</text>
+              </svg>
+            `),
+            scaledSize: new google.maps.Size(40, 40),
+            anchor: new google.maps.Point(20, 36),
+            labelOrigin: new google.maps.Point(20, 20)
+          },
+          title: '🚚 Il tuo furgone',
+          zIndex: 1000,
+          optimized: true
+        });
+      }
+    }
+  }, [currentPosition, mapLoaded]);
+
+  useEffect(() => {
+    if (!googleMapRef.current || !mapLoaded) return;
 
     console.log('🗺️ [MAP] Aggiornamento markers con', deliveries.length, 'consegne');
 
-    // Clear existing markers
+    // Clear existing markers (solo marker delle consegne, non il veicolo)
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
-
-    // Add current position marker - FURGONCINO ROSSO
-    if (currentPosition) {
-      const currentMarker = new google.maps.Marker({
-        position: currentPosition,
-        map: googleMapRef.current,
-        icon: {
-          // SVG path di un furgone per delivery
-          path: 'M4,16 L4,6 C4,4.9 4.9,4 6,4 L10,4 L10,2 L14,2 L14,4 L18,4 C19.1,4 20,4.9 20,6 L20,16 M6,18.5 C6,17.67 6.67,17 7.5,17 C8.33,17 9,17.67 9,18.5 C9,19.33 8.33,20 7.5,20 C6.67,20 6,19.33 6,18.5 M15,18.5 C15,17.67 15.67,17 16.5,17 C17.33,17 18,17.67 18,18.5 C18,19.33 17.33,20 16.5,20 C15.67,20 15,19.33 15,18.5 M18,16 L18,11 L22,11 L22,13.5 L24,15 L24,16 M2,16 L2,15 L4,15 L4,16',
-          fillColor: '#dc2626',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-          scale: 1.2,
-          anchor: new google.maps.Point(12, 12)
-        },
-        title: 'Il tuo furgone',
-        zIndex: 1000
-      });
-      markersRef.current.push(currentMarker);
-    }
 
     // Add delivery markers
     deliveries.forEach((delivery, index) => {
@@ -89,50 +111,72 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
       }
 
       // Determina colore e opacità in base allo stato
-      // Blu = da consegnare (assigned)
-      // Verde = completato (done)
-      // Arancione = con residuo (isBackorder)
-      // Trasparente = completato o con residuo
       const isBackorder = (delivery as any).isBackorder || false;
       const isCompleted = delivery.completed || delivery.state === 'done';
 
       let markerColor = '#3b82f6'; // Blu - da consegnare
+      let borderColor = '#1e40af';
       let markerOpacity = 1.0;
 
       if (isBackorder) {
         markerColor = '#f59e0b'; // Arancione - residuo
-        markerOpacity = 0.5; // Trasparente
+        borderColor = '#d97706';
+        markerOpacity = 0.6;
       } else if (isCompleted) {
         markerColor = '#10b981'; // Verde - completato
-        markerOpacity = 0.5; // Trasparente
+        borderColor = '#059669';
+        markerOpacity = 0.6;
       }
+
+      // Crea un marker SVG più piccolo e professionale (pin style)
+      const pinIcon = {
+        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="52" viewBox="0 0 28 40">
+            <g opacity="${markerOpacity}">
+              <!-- Pin shadow -->
+              <ellipse cx="14" cy="38" rx="6" ry="2" fill="#000000" opacity="0.2"/>
+              <!-- Pin body -->
+              <path d="M14 1 C 8 1, 3 6, 3 12 C 3 20, 14 36, 14 36 C 14 36, 25 20, 25 12 C 25 6, 20 1, 14 1 Z"
+                    fill="${markerColor}" stroke="${borderColor}" stroke-width="1.5"/>
+              <!-- Pin inner circle (white background for number) -->
+              <circle cx="14" cy="12" r="7" fill="white"/>
+              <!-- Number text -->
+              <text x="14" y="16" font-family="Arial, sans-serif" font-size="10" font-weight="bold"
+                    text-anchor="middle" fill="${borderColor}">${index + 1}</text>
+            </g>
+          </svg>
+        `),
+        scaledSize: new google.maps.Size(36, 52),
+        anchor: new google.maps.Point(18, 48),
+        labelOrigin: new google.maps.Point(18, 16)
+      };
 
       const marker = new google.maps.Marker({
         position: { lat: delivery.lat, lng: delivery.lng },
         map: googleMapRef.current,
-        label: {
-          text: String(index + 1),
-          color: 'white',
-          fontWeight: 'bold'
-        },
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          fillColor: markerColor,
-          fillOpacity: markerOpacity,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-          scale: 12,
-          labelOrigin: new google.maps.Point(0, 0)
-        },
-        title: delivery.customerName
+        icon: pinIcon,
+        title: delivery.customerName,
+        optimized: true, // Abilita rendering ottimizzato per evitare tremolii
+        zIndex: isCompleted ? 1 : 10
       });
 
-      // Info window - Compatto con solo nome cliente e note
+      // Info window - Migliorato con più dettagli
+      const statusBadge = isBackorder ?
+        '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">RESIDUO</span>' :
+        isCompleted ?
+        '<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">✓ COMPLETATO</span>' :
+        '<span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">DA CONSEGNARE</span>';
+
       const infoWindow = new google.maps.InfoWindow({
         content: `
-          <div style="padding: 6px; max-width: 200px;">
-            <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px;">${delivery.customerName}</div>
-            ${(delivery as any).note ? `<div style="font-size: 11px; color: #666; margin-bottom: 6px; font-style: italic;">${(delivery as any).note}</div>` : ''}
+          <div style="padding: 8px; min-width: 180px; max-width: 240px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <span style="font-size: 11px; font-weight: 600; color: #666;">#${index + 1}</span>
+              ${statusBadge}
+            </div>
+            <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px; color: #1f2937;">${delivery.customerName}</div>
+            ${(delivery as any).address ? `<div style="font-size: 11px; color: #6b7280; margin-bottom: 6px;">📍 ${(delivery as any).address}</div>` : ''}
+            ${(delivery as any).note ? `<div style="font-size: 11px; color: #f59e0b; background: #fffbeb; padding: 4px 6px; border-radius: 4px; margin-top: 4px; border-left: 2px solid #f59e0b;"><strong>Nota:</strong> ${(delivery as any).note}</div>` : ''}
           </div>
         `
       });
@@ -149,19 +193,36 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
 
     console.log('✅ [MAP] Creati', markersRef.current.length, 'markers sulla mappa');
 
-    // Fit bounds to show all markers
-    if (markersRef.current.length > 0) {
+    // Fit bounds to show all markers SOLO la prima volta (non ogni volta che cambiano i deliveries)
+    if (markersRef.current.length > 0 && deliveries.length > 0 && !hasInitializedBounds.current) {
       const bounds = new google.maps.LatLngBounds();
+
+      // Aggiungi tutti i marker delle consegne
       markersRef.current.forEach(marker => {
         const position = marker.getPosition();
         if (position) {
           bounds.extend(position);
         }
       });
-      googleMapRef.current.fitBounds(bounds);
-      console.log('🎯 [MAP] Bounds aggiustati per mostrare tutti i markers');
+
+      // Aggiungi anche il marker del veicolo se esiste
+      if (vehicleMarkerRef.current) {
+        const vehiclePos = vehicleMarkerRef.current.getPosition();
+        if (vehiclePos) {
+          bounds.extend(vehiclePos);
+        }
+      }
+
+      googleMapRef.current.fitBounds(bounds, {
+        top: 50,
+        right: 50,
+        bottom: 50,
+        left: 50
+      });
+      hasInitializedBounds.current = true; // Segna come inizializzato
+      console.log('🎯 [MAP] Bounds aggiustati per mostrare tutti i markers (SOLO PRIMA VOLTA)');
     }
-  }, [deliveries, currentPosition, onMarkerClick]);
+  }, [deliveries, onMarkerClick, mapLoaded]);
 
   return (
     <div className="h-full w-full relative">

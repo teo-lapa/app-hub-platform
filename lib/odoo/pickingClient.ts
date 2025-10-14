@@ -76,9 +76,14 @@ interface OdooProduct {
 
 export class PickingOdooClient {
   private odooUrl: string;
+  // Cache condivisa per batch - riduce chiamate ripetute
+  private batchCache: Map<number, { picking_ids: number[]; timestamp: number }> = new Map();
+  private productCache: Map<number, OdooProduct> = new Map();
+  private pickingCache: Map<number, any> = new Map();
+  private lotCache: Map<number, any> = new Map();
 
   constructor() {
-    this.odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
+    this.odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
   }
 
 
@@ -645,23 +650,36 @@ export class PickingOdooClient {
     }
   }
 
-  // Carica le operazioni per un'ubicazione specifica
+  // Carica le operazioni per un'ubicazione specifica - OTTIMIZZATO CON CACHE
   async getLocationOperations(batchId: number, locationId: number): Promise<Operation[]> {
     try {
-      // Prima ottieni i picking del batch
-      const batch: OdooPickingBatch = await this.rpc(
-        'stock.picking.batch',
-        'read',
-        [[batchId], ['picking_ids']]
-      ).then(res => res[0]);
+      //  ========== CHIAMATA 1: Batch picking_ids (con cache) ==========
+      let pickingIds: number[] = [];
 
-      if (!batch.picking_ids || !Array.isArray(batch.picking_ids) || batch.picking_ids.length === 0) {
-        return [];
+      // Usa cache se disponibile (5 minuti validità)
+      const cachedBatch = this.batchCache.get(batchId);
+      const now = Date.now();
+
+      if (cachedBatch && (now - cachedBatch.timestamp < 300000)) {
+        pickingIds = cachedBatch.picking_ids;
+      } else {
+        const batch: OdooPickingBatch = await this.rpc(
+          'stock.picking.batch',
+          'read',
+          [[batchId], ['picking_ids']]
+        ).then(res => res[0]);
+
+        if (!batch.picking_ids || !Array.isArray(batch.picking_ids) || batch.picking_ids.length === 0) {
+          return [];
+        }
+
+        pickingIds = batch.picking_ids;
+        this.batchCache.set(batchId, { picking_ids: pickingIds, timestamp: now });
       }
 
-      // Carica le move lines per questa ubicazione
+      //  ========== CHIAMATA 2: Move lines per ubicazione ==========
       const domain = [
-        ['picking_id', 'in', batch.picking_ids],
+        ['picking_id', 'in', pickingIds],
         ['location_id', '=', locationId],
         ['state', 'not in', ['done', 'cancel']]
       ];
@@ -672,37 +690,54 @@ export class PickingOdooClient {
         [domain]
       );
 
-      // Carica i dettagli dei prodotti con immagini
-      const productIds = Array.from(new Set(moveLines.map(ml => ml.product_id[0])));
-      const products = await this.getProducts(productIds);
-      const productMap = new Map(products.map(p => [p.id, p]));
+      if (moveLines.length === 0) {
+        return [];
+      }
 
-      // Carica date di scadenza per i lotti
+      // Raccogli ID unici necessari
+      const productIds = Array.from(new Set(moveLines.map(ml => ml.product_id[0])));
       const lotIds = Array.from(new Set(moveLines
         .filter(ml => ml.lot_id && Array.isArray(ml.lot_id))
         .map(ml => (ml.lot_id as [number, string])[0])
       ));
+      const pickingIdsToFetch = Array.from(new Set(moveLines
+        .map(ml => ml.picking_id && ml.picking_id[0])
+        .filter(Boolean) as number[]
+      ));
 
-      const lotMap = new Map();
-      if (lotIds.length > 0) {
+      // Filtra solo gli ID che NON sono in cache
+      const uncachedProductIds = productIds.filter(id => !this.productCache.has(id));
+      const uncachedLotIds = lotIds.filter(id => !this.lotCache.has(id));
+      const uncachedPickingIds = pickingIdsToFetch.filter(id => !this.pickingCache.has(id));
+
+      //  ========== CHIAMATE BATCH (solo dati non in cache) ==========
+      // Carica prodotti mancanti
+      if (uncachedProductIds.length > 0) {
+        const products = await this.getProducts(uncachedProductIds);
+        products.forEach(p => this.productCache.set(p.id, p));
+      }
+
+      // Carica lotti mancanti
+      if (uncachedLotIds.length > 0) {
         const lots = await this.rpc(
           'stock.lot',
           'search_read',
-          [[['id', 'in', lotIds]], ['id', 'name', 'expiration_date']]
+          [[['id', 'in', uncachedLotIds]], ['id', 'name', 'expiration_date']]
         );
-        lots.forEach((lot: any) => {
-          lotMap.set(lot.id, lot.expiration_date);
-        });
+        lots.forEach((lot: any) => this.lotCache.set(lot.id, lot));
       }
 
-      // Carica i dettagli dei picking per info cliente
-      const pickingIds = Array.from(new Set(moveLines.map(ml => ml.picking_id && ml.picking_id[0]).filter(Boolean)));
-      const pickings = await this.getPickings(pickingIds as number[]);
-      const pickingMap = new Map(pickings.map(p => [p.id, p]));
+      // Carica picking mancanti
+      if (uncachedPickingIds.length > 0) {
+        const pickings = await this.getPickings(uncachedPickingIds);
+        pickings.forEach(p => this.pickingCache.set(p.id, p));
+      }
 
-      return moveLines.map((ml, index) => {
-        const product = productMap.get(ml.product_id[0]);
-        const picking = ml.picking_id ? pickingMap.get(ml.picking_id[0]) : null;
+      // Mappa finale - USA SOLO CACHE!
+      return moveLines.map((ml) => {
+        const product = this.productCache.get(ml.product_id[0]);
+        const picking = ml.picking_id ? this.pickingCache.get(ml.picking_id[0]) : null;
+        const lot = ml.lot_id ? this.lotCache.get((ml.lot_id as [number, string])[0]) : null;
 
         return {
           id: ml.id,
@@ -719,7 +754,7 @@ export class PickingOdooClient {
           uom: ml.product_uom_id && typeof ml.product_uom_id[1] === 'string' ? ml.product_uom_id[1].split(' ')[0] : 'PZ',
           lot_id: ml.lot_id || undefined,
           lot_name: ml.lot_name || undefined,
-          expiry_date: ml.lot_id ? lotMap.get(ml.lot_id[0]) || undefined : undefined,
+          expiry_date: lot?.expiration_date || undefined,
           package_id: ml.package_id || undefined,
           note: ml.description_picking || '',
           customer: picking?.partner_name || '',
@@ -753,39 +788,34 @@ export class PickingOdooClient {
     }
   }
 
-  // Salva report di lavoro nel batch
+  // Salva report di lavoro nel batch come attachment
   async saveBatchReport(batchId: number, reportText: string): Promise<boolean> {
     try {
-      // Leggi la nota attuale del batch
-      const batchData = await this.rpc(
-        'stock.picking.batch',
-        'read',
-        [[batchId], ['note']]
-      );
+      // Salva il report come attachment invece che nel campo note (che non esiste)
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `zona_report_${timestamp}.txt`;
 
-      if (!batchData || batchData.length === 0) {
-        throw new Error('Batch non trovato');
-      }
+      // Converti il testo in base64
+      const base64Report = btoa(unescape(encodeURIComponent(reportText)));
 
-      const currentNote = batchData[0].note || '';
-
-      // Aggiungi il nuovo report alla nota esistente
-      const separator = currentNote ? '\n\n---\n\n' : '';
-      const updatedNote = currentNote + separator + reportText;
-
-      // Aggiorna il batch con la nuova nota
+      // Crea l'attachment
       const result = await this.rpc(
-        'stock.picking.batch',
-        'write',
-        [[batchId], { note: updatedNote }]
+        'ir.attachment',
+        'create',
+        [{
+          name: filename,
+          datas: base64Report,
+          res_model: 'stock.picking.batch',
+          res_id: batchId,
+          type: 'binary'
+        }]
       );
 
-      console.log('✅ Report salvato nel batch:', batchId);
-      return result === true;
+      return true;
 
     } catch (error) {
-      console.error('❌ Errore salvataggio report nel batch:', error);
-      throw error;
+      // Non bloccare l'utente per questo errore - il report è comunque mostrato a schermo
+      return false;
     }
   }
 

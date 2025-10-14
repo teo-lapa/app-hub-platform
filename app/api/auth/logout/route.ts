@@ -22,5 +22,14 @@ export async function POST() {
     maxAge: 0,
   });
 
+  // IMPORTANTE: Rimuovi anche il cookie odoo_session_id (nuovo formato)
+  response.cookies.set('odoo_session_id', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 0,
+    path: '/',
+  });
+
   return response;
 }

@@ -13,43 +13,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     console.log('🔄 AuthStore: Starting login process for:', email);
 
     try {
-      // Prima prova con autenticazione Odoo
-      const odooResponse = await fetch('/api/auth/odoo-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (odooResponse.ok) {
-        const data: ApiResponse<{ user: User; token: string }> = await odooResponse.json();
-        console.log('✅ AuthStore: Odoo login successful:', data.data?.user?.name);
-
-        set({
-          user: data.data?.user || null,
-          isAuthenticated: true,
-          isLoading: false,
-          token: data.data?.token || null,
-        });
-
-        toast.success(data.message || 'Login Odoo effettuato con successo!');
-        return;
-      }
-
-      // Se Odoo fallisce, prova con autenticazione locale
-      console.log('🔄 AuthStore: Odoo login failed, trying local authentication');
+      // Autenticazione con la piattaforma
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // ✅ CRITICAL: Permette al browser di salvare i cookie!
         body: JSON.stringify({ email, password }),
       });
 
-      console.log('🌐 AuthStore: Local login response status:', response.status);
+      console.log('🌐 AuthStore: Login response status:', response.status);
       const data: ApiResponse<{ user: User; token: string }> = await response.json();
-      console.log('📋 AuthStore: Local login response data:', { success: data.success, user: data.data?.user?.name, error: data.error });
+      console.log('📋 AuthStore: Login response data:', { success: data.success, user: data.data?.user?.name, error: data.error });
 
       if (data.success) {
         set({
@@ -58,7 +34,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
           token: data.data?.token || null,
         });
-        console.log('✅ AuthStore: Local login successful, user authenticated:', data.data?.user?.name);
+        console.log('✅ AuthStore: Login successful, user authenticated:', data.data?.user?.name);
         toast.success(data.message || 'Login effettuato con successo!');
       } else {
         set({ isLoading: false });
@@ -182,24 +158,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   checkAuth: async () => {
-
+    console.log('🔍 [AuthStore] Controllo autenticazione in corso...');
     set({ isLoading: true });
     try {
-      const response = await fetch('/api/auth/me');
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include', // ✅ IMPORTANTE: Include i cookie!
+      });
+
+      console.log('🌐 [AuthStore] Response /api/auth/me:', {
+        status: response.status,
+        ok: response.ok
+      });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        const errorData = await response.json();
+        console.error('❌ [AuthStore] Errore HTTP da /api/auth/me:', {
+          status: response.status,
+          error: errorData.error
+        });
+        throw new Error(`HTTP ${response.status}: ${errorData.error}`);
       }
 
       const data: ApiResponse<{ user: User }> = await response.json();
+      console.log('📋 [AuthStore] Dati ricevuti da /api/auth/me:', {
+        success: data.success,
+        hasUser: !!data.data?.user,
+        userEmail: data.data?.user?.email
+      });
 
       if (data.success && data.data?.user) {
+        console.log('✅ [AuthStore] Autenticazione confermata per:', data.data.user.email);
         set({
           user: data.data.user,
           isAuthenticated: true,
           isLoading: false,
         });
       } else {
+        console.warn('⚠️ [AuthStore] Risposta ricevuta ma senza utente - resetto stato');
         set({
           user: null,
           isAuthenticated: false,
@@ -207,8 +202,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           token: null,
         });
       }
-    } catch (error) {
-      console.error('Auth check error:', error);
+    } catch (error: any) {
+      console.error('💥 [AuthStore] Errore durante checkAuth:', error.message);
+      console.error('💥 [AuthStore] RESETTO AUTENTICAZIONE - utente verrà disconnesso');
       set({
         user: null,
         isAuthenticated: false,

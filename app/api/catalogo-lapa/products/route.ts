@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+
+const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
 
 // Cache semplice per pagina
 const pageCache = new Map<string, { data: any; timestamp: number }>();
@@ -6,7 +9,22 @@ const CACHE_DURATION = 30 * 60 * 1000; // 30 minuti
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🛍️ [CATALOGO] API chiamata - caricamento prodotti...');
     const { page = 1, limit = 50, search = '', category = null } = await request.json();
+
+    // ========== OTTIENI SESSION_ID DELL'UTENTE LOGGATO ==========
+    const cookieStore = cookies();
+    const sessionId = cookieStore.get('odoo_session_id')?.value;
+
+    if (!sessionId) {
+      console.error('❌ [CATALOGO] Utente NON loggato - accesso negato');
+      return NextResponse.json(
+        { success: false, error: 'Devi fare login per accedere al catalogo' },
+        { status: 401 }
+      );
+    }
+
+    console.log('✅ [CATALOGO] Usando session_id dell\'utente loggato');
 
     // Crea chiave cache (include anche categoria)
     const cacheKey = `${page}-${limit}-${search}-${category || ''}`;
@@ -23,39 +41,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`🛒 Caricamento prodotti pagina ${page}...`);
-
-    const odooUrl = process.env.ODOO_URL!;
-    const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
-
-    // Autenticazione
-    const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          db: odooDb,
-          login: 'paul@lapa.ch',
-          password: 'lapa201180'
-        },
-        id: 1
-      })
-    });
-
-    const authData = await authResponse.json();
-
-    if (authData.error || !authData.result || !authData.result.uid) {
-      throw new Error('Autenticazione fallita');
-    }
-
-    const setCookieHeader = authResponse.headers.get('set-cookie');
-    const sessionMatch = setCookieHeader?.match(/session_id=([^;]+)/);
-    const sessionId = sessionMatch ? sessionMatch[1] : null;
-
-    if (!sessionId) {
-      throw new Error('Session ID non trovato');
-    }
 
     // Prepara dominio ricerca
     let domain: any[] = [['sale_ok', '=', true]];
@@ -88,7 +73,7 @@ export async function POST(request: NextRequest) {
     // Carica prodotti
     const offset = (page - 1) * limit;
 
-    const productsResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+    const productsResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -126,7 +111,7 @@ export async function POST(request: NextRequest) {
     const products = productsData.result;
 
     // Conta totale
-    const countResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+    const countResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

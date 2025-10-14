@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,35 +39,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Ottieni session_id utente
+    const sessionId = await getOdooSessionId();
+    if (!sessionId) {
+      return NextResponse.json(
+        { success: false, error: 'Sessione non valida. Effettua il login.' },
+        { status: 401 }
+      );
+    }
+
     console.log(`📦 Creating ${products.length} products in Odoo...`);
 
     const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
-    const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
-
-    // STEP 1: Authenticate with Odoo
-    const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          db: odooDb,
-          login: 'paul@lapa.ch',
-          password: 'lapa201180'
-        },
-        id: 1
-      })
-    });
-
-    const authData = await authResponse.json();
-
-    if (authData.error) {
-      console.error('❌ Odoo auth error:', authData.error);
-      return NextResponse.json({ success: false, error: 'Errore autenticazione Odoo' }, { status: 401 });
-    }
-
-    const cookies = authResponse.headers.get('set-cookie');
 
     // STEP 2: Create products one by one
     const results = [];
@@ -143,7 +127,7 @@ export async function POST(request: NextRequest) {
           headers: {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
-            'Cookie': cookies || ''
+            'Cookie': `session_id=${sessionId}`
           },
           body: JSON.stringify({
             jsonrpc: '2.0',
@@ -188,7 +172,7 @@ export async function POST(request: NextRequest) {
                 headers: {
                   'Content-Type': 'application/json',
                   'X-Requested-With': 'XMLHttpRequest',
-                  'Cookie': cookies || ''
+                  'Cookie': `session_id=${sessionId}`
                 },
                 body: JSON.stringify({
                   jsonrpc: '2.0',

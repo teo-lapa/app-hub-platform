@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { picking_id, products, signature, notes, completion_type, photo } = body;
+    const { picking_id, products, signature, notes, completion_type, photo, payment_data } = body;
 
     if (!picking_id) {
       return NextResponse.json({ error: 'picking_id mancante' }, { status: 400 });
@@ -67,6 +67,13 @@ export async function POST(request: NextRequest) {
       messageHtml = '<strong>CONSEGNA COMPLETATA CON FOTO (Cliente assente)</strong><br/>';
     } else if (completion_type === 'payment') {
       messageHtml = '<strong>CONSEGNA COMPLETATA CON INCASSO PAGAMENTO</strong><br/>';
+
+      // Aggiungi informazioni sul pagamento
+      if (payment_data) {
+        const { amount, payment_method } = payment_data;
+        messageHtml += `<strong>Importo:</strong> € ${amount ? amount.toFixed(2) : '0.00'}<br/>`;
+        messageHtml += `<strong>Metodo:</strong> ${payment_method === 'cash' ? 'Contanti' : payment_method === 'card' ? 'Carta' : 'Bonifico'}<br/>`;
+      }
     } else {
       messageHtml = '<strong>CONSEGNA COMPLETATA</strong><br/>';
     }
@@ -110,6 +117,28 @@ export async function POST(request: NextRequest) {
       attachmentIds.push(attachmentId);
       messageHtml += '<strong>📸 Foto consegna allegata</strong><br/>';
       console.log('✅ Foto caricata come allegato ID:', attachmentId);
+    }
+
+    // Upload payment receipt photo as attachment if present
+    if (payment_data && payment_data.receipt_photo) {
+      console.log('💰 [VALIDATE] Caricamento ricevuta pagamento come allegato...');
+
+      // Extract base64 data from receipt photo (remove data:image/jpeg;base64, prefix)
+      const receiptBase64 = payment_data.receipt_photo.split(',')[1];
+
+      // Create ir.attachment
+      const receiptAttachmentId = await callOdoo(cookies, 'ir.attachment', 'create', [{
+        name: `Ricevuta_Pagamento_${picking_id}_${Date.now()}.jpg`,
+        datas: receiptBase64,
+        res_model: 'stock.picking',
+        res_id: picking_id,
+        mimetype: 'image/jpeg',
+        description: 'Ricevuta pagamento alla consegna'
+      }]);
+
+      attachmentIds.push(receiptAttachmentId);
+      messageHtml += '<strong>📸 Ricevuta pagamento allegata</strong><br/>';
+      console.log('✅ Ricevuta pagamento caricata come allegato ID:', receiptAttachmentId);
     }
 
     const messageId = await callOdoo(cookies, 'mail.message', 'create', [{

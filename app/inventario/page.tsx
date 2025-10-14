@@ -148,7 +148,9 @@ export default function InventarioPage() {
         write_date: item.write_date,
         isCounted: item.inventory_quantity !== null && item.inventory_quantity !== undefined,
         isCountedRecent: false
-      }));
+      }))
+      // Ordina alfabeticamente per nome prodotto
+      .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
 
       console.log('📦 [React] Quants caricati (prodotto+lotto):', products.length, products);
 
@@ -171,7 +173,9 @@ export default function InventarioPage() {
           name: p.lot_name || '',
           expiration_date: p.lot_expiration_date || undefined
         } : undefined
-      }));
+      }))
+      // Ordina alfabeticamente per nome prodotto (già ordinato in products, ma per sicurezza)
+      .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
 
       console.log('🏪 [React] Setting locationProducts:', locationProductsData.length);
       setLocationProducts(locationProductsData);
@@ -255,7 +259,9 @@ export default function InventarioPage() {
         }
       }
 
-      const productsArray = Array.from(productMap.values());
+      const productsArray = Array.from(productMap.values())
+        // Ordina alfabeticamente per nome prodotto
+        .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
 
       console.log('📦 [React] ProductsArray creato:', productsArray.length);
       console.log('🔍 [React] Primo prodotto:', productsArray[0]);
@@ -268,7 +274,9 @@ export default function InventarioPage() {
         stockQuantity: p.totalQty || 0,
         countedQuantity: p.inventoryQuantity || p.totalQty || 0,
         difference: p.inventoryDiff || 0
-      }));
+      }))
+      // Ordina alfabeticamente per nome prodotto
+      .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
 
       console.log('🏪 [React] LocationProducts mappati:', locationProductsData.length);
       console.log('📋 [React] Primo locationProduct:', locationProductsData[0]);

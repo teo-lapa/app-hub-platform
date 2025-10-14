@@ -8,8 +8,8 @@
  * Se non disponibile, usa credenziali di fallback (solo per sviluppo)
  */
 
-const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24063382.dev.odoo.com';
-const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24063382';
+const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24517859';
 
 // Credenziali Odoo FALLBACK - solo se utente non loggato
 const ODOO_LOGIN = process.env.ODOO_USERNAME || 'paul@lapa.ch';
@@ -20,7 +20,7 @@ let cachedFallbackSession: { cookie: string; expires: number } | null = null;
 
 /**
  * Autentica con Odoo usando la sessione dell'utente loggato
- * @param userCookies - Cookies dalla richiesta (contiene odoo_session se utente loggato)
+ * @param userCookies - Cookies dalla richiesta (contiene odoo_session_id se utente loggato)
  * @returns {Promise<{cookies: string | null, uid: number}>}
  */
 export async function getOdooSession(userCookies?: string) {
@@ -31,7 +31,47 @@ export async function getOdooSession(userCookies?: string) {
   if (userCookies) {
     console.log('🍪 [ODOO-AUTH] Trovati cookies utente');
 
-    // Prima prova a cercare il cookie odoo_session (salvato dal login)
+    // NUOVO: Prima prova a cercare il cookie odoo_session_id (salvato dal login NEW SYSTEM)
+    const odooSessionIdMatch = userCookies.match(/odoo_session_id=([^;]+)/);
+
+    if (odooSessionIdMatch) {
+      const sessionId = odooSessionIdMatch[1];
+      console.log('✅ [ODOO-AUTH] Trovata sessione Odoo dal cookie odoo_session_id (NEW SYSTEM)');
+      const odooCookie = `session_id=${sessionId}`;
+
+      // Estrai UID dalla sessione Odoo chiamando l'endpoint /web/session/get_session_info
+      try {
+        const sessionInfoResponse = await fetch(`${ODOO_URL}/web/session/get_session_info`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': odooCookie
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {},
+            id: Math.floor(Math.random() * 1000000000)
+          })
+        });
+
+        const sessionInfo = await sessionInfoResponse.json();
+
+        if (sessionInfo.result && sessionInfo.result.uid) {
+          const uid = sessionInfo.result.uid;
+          console.log('✅ [ODOO-AUTH] UID estratto dalla sessione Odoo:', uid);
+          return { cookies: odooCookie, uid };
+        } else {
+          console.warn('⚠️ [ODOO-AUTH] Nessun UID nella risposta di session_info, uso fallback');
+          return { cookies: odooCookie, uid: 1 };
+        }
+      } catch (e) {
+        console.warn('⚠️ [ODOO-AUTH] Errore chiamata session_info:', e);
+        return { cookies: odooCookie, uid: 1 };
+      }
+    }
+
+    // FALLBACK: Prova a cercare il cookie odoo_session (vecchio formato JSON)
     const odooSessionMatch = userCookies.match(/odoo_session=([^;]+)/);
 
     if (odooSessionMatch) {
@@ -41,7 +81,7 @@ export async function getOdooSession(userCookies?: string) {
         const sessionId = sessionData.session_id;
 
         if (sessionId) {
-          console.log('✅ [ODOO-AUTH] Trovata sessione Odoo dal cookie odoo_session');
+          console.log('✅ [ODOO-AUTH] Trovata sessione Odoo dal cookie odoo_session (OLD SYSTEM)');
           // Costruisci il cookie nel formato che Odoo si aspetta
           const odooCookie = `session_id=${sessionId}`;
           return { cookies: odooCookie, uid: sessionData.uid || 1 };
@@ -58,13 +98,19 @@ export async function getOdooSession(userCookies?: string) {
       return { cookies: userCookies, uid: 1 };
     }
 
-    console.error('❌ [ODOO-AUTH] Nessuna sessione Odoo trovata nei cookies');
+    console.warn('⚠️ [ODOO-AUTH] Nessuna sessione Odoo trovata nei cookies');
   } else {
-    console.error('❌ [ODOO-AUTH] userCookies è undefined o vuoto');
+    console.warn('⚠️ [ODOO-AUTH] userCookies è undefined o vuoto');
   }
 
-  // Se non ci sono cookies validi, usa autenticazione fallback
-  console.warn('⚠️ [ODOO-AUTH] Nessuna sessione utente, uso credenziali fallback');
+  // Se non ci sono cookies validi, USA CREDENZIALI DI FALLBACK
+  console.log('🔑 [ODOO-AUTH] Usando credenziali di fallback:', ODOO_LOGIN);
+
+  // Controlla cache
+  if (cachedFallbackSession && cachedFallbackSession.expires > Date.now()) {
+    console.log('✅ [ODOO-AUTH] Usando sessione fallback cached');
+    return { cookies: cachedFallbackSession.cookie, uid: 1 };
+  }
 
   // Autentica con credenziali fallback
   try {
@@ -86,7 +132,8 @@ export async function getOdooSession(userCookies?: string) {
     const authData = await authResponse.json();
 
     if (authData.error || !authData.result?.uid) {
-      throw new Error('Autenticazione fallback fallita');
+      console.error('❌ [ODOO-AUTH] Autenticazione fallback fallita:', authData.error);
+      throw new Error('Autenticazione Odoo fallita');
     }
 
     // Estrai il cookie dalla risposta
@@ -94,17 +141,23 @@ export async function getOdooSession(userCookies?: string) {
     const sessionMatch = setCookie?.match(/session_id=([^;]+)/);
 
     if (!sessionMatch) {
-      throw new Error('Nessun session_id ricevuto');
+      throw new Error('Nessun session_id ricevuto da Odoo');
     }
 
-    const newCookie = `session_id=${sessionMatch[1]}`;
-    console.log('✅ [ODOO-AUTH] Autenticazione fallback riuscita');
+    const sessionCookie = `session_id=${sessionMatch[1]}`;
 
-    return { cookies: newCookie, uid: authData.result.uid };
+    // Salva in cache per 5 minuti
+    cachedFallbackSession = {
+      cookie: sessionCookie,
+      expires: Date.now() + 5 * 60 * 1000
+    };
 
-  } catch (fallbackError: any) {
-    console.error('❌ [ODOO-AUTH] Autenticazione fallback fallita:', fallbackError);
-    throw new Error('Impossibile autenticarsi con Odoo. Verifica le credenziali.');
+    console.log('✅ [ODOO-AUTH] Autenticazione fallback riuscita! UID:', authData.result.uid);
+    return { cookies: sessionCookie, uid: authData.result.uid };
+
+  } catch (error: any) {
+    console.error('❌ [ODOO-AUTH] Errore autenticazione fallback:', error);
+    throw error;
   }
 }
 
