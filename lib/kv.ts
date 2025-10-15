@@ -16,6 +16,9 @@ export interface AppVisibility {
   appId: string;
   excludedUsers: string[];      // User IDs esclusi
   excludedCustomers: string[];  // Customer IDs esclusi
+  visible?: boolean;            // App visibile o nascosta
+  visibilityGroup?: string;     // Gruppo visibilità (all, internal, portal, none)
+  developmentStatus?: 'in_sviluppo' | 'pronta';  // Stato sviluppo app
 }
 
 /**

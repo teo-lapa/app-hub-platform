@@ -23,10 +23,11 @@ async function loadVisibilitySettings(): Promise<Record<string, AppVisibilitySet
 
     allVisibilities.forEach(vis => {
       settings[vis.appId] = {
-        visible: true,
-        visibilityGroup: 'all',
+        visible: vis.visible !== undefined ? vis.visible : true,
+        visibilityGroup: vis.visibilityGroup || 'all',
         excludedUsers: vis.excludedUsers || [],
-        excludedCustomers: vis.excludedCustomers || []
+        excludedCustomers: vis.excludedCustomers || [],
+        developmentStatus: vis.developmentStatus || 'pronta'
       };
     });
 
@@ -40,11 +41,14 @@ async function loadVisibilitySettings(): Promise<Record<string, AppVisibilitySet
 // Salva le impostazioni di visibilità
 async function saveVisibilitySettings(settings: Record<string, AppVisibilitySettings>): Promise<boolean> {
   try {
-    // Salva ogni app nel Vercel KV
+    // Salva ogni app nel Vercel KV con TUTTI i campi
     for (const [appId, setting] of Object.entries(settings)) {
       await saveAppVisibility(appId, {
         excludedUsers: setting.excludedUsers || [],
-        excludedCustomers: setting.excludedCustomers || []
+        excludedCustomers: setting.excludedCustomers || [],
+        visible: setting.visible,
+        visibilityGroup: setting.visibilityGroup,
+        developmentStatus: setting.developmentStatus  // ✅ Ora salva anche questo!
       });
     }
     console.log('✅ Impostazioni salvate in Vercel KV');
