@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAPA PWA Icon Generator - Logo Dorato</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        h1 {
+            color: #fff;
+            margin: 20px 0;
+        }
+        .info {
+            color: #10b981;
+            background: #2a2a3e;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 800px;
+            text-align: center;
+        }
+        .canvas-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .canvas-item {
+            background: #2a2a3e;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .canvas-item h3 {
+            color: #d4af37;
+            margin-top: 10px;
+        }
+        canvas {
+            border: 2px solid #d4af37;
+            border-radius: 10px;
+        }
+        button {
+            background: #d4af37;
+            color: #1a1a2e;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #b8941f;
+        }
+        #sourceImage {
+            max-width: 300px;
+            border: 3px solid #d4af37;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏆 LAPA PWA Icon Generator - Logo Elegante Oro</h1>
+
+    <div class="info">
+        <strong>Generatore Icone PWA dal Logo Dorato</strong><br>
+        Usa il logo elegante oro come icona fissa per la PWA installata<br>
+        Clicca "Download" per scaricare e sostituire le icone in /public/icons/
+    </div>
+
+    <img id="sourceImage" src="/logos/logo-sunday.png" alt="Logo Oro" crossorigin="anonymous">
+
+    <div class="canvas-container" id="canvasContainer"></div>
+
+    <script>
+        const sizes = [
+            { size: 72, name: 'icon-72x72' },
+            { size: 96, name: 'icon-96x96' },
+            { size: 128, name: 'icon-128x128' },
+            { size: 144, name: 'icon-144x144' },
+            { size: 152, name: 'icon-152x152' },
+            { size: 192, name: 'icon-192x192' },
+            { size: 384, name: 'icon-384x384' },
+            { size: 512, name: 'icon-512x512' }
+        ];
+
+        const sourceImg = document.getElementById('sourceImage');
+
+        sourceImg.onload = () => {
+            sizes.forEach(({ size, name }) => {
+                const container = document.getElementById('canvasContainer');
+
+                const item = document.createElement('div');
+                item.className = 'canvas-item';
+
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                canvas.id = name;
+
+                const ctx = canvas.getContext('2d');
+
+                // Sfondo trasparente o bianco
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, size, size);
+
+                // Draw image centered and scaled
+                const scale = Math.min(size / sourceImg.width, size / sourceImg.height) * 0.9; // 90% per padding
+                const scaledWidth = sourceImg.width * scale;
+                const scaledHeight = sourceImg.height * scale;
+                const x = (size - scaledWidth) / 2;
+                const y = (size - scaledHeight) / 2;
+
+                ctx.drawImage(sourceImg, x, y, scaledWidth, scaledHeight);
+
+                const title = document.createElement('h3');
+                title.textContent = `${size}x${size}px`;
+
+                const downloadBtn = document.createElement('button');
+                downloadBtn.textContent = `Download ${name}.png`;
+                downloadBtn.onclick = () => {
+                    const link = document.createElement('a');
+                    link.download = `${name}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                };
+
+                item.appendChild(canvas);
+                item.appendChild(title);
+                item.appendChild(downloadBtn);
+                container.appendChild(item);
+            });
+
+            console.log('✅ PWA Icons Generated from Gold Logo!');
+        };
+
+        // Fallback: try to load from public folder
+        sourceImg.onerror = () => {
+            console.error('Could not load source image');
+            sourceImg.src = '../public/logos/logo-sunday.png';
+        };
+    </script>
+</body>
+</html>

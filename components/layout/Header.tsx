@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useAppStore } from '@/lib/store/appStore';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { LapaLogo } from '@/components/ui/LapaLogo';
+import DynamicLogo from '@/app/components/DynamicLogo';
 import { Search, LogOut, User, Menu } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -25,7 +25,45 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <LapaLogo size="lg" showText={true} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, type: 'spring' }}
+              className="flex items-center gap-3"
+            >
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative flex-shrink-0"
+              >
+                {/* Logo più piccolo su mobile (48px), normale su desktop (64px) */}
+                <div className="block sm:hidden">
+                  <DynamicLogo size={48} className="" />
+                </div>
+                <div className="hidden sm:block">
+                  <DynamicLogo size={64} className="" />
+                </div>
+              </motion.div>
+
+              <div className="flex flex-col">
+                <motion.h1
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="font-bold text-red-600 dark:text-red-400 text-base sm:text-xl"
+                >
+                  LAPA
+                </motion.h1>
+                <motion.p
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-xs text-muted-foreground font-medium hidden sm:block"
+                >
+                  Fornitore Ristoranti
+                </motion.p>
+              </div>
+            </motion.div>
           </div>
 
           {/* Search Bar - Hidden on mobile */}

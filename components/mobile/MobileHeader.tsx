@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, MoreVertical } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { LapaLogo } from '@/components/ui/LapaLogo';
+import DynamicLogo from '@/app/components/DynamicLogo';
 
 interface MobileHeaderProps {
   title?: string;
@@ -37,12 +37,26 @@ export function MobileHeader({ title, showBackButton = false, showLogo = false, 
             )}
 
             {showLogo ? (
-              <LapaLogo size="md" showText={true} />
-            ) : (
+              <div className="flex items-center gap-2">
+                <DynamicLogo size={40} />
+                <div>
+                  <div className="text-sm font-bold text-red-600 dark:text-red-400">LAPA</div>
+                  <div className="text-xs text-muted-foreground">Fornitore</div>
+                </div>
+              </div>
+            ) : title ? (
               <div className="flex-1">
                 <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                   {title}
                 </h1>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <DynamicLogo size={40} />
+                <div>
+                  <div className="text-sm font-bold text-red-600 dark:text-red-400">LAPA</div>
+                  <div className="text-xs text-muted-foreground">Fornitore</div>
+                </div>
               </div>
             )}
           </div>

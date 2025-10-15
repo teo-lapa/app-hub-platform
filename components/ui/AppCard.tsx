@@ -136,26 +136,19 @@ export function AppCard({ app, index }: AppCardProps) {
           />
         </motion.button>
 
-        {/* Badge Status */}
-        <div className="flex items-center justify-between mb-4">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getBadgeColor()}`}>
-            {getBadgeText()}
-          </span>
-
-          {/* Indicatori speciali */}
-          <div className="flex items-center gap-1">
-            {app.isNew && (
-              <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-              >
-                <Sparkles className="w-4 h-4 text-yellow-400" />
-              </motion.div>
-            )}
-            {app.isPopular && (
-              <Star className="w-4 h-4 text-orange-400 fill-current" />
-            )}
-          </div>
+        {/* Indicatori speciali - Solo icone senza badge testuali */}
+        <div className="flex items-center justify-end mb-4 gap-1">
+          {app.isNew && (
+            <motion.div
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+            >
+              <Sparkles className="w-4 h-4 text-yellow-400" />
+            </motion.div>
+          )}
+          {app.isPopular && (
+            <Star className="w-4 h-4 text-orange-400 fill-current" />
+          )}
         </div>
 
         {/* Icona App */}

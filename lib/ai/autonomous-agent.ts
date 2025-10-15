@@ -105,7 +105,8 @@ class OdooDataLoader {
   private async rpc(model: string, method: string, args: any[]): Promise<any> {
     await this.authenticate();
 
-    const response = await fetch(`${this.odooUrl}/web/dataset/call_kw`, {
+    // Per sviluppo locale: disabilita verifica SSL se necessario
+    const fetchOptions: any = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -122,7 +123,17 @@ class OdooDataLoader {
         },
         id: Math.floor(Math.random() * 1000000)
       })
-    });
+    };
+
+    // Disabilita verifica SSL in sviluppo locale
+    if (process.env.NODE_ENV === 'development') {
+      const https = await import('https');
+      fetchOptions.agent = new https.Agent({
+        rejectUnauthorized: false
+      });
+    }
+
+    const response = await fetch(`${this.odooUrl}/web/dataset/call_kw`, fetchOptions);
 
     const data = await response.json();
 

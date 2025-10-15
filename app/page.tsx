@@ -13,6 +13,7 @@ import { MobileNavigation } from '@/components/mobile/MobileNavigation';
 import { MobileHeader } from '@/components/mobile/MobileHeader';
 import { PullToRefresh } from '@/components/mobile/PullToRefresh';
 import { InstallButton } from '@/components/ui/InstallButton';
+import JokeBanner from './components/JokeBanner';
 
 export default function HomePage() {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
@@ -282,31 +283,16 @@ export default function HomePage() {
       {/* Main Content with Pull-to-Refresh */}
       <PullToRefresh onRefresh={handleRefresh} className="flex-1 overflow-y-auto">
         <main className="container-mobile md:max-w-7xl md:mx-auto md:px-4 md:sm:px-6 md:lg:px-8 py-4 md:py-8 pb-20 md:pb-8 min-h-full">
-          {/* Welcome Banner */}
+          {/* Joke Banner with Food News */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mobile-card md:glass-strong md:rounded-3xl p-6 md:p-8 mb-6 md:mb-8 border border-white/20 text-center relative overflow-hidden"
+            className="mb-6 md:mb-8"
           >
-            <div className="absolute inset-0 gradient-primary opacity-5" />
-            <div className="relative z-10">
-              <motion.div
-                animate={{ rotate: [0, -10, 10, 0] }}
-                transition={{ repeat: Infinity, duration: 6 }}
-                className="text-3xl md:text-4xl mb-4"
-              >
-                👋
-              </motion.div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">
-                Bentornato, {user?.name}!
-              </h1>
-              <p className="text-muted-foreground max-w-2xl mx-auto text-mobile-sm md:text-base">
-                Benvenuto nella piattaforma LAPA - fornitore alimentare per ristoranti.
-                Il tuo piano <span className="font-semibold capitalize text-red-400">
-                  {user?.role?.replace('_', ' ')}
-                </span> ti dà accesso alle funzionalità dedicate.
-              </p>
-            </div>
+            <JokeBanner
+              userName={user?.name}
+              userRole={user?.role?.replace('_', ' ')}
+            />
           </motion.div>
 
           {/* <CategoryFilter /> */}
