@@ -414,6 +414,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-10-09'),
     updatedAt: new Date('2025-10-09'),
   },
+  {
+    id: 's24',
+    name: 'LAPA Smart Ordering [P]',
+    description: '🚀 AI-Powered Order Management - Dashboard intelligente con predizioni AI per non rimanere mai senza prodotti. Pattern settimanali, alert automatici e creazione ordini ottimizzata.',
+    icon: '🤖',
+    badge: 'PRO',
+    category: 'Acquisti',
+    url: '/ordini-smart',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-10-15'),
+    updatedAt: new Date('2025-10-15'),
+  },
 ];
 
 // Combina tutte le app
