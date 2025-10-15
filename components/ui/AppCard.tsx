@@ -45,7 +45,8 @@ export function AppCard({ app, index }: AppCardProps) {
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Evita di aprire l'app quando clicchi sulla stella
-    toggleFavorite(app.id);
+    const userId = user?.id || user?.email; // Usa ID o email come identificatore
+    toggleFavorite(app.id, userId);
   };
 
   const getBadgeColor = () => {

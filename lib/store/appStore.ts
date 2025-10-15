@@ -2,24 +2,32 @@ import { create } from 'zustand';
 import { AppStore, App } from '@/lib/types';
 import { allApps as mockApps } from '@/lib/data/apps-with-indicators';
 
-// Carica preferiti da localStorage
-const loadFavorites = (): string[] => {
-  if (typeof window === 'undefined') return [];
+// Carica preferiti da Vercel KV tramite API
+const loadFavoritesFromAPI = async (userId: string): Promise<string[]> => {
   try {
-    const saved = localStorage.getItem('favoriteApps');
-    return saved ? JSON.parse(saved) : [];
-  } catch {
+    const response = await fetch(`/api/user/favorites?userId=${userId}`);
+    const data = await response.json();
+
+    if (data.success) {
+      return data.favorites || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('❌ Error loading favorites from API:', error);
     return [];
   }
 };
 
-// Salva preferiti in localStorage
-const saveFavorites = (favorites: string[]) => {
-  if (typeof window === 'undefined') return;
+// Salva preferiti su Vercel KV tramite API
+const saveFavoritesToAPI = async (userId: string, favorites: string[]) => {
   try {
-    localStorage.setItem('favoriteApps', JSON.stringify(favorites));
+    await fetch('/api/user/favorites', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, favorites })
+    });
   } catch (error) {
-    console.error('Error saving favorites:', error);
+    console.error('❌ Error saving favorites to API:', error);
   }
 };
 
@@ -29,7 +37,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   selectedCategory: 'Tutti',
   searchQuery: '',
   showUpgradeModal: false,
-  favoriteApps: loadFavorites(),
+  favoriteApps: [],  // Inizia vuoto, verrà caricato con loadUserFavorites()
 
   setApps: (apps: App[]) => {
     set({ apps });
@@ -50,15 +58,27 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ showUpgradeModal: show });
   },
 
-  toggleFavorite: (appId: string) => {
+  // Carica i preferiti dell'utente dall'API
+  loadUserFavorites: async (userId: string) => {
+    const favorites = await loadFavoritesFromAPI(userId);
+    set({ favoriteApps: favorites });
+    get().filterApps();
+  },
+
+  // Toggle preferito e salva su API
+  toggleFavorite: async (appId: string, userId?: string) => {
     const { favoriteApps } = get();
     const newFavorites = favoriteApps.includes(appId)
       ? favoriteApps.filter(id => id !== appId)
       : [...favoriteApps, appId];
 
-    saveFavorites(newFavorites);
     set({ favoriteApps: newFavorites });
     get().filterApps(); // Rifiltra per aggiornare l'ordinamento
+
+    // Salva su API se userId è disponibile
+    if (userId) {
+      await saveFavoritesToAPI(userId, newFavorites);
+    }
   },
 
   isFavorite: (appId: string) => {

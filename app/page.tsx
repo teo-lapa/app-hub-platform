@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/lib/store/authStore';
+import { useAppStore } from '@/lib/store/appStore';
 import { Header } from '@/components/layout/Header';
 // import { CategoryFilter } from '@/components/layout/CategoryFilter';
 import { AppGrid } from '@/components/layout/AppGrid';
@@ -17,12 +18,21 @@ import JokeBanner from './components/JokeBanner';
 
 export default function HomePage() {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const { loadUserFavorites } = useAppStore();
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Carica i preferiti quando l'utente è autenticato
+  useEffect(() => {
+    if (user?.id || user?.email) {
+      const userId = user.id || user.email;
+      loadUserFavorites(userId);
+    }
+  }, [user, loadUserFavorites]);
 
   // Ricarica dati quando l'app torna in focus o viene ricaricata
   useEffect(() => {

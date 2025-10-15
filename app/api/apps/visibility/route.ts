@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { allApps } from '@/lib/data/apps-with-indicators';
+import { saveAppVisibility, getAppVisibility, getAllAppVisibilities } from '@/lib/kv';
 
 export const dynamic = 'force-dynamic';
-
-const VISIBILITY_KEY = 'app_hub:visibility_settings';
 
 // Tipi di visibilità per gruppo
 export type VisibilityGroup = 'all' | 'internal' | 'portal' | 'none';
@@ -11,21 +10,28 @@ export type VisibilityGroup = 'all' | 'internal' | 'portal' | 'none';
 export interface AppVisibilitySettings {
   visible: boolean;
   visibilityGroup: VisibilityGroup;
+  excludedUsers?: string[];      // Array di user IDs esclusi specificamente
+  excludedCustomers?: string[];  // Array di customer IDs esclusi specificamente
 }
-
-// Storage temporaneo in memoria (per sviluppo locale)
-// TODO: In produzione, usare Vercel KV o database
-let memoryStorage: Record<string, AppVisibilitySettings> = {};
 
 // Carica le impostazioni di visibilità
 async function loadVisibilitySettings(): Promise<Record<string, AppVisibilitySettings>> {
   try {
-    // Per ora usa memoria locale
-    // In produzione: await kv.get<Record<string, AppVisibilitySettings>>(VISIBILITY_KEY);
-    return memoryStorage || {};
+    const allVisibilities = await getAllAppVisibilities();
+    const settings: Record<string, AppVisibilitySettings> = {};
+
+    allVisibilities.forEach(vis => {
+      settings[vis.appId] = {
+        visible: true,
+        visibilityGroup: 'all',
+        excludedUsers: vis.excludedUsers || [],
+        excludedCustomers: vis.excludedCustomers || []
+      };
+    });
+
+    return settings;
   } catch (error) {
-    console.error('Errore lettura visibility settings:', error);
-    // Default: tutte le app visibili per tutti
+    console.error('⚠️ Errore lettura visibility settings da KV:', error);
     return {};
   }
 }
@@ -33,13 +39,17 @@ async function loadVisibilitySettings(): Promise<Record<string, AppVisibilitySet
 // Salva le impostazioni di visibilità
 async function saveVisibilitySettings(settings: Record<string, AppVisibilitySettings>): Promise<boolean> {
   try {
-    // Per ora salva in memoria locale
-    // In produzione: await kv.set(VISIBILITY_KEY, settings);
-    memoryStorage = settings;
-    console.log('✅ Impostazioni salvate in memoria locale:', settings);
+    // Salva ogni app nel Vercel KV
+    for (const [appId, setting] of Object.entries(settings)) {
+      await saveAppVisibility(appId, {
+        excludedUsers: setting.excludedUsers || [],
+        excludedCustomers: setting.excludedCustomers || []
+      });
+    }
+    console.log('✅ Impostazioni salvate in Vercel KV');
     return true;
   } catch (error) {
-    console.error('Errore salvataggio visibility settings:', error);
+    console.error('❌ Errore salvataggio visibility settings in KV:', error);
     return false;
   }
 }
