@@ -86,6 +86,12 @@ export async function GET(request: Request) {
 
     // Ritorna articoli esistenti
     console.log('📰 [FOOD-NEWS] Returning existing articles');
+
+    // TypeScript safety check (articlesData è già garantito non-null qui per logica)
+    if (!articlesData) {
+      throw new Error('Articles data is null after validation');
+    }
+
     return NextResponse.json({
       success: true,
       articles: articlesData.articles,
