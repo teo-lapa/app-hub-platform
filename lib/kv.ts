@@ -12,12 +12,14 @@ import { kv } from '@vercel/kv';
 // APP VISIBILITY (Chi può vedere quali app)
 // ============================================
 
+export type VisibilityGroup = 'all' | 'internal' | 'portal' | 'none';
+
 export interface AppVisibility {
   appId: string;
   excludedUsers: string[];      // User IDs esclusi
   excludedCustomers: string[];  // Customer IDs esclusi
   visible?: boolean;            // App visibile o nascosta
-  visibilityGroup?: string;     // Gruppo visibilità (all, internal, portal, none)
+  visibilityGroup?: VisibilityGroup;  // Gruppo visibilità
   developmentStatus?: 'in_sviluppo' | 'pronta';  // Stato sviluppo app
 }
 
