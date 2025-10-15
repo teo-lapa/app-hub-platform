@@ -1,0 +1,223 @@
+
+========================================
+LAPA FOOD BUSINESS ANALYSIS
+========================================
+
+Connecting to Odoo: https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com
+Database: lapadevadmin-lapa-v2-main-7268478
+
+
+Authenticating with Odoo...
+✓ Authenticated successfully! UID: 7
+✓ User: Paul Teodorescu
+✓ Session established
+
+
+Fetching sales data from last 120 days...
+Date from: 2025-06-17
+✓ Found 10000 sale order lines
+
+
+========================================
+ANALYZING SALES PATTERNS
+========================================
+
+
+
+========================================
+TOP PRODUCTS IDENTIFICATION
+========================================
+
+Found 234 products with >= 10 orders
+
+TOP 30 PRODUCTS BY QUANTITY:
+
+Rank | Product Name | Total Qty | Orders | Avg Daily | Variability | Preferred Days
+------------------------------------------------------------------------------------------------------------------------
+   1 | CARTONI PIZZA  330X330X40 CON GUSTO LAPA |    14000.0 |      24 |     229.51 |    54% | Dom
+   2 | CARTONI PIZZA ZIGRINATI ALL'INTERNO 33X3 |     4802.0 |      38 |      73.88 |    83% | Mar, Ven
+   3 | FIORDILATTE JULIENNE TAGLIO NAPOLI VASC  |     3749.5 |     187 |      57.68 |    62% | Mar
+   4 | CARTONI PIZZA PERSONALIZZATO MOD H 32x32 |     3701.0 |      20 |      56.94 |    55% | Lun, Mar
+   5 | FIORDILATTE JULIENNE LINEA PROFESSIONALE |     3457.5 |     149 |      52.39 |    74% | Mar, Mer, Gio
+   6 | CARTONI PIZZA VESUVIO BIA 33X33X3.5 100P |     2902.0 |      14 |      47.57 |   115% | Mar
+   7 | POMODORI PELATI 6X2500G SICA BLU SI      |     2663.0 |     136 |      40.97 |    87% | Mar, Gio
+   8 | POMODORI PELATI 6X2500G LITO STRIANESE R |     2196.0 |      60 |      33.78 |   235% | Mer, Sab
+   9 | LATTE INTERO VOLLMILCH UHT CH 1L 12PZ CO |     1898.0 |      71 |      29.20 |    79% | Mar, Ven
+  10 | SEMOLA RIMACINATA FINE KNOEPFLIDUNST 1KG |     1812.0 |      87 |      27.88 |    85% | Mar, Ven
+  11 | TONNO IN OLIO DI OLIVA LATTA 70G 96PZ CR |     1187.0 |      15 |      20.47 |    36% | Lun, Mar, Gio
+  12 | GRANA PADANO DOP GRATTUGIATO FRESCO 1KG  |     1136.0 |     177 |      17.48 |    70% | Mar, Gio
+  13 | MASCARPONE 500G 6PZ CRT AUR              |     1066.0 |     119 |      16.40 |    68% | Lun, Mar, Gio
+  14 | PANNA INTERA 35% VOLLRAHM 12L CRT PR     |     1019.0 |      75 |      15.68 |    66% | Mar, Ven
+  15 | FIORDILATTE BOCCONCINO PER PIZZERIA 500G |      958.0 |      18 |      14.97 |    55% | Mar
+  16 | Cuor di Pizza Pizzalux MozzaMix Julienne |      947.0 |      44 |      14.57 |    86% | Lun, Mar
+  17 | FARINA 00 VERACE SACCO CONF 25KG MEY     |      862.0 |     198 |      13.26 |    65% | Lun, Ven
+  18 | TONNO IN OLIO DI OLIVA LATTA 160G48PZ CR |      775.0 |      19 |      12.70 |    42% | Lun, Gio, Ven
+  19 | ZAFFERANO BUSTINA 0.125G 75PZ CRT RIS    |      753.0 |      10 |      12.76 |    50% | Mar
+  20 | CARTA IGIENICA 60PZ CONF AL JIR          |      713.0 |      21 |      14.55 |    63% | Ven
+  21 | MOZZARELLA DI BUFALA CAMPANA DOP 125G 1. |      625.6 |     211 |       9.63 |    62% | Mar, Mer, Gio
+  22 | GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10K |      552.0 |      96 |       8.49 |    98% | Mar, Mer
+  23 | SEMOLA RIMACINATA 5 STAGIONI PZ 10KG AF  |      525.0 |      46 |       8.20 |    71% | Mar, Ven
+  24 | BURRATA 2X125G VASC 250G 6PZ 1.5KG CRT T |      490.3 |     206 |       7.54 |    68% | Lun, Mar, Mer, Gio
+  25 | PANNA VEGETALE BIANCALIEVE CONF 1L 12L C |      459.0 |      32 |       7.65 |    66% | Mer, Gio, Ven
+  26 | FUNGHI PORCINI CONG. INTERI EXTRA TOP BU |      444.0 |      65 |       6.94 |    99% | Gio
+  27 | POLPA FINE DI POMODORO TERMO 4.050KG SIC |      432.0 |      75 |       6.65 |    79% | Lun, Mar, Mer, Gio, Ven
+  28 | RISO CARNAROLI ASTUCCIO 1KG 12PZ CRT RIS |      398.0 |      33 |       6.42 |    55% | Mar, Gio
+  29 | PINSA ROMANA BODEN GOURMET LARGE 235G 23 |      338.0 |      13 |       5.54 |    76% | Mar
+  30 | ALTA CREMA PISTACCHIO 20% PZ 8KG MIO     |      308.0 |      40 |       5.13 |    44% | Mar, Ven
+
+Fetching info for 234 products...
+✓ Found 233 products
+
+
+========================================
+STOCK CRITICALITY ANALYSIS
+========================================
+
+CRITICAL PRODUCTS (< 5 days of stock):
+
+Code     | Product Name                    | Stock | Avg Daily | Days Left | Reorder Point
+----------------------------------------------------------------------------------------------------
+N/A      | FUNGHI PORCINI CONG. INTERI EX |    0.0 |       6.9 |       0.0 |          48.6
+N/A      | TUORLO D UOVO ROSSO PIU PASTAG |    0.0 |       4.0 |       0.0 |          27.9
+Delivery | [Delivery_007] Free delivery c |    0.0 |       3.4 |       0.0 |          23.9
+N/A      | FARINA 00 CAPUTO ROSSA 25KG FE |    6.0 |       4.4 |       1.4 |          30.8
+N/A      | FIORDILATTE BOCCONCINO PER PIZ |   45.0 |      15.0 |       3.0 |         104.8
+N/A      | SPAGHETTI ALLA CHITARRA PASTA  |   16.0 |       4.9 |       3.3 |          34.1
+N/A      | BURRATA 2X125G VASC 250G 6PZ 1 |   28.3 |       7.5 |       3.7 |          52.8
+
+
+PRODUCTS TO ORDER SOON (5-10 days of stock):
+
+Code     | Product Name                    | Stock | Avg Daily | Days Left | Reorder Point
+----------------------------------------------------------------------------------------------------
+N/A      | FIORDILATTE JULIENNE LINEA PRO |  270.0 |      52.4 |       5.2 |         366.7
+N/A      | FIORDILATTE JULIENNE TAGLIO NA |  330.0 |      57.7 |       5.7 |         403.8
+N/A      | Cuor di Pizza Pizzalux MozzaMi |   93.0 |      14.6 |       6.4 |         102.0
+N/A      | MOZZARELLA DI BUFALA CAMPANA D |   61.5 |       9.6 |       6.4 |          67.4
+N/A      | TAGLIATELLE PASTA FRESCA ALL'U |   27.1 |       3.7 |       7.3 |          26.1
+N/A      | GNOCCHI DI PATATE RUMMO PZ 500 |   28.0 |       3.8 |       7.4 |          26.3
+N/A      | FARINA 00 CAPUTO BLU PIZZERIA  |   34.0 |       3.9 |       8.7 |          27.4
+N/A      | BURRO VORZUGSBUTTER ZUEGER 1KG |   34.0 |       3.8 |       8.9 |          26.7
+N/A      | GRANA PADANO DOP SCAGLIE FRESC |   77.0 |       8.5 |       9.1 |          59.4
+N/A      | FARINA 00 VERACE SACCO CONF 25 |  130.0 |      13.3 |       9.8 |          92.8
+
+
+========================================
+INTERESTING PATTERNS DISCOVERED
+========================================
+
+1. MOST STABLE PRODUCTS (consistent sales):
+
+   - MISTO SCOGLIO IQF CONG PESO SENZA GLASSATURA CRT 3.35 KG FREDD
+     Avg: 1.3/day, Variability: 28%
+
+
+2. VOLATILE PRODUCTS (with peaks):
+
+   - CARTONI PIZZA ZIGRINATI ALL'INTERNO 33X33X3,5 100PZ CRT SIFA
+     Avg: 73.9/day, Variability: 83%
+     Preferred days: Mar, Ven
+
+   - CARTONI PIZZA VESUVIO BIA 33X33X3.5 100PZ CONF LINER
+     Avg: 47.6/day, Variability: 115%
+     Preferred days: Mar
+
+   - POMODORI PELATI 6X2500G SICA BLU SI
+     Avg: 41.0/day, Variability: 87%
+     Preferred days: Mar, Gio
+
+   - POMODORI PELATI 6X2500G LITO STRIANESE REG
+     Avg: 33.8/day, Variability: 235%
+     Preferred days: Mer, Sab
+
+   - SEMOLA RIMACINATA FINE KNOEPFLIDUNST 1KG 10CONF MEY
+     Avg: 27.9/day, Variability: 85%
+     Preferred days: Mar, Ven
+
+
+3. WEEKDAY-FOCUSED PRODUCTS:
+
+   - CARTONI PIZZA ZIGRINATI ALL'INTERNO 33X33X3,5 100PZ CRT SIFA
+     Weekday/Weekend ratio: 11.0x more on weekdays
+
+   - FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB
+     Weekday/Weekend ratio: 10.0x more on weekdays
+
+   - CARTONI PIZZA PERSONALIZZATO MOD H 32x32x4 PEPPINO PIZZERIA PZ LIN 
+     Weekday/Weekend ratio: 3700.0x more on weekdays
+
+   - FIORDILATTE JULIENNE LINEA PROFESSIONALE VASC DA 2.5KG KG10 4PZ CRT TAMB
+     Weekday/Weekend ratio: 20.6x more on weekdays
+
+   - CARTONI PIZZA VESUVIO BIA 33X33X3.5 100PZ CONF LINER
+     Weekday/Weekend ratio: 13.5x more on weekdays
+
+
+4. TREND ANALYSIS:
+
+   DECLINING PRODUCTS:
+
+   - FIORDILATTE JULIENNE LINEA PROFESSIONALE VASC DA 2.5KG KG10 4PZ CRT TAMB
+     Decline: -28.4% (from 76.3/day to 54.6/day)
+
+   - POMODORI PELATI 6X2500G SICA BLU SI
+     Decline: -30.5% (from 59.5/day to 41.3/day)
+
+   - POMODORI PELATI 6X2500G LITO STRIANESE REG
+     Decline: -21.2% (from 74.7/day to 58.9/day)
+
+
+
+========================================
+DASHBOARD DESIGN SUGGESTIONS
+========================================
+
+Based on the analysis, here are key features for your dashboard:
+
+1. REAL-TIME ALERTS PANEL:
+   - Red alerts for products with < 5 days stock
+   - Yellow warnings for products with 5-10 days stock
+   - Auto-calculate optimal reorder quantities based on avg daily sales
+
+2. TOP MOVERS SECTION:
+   - Display top 20-30 products by daily movement
+   - Show trend indicators (growing/stable/declining)
+   - Include variability indicators (stable vs volatile)
+
+3. SALES PATTERNS VISUALIZATION:
+   - Heatmap of weekday/weekend patterns
+   - Time-series graphs showing daily trends
+   - Seasonal indicators (if data available)
+
+4. SMART ORDERING ASSISTANT:
+   - Suggested order quantities based on:
+     * Average daily consumption
+     * Lead time from supplier
+     * Safety stock (7-14 days recommended)
+     * Day-of-week patterns
+
+5. CATEGORY INSIGHTS:
+   - Group products by category
+   - Show category-level trends
+   - Identify which categories drive revenue
+
+6. PERFORMANCE METRICS:
+   - Stock turnover rate
+   - Days of inventory on hand
+   - Revenue per product
+   - Order frequency optimization
+
+
+
+========================================
+ANALYSIS COMPLETE!
+========================================
+
+SUMMARY:
+- Total sale order lines analyzed: 10000
+- Unique products found: 1193
+- Top products (>10 orders): 234
+- Critical products (< 5 days): 7
+- Products to order soon (5-10 days): 10
+
+
