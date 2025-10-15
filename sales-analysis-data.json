@@ -1,0 +1,523 @@
+{
+  "metadata": {
+    "analysis_date": "2025-10-15",
+    "period_start": "2025-06-17",
+    "period_end": "2025-10-15",
+    "days_analyzed": 120,
+    "total_order_lines": 10000,
+    "unique_products": 1193,
+    "top_products_count": 234,
+    "database": "lapadevadmin-lapa-v2-main-7268478"
+  },
+  "critical_alerts": {
+    "out_of_stock": [
+      {
+        "product": "FUNGHI PORCINI CONG. INTERI EXTRA TOP",
+        "current_stock": 0,
+        "avg_daily_sales": 6.9,
+        "days_remaining": 0,
+        "reorder_point": 48.6,
+        "status": "URGENT",
+        "action": "Order immediately"
+      },
+      {
+        "product": "TUORLO D'UOVO ROSSO PIU PASTAGGI",
+        "current_stock": 0,
+        "avg_daily_sales": 4.0,
+        "days_remaining": 0,
+        "reorder_point": 27.9,
+        "status": "URGENT",
+        "action": "Order immediately"
+      },
+      {
+        "product": "[Delivery_007] Free delivery cost",
+        "current_stock": 0,
+        "avg_daily_sales": 3.4,
+        "days_remaining": 0,
+        "reorder_point": 23.9,
+        "status": "URGENT",
+        "action": "Order immediately"
+      }
+    ],
+    "critical_stock": [
+      {
+        "product": "FARINA 00 CAPUTO ROSSA 25KG",
+        "current_stock": 6.0,
+        "avg_daily_sales": 4.4,
+        "days_remaining": 1.4,
+        "reorder_point": 30.8,
+        "status": "CRITICAL",
+        "action": "Order today"
+      },
+      {
+        "product": "FIORDILATTE BOCCONCINO PER PIZZERIA 500G",
+        "current_stock": 45.0,
+        "avg_daily_sales": 15.0,
+        "days_remaining": 3.0,
+        "reorder_point": 104.8,
+        "status": "CRITICAL",
+        "action": "Order today"
+      },
+      {
+        "product": "SPAGHETTI ALLA CHITARRA PASTA",
+        "current_stock": 16.0,
+        "avg_daily_sales": 4.9,
+        "days_remaining": 3.3,
+        "reorder_point": 34.1,
+        "status": "CRITICAL",
+        "action": "Order today"
+      },
+      {
+        "product": "BURRATA 2X125G VASC 250G",
+        "current_stock": 28.3,
+        "avg_daily_sales": 7.5,
+        "days_remaining": 3.7,
+        "reorder_point": 52.8,
+        "status": "CRITICAL",
+        "action": "Order today"
+      }
+    ],
+    "order_soon": [
+      {
+        "product": "FIORDILATTE JULIENNE LINEA PRO",
+        "current_stock": 270.0,
+        "avg_daily_sales": 52.4,
+        "days_remaining": 5.2,
+        "reorder_point": 366.7,
+        "status": "WARNING",
+        "action": "Order this week"
+      },
+      {
+        "product": "FIORDILATTE JULIENNE TAGLIO NA",
+        "current_stock": 330.0,
+        "avg_daily_sales": 57.7,
+        "days_remaining": 5.7,
+        "reorder_point": 403.8,
+        "status": "WARNING",
+        "action": "Order this week"
+      },
+      {
+        "product": "Cuor di Pizza Pizzalux MozzaMix",
+        "current_stock": 93.0,
+        "avg_daily_sales": 14.6,
+        "days_remaining": 6.4,
+        "reorder_point": 102.0,
+        "status": "WARNING",
+        "action": "Order this week"
+      },
+      {
+        "product": "MOZZARELLA DI BUFALA CAMPANA DOP",
+        "current_stock": 61.5,
+        "avg_daily_sales": 9.6,
+        "days_remaining": 6.4,
+        "reorder_point": 67.4,
+        "status": "WARNING",
+        "action": "Order this week"
+      },
+      {
+        "product": "TAGLIATELLE PASTA FRESCA",
+        "current_stock": 27.1,
+        "avg_daily_sales": 3.7,
+        "days_remaining": 7.3,
+        "reorder_point": 26.1,
+        "status": "WARNING",
+        "action": "Order this week"
+      },
+      {
+        "product": "GNOCCHI DI PATATE RUMMO",
+        "current_stock": 28.0,
+        "avg_daily_sales": 3.8,
+        "days_remaining": 7.4,
+        "reorder_point": 26.3,
+        "status": "WARNING",
+        "action": "Order this week"
+      },
+      {
+        "product": "FARINA 00 CAPUTO BLU PIZZERIA",
+        "current_stock": 34.0,
+        "avg_daily_sales": 3.9,
+        "days_remaining": 8.7,
+        "reorder_point": 27.4,
+        "status": "WARNING",
+        "action": "Order this week"
+      },
+      {
+        "product": "BURRO VORZUGSBUTTER ZUEGER",
+        "current_stock": 34.0,
+        "avg_daily_sales": 3.8,
+        "days_remaining": 8.9,
+        "reorder_point": 26.7,
+        "status": "WARNING",
+        "action": "Order this week"
+      },
+      {
+        "product": "GRANA PADANO DOP SCAGLIE",
+        "current_stock": 77.0,
+        "avg_daily_sales": 8.5,
+        "days_remaining": 9.1,
+        "reorder_point": 59.4,
+        "status": "WARNING",
+        "action": "Order this week"
+      },
+      {
+        "product": "FARINA 00 VERACE SACCO 25KG",
+        "current_stock": 130.0,
+        "avg_daily_sales": 13.3,
+        "days_remaining": 9.8,
+        "reorder_point": 92.8,
+        "status": "WARNING",
+        "action": "Order this week"
+      }
+    ]
+  },
+  "top_products": [
+    {
+      "rank": 1,
+      "product": "CARTONI PIZZA 330X330X40 CON GUSTO LAPA",
+      "total_qty": 14000.0,
+      "orders": 24,
+      "avg_daily_sales": 229.51,
+      "variability": 0.54,
+      "preferred_days": ["Dom"],
+      "category": "packaging",
+      "trend": "stable"
+    },
+    {
+      "rank": 2,
+      "product": "CARTONI PIZZA ZIGRINATI 33X33X3.5",
+      "total_qty": 4802.0,
+      "orders": 38,
+      "avg_daily_sales": 73.88,
+      "variability": 0.83,
+      "preferred_days": ["Mar", "Ven"],
+      "category": "packaging",
+      "trend": "volatile"
+    },
+    {
+      "rank": 3,
+      "product": "FIORDILATTE JULIENNE TAGLIO NAPOLI",
+      "total_qty": 3749.5,
+      "orders": 187,
+      "avg_daily_sales": 57.68,
+      "variability": 0.62,
+      "preferred_days": ["Mar"],
+      "category": "formaggi_freschi",
+      "trend": "declining"
+    },
+    {
+      "rank": 4,
+      "product": "CARTONI PIZZA PERSONALIZZATO MOD H 32x32",
+      "total_qty": 3701.0,
+      "orders": 20,
+      "avg_daily_sales": 56.94,
+      "variability": 0.55,
+      "preferred_days": ["Lun", "Mar"],
+      "category": "packaging",
+      "trend": "stable"
+    },
+    {
+      "rank": 5,
+      "product": "FIORDILATTE JULIENNE LINEA PROFESSIONALE",
+      "total_qty": 3457.5,
+      "orders": 149,
+      "avg_daily_sales": 52.39,
+      "variability": 0.74,
+      "preferred_days": ["Mar", "Mer", "Gio"],
+      "category": "formaggi_freschi",
+      "trend": "declining"
+    },
+    {
+      "rank": 6,
+      "product": "CARTONI PIZZA VESUVIO BIA 33X33X3.5",
+      "total_qty": 2902.0,
+      "orders": 14,
+      "avg_daily_sales": 47.57,
+      "variability": 1.15,
+      "preferred_days": ["Mar"],
+      "category": "packaging",
+      "trend": "volatile"
+    },
+    {
+      "rank": 7,
+      "product": "POMODORI PELATI 6X2500G SICA BLU",
+      "total_qty": 2663.0,
+      "orders": 136,
+      "avg_daily_sales": 40.97,
+      "variability": 0.87,
+      "preferred_days": ["Mar", "Gio"],
+      "category": "conserve",
+      "trend": "declining"
+    },
+    {
+      "rank": 8,
+      "product": "POMODORI PELATI 6X2500G LITO STRIANESE",
+      "total_qty": 2196.0,
+      "orders": 60,
+      "avg_daily_sales": 33.78,
+      "variability": 2.35,
+      "preferred_days": ["Mer", "Sab"],
+      "category": "conserve",
+      "trend": "declining"
+    },
+    {
+      "rank": 9,
+      "product": "LATTE INTERO VOLLMILCH UHT CH 1L",
+      "total_qty": 1898.0,
+      "orders": 71,
+      "avg_daily_sales": 29.20,
+      "variability": 0.79,
+      "preferred_days": ["Mar", "Ven"],
+      "category": "latticini",
+      "trend": "stable"
+    },
+    {
+      "rank": 10,
+      "product": "SEMOLA RIMACINATA FINE KNOEPFLIDUNST 1KG",
+      "total_qty": 1812.0,
+      "orders": 87,
+      "avg_daily_sales": 27.88,
+      "variability": 0.85,
+      "preferred_days": ["Mar", "Ven"],
+      "category": "farine",
+      "trend": "volatile"
+    },
+    {
+      "rank": 11,
+      "product": "TONNO IN OLIO DI OLIVA LATTA 70G 96PZ",
+      "total_qty": 1187.0,
+      "orders": 15,
+      "avg_daily_sales": 20.47,
+      "variability": 0.36,
+      "preferred_days": ["Lun", "Mar", "Gio"],
+      "category": "conserve",
+      "trend": "stable"
+    },
+    {
+      "rank": 12,
+      "product": "GRANA PADANO DOP GRATTUGIATO FRESCO 1KG",
+      "total_qty": 1136.0,
+      "orders": 177,
+      "avg_daily_sales": 17.48,
+      "variability": 0.70,
+      "preferred_days": ["Mar", "Gio"],
+      "category": "formaggi",
+      "trend": "stable"
+    },
+    {
+      "rank": 13,
+      "product": "MASCARPONE 500G 6PZ CRT",
+      "total_qty": 1066.0,
+      "orders": 119,
+      "avg_daily_sales": 16.40,
+      "variability": 0.68,
+      "preferred_days": ["Lun", "Mar", "Gio"],
+      "category": "formaggi_freschi",
+      "trend": "stable"
+    },
+    {
+      "rank": 14,
+      "product": "PANNA INTERA 35% VOLLRAHM 12L CRT",
+      "total_qty": 1019.0,
+      "orders": 75,
+      "avg_daily_sales": 15.68,
+      "variability": 0.66,
+      "preferred_days": ["Mar", "Ven"],
+      "category": "latticini",
+      "trend": "stable"
+    },
+    {
+      "rank": 15,
+      "product": "FIORDILATTE BOCCONCINO PER PIZZERIA 500G",
+      "total_qty": 958.0,
+      "orders": 18,
+      "avg_daily_sales": 14.97,
+      "variability": 0.55,
+      "preferred_days": ["Mar"],
+      "category": "formaggi_freschi",
+      "trend": "stable"
+    },
+    {
+      "rank": 16,
+      "product": "Cuor di Pizza Pizzalux MozzaMix Julienne",
+      "total_qty": 947.0,
+      "orders": 44,
+      "avg_daily_sales": 14.57,
+      "variability": 0.86,
+      "preferred_days": ["Lun", "Mar"],
+      "category": "formaggi_freschi",
+      "trend": "volatile"
+    },
+    {
+      "rank": 17,
+      "product": "FARINA 00 VERACE SACCO CONF 25KG",
+      "total_qty": 862.0,
+      "orders": 198,
+      "avg_daily_sales": 13.26,
+      "variability": 0.65,
+      "preferred_days": ["Lun", "Ven"],
+      "category": "farine",
+      "trend": "stable"
+    },
+    {
+      "rank": 18,
+      "product": "TONNO IN OLIO DI OLIVA LATTA 160G48PZ",
+      "total_qty": 775.0,
+      "orders": 19,
+      "avg_daily_sales": 12.70,
+      "variability": 0.42,
+      "preferred_days": ["Lun", "Gio", "Ven"],
+      "category": "conserve",
+      "trend": "stable"
+    },
+    {
+      "rank": 19,
+      "product": "ZAFFERANO BUSTINA 0.125G 75PZ CRT",
+      "total_qty": 753.0,
+      "orders": 10,
+      "avg_daily_sales": 12.76,
+      "variability": 0.50,
+      "preferred_days": ["Mar"],
+      "category": "spezie",
+      "trend": "stable"
+    },
+    {
+      "rank": 20,
+      "product": "CARTA IGIENICA 60PZ CONF",
+      "total_qty": 713.0,
+      "orders": 21,
+      "avg_daily_sales": 14.55,
+      "variability": 0.63,
+      "preferred_days": ["Ven"],
+      "category": "non_food",
+      "trend": "stable"
+    }
+  ],
+  "patterns": {
+    "weekly_distribution": {
+      "sunday": 0.05,
+      "monday": 0.15,
+      "tuesday": 0.35,
+      "wednesday": 0.15,
+      "thursday": 0.15,
+      "friday": 0.12,
+      "saturday": 0.03
+    },
+    "peak_days": ["tuesday", "friday"],
+    "low_days": ["saturday", "sunday"],
+    "b2b_ratio": 0.95,
+    "weekday_weekend_ratio": 15.7
+  },
+  "trends": {
+    "declining_products": [
+      {
+        "product": "FIORDILATTE JULIENNE LINEA PRO",
+        "change_percent": -28.4,
+        "first_half_avg": 76.3,
+        "second_half_avg": 54.6
+      },
+      {
+        "product": "POMODORI PELATI SICA BLU",
+        "change_percent": -30.5,
+        "first_half_avg": 59.5,
+        "second_half_avg": 41.3
+      },
+      {
+        "product": "POMODORI PELATI LITO STRIANESE",
+        "change_percent": -21.2,
+        "first_half_avg": 74.7,
+        "second_half_avg": 58.9
+      }
+    ],
+    "stable_products": [
+      {
+        "product": "MISTO SCOGLIO IQF CONG",
+        "variability": 0.28,
+        "avg_daily_sales": 1.3
+      }
+    ],
+    "volatile_products": [
+      {
+        "product": "POMODORI PELATI LITO STRIANESE",
+        "variability": 2.35,
+        "avg_daily_sales": 33.8
+      },
+      {
+        "product": "CARTONI PIZZA VESUVIO BIA",
+        "variability": 1.15,
+        "avg_daily_sales": 47.6
+      },
+      {
+        "product": "SEMOLA RIMACINATA FINE",
+        "variability": 0.85,
+        "avg_daily_sales": 27.9
+      }
+    ]
+  },
+  "categories": {
+    "packaging": {
+      "volume_percent": 35,
+      "top_products": 4,
+      "avg_variability": 0.77,
+      "rotation_days": 10
+    },
+    "formaggi_freschi": {
+      "volume_percent": 28,
+      "top_products": 6,
+      "avg_variability": 0.65,
+      "rotation_days": 6
+    },
+    "conserve": {
+      "volume_percent": 15,
+      "top_products": 4,
+      "avg_variability": 1.12,
+      "rotation_days": 18
+    },
+    "farine": {
+      "volume_percent": 12,
+      "top_products": 3,
+      "avg_variability": 0.78,
+      "rotation_days": 14
+    },
+    "latticini": {
+      "volume_percent": 10,
+      "top_products": 3,
+      "avg_variability": 0.71,
+      "rotation_days": 12
+    }
+  },
+  "recommendations": {
+    "immediate_actions": [
+      "Order 3 products with zero stock immediately",
+      "Order 4 products in critical zone today",
+      "Plan orders for 10 products in warning zone this week"
+    ],
+    "short_term": [
+      "Implement automated alerts for critical stock levels",
+      "Configure automatic reorder points",
+      "Integrate supplier lead times into system",
+      "Set up Tuesday as primary restocking day"
+    ],
+    "medium_term": [
+      "Analyze full year data for seasonality patterns",
+      "Implement ML-based forecasting",
+      "Optimize order quantities to minimize costs",
+      "Perform ABC classification analysis"
+    ],
+    "long_term": [
+      "Implement integrated demand planning system",
+      "Multi-supplier optimization",
+      "Predictive analytics for new products",
+      "Real-time demand sensing via customer POS integration"
+    ]
+  },
+  "kpi": {
+    "products_critical": 7,
+    "products_warning": 10,
+    "stockout_count": 3,
+    "unique_products_sold": 1193,
+    "top_movers": 234,
+    "avg_orders_per_product": 8.4,
+    "peak_day": "tuesday",
+    "peak_day_volume_percent": 35
+  }
+}

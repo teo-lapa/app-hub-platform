@@ -271,7 +271,7 @@ export default function HomePage() {
       <div className="md:hidden flex-shrink-0">
         <MobileHeader
           title={user?.name ? `Ciao, ${user.name.split(' ')[0]}!` : undefined}
-          showLogo={!user}
+          showLogo={true}
         />
       </div>
 
