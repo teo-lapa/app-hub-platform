@@ -156,10 +156,10 @@ function MetricCard({
 }
 
 // Stock Distribution Chart
-function StockDistributionChart({ data }: { data: any }) {
+function StockDistributionChart({ data }: { data: Record<string, number> }) {
   return (
     <div className="space-y-3">
-      {Object.entries(data).map(([level, count]: any) => {
+      {Object.entries(data).map(([level, count]: [string, number]) => {
         const colors: Record<string, string> = {
           CRITICAL: 'bg-red-500',
           HIGH: 'bg-orange-500',
@@ -167,7 +167,8 @@ function StockDistributionChart({ data }: { data: any }) {
           LOW: 'bg-green-500'
         };
 
-        const percentage = (count / Object.values(data).reduce((a: any, b: any) => a + b, 0)) * 100;
+        const total = Object.values(data).reduce((a, b) => a + b, 0);
+        const percentage = (count / total) * 100;
 
         return (
           <div key={level} className="space-y-1">
@@ -189,11 +190,11 @@ function StockDistributionChart({ data }: { data: any }) {
 }
 
 // Category Breakdown Chart
-function CategoryBreakdownChart({ data }: { data: any }) {
+function CategoryBreakdownChart({ data }: { data: Record<string, number> }) {
   return (
     <div className="space-y-2">
-      {Object.entries(data).slice(0, 5).map(([category, count]: any) => {
-        const total = Object.values(data).reduce((a: any, b: any) => a + b, 0);
+      {Object.entries(data).slice(0, 5).map(([category, count]: [string, number]) => {
+        const total = Object.values(data).reduce((a, b) => a + b, 0);
         const percentage = ((count / total) * 100).toFixed(1);
 
         return (
