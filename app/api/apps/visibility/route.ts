@@ -24,7 +24,7 @@ async function loadVisibilitySettings(): Promise<Record<string, AppVisibilitySet
     allVisibilities.forEach(vis => {
       settings[vis.appId] = {
         visible: vis.visible !== undefined ? vis.visible : true,
-        visibilityGroup: vis.visibilityGroup || 'all',
+        visibilityGroup: (vis.visibilityGroup || 'all') as VisibilityGroup,
         excludedUsers: vis.excludedUsers || [],
         excludedCustomers: vis.excludedCustomers || [],
         developmentStatus: vis.developmentStatus || 'pronta'
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
 
       visibilitySettings[app.id] = {
         visible: app.visible,
-        visibilityGroup: app.visibilityGroup || 'all',
+        visibilityGroup: (app.visibilityGroup || 'all') as VisibilityGroup,
         excludedUsers,
         excludedCustomers,
         developmentStatus: app.developmentStatus || 'pronta'  // Salva anche lo stato sviluppo
