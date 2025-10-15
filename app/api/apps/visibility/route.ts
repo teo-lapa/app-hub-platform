@@ -12,6 +12,7 @@ export interface AppVisibilitySettings {
   visibilityGroup: VisibilityGroup;
   excludedUsers?: string[];      // Array di user IDs esclusi specificamente
   excludedCustomers?: string[];  // Array di customer IDs esclusi specificamente
+  developmentStatus?: 'in_sviluppo' | 'pronta';  // Stato sviluppo app
 }
 
 // Carica le impostazioni di visibilità
@@ -112,6 +113,7 @@ export async function GET(request: NextRequest) {
         category: app.category,
         visible: isVisible,
         visibilityGroup: settings.visibilityGroup,
+        developmentStatus: settings.developmentStatus || 'pronta',  // Restituisci stato sviluppo
         groups  // Aggiungi struttura groups per compatibilità con gestione-visibilita-app
       };
     });
@@ -162,7 +164,8 @@ export async function POST(request: NextRequest) {
         visible: app.visible,
         visibilityGroup: app.visibilityGroup || 'all',
         excludedUsers,
-        excludedCustomers
+        excludedCustomers,
+        developmentStatus: app.developmentStatus || 'pronta'  // Salva anche lo stato sviluppo
       };
     });
 
