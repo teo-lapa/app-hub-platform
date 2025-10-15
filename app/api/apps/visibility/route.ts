@@ -93,13 +93,26 @@ export async function GET(request: NextRequest) {
       // Se c'è un ruolo specificato, filtra le app in base alla visibilità
       const isVisible = userRole ? isAppVisibleForRole(settings, userRole) : settings.visible;
 
+      // Converti excludedUsers/excludedCustomers in formato groups per la pagina gestione
+      const groups = {
+        dipendenti: {
+          enabled: true,
+          excluded: (settings.excludedUsers || []).map((id: string) => parseInt(id, 10))
+        },
+        clienti: {
+          enabled: true,
+          excluded: (settings.excludedCustomers || []).map((id: string) => parseInt(id, 10))
+        }
+      };
+
       return {
         id: app.id,
         name: app.name,
         icon: app.icon,
         category: app.category,
         visible: isVisible,
-        visibilityGroup: settings.visibilityGroup
+        visibilityGroup: settings.visibilityGroup,
+        groups  // Aggiungi struttura groups per compatibilità con gestione-visibilita-app
       };
     });
 
@@ -131,11 +144,29 @@ export async function POST(request: NextRequest) {
     // Crea oggetto con visibilità e gruppo per ogni app
     const visibilitySettings: Record<string, AppVisibilitySettings> = {};
     apps.forEach((app: any) => {
+      // Estrai gli utenti esclusi dalla struttura groups se presente
+      const excludedUsers: string[] = [];
+      const excludedCustomers: string[] = [];
+
+      if (app.groups) {
+        // Converti gli ID numerici in stringhe
+        if (app.groups.dipendenti?.excluded) {
+          excludedUsers.push(...app.groups.dipendenti.excluded.map((id: number) => String(id)));
+        }
+        if (app.groups.clienti?.excluded) {
+          excludedCustomers.push(...app.groups.clienti.excluded.map((id: number) => String(id)));
+        }
+      }
+
       visibilitySettings[app.id] = {
         visible: app.visible,
-        visibilityGroup: app.visibilityGroup || 'all'
+        visibilityGroup: app.visibilityGroup || 'all',
+        excludedUsers,
+        excludedCustomers
       };
     });
+
+    console.log('💾 Salvataggio impostazioni visibilità:', visibilitySettings);
 
     // Salva le impostazioni
     const saved = await saveVisibilitySettings(visibilitySettings);
