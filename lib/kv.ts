@@ -50,19 +50,26 @@ export async function getAppVisibility(appId: string): Promise<AppVisibility | n
 }
 
 /**
- * Recupera tutte le impostazioni di visibilità
+ * Recupera tutte le impostazioni di visibilità (OTTIMIZZATO)
  */
 export async function getAllAppVisibilities(): Promise<AppVisibility[]> {
   const keys = await kv.keys('app_visibility:*');
-  const visibilities: AppVisibility[] = [];
 
-  for (const key of keys) {
-    const appId = key.replace('app_visibility:', '');
-    const data = await kv.get<Omit<AppVisibility, 'appId'>>(key);
+  if (keys.length === 0) {
+    return [];
+  }
+
+  // ✅ Usa mget per recuperare tutti i valori in UNA SOLA chiamata
+  const values = await kv.mget<Array<Omit<AppVisibility, 'appId'>>>(...keys);
+
+  const visibilities: AppVisibility[] = [];
+  keys.forEach((key, index) => {
+    const data = values[index];
     if (data) {
+      const appId = key.replace('app_visibility:', '');
       visibilities.push({ appId, ...data });
     }
-  }
+  });
 
   return visibilities;
 }

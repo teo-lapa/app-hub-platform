@@ -39,6 +39,19 @@ export function AppGrid() {
     }
   };
 
+  // Mostra loading mentre carica impostazioni visibilità
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
+
   // Filtra app nascoste
   const visibleApps = filteredApps.filter(app => visibilitySettings[app.id] !== false);
 
