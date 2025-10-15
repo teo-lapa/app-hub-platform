@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { allApps } from '@/lib/data/apps-with-indicators';
-import { kv } from '@vercel/kv';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,25 +13,33 @@ export interface AppVisibilitySettings {
   visibilityGroup: VisibilityGroup;
 }
 
-// Carica le impostazioni di visibilità da Vercel KV
+// Storage temporaneo in memoria (per sviluppo locale)
+// TODO: In produzione, usare Vercel KV o database
+let memoryStorage: Record<string, AppVisibilitySettings> = {};
+
+// Carica le impostazioni di visibilità
 async function loadVisibilitySettings(): Promise<Record<string, AppVisibilitySettings>> {
   try {
-    const settings = await kv.get<Record<string, AppVisibilitySettings>>(VISIBILITY_KEY);
-    return settings || {};
+    // Per ora usa memoria locale
+    // In produzione: await kv.get<Record<string, AppVisibilitySettings>>(VISIBILITY_KEY);
+    return memoryStorage || {};
   } catch (error) {
-    console.error('Errore lettura visibility settings da KV:', error);
+    console.error('Errore lettura visibility settings:', error);
     // Default: tutte le app visibili per tutti
     return {};
   }
 }
 
-// Salva le impostazioni di visibilità in Vercel KV
+// Salva le impostazioni di visibilità
 async function saveVisibilitySettings(settings: Record<string, AppVisibilitySettings>): Promise<boolean> {
   try {
-    await kv.set(VISIBILITY_KEY, settings);
+    // Per ora salva in memoria locale
+    // In produzione: await kv.set(VISIBILITY_KEY, settings);
+    memoryStorage = settings;
+    console.log('✅ Impostazioni salvate in memoria locale:', settings);
     return true;
   } catch (error) {
-    console.error('Errore salvataggio visibility settings in KV:', error);
+    console.error('Errore salvataggio visibility settings:', error);
     return false;
   }
 }
@@ -120,11 +127,10 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    // Salva in Vercel KV
+    // Salva le impostazioni
     const saved = await saveVisibilitySettings(visibilitySettings);
 
     if (saved) {
-      console.log('✅ Impostazioni visibilità salvate in Vercel KV:', visibilitySettings);
       return NextResponse.json({
         success: true,
         message: 'Impostazioni salvate con successo'
