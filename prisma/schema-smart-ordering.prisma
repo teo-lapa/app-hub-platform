@@ -1,0 +1,242 @@
+// LAPA Smart Ordering AI - Database Schema
+// Database per analytics avanzate e cache predizioni
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Lead Time Analysis per Fornitore
+model SupplierLeadTime {
+  id            Int      @id @default(autoincrement())
+  supplierId    Int      // ID fornitore Odoo
+  supplierName  String
+
+  // Lead Time calcolati
+  medianLeadTime     Float  // Giorni mediana
+  avgLeadTime        Float  // Giorni media
+  minLeadTime        Float  // Minimo osservato
+  maxLeadTime        Float  // Massimo osservato
+  stdDevLeadTime     Float  // Deviazione standard
+  variabilityScore   Float  // 0-1 (quanto è affidabile)
+
+  // Reliability Score
+  onTimeDeliveries   Int    // Consegne puntuali
+  totalDeliveries    Int    // Totale consegne
+  onTimeRate         Float  // % puntualità
+  reliabilityScore   Float  // 0-100
+
+  // Metadata
+  sampleSize         Int    // Numero ordini analizzati
+  periodFrom         DateTime
+  periodTo           DateTime
+  lastUpdated        DateTime @updatedAt
+  createdAt          DateTime @default(now())
+
+  @@unique([supplierId])
+  @@index([supplierName])
+  @@index([reliabilityScore])
+}
+
+// Storico Vendite per Prodotto
+model ProductSalesHistory {
+  id            Int      @id @default(autoincrement())
+  productId     Int      // ID prodotto Odoo
+  productName   String
+
+  // Vendite
+  deliveryDate  DateTime // Data consegna EFFETTIVA (non ordine!)
+  quantitySold  Float
+  revenue       Float
+
+  // Cliente
+  customerId    Int
+  customerName  String
+
+  // Order info
+  orderId       Int      // ID sale.order Odoo
+  orderName     String
+
+  createdAt     DateTime @default(now())
+
+  @@index([productId, deliveryDate])
+  @@index([deliveryDate])
+  @@index([customerId])
+}
+
+// Predizioni AI Cache
+model ProductPrediction {
+  id                  Int      @id @default(autoincrement())
+  productId           Int      // ID prodotto Odoo
+  productName         String
+
+  // Stock attuale
+  currentStock        Float
+
+  // Predizioni AI
+  predictedDailySales Float
+  daysUntilStockout   Float
+  urgencyLevel        String   // EMERGENCY, CRITICAL, HIGH, MEDIUM, LOW
+
+  // Raccomandazioni
+  recommendedOrderQty Float
+  recommendedOrderDate DateTime
+  safetyStock         Float
+  reorderPoint        Float
+
+  // Fornitore consigliato
+  suggestedSupplierId Int
+  supplierLeadTime    Float
+
+  // AI Reasoning
+  aiReasoning         String   @db.Text
+  confidenceScore     Float    // 0-100
+
+  // Forecast settimanale (JSON)
+  weeklyForecast      Json     // Array di {day, sales, stock}
+
+  // Metadata
+  predictedAt         DateTime @default(now())
+  validUntil          DateTime // Cache expiration
+
+  @@unique([productId, predictedAt])
+  @@index([productId])
+  @@index([urgencyLevel])
+  @@index([daysUntilStockout])
+}
+
+// Alert System
+model StockAlert {
+  id              Int      @id @default(autoincrement())
+  productId       Int
+  productName     String
+
+  severity        String   // EMERGENCY, CRITICAL, WARNING
+  alertType       String   // STOCKOUT_IMMINENT, LOW_STOCK, SUPPLIER_DELAY
+
+  message         String   @db.Text
+  actionRequired  String   @db.Text
+
+  daysUntilStockout Float
+  currentStock      Float
+
+  // Status
+  isResolved      Boolean  @default(false)
+  resolvedAt      DateTime?
+  resolvedBy      String?
+
+  // Notifications
+  notifiedAt      DateTime?
+  notificationChannels String[] // ['email', 'telegram', 'push']
+
+  createdAt       DateTime @default(now())
+
+  @@index([productId, isResolved])
+  @@index([severity, isResolved])
+  @@index([createdAt])
+}
+
+// Purchase Order Analytics
+model PurchaseOrderAnalytics {
+  id                Int      @id @default(autoincrement())
+  purchaseOrderId   Int      // ID purchase.order Odoo
+  purchaseOrderName String
+
+  supplierId        Int
+  supplierName      String
+
+  // Date critiche
+  dateOrder         DateTime // Data creazione
+  dateApprove       DateTime // Data CONFERMA (inizio lead time)
+  dateReceived      DateTime // Data CONSEGNA (fine lead time)
+  datePlanned       DateTime // Data pianificata
+
+  // Lead Time effettivo
+  actualLeadTime    Float    // Giorni tra conferma e consegna
+  plannedLeadTime   Float    // Giorni previsti
+  delayDays         Float    // Ritardo (negativo se anticipo)
+  wasOnTime         Boolean
+
+  // Importi
+  totalAmount       Float
+  totalProducts     Int
+
+  createdAt         DateTime @default(now())
+
+  @@index([supplierId, dateReceived])
+  @@index([dateReceived])
+  @@index([wasOnTime])
+}
+
+// Customer Purchase Patterns (clienti ricorsivi)
+model CustomerPattern {
+  id                Int      @id @default(autoincrement())
+  customerId        Int
+  customerName      String
+  productId         Int
+  productName       String
+
+  // Pattern ricorsività
+  avgDaysBetweenOrders Float  // Media giorni tra ordini
+  stdDevDaysBetween    Float  // Variabilità
+  isRecurring          Boolean // Cliente ricorsivo?
+
+  // Quantità tipiche
+  avgOrderQuantity     Float
+  minOrderQuantity     Float
+  maxOrderQuantity     Float
+
+  // Ultima attività
+  lastOrderDate        DateTime
+  nextPredictedOrder   DateTime
+
+  // Stats
+  totalOrders          Int
+  totalQuantity        Float
+  totalRevenue         Float
+
+  analyzedAt           DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@index([customerId])
+  @@index([productId])
+  @@index([nextPredictedOrder])
+}
+
+// System Analytics Summary
+model SystemAnalytics {
+  id                    Int      @id @default(autoincrement())
+  date                  DateTime @unique
+
+  // Performance KPIs
+  forecastAccuracy      Float    // % predizioni corrette
+  avgForecastError      Float    // Errore medio
+
+  // Stock KPIs
+  stockoutEvents        Int      // Eventi stock-out oggi
+  overstock Value       Float    // € in eccesso
+  totalInventoryValue   Float    // € totale magazzino
+  inventoryTurnover     Float    // Rotazione
+
+  // Order KPIs
+  ordersCreated         Int
+  totalOrderValue       Float
+  avgOrderValue         Float
+
+  // Supplier KPIs
+  avgSupplierReliability Float
+  onTimeDeliveryRate     Float
+
+  // AI KPIs
+  predictionsGenerated   Int
+  alertsGenerated        Int
+  alertsResolved         Int
+
+  createdAt             DateTime @default(now())
+
+  @@index([date])
+}
