@@ -1,60 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Fuse from 'fuse.js';
 import { callOdoo, getOdooSession } from '@/lib/odoo-auth';
+import { normalizeVat, normalizeName } from '@/lib/suppliers/normalization';
 import path from 'path';
 import fs from 'fs';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
-
-/**
- * NORMALIZE VAT NUMBER
- * Removes spaces, dashes, and country prefixes (IT, CHE-, etc.)
- * Examples:
- * - "IT00895100709" -> "00895100709"
- * - "CHE-105.968.205 MWST" -> "105968205"
- * - "CHE-105.968.205" -> "105968205"
- */
-function normalizeVat(vat: string | null | undefined): string {
-  if (!vat) return '';
-
-  return vat
-    .toUpperCase()
-    .replace(/^IT/i, '')           // Remove IT prefix
-    .replace(/^CHE-?/i, '')        // Remove CHE or CHE- prefix
-    .replace(/\s+/g, '')           // Remove spaces
-    .replace(/-/g, '')             // Remove dashes
-    .replace(/\./g, '')            // Remove dots
-    .replace(/MWST$/i, '')         // Remove MWST suffix
-    .trim();
-}
-
-/**
- * NORMALIZE NAME
- * Case insensitive, removes extra spaces, handles Italian company suffixes
- * Removes common variations like S.r.l., Srl, S.R.L., S.p.A., SpA, etc.
- */
-function normalizeName(name: string | null | undefined): string {
-  if (!name) return '';
-
-  return name
-    .trim()
-    .toLowerCase()
-    // Remove common Italian company suffixes
-    .replace(/\bs\.?r\.?l\.?\b/gi, '')    // S.r.l., Srl, S.R.L., s.r.l.
-    .replace(/\bs\.?p\.?a\.?\b/gi, '')    // S.p.A., SpA, S.P.A., s.p.a.
-    .replace(/\bs\.?a\.?s\.?\b/gi, '')    // S.a.s., Sas, S.A.S., s.a.s.
-    .replace(/\bs\.?n\.?c\.?\b/gi, '')    // S.n.c., Snc, S.N.C., s.n.c.
-    .replace(/\bsrl\b/gi, '')             // srl standalone
-    .replace(/\bspa\b/gi, '')             // spa standalone
-    .replace(/\bsas\b/gi, '')             // sas standalone
-    .replace(/\bsnc\b/gi, '')             // snc standalone
-    // Remove punctuation
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
-    // Normalize spaces
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 /**
  * IDENTIFY SUPPLIER API

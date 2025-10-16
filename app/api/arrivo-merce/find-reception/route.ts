@@ -1,29 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { normalizeVat, normalizeName, extractKeywords, fuzzyMatchScore } from '@/lib/suppliers/normalization';
 
 export const dynamic = 'force-dynamic';
-
-/**
- * NORMALIZE VAT NUMBER
- * Removes spaces, dashes, and country prefixes (IT, CHE-, etc.)
- * Examples:
- * - "IT00895100709" -> "00895100709"
- * - "IT01613660743" -> "01613660743"
- * - "CHE-105.968.205 MWST" -> "105968205"
- */
-function normalizeVat(vat: string | null | undefined): string {
-  if (!vat) return '';
-
-  return vat
-    .toUpperCase()
-    .replace(/^IT/i, '')           // Remove IT prefix
-    .replace(/^CHE-?/i, '')        // Remove CHE or CHE- prefix
-    .replace(/\s+/g, '')           // Remove spaces
-    .replace(/-/g, '')             // Remove dashes
-    .replace(/\./g, '')            // Remove dots
-    .replace(/MWST$/i, '')         // Remove MWST suffix
-    .trim();
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -236,26 +215,54 @@ export async function POST(request: NextRequest) {
     if (partners.length === 0) {
       console.log('🔍 Ricerca per nome fornitore...');
 
-      // Estrai le prime 2-3 parole chiave per una ricerca più flessibile
-      const supplierKeywords = supplier_name
-        .replace(/\s+(SRL|SPA|SAS|SNC|SOCIETA|S\.R\.L\.|S\.P\.A\.).*$/i, '') // Rimuovi forme societarie
-        .trim();
+      // Normalizza il nome e estrai keywords
+      const normalizedName = normalizeName(supplier_name);
+      const keywords = extractKeywords(supplier_name);
 
-      console.log('🔑 Parole chiave per ricerca:', supplierKeywords);
+      console.log('🔑 Nome normalizzato:', normalizedName);
+      console.log('🔑 Parole chiave estratte:', keywords);
 
-      // Prova prima con le parole chiave
-      partners = await callOdoo(cookies, 'res.partner', 'search_read', [
-        [['name', 'ilike', supplierKeywords], ['supplier_rank', '>', 0]],
-        ['id', 'name', 'supplier_rank', 'vat']
-      ]);
+      // STEP 2A: Cerca con keywords (rimuove forme societarie e parole comuni)
+      if (keywords.length > 2) {
+        partners = await callOdoo(cookies, 'res.partner', 'search_read', [
+          [['name', 'ilike', keywords], ['supplier_rank', '>', 0]],
+          ['id', 'name', 'supplier_rank', 'vat']
+        ]);
+        console.log(`   Trovati ${partners.length} fornitori con keywords`);
+      }
 
-      // Se non trova nulla, prova con il nome completo
+      // STEP 2B: Se non trova con keywords, prova con nome normalizzato (senza forme societarie)
+      if (partners.length === 0 && normalizedName.length > 2) {
+        partners = await callOdoo(cookies, 'res.partner', 'search_read', [
+          [['name', 'ilike', normalizedName], ['supplier_rank', '>', 0]],
+          ['id', 'name', 'supplier_rank', 'vat']
+        ]);
+        console.log(`   Trovati ${partners.length} fornitori con nome normalizzato`);
+      }
+
+      // STEP 2C: Se ancora non trova, prova con nome originale
       if (partners.length === 0) {
-        console.log('⚠️ Nessun risultato con parole chiave, provo con nome completo...');
+        console.log('⚠️ Nessun risultato con normalizzazione, provo con nome originale...');
         partners = await callOdoo(cookies, 'res.partner', 'search_read', [
           [['name', 'ilike', supplier_name], ['supplier_rank', '>', 0]],
           ['id', 'name', 'supplier_rank', 'vat']
         ]);
+        console.log(`   Trovati ${partners.length} fornitori con nome originale`);
+      }
+
+      // STEP 2D: Se abbiamo multipli risultati, ordina per score di similarità
+      if (partners.length > 1) {
+        console.log('🎯 Multipli fornitori trovati, calcolo score di similarità...');
+
+        partners = partners.map((p: any) => ({
+          ...p,
+          similarity_score: fuzzyMatchScore(supplier_name, p.name)
+        })).sort((a: any, b: any) => b.similarity_score - a.similarity_score);
+
+        console.log('   Top 3 match:');
+        partners.slice(0, 3).forEach((p: any, i: number) => {
+          console.log(`   ${i + 1}. ${p.name} (score: ${(p.similarity_score * 100).toFixed(0)}%)`);
+        });
       }
     }
 
