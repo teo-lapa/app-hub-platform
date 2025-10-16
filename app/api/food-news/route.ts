@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { kv } from '@vercel/kv';
 
 // Force dynamic rendering - necessario per request.url
 export const dynamic = 'force-dynamic';
@@ -21,18 +20,13 @@ interface ArticlesData {
   articles: Article[];
 }
 
-const ARTICLES_FILE = path.join(process.cwd(), 'data', 'food-articles.json');
-
-// Leggi articoli dal file
-function readArticles(): ArticlesData | null {
+// Leggi articoli da Vercel KV
+async function readArticles(): Promise<ArticlesData | null> {
   try {
-    if (!fs.existsSync(ARTICLES_FILE)) {
-      return null;
-    }
-    const data = fs.readFileSync(ARTICLES_FILE, 'utf-8');
-    return JSON.parse(data);
+    const data = await kv.get<ArticlesData>('food-news-articles');
+    return data;
   } catch (error) {
-    console.error('Error reading articles:', error);
+    console.error('Error reading articles from KV:', error);
     return null;
   }
 }
@@ -48,8 +42,8 @@ export async function GET(request: Request) {
   try {
     console.log('📰 [FOOD-NEWS] GET request received');
 
-    // Leggi articoli esistenti
-    let articlesData = readArticles();
+    // Leggi articoli esistenti da Vercel KV
+    let articlesData = await readArticles();
     console.log('📰 [FOOD-NEWS] Articles data:', articlesData ? 'Found' : 'Not found');
 
     // Se non esistono articoli o sono vecchi, genera nuovi articoli

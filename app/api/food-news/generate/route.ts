@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import fs from 'fs';
-import path from 'path';
+import { kv } from '@vercel/kv';
 
 // Configura timeout per Vercel Pro Plan (60 secondi)
 export const maxDuration = 60;
@@ -22,24 +21,16 @@ interface Article {
   preview: string;
 }
 
-const ARTICLES_FILE = path.join(process.cwd(), 'data', 'food-articles.json');
-
-// Assicura che la directory data esista
-function ensureDataDir() {
-  const dataDir = path.join(process.cwd(), 'data');
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-}
-
-// Salva articoli nel file JSON
-function saveArticles(articles: Article[]) {
-  ensureDataDir();
+// Salva articoli in Vercel KV (Redis)
+async function saveArticles(articles: Article[]) {
   const data = {
     date: new Date().toISOString().split('T')[0],
     articles,
   };
-  fs.writeFileSync(ARTICLES_FILE, JSON.stringify(data, null, 2), 'utf-8');
+
+  // Salva in Vercel KV con chiave 'food-news-articles'
+  await kv.set('food-news-articles', data);
+  console.log('📰 [FOOD-NEWS] Articles saved to Vercel KV');
 }
 
 // Genera un singolo articolo con Claude
@@ -185,8 +176,8 @@ export async function POST() {
     // Aspetta che tutti gli articoli siano generati
     const articles = await Promise.all(articlePromises);
 
-    // Salva articoli
-    saveArticles(articles);
+    // Salva articoli in Vercel KV
+    await saveArticles(articles);
 
     console.log('Articles generated successfully!');
 
