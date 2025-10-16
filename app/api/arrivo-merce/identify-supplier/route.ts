@@ -31,11 +31,29 @@ function normalizeVat(vat: string | null | undefined): string {
 
 /**
  * NORMALIZE NAME
- * Case insensitive, removes extra spaces
+ * Case insensitive, removes extra spaces, handles Italian company suffixes
+ * Removes common variations like S.r.l., Srl, S.R.L., S.p.A., SpA, etc.
  */
 function normalizeName(name: string | null | undefined): string {
   if (!name) return '';
-  return name.trim().toLowerCase().replace(/\s+/g, ' ');
+
+  return name
+    .trim()
+    .toLowerCase()
+    // Remove common Italian company suffixes
+    .replace(/\bs\.?r\.?l\.?\b/gi, '')    // S.r.l., Srl, S.R.L., s.r.l.
+    .replace(/\bs\.?p\.?a\.?\b/gi, '')    // S.p.A., SpA, S.P.A., s.p.a.
+    .replace(/\bs\.?a\.?s\.?\b/gi, '')    // S.a.s., Sas, S.A.S., s.a.s.
+    .replace(/\bs\.?n\.?c\.?\b/gi, '')    // S.n.c., Snc, S.N.C., s.n.c.
+    .replace(/\bsrl\b/gi, '')             // srl standalone
+    .replace(/\bspa\b/gi, '')             // spa standalone
+    .replace(/\bsas\b/gi, '')             // sas standalone
+    .replace(/\bsnc\b/gi, '')             // snc standalone
+    // Remove punctuation
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+    // Normalize spaces
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
@@ -176,11 +194,14 @@ export async function POST(request: NextRequest) {
       }
 
       // Configure Fuse.js for fuzzy search
+      // threshold: 0.6 = 40% similarity required (higher = more flexible)
       const fuse = new Fuse(activeSuppliers, {
         keys: ['name'],
-        threshold: 0.4, // 60% similarity threshold (lower = stricter)
+        threshold: 0.6, // More flexible threshold (was 0.4)
         includeScore: true,
-        minMatchCharLength: 3
+        minMatchCharLength: 3,
+        ignoreLocation: true, // Don't consider location of match
+        useExtendedSearch: false
       });
 
       const normalizedInputName = normalizeName(supplier_name);
@@ -190,10 +211,23 @@ export async function POST(request: NextRequest) {
       console.log(`🔤 Fuzzy search returned ${fuzzyResults.length} results`);
 
       if (fuzzyResults.length > 0) {
-        // Get top 3 matches
-        const topMatches = fuzzyResults.slice(0, 3).map((result: any) => {
-          const score = 1 - (result.score || 0); // Convert distance to similarity
-          const confidence = Math.round(score * 100);
+        // Get top 5 matches for better coverage
+        const topMatches = fuzzyResults.slice(0, 5).map((result: any) => {
+          let score = 1 - (result.score || 0); // Convert distance to similarity
+          let confidence = Math.round(score * 100);
+
+          // BOOST CONFIDENCE: If we have VAT from invoice, check if it matches
+          if (supplier_vat) {
+            const normalizedInputVat = normalizeVat(supplier_vat);
+            const normalizedPartnerVat = normalizeVat(result.item.vat);
+
+            if (normalizedPartnerVat && normalizedInputVat === normalizedPartnerVat) {
+              console.log(`🎯 VAT MATCH! Boosting confidence for ${result.item.name}`);
+              // Both name AND vat match - this is almost certainly correct
+              confidence = Math.max(confidence, 95); // Boost to at least 95%
+              score = confidence / 100;
+            }
+          }
 
           return {
             id: result.item.id,
@@ -204,8 +238,12 @@ export async function POST(request: NextRequest) {
           };
         });
 
+        // Sort by confidence (highest first)
+        topMatches.sort((a, b) => b.confidence - a.confidence);
+
         const bestMatch = topMatches[0];
         console.log(`✅ [STEP 2] Found ${topMatches.length} fuzzy matches, best: ${bestMatch.confidence}%`);
+        console.log(`   Top match: ${bestMatch.name} (VAT: ${bestMatch.vat})`);
 
         // If best match is > 80%, suggest use_first
         const suggestedAction = bestMatch.confidence > 80 ? 'use_first' : 'ask_user';

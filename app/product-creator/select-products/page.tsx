@@ -78,6 +78,13 @@ export default function SelectProducts() {
         editing: false,
       }))
     );
+
+    // Check if coming from arrivo-merce
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromArrivoMerce = urlParams.get('from') === 'arrivo-merce';
+    if (fromArrivoMerce) {
+      console.log('📦 Chiamato da arrivo-merce, modalità integrata attiva');
+    }
   }, [router]);
 
   const toggleProduct = (index: number) => {
@@ -209,6 +216,31 @@ export default function SelectProducts() {
           toast.error(`⚠️ ${result.errors.length} errori`, {
             duration: 5000,
           });
+        }
+
+        // Check if coming from arrivo-merce
+        const urlParams = new URLSearchParams(window.location.search);
+        const fromArrivoMerce = urlParams.get('from') === 'arrivo-merce';
+
+        if (fromArrivoMerce && result.results && result.results.length > 0) {
+          // Salva i prodotti creati per arrivo-merce
+          const createdProductId = result.results[0].product_id;
+          const arrivoMerceState = sessionStorage.getItem('arrivo_merce_state');
+
+          if (arrivoMerceState && createdProductId) {
+            const state = JSON.parse(arrivoMerceState);
+            state.createdProductId = createdProductId;
+            sessionStorage.setItem('arrivo_merce_state', JSON.stringify(state));
+
+            // Clear parsed invoice
+            sessionStorage.removeItem('parsedInvoice');
+
+            // Ritorna ad arrivo-merce
+            setTimeout(() => {
+              router.push('/arrivo-merce?resume=true');
+            }, 1500);
+            return;
+          }
         }
 
         // Clear session storage

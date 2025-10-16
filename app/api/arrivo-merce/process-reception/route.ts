@@ -218,28 +218,32 @@ NON aggiungere testo. SOLO il JSON array.`;
       }
     }
 
+    // Separa i matches dai no_match
+    const matchedProducts = matches.filter((m: any) => m.action !== 'no_match');
+    const unmatchedProducts = matches.filter((m: any) => m.action === 'no_match');
+
+    console.log(`✅ Prodotti matchati: ${matchedProducts.length}`);
+    console.log(`⚠️ Prodotti NON matchati: ${unmatchedProducts.length}`);
+
     // Ora esegui le operazioni su Odoo
     const results = {
       updated: 0,
       created: 0,
-      no_match: 0,
+      no_match: unmatchedProducts.length,
       set_to_zero: 0,
       supplier_info_updated: 0,
       errors: [] as string[],
-      details: [] as any[]
+      details: [] as any[],
+      unmatched_products: unmatchedProducts.map((m: any) => ({
+        invoice_product: parsed_products[m.invoice_product_index],
+        reason: m.match_reason,
+        confidence: m.match_confidence
+      }))
     };
 
-    for (const match of matches) {
+    // Processa solo i prodotti matchati
+    for (const match of matchedProducts) {
       try {
-        if (match.action === 'no_match') {
-          results.no_match++;
-          results.details.push({
-            action: 'no_match',
-            product: parsed_products[match.invoice_product_index],
-            reason: match.match_reason
-          });
-          continue;
-        }
 
         if (match.action === 'update') {
           // Segna questa riga come usata

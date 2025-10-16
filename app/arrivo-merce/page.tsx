@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload,
@@ -17,7 +17,8 @@ import {
   ArrowLeft,
   Home
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import UnmatchedProductsHandler from '@/components/arrivo-merce/UnmatchedProductsHandler';
 
 interface ParsedProduct {
   article_code?: string;
@@ -58,6 +59,7 @@ interface OdooPicking {
 
 export default function ArrivoMercePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +81,76 @@ export default function ArrivoMercePage() {
 
   // Step 4: Processing results
   const [results, setResults] = useState<any>(null);
+
+  // Step 3.5: Unmatched products handling
+  const [unmatchedProducts, setUnmatchedProducts] = useState<any[]>([]);
+  const [showUnmatchedModal, setShowUnmatchedModal] = useState(false);
+
+  // Handle resume from Product Creator
+  useEffect(() => {
+    const resume = searchParams?.get('resume');
+    if (resume === 'true') {
+      const savedState = sessionStorage.getItem('arrivo_merce_state');
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        console.log('📦 Ripristino stato da Product Creator:', state);
+
+        // Se c'è un prodotto creato, aggiungi al picking
+        if (state.createdProductId && state.pickingId) {
+          handleProductCreatedCallback(state.createdProductId, state.pickingId, state);
+        }
+      }
+    }
+  }, [searchParams]);
+
+  const handleProductCreatedCallback = async (productId: number, pickingId: number, state: any) => {
+    try {
+      // Aggiungi il prodotto creato al picking
+      const response = await fetch('/api/arrivo-merce/add-product-to-picking', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          picking_id: pickingId,
+          product_id: productId,
+          quantity: state.productToCreate.quantity,
+          lot_number: state.productToCreate.lot_number,
+          expiry_date: state.productToCreate.expiry_date,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log('✅ Prodotto creato aggiunto al picking!', data);
+
+        // Ripristina lo stato
+        setUnmatchedProducts(state.unmatchedProducts);
+        setOdooPicking({ id: pickingId } as any);
+
+        // Rimuovi il prodotto processato e continua
+        const remainingProducts = state.unmatchedProducts.slice(state.currentIndex + 1);
+        if (remainingProducts.length > 0) {
+          setUnmatchedProducts(remainingProducts);
+          setShowUnmatchedModal(true);
+        } else {
+          // Tutti i prodotti gestiti, vai ai risultati
+          setStep(4);
+        }
+
+        // Pulisci sessionStorage
+        sessionStorage.removeItem('arrivo_merce_state');
+      } else {
+        console.error('❌ Errore aggiunta prodotto:', data);
+        alert(`Errore: ${data.error}`);
+      }
+    } catch (error: any) {
+      console.error('❌ Errore callback prodotto creato:', error);
+      alert(`Errore: ${error.message}`);
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -288,7 +360,16 @@ export default function ArrivoMercePage() {
 
       console.log('✅ Processamento completato:', data.results);
       setResults(data.results);
-      setStep(4);
+
+      // Controlla se ci sono prodotti non matchati
+      if (data.results.unmatched_products && data.results.unmatched_products.length > 0) {
+        console.log(`⚠️ Trovati ${data.results.unmatched_products.length} prodotti non matchati`);
+        setUnmatchedProducts(data.results.unmatched_products);
+        setShowUnmatchedModal(true);
+      } else {
+        // Nessun prodotto non matchato, vai direttamente ai risultati
+        setStep(4);
+      }
 
     } catch (err: any) {
       console.error('❌ Errore processamento:', err);
@@ -793,6 +874,22 @@ export default function ArrivoMercePage() {
               </button>
             </div>
           </motion.div>
+        )}
+
+        {/* Unmatched Products Modal */}
+        {showUnmatchedModal && unmatchedProducts.length > 0 && odooPicking && (
+          <UnmatchedProductsHandler
+            unmatchedProducts={unmatchedProducts}
+            pickingId={odooPicking.id}
+            onComplete={() => {
+              setShowUnmatchedModal(false);
+              setStep(4);
+            }}
+            onCancel={() => {
+              setShowUnmatchedModal(false);
+              setStep(4);
+            }}
+          />
         )}
       </div>
     </div>
