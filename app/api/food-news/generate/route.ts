@@ -3,6 +3,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import fs from 'fs';
 import path from 'path';
 
+// Configura timeout per Vercel Pro Plan (60 secondi)
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -164,26 +168,22 @@ export async function POST() {
   try {
     console.log('Starting article generation...');
 
-    // Genera 6 articoli (3 per categoria)
-    const articles: Article[] = [];
+    // Genera tutti i 6 articoli IN PARALLELO per essere più veloce
+    console.log('Generating all 6 articles in parallel...');
 
-    // Genera 3 articoli "Curiosita Food"
-    for (let i = 0; i < 3; i++) {
-      console.log(`Generating Curiosita Food article ${i + 1}/3...`);
-      const article = await generateArticle('Curiosita Food', i);
-      articles.push(article);
-      // Pausa per evitare rate limiting
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+    const articlePromises = [
+      // 3 articoli "Curiosita Food"
+      generateArticle('Curiosita Food', 0),
+      generateArticle('Curiosita Food', 1),
+      generateArticle('Curiosita Food', 2),
+      // 3 articoli "Gestione Ristorante"
+      generateArticle('Gestione Ristorante', 0),
+      generateArticle('Gestione Ristorante', 1),
+      generateArticle('Gestione Ristorante', 2),
+    ];
 
-    // Genera 3 articoli "Gestione Ristorante"
-    for (let i = 0; i < 3; i++) {
-      console.log(`Generating Gestione Ristorante article ${i + 1}/3...`);
-      const article = await generateArticle('Gestione Ristorante', i);
-      articles.push(article);
-      // Pausa per evitare rate limiting
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+    // Aspetta che tutti gli articoli siano generati
+    const articles = await Promise.all(articlePromises);
 
     // Salva articoli
     saveArticles(articles);
