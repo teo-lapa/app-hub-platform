@@ -168,7 +168,7 @@ NON aggiungere testo. SOLO il JSON array.`;
     const usedMoveLineIds = new Set<number>();
 
     // Funzione helper per aggiornare il listino fornitore
-    async function updateSupplierInfo(productId: number, productTmplId: number, invoiceProduct: ParsedProduct) {
+    const updateSupplierInfo = async (productId: number, productTmplId: number, invoiceProduct: ParsedProduct) => {
       if (!supplierId) return;
 
       try {
