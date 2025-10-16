@@ -52,25 +52,54 @@ export async function GET(request: Request) {
     let articlesData = readArticles();
     console.log('📰 [FOOD-NEWS] Articles data:', articlesData ? 'Found' : 'Not found');
 
-    // Se non esistono articoli, crea un set vuoto
-    if (!articlesData) {
-      console.log('📰 [FOOD-NEWS] No articles found, creating empty set');
-      articlesData = {
-        date: new Date().toISOString().split('T')[0],
-        articles: []
-      };
+    // Se non esistono articoli o sono vecchi, genera nuovi articoli
+    if (!areArticlesFromToday(articlesData)) {
+      console.log('📰 [FOOD-NEWS] No articles for today, generating new ones...');
+
+      // Usa l'host della richiesta corrente invece di hardcodare l'URL
+      const url = new URL(request.url);
+      const baseUrl = `${url.protocol}//${url.host}`;
+      console.log('📰 [FOOD-NEWS] Base URL:', baseUrl);
+
+      const generateUrl = `${baseUrl}/api/food-news/generate`;
+      console.log('📰 [FOOD-NEWS] Calling generate endpoint:', generateUrl);
+
+      const generateResponse = await fetch(generateUrl, {
+        method: 'POST',
+      });
+
+      console.log('📰 [FOOD-NEWS] Generate response status:', generateResponse.status);
+
+      if (!generateResponse.ok) {
+        const errorText = await generateResponse.text();
+        console.error('📰 [FOOD-NEWS] Generate failed with:', errorText);
+        throw new Error(`Failed to generate articles: ${generateResponse.status} - ${errorText}`);
+      }
+
+      const generateData = await generateResponse.json();
+      console.log('📰 [FOOD-NEWS] Articles generated successfully');
+
+      return NextResponse.json({
+        success: true,
+        articles: generateData.articles,
+        date: generateData.date,
+        generated: true,
+      });
     }
 
-    // Ritorna sempre gli articoli esistenti (anche se vecchi)
-    // L'utente può generarne di nuovi manualmente cliccando sul bottone
+    // Ritorna articoli esistenti
     console.log('📰 [FOOD-NEWS] Returning existing articles');
+
+    // TypeScript safety check (articlesData è già garantito non-null qui per logica)
+    if (!articlesData) {
+      throw new Error('Articles data is null after validation');
+    }
 
     return NextResponse.json({
       success: true,
       articles: articlesData.articles,
       date: articlesData.date,
       generated: false,
-      isToday: areArticlesFromToday(articlesData)
     });
   } catch (error) {
     console.error('📰 [FOOD-NEWS] ERROR:', error);
