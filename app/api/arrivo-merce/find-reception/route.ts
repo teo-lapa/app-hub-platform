@@ -3,6 +3,28 @@ import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * NORMALIZE VAT NUMBER
+ * Removes spaces, dashes, and country prefixes (IT, CHE-, etc.)
+ * Examples:
+ * - "IT00895100709" -> "00895100709"
+ * - "IT01613660743" -> "01613660743"
+ * - "CHE-105.968.205 MWST" -> "105968205"
+ */
+function normalizeVat(vat: string | null | undefined): string {
+  if (!vat) return '';
+
+  return vat
+    .toUpperCase()
+    .replace(/^IT/i, '')           // Remove IT prefix
+    .replace(/^CHE-?/i, '')        // Remove CHE or CHE- prefix
+    .replace(/\s+/g, '')           // Remove spaces
+    .replace(/-/g, '')             // Remove dashes
+    .replace(/\./g, '')            // Remove dots
+    .replace(/MWST$/i, '')         // Remove MWST suffix
+    .trim();
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Get user cookies to use their Odoo session
@@ -186,13 +208,27 @@ export async function POST(request: NextRequest) {
     // Step 1: Se abbiamo la P.IVA, cerca prima per quella (è univoca!)
     if (supplier_vat) {
       console.log('🔍 Ricerca per P.IVA:', supplier_vat);
-      partners = await callOdoo(cookies, 'res.partner', 'search_read', [
-        [['vat', '=', supplier_vat]],
+      const normalizedInputVat = normalizeVat(supplier_vat);
+      console.log('🔍 P.IVA normalizzata:', normalizedInputVat);
+
+      // Recupera tutti i fornitori con P.IVA
+      const allPartnersWithVat = await callOdoo(cookies, 'res.partner', 'search_read', [
+        [['vat', '!=', false], ['supplier_rank', '>', 0]],
         ['id', 'name', 'supplier_rank', 'vat']
       ]);
 
+      console.log(`🔍 Trovati ${allPartnersWithVat.length} fornitori con P.IVA in Odoo`);
+
+      // Filtra per P.IVA normalizzata
+      partners = allPartnersWithVat.filter((partner: any) => {
+        const partnerVat = normalizeVat(partner.vat);
+        return partnerVat === normalizedInputVat;
+      });
+
       if (partners.length > 0) {
-        console.log('✅ Partner trovato tramite P.IVA!');
+        console.log('✅ Partner trovato tramite P.IVA normalizzata!', partners[0].name);
+      } else {
+        console.log('⚠️ Nessun partner trovato con P.IVA normalizzata');
       }
     }
 
