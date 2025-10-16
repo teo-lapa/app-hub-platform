@@ -324,17 +324,30 @@ export default function PrelievoZonePage() {
   };
 
   const selectBatch = async (batch: Batch) => {
+    // IMPORTANTE: Svuota TUTTA la cache quando cambi batch!
+    // Questo risolve il problema delle ubicazioni che rimangono verdi
+    operationsCacheRef.current = {};
+    cacheTimestampsRef.current = {};
+    locationStatusCacheRef.current = {};
+    sessionStorage.removeItem('pickingOperationsCache');
+    sessionStorage.removeItem('pickingCacheTimestamps');
+    sessionStorage.removeItem('pickingLocationStatusCache');
+
+    console.log('🧹 Cache svuotata per nuovo batch:', batch.name);
+
     setCurrentBatch(batch);
     setShowBatchSelector(false);
     setShowZoneSelector(true);
 
-    // Inizia timer statistiche
-    if (!workStats.startTime) {
-      setWorkStats(prev => ({
-        ...prev,
-        startTime: new Date()
-      }));
-    }
+    // Reset timer statistiche per nuovo batch
+    setWorkStats({
+      zonesCompleted: 0,
+      totalOperations: 0,
+      completedOperations: 0,
+      startTime: new Date(),
+      currentZoneTime: 0,
+      totalTime: 0
+    });
 
     // Carica conteggi zone
     await loadZoneCounts(batch.id);
@@ -1298,11 +1311,21 @@ export default function PrelievoZonePage() {
                         {completedOps}/{totalOps} completati
                       </p>
 
-                      {/* Preview prodotti */}
+                      {/* Preview prodotti - UNO SOTTO L'ALTRO */}
                       {locData.productPreview && locData.productPreview.length > 0 && (
-                        <p className={`text-sm mt-2 ${darkMode ? 'text-gray-400' : 'text-muted-foreground'} line-clamp-1`}>
-                          📦 {locData.productPreview.slice(0, 2).join(', ')}
-                        </p>
+                        <div className={`text-sm mt-3 space-y-1 ${darkMode ? 'text-gray-400' : 'text-muted-foreground'}`}>
+                          {locData.productPreview.slice(0, 3).map((productName: string, idx: number) => (
+                            <div key={idx} className="flex items-start gap-2">
+                              <span className="text-xs">📦</span>
+                              <span className="line-clamp-1 flex-1">{productName}</span>
+                            </div>
+                          ))}
+                          {locData.productPreview.length > 3 && (
+                            <div className="text-xs text-gray-500 italic">
+                              ... e altri {locData.productPreview.length - 3} prodotti
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
 

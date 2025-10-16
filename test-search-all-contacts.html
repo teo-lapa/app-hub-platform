@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cerca BAGNOLI in tutti i contatti</title>
+</head>
+<body>
+    <h1>Cerca BAGNOLI GROUP in Odoo</h1>
+    <button onclick="searchAllContacts()">Cerca in TUTTI i contatti (non solo fornitori)</button>
+    <pre id="results"></pre>
+
+    <script>
+        async function searchAllContacts() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.textContent = '🔍 Ricerca in corso...';
+
+            try {
+                // Cerca in TUTTI i partner, non solo fornitori
+                const response = await fetch('/api/debug/search-all-bagnoli', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: 'BAGNOLI'
+                    })
+                });
+
+                const data = await response.json();
+                resultsDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultsDiv.textContent = 'Errore: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

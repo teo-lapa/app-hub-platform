@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
+// Force dynamic rendering - necessario per request.url
+export const dynamic = 'force-dynamic';
+
 interface Article {
   id: string;
   title: string;

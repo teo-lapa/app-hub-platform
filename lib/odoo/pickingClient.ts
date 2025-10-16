@@ -371,6 +371,9 @@ export class PickingOdooClient {
         const locationId = line.location_id[0];
         const locationName = line.location_id[1];
         const productName = line.product_id && Array.isArray(line.product_id) ? line.product_id[1] : 'Prodotto sconosciuto';
+        const qtyDone = line.qty_done || 0;
+        const quantity = line.quantity || 0;
+        const isCompleted = qtyDone >= quantity;
 
         if (!sublocationMap.has(locationId)) {
           sublocationMap.set(locationId, {
@@ -379,12 +382,25 @@ export class PickingOdooClient {
             complete_name: locationName,
             barcode: '',
             operationCount: 0,
+            completedOps: 0,
+            totalOps: 0,
             productPreview: []
           });
         }
 
         const subloc = sublocationMap.get(locationId);
-        subloc.operationCount++;
+        subloc.totalOps++;
+
+        // Conta quanti prodotti hanno il check completato (qty_done >= quantity)
+        if (isCompleted) {
+          subloc.completedOps++;
+        }
+
+        // Calcola se ubicazione completamente finita
+        subloc.isFullyCompleted = subloc.totalOps > 0 && subloc.completedOps === subloc.totalOps;
+
+        // Mantieni operationCount per compatibilità
+        subloc.operationCount = subloc.totalOps;
 
         // Aggiungi nome prodotto se non già presente
         if (!subloc.productPreview.includes(productName)) {
