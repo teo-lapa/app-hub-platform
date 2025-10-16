@@ -55,6 +55,19 @@ export async function POST(request: NextRequest) {
     console.log('📦 Prodotti da fattura:', parsed_products.length);
     console.log('📋 Righe Odoo:', move_lines.length);
 
+    // Ottieni informazioni sulla ricezione (picking) per avere il partner_id (fornitore)
+    const pickingData = await callOdoo(cookies, 'stock.picking', 'read', [
+      [picking_id],
+      ['partner_id']
+    ]);
+    const supplierId = pickingData[0]?.partner_id?.[0];
+
+    if (!supplierId) {
+      console.log('⚠️ Fornitore non trovato nella ricezione, salto aggiornamento listino');
+    } else {
+      console.log('🏢 Fornitore ID:', supplierId);
+    }
+
     // Usa Claude per fare il matching intelligente tra prodotti fattura e righe Odoo
     const matchingPrompt = `Sei un sistema di matching tra prodotti di fattura e righe di un sistema gestionale.
 
@@ -154,12 +167,64 @@ NON aggiungere testo. SOLO il JSON array.`;
     // Traccia le righe Odoo che sono state usate (aggiornate o riferite per creare nuove righe)
     const usedMoveLineIds = new Set<number>();
 
+    // Funzione helper per aggiornare il listino fornitore
+    async function updateSupplierInfo(productId: number, productTmplId: number, invoiceProduct: ParsedProduct) {
+      if (!supplierId) return;
+
+      try {
+        // Cerca se esiste già una riga supplierinfo per questo prodotto e fornitore
+        const existingSupplierInfo = await callOdoo(cookies, 'product.supplierinfo', 'search_read', [
+          [
+            ['product_tmpl_id', '=', productTmplId],
+            ['partner_id', '=', supplierId]
+          ],
+          ['id', 'product_name', 'product_code']
+        ]);
+
+        if (existingSupplierInfo && existingSupplierInfo.length > 0) {
+          const supplierInfo = existingSupplierInfo[0];
+          const updateData: any = {};
+          let needsUpdate = false;
+
+          // Aggiorna product_code se diverso e se presente nella fattura
+          if (invoiceProduct.article_code && supplierInfo.product_code !== invoiceProduct.article_code) {
+            updateData.product_code = invoiceProduct.article_code;
+            needsUpdate = true;
+            console.log(`  📝 Codice fornitore: "${supplierInfo.product_code}" → "${invoiceProduct.article_code}"`);
+          }
+
+          // Aggiorna product_name se diverso
+          if (invoiceProduct.description && supplierInfo.product_name !== invoiceProduct.description) {
+            updateData.product_name = invoiceProduct.description;
+            needsUpdate = true;
+            console.log(`  📝 Nome fornitore: "${supplierInfo.product_name}" → "${invoiceProduct.description}"`);
+          }
+
+          // Esegui l'update solo se c'è qualcosa da aggiornare
+          if (needsUpdate) {
+            await callOdoo(cookies, 'product.supplierinfo', 'write', [
+              [supplierInfo.id],
+              updateData
+            ]);
+            console.log(`  ✅ Listino fornitore aggiornato per supplierinfo ID ${supplierInfo.id}`);
+          } else {
+            console.log(`  ℹ️ Listino fornitore già aggiornato`);
+          }
+        } else {
+          console.log(`  ⚠️ Nessun listino fornitore trovato per questo prodotto`);
+        }
+      } catch (error: any) {
+        console.error(`  ❌ Errore aggiornamento listino fornitore:`, error.message);
+      }
+    }
+
     // Ora esegui le operazioni su Odoo
     const results = {
       updated: 0,
       created: 0,
       no_match: 0,
       set_to_zero: 0,
+      supplier_info_updated: 0,
       errors: [] as string[],
       details: [] as any[]
     };
@@ -216,6 +281,27 @@ NON aggiungere testo. SOLO il JSON array.`;
 
           console.log(`✅ Aggiornata riga ${match.move_line_id}: qty=${match.quantity}, lotto=${match.lot_number}`);
 
+          // Aggiorna il listino fornitore con codice e nome dalla fattura
+          if (moveLine && moveLine.product_id && moveLine.product_id.length > 0) {
+            console.log(`🔄 Aggiorno listino fornitore per prodotto ${moveLine.product_name}...`);
+            const invoiceProduct = parsed_products[match.invoice_product_index];
+
+            // Ottieni product_tmpl_id dal product_id
+            const productData = await callOdoo(cookies, 'product.product', 'read', [
+              [moveLine.product_id[0]],
+              ['product_tmpl_id']
+            ]);
+
+            if (productData && productData[0] && productData[0].product_tmpl_id) {
+              await updateSupplierInfo(
+                moveLine.product_id[0],
+                productData[0].product_tmpl_id[0],
+                invoiceProduct
+              );
+              results.supplier_info_updated++;
+            }
+          }
+
         } else if (match.action === 'create_new_line') {
           // Segna la riga originale come usata (da cui prendiamo i dati per creare la nuova)
           if (match.move_line_id) {
@@ -263,6 +349,27 @@ NON aggiungere testo. SOLO il JSON array.`;
           });
 
           console.log(`✅ Creata nuova riga ${newLineId}: qty=${match.quantity}, lotto=${match.lot_number}`);
+
+          // Aggiorna il listino fornitore anche per le righe create
+          if (originalLine && originalLine.product_id && originalLine.product_id.length > 0) {
+            console.log(`🔄 Aggiorno listino fornitore per prodotto ${originalLine.product_name}...`);
+            const invoiceProduct = parsed_products[match.invoice_product_index];
+
+            // Ottieni product_tmpl_id dal product_id
+            const productData = await callOdoo(cookies, 'product.product', 'read', [
+              [originalLine.product_id[0]],
+              ['product_tmpl_id']
+            ]);
+
+            if (productData && productData[0] && productData[0].product_tmpl_id) {
+              await updateSupplierInfo(
+                originalLine.product_id[0],
+                productData[0].product_tmpl_id[0],
+                invoiceProduct
+              );
+              results.supplier_info_updated++;
+            }
+          }
         }
 
       } catch (error: any) {

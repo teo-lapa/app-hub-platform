@@ -720,6 +720,13 @@ export default function ArrivoMercePage() {
                 </div>
               </div>
 
+              {results.supplier_info_updated > 0 && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6 text-center">
+                  <p className="text-2xl font-bold text-purple-600">{results.supplier_info_updated}</p>
+                  <p className="text-sm text-purple-700">Listini fornitore aggiornati con codici e nomi dalla fattura</p>
+                </div>
+              )}
+
               {results.errors && results.errors.length > 0 && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                   <h3 className="font-bold text-red-900 mb-2">Errori:</h3>
