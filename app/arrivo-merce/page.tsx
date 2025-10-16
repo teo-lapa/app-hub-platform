@@ -701,7 +701,7 @@ export default function ArrivoMercePage() {
                 Completato!
               </h2>
 
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-green-50 rounded-lg p-4 text-center">
                   <p className="text-3xl font-bold text-green-600">{results.updated}</p>
                   <p className="text-sm text-green-700">Righe aggiornate</p>
@@ -709,6 +709,10 @@ export default function ArrivoMercePage() {
                 <div className="bg-blue-50 rounded-lg p-4 text-center">
                   <p className="text-3xl font-bold text-blue-600">{results.created}</p>
                   <p className="text-sm text-blue-700">Righe create</p>
+                </div>
+                <div className="bg-orange-50 rounded-lg p-4 text-center">
+                  <p className="text-3xl font-bold text-orange-600">{results.set_to_zero || 0}</p>
+                  <p className="text-sm text-orange-700">Messe a zero</p>
                 </div>
                 <div className="bg-yellow-50 rounded-lg p-4 text-center">
                   <p className="text-3xl font-bold text-yellow-600">{results.no_match}</p>
@@ -739,6 +743,8 @@ export default function ArrivoMercePage() {
                             ? 'bg-green-50 border-green-200'
                             : detail.action === 'created'
                             ? 'bg-blue-50 border-blue-200'
+                            : detail.action === 'set_to_zero'
+                            ? 'bg-orange-50 border-orange-200'
                             : 'bg-yellow-50 border-yellow-200'
                         }`}
                       >
@@ -747,6 +753,7 @@ export default function ArrivoMercePage() {
                             <p className="font-medium">
                               {detail.action === 'updated' && '✏️ Aggiornata'}
                               {detail.action === 'created' && '➕ Creata'}
+                              {detail.action === 'set_to_zero' && '🔻 Messa a zero'}
                               {detail.action === 'no_match' && '⚠️ Nessun match'}
                             </p>
                             {detail.product_name && (

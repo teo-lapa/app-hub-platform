@@ -151,11 +151,15 @@ NON aggiungere testo. SOLO il JSON array.`;
 
     console.log('✅ Matches trovati:', matches.length);
 
+    // Traccia le righe Odoo che sono state usate (aggiornate o riferite per creare nuove righe)
+    const usedMoveLineIds = new Set<number>();
+
     // Ora esegui le operazioni su Odoo
     const results = {
       updated: 0,
       created: 0,
       no_match: 0,
+      set_to_zero: 0,
       errors: [] as string[],
       details: [] as any[]
     };
@@ -173,6 +177,9 @@ NON aggiungere testo. SOLO il JSON array.`;
         }
 
         if (match.action === 'update') {
+          // Segna questa riga come usata
+          usedMoveLineIds.add(match.move_line_id);
+
           // Aggiorna la riga esistente
           const updateData: any = {
             qty_done: match.quantity
@@ -210,6 +217,11 @@ NON aggiungere testo. SOLO il JSON array.`;
           console.log(`✅ Aggiornata riga ${match.move_line_id}: qty=${match.quantity}, lotto=${match.lot_number}`);
 
         } else if (match.action === 'create_new_line') {
+          // Segna la riga originale come usata (da cui prendiamo i dati per creare la nuova)
+          if (match.move_line_id) {
+            usedMoveLineIds.add(match.move_line_id);
+          }
+
           // Crea una nuova riga per lo stesso prodotto ma con lotto diverso
           const originalLine = move_lines.find((ml: OdooMoveLine) => ml.id === match.move_line_id);
 
@@ -256,6 +268,36 @@ NON aggiungere testo. SOLO il JSON array.`;
       } catch (error: any) {
         console.error('❌ Errore processamento match:', error);
         results.errors.push(`Errore su riga: ${error.message}`);
+      }
+    }
+
+    // ✨ NUOVA LOGICA: Metti a ZERO tutte le righe Odoo che NON sono state usate
+    console.log('🔍 Verifico righe Odoo non utilizzate...');
+    for (const moveLine of move_lines) {
+      if (!usedMoveLineIds.has(moveLine.id)) {
+        try {
+          // Questa riga non è stata usata, metti quantità a 0
+          await callOdoo(cookies, 'stock.move.line', 'write', [
+            [moveLine.id],
+            { qty_done: 0 }
+          ]);
+
+          results.set_to_zero++;
+          results.details.push({
+            action: 'set_to_zero',
+            move_line_id: moveLine.id,
+            product_name: moveLine.product_name,
+            quantity: 0,
+            lot: 'N/A',
+            expiry: 'N/A',
+            reason: 'Riga non trovata nella fattura, impostata a zero'
+          });
+
+          console.log(`⚠️ Riga ${moveLine.id} (${moveLine.product_name}) impostata a qty_done=0`);
+        } catch (error: any) {
+          console.error(`❌ Errore impostazione a zero riga ${moveLine.id}:`, error);
+          results.errors.push(`Errore impostazione a zero riga ${moveLine.id}: ${error.message}`);
+        }
       }
     }
 
