@@ -41,7 +41,7 @@ function getNodeText(node: any, path: string): string | null {
   if (!current) return null;
   if (typeof current === 'string') return current;
   if (current._text) return current._text;
-  if (current[0]?._ text) return current[0]._text;
+  if (current[0]?._text) return current[0]._text;
 
   return null;
 }
