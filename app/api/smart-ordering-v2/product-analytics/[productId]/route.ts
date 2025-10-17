@@ -142,60 +142,67 @@ export async function GET(
       100
     );
 
-    // Get incoming quantity (purchase orders not yet received)
-    // SOLO ordini confermati ('purchase'), NON chiusi ('done')
+    // Get incoming quantity from STOCK MOVES (Rifornimenti in Odoo)
+    // Questi sono i movimenti di magazzino in entrata confermati
     let incomingQty = 0;
     let incomingDate: string | null = null;
     let incomingOrderName: string | null = null;
     let incomingOrderId: number | null = null;
 
     try {
-      const purchaseLines = await rpc.searchRead(
-        'purchase.order.line',
+      // Carica stock.move per prodotto in arrivo
+      const stockMoves = await rpc.searchRead(
+        'stock.move',
         [
           ['product_id', '=', productId],
-          ['order_id.state', '=', 'purchase']  // ✅ SOLO ordini confermati aperti
+          ['picking_code', '=', 'incoming'],  // Solo in entrata
+          ['state', 'in', ['confirmed', 'assigned', 'waiting']],  // Non ancora ricevuti
         ],
-        ['product_qty', 'qty_received', 'date_planned', 'order_id'],
+        ['product_uom_qty', 'date', 'origin', 'picking_id', 'purchase_line_id'],
         500
       );
 
-      // Find earliest delivery date among lines with pending qty
+      // Find earliest delivery date among moves
       let earliestDate: Date | null = null;
-      let earliestOrderId: number | null = null;
+      let earliestPickingId: number | null = null;
 
-      purchaseLines.forEach((line: any) => {
-        const notYetReceived = (line.product_qty || 0) - (line.qty_received || 0);
-        if (notYetReceived > 0) {
-          incomingQty += notYetReceived;
+      stockMoves.forEach((move: any) => {
+        const qty = move.product_uom_qty || 0;
+        if (qty > 0) {
+          incomingQty += qty;
 
           // Track earliest delivery date
-          if (line.date_planned) {
-            const lineDate = new Date(line.date_planned);
-            if (!earliestDate || lineDate < earliestDate) {
-              earliestDate = lineDate;
-              earliestOrderId = line.order_id[0];
+          if (move.date) {
+            const moveDate = new Date(move.date);
+            if (!earliestDate || moveDate < earliestDate) {
+              earliestDate = moveDate;
+              earliestPickingId = move.picking_id ? move.picking_id[0] : null;
+
+              // Se c'è un purchase_line_id, usa quello per ottenere il nome ordine
+              if (move.purchase_line_id && move.purchase_line_id[0]) {
+                incomingOrderId = move.purchase_line_id[0];
+              }
             }
           }
         }
       });
 
-      // Get order name if we have earliest order
-      if (earliestOrderId) {
-        const orderDetails = await rpc.searchRead(
-          'purchase.order',
-          [['id', '=', earliestOrderId]],
-          ['name', 'date_planned'],
+      // Get picking/order name if available
+      if (earliestPickingId) {
+        const pickingDetails = await rpc.searchRead(
+          'stock.picking',
+          [['id', '=', earliestPickingId]],
+          ['name', 'origin', 'scheduled_date'],
           1
         );
 
-        if (orderDetails && orderDetails.length > 0) {
-          incomingOrderName = orderDetails[0].name;
-          incomingOrderId = earliestOrderId;
+        if (pickingDetails && pickingDetails.length > 0) {
+          // Origin contiene il riferimento all'ordine (es. "P09965")
+          incomingOrderName = pickingDetails[0].origin || pickingDetails[0].name;
 
-          // Use order's date_planned if line doesn't have it
-          if (!earliestDate && orderDetails[0].date_planned) {
-            earliestDate = new Date(orderDetails[0].date_planned);
+          // Use scheduled_date if move doesn't have date
+          if (!earliestDate && pickingDetails[0].scheduled_date) {
+            earliestDate = new Date(pickingDetails[0].scheduled_date);
           }
         }
       }
@@ -205,7 +212,7 @@ export async function GET(
         incomingDate = (earliestDate as Date).toISOString().split('T')[0];
       }
     } catch (error) {
-      console.warn('⚠️ Errore caricamento ordini in arrivo:', error);
+      console.warn('⚠️ Errore caricamento rifornimenti in arrivo:', error);
     }
 
     // Get suppliers from product template (REAL-TIME)
