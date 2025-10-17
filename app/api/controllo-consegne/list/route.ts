@@ -39,6 +39,9 @@ export async function GET(request: NextRequest) {
     const startDate = `${date} 00:00:00`;
     const endDate = `${date} 23:59:59`;
 
+    console.log(`[QUERY] Searching for pickings on date: ${date}`);
+    console.log(`[QUERY] Date range: ${startDate} to ${endDate}`);
+
     const pickings = await callOdoo(
       cookies,
       'stock.picking',
@@ -65,7 +68,17 @@ export async function GET(request: NextRequest) {
       }
     );
 
+    console.log(`[QUERY] Total pickings found: ${pickings?.length || 0}`);
+    if (pickings && pickings.length > 0) {
+      console.log('[QUERY] First picking:', {
+        name: pickings[0].name,
+        date_done: pickings[0].date_done,
+        partner: pickings[0].partner_id?.[1]
+      });
+    }
+
     if (!pickings || pickings.length === 0) {
+      console.log('[QUERY] No pickings found for this date range');
       return NextResponse.json({ documents: [] });
     }
 
