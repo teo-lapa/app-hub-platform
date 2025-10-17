@@ -172,7 +172,7 @@ COMPITO:
 REGOLE CORREZIONI:
 - Prezzo sbagliato in bozza → action: "update", changes: {"price_unit": prezzo_corretto_da_pdf}
 - Quantità sbagliata → action: "update", changes: {"quantity": quantità_corretta}
-- Prodotto mancante in bozza → action: "create", requires_user_approval: true
+- Prodotto mancante in bozza → action: "create", requires_user_approval: true, DEVI includere "parsed_line" con TUTTI i dati del prodotto dal PDF (description, product_code, quantity, unit_price, subtotal, tax_rate, unit)
 - Prodotto extra in bozza → action: "delete", requires_user_approval: false
 - Descrizione diversa ma prezzo OK → NON correggere
 
@@ -219,6 +219,15 @@ Rispondi SOLO con JSON in questo formato:
     },
     {
       "action": "create",
+      "parsed_line": {
+        "description": "Descrizione esatta dal PDF",
+        "product_code": "COD123 o null",
+        "quantity": 5,
+        "unit_price": 20.00,
+        "subtotal": 100.00,
+        "tax_rate": 22,
+        "unit": "pz"
+      },
       "new_line": {
         "name": "Nuovo Prodotto XYZ",
         "quantity": 5,

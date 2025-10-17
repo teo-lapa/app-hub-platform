@@ -29,19 +29,77 @@ export default function ManageMissingProductsView({
       adding: boolean;
       added: boolean;
       error?: string;
+      manualSearchTerm?: string;
     }
   }>({});
 
   // Auto-search products on mount
   useEffect(() => {
+    // Debug: Log missing products data
+    console.log('=== MISSING PRODUCTS DEBUG ===');
+    console.log('Total missing products:', missingProducts.length);
+    missingProducts.forEach((missing, idx) => {
+      console.log(`\n--- Missing Product #${idx} ---`);
+      console.log('Full object:', missing);
+      console.log('parsed_line:', missing.parsed_line);
+      console.log('parsed_line.description:', missing.parsed_line?.description);
+      console.log('reason:', missing.reason);
+      console.log('action:', missing.action);
+    });
+    console.log('=== END DEBUG ===\n');
+
     missingProducts.forEach((_, idx) => {
       searchProduct(idx);
     });
   }, []);
 
+  const manualSearch = async (index: number) => {
+    const state = productStates[index];
+    const searchTerm = state?.manualSearchTerm?.trim();
+    if (!searchTerm) return;
+
+    setProductStates(prev => ({
+      ...prev,
+      [index]: { ...prev[index], searching: true, suggestions: [], selectedProduct: null }
+    }));
+
+    try {
+      const response = await fetch('/api/valida-fatture/search-products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          supplier_id: draftInvoice.partner_id[0],
+          search_term: searchTerm
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setProductStates(prev => ({
+          ...prev,
+          [index]: {
+            ...prev[index],
+            searching: false,
+            suggestions: data.products || [],
+            selectedProduct: data.products?.length > 0 ? data.products[0] : null
+          }
+        }));
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      setProductStates(prev => ({
+        ...prev,
+        [index]: { ...prev[index], searching: false, error: error.message }
+      }));
+    }
+  };
+
   const searchProduct = async (index: number) => {
     const missing = missingProducts[index];
-    if (!missing.description) return;
+    const description = missing.parsed_line?.description || missing.reason || '';
+    if (!description) return;
 
     setProductStates(prev => ({
       ...prev,
@@ -51,8 +109,8 @@ export default function ManageMissingProductsView({
     try {
       // Estrai termine di ricerca dalla descrizione
       // Cerca codice prodotto tipo "P09956" o "[RI1500TS]"
-      const codeMatch = missing.description.match(/P\d+|[\[\(][A-Z0-9]+[\]\)]/);
-      const searchTerm = codeMatch ? codeMatch[0].replace(/[\[\]\(\)]/g, '') : missing.description.split(':')[0].trim();
+      const codeMatch = description.match(/P\d+|[\[\(][A-Z0-9]+[\]\)]/);
+      const searchTerm = codeMatch ? codeMatch[0].replace(/[\[\]\(\)]/g, '') : description.split(':')[0].trim();
 
       const response = await fetch('/api/valida-fatture/search-products', {
         method: 'POST',
@@ -163,12 +221,13 @@ export default function ManageMissingProductsView({
               className={`bg-white rounded-2xl shadow-sm p-6 ${state.added ? 'ring-2 ring-green-500' : ''}`}
             >
               {/* Product from PDF */}
-              <div className="mb-4">
+              <div className="mb-4 bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-200">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900">{missing.description}</h3>
+                    <div className="text-xs font-semibold text-blue-600 uppercase mb-1">Prodotto dal PDF</div>
+                    <h3 className="text-lg font-bold text-blue-900">{missing.parsed_line?.description || missing.reason}</h3>
                     {missing.parsed_line && (
-                      <div className="flex gap-4 mt-2 text-sm text-gray-600">
+                      <div className="flex gap-4 mt-2 text-sm text-blue-700">
                         <span>Quantità: <span className="font-semibold">{missing.parsed_line.quantity}</span></span>
                         <span>Prezzo: <span className="font-semibold">€{missing.parsed_line.unit_price.toFixed(2)}</span></span>
                         <span>Totale: <span className="font-semibold">€{missing.parsed_line.subtotal.toFixed(2)}</span></span>
@@ -239,14 +298,51 @@ export default function ManageMissingProductsView({
                         <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <p className="font-semibold text-amber-900 mb-1">Prodotto non trovato nel catalogo fornitore</p>
+                          <p className="text-sm font-medium text-amber-800 mb-2">
+                            Cercato: "{missing.parsed_line?.description || missing.reason}"
+                          </p>
                           <p className="text-sm text-amber-700">
-                            Devi creare questo prodotto prima di poterlo aggiungere alla fattura
+                            Cerca manualmente il prodotto o crealo con AI
                           </p>
                         </div>
                       </div>
 
+                      {/* Ricerca Manuale */}
+                      <div className="mb-3">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Cerca prodotto manualmente:
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={state.manualSearchTerm || ''}
+                            onChange={(e) => {
+                              setProductStates(prev => ({
+                                ...prev,
+                                [idx]: { ...prev[idx], manualSearchTerm: e.target.value }
+                              }));
+                            }}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                manualSearch(idx);
+                              }
+                            }}
+                            placeholder="Es: Burrata, P09956, Julienne..."
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          />
+                          <button
+                            onClick={() => manualSearch(idx)}
+                            disabled={!state.manualSearchTerm?.trim()}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            <Search className="w-4 h-4" />
+                            Cerca
+                          </button>
+                        </div>
+                      </div>
+
                       <Link
-                        href={`/product-creator?supplier=${draftInvoice.partner_id[1]}&description=${encodeURIComponent(missing.description)}&price=${missing.parsed_line?.unit_price || 0}`}
+                        href={`/product-creator?supplier=${draftInvoice.partner_id[1]}&description=${encodeURIComponent(missing.parsed_line?.description || missing.reason)}&price=${missing.parsed_line?.unit_price || 0}`}
                         target="_blank"
                         className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center gap-2"
                       >
@@ -259,7 +355,7 @@ export default function ManageMissingProductsView({
                         className="w-full mt-2 bg-gray-200 text-gray-700 py-2 rounded-xl font-semibold hover:bg-gray-300 transition-all flex items-center justify-center gap-2"
                       >
                         <Search className="w-4 h-4" />
-                        Riprova Ricerca
+                        Riprova Ricerca Automatica
                       </button>
                     </div>
                   )}

@@ -8,6 +8,7 @@ import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 [APPLY-CORRECTIONS] API v2 - WITH FORCED RECALCULATION');
     const { invoice_id, corrections } = await request.json();
 
     if (!invoice_id || !corrections) {
@@ -94,6 +95,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // IMPORTANTE: Forza il ricalcolo dei totali della fattura
+    // Odoo non ricalcola automaticamente i totali quando modifichi le righe
+    console.log('🔄 [APPLY-CORRECTIONS] Forcing invoice totals recalculation...');
+
+    try {
+      // Triggera il ricalcolo facendo un write vuoto sulla fattura
+      await callOdoo(
+        cookies,
+        'account.move',
+        'write',
+        [[invoice_id], {}]
+      );
+      console.log('✅ [APPLY-CORRECTIONS] Invoice recalculation triggered');
+    } catch (error: any) {
+      console.warn('⚠️ [APPLY-CORRECTIONS] Failed to trigger recalculation:', error.message);
+    }
+
     // Dopo le modifiche, ricarica la fattura per verificare il nuovo totale
     console.log('🔄 [APPLY-CORRECTIONS] Reloading invoice to verify new total...');
 
@@ -110,6 +128,41 @@ export async function POST(request: NextRequest) {
     const newTotal = updatedInvoice[0]?.amount_total || 0;
 
     console.log(`✅ [APPLY-CORRECTIONS] Corrections applied! New total: €${newTotal}`);
+
+    // IMPORTANTE: Lascia traccia nel Chatter di Odoo
+    console.log('📝 [APPLY-CORRECTIONS] Adding message to invoice chatter...');
+
+    try {
+      const changesSummary = [
+        `✅ <strong>Fattura validata automaticamente con Claude AI</strong>`,
+        ``,
+        `📊 <strong>Riepilogo correzioni:</strong>`,
+        `• Righe aggiornate: ${updated_lines}`,
+        `• Righe eliminate: ${deleted_lines}`,
+        `• Righe create: ${created_lines}`,
+        ``,
+        `💰 <strong>Nuovo totale fattura:</strong> €${newTotal.toFixed(2)}`,
+        ``,
+        `🤖 <em>Validazione automatica tramite Claude AI - Confronto PDF vs Bozza</em>`
+      ].join('<br/>');
+
+      await callOdoo(
+        cookies,
+        'account.move',
+        'message_post',
+        [[invoice_id]],
+        {
+          body: changesSummary,
+          message_type: 'comment',
+          subtype_xmlid: 'mail.mt_note'
+        }
+      );
+
+      console.log('✅ [APPLY-CORRECTIONS] Chatter message added successfully');
+    } catch (error: any) {
+      console.warn('⚠️ [APPLY-CORRECTIONS] Failed to add chatter message:', error.message);
+      // Non blocchiamo il flusso se il messaggio fallisce
+    }
 
     return NextResponse.json({
       success: true,

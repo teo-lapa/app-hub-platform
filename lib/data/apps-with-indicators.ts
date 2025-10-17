@@ -429,6 +429,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-10-15'),
     updatedAt: new Date('2025-10-15'),
   },
+  {
+    id: 's25',
+    name: 'Valida Fatture [P]',
+    description: 'Sistema AI per validazione fatture bozza. Confronta automaticamente PDF fornitore con bozza Odoo, trova differenze e corregge prezzi e quantità fino al centesimo.',
+    icon: '✅',
+    badge: 'PRO',
+    category: 'Finance',
+    url: '/valida-fatture',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-10-16'),
+    updatedAt: new Date('2025-10-16'),
+  },
 ];
 
 // Combina tutte le app

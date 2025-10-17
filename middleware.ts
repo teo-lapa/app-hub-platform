@@ -18,7 +18,8 @@ const publicRoutes = [
   '/auth',
   '/api/auth/login',
   '/api/auth/register',
-  '/api/auth/logout'
+  '/api/auth/logout',
+  '/valida-fatture'
 ];
 
 export async function middleware(request: NextRequest) {

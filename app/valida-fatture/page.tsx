@@ -12,7 +12,8 @@ import {
   TrendingUp,
   TrendingDown,
   RefreshCw,
-  ArrowLeft
+  ArrowLeft,
+  Home
 } from 'lucide-react';
 import { DraftInvoice, DraftInvoiceDetail, ValidationState, ParsedInvoiceData, ComparisonResult, CorrectionAction } from './types';
 import ManageMissingProductsView from './ManageMissingProductsView';
@@ -50,7 +51,11 @@ export default function ValidaFatturePage() {
         // Estrai aziende uniche dalle fatture
         if (data.invoices.length > 0) {
           const uniqueCompanies = Array.from(
-            new Map(data.invoices.map((inv: DraftInvoice) => [inv.company_id[0], inv.company_id])).values()
+            new Map(
+              data.invoices
+                .filter((inv: DraftInvoice) => inv.company_id && Array.isArray(inv.company_id) && inv.company_id.length >= 2)
+                .map((inv: DraftInvoice) => [inv.company_id[0], inv.company_id])
+            ).values()
           ) as Array<[number, string]>;
           setCompanies(uniqueCompanies);
         }
@@ -108,13 +113,14 @@ export default function ValidaFatturePage() {
       const compareData = await compareResponse.json();
       if (!compareData.success) throw new Error(compareData.error);
 
-      setState({
+      setState(prev => ({
+        ...prev,
         step: 'review',
         selected_invoice: fullInvoice,
         parsed_data: compareData.parsed_invoice,
         comparison: compareData.comparison,
         iterations: 0
-      });
+      }));
 
     } catch (error: any) {
       setState(prev => ({
@@ -178,56 +184,7 @@ export default function ValidaFatturePage() {
       const data = await response.json();
       if (!data.success) throw new Error(data.error);
 
-      // Calcola differenza rimanente
-      const realTotal = state.parsed_data?.total_amount || 0;
-      const remaining = Math.abs(data.new_total - realTotal);
-
-      console.log(`🔍 Remaining difference: €${remaining.toFixed(2)}`);
-
-      // Se ancora fuori tolleranza e iterazioni < 5, riprova
-      if (remaining > 0.02 && state.iterations < 5) {
-        console.log(`🔄 Iteration ${state.iterations + 1}: Re-analyzing...`);
-
-        // Ricarica fattura e rianalizza
-        const detailResponse = await fetch('/api/valida-fatture/get-invoice-detail', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ invoice_id: state.selected_invoice.id })
-        });
-
-        const detailData = await detailResponse.json();
-        if (!detailData.success) throw new Error(detailData.error);
-
-        const updatedInvoice: DraftInvoiceDetail = detailData.invoice;
-
-        // Rianalizza
-        const pdfAttachment = updatedInvoice.attachments[0];
-        const compareResponse = await fetch('/api/valida-fatture/analyze-and-compare', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            pdf_base64: pdfAttachment.datas,
-            pdf_mimetype: pdfAttachment.mimetype,
-            draft_invoice: updatedInvoice
-          })
-        });
-
-        const compareData = await compareResponse.json();
-        if (!compareData.success) throw new Error(compareData.error);
-
-        setState(prev => ({
-          ...prev,
-          step: 'review',
-          selected_invoice: updatedInvoice,
-          comparison: compareData.comparison,
-          iterations: prev.iterations + 1
-        }));
-
-        setProcessing(false);
-        return;
-      }
-
-      // Completato!
+      // Completato! Vai direttamente allo step completed senza iterazioni
       setState(prev => ({
         ...prev,
         step: 'completed',
@@ -246,11 +203,24 @@ export default function ValidaFatturePage() {
   };
 
   const reset = () => {
-    setState({
+    setState(prev => ({
+      ...prev,
       step: 'select',
       iterations: 0
-    });
+    }));
     loadDraftInvoices();
+  };
+
+  const goToStep = (targetStep: ValidationState['step']) => {
+    // Permetti navigazione solo agli step già completati o allo step corrente
+    const steps: ValidationState['step'][] = ['select', 'analyzing', 'review', 'manage_missing_products', 'correcting', 'completed'];
+    const currentIdx = steps.indexOf(state.step);
+    const targetIdx = steps.indexOf(targetStep);
+
+    // Naviga solo se lo step è già stato completato o è quello corrente
+    if (targetIdx <= currentIdx) {
+      setState(prev => ({ ...prev, step: targetStep }));
+    }
   };
 
   return (
@@ -262,14 +232,23 @@ export default function ValidaFatturePage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
-              <FileCheck className="w-8 h-8 text-white" />
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+                <FileCheck className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900">Valida Fatture</h1>
+                <p className="text-gray-600">Confronto intelligente fatture bozza con PDF definitivi</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900">Valida Fatture</h1>
-              <p className="text-gray-600">Confronto intelligente fatture bozza con PDF definitivi</p>
-            </div>
+            <a
+              href="/"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-colors"
+            >
+              <Home className="w-5 h-5" />
+              <span>Home</span>
+            </a>
           </div>
         </motion.div>
 
@@ -289,19 +268,26 @@ export default function ValidaFatturePage() {
               const isActive = state.step === step.key;
               const isCompleted = currentIdx > idx;
               const isSkipped = step.key === 'manage_missing_products' && state.step !== 'manage_missing_products' && currentIdx > 3;
+              const isClickable = isCompleted || isActive;
 
               return (
                 <div key={step.key} className="flex items-center">
                   <div className="flex flex-col items-center">
-                    <div className={`
-                      w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm
-                      ${isActive ? 'bg-blue-500 text-white' :
-                        isCompleted ? 'bg-green-500 text-white' :
-                        isSkipped ? 'bg-gray-300 text-gray-600' :
-                        'bg-gray-200 text-gray-500'}
-                    `}>
+                    <button
+                      onClick={() => isClickable && goToStep(step.key as ValidationState['step'])}
+                      disabled={!isClickable}
+                      className={`
+                        w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm
+                        transition-all
+                        ${isActive ? 'bg-blue-500 text-white' :
+                          isCompleted ? 'bg-green-500 text-white hover:bg-green-600 cursor-pointer' :
+                          isSkipped ? 'bg-gray-300 text-gray-600' :
+                          'bg-gray-200 text-gray-500 cursor-not-allowed'}
+                        ${isClickable && !isActive ? 'hover:scale-110' : ''}
+                      `}
+                    >
                       {idx + 1}
-                    </div>
+                    </button>
                     <span className="text-xs text-gray-600 mt-1">{step.label}</span>
                   </div>
                   {idx < 5 && <div className="w-16 h-1 bg-gray-200 mx-2" />}
@@ -429,8 +415,10 @@ function InvoiceList({ invoices, loading, onSelect }: any) {
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
               <h3 className="font-bold text-lg text-gray-900">{invoice.name}</h3>
-              <p className="text-sm text-gray-600">{invoice.partner_id[1]}</p>
-              <p className="text-xs text-blue-600 mt-1">{invoice.company_id[1]}</p>
+              <p className="text-sm text-gray-600">{invoice.partner_id?.[1] || 'Fornitore N/A'}</p>
+              {invoice.company_id && invoice.company_id[1] && (
+                <p className="text-xs text-blue-600 mt-1">{invoice.company_id[1]}</p>
+              )}
             </div>
             {invoice.has_attachment && (
               <FileText className="w-5 h-5 text-green-500" />
@@ -494,8 +482,10 @@ function ReviewView({ comparison, parsedData, draftInvoice, onApply, onCancel, p
           <div className="flex-1">
             <h2 className="text-2xl font-bold mb-2">{draftInvoice.name}</h2>
             <div className="space-y-1 text-blue-50">
-              <p className="text-lg font-semibold">{draftInvoice.partner_id[1]}</p>
-              <p className="text-sm">{draftInvoice.company_id[1]}</p>
+              <p className="text-lg font-semibold">{draftInvoice.partner_id?.[1] || 'N/A'}</p>
+              {draftInvoice.company_id && draftInvoice.company_id[1] && (
+                <p className="text-sm">{draftInvoice.company_id[1]}</p>
+              )}
               {draftInvoice.invoice_date && (
                 <p className="text-sm">Data: {draftInvoice.invoice_date}</p>
               )}
