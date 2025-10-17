@@ -6,8 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ClaudeAIService } from '@/lib/ai/claude-service';
-import { searchRead } from '@/lib/odoo/rpc';
+import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 
 interface TodaySalesProduct {
   productId: number;
@@ -40,6 +39,9 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 [Analizza Vendite Oggi] Inizio analisi...');
 
+    // Crea client RPC
+    const rpcClient = createOdooRPCClient();
+
     // 1. Calcola data odierna (inizio e fine giornata)
     const today = new Date();
     const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
     console.log(`📅 Data analisi: ${startOfDay} → ${endOfDay}`);
 
     // 2. Carica ordini di vendita confermati oggi
-    const todayOrders = await searchRead<any>(
+    const todayOrders = await rpcClient.searchRead(
       'sale.order',
       [
         ['effective_date', '>=', startOfDay],
@@ -79,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Carica righe ordini per prodotti venduti
     const orderIds = todayOrders.map(o => o.id);
-    const orderLines = await searchRead<any>(
+    const orderLines = await rpcClient.searchRead(
       'sale.order.line',
       [
         ['order_id', 'in', orderIds],
@@ -118,7 +120,7 @@ export async function POST(request: NextRequest) {
 
     // 5. Carica dati dettagliati prodotti
     const productIds = Array.from(productSales.keys());
-    const products = await searchRead<any>(
+    const products = await rpcClient.searchRead(
       'product.product',
       [['id', 'in', productIds]],
       [
@@ -139,7 +141,7 @@ export async function POST(request: NextRequest) {
 
     let supplierInfoMap = new Map<number, any>();
     if (sellerIds.length > 0) {
-      const supplierInfos = await searchRead<any>(
+      const supplierInfos = await rpcClient.searchRead(
         'product.supplierinfo',
         [['id', 'in', sellerIds]],
         ['id', 'partner_id', 'product_tmpl_id', 'delay', 'price'],
@@ -155,7 +157,7 @@ export async function POST(request: NextRequest) {
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
     const historicalStartDate = threeMonthsAgo.toISOString();
 
-    const historicalLines = await searchRead<any>(
+    const historicalLines = await rpcClient.searchRead(
       'sale.order.line',
       [
         ['order_id.effective_date', '>=', historicalStartDate],
@@ -239,11 +241,9 @@ export async function POST(request: NextRequest) {
 
     if (useAI && todayProducts.length > 0) {
       try {
-        console.log('🤖 Chiamata Claude AI per insights...');
+        console.log('🤖 Generazione insights AI...');
 
-        const claudeService = new ClaudeAIService();
-
-        // Prepara prompt per Claude
+        // Prepara prompt per Claude (TODO: integrare Claude API quando disponibile)
         const topProducts = todayProducts.slice(0, 10);
         const prompt = `Analizza le vendite di oggi e fornisci insights:
 
@@ -274,10 +274,10 @@ Rispondi in formato JSON:
   "recommendations": ["rec1", "rec2"]
 }`;
 
-        // Chiamata API Claude (simulata per ora)
-        // const aiResponse = await claudeService.analyzeWithPrompt(prompt);
+        // TODO: Integra Claude API quando disponibile
+        // const aiResponse = await callClaudeAPI(prompt);
 
-        // Per ora, genera insights basici
+        // Genera insights basici matematici
         aiInsights.trends.push(`${todayProducts.length} prodotti venduti oggi`);
 
         const topSeller = todayProducts[0];
