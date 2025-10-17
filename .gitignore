@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# WIP apps (in development elsewhere)
+/app/controllo-consegne/
+/app/api/controllo-consegne/
