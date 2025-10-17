@@ -143,21 +143,22 @@ export async function GET(
     );
 
     // Get incoming quantity (purchase orders not yet received)
+    // SOLO ordini confermati ('purchase'), NON chiusi ('done')
     let incomingQty = 0;
     try {
       const purchaseLines = await rpc.searchRead(
         'purchase.order.line',
         [
           ['product_id', '=', productId],
-          ['order_id.state', 'in', ['purchase', 'done']]
+          ['order_id.state', '=', 'purchase']  // ✅ SOLO ordini confermati aperti
         ],
         ['product_qty', 'qty_received'],
         500
       );
 
-      // Calculate incoming = ordered - received
+      // Calculate incoming = ordered - already received
       purchaseLines.forEach((line: any) => {
-        const notYetReceived = line.product_qty - line.qty_received;
+        const notYetReceived = (line.product_qty || 0) - (line.qty_received || 0);
         if (notYetReceived > 0) {
           incomingQty += notYetReceived;
         }
