@@ -2,6 +2,7 @@
 
 // LAPA Smart Ordering V2 - Real Data Dashboard
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TruckIcon,
@@ -47,6 +48,7 @@ interface Product {
 }
 
 export default function SmartOrderingV2() {
+  const router = useRouter();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,6 +136,22 @@ export default function SmartOrderingV2() {
     return total;
   }
 
+  function selectAllProducts() {
+    if (!selectedSupplier) return;
+    const newMap = new Map(selectedProducts);
+    const criticalHighProducts = selectedSupplier.products.filter(p =>
+      ['CRITICAL', 'HIGH'].includes(p.urgencyLevel)
+    );
+    criticalHighProducts.forEach(product => {
+      newMap.set(product.id, product.suggestedQty);
+    });
+    setSelectedProducts(newMap);
+  }
+
+  function deselectAllProducts() {
+    setSelectedProducts(new Map());
+  }
+
   // Sort suppliers: favorites first, then by urgency
   const sortedSuppliers = [...suppliers].sort((a, b) => {
     const aFav = favoriteSuppliers.has(a.id) ? 1 : 0;
@@ -206,14 +224,32 @@ export default function SmartOrderingV2() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
+        className="mb-8 flex items-center justify-between"
       >
-        <h1 className="text-4xl font-bold text-white mb-2">
-          🤖 LAPA Smart Ordering AI
-        </h1>
-        <p className="text-blue-200">
-          Dashboard Intelligente Ordini • {suppliers.length} Fornitori Attivi
-        </p>
+        <div>
+          <h1 className="text-4xl font-bold text-white mb-2">
+            🤖 LAPA Smart Ordering AI
+          </h1>
+          <p className="text-blue-200">
+            Dashboard Intelligente Ordini • {suppliers.length} Fornitori Attivi
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => router.push('/')}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all flex items-center gap-2 border border-white/20"
+          >
+            <span>←</span>
+            <span>Home</span>
+          </button>
+          <button
+            onClick={() => router.push('/ordini-smart-v2/prodotti-critici')}
+            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all flex items-center gap-2 font-semibold"
+          >
+            <ExclamationTriangleIcon className="w-5 h-5" />
+            <span>Prodotti Critici</span>
+          </button>
+        </div>
       </motion.div>
 
       {/* Supplier Cards */}
@@ -327,7 +363,7 @@ export default function SmartOrderingV2() {
               >
                 {/* Header */}
                 <div className="p-6 border-b border-white/10">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between mb-4">
                     <div>
                       <h2 className="text-3xl font-bold text-white mb-2">
                         📦 {selectedSupplier.name}
@@ -349,6 +385,20 @@ export default function SmartOrderingV2() {
                       className="text-white/60 hover:text-white transition-colors"
                     >
                       <XMarkIcon className="w-8 h-8" />
+                    </button>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={selectAllProducts}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg transition-all font-semibold"
+                    >
+                      ✓ Seleziona Tutti
+                    </button>
+                    <button
+                      onClick={deselectAllProducts}
+                      className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all"
+                    >
+                      Deseleziona Tutti
                     </button>
                   </div>
                 </div>
