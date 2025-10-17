@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
         ['type', '=', 'product'],
         ['active', '=', true]
       ],
-      ['id', 'name', 'default_code', 'qty_available', 'uom_id', 'list_price', 'seller_ids'],
+      ['id', 'name', 'default_code', 'qty_available', 'uom_id', 'list_price', 'seller_ids', 'product_tmpl_id'],
       0
     );
 
@@ -105,7 +105,9 @@ export async function GET(request: NextRequest) {
 
       if (avgDailySales === 0) continue;
 
-      const supplier = supplierMap.get(product.id);
+      // USA product_tmpl_id per mappare fornitore (non product.id!)
+      const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
+      const supplier = supplierMap.get(templateId);
       if (!supplier) continue; // Skip senza fornitore
 
       // Calcola variabilità
