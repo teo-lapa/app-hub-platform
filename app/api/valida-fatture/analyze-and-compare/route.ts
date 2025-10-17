@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { parseFatturaPA, isFatturaPA } from '@/lib/fatturapa-parser';
+// TODO: Riabilitare supporto XML FatturaPA quando testato su Vercel
+// import { parseFatturaPA, isFatturaPA } from '@/lib/fatturapa-parser';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -27,31 +28,17 @@ export async function POST(request: NextRequest) {
     console.log(`📄 Invoice: ${draft_invoice.name}, Total: €${draft_invoice.amount_total}`);
     console.log(`📋 Lines in draft: ${draft_invoice.invoice_line_ids?.length || 0}`);
 
-    // STEP 0: Check se è un XML (FatturaPA)
+    // STEP 0: Check formato file
     let parsedInvoice;
     const isXML = pdf_mimetype === 'text/xml' || pdf_mimetype === 'application/xml';
 
     if (isXML) {
-      console.log('📄 [ANALYZE-COMPARE] Detected XML FatturaPA, parsing...');
-      try {
-        const xmlContent = Buffer.from(pdf_base64, 'base64').toString('utf-8');
-        if (isFatturaPA(xmlContent)) {
-          parsedInvoice = await parseFatturaPA(xmlContent);
-          console.log('✅ [ANALYZE-COMPARE] FatturaPA XML parsed:', {
-            supplier: parsedInvoice.supplier_name,
-            total: parsedInvoice.total_amount,
-            lines: parsedInvoice.lines.length
-          });
-        } else {
-          throw new Error('File XML non è una FatturaPA valida');
-        }
-      } catch (xmlError: any) {
-        console.error('❌ [ANALYZE-COMPARE] XML parsing failed:', xmlError);
-        return NextResponse.json(
-          { error: `Errore parsing XML: ${xmlError.message}` },
-          { status: 400 }
-        );
-      }
+      // TODO: XML FatturaPA support temporaneamente disabilitato per testing Vercel
+      console.log('⚠️ [ANALYZE-COMPARE] XML FatturaPA non ancora supportato');
+      return NextResponse.json(
+        { error: 'Formato XML FatturaPA non ancora supportato. Usa PDF o immagini (JPG/PNG).' },
+        { status: 400 }
+      );
     } else {
       // STEP 1: Parse PDF/Image con Claude Vision
       console.log('👁️ [ANALYZE-COMPARE] Step 1: Parsing document with Claude Vision...');
