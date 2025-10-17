@@ -13,6 +13,7 @@ interface ProductCard {
   orderName: string;
   customerId: number;
   customerName: string;
+  customerSalesperson?: string; // Venditore assegnato al cliente
   productId: number;
   productName: string;
   quantityOrdered: number;
@@ -20,6 +21,7 @@ interface ProductCard {
   quantityRemaining: number;
   dateOrder: string;
   state: string;
+  hasNewOrder?: boolean; // Indica se è già stato creato un nuovo ordine per questo prodotto
 }
 
 async function callKw<T = any>(
@@ -86,31 +88,69 @@ export default function ProdottiNonPrelevatiPage() {
 
   const loadSalespeople = async () => {
     try {
-      // Cerca il gruppo "Sales / User" o "Sales / Administrator"
-      const salesGroups = await searchRead<any>(
-        'res.groups',
-        [['name', 'in', ['User', 'Administrator']], ['category_id.name', '=', 'Sales']],
-        ['id'],
+      // Recupera l'utente corrente loggato
+      const currentUser = await callKw<any>('res.users', 'read', [[]], {
+        fields: ['id', 'name'],
+      });
+
+      const currentUserId = currentUser && currentUser.length > 0 ? currentUser[0].id : null;
+      console.log(`👤 Utente loggato (res.users): ID ${currentUserId}`, currentUser);
+
+      // Cerca il dipendente collegato all'utente loggato
+      let currentEmployeeUserId: number | null = null;
+      if (currentUserId) {
+        const currentEmployee = await searchRead<any>(
+          'hr.employee',
+          [['user_id', '=', currentUserId]],
+          ['id', 'name', 'user_id'],
+          1
+        );
+
+        if (currentEmployee.length > 0) {
+          currentEmployeeUserId = currentEmployee[0].user_id ? currentEmployee[0].user_id[0] : null;
+          console.log(`👤 Dipendente trovato: ${currentEmployee[0].name} - user_id: ${currentEmployeeUserId}`);
+        } else {
+          console.log('⚠️ Nessun dipendente trovato per questo utente');
+        }
+      }
+
+      // Cerca tutti i clienti (partner) che hanno un venditore assegnato (user_id)
+      const partners = await searchRead<any>(
+        'res.partner',
+        [
+          ['user_id', '!=', false], // Solo clienti con venditore assegnato
+          ['active', '=', true],
+        ],
+        ['user_id'],
         0
       );
 
-      if (salesGroups.length === 0) {
-        console.warn('Nessun gruppo vendite trovato');
+      // Estrai gli ID univoci dei venditori
+      const salespeopleIds = [...new Set(partners.map((p: any) => p.user_id[0]))];
+
+      console.log(`✅ Trovati ${salespeopleIds.length} venditori con clienti associati`);
+
+      if (salespeopleIds.length === 0) {
         setSalespeople([]);
         return;
       }
 
-      const groupIds = salesGroups.map((g: any) => g.id);
-
-      // Carica solo gli utenti che appartengono ai gruppi vendite
+      // Carica i dettagli dei venditori
       const users = await searchRead<any>(
         'res.users',
-        [['active', '=', true], ['groups_id', 'in', groupIds]],
+        [['id', 'in', salespeopleIds]],
         ['id', 'name'],
         0,
         'name asc'
       );
+
       setSalespeople(users.map((u: any) => ({ id: u.id, name: u.name })));
+
+      // Imposta automaticamente il venditore collegato al dipendente come preselezionato
+      if (currentEmployeeUserId && salespeopleIds.includes(currentEmployeeUserId)) {
+        setSelectedSalesperson(currentEmployeeUserId);
+        console.log(`✅ Venditore preimpostato: ID ${currentEmployeeUserId}`);
+      }
     } catch (error: any) {
       console.error('Errore caricamento venditori:', error);
     }
@@ -121,25 +161,49 @@ export default function ProdottiNonPrelevatiPage() {
     setStatusMessage('Caricamento in corso...');
 
     try {
-      // Costruisci il domain con i filtri
-      const domain: any[] = [
-        ['order_id.state', 'in', ['sale', 'done']],
-        ['product_uom_qty', '>', 0],
+      // STEP 1: Filtriamo prima gli ORDINI per commitment_date e venditore
+      const orderDomain: any[] = [
+        ['state', 'in', ['sale', 'done']],
       ];
 
       // Filtro per venditore
       if (selectedSalesperson) {
-        domain.push(['order_id.user_id', '=', selectedSalesperson]);
+        orderDomain.push(['user_id', '=', selectedSalesperson]);
       }
 
-      // Filtro per data di consegna - ordini con consegna fino alla data selezionata
+      // Filtro per data di consegna - ordini con commitment_date nel giorno selezionato
       if (selectedDate) {
-        domain.push(['order_id.commitment_date', '<=', selectedDate + ' 23:59:59']);
+        orderDomain.push(['commitment_date', '>=', selectedDate + ' 00:00:00']);
+        orderDomain.push(['commitment_date', '<=', selectedDate + ' 23:59:59']);
       }
 
+      console.log('🔍 Order domain filter:', JSON.stringify(orderDomain));
+
+      // Cerca gli ordini che soddisfano i filtri
+      const orders = await searchRead<any>(
+        'sale.order',
+        orderDomain,
+        ['id', 'name', 'partner_id', 'date_order', 'commitment_date', 'user_id', 'state'],
+        0,
+        'id desc'
+      );
+
+      console.log(`✅ Trovati ${orders.length} ordini che soddisfano i filtri`);
+
+      if (orders.length === 0) {
+        setUnpickedProducts([]);
+        setStatusMessage('Nessun ordine trovato con i filtri selezionati');
+        return;
+      }
+
+      // STEP 2: Ora cerchiamo le righe d'ordine di questi ordini specifici
+      const orderIds = orders.map((o: any) => o.id);
       const orderLines = await searchRead<any>(
         'sale.order.line',
-        domain,
+        [
+          ['order_id', 'in', orderIds],
+          ['product_uom_qty', '>', 0],
+        ],
         [
           'id',
           'order_id',
@@ -152,21 +216,43 @@ export default function ProdottiNonPrelevatiPage() {
         'order_id desc'
       );
 
+      // Filtra solo le righe con prodotti non completamente consegnati
       const unpicked = orderLines.filter((line: any) => {
         const remaining = line.product_uom_qty - (line.qty_delivered || 0);
         return remaining > 0;
       });
 
+      console.log(`✅ Trovate ${unpicked.length} righe con prodotti non prelevati`);
+
       if (unpicked.length > 0) {
-        const orderIds = [...new Set(unpicked.map((line: any) => line.order_id[0]))];
-        const orders = await searchRead<any>(
-          'sale.order',
-          [['id', 'in', orderIds]],
-          ['id', 'name', 'partner_id', 'date_order', 'commitment_date', 'user_id', 'state'],
+        const orderMap = new Map(orders.map((o: any) => [o.id, o]));
+
+        // Controlla per ogni ordine se ci sono messaggi che indicano la creazione di un nuovo ordine
+        const orderMessages = await searchRead<any>(
+          'mail.message',
+          [
+            ['model', '=', 'sale.order'],
+            ['res_id', 'in', orderIds],
+            ['body', 'ilike', 'Nuovo ordine creato per prodotti non prelevati'],
+          ],
+          ['res_id'],
           0
         );
 
-        const orderMap = new Map(orders.map((o: any) => [o.id, o]));
+        const ordersWithNewOrder = new Set(orderMessages.map((msg: any) => msg.res_id));
+
+        // Carica i dati dei clienti per ottenere il venditore assegnato (user_id)
+        const customerIds = [...new Set(orders.map((o: any) => o.partner_id[0]))];
+        const customers = await searchRead<any>(
+          'res.partner',
+          [['id', 'in', customerIds]],
+          ['id', 'user_id'],
+          0
+        );
+
+        const customerSalespersonMap = new Map(
+          customers.map((c: any) => [c.id, c.user_id ? c.user_id[1] : null])
+        );
 
         const cards: ProductCard[] = unpicked
           .map((line: any) => {
@@ -178,6 +264,7 @@ export default function ProdottiNonPrelevatiPage() {
               orderName: order.name,
               customerId: order.partner_id[0],
               customerName: order.partner_id[1],
+              customerSalesperson: customerSalespersonMap.get(order.partner_id[0]),
               productId: line.product_id[0],
               productName: line.product_id[1],
               quantityOrdered: line.product_uom_qty,
@@ -185,6 +272,7 @@ export default function ProdottiNonPrelevatiPage() {
               quantityRemaining: line.product_uom_qty - (line.qty_delivered || 0),
               dateOrder: order.date_order,
               state: order.state,
+              hasNewOrder: ordersWithNewOrder.has(order.id),
             };
           })
           .filter((card): card is ProductCard => card !== null);
@@ -227,10 +315,14 @@ export default function ProdottiNonPrelevatiPage() {
 
       const pricelistId = orders[0]?.pricelist_id ? orders[0].pricelist_id[0] : null;
 
+      // Converti le date in formato Odoo (YYYY-MM-DD HH:MM:SS)
+      const now = new Date();
+      const dateOrderStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
       const newOrderVals: any = {
         partner_id: modalProduct.customerId,
-        date_order: new Date().toISOString(),
-        commitment_date: deliveryDate,
+        date_order: dateOrderStr,
+        commitment_date: deliveryDate, // Questo è già in formato YYYY-MM-DD
       };
 
       if (pricelistId) {
@@ -252,6 +344,56 @@ export default function ProdottiNonPrelevatiPage() {
       };
 
       await callKw('sale.order.line', 'create', [orderLineVals], {});
+
+      // Aggiungi un messaggio nel chatter del NUOVO ordine per tracciare l'origine
+      try {
+        await callKw(
+          'mail.message',
+          'create',
+          [
+            {
+              model: 'sale.order',
+              res_id: newOrderId,
+              body: `<p>🔄 <strong>Ordine creato dalla Dashboard Prodotti Non Prelevati</strong></p>
+<p>Questo ordine è stato generato automaticamente per recuperare i prodotti non prelevati dall'ordine <a href="/web#id=${modalProduct.orderId}&model=sale.order">${modalProduct.orderName}</a>.</p>
+<ul>
+<li><strong>Prodotto:</strong> ${modalProduct.productName}</li>
+<li><strong>Quantità:</strong> ${modalProduct.quantityRemaining}</li>
+<li><strong>Cliente:</strong> ${modalProduct.customerName}</li>
+<li><strong>Data consegna:</strong> ${deliveryDate}</li>
+</ul>`,
+              message_type: 'comment',
+              subtype_id: 1, // mt_note
+            },
+          ],
+          {}
+        );
+
+        // Aggiungi anche un messaggio nell'ordine ORIGINALE per tracciare che è stato creato un nuovo ordine
+        await callKw(
+          'mail.message',
+          'create',
+          [
+            {
+              model: 'sale.order',
+              res_id: modalProduct.orderId,
+              body: `<p>✅ <strong>Nuovo ordine creato per prodotti non prelevati</strong></p>
+<p>È stato creato un nuovo ordine per recuperare i prodotti non prelevati da questo ordine.</p>
+<ul>
+<li><strong>Nuovo ordine:</strong> <a href="/web#id=${newOrderId}&model=sale.order">Visualizza ordine</a></li>
+<li><strong>Prodotto:</strong> ${modalProduct.productName}</li>
+<li><strong>Quantità:</strong> ${modalProduct.quantityRemaining}</li>
+<li><strong>Data consegna:</strong> ${deliveryDate}</li>
+</ul>`,
+              message_type: 'comment',
+              subtype_id: 1, // mt_note
+            },
+          ],
+          {}
+        );
+      } catch (msgError: any) {
+        console.warn('Impossibile aggiungere messaggio nel chatter:', msgError);
+      }
 
       alert(`Ordine creato con successo! Prodotto: ${modalProduct.productName}, Quantità: ${modalProduct.quantityRemaining}`);
       setShowModal(false);
@@ -330,13 +472,35 @@ export default function ProdottiNonPrelevatiPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {unpickedProducts.map((product, idx) => (
-              <div key={idx} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+              <div key={idx} className="bg-gray-800 rounded-lg p-4 border border-gray-700 relative">
+                {/* Indicatore stato ordine - punto verde se è stato creato un ordine, rosso altrimenti */}
+                <div className="absolute top-4 right-4">
+                  <div
+                    className={`w-4 h-4 rounded-full ${
+                      product.hasNewOrder ? 'bg-green-500' : 'bg-red-500'
+                    }`}
+                    title={
+                      product.hasNewOrder
+                        ? 'Nuovo ordine già creato per questo prodotto'
+                        : 'Nessun ordine creato ancora'
+                    }
+                  />
+                </div>
+
                 <div className="mb-4 pb-4 border-b border-gray-700">
                   <div className="font-bold text-white text-lg mb-1">
                     👤 {product.customerName}
                   </div>
                   <div className="text-sm text-gray-400">
-                    Ordine: {product.orderName}
+                    Ordine:{' '}
+                    <a
+                      href={`https://lapa-sandalo.odoo.com/web#id=${product.orderId}&model=sale.order&view_type=form`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 underline font-semibold"
+                    >
+                      {product.orderName}
+                    </a>
                   </div>
                 </div>
 
@@ -344,6 +508,13 @@ export default function ProdottiNonPrelevatiPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Prodotto:</span>
                     <span className="text-white font-semibold">{product.productName}</span>
+                  </div>
+
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Venditore cliente:</span>
+                    <span className="text-blue-400 font-semibold">
+                      {product.customerSalesperson || 'Non assegnato'}
+                    </span>
                   </div>
 
                   <div className="flex justify-between text-sm">

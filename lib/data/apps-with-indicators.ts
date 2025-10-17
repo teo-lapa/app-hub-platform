@@ -220,6 +220,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2023-09-01'),
     updatedAt: new Date('2023-12-28'),
   },
+  {
+    id: 's26',
+    name: 'Prodotti Non Prelevati [S]',
+    description: 'Dashboard per venditori: visualizza prodotti non prelevati da ordini, filtra per venditore e data consegna, crea nuovi ordini per prodotti mancanti.',
+    icon: '📦',
+    badge: 'FREE',
+    category: 'Vendite',
+    url: '/apps/vendite/prodotti-non-prelevati',
+    requiredRole: 'cliente_gratuito',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-10-17'),
+    updatedAt: new Date('2025-10-17'),
+  },
   // LOGISTICA
   {
     id: 's9',
