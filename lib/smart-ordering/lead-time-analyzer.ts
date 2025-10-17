@@ -281,7 +281,7 @@ class LeadTimeAnalyzer {
       ) as PurchaseOrderData[];
 
       // Estrai supplier IDs unici
-      const supplierIds = [...new Set(orders.map(o => o.partner_id[0]))];
+      const supplierIds = Array.from(new Set(orders.map(o => o.partner_id[0])));
 
       console.log(`   Trovati ${supplierIds.length} fornitori attivi`);
 

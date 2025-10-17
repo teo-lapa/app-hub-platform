@@ -96,7 +96,7 @@ export default function ProdottiCriticiPage() {
         console.log(`✅ ${allProducts.length} prodotti critici caricati`);
 
         // 4. AUTOMATICO: Avvia analisi lead time in background per fornitori unici
-        const uniqueSuppliers = [...new Set(allProducts.map(p => p.supplierId))];
+        const uniqueSuppliers = Array.from(new Set(allProducts.map(p => p.supplierId)));
         analyzeSuppliers(uniqueSuppliers);
       }
 
@@ -271,7 +271,7 @@ export default function ProdottiCriticiPage() {
 }
 
 function StatCard({ label, value, color, onClick, active }: any) {
-  const colors = {
+  const colors: Record<string, string> = {
     blue: active ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-900 hover:bg-blue-100',
     red: active ? 'bg-red-600 text-white' : 'bg-red-50 text-red-900 hover:bg-red-100',
     orange: active ? 'bg-orange-600 text-white' : 'bg-orange-50 text-orange-900 hover:bg-orange-100',
@@ -281,7 +281,7 @@ function StatCard({ label, value, color, onClick, active }: any) {
   return (
     <button
       onClick={onClick}
-      className={`${colors[color]} p-4 rounded-xl transition cursor-pointer`}
+      className={`${colors[color] || colors.blue} p-4 rounded-xl transition cursor-pointer`}
     >
       <p className={`text-sm ${active ? 'opacity-90' : 'opacity-70'}`}>{label}</p>
       <p className="text-3xl font-bold mt-1">{value}</p>

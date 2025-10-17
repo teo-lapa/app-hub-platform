@@ -396,7 +396,7 @@ class SalesAnalyzer {
       ) as any[];
 
       // Estrai product IDs unici
-      const productIds = [...new Set(lines.map((l: any) => l.product_id[0]))];
+      const productIds = Array.from(new Set(lines.map((l: any) => l.product_id[0])));
 
       console.log(`   Trovati ${productIds.length} prodotti venduti`);
 

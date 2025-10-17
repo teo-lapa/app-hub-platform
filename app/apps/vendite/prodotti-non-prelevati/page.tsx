@@ -223,7 +223,7 @@ export default function ProdottiNonPrelevatiPage() {
 
       // Se ci sono prodotti non prelevati, carica i dettagli degli ordini
       if (unpicked.length > 0) {
-        const orderIds = [...new Set(unpicked.map((line: any) => line.order_id[0]))];
+        const orderIds = Array.from(new Set(unpicked.map((line: any) => line.order_id[0])));
 
         const orders = await searchRead<any>(
           'sale.order',
