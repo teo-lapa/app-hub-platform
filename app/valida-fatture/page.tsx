@@ -502,6 +502,27 @@ function ReviewView({ comparison, parsedData, draftInvoice, onApply, onCancel, p
       {/* Totali Confronto */}
       <div className="bg-white rounded-2xl shadow-sm p-6">
         <h2 className="text-xl font-bold mb-4">Confronto Totali</h2>
+
+        {/* Date Comparison */}
+        <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b">
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Data Fattura PDF</p>
+            <p className="text-lg font-semibold text-blue-600">
+              {parsedData.invoice_date || 'N/A'}
+            </p>
+            {parsedData.invoice_number && (
+              <p className="text-xs text-gray-500 mt-1">N. {parsedData.invoice_number}</p>
+            )}
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Data Bozza Odoo</p>
+            <p className="text-lg font-semibold text-purple-600">
+              {draftInvoice.invoice_date || 'N/A'}
+            </p>
+          </div>
+        </div>
+
+        {/* Amounts Comparison */}
         <div className="grid grid-cols-3 gap-4">
           <div>
             <p className="text-sm text-gray-600 mb-1">Fattura Definitiva</p>

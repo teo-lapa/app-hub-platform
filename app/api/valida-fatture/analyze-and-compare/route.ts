@@ -86,7 +86,7 @@ Leggi così:
 
 2. DATI FATTURA:
    - Numero fattura (es: "42", "V2/0003329")
-   - Data (formato YYYY-MM-DD)
+   - Data fattura (IMPORTANTE: converti sempre in formato YYYY-MM-DD, es: "15/10/2025" → "2025-10-15")
 
 3. RIGHE PRODOTTI (TUTTE, anche spese trasporto):
    Per OGNI riga:
@@ -107,6 +107,12 @@ Leggi così:
 - Se vedi "P.Net" o "Peso Netto" ignora, usa il SUBTOTAL
 - "TECHNICAL STOP", "LDF SRL", "ASSAGO" = destinazione merce, NON prodotti
 - Cerca sempre l'ultima pagina per il TOTALE FATTURA LORDO
+
+⚠️ ATTENZIONE DATE:
+- Cerca la data della fattura (es: "DATA DOC", "Data:", ecc.)
+- Se vedi "15/10/2025" converti in "2025-10-15"
+- Se vedi "15.10.2025" converti in "2025-10-15"
+- Formato finale SEMPRE: YYYY-MM-DD
 
 Rispondi SOLO con JSON valido:
 {
