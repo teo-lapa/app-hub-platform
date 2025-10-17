@@ -26,8 +26,27 @@ export async function POST(request: NextRequest) {
     console.log(`📄 Invoice: ${draft_invoice.name}, Total: €${draft_invoice.amount_total}`);
     console.log(`📋 Lines in draft: ${draft_invoice.invoice_line_ids?.length || 0}`);
 
-    // STEP 1: Parse PDF con Claude Vision
-    console.log('👁️ [ANALYZE-COMPARE] Step 1: Parsing PDF with Claude Vision...');
+    // STEP 1: Parse PDF/Image con Claude Vision
+    console.log('👁️ [ANALYZE-COMPARE] Step 1: Parsing document with Claude Vision...');
+    console.log(`📄 [ANALYZE-COMPARE] File type: ${pdf_mimetype}`);
+
+    // Determina il tipo di contenuto basandosi sul mimetype
+    const isImage = pdf_mimetype?.startsWith('image/');
+    const isPdf = pdf_mimetype === 'application/pdf';
+
+    // Per immagini usiamo 'image', per PDF usiamo 'document'
+    const contentType = isImage ? 'image' : 'document';
+
+    // Normalizza il media_type per Claude
+    let claudeMediaType = pdf_mimetype;
+    if (isPdf) {
+      claudeMediaType = 'application/pdf';
+    } else if (isImage) {
+      // Claude supporta image/jpeg, image/png, image/gif, image/webp
+      if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(pdf_mimetype)) {
+        claudeMediaType = 'image/jpeg'; // default per immagini non standard
+      }
+    }
 
     const visionMessage = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
@@ -37,10 +56,10 @@ export async function POST(request: NextRequest) {
           role: 'user',
           content: [
             {
-              type: 'document',
+              type: contentType as any,
               source: {
                 type: 'base64',
-                media_type: 'application/pdf',
+                media_type: claudeMediaType,
                 data: pdf_base64,
               },
             },
