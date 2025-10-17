@@ -252,10 +252,26 @@ Rispondi SOLO con JSON in questo formato:
 
     const comparisonResult = JSON.parse(comparisonJsonMatch[0]);
 
+    // 🔒 POST-PROCESSING: FORCE all CREATE actions to require user approval
+    // This ensures the product management step is triggered when products are missing
+    if (comparisonResult.corrections_needed && Array.isArray(comparisonResult.corrections_needed)) {
+      comparisonResult.corrections_needed = comparisonResult.corrections_needed.map((correction: any) => {
+        if (correction.action === 'create') {
+          console.log('🔒 [ANALYZE-COMPARE] Forcing user approval for CREATE action:', correction.parsed_line?.description || 'Unknown product');
+          return {
+            ...correction,
+            requires_user_approval: true
+          };
+        }
+        return correction;
+      });
+    }
+
     console.log('✅ [ANALYZE-COMPARE] Comparison completed:', {
       is_valid: comparisonResult.is_valid,
       difference: comparisonResult.total_difference,
-      corrections: comparisonResult.corrections_needed.length
+      corrections: comparisonResult.corrections_needed.length,
+      creates_requiring_approval: comparisonResult.corrections_needed.filter((c: any) => c.action === 'create' && c.requires_user_approval).length
     });
 
     return NextResponse.json({
