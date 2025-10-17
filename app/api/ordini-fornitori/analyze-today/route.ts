@@ -39,8 +39,18 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 [Analizza Vendite Oggi] Inizio analisi...');
 
-    // Crea client RPC
-    const rpcClient = createOdooRPCClient();
+    // Get odoo_session_id from cookies
+    const sessionId = request.cookies.get('odoo_session_id')?.value;
+
+    if (!sessionId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Non autenticato - Odoo session non trovata'
+      }, { status: 401 });
+    }
+
+    // Crea client RPC con sessione
+    const rpcClient = createOdooRPCClient(sessionId);
 
     // 1. Calcola data odierna (inizio e fine giornata)
     const today = new Date();
