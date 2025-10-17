@@ -6,7 +6,16 @@
  * - Giorno della settimana
  * - Trend prodotto
  * - Stagionalità
+ * - Frequenza ordini reale per raggiungere valore minimo
+ * - Ottimizzazione coverage days dinamica
  */
+
+import {
+  ORDER_OPTIMIZATION_CONFIG,
+  getCoverageDays,
+  getSafetyStockMultiplier,
+  estimateOrderFrequency
+} from './config';
 
 export interface ProductData {
   productId: number;
@@ -24,7 +33,11 @@ export interface ProductData {
     name: string;
     leadTime: number;
     reliability: number;
+    avgProductValue?: number;        // Valore medio prodotti fornitore
+    totalProductsCount?: number;     // Totale prodotti fornitore
   };
+  productPrice?: number;              // Prezzo unitario prodotto
+  urgencyLevel?: 'CRITICAL' | 'EMERGENCY' | 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
 export interface PredictionResult {
@@ -65,21 +78,22 @@ export class SmartPredictionEngine {
   }
 
   /**
-   * Calcola safety stock dinamico basato su variabilità
+   * Calcola safety stock dinamico basato su variabilità E affidabilità fornitore
    */
   calculateSafetyStock(
     avgDailySales: number,
     leadTimeDays: number,
-    variability: number
+    variability: number,
+    supplierReliability: number = 70 // default medio
   ): number {
-    // Safety stock = Z × σ × √LT
-    // Z = 1.65 per 95% service level
-    // σ = stdDev = avgDailySales × variability
-    // LT = lead time in giorni
+    // Safety stock = (consumo medio × lead time) × multiplier
+    // Multiplier dipende da:
+    // - Affidabilità fornitore (reliability score 0-100)
+    // - Variabilità vendite (variability 0-1)
 
-    const zScore = 1.65; // 95% service level
-    const stdDev = avgDailySales * variability;
-    const safetyStock = zScore * stdDev * Math.sqrt(leadTimeDays);
+    const multiplier = getSafetyStockMultiplier(supplierReliability, variability);
+    const baseStock = avgDailySales * leadTimeDays;
+    const safetyStock = baseStock * multiplier;
 
     return Math.ceil(safetyStock);
   }
@@ -97,17 +111,53 @@ export class SmartPredictionEngine {
   }
 
   /**
-   * Calcola quantità ordine ottimale
+   * Calcola quantità ordine ottimale con frequenza ordini intelligente
    */
   calculateOptimalOrderQuantity(
-    avgDailySales: number,
-    leadTimeDays: number,
-    coverageDays: number = 14 // 2 settimane default
+    product: ProductData,
+    urgencyLevel?: 'CRITICAL' | 'EMERGENCY' | 'HIGH' | 'MEDIUM' | 'LOW'
   ): number {
-    // Q = (Avg Daily Sales × Coverage Days) + Safety Stock
-    const safetyStock = this.calculateSafetyStock(avgDailySales, leadTimeDays, 0.5);
-    const orderQty = (avgDailySales * coverageDays) + safetyStock;
-    return Math.ceil(orderQty);
+    const { avgDailySales, leadTimeDays, variability, supplierInfo, productPrice } = product;
+
+    // 1. Determina giorni di copertura basati su urgency
+    let coverageDays: number;
+
+    if (urgencyLevel) {
+      // Usa configurazione basata su urgency
+      coverageDays = getCoverageDays(urgencyLevel);
+    } else if (supplierInfo) {
+      // Calcola frequenza ordini stimata per raggiungere valore minimo
+      const avgValue = supplierInfo.avgProductValue || productPrice || 30;
+      const totalProducts = supplierInfo.totalProductsCount || 50;
+
+      const orderFrequencyDays = estimateOrderFrequency(
+        supplierInfo.name,
+        avgValue,
+        totalProducts
+      );
+
+      // Coverage = frequenza ordini + lead time (per sicurezza)
+      coverageDays = orderFrequencyDays + leadTimeDays;
+    } else {
+      // Fallback: usa default da config
+      coverageDays = ORDER_OPTIMIZATION_CONFIG.coverageDays.default;
+    }
+
+    // 2. Calcola safety stock intelligente
+    const reliability = supplierInfo?.reliability || 70;
+    const safetyStock = this.calculateSafetyStock(
+      avgDailySales,
+      leadTimeDays,
+      variability,
+      reliability
+    );
+
+    // 3. Quantità = (consumo × coverage) + safety stock
+    const baseQuantity = avgDailySales * coverageDays;
+    const totalQuantity = baseQuantity + safetyStock;
+
+    // 4. Arrotonda per eccesso (mai ordinare meno del necessario)
+    return Math.ceil(totalQuantity);
   }
 
   /**
@@ -251,22 +301,23 @@ export class SmartPredictionEngine {
       product.avgDailySales
     );
 
-    // 2. Calcola safety stock
+    // 2. Determina urgenza PRIMA (necessario per calcolo quantità ottimale)
+    const urgency = this.determineUrgency(daysRemaining, product.leadTimeDays);
+
+    // 3. Calcola safety stock intelligente
+    const reliability = product.supplierInfo?.reliability || 70;
     const safetyStock = this.calculateSafetyStock(
       product.avgDailySales,
       product.leadTimeDays,
-      product.variability
+      product.variability,
+      reliability
     );
 
-    // 3. Calcola quantità ordine ottimale
+    // 4. Calcola quantità ordine ottimale (CON urgency e frequenza ordini)
     const recommendedQuantity = this.calculateOptimalOrderQuantity(
-      product.avgDailySales,
-      product.leadTimeDays,
-      14 // 2 settimane coverage
+      product,
+      urgency.level
     );
-
-    // 4. Determina urgenza
-    const urgency = this.determineUrgency(daysRemaining, product.leadTimeDays);
 
     // 5. Calcola data raccomandata
     const recommendedOrderDate = this.calculateRecommendedOrderDate(

@@ -57,6 +57,9 @@ export default function SmartOrderingV2() {
   const [productDetailsModal, setProductDetailsModal] = useState<Product | null>(null);
   const [productAnalytics, setProductAnalytics] = useState<any>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [showTodayAnalysis, setShowTodayAnalysis] = useState(false);
+  const [todayAnalysisData, setTodayAnalysisData] = useState<any>(null);
+  const [loadingTodayAnalysis, setLoadingTodayAnalysis] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -210,6 +213,31 @@ export default function SmartOrderingV2() {
     }
   }
 
+  async function analyzeTodaySales(useAI: boolean = true) {
+    setLoadingTodayAnalysis(true);
+    setShowTodayAnalysis(true);
+
+    try {
+      const response = await fetch(`/api/ordini-fornitori/analyze-today?ai=${useAI}`, {
+        method: 'POST'
+      });
+      const data = await response.json();
+
+      if (data.error) {
+        alert(`❌ Errore: ${data.message}`);
+        setShowTodayAnalysis(false);
+      } else {
+        setTodayAnalysisData(data);
+      }
+    } catch (error) {
+      console.error('Errore analisi vendite oggi:', error);
+      alert('❌ Errore durante analisi vendite oggi');
+      setShowTodayAnalysis(false);
+    } finally {
+      setLoadingTodayAnalysis(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
@@ -241,6 +269,14 @@ export default function SmartOrderingV2() {
           >
             <span>←</span>
             <span>Home</span>
+          </button>
+          <button
+            onClick={() => analyzeTodaySales(true)}
+            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all flex items-center gap-2 font-semibold"
+            title="Analizza prodotti venduti oggi con Claude AI"
+          >
+            <span>🤖</span>
+            <span>Analizza Vendite Oggi</span>
           </button>
           <button
             onClick={() => router.push('/ordini-smart-v2/prodotti-critici')}
@@ -736,6 +772,200 @@ export default function SmartOrderingV2() {
                         </div>
                       </div>
                     )}
+                  </div>
+                ) : (
+                  <div className="p-12 text-center">
+                    <div className="text-red-300 text-xl">❌ Errore caricamento dati</div>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Today Sales Analysis Modal */}
+      <AnimatePresence>
+        {showTodayAnalysis && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[70] overflow-auto"
+            onClick={() => {
+              setShowTodayAnalysis(false);
+              setTodayAnalysisData(null);
+            }}
+          >
+            <div className="min-h-screen p-6 flex items-start justify-center">
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-gradient-to-br from-purple-900 to-pink-900 rounded-3xl shadow-2xl max-w-7xl w-full border border-purple-400/30"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="p-6 border-b border-white/10 bg-gradient-to-r from-purple-500/20 to-pink-500/20">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h2 className="text-3xl font-bold text-white mb-2">
+                        🤖 Analisi Claude AI - Vendite Oggi
+                      </h2>
+                      <p className="text-purple-200">
+                        {todayAnalysisData ? `Confronto Matematica vs AI • ${new Date(todayAnalysisData.date).toLocaleDateString('it-IT')}` : 'Caricamento...'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowTodayAnalysis(false);
+                        setTodayAnalysisData(null);
+                      }}
+                      className="text-white/60 hover:text-white transition-colors"
+                    >
+                      <XMarkIcon className="w-8 h-8" />
+                    </button>
+                  </div>
+                </div>
+
+                {loadingTodayAnalysis ? (
+                  <div className="p-12 text-center">
+                    <div className="text-white text-2xl mb-4">🔄 Analisi in corso...</div>
+                    <div className="text-purple-300">Claude sta analizzando le vendite di oggi e confrontandole con le previsioni matematiche...</div>
+                  </div>
+                ) : todayAnalysisData ? (
+                  <div className="p-6 space-y-6 max-h-[75vh] overflow-auto">
+                    {/* Top Stats */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-white/10 rounded-xl p-6 border border-purple-400/30">
+                        <div className="text-purple-300 text-sm mb-2">Prodotti Venduti</div>
+                        <div className="text-white text-4xl font-bold">{todayAnalysisData.totalProductsSold}</div>
+                        <div className="text-purple-200 text-xs mt-1">prodotti unici</div>
+                      </div>
+                      <div className="bg-white/10 rounded-xl p-6 border border-green-400/30">
+                        <div className="text-green-300 text-sm mb-2">Revenue Giornaliera</div>
+                        <div className="text-white text-4xl font-bold">€{todayAnalysisData.totalRevenue.toFixed(2)}</div>
+                        <div className="text-green-200 text-xs mt-1">totale vendite</div>
+                      </div>
+                      <div className="bg-white/10 rounded-xl p-6 border border-blue-400/30">
+                        <div className="text-blue-300 text-sm mb-2">Tempo Analisi</div>
+                        <div className="text-white text-4xl font-bold">{(todayAnalysisData.executionTime / 1000).toFixed(1)}s</div>
+                        <div className="text-blue-200 text-xs mt-1">elaborazione</div>
+                      </div>
+                    </div>
+
+                    {/* AI Insights */}
+                    {todayAnalysisData.aiInsights && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Trends */}
+                        {todayAnalysisData.aiInsights.trends.length > 0 && (
+                          <div className="bg-white/10 rounded-xl p-5 border border-blue-400/30">
+                            <h3 className="text-white font-bold text-lg mb-3 flex items-center gap-2">
+                              📊 Trends AI
+                            </h3>
+                            <ul className="space-y-2">
+                              {todayAnalysisData.aiInsights.trends.map((trend: string, idx: number) => (
+                                <li key={idx} className="text-blue-200 text-sm flex items-start gap-2">
+                                  <span className="text-blue-400 mt-1">•</span>
+                                  <span>{trend}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Alerts */}
+                        {todayAnalysisData.aiInsights.alerts.length > 0 && (
+                          <div className="bg-white/10 rounded-xl p-5 border border-orange-400/30">
+                            <h3 className="text-white font-bold text-lg mb-3 flex items-center gap-2">
+                              ⚠️ Alerts
+                            </h3>
+                            <ul className="space-y-2">
+                              {todayAnalysisData.aiInsights.alerts.map((alert: string, idx: number) => (
+                                <li key={idx} className="text-orange-200 text-sm flex items-start gap-2">
+                                  <span className="text-orange-400 mt-1">⚠️</span>
+                                  <span>{alert}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Recommendations */}
+                        {todayAnalysisData.aiInsights.recommendations.length > 0 && (
+                          <div className="bg-white/10 rounded-xl p-5 border border-green-400/30">
+                            <h3 className="text-white font-bold text-lg mb-3 flex items-center gap-2">
+                              💡 Raccomandazioni
+                            </h3>
+                            <ul className="space-y-2">
+                              {todayAnalysisData.aiInsights.recommendations.map((rec: string, idx: number) => (
+                                <li key={idx} className="text-green-200 text-sm flex items-start gap-2">
+                                  <span className="text-green-400 mt-1">✓</span>
+                                  <span>{rec}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Products Table */}
+                    <div className="bg-white/5 rounded-xl p-6">
+                      <h3 className="text-white text-xl font-bold mb-4">📦 Prodotti Venduti Oggi</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-white/10">
+                              <th className="text-left text-purple-300 text-sm font-semibold p-3">Prodotto</th>
+                              <th className="text-right text-purple-300 text-sm font-semibold p-3">Qtà Venduta</th>
+                              <th className="text-right text-purple-300 text-sm font-semibold p-3">Valore</th>
+                              <th className="text-right text-purple-300 text-sm font-semibold p-3">Stock</th>
+                              <th className="text-right text-purple-300 text-sm font-semibold p-3">Media gg</th>
+                              <th className="text-right text-purple-300 text-sm font-semibold p-3">vs Media</th>
+                              <th className="text-left text-purple-300 text-sm font-semibold p-3">Fornitore</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {todayAnalysisData.products.slice(0, 20).map((product: any, idx: number) => (
+                              <tr key={product.productId} className="border-b border-white/5 hover:bg-white/5">
+                                <td className="text-white text-sm p-3">{product.productName}</td>
+                                <td className="text-white text-sm p-3 text-right font-semibold">{product.quantitySold.toFixed(1)}</td>
+                                <td className="text-green-300 text-sm p-3 text-right">€{product.totalValue.toFixed(2)}</td>
+                                <td className="text-blue-300 text-sm p-3 text-right">{product.currentStock.toFixed(1)}</td>
+                                <td className="text-purple-200 text-sm p-3 text-right">{product.avgDailySales.toFixed(1)}</td>
+                                <td className={`text-sm p-3 text-right font-semibold ${
+                                  product.todayVsAverage > 20 ? 'text-green-400' :
+                                  product.todayVsAverage < -20 ? 'text-red-400' :
+                                  'text-yellow-400'
+                                }`}>
+                                  {product.todayVsAverage > 0 ? '+' : ''}{product.todayVsAverage.toFixed(0)}%
+                                </td>
+                                <td className="text-purple-200 text-sm p-3">{product.supplierName}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {todayAnalysisData.products.length > 20 && (
+                        <div className="text-purple-300 text-sm mt-4 text-center">
+                          Mostrando 20 di {todayAnalysisData.products.length} prodotti
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Comparison Note */}
+                    <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl p-6 border border-purple-400/30">
+                      <h3 className="text-white font-bold text-lg mb-2">🧠 Matematica vs AI</h3>
+                      <p className="text-purple-200 text-sm mb-3">
+                        La <strong>formula matematica</strong> è sempre attiva e calcola le quantità suggerite basandosi su:
+                        consumo storico, lead time fornitore, e frequenza ordini stimata per raggiungere il valore minimo (€2000).
+                      </p>
+                      <p className="text-purple-200 text-sm">
+                        <strong>Claude AI</strong> analizza le vendite di oggi confrontandole con le medie storiche, identifica pattern anomali,
+                        e fornisce raccomandazioni personalizzate. Usa entrambi gli approcci per decisioni ottimali!
+                      </p>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-12 text-center">
