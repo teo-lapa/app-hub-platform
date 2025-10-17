@@ -176,9 +176,10 @@ export default function ProdottiCriticiPage() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/ordini-smart-v2')}
-              className="p-2 hover:bg-gray-200 rounded-lg transition"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition font-medium text-gray-700"
             >
-              <ArrowLeftIcon className="w-6 h-6" />
+              <ArrowLeftIcon className="w-5 h-5" />
+              Indietro
             </button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Prodotti Critici</h1>
