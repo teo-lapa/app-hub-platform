@@ -132,7 +132,8 @@ export async function parseFatturaPA(xmlString: string): Promise<FatturaPAData> 
   });
 
   // Calcola totali
-  const subtotal_amount = lines.reduce((sum, line) => sum + line.subtotal, 0);
+  type InvoiceLine = FatturaPAData['lines'][0];
+  const subtotal_amount = lines.reduce((sum: number, line: InvoiceLine) => sum + line.subtotal, 0);
 
   // Estrai riepilogo IVA
   const riepilogoIVA = body.DatiBeniServizi?.[0]?.DatiRiepilogo || [];
