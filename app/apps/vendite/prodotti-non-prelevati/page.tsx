@@ -259,7 +259,7 @@ export default function ProdottiNonPrelevatiPage() {
             const order = orderMap.get(line.order_id[0]);
             if (!order) return null;
 
-            return {
+            const card: ProductCard = {
               orderId: order.id,
               orderName: order.name,
               customerId: order.partner_id[0],
@@ -274,8 +274,9 @@ export default function ProdottiNonPrelevatiPage() {
               state: order.state,
               hasNewOrder: ordersWithNewOrder.has(order.id),
             };
+            return card;
           })
-          .filter((card): card is ProductCard => card !== null);
+          .filter((card) => card !== null) as ProductCard[];
 
         setUnpickedProducts(cards);
         setStatusMessage(`Trovati ${cards.length} prodotti non prelevati`);
