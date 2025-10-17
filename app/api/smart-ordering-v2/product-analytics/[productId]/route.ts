@@ -146,6 +146,9 @@ export async function GET(
     // SOLO ordini confermati ('purchase'), NON chiusi ('done')
     let incomingQty = 0;
     let incomingDate: string | null = null;
+    let incomingOrderName: string | null = null;
+    let incomingOrderId: number | null = null;
+
     try {
       const purchaseLines = await rpc.searchRead(
         'purchase.order.line',
@@ -159,6 +162,7 @@ export async function GET(
 
       // Find earliest delivery date among lines with pending qty
       let earliestDate: Date | null = null;
+      let earliestOrderId: number | null = null;
 
       purchaseLines.forEach((line: any) => {
         const notYetReceived = (line.product_qty || 0) - (line.qty_received || 0);
@@ -170,10 +174,31 @@ export async function GET(
             const lineDate = new Date(line.date_planned);
             if (!earliestDate || lineDate < earliestDate) {
               earliestDate = lineDate;
+              earliestOrderId = line.order_id[0];
             }
           }
         }
       });
+
+      // Get order name if we have earliest order
+      if (earliestOrderId) {
+        const orderDetails = await rpc.searchRead(
+          'purchase.order',
+          [['id', '=', earliestOrderId]],
+          ['name', 'date_planned'],
+          1
+        );
+
+        if (orderDetails && orderDetails.length > 0) {
+          incomingOrderName = orderDetails[0].name;
+          incomingOrderId = earliestOrderId;
+
+          // Use order's date_planned if line doesn't have it
+          if (!earliestDate && orderDetails[0].date_planned) {
+            earliestDate = new Date(orderDetails[0].date_planned);
+          }
+        }
+      }
 
       // Format date for display
       if (earliestDate) {
@@ -346,7 +371,9 @@ export async function GET(
           totalRevenue: Math.round(totalRevenue * 100) / 100,
           avgPrice: Math.round(avgPrice * 100) / 100,
           incomingQty: incomingQty,
-          incomingDate: incomingDate
+          incomingDate: incomingDate,
+          incomingOrderName: incomingOrderName,
+          incomingOrderId: incomingOrderId
         },
         weeklyChart,
         topCustomers,

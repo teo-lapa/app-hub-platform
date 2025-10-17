@@ -745,9 +745,16 @@ export default function SmartOrderingV2() {
                             </div>
                           ))}
                           {productAnalytics.product.incomingQty > 0 && (
-                            <div className="flex items-center justify-between bg-purple-500/10 rounded-lg p-3 border border-purple-400/30">
-                              <div className="text-purple-300 font-semibold">🚚 In Arrivo</div>
-                              <div className="flex gap-4 text-sm">
+                            <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/30">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-purple-300 font-semibold text-lg">🚚 In Arrivo</div>
+                                {productAnalytics.product.incomingOrderName && (
+                                  <div className="text-white font-bold bg-purple-600 px-3 py-1 rounded-lg text-sm">
+                                    Ordine: {productAnalytics.product.incomingOrderName}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex gap-6 text-sm">
                                 <div>
                                   <span className="text-purple-300">Quantità: </span>
                                   <span className="text-white font-bold">{productAnalytics.product.incomingQty.toFixed(1)} {productDetailsModal.uom}</span>
