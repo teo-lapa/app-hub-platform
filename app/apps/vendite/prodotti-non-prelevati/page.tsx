@@ -86,9 +86,26 @@ export default function ProdottiNonPrelevatiPage() {
 
   const loadSalespeople = async () => {
     try {
+      // Cerca il gruppo "Sales / User" o "Sales / Administrator"
+      const salesGroups = await searchRead<any>(
+        'res.groups',
+        [['name', 'in', ['User', 'Administrator']], ['category_id.name', '=', 'Sales']],
+        ['id'],
+        0
+      );
+
+      if (salesGroups.length === 0) {
+        console.warn('Nessun gruppo vendite trovato');
+        setSalespeople([]);
+        return;
+      }
+
+      const groupIds = salesGroups.map((g: any) => g.id);
+
+      // Carica solo gli utenti che appartengono ai gruppi vendite
       const users = await searchRead<any>(
         'res.users',
-        [['active', '=', true]],
+        [['active', '=', true], ['groups_id', 'in', groupIds]],
         ['id', 'name'],
         0,
         'name asc'
@@ -104,13 +121,25 @@ export default function ProdottiNonPrelevatiPage() {
     setStatusMessage('Caricamento in corso...');
 
     try {
+      // Costruisci il domain con i filtri
+      const domain: any[] = [
+        ['order_id.state', 'in', ['sale', 'done']],
+        ['product_uom_qty', '>', 0],
+      ];
+
+      // Filtro per venditore
+      if (selectedSalesperson) {
+        domain.push(['order_id.user_id', '=', selectedSalesperson]);
+      }
+
+      // Filtro per data di consegna - ordini con consegna fino alla data selezionata
+      if (selectedDate) {
+        domain.push(['order_id.commitment_date', '<=', selectedDate + ' 23:59:59']);
+      }
+
       const orderLines = await searchRead<any>(
         'sale.order.line',
-        [
-          ['order_id.state', 'in', ['sale', 'done']],
-          ['order_id.user_id', selectedSalesperson ? '=' : '!=', selectedSalesperson || false],
-          ['product_uom_qty', '>', 0],
-        ],
+        domain,
         [
           'id',
           'order_id',
@@ -133,7 +162,7 @@ export default function ProdottiNonPrelevatiPage() {
         const orders = await searchRead<any>(
           'sale.order',
           [['id', 'in', orderIds]],
-          ['id', 'name', 'partner_id', 'date_order', 'user_id', 'state'],
+          ['id', 'name', 'partner_id', 'date_order', 'commitment_date', 'user_id', 'state'],
           0
         );
 
@@ -143,14 +172,6 @@ export default function ProdottiNonPrelevatiPage() {
           .map((line: any) => {
             const order = orderMap.get(line.order_id[0]);
             if (!order) return null;
-
-            if (selectedSalesperson && order.user_id && order.user_id[0] !== selectedSalesperson) {
-              return null;
-            }
-
-            if (selectedDate && order.date_order > selectedDate + ' 23:59:59') {
-              return null;
-            }
 
             return {
               orderId: order.id,
