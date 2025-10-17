@@ -72,8 +72,8 @@ function parseDate(dateStr: string | null): string {
  */
 export async function parseFatturaPA(xmlString: string): Promise<FatturaPAData> {
   // Usa xml2js per parsare l'XML
-  const xml2js = require('xml2js');
-  const parser = new xml2js.Parser({
+  const { Parser } = await import('xml2js');
+  const parser = new Parser({
     explicitArray: true,
     mergeAttrs: true,
     explicitRoot: true
