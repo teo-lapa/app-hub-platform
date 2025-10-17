@@ -126,7 +126,7 @@ export default function ProdottiNonPrelevatiPage() {
       );
 
       // Estrai gli ID univoci dei venditori
-      const salespeopleIds = [...new Set(partners.map((p: any) => p.user_id[0]))];
+      const salespeopleIds = Array.from(new Set(partners.map((p: any) => p.user_id[0])));
 
       console.log(`✅ Trovati ${salespeopleIds.length} venditori con clienti associati`);
 
@@ -242,7 +242,7 @@ export default function ProdottiNonPrelevatiPage() {
         const ordersWithNewOrder = new Set(orderMessages.map((msg: any) => msg.res_id));
 
         // Carica i dati dei clienti per ottenere il venditore assegnato (user_id)
-        const customerIds = [...new Set(orders.map((o: any) => o.partner_id[0]))];
+        const customerIds = Array.from(new Set(orders.map((o: any) => o.partner_id[0])));
         const customers = await searchRead<any>(
           'res.partner',
           [['id', 'in', customerIds]],
