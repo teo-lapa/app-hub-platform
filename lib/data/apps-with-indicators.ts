@@ -459,6 +459,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-10-16'),
     updatedAt: new Date('2025-10-16'),
   },
+  {
+    id: 's27',
+    name: 'Controllo Consegne [P]',
+    description: 'Visualizza e controlla tutti i documenti di consegna completati: firme digitali, foto di consegna, ricevute di pagamento alla consegna e documenti di reso. Filtra per data e tipo di documento.',
+    icon: '📋',
+    badge: 'PRO',
+    category: 'Logistica',
+    url: '/controllo-consegne',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-10-17'),
+    updatedAt: new Date('2025-10-17'),
+  },
 ];
 
 // Combina tutte le app
