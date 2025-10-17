@@ -173,6 +173,8 @@ export async function GET(
 
     if (productTemplateId) {
       const today = new Date().toISOString().split('T')[0];
+
+      // 1. Get configured suppliers
       const suppliers = await rpc.searchRead(
         'product.supplierinfo',
         [
@@ -186,13 +188,111 @@ export async function GET(
         'sequence, min_qty'
       );
 
-      // Format suppliers
-      suppliersList = suppliers.map((s: any) => ({
-        name: s.partner_id?.[1] || 'Sconosciuto',
-        leadTime: s.delay || 0,
-        minQty: s.min_qty || 0,
-        price: s.price || 0
-      }));
+      // 2. Get REAL purchase history to find main supplier
+      const purchaseHistory = await rpc.searchRead(
+        'purchase.order.line',
+        [
+          ['product_id', '=', productId],
+          ['order_id.state', 'in', ['purchase', 'done']]
+        ],
+        ['order_id', 'product_qty', 'price_unit', 'date_planned'],
+        500
+      );
+
+      // 3. Get purchase order details to get supplier
+      const poIdsSet = new Set(purchaseHistory.map((line: any) => line.order_id[0]));
+      const poIds = Array.from(poIdsSet);
+      const purchaseOrders = await rpc.searchRead(
+        'purchase.order',
+        [['id', 'in', poIds]],
+        ['id', 'partner_id', 'date_order'],
+        0
+      );
+
+      const poMap: any = {};
+      purchaseOrders.forEach((po: any) => {
+        poMap[po.id] = po;
+      });
+
+      // 4. Calculate purchase stats per supplier
+      const supplierStats: any = {};
+
+      purchaseHistory.forEach((line: any) => {
+        const po = poMap[line.order_id[0]];
+        if (!po || !po.partner_id) return;
+
+        const supplierId = po.partner_id[0];
+        const supplierName = po.partner_id[1];
+
+        if (!supplierStats[supplierId]) {
+          supplierStats[supplierId] = {
+            id: supplierId,
+            name: supplierName,
+            orderCount: 0,
+            totalQty: 0,
+            lastOrderDate: null
+          };
+        }
+
+        supplierStats[supplierId].orderCount += 1;
+        supplierStats[supplierId].totalQty += line.product_qty || 0;
+
+        if (!supplierStats[supplierId].lastOrderDate || po.date_order > supplierStats[supplierId].lastOrderDate) {
+          supplierStats[supplierId].lastOrderDate = po.date_order;
+        }
+      });
+
+      // 5. Merge configured suppliers with real stats
+      const suppliersMap: any = {};
+
+      // Add configured suppliers
+      suppliers.forEach((s: any) => {
+        const supplierId = s.partner_id[0];
+        suppliersMap[supplierId] = {
+          id: supplierId,
+          name: s.partner_id[1],
+          leadTime: s.delay || 0,
+          minQty: s.min_qty || 0,
+          price: s.price || 0,
+          orderCount: 0,
+          totalQty: 0,
+          lastOrderDate: null
+        };
+      });
+
+      // Merge with real stats
+      Object.values(supplierStats).forEach((stat: any) => {
+        if (suppliersMap[stat.id]) {
+          suppliersMap[stat.id].orderCount = stat.orderCount;
+          suppliersMap[stat.id].totalQty = stat.totalQty;
+          suppliersMap[stat.id].lastOrderDate = stat.lastOrderDate;
+        } else {
+          // Supplier has purchase history but not configured
+          suppliersMap[stat.id] = {
+            id: stat.id,
+            name: stat.name,
+            leadTime: 0,
+            minQty: 0,
+            price: 0,
+            orderCount: stat.orderCount,
+            totalQty: stat.totalQty,
+            lastOrderDate: stat.lastOrderDate
+          };
+        }
+      });
+
+      // 6. Sort by order count (main supplier first)
+      suppliersList = Object.values(suppliersMap)
+        .sort((a: any, b: any) => b.orderCount - a.orderCount)
+        .map((s: any, index: number) => ({
+          name: s.name,
+          leadTime: s.leadTime,
+          minQty: s.minQty,
+          price: s.price,
+          orderCount: s.orderCount,
+          totalQty: s.totalQty,
+          isMain: index === 0 && s.orderCount > 0  // ⭐ Principale se ha ordini
+        }));
     }
 
     // Format weekly chart data - ordina per numero settimana

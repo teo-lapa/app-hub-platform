@@ -751,8 +751,22 @@ export default function SmartOrderingV2() {
                         <h3 className="text-white text-xl font-bold mb-4">🚚 Fornitori</h3>
                         <div className="space-y-3">
                           {productAnalytics.suppliers.map((supplier: any, index: number) => (
-                            <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
-                              <div className="text-white font-semibold">{supplier.name}</div>
+                            <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-4">
+                              <div className="flex items-center gap-3">
+                                {supplier.isMain && (
+                                  <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                                    ⭐ PRINCIPALE
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="text-white font-semibold">{supplier.name}</div>
+                                  {supplier.orderCount > 0 && (
+                                    <div className="text-blue-300 text-xs mt-1">
+                                      {supplier.orderCount} ordini • {supplier.totalQty.toFixed(0)} {productDetailsModal.uom} acquistati
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                               <div className="flex gap-4 text-sm">
                                 <div>
                                   <span className="text-blue-300">Lead Time: </span>
