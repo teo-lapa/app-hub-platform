@@ -204,6 +204,21 @@ export const mockApps: App[] = [
     createdAt: new Date('2025-10-16'),
     updatedAt: new Date('2025-10-16'),
   },
+  {
+    id: '15',
+    name: 'Controllo Consegne',
+    description: 'Visualizza e controlla tutti i documenti di consegna completati: firme digitali, foto di consegna, ricevute di pagamento alla consegna e documenti di reso. Filtra per data e tipo di documento.',
+    icon: '📋',
+    badge: 'PRO',
+    category: 'Business',
+    url: '/controllo-consegne',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-10-17'),
+    updatedAt: new Date('2025-10-17'),
+  },
 ];
 
 export const categories = [

@@ -41,5 +41,3 @@ yarn-error.log*
 next-env.d.ts
 
 # WIP apps (in development elsewhere)
-/app/controllo-consegne/
-/app/api/controllo-consegne/
