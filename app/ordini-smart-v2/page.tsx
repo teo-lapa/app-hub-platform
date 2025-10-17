@@ -60,6 +60,7 @@ export default function SmartOrderingV2() {
   const [showTodayAnalysis, setShowTodayAnalysis] = useState(false);
   const [todayAnalysisData, setTodayAnalysisData] = useState<any>(null);
   const [loadingTodayAnalysis, setLoadingTodayAnalysis] = useState(false);
+  const [showCustomers, setShowCustomers] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -360,7 +361,7 @@ export default function SmartOrderingV2() {
                 <div className="bg-white/5 rounded-lg p-3">
                   <div className="text-blue-300 text-xs mb-1">Valore Stim.</div>
                   <div className="text-white text-xl font-bold">
-                    €{(supplier.estimatedValue / 1000).toFixed(1)}k
+                    CHF {(supplier.estimatedValue / 1000).toFixed(1)}k
                   </div>
                 </div>
               </div>
@@ -503,7 +504,7 @@ export default function SmartOrderingV2() {
                           </div>
                           <div className="bg-white/5 rounded-lg p-3">
                             <div className="text-blue-300 text-xs mb-1">Prezzo medio</div>
-                            <div className="text-white font-bold">€{product.avgPrice?.toFixed(2) || '0.00'}</div>
+                            <div className="text-white font-bold">CHF {product.avgPrice?.toFixed(2) || '0.00'}</div>
                           </div>
                           <button
                             onClick={(e) => openProductAnalytics(product, e)}
@@ -547,7 +548,7 @@ export default function SmartOrderingV2() {
                     <div className="text-blue-200">
                       <div className="text-sm font-semibold">Prodotti selezionati: {selectedProducts.size}</div>
                       <div className="text-lg font-bold text-white mt-1">
-                        💰 Valore Ordine: €{calculateOrderValue().toFixed(2)}
+                        💰 Valore Ordine: CHF {calculateOrderValue().toFixed(2)}
                       </div>
                     </div>
                     <div className="flex gap-3">
@@ -648,7 +649,7 @@ export default function SmartOrderingV2() {
                       </div>
                       <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-xl p-4 border border-purple-400/30">
                         <div className="text-purple-300 text-sm mb-1">Ricavo Totale</div>
-                        <div className="text-white text-2xl font-bold">€{productAnalytics.product.totalRevenue.toFixed(2)}</div>
+                        <div className="text-white text-2xl font-bold">CHF {productAnalytics.product.totalRevenue.toFixed(2)}</div>
                         <div className="text-purple-200 text-xs">ultimi 3 mesi</div>
                       </div>
                       <div className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 rounded-xl p-4 border border-orange-400/30">
@@ -679,7 +680,7 @@ export default function SmartOrderingV2() {
                                 </div>
                               </div>
                               <div className="text-green-300 text-sm font-semibold w-24 text-right">
-                                €{week.revenue.toFixed(2)}
+                                CHF {week.revenue.toFixed(2)}
                               </div>
                             </div>
                           );
@@ -687,32 +688,40 @@ export default function SmartOrderingV2() {
                       </div>
                     </div>
 
-                    {/* Top Customers */}
+                    {/* Top Customers - Collapsible */}
                     <div className="bg-white/5 rounded-xl p-6">
-                      <h3 className="text-white text-xl font-bold mb-4">👥 Top 10 Clienti</h3>
-                      <div className="space-y-3">
-                        {productAnalytics.topCustomers.slice(0, 10).map((customer: any, index: number) => (
-                          <div key={customer.id} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                                {index + 1}
+                      <button
+                        onClick={() => setShowCustomers(!showCustomers)}
+                        className="w-full flex items-center justify-between text-white text-xl font-bold mb-4 hover:bg-white/5 p-3 rounded-lg transition-all"
+                      >
+                        <span>👥 Top 10 Clienti</span>
+                        <span className="text-2xl">{showCustomers ? '▼' : '▶'}</span>
+                      </button>
+                      {showCustomers && (
+                        <div className="space-y-3">
+                          {productAnalytics.topCustomers.slice(0, 10).map((customer: any, index: number) => (
+                            <div key={customer.id} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                                  {index + 1}
+                                </div>
+                                <div>
+                                  <div className="text-white font-semibold">{customer.name}</div>
+                                  <div className="text-blue-300 text-sm">{customer.orders} ordini</div>
+                                </div>
                               </div>
-                              <div>
-                                <div className="text-white font-semibold">{customer.name}</div>
-                                <div className="text-blue-300 text-sm">{customer.orders} ordini</div>
+                              <div className="text-right">
+                                <div className="text-white font-bold">{customer.qty.toFixed(1)} {productDetailsModal.uom}</div>
+                                <div className="text-green-300 text-sm">CHF {customer.revenue.toFixed(2)}</div>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <div className="text-white font-bold">{customer.qty.toFixed(1)} {productDetailsModal.uom}</div>
-                              <div className="text-green-300 text-sm">€{customer.revenue.toFixed(2)}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Stock Locations */}
-                    {productAnalytics.locations.length > 0 && (
+                    {(productAnalytics.locations.length > 0 || productAnalytics.product.incomingQty > 0) && (
                       <div className="bg-white/5 rounded-xl p-6">
                         <h3 className="text-white text-xl font-bold mb-4">🏢 Giacenza per Ubicazione</h3>
                         <div className="space-y-3">
@@ -732,15 +741,26 @@ export default function SmartOrderingV2() {
                                   <span className="text-green-300">Disponibile: </span>
                                   <span className="text-white font-bold">{location.available.toFixed(1)}</span>
                                 </div>
-                                {location.incoming > 0 && (
+                              </div>
+                            </div>
+                          ))}
+                          {productAnalytics.product.incomingQty > 0 && (
+                            <div className="flex items-center justify-between bg-purple-500/10 rounded-lg p-3 border border-purple-400/30">
+                              <div className="text-purple-300 font-semibold">🚚 In Arrivo</div>
+                              <div className="flex gap-4 text-sm">
+                                <div>
+                                  <span className="text-purple-300">Quantità: </span>
+                                  <span className="text-white font-bold">{productAnalytics.product.incomingQty.toFixed(1)} {productDetailsModal.uom}</span>
+                                </div>
+                                {productAnalytics.product.incomingDate && (
                                   <div>
-                                    <span className="text-purple-300">🚚 In Arrivo: </span>
-                                    <span className="text-white font-bold">{location.incoming.toFixed(1)}</span>
+                                    <span className="text-purple-300">📅 Arrivo previsto: </span>
+                                    <span className="text-white font-bold">{new Date(productAnalytics.product.incomingDate).toLocaleDateString('it-IT')}</span>
                                   </div>
                                 )}
                               </div>
                             </div>
-                          ))}
+                          )}
                         </div>
                       </div>
                     )}
@@ -778,7 +798,7 @@ export default function SmartOrderingV2() {
                                 </div>
                                 <div>
                                   <span className="text-green-300">Prezzo: </span>
-                                  <span className="text-white font-bold">€{supplier.price.toFixed(2)}</span>
+                                  <span className="text-white font-bold">CHF {supplier.price.toFixed(2)}</span>
                                 </div>
                               </div>
                             </div>
@@ -858,7 +878,7 @@ export default function SmartOrderingV2() {
                       </div>
                       <div className="bg-white/10 rounded-xl p-6 border border-green-400/30">
                         <div className="text-green-300 text-sm mb-2">Revenue Giornaliera</div>
-                        <div className="text-white text-4xl font-bold">€{todayAnalysisData.totalRevenue.toFixed(2)}</div>
+                        <div className="text-white text-4xl font-bold">CHF {todayAnalysisData.totalRevenue.toFixed(2)}</div>
                         <div className="text-green-200 text-xs mt-1">totale vendite</div>
                       </div>
                       <div className="bg-white/10 rounded-xl p-6 border border-blue-400/30">
@@ -945,7 +965,7 @@ export default function SmartOrderingV2() {
                               <tr key={product.productId} className="border-b border-white/5 hover:bg-white/5">
                                 <td className="text-white text-sm p-3">{product.productName}</td>
                                 <td className="text-white text-sm p-3 text-right font-semibold">{product.quantitySold.toFixed(1)}</td>
-                                <td className="text-green-300 text-sm p-3 text-right">€{product.totalValue.toFixed(2)}</td>
+                                <td className="text-green-300 text-sm p-3 text-right">CHF {product.totalValue.toFixed(2)}</td>
                                 <td className="text-blue-300 text-sm p-3 text-right">{product.currentStock.toFixed(1)}</td>
                                 <td className="text-purple-200 text-sm p-3 text-right">{product.avgDailySales.toFixed(1)}</td>
                                 <td className={`text-sm p-3 text-right font-semibold ${
@@ -973,7 +993,7 @@ export default function SmartOrderingV2() {
                       <h3 className="text-white font-bold text-lg mb-2">🧠 Matematica vs AI</h3>
                       <p className="text-purple-200 text-sm mb-3">
                         La <strong>formula matematica</strong> è sempre attiva e calcola le quantità suggerite basandosi su:
-                        consumo storico, lead time fornitore, e frequenza ordini stimata per raggiungere il valore minimo (€2000).
+                        consumo storico, lead time fornitore, e frequenza ordini stimata per raggiungere il valore minimo (CHF 2000).
                       </p>
                       <p className="text-purple-200 text-sm">
                         <strong>Claude AI</strong> analizza le vendite di oggi confrontandole con le medie storiche, identifica pattern anomali,

@@ -145,6 +145,7 @@ export async function GET(
     // Get incoming quantity (purchase orders not yet received)
     // SOLO ordini confermati ('purchase'), NON chiusi ('done')
     let incomingQty = 0;
+    let incomingDate: string | null = null;
     try {
       const purchaseLines = await rpc.searchRead(
         'purchase.order.line',
@@ -152,17 +153,32 @@ export async function GET(
           ['product_id', '=', productId],
           ['order_id.state', '=', 'purchase']  // ✅ SOLO ordini confermati aperti
         ],
-        ['product_qty', 'qty_received'],
+        ['product_qty', 'qty_received', 'date_planned', 'order_id'],
         500
       );
 
-      // Calculate incoming = ordered - already received
+      // Find earliest delivery date among lines with pending qty
+      let earliestDate: Date | null = null;
+
       purchaseLines.forEach((line: any) => {
         const notYetReceived = (line.product_qty || 0) - (line.qty_received || 0);
         if (notYetReceived > 0) {
           incomingQty += notYetReceived;
+
+          // Track earliest delivery date
+          if (line.date_planned) {
+            const lineDate = new Date(line.date_planned);
+            if (!earliestDate || lineDate < earliestDate) {
+              earliestDate = lineDate;
+            }
+          }
         }
       });
+
+      // Format date for display
+      if (earliestDate) {
+        incomingDate = (earliestDate as Date).toISOString().split('T')[0];
+      }
     } catch (error) {
       console.warn('⚠️ Errore caricamento ordini in arrivo:', error);
     }
@@ -329,7 +345,8 @@ export async function GET(
           totalSold3Months: Math.round(totalSold),
           totalRevenue: Math.round(totalRevenue * 100) / 100,
           avgPrice: Math.round(avgPrice * 100) / 100,
-          incomingQty: incomingQty
+          incomingQty: incomingQty,
+          incomingDate: incomingDate
         },
         weeklyChart,
         topCustomers,
