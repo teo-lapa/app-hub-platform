@@ -1,4 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
+
+/**
+ * Helper: Calcola numero settimana ISO 8601
+ * Returns real week number (1-53)
+ */
+function getISOWeek(date: Date): number {
+  const target = new Date(date.valueOf());
+  const dayNr = (date.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  const firstThursday = target.valueOf();
+  target.setMonth(0, 1);
+  if (target.getDay() !== 4) {
+    target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+  }
+  return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+}
 
 export async function GET(
   request: NextRequest,
@@ -7,52 +24,64 @@ export async function GET(
   const productId = parseInt(params.productId);
 
   try {
-    // Import Odoo helper
-    const { callOdoo } = await import('@/lib/odoo/odoo-helper');
-
-    // Get real analysis data
-    const fs = await import('fs');
-    const path = await import('path');
-    const dataPath = path.join(process.cwd(), 'lib', 'smart-ordering', 'real-analysis-data.json');
-    const analysisData = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
-
-    // Find product in analysis
-    const product = analysisData.products.find((p: any) => p.id === productId);
-    if (!product) {
-      return NextResponse.json({ success: false, error: 'Product not found' });
+    // Get session from cookies
+    const sessionId = request.cookies.get('odoo_session_id')?.value;
+    if (!sessionId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Non autenticato - Odoo session non trovata'
+      }, { status: 401 });
     }
+
+    // Create RPC client
+    const rpc = createOdooRPCClient(sessionId);
+
+    // Load product details REAL-TIME
+    const products = await rpc.searchRead(
+      'product.product',
+      [['id', '=', productId]],
+      ['id', 'name', 'default_code', 'qty_available', 'list_price', 'product_tmpl_id'],
+      1
+    );
+
+    if (!products || products.length === 0) {
+      return NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 });
+    }
+
+    const product = products[0];
 
     // Calculate date range (last 3 months)
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
     const dateFrom = threeMonthsAgo.toISOString().split('T')[0];
 
-    // Get confirmed orders first
-    const orders = await callOdoo('sale.order', 'search_read', [], {
-      domain: [
-        ['state', 'in', ['sale', 'done']],
-        ['date_order', '>=', dateFrom]
+    // Get order lines for this product from last 3 months (REAL-TIME)
+    const orderLines = await rpc.searchRead(
+      'sale.order.line',
+      [
+        ['product_id', '=', productId],
+        ['order_id.effective_date', '>=', dateFrom],
+        ['order_id.state', 'in', ['sale', 'done']]
       ],
-      fields: ['name', 'date_order', 'partner_id'],
-      limit: 5000
-    });
+      ['order_id', 'product_uom_qty', 'price_subtotal'],
+      0
+    );
 
-    const orderIds = orders.map((o: any) => o.id);
+    // Get unique order IDs
+    const orderIds = [...new Set(orderLines.map((line: any) => line.order_id[0]))];
+
+    // Load orders to get dates and customers
+    const orders = await rpc.searchRead(
+      'sale.order',
+      [['id', 'in', orderIds]],
+      ['id', 'name', 'effective_date', 'partner_id'],
+      0
+    );
 
     // Build orders map for fast lookup
     const ordersMap: any = {};
     orders.forEach((o: any) => {
       ordersMap[o.id] = o;
-    });
-
-    // Get order lines for this product
-    const orderLines = await callOdoo('sale.order.line', 'search_read', [], {
-      domain: [
-        ['product_id', '=', productId],
-        ['order_id', 'in', orderIds]
-      ],
-      fields: ['order_id', 'product_uom_qty', 'price_subtotal'],
-      limit: 1000
     });
 
     // Group by week for chart
@@ -62,14 +91,17 @@ export async function GET(
     orderLines.forEach((line: any) => {
       const orderId = line.order_id[0];
       const order = ordersMap[orderId];
-      if (!order) return;
+      if (!order || !order.effective_date) return;
 
-      const date = new Date(order.date_order);
-      const weekKey = `${date.getFullYear()}-W${Math.ceil((date.getDate()) / 7)}`;
+      const date = new Date(order.effective_date);
+
+      // ✅ FIXED: Usa numero settimana ISO reale
+      const weekNumber = getISOWeek(date);
+      const weekKey = `Settimana ${weekNumber}`;
 
       // Weekly sales
       if (!weeklyData[weekKey]) {
-        weeklyData[weekKey] = { qty: 0, revenue: 0 };
+        weeklyData[weekKey] = { qty: 0, revenue: 0, weekNum: weekNumber };
       }
       weeklyData[weekKey].qty += line.product_uom_qty;
       weeklyData[weekKey].revenue += line.price_subtotal;
@@ -91,90 +123,79 @@ export async function GET(
       customerData[customerId].orders += 1;
     });
 
+    // Calculate avg daily sales from real data
+    const totalSold = orderLines.reduce((sum: number, line: any) => sum + (line.product_uom_qty || 0), 0);
+    const avgDailySales = totalSold / 90; // 3 months = ~90 days
+    const totalRevenue = orderLines.reduce((sum: number, line: any) => sum + (line.price_subtotal || 0), 0);
+    const avgPrice = totalSold > 0 ? totalRevenue / totalSold : product.list_price;
+
     // Get stock locations (stock.quant) - SOLO ubicazioni interne magazzino
-    const stockLocations = await callOdoo('stock.quant', 'search_read', [], {
-      domain: [
+    const stockLocations = await rpc.searchRead(
+      'stock.quant',
+      [
         ['product_id', '=', productId],
         ['quantity', '>', 0],
         ['location_id.usage', '=', 'internal']  // SOLO ubicazioni interne
       ],
-      fields: ['location_id', 'quantity', 'reserved_quantity'],
-      limit: 100
-    });
+      ['location_id', 'quantity', 'reserved_quantity'],
+      100
+    );
 
     // Get incoming quantity (purchase orders not yet received)
     let incomingQty = 0;
     try {
-      const purchaseOrders = await callOdoo('purchase.order', 'search_read', [], {
-        domain: [
-          ['state', 'in', ['purchase', 'done']]  // Ordini confermati
+      const purchaseLines = await rpc.searchRead(
+        'purchase.order.line',
+        [
+          ['product_id', '=', productId],
+          ['order_id.state', 'in', ['purchase', 'done']]
         ],
-        fields: ['name'],
-        limit: 1000
+        ['product_qty', 'qty_received'],
+        500
+      );
+
+      // Calculate incoming = ordered - received
+      purchaseLines.forEach((line: any) => {
+        const notYetReceived = line.product_qty - line.qty_received;
+        if (notYetReceived > 0) {
+          incomingQty += notYetReceived;
+        }
       });
-
-      const poIds = purchaseOrders.map((po: any) => po.id);
-
-      if (poIds.length > 0) {
-        const purchaseLines = await callOdoo('purchase.order.line', 'search_read', [], {
-          domain: [
-            ['product_id', '=', productId],
-            ['order_id', 'in', poIds]
-          ],
-          fields: ['product_qty', 'qty_received'],
-          limit: 500
-        });
-
-        // Calculate incoming = ordered - received
-        purchaseLines.forEach((line: any) => {
-          const notYetReceived = line.product_qty - line.qty_received;
-          if (notYetReceived > 0) {
-            incomingQty += notYetReceived;
-          }
-        });
-      }
     } catch (error) {
       console.warn('⚠️ Errore caricamento ordini in arrivo:', error);
     }
 
-    // Get product template ID from product.product
-    const productDetails = await callOdoo('product.product', 'search_read', [], {
-      domain: [['id', '=', productId]],
-      fields: ['product_tmpl_id'],
-      limit: 1
-    });
-
+    // Get suppliers from product template (REAL-TIME)
+    const productTemplateId = product.product_tmpl_id ? product.product_tmpl_id[0] : null;
     let suppliersList: any[] = [];
 
-    if (productDetails && productDetails.length > 0) {
-      const productTemplateId = productDetails[0].product_tmpl_id[0];
-
-      // Get suppliers (product.supplierinfo) - solo fornitori attivi
+    if (productTemplateId) {
       const today = new Date().toISOString().split('T')[0];
-      const suppliers = await callOdoo('product.supplierinfo', 'search_read', [], {
-        domain: [
+      const suppliers = await rpc.searchRead(
+        'product.supplierinfo',
+        [
           ['product_tmpl_id', '=', productTemplateId],
           '|',
-          ['date_end', '=', false],  // No end date = always active
-          ['date_end', '>=', today]  // Or end date in future
+          ['date_end', '=', false],
+          ['date_end', '>=', today]
         ],
-        fields: ['partner_id', 'delay', 'min_qty', 'price', 'date_start', 'date_end'],
-        order: 'sequence, min_qty',
-        limit: 10
-      });
+        ['partner_id', 'delay', 'min_qty', 'price'],
+        10,
+        'sequence, min_qty'
+      );
 
       // Format suppliers
       suppliersList = suppliers.map((s: any) => ({
-        name: s.partner_id[1],
-        leadTime: s.delay,
-        minQty: s.min_qty,
-        price: s.price
+        name: s.partner_id?.[1] || 'Sconosciuto',
+        leadTime: s.delay || 0,
+        minQty: s.min_qty || 0,
+        price: s.price || 0
       }));
     }
 
-    // Format weekly chart data
+    // Format weekly chart data - ordina per numero settimana
     const weeklyChart = Object.entries(weeklyData)
-      .sort(([a], [b]) => a.localeCompare(b))
+      .sort(([, a]: [string, any], [, b]: [string, any]) => a.weekNum - b.weekNum)
       .map(([week, data]: [string, any]) => ({
         week,
         qty: data.qty,
@@ -201,12 +222,12 @@ export async function GET(
         product: {
           id: product.id,
           name: product.name,
-          currentStock: product.currentStock,
-          avgDailySales: product.avgDailySales,
-          totalSold3Months: product.totalSold3Months,
-          totalRevenue: product.totalRevenue,
-          avgPrice: product.avgPrice,
-          incomingQty: incomingQty  // Total incoming from purchase orders
+          currentStock: product.qty_available || 0,
+          avgDailySales: Math.round(avgDailySales * 100) / 100,
+          totalSold3Months: Math.round(totalSold),
+          totalRevenue: Math.round(totalRevenue * 100) / 100,
+          avgPrice: Math.round(avgPrice * 100) / 100,
+          incomingQty: incomingQty
         },
         weeklyChart,
         topCustomers,
