@@ -29,13 +29,6 @@ export async function POST(request: NextRequest) {
     // STEP 1: Parse PDF con Claude Vision
     console.log('👁️ [ANALYZE-COMPARE] Step 1: Parsing PDF with Claude Vision...');
 
-    // Claude Vision supporta solo immagini, non PDF
-    // Se è PDF, usiamo 'image/png' come workaround (Claude lo gestisce comunque)
-    let mediaType = pdf_mimetype;
-    if (pdf_mimetype === 'application/pdf') {
-      mediaType = 'application/pdf'; // Claude API ora supporta PDF!
-    }
-
     const visionMessage = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
@@ -47,7 +40,7 @@ export async function POST(request: NextRequest) {
               type: 'document',
               source: {
                 type: 'base64',
-                media_type: mediaType,
+                media_type: 'application/pdf',
                 data: pdf_base64,
               },
             },
