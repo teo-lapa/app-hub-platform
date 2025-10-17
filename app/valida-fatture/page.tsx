@@ -467,7 +467,8 @@ function AnalyzingView() {
 function ReviewView({ comparison, parsedData, draftInvoice, onApply, onCancel, processing, iteration }: any) {
   const diffAmount = comparison.total_difference;
   const isValid = Math.abs(diffAmount) <= 0.02;
-  const hasCorrections = comparison.corrections_needed.some((c: CorrectionAction) => !c.requires_user_approval);
+  // Ci sono correzioni se ci sono azioni da fare (automatiche O manuali)
+  const hasCorrections = comparison.corrections_needed.length > 0;
 
   return (
     <motion.div
