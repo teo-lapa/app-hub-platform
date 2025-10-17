@@ -254,7 +254,7 @@ export default function ProdottiNonPrelevatiPage() {
           customers.map((c: any) => [c.id, c.user_id ? c.user_id[1] : null])
         );
 
-        const cards: ProductCard[] = unpicked
+        const cards = unpicked
           .map((line: any) => {
             const order = orderMap.get(line.order_id[0]);
             if (!order) return null;
