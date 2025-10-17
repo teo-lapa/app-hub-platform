@@ -68,7 +68,8 @@ export async function GET(
     );
 
     // Get unique order IDs
-    const orderIds = [...new Set(orderLines.map((line: any) => line.order_id[0]))];
+    const orderIdsSet = new Set(orderLines.map((line: any) => line.order_id[0]));
+    const orderIds = Array.from(orderIdsSet);
 
     // Load orders to get dates and customers
     const orders = await rpc.searchRead(
