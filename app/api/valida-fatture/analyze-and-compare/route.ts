@@ -53,50 +53,85 @@ export async function POST(request: NextRequest) {
             },
             {
               type: 'text',
-              text: `Analizza questa fattura fornitore e estrai TUTTI i dati in formato JSON.
+              text: `Sei un esperto contabile che deve analizzare una fattura italiana in formato PDF.
 
-IMPORTANTE: Devi essere PRECISISSIMO con i numeri e i totali.
+🎯 METODO DI LETTURA CRITICO - LEGGI AL CONTRARIO (DA DESTRA A SINISTRA):
 
-Estrai:
-1. Dati fornitore (nome, P.IVA se presente)
-2. Numero e data fattura
-3. TUTTI i prodotti con:
-   - Descrizione esatta
-   - Codice articolo (se presente)
-   - Quantità
-   - Prezzo unitario
-   - Subtotale riga
-   - Aliquota IVA (se indicata)
-   - Unità di misura
-4. Totali:
-   - Imponibile
-   - IVA
-   - TOTALE FINALE
+Per ogni riga prodotto, segui ESATTAMENTE questo ordine:
+1. TROVA IL TOTALE RIGA (colonna destra, es: "IMP.NET.€" o "TOTALE")
+2. POI TROVA IL PREZZO UNITARIO (colonna centrale, es: "PR.UNI.€" o "PREZZO")
+3. INFINE CALCOLA LA QUANTITÀ: Quantità = Totale Riga ÷ Prezzo Unitario
 
-Rispondi SOLO con JSON valido in questo formato:
+⚠️ REGOLE CRITICHE:
+- NON fidarti della colonna "Q.TA" se i numeri non tornano!
+- Il TOTALE RIGA è la verità assoluta
+- Se Totale = 46.86€ e Prezzo = 4.70€, allora Q.tà = 46.86 ÷ 4.70 = 9.97 kg (NON 3kg!)
+- Molti fornitori scrivono "3 KG" nell'unità di misura ma vendono in quantità diverse
+- Le fatture italiane usano virgola (123,45) → converti in punto (123.45)
+
+📋 ESEMPIO CONCRETO DALLA FATTURA:
+Se vedi:
+"MORTADELLA C/P 3.5KG | 3 KG | 9,970 | 4,700 | 46,86"
+Leggi così:
+- Totale riga = 46.86€ (VERITÀ)
+- Prezzo unitario = 4.70€/kg
+- Quantità reale = 46.86 ÷ 4.70 = 9.97 kg ✅
+- "3 KG" è solo l'unità di vendita (vaschetta da 3kg), ma ne hanno ordinati 9.97kg!
+
+🔍 COSA ESTRARRE:
+
+1. DATI FORNITORE:
+   - Nome completo
+   - P.IVA (se presente)
+
+2. DATI FATTURA:
+   - Numero fattura (es: "42", "V2/0003329")
+   - Data (formato YYYY-MM-DD)
+
+3. RIGHE PRODOTTI (TUTTE, anche spese trasporto):
+   Per OGNI riga:
+   a) Descrizione completa (includi codici prodotto se presenti)
+   b) Codice articolo (es: "AZCOM051", "P09956")
+   c) SUBTOTAL (totale riga) - PRIORITÀ MASSIMA
+   d) Prezzo unitario
+   e) Quantità = subtotal ÷ unit_price
+   f) Aliquota IVA (22%, 10%, 4%, ecc.)
+   g) Unità di misura (KG, PZ, LT, ecc.)
+
+4. TOTALI FATTURA:
+   - Imponibile totale
+   - IVA totale
+   - TOTALE DA PAGARE (numero finale in fondo)
+
+⚠️ ATTENZIONE SPECIALE:
+- Se vedi "P.Net" o "Peso Netto" ignora, usa il SUBTOTAL
+- "TECHNICAL STOP", "LDF SRL", "ASSAGO" = destinazione merce, NON prodotti
+- Cerca sempre l'ultima pagina per il TOTALE FATTURA LORDO
+
+Rispondi SOLO con JSON valido:
 {
-  "supplier_name": "Nome fornitore",
-  "supplier_vat": "P.IVA o null",
-  "invoice_number": "Numero fattura",
-  "invoice_date": "YYYY-MM-DD o null",
-  "subtotal_amount": 100.50,
-  "tax_amount": 22.11,
-  "total_amount": 122.61,
+  "supplier_name": "SALUMIFICIO F.LLI COATI S.P.A.",
+  "supplier_vat": "02451960237",
+  "invoice_number": "42",
+  "invoice_date": "2025-10-15",
+  "subtotal_amount": 1685.04,
+  "tax_amount": 0.00,
+  "total_amount": 1685.04,
   "currency": "EUR",
   "lines": [
     {
-      "description": "Descrizione prodotto esatta",
-      "product_code": "COD123 o null",
-      "quantity": 10,
-      "unit_price": 10.05,
-      "subtotal": 100.50,
-      "tax_rate": 22,
-      "unit": "pz"
+      "description": "MORTADELLA C/P 3.5KG 1/2 SV RIF.VS ORD.N°9871",
+      "product_code": "AZCOM051",
+      "quantity": 9.97,
+      "unit_price": 4.70,
+      "subtotal": 46.86,
+      "tax_rate": 0,
+      "unit": "KG"
     }
   ]
 }
 
-ATTENZIONE: I numeri devono essere ESATTI. Se vedi 122,61 scrivi 122.61 (usa punto decimale).`
+NUMERI PRECISI: 123,45 → 123.45 (punto decimale), arrotonda a 2 decimali.`
             }
           ]
         }
@@ -127,12 +162,12 @@ ATTENZIONE: I numeri devono essere ESATTI. Se vedi 122,61 scrivi 122.61 (usa pun
       messages: [
         {
           role: 'user',
-          content: `Sei un esperto contabile. Devi confrontare una FATTURA DEFINITIVA con una FATTURA BOZZA in Odoo e trovare TUTTE le differenze.
+          content: `Sei un esperto contabile. Confronta FATTURA DEFINITIVA vs FATTURA BOZZA e trova TUTTE le differenze.
 
-FATTURA DEFINITIVA (quella vera del fornitore):
+📄 FATTURA DEFINITIVA (PDF del fornitore):
 ${JSON.stringify(parsedInvoice, null, 2)}
 
-FATTURA BOZZA IN ODOO:
+📋 FATTURA BOZZA ODOO:
 Nome: ${draft_invoice.name}
 Fornitore: ${draft_invoice.partner_id[1]}
 Data: ${draft_invoice.invoice_date || 'N/A'}
@@ -151,37 +186,68 @@ ${JSON.stringify(draft_invoice.invoice_line_ids.map((line: any) => ({
   total: line.price_total
 })), null, 2)}
 
-COMPITO:
-1. MATCHA INTELLIGENTEMENTE le righe tra fattura definitiva e bozza
-   - NON fare matching solo per descrizione esatta!
-   - Usa codici prodotto (es: "P09956", "[RI1500TS]")
-   - Usa somiglianza semantica (es: "Ricotta 1.5kg" = "Ricotta Kg.1,5")
-   - Se stesso prodotto ma prezzo/quantità diversi → UPDATE
-   - Se non trovi corrispondenza → CREATE o DELETE
+🎯 METODO DI CONFRONTO:
 
-2. Trova differenze CRITICHE:
-   - Prezzi unitari diversi → PRIORITÀ MASSIMA
-   - Quantità diverse → PRIORITÀ ALTA
-   - Prodotti mancanti/extra → Serve approvazione utente
+STEP 1 - MATCHING INTELLIGENTE:
+Per ogni riga PDF, trova la riga Bozza corrispondente:
+a) Cerca CODICE PRODOTTO (es: "AZCOM051", "[RI1500TS]", "P09956")
+b) Se non trovi codice, usa SOMIGLIANZA SEMANTICA:
+   - "MORTADELLA C/P 3.5KG" = "Mortadella 3,5kg" = "[MORT35] Mortadella"
+   - "P.COTTO BLU COATI" = "Prosciutto Cotto Blu"
+   - "SALAME VENTRICINA" = "Ventricina" = "Salame Vent."
+c) Se stesso prodotto → confronta SUBTOTAL (totale riga)
+d) Se SUBTOTAL diverso → confronta prezzo e quantità
 
-3. Calcola TOTALE: Fattura definitiva €${parsedInvoice.total_amount} VS Bozza €${draft_invoice.amount_total}
-   Differenza: €${(parsedInvoice.total_amount - draft_invoice.amount_total).toFixed(2)}
+STEP 2 - VERIFICA MATEMATICA DEL SUBTOTAL:
+Per ogni match trovato, verifica:
+- SUBTOTAL_PDF = quantity_pdf × unit_price_pdf
+- SUBTOTAL_BOZZA = quantity_bozza × unit_price_bozza
+- Se SUBTOTAL_PDF ≠ SUBTOTAL_BOZZA → trova cosa correggere
 
-4. Genera CORREZIONI PRECISE per raggiungere totale esatto ±0.02€
+⚠️ UNITÀ DI MISURA DIVERSE - PROBLEMA CRITICO:
+Molti fornitori vendono in KG, ma nel sistema registriamo in PZ (pezzi/vaschette).
+ESEMPI REALI:
+- Fornitore: "Mortadella 3.5kg" q.tà 9.97kg → 9.97kg effettivi
+- Sistema: "[MORT35] Mortadella" 3 PZ → registrato come 3 pezzi da 3.5kg
+- SOLUZIONE: Controlla SUBTOTAL! Se subtotal PDF = subtotal BOZZA → OK!
+  Se diverso → correggi quantity e/o price_unit
 
-REGOLE CORREZIONI:
-- Prezzo sbagliato in bozza → action: "update", changes: {"price_unit": prezzo_corretto_da_pdf}
-- Quantità sbagliata → action: "update", changes: {"quantity": quantità_corretta}
-- Prodotto mancante in bozza → action: "create", requires_user_approval: true, DEVI includere "parsed_line" con TUTTI i dati del prodotto dal PDF (description, product_code, quantity, unit_price, subtotal, tax_rate, unit)
-- Prodotto extra in bozza → action: "delete", requires_user_approval: false
-- Descrizione diversa ma prezzo OK → NON correggere
+STEP 3 - GENERA CORREZIONI:
+Per ogni differenza trovata:
+
+A) PREZZO DIVERSO + QUANTITÀ OK:
+   → action: "update", changes: {"price_unit": prezzo_da_pdf}
+
+B) QUANTITÀ DIVERSA + PREZZO OK:
+   → action: "update", changes: {"quantity": quantità_da_pdf}
+
+C) PREZZO E QUANTITÀ DIVERSI:
+   → action: "update", changes: {"price_unit": prezzo_pdf, "quantity": quantità_pdf}
+
+D) PRODOTTO MANCANTE IN BOZZA:
+   → action: "create", requires_user_approval: true, parsed_line: {...dati_da_pdf}
+
+E) PRODOTTO EXTRA IN BOZZA (non in PDF):
+   → action: "delete", requires_user_approval: false
+
+🎯 OBIETTIVO FINALE:
+Dopo le correzioni, il totale bozza DEVE essere = totale PDF ± €0.02
 
 ESEMPIO CONCRETO:
-Se in PDF vedi "Ricotta 1,5kg" a €4.05 e in bozza trovi "[RI1500TS] Ricotta Kg.1,5" a €10.00:
-→ Stesso prodotto! Prezzo sbagliato!
-→ Correzione: {"action": "update", "line_id": ID_RIGA_BOZZA, "changes": {"price_unit": 4.05}}
+PDF: "MORTADELLA C/P 3.5KG" q.tà=9.97 prezzo=4.70 subtotal=46.86
+BOZZA: "Mortadella" id=123 q.tà=3 prezzo=4.70 subtotal=14.10
+ANALISI:
+- Stesso prodotto (matching OK)
+- Prezzo OK (4.70 = 4.70)
+- Subtotal DIVERSO (46.86 ≠ 14.10)
+- Differenza causata da quantità (9.97 ≠ 3)
+CORREZIONE:
+{"action": "update", "line_id": 123, "changes": {"quantity": 9.97}, "reason": "Quantità reale: 9.97kg (non 3 pezzi)"}
 
-FOCUS ASSOLUTO: Far tornare i NUMERI (prezzi e quantità), NON le descrizioni!
+⚠️ IMPORTANTE:
+- NON correggere descrizioni
+- FOCUS ASSOLUTO: far tornare i NUMERI (prezzo × quantità = subtotal)
+- Se subtotal bozza = subtotal PDF → NON correggere anche se quantità/prezzo diversi!
 
 Rispondi SOLO con JSON in questo formato:
 {
