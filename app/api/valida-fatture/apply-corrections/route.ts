@@ -8,8 +8,8 @@ import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
  */
 export async function POST(request: NextRequest) {
   try {
-    console.log('🚀 [APPLY-CORRECTIONS] API v2 - WITH FORCED RECALCULATION');
-    const { invoice_id, corrections } = await request.json();
+    console.log('🚀 [APPLY-CORRECTIONS] API v3 - WITH DATE UPDATE');
+    const { invoice_id, corrections, invoice_date } = await request.json();
 
     if (!invoice_id || !corrections) {
       return NextResponse.json(
@@ -33,7 +33,24 @@ export async function POST(request: NextRequest) {
     let created_lines = 0;
     const errors: string[] = [];
 
-    // Applica ogni correzione
+    // 🗓️ STEP 1: Aggiorna la data della fattura se fornita
+    if (invoice_date) {
+      console.log(`📅 [APPLY-CORRECTIONS] Updating invoice date to: ${invoice_date}`);
+      try {
+        await callOdoo(
+          cookies,
+          'account.move',
+          'write',
+          [[invoice_id], { invoice_date: invoice_date }]
+        );
+        console.log('✅ [APPLY-CORRECTIONS] Invoice date updated successfully');
+      } catch (error: any) {
+        console.error('❌ [APPLY-CORRECTIONS] Failed to update invoice date:', error);
+        errors.push(`Failed to update invoice date: ${error.message}`);
+      }
+    }
+
+    // 🔧 STEP 2: Applica ogni correzione alle righe
     for (const correction of corrections) {
       try {
         if (correction.action === 'update' && correction.line_id) {
@@ -136,6 +153,7 @@ export async function POST(request: NextRequest) {
       const changesSummary = [
         `✅ <strong>Fattura validata automaticamente con Claude AI</strong>`,
         ``,
+        invoice_date ? `📅 <strong>Data fattura aggiornata:</strong> ${invoice_date}` : null,
         `📊 <strong>Riepilogo correzioni:</strong>`,
         `• Righe aggiornate: ${updated_lines}`,
         `• Righe eliminate: ${deleted_lines}`,
@@ -144,7 +162,7 @@ export async function POST(request: NextRequest) {
         `💰 <strong>Nuovo totale fattura:</strong> €${newTotal.toFixed(2)}`,
         ``,
         `🤖 <em>Validazione automatica tramite Claude AI - Confronto PDF vs Bozza</em>`
-      ].join('<br/>');
+      ].filter(Boolean).join('<br/>');
 
       await callOdoo(
         cookies,

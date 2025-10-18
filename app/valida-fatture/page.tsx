@@ -177,7 +177,8 @@ export default function ValidaFatturePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           invoice_id: state.selected_invoice.id,
-          corrections: autoCorrections
+          corrections: autoCorrections,
+          invoice_date: state.parsed_data?.invoice_date || null
         })
       });
 
