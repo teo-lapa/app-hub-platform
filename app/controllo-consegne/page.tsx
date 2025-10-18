@@ -63,8 +63,15 @@ export default function ControlloConsegnePage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Controllo Consegne</h1>
-        <p>Visualizza documenti di consegna completati</p>
+        <div className={styles.headerContent}>
+          <a href="/" className={styles.homeBtn}>
+            ← Home
+          </a>
+          <div className={styles.headerTitle}>
+            <h1>Controllo Consegne</h1>
+            <p>Visualizza documenti di consegna completati</p>
+          </div>
+        </div>
       </header>
 
       <div className={styles.filters}>

@@ -5,18 +5,49 @@
 }
 
 .header {
-  text-align: center;
   color: white;
   margin-bottom: 30px;
 }
 
-.header h1 {
+.headerContent {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.homeBtn {
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+}
+
+.homeBtn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateX(-4px);
+}
+
+.headerTitle {
+  text-align: center;
+  flex: 1;
+}
+
+.headerTitle h1 {
   font-size: 2.5rem;
   margin-bottom: 10px;
   font-weight: 700;
 }
 
-.header p {
+.headerTitle p {
   font-size: 1.1rem;
   opacity: 0.9;
 }
