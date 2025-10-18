@@ -80,15 +80,17 @@ export interface AIPrediction {
 }
 
 class AIPredictionEngine {
-  private anthropic: Anthropic;
+  private anthropic: Anthropic | null = null;
 
-  constructor() {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY non trovata in .env');
+  private getAnthropic(): Anthropic {
+    if (!this.anthropic) {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        throw new Error('ANTHROPIC_API_KEY non trovata in .env');
+      }
+      this.anthropic = new Anthropic({ apiKey });
     }
-
-    this.anthropic = new Anthropic({ apiKey });
+    return this.anthropic;
   }
 
   /**
@@ -195,7 +197,7 @@ Rispondi SOLO con un array JSON di 7 numeri (vendite previste per ogni giorno):
 
 Esempio: [45.2, 52.1, 68.5, 48.3, 50.2, 55.0, 20.5]`;
 
-      const response = await this.anthropic.messages.create({
+      const response = await this.getAnthropic().messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 500,
         temperature: 0.3,
@@ -295,7 +297,7 @@ Rispondi in formato JSON:
   "riskFactors": ["Fattore 1", "Fattore 2", ...]
 }`;
 
-      const response = await this.anthropic.messages.create({
+      const response = await this.getAnthropic().messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 800,
         temperature: 0.5,
