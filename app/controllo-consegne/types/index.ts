@@ -11,6 +11,8 @@ export interface DeliveryDocument {
   delivery_address: string;
   completion_time: string;
   completion_date: string;
+  sale_id: number | null;
+  sale_name: string | null;
 
   // Attachments by type
   attachments: {

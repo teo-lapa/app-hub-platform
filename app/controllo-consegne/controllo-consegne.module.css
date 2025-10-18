@@ -459,14 +459,25 @@
 
 .noteSection {
   padding: 16px 24px;
-  background: #f8f9ff;
-  border-top: 2px solid #e8ebff;
+  background: #ffffff;
+  border-top: 2px solid #e0e0e0;
 }
 
 .noteSection strong {
   display: block;
   margin-bottom: 8px;
-  color: #667eea;
+  color: #000000 !important;
+  font-weight: 700;
+}
+
+.noteSection p,
+.noteSection span,
+.noteSection div {
+  color: #000000 !important;
+}
+
+.noteSection * {
+  color: #000000 !important;
 }
 
 .paymentDetails {
@@ -478,6 +489,53 @@
 .paymentDetails p {
   margin: 8px 0;
   font-size: 1.1rem;
+}
+
+.resoInfo {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fff3cd;
+  border-left: 4px solid #ff6b6b;
+  border-radius: 4px;
+  color: #000 !important;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.resoInfo strong {
+  color: #c92a2a !important;
+  font-weight: 600;
+}
+
+.attachmentSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.attachmentInfo {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f0f9ff;
+  border-left: 4px solid #667eea;
+  border-radius: 4px;
+  color: #000 !important;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.attachmentInfo strong {
+  color: #667eea !important;
+  font-weight: 600;
+}
+
+.attachmentInfo * {
+  color: #000 !important;
+}
+
+.resoInfo p {
+  margin: 4px 0 !important;
+  color: #000 !important;
 }
 
 .timestamp {

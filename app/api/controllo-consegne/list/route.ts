@@ -64,6 +64,8 @@ export async function GET(request: NextRequest) {
           'vehicle_id',
           'carrier_id',
           'location_dest_id',
+          'sale_id',
+          'origin',
         ]
       }
     );
@@ -158,13 +160,12 @@ export async function GET(request: NextRequest) {
       // Categorize attachments by type
       const attachmentsByType: any = {};
 
-      // DEBUG: print all messages for this picking
-      console.log(`\n[DEBUG] ========== Picking ${picking.name} ==========`);
-      console.log(`[DEBUG] Total messages: ${pickingMessages.length}`);
-      pickingMessages.forEach((msg: any, idx: number) => {
-        const bodyPreview = msg.body ? msg.body.substring(0, 150).replace(/\n/g, ' ') : 'no body';
-        console.log(`[DEBUG] Message ${idx + 1}: "${bodyPreview}..."`);
-      });
+      // DEBUG: print messages that contain "RESO"
+      const resoMsg = pickingMessages.find((m: any) => m.body && m.body.includes('RESO'));
+      if (resoMsg) {
+        console.log(`\n[RESO TROVATO] Picking ${picking.name}`);
+        console.log('[RESO BODY]:', resoMsg.body);
+      }
 
       // FIRMA: cerca messaggio "CONSEGNA COMPLETATA CON FIRMA"
       const firmaMessage = pickingMessages.find(
@@ -311,7 +312,7 @@ export async function GET(request: NextRequest) {
         };
       }
 
-      // RESO: cerca messaggio "RESO REGISTRATO"
+      // RESO: cerca messaggio "RESO REGISTRATO" (con o senza emoji)
       const resoMessage = pickingMessages.find(
         (msg: any) => msg.body?.includes('RESO REGISTRATO')
       );
@@ -341,13 +342,17 @@ export async function GET(request: NextRequest) {
         const body = resoMessage.body || '';
         // Estrai motivo del reso dal messaggio
         let reason: string | undefined;
-        const reasonMatch = body.match(/Motivo[:\s]+([^<\n]+)/i);
+        // Il messaggio è in HTML: <p><strong>Motivo:</strong> Cornetti</p>
+        const reasonMatch = body.match(/<strong>Motivo:<\/strong>\s*([^<]+)/i);
         if (reasonMatch) {
           reason = reasonMatch[1].trim();
+          console.log('[RESO DEBUG] Extracted reason:', reason);
+        } else {
+          console.log('[RESO DEBUG] Failed to extract reason from body:', body.substring(0, 200));
         }
 
-        attachmentsByType.return = {
-          type: 'return',
+        attachmentsByType.reso = {
+          type: 'reso',
           data: returnAttachment?.datas || null,
           timestamp: resoMessage.date,
           note: body,
@@ -367,6 +372,8 @@ export async function GET(request: NextRequest) {
         completion_time: picking.date_done,
         completion_date: date,
         attachments: attachmentsByType,
+        sale_id: picking.sale_id?.[0] || null,
+        sale_name: picking.origin || null,
       };
     });
 

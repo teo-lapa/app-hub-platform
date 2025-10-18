@@ -12,11 +12,16 @@ interface AttachmentViewerProps {
 export default function AttachmentViewer({ attachment, onClose }: AttachmentViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
 
-  // Convert base64 to image URL
-  const imageUrl = attachment.data && attachment.data.startsWith('data:')
+  // Determine if this is a PDF (signature) or image
+  const isPDF = attachment.type === 'signature';
+
+  // Convert base64 to appropriate data URL
+  const fileUrl = attachment.data && attachment.data.startsWith('data:')
     ? attachment.data
     : attachment.data
-      ? `data:image/png;base64,${attachment.data}`
+      ? isPDF
+        ? `data:application/pdf;base64,${attachment.data}`
+        : `data:image/png;base64,${attachment.data}`
       : '';
 
   const typeLabels = {
@@ -37,15 +42,43 @@ export default function AttachmentViewer({ attachment, onClose }: AttachmentView
         </div>
 
         <div className={styles.imageContainer}>
-          {isLoading && (
-            <div className={styles.loader}>Caricamento...</div>
+          {isPDF ? (
+            <div style={{ padding: '40px', textAlign: 'center' }}>
+              <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✍️</div>
+              <h3 style={{ color: '#000', marginBottom: '20px' }}>Documento Firmato</h3>
+              <a
+                href={fileUrl}
+                download="firma.pdf"
+                style={{
+                  display: 'inline-block',
+                  padding: '12px 24px',
+                  background: '#667eea',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                  fontSize: '1.1rem',
+                  fontWeight: '600',
+                }}
+              >
+                📥 Scarica PDF Firmato
+              </a>
+              <p style={{ marginTop: '20px', color: '#666', fontSize: '0.9rem' }}>
+                Clicca per scaricare e visualizzare il documento firmato
+              </p>
+            </div>
+          ) : (
+            <>
+              {isLoading && (
+                <div className={styles.loader}>Caricamento...</div>
+              )}
+              <img
+                src={fileUrl}
+                alt={typeLabels[attachment.type]}
+                onLoad={() => setIsLoading(false)}
+                style={{ display: isLoading ? 'none' : 'block' }}
+              />
+            </>
           )}
-          <img
-            src={imageUrl}
-            alt={typeLabels[attachment.type]}
-            onLoad={() => setIsLoading(false)}
-            style={{ display: isLoading ? 'none' : 'block' }}
-          />
         </div>
 
         {attachment.note && (
@@ -66,6 +99,14 @@ export default function AttachmentViewer({ attachment, onClose }: AttachmentView
                 (attachment as any).method === 'card' ? 'Carta' :
                 (attachment as any).method === 'bonifico' ? 'Bonifico' : ''
               }</p>
+            )}
+          </div>
+        )}
+
+        {attachment.type === 'reso' && (
+          <div className={styles.resoDetails}>
+            {(attachment as any).reason && (
+              <p><strong>Motivo:</strong> {(attachment as any).reason}</p>
             )}
           </div>
         )}

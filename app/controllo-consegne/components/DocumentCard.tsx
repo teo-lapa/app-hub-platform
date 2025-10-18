@@ -27,7 +27,26 @@ export default function DocumentCard({ document }: DocumentCardProps) {
       <div className={styles.documentCard}>
         <div className={styles.cardHeader}>
           <div className={styles.orderInfo}>
-            <h3>{document.picking_name}</h3>
+            <h3>
+              {document.sale_id ? (
+                <a
+                  href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${document.sale_id}&model=sale.order&view_type=form`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#667eea',
+                    textDecoration: 'none',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.color = '#5568d3'}
+                  onMouseOut={(e) => e.currentTarget.style.color = '#667eea'}
+                >
+                  {document.picking_name} 🔗
+                </a>
+              ) : (
+                <span>{document.picking_name}</span>
+              )}
+            </h3>
             <span className={styles.time}>{formatTime(document.completion_time)}</span>
           </div>
           <div className={styles.badges}>
@@ -59,40 +78,60 @@ export default function DocumentCard({ document }: DocumentCardProps) {
 
         <div className={styles.attachmentsGrid}>
           {hasSignature && (
-            <button
-              className={`${styles.attachmentBtn} ${styles.signatureBtn}`}
-              onClick={() => setSelectedAttachment(document.attachments.signature)}
-            >
-              <span className={styles.icon}>✍️</span>
-              <span>Firma</span>
-            </button>
+            <div className={styles.attachmentSection}>
+              <button
+                className={`${styles.attachmentBtn} ${styles.signatureBtn}`}
+                onClick={() => setSelectedAttachment(document.attachments.signature)}
+              >
+                <span className={styles.icon}>✍️</span>
+                <span>Firma</span>
+              </button>
+              {(document.attachments.signature as any)?.note && (
+                <div className={styles.attachmentInfo} dangerouslySetInnerHTML={{ __html: (document.attachments.signature as any).note }} />
+              )}
+            </div>
           )}
           {hasPhoto && (
-            <button
-              className={`${styles.attachmentBtn} ${styles.photoBtn}`}
-              onClick={() => setSelectedAttachment(document.attachments.photo)}
-            >
-              <span className={styles.icon}>📸</span>
-              <span>Foto</span>
-            </button>
+            <div className={styles.attachmentSection}>
+              <button
+                className={`${styles.attachmentBtn} ${styles.photoBtn}`}
+                onClick={() => setSelectedAttachment(document.attachments.photo)}
+              >
+                <span className={styles.icon}>📸</span>
+                <span>Foto</span>
+              </button>
+              {(document.attachments.photo as any)?.note && (
+                <div className={styles.attachmentInfo} dangerouslySetInnerHTML={{ __html: (document.attachments.photo as any).note }} />
+              )}
+            </div>
           )}
           {hasPayment && (
-            <button
-              className={`${styles.attachmentBtn} ${styles.paymentBtn}`}
-              onClick={() => setSelectedAttachment(document.attachments.payment)}
-            >
-              <span className={styles.icon}>💰</span>
-              <span>Pagamento</span>
-            </button>
+            <div className={styles.attachmentSection}>
+              <button
+                className={`${styles.attachmentBtn} ${styles.paymentBtn}`}
+                onClick={() => setSelectedAttachment(document.attachments.payment)}
+              >
+                <span className={styles.icon}>💰</span>
+                <span>Pagamento</span>
+              </button>
+              {(document.attachments.payment as any)?.note && (
+                <div className={styles.attachmentInfo} dangerouslySetInnerHTML={{ __html: (document.attachments.payment as any).note }} />
+              )}
+            </div>
           )}
           {hasReso && (
-            <button
-              className={`${styles.attachmentBtn} ${styles.resoBtn}`}
-              onClick={() => setSelectedAttachment(document.attachments.reso)}
-            >
-              <span className={styles.icon}>🔄</span>
-              <span>Reso</span>
-            </button>
+            <div className={styles.resoSection}>
+              <button
+                className={`${styles.attachmentBtn} ${styles.resoBtn}`}
+                onClick={() => setSelectedAttachment(document.attachments.reso)}
+              >
+                <span className={styles.icon}>🔄</span>
+                <span>Reso</span>
+              </button>
+              {(document.attachments.reso as any)?.note && (
+                <div className={styles.resoInfo} dangerouslySetInnerHTML={{ __html: (document.attachments.reso as any).note }} />
+              )}
+            </div>
           )}
         </div>
       </div>
