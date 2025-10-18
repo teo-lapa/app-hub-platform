@@ -34,11 +34,13 @@ export interface PurchaseOrderResult {
 }
 
 class OdooIntegration {
-  private odooUrl: string;
-  private dbName: string;
+  private odooUrl: string | null = null;
+  private dbName: string | null = null;
   private sessionId: string | null = null;
 
-  constructor() {
+  private ensureConfig(): void {
+    if (this.odooUrl && this.dbName) return;
+
     this.odooUrl = process.env.ODOO_URL || '';
     this.dbName = process.env.ODOO_DB || '';
 
@@ -51,6 +53,8 @@ class OdooIntegration {
    * Authenticate with Odoo
    */
   private async authenticate(): Promise<void> {
+    this.ensureConfig();
+
     if (this.sessionId) return;
 
     console.log('🔑 Autenticazione Odoo...');
