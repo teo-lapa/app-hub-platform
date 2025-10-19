@@ -129,10 +129,10 @@ export function useMaestroChat(): UseMaestroChatReturn {
       // Simulate typing indicator
       setIsTyping(true);
 
-      // TODO: Replace with actual API call
-      // For now, use mock response
-      const aiResponse = await getMockAIResponse(
+      // Call the Maestro Agent Network API
+      const aiResponse = await callAgentNetworkAPI(
         content,
+        messages,
         abortControllerRef.current.signal
       );
 
@@ -192,105 +192,75 @@ function generateMessageId(): string {
 }
 
 /**
- * Mock AI response generator
- * TODO: Replace with actual API call to Maestro AI endpoint
+ * Call Maestro Agent Network API
+ * Uses the new multi-agent system for intelligent responses
  */
-async function getMockAIResponse(
+async function callAgentNetworkAPI(
   userMessage: string,
+  conversationHistory: ChatMessage[],
   signal: AbortSignal
 ): Promise<string> {
-  // Simulate network delay
-  await delay(1000 + Math.random() * 1500, signal);
+  try {
+    // Get current user's salesperson_id from context or default to 2
+    // TODO: Get this from auth context when user auth is implemented
+    const salespersonId = 2; // Luca Rossi for now
 
-  const lowerMessage = userMessage.toLowerCase();
+    // Prepare context from current page/state if available
+    const context: Record<string, any> = {
+      current_page: 'chat',
+    };
 
-  // Context-aware responses based on keywords
-  if (lowerMessage.includes('cliente') || lowerMessage.includes('clienti')) {
-    return `Ecco le informazioni sui clienti:
-
-**Clienti attivi**: 156 clienti nel tuo portfolio
-**Performance media**: 85% di consegne in orario
-
-I tuoi **top 3 clienti** per volume:
-1. Ristorante Da Mario - €12.450/mese
-2. Hotel Bellavista - €9.800/mese
-3. Pizzeria Napoli - €7.650/mese
-
-Vuoi vedere i dettagli di un cliente specifico?`;
-  }
-
-  if (lowerMessage.includes('route') || lowerMessage.includes('percorso') || lowerMessage.includes('consegne')) {
-    return `**Route di oggi** - 18 Ottobre 2025
-
-Hai **14 consegne** programmate:
-- 🟢 Zona Nord: 6 consegne (8:00-10:30)
-- 🟡 Zona Centro: 5 consegne (11:00-13:00)
-- 🔵 Zona Sud: 3 consegne (14:00-16:00)
-
-**Percorso ottimizzato**: 45 km totali
-**Tempo stimato**: 6h 15min
-
-Vuoi visualizzare la mappa del percorso?`;
-  }
-
-  if (lowerMessage.includes('performance') || lowerMessage.includes('statistiche')) {
-    return `**Le tue performance** (ultimi 30 giorni)
-
-📦 **Consegne**: 342 completate / 358 totali (95.5%)
-⏱️ **Puntualità**: 92% consegne in orario
-⭐ **Soddisfazione**: 4.7/5.0 media
-
-**Trend**: +3.2% rispetto al mese scorso
-
-Le tue aree di eccellenza:
-- Comunicazione con clienti: 98%
-- Precisione ordini: 97%
-- Gestione imprevisti: 89%
-
-Ottimo lavoro! 🎉`;
-  }
-
-  if (lowerMessage.includes('aiuto') || lowerMessage.includes('help') || lowerMessage.includes('cosa puoi fare')) {
-    return `Ciao! Sono **Maestro AI**, il tuo assistente intelligente.
-
-Posso aiutarti con:
-
-- **Info clienti**: dettagli, storico, preferenze
-- **Route planning**: percorsi ottimizzati, consegne
-- **Performance**: statistiche, trend, obiettivi
-- **Ordini**: stato, tracking, problemi
-- **Suggerimenti**: best practices, ottimizzazioni
-
-Chiedi pure quello che ti serve!`;
-  }
-
-  if (lowerMessage.includes('grazie') || lowerMessage.includes('thanks')) {
-    return 'Prego! Sono qui per aiutarti. Se hai altre domande, chiedi pure! 😊';
-  }
-
-  // Default response
-  return `Ho capito la tua richiesta: "${userMessage}"
-
-Al momento sto imparando a rispondere a sempre più domande. Prova a chiedermi:
-- Informazioni sui tuoi clienti
-- Il percorso di consegne di oggi
-- Le tue statistiche performance
-
-Oppure chiedimi aiuto per vedere tutte le funzionalità disponibili!`;
-}
-
-/**
- * Delay utility with abort support
- */
-function delay(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(resolve, ms);
-
-    if (signal) {
-      signal.addEventListener('abort', () => {
-        clearTimeout(timeout);
-        reject(new DOMException('Aborted', 'AbortError'));
-      });
+    // Add customer context if we're on a customer page
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      const customerMatch = pathname.match(/\/maestro-ai\/customers\/(\d+)/);
+      if (customerMatch) {
+        context.customer_id = parseInt(customerMatch[1]);
+      }
     }
-  });
+
+    const response = await fetch('/api/maestro/agent-chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: userMessage,
+        salesperson_id: salespersonId,
+        context,
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(
+        errorData?.error || `API request failed with status ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'API returned unsuccessful response');
+    }
+
+    return data.data.reply || 'Mi dispiace, non ho ricevuto una risposta valida.';
+  } catch (error) {
+    // Re-throw abort errors
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw error;
+    }
+
+    // Log error for debugging
+    console.error('Agent Network API error:', error);
+
+    // Throw with user-friendly message
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : 'Errore durante la comunicazione con Maestro AI'
+    );
+  }
 }
+
