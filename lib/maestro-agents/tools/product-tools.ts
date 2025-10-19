@@ -156,16 +156,17 @@ export const findProductOpportunitiesTool: AgentTool = {
     if (topProducts.length > 0) {
       const topProductIds = topProducts.map((p: any) => p.product_id);
 
-      // Get products frequently bought together
-      const pairingResult = await sql`
-        SELECT
-          p.id, p.product_name, p.avg_price,
-          p.best_paired_products
-        FROM product_intelligence p
-        WHERE p.id = ANY(${topProductIds})
-          AND p.best_paired_products IS NOT NULL
-        LIMIT 3
-      `;
+      // Get products frequently bought together (limit to first 10 for SQL query)
+      const idsForQuery = topProductIds.slice(0, 10);
+
+      const pairingResult = await sql.query(
+        `SELECT p.id, p.product_name, p.avg_price, p.best_paired_products
+         FROM product_intelligence p
+         WHERE p.id = ANY($1::int[])
+         AND p.best_paired_products IS NOT NULL
+         LIMIT 3`,
+        [idsForQuery]
+      );
 
       for (const row of pairingResult.rows) {
         const pairings = JSON.parse(row.best_paired_products || '[]');
@@ -395,18 +396,19 @@ export const suggestProductsForCustomerTool: AgentTool = {
       };
     }
 
-    const suggestionsResult = await sql`
-      SELECT
+    const suggestionsResult = await sql.query(
+      `SELECT
         id, odoo_product_id, product_name, product_category,
         avg_price, velocity_score, total_customers,
         best_paired_products
       FROM product_intelligence
-      WHERE product_category = ANY(${mainCategories})
-        AND odoo_product_id != ALL(${boughtProductIds})
+      WHERE product_category = ANY($1::text[])
+        AND odoo_product_id != ALL($2::int[])
         AND velocity_score >= 50
       ORDER BY velocity_score DESC, total_customers DESC
-      LIMIT ${limit}
-    `;
+      LIMIT $3`,
+      [mainCategories, boughtProductIds, limit]
+    );
 
     return {
       customer_id: input.customer_id,
