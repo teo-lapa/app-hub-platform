@@ -778,19 +778,21 @@ export default function PrelievoZonePage() {
 
   // Auto-focus sull'input scanner quando si apre la lista ubicazioni
   useEffect(() => {
-    if (showLocationList && scannerInputRef.current) {
-      // Focus immediato
-      scannerInputRef.current.focus();
-
-      // Ri-focus periodico per evitare perdita focus su tablet
-      const refocusInterval = setInterval(() => {
-        if (scannerInputRef.current && document.activeElement !== scannerInputRef.current) {
-          scannerInputRef.current.focus();
-        }
-      }, 500);
-
-      return () => clearInterval(refocusInterval);
+    if (!showLocationList || !scannerInputRef.current) {
+      return; // Early return if conditions not met
     }
+
+    // Focus immediato
+    scannerInputRef.current.focus();
+
+    // Ri-focus periodico per evitare perdita focus su tablet
+    const refocusInterval = setInterval(() => {
+      if (scannerInputRef.current && document.activeElement !== scannerInputRef.current) {
+        scannerInputRef.current.focus();
+      }
+    }, 500);
+
+    return () => clearInterval(refocusInterval);
   }, [showLocationList]);
 
   // Handler per input scanner pistola
