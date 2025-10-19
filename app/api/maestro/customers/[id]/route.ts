@@ -129,19 +129,23 @@ export async function GET(
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-      // Fetch ALL orders from last 6 months from PostgreSQL
+      // Fetch ALL orders from last 6 months from PostgreSQL with items count
       const ordersResult = await sql`
         SELECT
-          odoo_order_id as id,
-          order_name as name,
-          order_date as date_order,
-          amount_total,
-          state
-        FROM maestro_orders
-        WHERE customer_avatar_id = ${avatarData.id}
-          AND order_date >= ${sixMonthsAgo.toISOString()}
-          AND state IN ('sale', 'done')
-        ORDER BY order_date DESC
+          o.id as order_id,
+          o.odoo_order_id as id,
+          o.order_name as name,
+          o.order_date as date_order,
+          o.amount_total,
+          o.state,
+          COUNT(ol.id) as items_count
+        FROM maestro_orders o
+        LEFT JOIN maestro_order_lines ol ON ol.maestro_order_id = o.id
+        WHERE o.customer_avatar_id = ${avatarData.id}
+          AND o.order_date >= ${sixMonthsAgo.toISOString()}
+          AND o.state IN ('sale', 'done')
+        GROUP BY o.id, o.odoo_order_id, o.order_name, o.order_date, o.amount_total, o.state
+        ORDER BY o.order_date DESC
       `;
 
       allOrdersForTrend = ordersResult.rows.map(row => ({
@@ -149,7 +153,8 @@ export async function GET(
         name: row.name,
         date_order: row.date_order,
         amount_total: parseFloat(row.amount_total),
-        state: row.state
+        state: row.state,
+        items_count: parseInt(row.items_count) || 0
       }));
 
       console.log(`✅ [MAESTRO-API] Fetched ${allOrdersForTrend.length} orders from PostgreSQL (last 6 months)`);
@@ -262,7 +267,7 @@ export async function GET(
         date: order.date_order,
         amount: order.amount_total,
         state: order.state,
-        items_count: Array.isArray(order.order_line) ? order.order_line.length : 0,
+        items_count: order.items_count || 0,
       })),
 
       revenue_trend: revenueTrend,
