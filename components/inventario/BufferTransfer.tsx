@@ -113,12 +113,13 @@ export function BufferTransfer({ isOpen, onClose, currentLocation, onTransferCom
   };
 
   useEffect(() => {
-    if (searchQuery.length >= 3) {
-      const timeoutId = setTimeout(searchProducts, 500);
-      return () => clearTimeout(timeoutId);
-    } else {
+    if (searchQuery.length < 3) {
       setSearchResults([]);
+      return; // Early return if search query too short
     }
+
+    const timeoutId = setTimeout(searchProducts, 500);
+    return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
   if (!isOpen) return null;
