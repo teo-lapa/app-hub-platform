@@ -21,8 +21,8 @@ async function fullSync() {
   const startTime = Date.now();
 
   try {
-    // 0 = unlimited, sync all
-    const result = await syncCustomersFromOdoo(0);
+    // maxCustomers: 0 = unlimited, sync all
+    const result = await syncCustomersFromOdoo({ maxCustomers: 0 });
 
     const duration = ((Date.now() - startTime) / 1000 / 60).toFixed(2);
 
@@ -31,12 +31,12 @@ async function fullSync() {
     console.log('='.repeat(80));
     console.log(`\n📊 Risultati:\n`);
     console.log(`   ✅ Clienti sincronizzati: ${result.synced}`);
-    console.log(`   ❌ Errori: ${result.errors}`);
+    console.log(`   ❌ Errori: ${result.errors.length}`);
     console.log(`   ⏱️  Tempo: ${duration} minuti`);
 
-    if (result.errorDetails && result.errorDetails.length > 0) {
+    if (result.errors && result.errors.length > 0) {
       console.log(`\n⚠️  Dettagli errori:\n`);
-      result.errorDetails.forEach((err, i) => {
+      result.errors.forEach((err, i) => {
         console.log(`   ${i + 1}. ${err}`);
       });
     }

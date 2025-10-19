@@ -24,7 +24,7 @@ export class SpecializedAgent extends BaseAgent {
   /**
    * Esegue un task con conoscenza specializzata dell'app
    */
-  async executeTask(task: AgentTask): Promise<TaskResult> {
+  override async executeTask(task: AgentTask): Promise<TaskResult> {
     console.log(`🎯 ${this.definition.name} executing task: ${task.type}`);
 
     // Add app-specific context to task
@@ -296,7 +296,7 @@ export class SpecializedAgent extends BaseAgent {
   /**
    * Override buildSystemPrompt per aggiungere conoscenza specializzata
    */
-  protected buildSystemPrompt(task: AgentTask): string {
+  protected override buildSystemPrompt(task: AgentTask): string {
     let prompt = super.buildSystemPrompt(task);
 
     // Add app-specific knowledge
