@@ -9,6 +9,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { syncCustomersFromOdoo, getSyncStatus } from '@/lib/maestro/sync-odoo-v2';
 import { syncAllCustomers } from '@/lib/maestro/sync-engine';
 
+// Vercel timeout configuration
+// Free tier: 10s, Hobby: 10s, Pro: 60s, Enterprise: 900s (15 min)
+// Per popolare database servono almeno 5 minuti
+export const maxDuration = 300; // 5 minutes (requires Vercel Pro plan)
+
 // Global sync state management
 let syncInProgress = false;
 let lastSyncResult: any = null;
