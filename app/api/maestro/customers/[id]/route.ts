@@ -11,7 +11,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
-import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 import type { CustomerAvatar, Recommendation, Interaction } from '@/lib/maestro/types';
 
 interface OrderFromOdoo {
@@ -119,61 +118,51 @@ export async function GET(
       console.log('⚠️  maestro_interactions table not found, skipping');
     }
 
-    // 4. Fetch orders from Odoo for revenue trend (last 6 months + recent orders)
-    let recentOrders: OrderFromOdoo[] = [];
-    let allOrdersForTrend: OrderFromOdoo[] = [];
-    let odooError: string | null = null;
-    let odooWarning: string | null = null;
+    // 4. Fetch orders from PostgreSQL (fast, no Odoo dependency)
+    console.log(`📦 [MAESTRO-API] Fetching orders from PostgreSQL for customer avatar ID ${avatarData.id}...`);
+
+    let recentOrders: any[] = [];
+    let allOrdersForTrend: any[] = [];
 
     try {
-      console.log(`🔄 [MAESTRO-API] Fetching orders from Odoo for partner ${avatar.odoo_partner_id}...`);
-      const odooClient = createOdooRPCClient();
-
       // Calculate date 6 months ago for trend data
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      const dateFilter = sixMonthsAgo.toISOString().split('T')[0]; // YYYY-MM-DD
 
-      console.log(`📅 [MAESTRO-API] Fetching orders since ${dateFilter} for revenue trend...`);
+      // Fetch ALL orders from last 6 months from PostgreSQL
+      const ordersResult = await sql`
+        SELECT
+          odoo_order_id as id,
+          order_name as name,
+          order_date as date_order,
+          amount_total,
+          state
+        FROM maestro_orders
+        WHERE customer_avatar_id = ${avatarData.id}
+          AND order_date >= ${sixMonthsAgo.toISOString()}
+          AND state IN ('sale', 'done')
+        ORDER BY order_date DESC
+      `;
 
-      // Fetch ALL orders from last 6 months for accurate revenue trend
-      const ordersForTrend = await odooClient.searchRead(
-        'sale.order',
-        [
-          ['partner_id', '=', avatar.odoo_partner_id],
-          ['date_order', '>=', dateFilter],
-          ['state', 'in', ['sale', 'done']] // Only confirmed/completed orders
-        ],
-        ['id', 'name', 'date_order', 'amount_total', 'state', 'order_line'],
-        0, // No limit - get ALL orders in this period
-        'date_order desc'
-      );
+      allOrdersForTrend = ordersResult.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        date_order: row.date_order,
+        amount_total: parseFloat(row.amount_total),
+        state: row.state
+      }));
 
-      allOrdersForTrend = ordersForTrend as OrderFromOdoo[];
-      console.log(`✅ [MAESTRO-API] Fetched ${allOrdersForTrend.length} orders from last 6 months for trend`);
+      console.log(`✅ [MAESTRO-API] Fetched ${allOrdersForTrend.length} orders from PostgreSQL (last 6 months)`);
 
       // Use the most recent 20 orders for the orders list display
       recentOrders = allOrdersForTrend.slice(0, 20);
 
     } catch (error: any) {
-      const isSessionError = error.isSessionExpired || error.message?.includes('session') || error.message?.includes('Session');
-
-      if (isSessionError) {
-        console.error('❌ [MAESTRO-API] Odoo session error:', error.message);
-        odooError = 'Session expired';
-        odooWarning = 'Impossibile recuperare ordini da Odoo. Visualizzando solo dati sincronizzati.';
-      } else {
-        console.error('❌ [MAESTRO-API] Failed to fetch orders from Odoo:', error.message);
-        odooError = error.message || 'Unknown error';
-        odooWarning = 'Impossibile connettersi a Odoo al momento. Visualizzando solo dati sincronizzati.';
-      }
-
-      // Don't fail the whole request - graceful degradation
-      // Return empty orders array and show warning to user
+      console.error('⚠️  [MAESTRO-API] Failed to fetch orders from PostgreSQL:', error.message);
+      // If PostgreSQL fails, continue with empty orders (should never happen)
     }
 
     // 5. Calculate revenue trend (last 6 months)
-    // Use ALL orders from the period for accurate trend, not just recent 10
     const revenueTrend = allOrdersForTrend.length > 0
       ? calculateRevenueTrend(allOrdersForTrend)
       : calculateRevenueTrendFallback(avatar);
@@ -233,11 +222,9 @@ export async function GET(
 
       metadata: {
         fetched_at: new Date().toISOString(),
-        odoo_connection: odooError ? 'error' : 'success',
-        odoo_error: odooError,
-        odoo_warning: odooWarning,
+        data_source: 'postgresql',
         orders_fetched: allOrdersForTrend.length,
-        revenue_trend_source: allOrdersForTrend.length > 0 ? 'odoo_realtime' : 'estimated',
+        revenue_trend_source: allOrdersForTrend.length > 0 ? 'postgresql_cache' : 'estimated',
       }
     };
 

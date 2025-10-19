@@ -13,6 +13,7 @@
 import { sql } from '@vercel/postgres';
 import { getOdooSession } from '../odoo-auth';
 import { createOdooRPCClient } from '../odoo/rpcClient';
+import { syncOrdersFromOdoo } from './sync-orders';
 
 // ====================================================================
 // TYPE DEFINITIONS
@@ -210,7 +211,27 @@ export async function syncAllCustomers(options: SyncOptions = {}): Promise<SyncS
       console.log(`[Sync] Batch ${batchIndex + 1}/${totalBatches}: ✓ ${stats.inserted} inserted, ${stats.updated} updated, ${stats.skipped} skipped, ${stats.errors} errors\n`);
     }
 
-    // STEP 6: Complete
+    // STEP 6: Sync Orders to PostgreSQL
+    console.log('📦 [STEP 6/7] Syncing orders to PostgreSQL...');
+    try {
+      const ordersResult = await syncOrdersFromOdoo(
+        cookies?.replace('session_id=', '') || '',
+        {
+          daysBack: monthsBack * 30, // Convert months to days
+          dryRun: options.dryRun
+        }
+      );
+
+      console.log(`✅ Orders sync completed: ${ordersResult.ordersProcessed} orders, ${ordersResult.orderLinesProcessed} lines\n`);
+
+      // Add to stats (optional: extend stats interface if needed)
+    } catch (error: any) {
+      console.error(`⚠️  Orders sync failed: ${error.message}`);
+      // Don't fail entire sync if orders fail
+      stats.errorMessages.push(`Orders sync: ${error.message}`);
+    }
+
+    // STEP 7: Complete
     const durationMs = Date.now() - startTime;
     stats.duration = `${(durationMs / 1000).toFixed(1)}s`;
     stats.success = true;
