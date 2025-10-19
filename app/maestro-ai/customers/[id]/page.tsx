@@ -62,6 +62,19 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
+  // Debug logging
+  if (data) {
+    console.log('[CUSTOMER-DETAIL] Data received:', {
+      customer_name: data.customer?.name,
+      revenue_trend: data.revenue_trend,
+      orders_count: data.orders?.length || 0,
+      interactions_count: data.interactions?.length || 0,
+      recommendations_count: data.recommendations?.length || 0,
+      top_products_count: data.customer?.top_products?.length || 0,
+      odoo_connection: data.metadata?.odoo_connection,
+    });
+  }
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Building2 },
     { id: 'orders', label: 'Ordini', icon: ShoppingCart },
@@ -314,29 +327,43 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             >
               {/* Revenue Trend */}
               <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Trend Revenue (Ultimi 6 Mesi)</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-white">Trend Revenue (Ultimi 6 Mesi)</h3>
+                  {metadata?.odoo_connection === 'error' && revenue_trend && revenue_trend.length > 0 && (
+                    <span className="text-xs text-yellow-400 bg-yellow-500/10 px-2 py-1 rounded border border-yellow-500/20">
+                      Dati stimati
+                    </span>
+                  )}
+                </div>
                 {revenue_trend && revenue_trend.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <LineChart data={revenue_trend}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis dataKey="month" stroke="#94a3b8" />
-                      <YAxis stroke="#94a3b8" />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#1e293b',
-                          border: '1px solid #334155',
-                          borderRadius: '8px'
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#3b82f6"
-                        strokeWidth={3}
-                        name="Revenue (CHF)"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <LineChart data={revenue_trend}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <XAxis dataKey="month" stroke="#94a3b8" />
+                        <YAxis stroke="#94a3b8" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#1e293b',
+                            border: '1px solid #334155',
+                            borderRadius: '8px'
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="revenue"
+                          stroke="#3b82f6"
+                          strokeWidth={3}
+                          name="Revenue (CHF)"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                    {metadata?.odoo_connection === 'error' && (
+                      <p className="text-xs text-slate-400 mt-2 text-center">
+                        Trend stimato da dati sincronizzati (Odoo non disponibile)
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <div className="h-64 flex items-center justify-center text-slate-500">
                     Nessun dato disponibile
@@ -523,8 +550,48 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                   </table>
                 </div>
               ) : (
-                <div className="text-center py-12 text-slate-500">
-                  Nessun ordine trovato per questo cliente
+                <div className="text-center py-12">
+                  {metadata?.odoo_connection === 'error' ? (
+                    <div className="space-y-4">
+                      <AlertTriangle className="h-12 w-12 text-yellow-400 mx-auto" />
+                      <div>
+                        <h4 className="text-white font-medium mb-2">Connessione Odoo non disponibile</h4>
+                        <p className="text-slate-400 text-sm mb-4">
+                          Gli ordini sono recuperati in tempo reale da Odoo. Al momento non è possibile connettersi.
+                        </p>
+                        <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 inline-block">
+                          <p className="text-sm text-slate-300 mb-2">Metriche disponibili dai dati sincronizzati:</p>
+                          <div className="grid grid-cols-2 gap-4 text-left">
+                            <div>
+                              <p className="text-xs text-slate-400">Totale Ordini</p>
+                              <p className="text-lg font-bold text-white">{customer.total_orders}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-400">Revenue Totale</p>
+                              <p className="text-lg font-bold text-white">{formatCurrency(customer.total_revenue)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-400">Ultimo Ordine</p>
+                              <p className="text-sm font-medium text-white">
+                                {customer.last_order_date
+                                  ? new Date(customer.last_order_date).toLocaleDateString('it-IT')
+                                  : 'N/D'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-400">Valore Medio</p>
+                              <p className="text-sm font-medium text-white">{formatCurrency(customer.avg_order_value)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <ShoppingCart className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+                      <p className="text-slate-500">Nessun ordine confermato trovato per questo cliente</p>
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>

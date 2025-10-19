@@ -119,8 +119,9 @@ export async function GET(
       console.log('⚠️  maestro_interactions table not found, skipping');
     }
 
-    // 4. Fetch recent orders from Odoo (with robust error handling)
+    // 4. Fetch orders from Odoo for revenue trend (last 6 months + recent orders)
     let recentOrders: OrderFromOdoo[] = [];
+    let allOrdersForTrend: OrderFromOdoo[] = [];
     let odooError: string | null = null;
     let odooWarning: string | null = null;
 
@@ -128,20 +129,31 @@ export async function GET(
       console.log(`🔄 [MAESTRO-API] Fetching orders from Odoo for partner ${avatar.odoo_partner_id}...`);
       const odooClient = createOdooRPCClient();
 
-      // Fetch last 10 orders for this customer
-      const orders = await odooClient.searchRead(
+      // Calculate date 6 months ago for trend data
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      const dateFilter = sixMonthsAgo.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      console.log(`📅 [MAESTRO-API] Fetching orders since ${dateFilter} for revenue trend...`);
+
+      // Fetch ALL orders from last 6 months for accurate revenue trend
+      const ordersForTrend = await odooClient.searchRead(
         'sale.order',
         [
           ['partner_id', '=', avatar.odoo_partner_id],
-          ['state', 'in', ['sale', 'done']] // Only confirmed orders
+          ['date_order', '>=', dateFilter],
+          ['state', 'in', ['sale', 'done']] // Only confirmed/completed orders
         ],
         ['id', 'name', 'date_order', 'amount_total', 'state', 'order_line'],
-        10,
+        0, // No limit - get ALL orders in this period
         'date_order desc'
       );
 
-      recentOrders = orders as OrderFromOdoo[];
-      console.log(`✅ [MAESTRO-API] Fetched ${recentOrders.length} orders from Odoo`);
+      allOrdersForTrend = ordersForTrend as OrderFromOdoo[];
+      console.log(`✅ [MAESTRO-API] Fetched ${allOrdersForTrend.length} orders from last 6 months for trend`);
+
+      // Use the most recent 20 orders for the orders list display
+      recentOrders = allOrdersForTrend.slice(0, 20);
 
     } catch (error: any) {
       const isSessionError = error.isSessionExpired || error.message?.includes('session') || error.message?.includes('Session');
@@ -161,7 +173,10 @@ export async function GET(
     }
 
     // 5. Calculate revenue trend (last 6 months)
-    const revenueTrend = calculateRevenueTrend(recentOrders);
+    // Use ALL orders from the period for accurate trend, not just recent 10
+    const revenueTrend = allOrdersForTrend.length > 0
+      ? calculateRevenueTrend(allOrdersForTrend)
+      : calculateRevenueTrendFallback(avatar);
 
     // 6. Build response
     const response = {
@@ -221,6 +236,8 @@ export async function GET(
         odoo_connection: odooError ? 'error' : 'success',
         odoo_error: odooError,
         odoo_warning: odooWarning,
+        orders_fetched: allOrdersForTrend.length,
+        revenue_trend_source: allOrdersForTrend.length > 0 ? 'odoo_realtime' : 'estimated',
       }
     };
 
@@ -241,6 +258,8 @@ export async function GET(
 function calculateRevenueTrend(orders: OrderFromOdoo[]): Array<{month: string; revenue: number; orders: number}> {
   const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
   const now = new Date();
+
+  console.log(`📊 [REVENUE-TREND] Calculating trend from ${orders.length} orders`);
 
   // Initialize last 6 months
   const trend: {[key: string]: {month: string; revenue: number; orders: number}} = {};
@@ -263,8 +282,82 @@ function calculateRevenueTrend(orders: OrderFromOdoo[]): Array<{month: string; r
     if (trend[key]) {
       trend[key].revenue += order.amount_total;
       trend[key].orders += 1;
+      console.log(`  ✓ ${order.name}: ${order.date_order} -> ${key} (+CHF ${order.amount_total.toFixed(2)})`);
+    } else {
+      console.log(`  ⚠️  ${order.name}: ${order.date_order} -> ${key} (outside 6-month window, skipped)`);
     }
   });
 
-  return Object.values(trend);
+  const result = Object.values(trend);
+  console.log(`📊 [REVENUE-TREND] Final trend:`, result);
+
+  return result;
+}
+
+/**
+ * Fallback revenue trend when Odoo is unavailable
+ * Uses historical data from customer avatar to estimate monthly distribution
+ */
+function calculateRevenueTrendFallback(avatar: any): Array<{month: string; revenue: number; orders: number}> {
+  console.log(`⚠️  [REVENUE-TREND] Using fallback estimation (Odoo unavailable)`);
+
+  const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+  const now = new Date();
+
+  // Initialize last 6 months
+  const trend: Array<{month: string; revenue: number; orders: number}> = [];
+
+  // If we have last_order_date and total_revenue, estimate distribution
+  if (avatar.last_order_date && avatar.total_revenue > 0) {
+    const lastOrderDate = new Date(avatar.last_order_date);
+    const monthsSinceLastOrder = Math.floor(
+      (now.getTime() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
+    );
+
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthIndex = date.getMonth();
+      const isLastOrderMonth =
+        date.getFullYear() === lastOrderDate.getFullYear() &&
+        monthIndex === lastOrderDate.getMonth();
+
+      // Estimate: distribute revenue across recent months based on avg order value
+      // If this is the last order month, show actual activity
+      let estimatedRevenue = 0;
+      let estimatedOrders = 0;
+
+      if (i === 0 && monthsSinceLastOrder === 0) {
+        // Current month and had recent order
+        estimatedRevenue = avatar.avg_order_value || 0;
+        estimatedOrders = 1;
+      } else if (isLastOrderMonth) {
+        // The month of last order
+        estimatedRevenue = avatar.avg_order_value || 0;
+        estimatedOrders = 1;
+      } else if (i > monthsSinceLastOrder && avatar.order_frequency_days) {
+        // Months before last order - estimate based on frequency
+        const ordersPerMonth = 30 / (avatar.order_frequency_days || 30);
+        estimatedOrders = Math.round(ordersPerMonth);
+        estimatedRevenue = estimatedOrders * (avatar.avg_order_value || 0);
+      }
+
+      trend.push({
+        month: monthNames[monthIndex],
+        revenue: estimatedRevenue,
+        orders: estimatedOrders
+      });
+    }
+  } else {
+    // No data available - return empty trend
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      trend.push({
+        month: monthNames[date.getMonth()],
+        revenue: 0,
+        orders: 0
+      });
+    }
+  }
+
+  return trend;
 }
