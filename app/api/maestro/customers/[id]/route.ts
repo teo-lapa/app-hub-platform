@@ -162,12 +162,59 @@ export async function GET(
       // If PostgreSQL fails, continue with empty orders (should never happen)
     }
 
-    // 5. Calculate revenue trend (last 6 months)
+    // 5. Calculate top products from order lines (PostgreSQL)
+    console.log(`📦 [MAESTRO-API] Fetching top products for customer avatar ID ${avatarData.id}...`);
+
+    let topProducts: any[] = [];
+    let productCategories: Record<string, number> = {};
+
+    try {
+      // Get top 10 products by revenue from order lines
+      const topProductsResult = await sql`
+        SELECT
+          ol.product_id,
+          ol.product_name,
+          ol.product_code,
+          SUM(ol.quantity) as total_quantity,
+          COUNT(DISTINCT o.id) as times_purchased,
+          SUM(ol.price_subtotal) as total_revenue
+        FROM maestro_order_lines ol
+        JOIN maestro_orders o ON o.id = ol.maestro_order_id
+        WHERE o.customer_avatar_id = ${avatarData.id}
+          AND ol.product_id IS NOT NULL
+        GROUP BY ol.product_id, ol.product_name, ol.product_code
+        ORDER BY total_revenue DESC
+        LIMIT 10
+      `;
+
+      topProducts = topProductsResult.rows.map(row => ({
+        product_id: row.product_id,
+        product_name: row.product_name || 'Prodotto senza nome',
+        product_code: row.product_code,
+        total_quantity: parseFloat(row.total_quantity),
+        times_purchased: parseInt(row.times_purchased),
+        total_revenue: parseFloat(row.total_revenue)
+      }));
+
+      console.log(`✅ [MAESTRO-API] Found ${topProducts.length} top products`);
+
+      // TODO: Calculate product categories from order lines
+      // For now, use avatar.product_categories as fallback
+      productCategories = avatar.product_categories || {};
+
+    } catch (error: any) {
+      console.error('⚠️  [MAESTRO-API] Failed to fetch top products:', error.message);
+      // Fallback to avatar data
+      topProducts = avatar.top_products || [];
+      productCategories = avatar.product_categories || {};
+    }
+
+    // 6. Calculate revenue trend (last 6 months)
     const revenueTrend = allOrdersForTrend.length > 0
       ? calculateRevenueTrend(allOrdersForTrend)
       : calculateRevenueTrendFallback(avatar);
 
-    // 6. Build response
+    // 7. Build response
     const response = {
       customer: {
         // Basic info
@@ -193,9 +240,9 @@ export async function GET(
         last_order_date: avatar.last_order_date,
         order_frequency_days: avatar.order_frequency_days,
 
-        // Products
-        top_products: avatar.top_products,
-        product_categories: avatar.product_categories,
+        // Products (calculated from PostgreSQL order lines)
+        top_products: topProducts,
+        product_categories: productCategories,
 
         // Assignment
         assigned_salesperson_id: avatar.assigned_salesperson_id,
