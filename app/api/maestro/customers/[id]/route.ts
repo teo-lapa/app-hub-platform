@@ -166,7 +166,7 @@ export async function GET(
     console.log(`📦 [MAESTRO-API] Fetching top products for customer avatar ID ${avatarData.id}...`);
 
     let topProducts: any[] = [];
-    let productCategories: Record<string, number> = {};
+    let productCategories: any = {};
 
     try {
       // Get top 10 products by revenue from order lines
