@@ -194,6 +194,15 @@ export async function POST(request: NextRequest) {
         topMatches.sort((a, b) => b.confidence - a.confidence);
 
         const bestMatch = topMatches[0];
+        if (!bestMatch) {
+          return NextResponse.json({
+            match_type: 'no_match',
+            confidence: 0,
+            suppliers: [],
+            suggested_action: 'create_new'
+          });
+        }
+
         console.log(`✅ [STEP 2] Found ${topMatches.length} fuzzy matches, best: ${bestMatch.confidence}%`);
         console.log(`   Top match: ${bestMatch.name} (VAT: ${bestMatch.vat})`);
 
