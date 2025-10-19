@@ -2,6 +2,7 @@ import { QueryProvider } from '@/components/providers/QueryProvider';
 import { MaestroFiltersProvider } from '@/contexts/MaestroFiltersContext';
 import { Toaster } from 'react-hot-toast';
 import { HomeButton } from '@/components/maestro/HomeButton';
+import { ChatWidget } from '@/components/maestro/ChatWidget';
 
 export default function MaestroAILayout({
   children,
@@ -13,6 +14,7 @@ export default function MaestroAILayout({
       <MaestroFiltersProvider>
         {children}
         <HomeButton />
+        <ChatWidget />
         <Toaster
           position="top-right"
           toastOptions={{

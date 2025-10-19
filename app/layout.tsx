@@ -5,7 +5,6 @@ import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistration';
 import { PWAInstaller } from '@/components/pwa/PWAInstaller';
 import { Toaster } from 'react-hot-toast';
-import { ChatWidget } from '@/components/maestro/ChatWidget';
 import { OfflineIndicator } from '@/components/maestro/OfflineIndicator';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -65,7 +64,6 @@ export default function RootLayout({
         >
           <>
             {children}
-            <ChatWidget />
             <OfflineIndicator />
             <Toaster position="top-right" />
           </>

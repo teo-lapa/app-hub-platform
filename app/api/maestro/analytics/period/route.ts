@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPeriodMetrics, calculateDateRange } from '@/lib/maestro/period-metrics';
+import { getPeriodMetrics, getRevenueTrend, calculateDateRange } from '@/lib/maestro/period-metrics';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,10 +18,12 @@ export async function GET(request: NextRequest) {
     const period = (searchParams.get('period') || 'quarter') as 'week' | 'month' | 'quarter' | 'year';
     const salespersonIdStr = searchParams.get('salesperson_id');
     const salespersonId = salespersonIdStr ? parseInt(salespersonIdStr) : undefined;
+    const includeTrend = searchParams.get('include_trend') !== 'false'; // Default: true
 
     console.log('\n📊 [PERIOD-ANALYTICS] Request:', {
       period,
-      salesperson_id: salespersonId || 'ALL'
+      salesperson_id: salespersonId || 'ALL',
+      include_trend: includeTrend
     });
 
     // Calculate date range
@@ -35,7 +37,13 @@ export async function GET(request: NextRequest) {
     // Fetch period-specific metrics from Odoo
     const metrics = await getPeriodMetrics(salespersonId, startDate, endDate);
 
-    console.log('✅ [PERIOD-ANALYTICS] Results:', metrics);
+    // Fetch trend data if requested
+    let trend = null;
+    if (includeTrend) {
+      trend = await getRevenueTrend(period, salespersonId);
+    }
+
+    console.log('✅ [PERIOD-ANALYTICS] Results:', { ...metrics, trendPoints: trend?.length || 0 });
 
     return NextResponse.json({
       success: true,
@@ -45,7 +53,8 @@ export async function GET(request: NextRequest) {
         start: startDate,
         end: endDate
       },
-      metrics
+      metrics,
+      trend
     });
 
   } catch (error: any) {

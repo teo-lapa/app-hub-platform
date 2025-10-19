@@ -14,7 +14,8 @@ import {
   MapPin,
   Loader2,
   UserCheck,
-  UsersRound
+  UsersRound,
+  Package
 } from 'lucide-react';
 import { KPICard } from '@/components/maestro/KPICard';
 import { HealthScoreBadge } from '@/components/maestro/HealthScoreBadge';
@@ -321,6 +322,15 @@ export default function MaestroAIDashboard() {
                 Dati reali • {getPeriodLabel(period)}
               </span>
             </div>
+            {(() => {
+              console.log('📈 [DASHBOARD] Chart data check:', {
+                hasAnalytics: !!analytics,
+                hasRevenueByMonth: !!analytics?.revenueByMonth,
+                revenueByMonthLength: analytics?.revenueByMonth?.length || 0,
+                revenueByMonthData: analytics?.revenueByMonth
+              });
+              return null;
+            })()}
             {analytics?.revenueByMonth && analytics.revenueByMonth.length > 0 ? (
               <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
                 <LineChart data={analytics.revenueByMonth}>
@@ -460,12 +470,65 @@ export default function MaestroAIDashboard() {
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Churn Alerts - REAL DATA */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* Top Products - REAL DATA */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
+            className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Package className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+              <h3 className="text-base sm:text-lg font-semibold text-white">Top Prodotti</h3>
+              {analytics?.topProducts && analytics.topProducts.length > 0 && (
+                <span className="ml-auto px-2 py-1 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-400 font-medium">
+                  {analytics.topProducts.length}
+                </span>
+              )}
+            </div>
+            {analytics?.topProducts && analytics.topProducts.length > 0 ? (
+              <div className="space-y-2 overflow-y-auto max-h-[400px] pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+                {analytics.topProducts.map((product, idx) => (
+                  <div
+                    key={product.product_id}
+                    className="flex items-start gap-3 p-3 bg-slate-900 border border-slate-700 rounded-lg hover:bg-slate-750 transition-colors"
+                  >
+                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">
+                        {product.name}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-green-400 font-medium">
+                          {formatCurrency(product.total_revenue)}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {formatNumber(product.total_quantity)} pz
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {product.customer_count} clienti
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>Nessun prodotto disponibile</p>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Churn Alerts - REAL DATA */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
             className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6"
           >
             <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -514,7 +577,7 @@ export default function MaestroAIDashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.5 }}
             className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6"
           >
             <div className="flex items-center gap-2 mb-4">

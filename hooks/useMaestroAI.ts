@@ -211,11 +211,14 @@ export function useCreateInteraction() {
 
 // Advanced analytics hook - FIXED: Uses period-specific data from Odoo instead of lifetime totals
 export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 'quarter', salespersonId?: number) {
-  // Fetch period-specific KPIs from Odoo (NOT lifetime totals)
+  // Fetch period-specific KPIs and trend data from Odoo (NOT lifetime totals)
   const periodKPIsQuery = useQuery({
     queryKey: ['period-analytics-kpis', timeRange, salespersonId],
     queryFn: async () => {
-      const params = new URLSearchParams({ period: timeRange });
+      const params = new URLSearchParams({
+        period: timeRange,
+        include_trend: 'true'
+      });
       if (salespersonId) {
         params.append('salesperson_id', salespersonId.toString());
       }
@@ -226,7 +229,10 @@ export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 
       const data = await response.json();
       if (!data.success) throw new Error(data.error?.message || 'Period analytics failed');
 
-      return data.metrics; // { revenue, orders, customers, avgOrderValue }
+      return {
+        metrics: data.metrics, // { revenue, orders, customers, avgOrderValue }
+        trend: data.trend || [] // Array of { date, revenue, orders }
+      };
     },
     enabled: true,
     staleTime: 60000 // Cache for 1 minute
@@ -244,8 +250,23 @@ export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 
   return useQuery({
     queryKey: ['analytics-combined', periodKPIsQuery.data, avatarsData?.avatars, timeRange, salespersonId],
     queryFn: () => {
-      const periodKPIs = periodKPIsQuery.data;
+      console.log('🔄 [useAnalytics] Combined query running:', {
+        hasPeriodData: !!periodKPIsQuery.data,
+        hasAvatarsData: !!avatarsData?.avatars,
+        periodDataStatus: periodKPIsQuery.status,
+        avatarsDataLength: avatarsData?.avatars?.length || 0
+      });
+
+      const periodData = periodKPIsQuery.data;
+      const periodKPIs = periodData?.metrics;
+      const trendData = periodData?.trend || [];
       const avatars = avatarsData?.avatars || [];
+
+      console.log('📊 [useAnalytics] Data extracted:', {
+        periodKPIsExists: !!periodKPIs,
+        trendDataLength: trendData.length,
+        avatarsLength: avatars.length
+      });
 
       // Top Performers by Salesperson (uses lifetime data - OK for rankings)
       const salesMap = new Map<number, {
@@ -279,48 +300,39 @@ export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 
       const topPerformers = Array.from(salesMap.values())
         .sort((a, b) => b.revenue - a.revenue);
 
-      // Revenue by period chart - simplified placeholder (empty for now)
-      const now = new Date();
-      const revenueByMonth: Array<{ month: string; revenue: number; orders: number }> = [];
+      // ✅ FIXED: Revenue by period chart - use REAL trend data from Odoo
       const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 
-      if (timeRange === 'week') {
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-          revenueByMonth.push({
-            month: `${date.getDate()}/${date.getMonth() + 1}`,
-            revenue: 0,
-            orders: 0
-          });
+      console.log('📊 [useAnalytics] Trend data from API:', {
+        timeRange,
+        salespersonId,
+        trendDataLength: trendData.length,
+        trendDataSample: trendData.slice(0, 3)
+      });
+
+      const revenueByMonth: Array<{ month: string; revenue: number; orders: number }> = trendData.map(item => {
+        const itemDate = new Date(item.date);
+        let label: string;
+
+        if (timeRange === 'week' || timeRange === 'month') {
+          // For week/month: show day format (DD/MM)
+          label = `${itemDate.getDate()}/${itemDate.getMonth() + 1}`;
+        } else {
+          // For quarter/year: show month name
+          label = monthNames[itemDate.getMonth()] || 'N/D';
         }
-      } else if (timeRange === 'month') {
-        for (let i = 29; i >= 0; i -= 3) {
-          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-          revenueByMonth.push({
-            month: `${date.getDate()}/${date.getMonth() + 1}`,
-            revenue: 0,
-            orders: 0
-          });
-        }
-      } else if (timeRange === 'quarter') {
-        for (let i = 2; i >= 0; i--) {
-          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          revenueByMonth.push({
-            month: monthNames[date.getMonth()] || 'N/D',
-            revenue: 0,
-            orders: 0
-          });
-        }
-      } else { // year
-        for (let i = 11; i >= 0; i--) {
-          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          revenueByMonth.push({
-            month: monthNames[date.getMonth()] || 'N/D',
-            revenue: 0,
-            orders: 0
-          });
-        }
-      }
+
+        return {
+          month: label,
+          revenue: Math.round(item.revenue),
+          orders: item.orders
+        };
+      });
+
+      console.log('📊 [useAnalytics] Transformed chart data:', {
+        revenueByMonthLength: revenueByMonth.length,
+        revenueByMonthSample: revenueByMonth.slice(0, 3)
+      });
 
       // Urgent visits: customers with high churn risk
       const urgentVisits = avatars
@@ -336,6 +348,43 @@ export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 
           customerId: avatar.odoo_partner_id
         }));
 
+      // Aggregate Top Products across all customers
+      const productMap = new Map<number, {
+        product_id: number;
+        name: string;
+        total_quantity: number;
+        total_revenue: number;
+        order_count: number;
+        customer_count: number;
+      }>();
+
+      avatars.forEach(avatar => {
+        if (avatar.top_products && Array.isArray(avatar.top_products)) {
+          avatar.top_products.forEach((product: any) => {
+            const existing = productMap.get(product.product_id);
+            if (existing) {
+              existing.total_quantity += Number(product.total_quantity || 0);
+              existing.total_revenue += Number(product.total_revenue || 0);
+              existing.order_count += Number(product.order_count || 0);
+              existing.customer_count += 1;
+            } else {
+              productMap.set(product.product_id, {
+                product_id: product.product_id,
+                name: product.product_name || product.name || 'Prodotto Sconosciuto',
+                total_quantity: Number(product.total_quantity || 0),
+                total_revenue: Number(product.total_revenue || 0),
+                order_count: Number(product.order_count || 0),
+                customer_count: 1
+              });
+            }
+          });
+        }
+      });
+
+      const topProducts = Array.from(productMap.values())
+        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .slice(0, 10);
+
       // Return combined data: period-specific KPIs + avatar-based Top Performers and Urgent Visits
       return {
         // ✅ FIXED: Use period-specific KPIs from Odoo (NOT lifetime totals)
@@ -347,10 +396,13 @@ export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 
         },
         topPerformers,
         revenueByMonth,
-        urgentVisits
+        urgentVisits,
+        topProducts
       };
     },
-    enabled: !!periodKPIsQuery.data || (!!avatarsData?.avatars && avatarsData.avatars.length > 0),
+    // ✅ FIX: Wait for period data to be loaded before running combined query
+    // This ensures trendData is available (not empty array from fallback)
+    enabled: !!periodKPIsQuery.data && !periodKPIsQuery.isLoading,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2
   });

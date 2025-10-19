@@ -215,3 +215,84 @@ export function calculateDateRange(period: 'week' | 'month' | 'quarter' | 'year'
     endDate
   };
 }
+
+/**
+ * Get revenue trend data grouped by day/month for charts
+ */
+export async function getRevenueTrend(
+  period: 'week' | 'month' | 'quarter' | 'year',
+  salespersonId?: number
+): Promise<Array<{ date: string; revenue: number; orders: number }>> {
+  try {
+    console.log('📈 [REVENUE-TREND] Fetching trend data...');
+
+    // Connect to Odoo
+    const { cookies } = await getOdooSession();
+    const odoo = createOdooRPCClient(cookies?.replace('session_id=', ''));
+
+    // Calculate date range
+    const { startDate, endDate } = calculateDateRange(period);
+
+    // Build filters
+    const filters: any[] = [
+      ['state', 'in', ['sale', 'done']],
+      ['date_order', '>=', startDate],
+      ['date_order', '<=', endDate]
+    ];
+
+    if (salespersonId) {
+      filters.push(['user_id', '=', salespersonId]);
+    }
+
+    // Fetch orders
+    const orders = await odoo.searchRead(
+      'sale.order',
+      filters,
+      ['id', 'date_order', 'amount_total'],
+      0
+    );
+
+    console.log(`✅ [REVENUE-TREND] Found ${orders.length} orders for trend`);
+
+    // Group by date (day or month depending on period)
+    const trendMap = new Map<string, { revenue: number; orders: number }>();
+
+    for (const order of orders) {
+      const orderDate = new Date(order.date_order);
+      let dateKey: string;
+
+      if (period === 'week' || period === 'month') {
+        // Group by day: YYYY-MM-DD
+        dateKey = orderDate.toISOString().split('T')[0];
+      } else {
+        // Group by month: YYYY-MM
+        dateKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
+      }
+
+      if (!trendMap.has(dateKey)) {
+        trendMap.set(dateKey, { revenue: 0, orders: 0 });
+      }
+
+      const entry = trendMap.get(dateKey)!;
+      entry.revenue += order.amount_total || 0;
+      entry.orders += 1;
+    }
+
+    // Convert to array and sort by date
+    const trendData = Array.from(trendMap.entries())
+      .map(([date, data]) => ({
+        date,
+        revenue: parseFloat(data.revenue.toFixed(2)),
+        orders: data.orders
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    console.log(`✅ [REVENUE-TREND] Grouped into ${trendData.length} data points`);
+
+    return trendData;
+
+  } catch (error) {
+    console.error('❌ [REVENUE-TREND] Error:', error);
+    throw error;
+  }
+}

@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
  * Fixed Home Button Component
  *
  * Floating home icon button that appears on all Maestro AI pages
- * for quick navigation back to the main dashboard.
+ * for quick navigation back to the MAIN APP DASHBOARD (not Maestro dashboard).
  *
  * Features:
  * - Fixed to bottom-right corner
@@ -16,10 +16,11 @@ import { motion } from 'framer-motion';
  * - Smooth hover animations
  * - High z-index to stay above content
  * - Responsive and touch-friendly (min 44px for mobile)
+ * - Links to "/" (main dashboard) not "/maestro-ai"
  */
 export function HomeButton() {
   return (
-    <Link href="/maestro-ai">
+    <Link href="/">
       <motion.button
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -36,8 +37,8 @@ export function HomeButton() {
         }}
         whileTap={{ scale: 0.95 }}
         className="fixed bottom-6 right-24 z-[9999] h-14 w-14 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 shadow-2xl shadow-blue-500/30 flex items-center justify-center group hover:shadow-blue-500/50 transition-shadow"
-        aria-label="Torna alla Dashboard"
-        title="Torna alla Dashboard"
+        aria-label="Torna alla Dashboard Principale"
+        title="Torna alla Dashboard Principale"
       >
         <Home className="h-6 w-6 text-white group-hover:scale-110 transition-transform" />
 
