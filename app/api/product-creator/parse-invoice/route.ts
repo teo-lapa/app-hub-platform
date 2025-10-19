@@ -110,8 +110,9 @@ NON aggiungere testo prima o dopo il JSON. SOLO il JSON.`,
     });
 
     // Extract JSON from response
-    const responseText = message.content[0].type === 'text'
-      ? message.content[0].text
+    const firstContent = message.content[0];
+    const responseText = firstContent && firstContent.type === 'text'
+      ? firstContent.text
       : '';
 
     console.log('📝 Claude response:', responseText.substring(0, 500) + '...');

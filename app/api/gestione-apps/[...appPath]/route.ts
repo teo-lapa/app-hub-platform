@@ -34,7 +34,7 @@ export async function GET(
     // Estrai il nome dell'app dal path
     let appName = appPath;
     if (appPath.includes('/')) {
-      appName = appPath.split('/')[0];
+      appName = appPath.split('/')[0] || appPath;
     }
 
     if (!availableApps.includes(appName)) {

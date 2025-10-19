@@ -143,7 +143,8 @@ NON aggiungere testo. SOLO il JSON array.`;
       ],
     });
 
-    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+    const firstContent = message.content[0];
+    const responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
     console.log('📥 Risposta Claude matching:', responseText.substring(0, 300) + '...');
 
     let matches;

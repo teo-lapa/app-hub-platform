@@ -68,12 +68,12 @@ export async function GET(request: NextRequest) {
     // 3. Fetch raccomandazioni attive per questi clienti
     const avatarIds = avatars.map(a => a.id);
 
-    const recommendationsResult = await sql`
+    const recommendationsResult = await sql.query(`
       SELECT * FROM maestro_recommendations
-      WHERE customer_avatar_id = ANY(${avatarIds})
+      WHERE customer_avatar_id = ANY($1::int[])
         AND status IN ('pending', 'in_progress')
       ORDER BY priority DESC, created_at DESC
-    `;
+    `, [avatarIds]);
 
     const recommendations: Recommendation[] = recommendationsResult.rows.map(row => ({
       ...row,
@@ -88,15 +88,15 @@ export async function GET(request: NextRequest) {
     // 4. Fetch last interaction per ogni cliente (se tabella esiste)
     const lastInteractionsMap = new Map();
     try {
-      const interactionsResult = await sql`
+      const interactionsResult = await sql.query(`
         SELECT DISTINCT ON (customer_avatar_id)
           customer_avatar_id,
           interaction_date,
           outcome
         FROM maestro_interactions
-        WHERE customer_avatar_id = ANY(${avatarIds})
+        WHERE customer_avatar_id = ANY($1::int[])
         ORDER BY customer_avatar_id, interaction_date DESC
-      `;
+      `, [avatarIds]);
 
       interactionsResult.rows.forEach(row => {
         lastInteractionsMap.set(row.customer_avatar_id, row);

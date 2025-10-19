@@ -225,7 +225,8 @@ Rispondi SOLO con JSON valido:
     });
 
     // Extract JSON
-    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+    const firstContent = message.content[0];
+    const responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
     console.log('📝 Claude full response:\n', responseText);
 
     let jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);

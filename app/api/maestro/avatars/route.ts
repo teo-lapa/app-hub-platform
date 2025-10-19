@@ -60,14 +60,15 @@ export async function GET(request: NextRequest) {
     const whereClause = whereConditions.join(' AND ');
 
     // 3. Determina order by
-    const validSortColumns = {
+    const validSortColumns: Record<string, string> = {
       health_score: 'health_score',
       churn_risk_score: 'churn_risk_score',
       total_revenue: 'total_revenue',
       last_order_date: 'last_order_date'
     };
-    const sortColumn = validSortColumns[params.sort_by];
-    const sortOrder = params.sort_order.toUpperCase();
+    const sortBy = params.sort_by || 'health_score';
+    const sortColumn = validSortColumns[sortBy] || 'health_score';
+    const sortOrder = (params.sort_order || 'desc').toUpperCase();
 
     // 4. Query con COUNT per total
     const countQuery = `
@@ -129,13 +130,16 @@ export async function GET(request: NextRequest) {
     })) as CustomerAvatar[];
 
     // 7. Risposta con pagination metadata
+    const limit = params.limit || 50;
+    const offset = params.offset || 0;
+
     return NextResponse.json({
       avatars,
       pagination: {
         total,
-        limit: params.limit,
-        offset: params.offset,
-        has_more: params.offset + params.limit < total,
+        limit,
+        offset,
+        has_more: offset + limit < total,
       }
     });
 

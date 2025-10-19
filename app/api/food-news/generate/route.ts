@@ -109,7 +109,8 @@ Rispondi in formato JSON:
       ],
     });
 
-    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+    const firstContent = message.content[0];
+    const responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
 
     // Estrai JSON dalla risposta
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -137,7 +138,7 @@ Rispondi in formato JSON:
     };
 
     const categoryImages = imageUrls[category];
-    const imageUrl = categoryImages[index % categoryImages.length];
+    const imageUrl = categoryImages[index % categoryImages.length] || '';
 
     return {
       id: `${category.toLowerCase().replace(' ', '-')}-${index}-${Date.now()}`,

@@ -116,7 +116,10 @@ export async function POST(request: NextRequest) {
 
     for (const returnItem of returns) {
       if (returnItem.quantityToReturn > 0) {
-        returnsByZone[returnItem.bufferZone].push(returnItem);
+        const zoneArray = returnsByZone[returnItem.bufferZone];
+        if (zoneArray) {
+          zoneArray.push(returnItem);
+        }
       }
     }
 
