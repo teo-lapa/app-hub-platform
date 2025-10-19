@@ -203,9 +203,33 @@ export async function GET(
 
       console.log(`✅ [MAESTRO-API] Found ${topProducts.length} top products`);
 
-      // TODO: Calculate product categories from order lines
-      // For now, use avatar.product_categories as fallback
-      productCategories = avatar.product_categories || {};
+      // Calculate product categories spending from order lines
+      const categoriesResult = await sql`
+        SELECT
+          ol.product_category,
+          SUM(ol.price_subtotal) as total_spending,
+          COUNT(DISTINCT o.id) as orders_count,
+          SUM(ol.quantity) as total_quantity
+        FROM maestro_order_lines ol
+        JOIN maestro_orders o ON o.id = ol.maestro_order_id
+        WHERE o.customer_avatar_id = ${avatarData.id}
+          AND ol.product_category IS NOT NULL
+        GROUP BY ol.product_category
+        ORDER BY total_spending DESC
+      `;
+
+      productCategories = categoriesResult.rows.reduce((acc, row) => {
+        if (row.product_category) {
+          acc[row.product_category] = {
+            total_spending: parseFloat(row.total_spending),
+            orders_count: parseInt(row.orders_count),
+            total_quantity: parseFloat(row.total_quantity)
+          };
+        }
+        return acc;
+      }, {} as Record<string, any>);
+
+      console.log(`✅ [MAESTRO-API] Found ${Object.keys(productCategories).length} product categories`);
 
     } catch (error: any) {
       console.error('⚠️  [MAESTRO-API] Failed to fetch top products:', error.message);

@@ -45,6 +45,7 @@ interface OdooOrderLine {
   product_uom_qty: number;
   price_unit: number;
   price_subtotal: number;
+  product_category?: [number, string] | false;
 }
 
 /**
@@ -274,13 +275,40 @@ async function syncOrderLines(
   result: SyncOrdersResult
 ): Promise<void> {
   try {
-    // Fetch order lines from Odoo
+    // Fetch order lines from Odoo with product category
     const orderLines = await odoo.searchRead(
       'sale.order.line',
       [['id', 'in', orderLineIds]],
       ['id', 'product_id', 'product_uom_qty', 'price_unit', 'price_subtotal'],
       0
     ) as OdooOrderLine[];
+
+    // For each line, fetch the product category from product.product
+    const productIds = orderLines
+      .map(l => l.product_id && Array.isArray(l.product_id) ? l.product_id[0] : null)
+      .filter(id => id !== null) as number[];
+
+    let productCategories: Record<number, string> = {};
+
+    if (productIds.length > 0) {
+      try {
+        const products = await odoo.searchRead(
+          'product.product',
+          [['id', 'in', productIds]],
+          ['id', 'categ_id'],
+          0
+        ) as Array<{id: number; categ_id: [number, string] | false}>;
+
+        productCategories = products.reduce((acc, p) => {
+          if (p.categ_id && Array.isArray(p.categ_id)) {
+            acc[p.id] = p.categ_id[1]; // category name
+          }
+          return acc;
+        }, {} as Record<number, string>);
+      } catch (err) {
+        console.error('   ⚠️  Failed to fetch product categories:', err);
+      }
+    }
 
     // Delete existing lines and re-insert (simpler than UPSERT per line)
     await sql`
@@ -297,6 +325,9 @@ async function syncOrderLines(
       const productCodeMatch = productName.match(/^\[([^\]]+)\]/);
       const productCode = productCodeMatch ? productCodeMatch[1] : null;
 
+      // Get category for this product
+      const productCategory = productId ? (productCategories[productId] || null) : null;
+
       await sql`
         INSERT INTO maestro_order_lines (
           maestro_order_id,
@@ -304,6 +335,7 @@ async function syncOrderLines(
           product_id,
           product_name,
           product_code,
+          product_category,
           quantity,
           price_unit,
           price_subtotal
@@ -313,6 +345,7 @@ async function syncOrderLines(
           ${productId},
           ${productName},
           ${productCode},
+          ${productCategory},
           ${line.product_uom_qty},
           ${line.price_unit},
           ${line.price_subtotal}
