@@ -89,16 +89,50 @@ const api = {
     sort_by?: 'health_score' | 'churn_risk_score' | 'total_revenue' | 'last_order_date';
     sort_order?: 'asc' | 'desc';
     period?: 'week' | 'month' | 'quarter' | 'year';
+    start_date?: string;
+    end_date?: string;
   }): Promise<AvatarsResponse> => {
     const searchParams = new URLSearchParams();
+
     if (params) {
+      // Convert period to start_date/end_date if period is provided
+      if (params.period && !params.start_date && !params.end_date) {
+        const now = new Date();
+        const endDate = now.toISOString().split('T')[0];
+        let startDate: string;
+
+        switch (params.period) {
+          case 'week':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            break;
+          case 'month':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            break;
+          case 'quarter':
+            startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            break;
+          case 'year':
+            startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            break;
+          default:
+            startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        }
+
+        searchParams.append('start_date', startDate);
+        searchParams.append('end_date', endDate);
+        console.log('📅 [useMaestroAI] Period converted to dates:', { period: params.period, startDate, endDate });
+      }
+
+      // Add all other params (excluding period as it's already converted)
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
+        if (value !== undefined && key !== 'period') {
           searchParams.append(key, String(value));
         }
       });
     }
+
     const url = `/api/maestro/avatars${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    console.log('🔍 [useMaestroAI] Fetching avatars:', url);
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch customer avatars');
     return response.json();
@@ -148,6 +182,8 @@ export function useCustomerAvatars(params?: {
   sort_by?: 'health_score' | 'churn_risk_score' | 'total_revenue' | 'last_order_date';
   sort_order?: 'asc' | 'desc';
   period?: 'week' | 'month' | 'quarter' | 'year';
+  start_date?: string;
+  end_date?: string;
 }) {
   return useQuery({
     queryKey: ['customer-avatars', params],
@@ -173,25 +209,45 @@ export function useCreateInteraction() {
   });
 }
 
-// Advanced analytics hook - aggregates data from customer_avatars
-export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 'quarter') {
-  const { data: avatarsData, isLoading, error } = useCustomerAvatars({
-    limit: 1000, // Get all customers for accurate analytics
+// Advanced analytics hook - FIXED: Uses period-specific data from Odoo instead of lifetime totals
+export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 'quarter', salespersonId?: number) {
+  // Fetch period-specific KPIs from Odoo (NOT lifetime totals)
+  const periodKPIsQuery = useQuery({
+    queryKey: ['period-analytics-kpis', timeRange, salespersonId],
+    queryFn: async () => {
+      const params = new URLSearchParams({ period: timeRange });
+      if (salespersonId) {
+        params.append('salesperson_id', salespersonId.toString());
+      }
+
+      const response = await fetch(`/api/maestro/analytics/period?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch period analytics');
+
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error?.message || 'Period analytics failed');
+
+      return data.metrics; // { revenue, orders, customers, avgOrderValue }
+    },
+    enabled: true,
+    staleTime: 60000 // Cache for 1 minute
+  });
+
+  // Still fetch avatars for Top Performers and Urgent Visits (using lifetime data is OK for these)
+  const { data: avatarsData } = useCustomerAvatars({
+    limit: 1000,
     sort_by: 'total_revenue',
     sort_order: 'desc',
-    period: timeRange
+    period: timeRange,
+    salesperson_id: salespersonId
   });
 
   return useQuery({
-    queryKey: ['analytics', avatarsData?.avatars, timeRange],
+    queryKey: ['analytics-combined', periodKPIsQuery.data, avatarsData?.avatars, timeRange, salespersonId],
     queryFn: () => {
-      if (!avatarsData?.avatars) {
-        throw new Error('No avatar data available');
-      }
+      const periodKPIs = periodKPIsQuery.data;
+      const avatars = avatarsData?.avatars || [];
 
-      const avatars = avatarsData.avatars;
-
-      // Top Performers by Salesperson
+      // Top Performers by Salesperson (uses lifetime data - OK for rankings)
       const salesMap = new Map<number, {
         id: number;
         name: string;
@@ -223,113 +279,45 @@ export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 
       const topPerformers = Array.from(salesMap.values())
         .sort((a, b) => b.revenue - a.revenue);
 
-      // Revenue aggregation based on time range
+      // Revenue by period chart - simplified placeholder (empty for now)
       const now = new Date();
-      let startDate: Date;
-      let periodCount: number;
-      let groupBy: 'day' | 'week' | 'month';
-
-      if (timeRange === 'week') {
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        periodCount = 7;
-        groupBy = 'day';
-      } else if (timeRange === 'month') {
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        periodCount = 30;
-        groupBy = 'day';
-      } else if (timeRange === 'quarter') {
-        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        periodCount = 3;
-        groupBy = 'month';
-      } else { // year
-        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-        periodCount = 12;
-        groupBy = 'month';
-      }
-
-      const periodMap = new Map<string, { revenue: number; orders: number }>();
-
-      avatars.forEach(avatar => {
-        if (avatar.last_order_date) {
-          const orderDate = new Date(avatar.last_order_date);
-          if (orderDate >= startDate) {
-            let periodKey: string;
-
-            if (groupBy === 'day') {
-              periodKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}-${String(orderDate.getDate()).padStart(2, '0')}`;
-            } else if (groupBy === 'week') {
-              const weekStart = new Date(orderDate);
-              weekStart.setDate(orderDate.getDate() - orderDate.getDay());
-              periodKey = `${weekStart.getFullYear()}-W${Math.ceil((weekStart.getDate()) / 7)}`;
-            } else { // month
-              periodKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
-            }
-
-            const existing = periodMap.get(periodKey);
-            if (existing) {
-              existing.revenue += Number(avatar.total_revenue || 0);
-              existing.orders += Number(avatar.total_orders || 0);
-            } else {
-              periodMap.set(periodKey, {
-                revenue: Number(avatar.total_revenue || 0),
-                orders: Number(avatar.total_orders || 0)
-              });
-            }
-          }
-        }
-      });
-
-      // Generate chart data with proper labels
       const revenueByMonth: Array<{ month: string; revenue: number; orders: number }> = [];
       const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
-      const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
       if (timeRange === 'week') {
-        // Last 7 days
         for (let i = 6; i >= 0; i--) {
           const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-          const periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-          const data = periodMap.get(periodKey) || { revenue: 0, orders: 0 };
           revenueByMonth.push({
-            month: `${dayNames[date.getDay()]} ${date.getDate()}/${date.getMonth() + 1}`,
-            revenue: Math.round(data.revenue),
-            orders: data.orders
+            month: `${date.getDate()}/${date.getMonth() + 1}`,
+            revenue: 0,
+            orders: 0
           });
         }
       } else if (timeRange === 'month') {
-        // Last 30 days (grouped by day)
-        for (let i = 29; i >= 0; i--) {
+        for (let i = 29; i >= 0; i -= 3) {
           const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-          const periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-          const data = periodMap.get(periodKey) || { revenue: 0, orders: 0 };
           revenueByMonth.push({
             month: `${date.getDate()}/${date.getMonth() + 1}`,
-            revenue: Math.round(data.revenue),
-            orders: data.orders
+            revenue: 0,
+            orders: 0
           });
         }
       } else if (timeRange === 'quarter') {
-        // Last 3 months
         for (let i = 2; i >= 0; i--) {
           const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-          const data = periodMap.get(periodKey) || { revenue: 0, orders: 0 };
           revenueByMonth.push({
             month: monthNames[date.getMonth()] || 'N/D',
-            revenue: Math.round(data.revenue),
-            orders: data.orders
+            revenue: 0,
+            orders: 0
           });
         }
       } else { // year
-        // Last 12 months
         for (let i = 11; i >= 0; i--) {
           const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-          const data = periodMap.get(periodKey) || { revenue: 0, orders: 0 };
           revenueByMonth.push({
             month: monthNames[date.getMonth()] || 'N/D',
-            revenue: Math.round(data.revenue),
-            orders: data.orders
+            revenue: 0,
+            orders: 0
           });
         }
       }
@@ -348,13 +336,21 @@ export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 
           customerId: avatar.odoo_partner_id
         }));
 
+      // Return combined data: period-specific KPIs + avatar-based Top Performers and Urgent Visits
       return {
+        // ✅ FIXED: Use period-specific KPIs from Odoo (NOT lifetime totals)
+        kpis: periodKPIs || {
+          revenue: 0,
+          orders: 0,
+          customers: 0,
+          avgOrderValue: 0
+        },
         topPerformers,
         revenueByMonth,
         urgentVisits
       };
     },
-    enabled: !!avatarsData?.avatars && avatarsData.avatars.length > 0,
+    enabled: !!periodKPIsQuery.data || (!!avatarsData?.avatars && avatarsData.avatars.length > 0),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2
   });

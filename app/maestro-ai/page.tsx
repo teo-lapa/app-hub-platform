@@ -49,8 +49,8 @@ export default function MaestroAIDashboard() {
     salesperson_id: selectedVendor?.id // Apply vendor filter to API
   });
 
-  // Fetch REAL analytics (aggregated from customer_avatars)
-  const { data: analytics, isLoading: analyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useAnalytics(period);
+  // Fetch REAL analytics (aggregated from customer_avatars) - WITH VENDOR FILTER
+  const { data: analytics, isLoading: analyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useAnalytics(period, selectedVendor?.id);
 
   // Offline cache for dashboard data
   const { cachedData: cachedAvatars } = useOfflineCache({
@@ -82,80 +82,53 @@ export default function MaestroAIDashboard() {
     }
   };
 
-  // Calculate REAL KPIs from database filtered by period and vendor
+  // ✅ FIXED: Use period-specific KPIs from Odoo (NOT lifetime totals from avatars)
+  // The analytics hook now queries Odoo directly for period-specific revenue and orders
   const kpis = useMemo(() => {
-    if (!avatarsData?.avatars) {
+    // Use period-specific KPIs from analytics.kpis
+    if (analytics?.kpis) {
+      console.log('📊 [DASHBOARD] Using period-specific KPIs from Odoo:', {
+        period,
+        vendorId: selectedVendor?.id,
+        revenue: analytics.kpis.revenue,
+        orders: analytics.kpis.orders,
+        customers: analytics.kpis.customers,
+        avgOrderValue: analytics.kpis.avgOrderValue
+      });
+
       return {
-        totalRevenue: 0,
-        revenueTrend: 0,
-        totalOrders: 0,
+        totalRevenue: analytics.kpis.revenue,
+        revenueTrend: 0, // TODO: Calculate trends
+        totalOrders: analytics.kpis.orders,
         ordersTrend: 0,
-        activeCustomers: 0,
+        activeCustomers: analytics.kpis.customers,
         customersTrend: 0,
-        avgOrderValue: 0,
+        avgOrderValue: analytics.kpis.avgOrderValue,
         avgOrderTrend: 0
       };
     }
 
-    const startDate = getStartDate(period);
-
-    // Filter avatars by period and vendor
-    let filteredAvatars = avatarsData.avatars;
-
-    // Apply vendor filter if selected
-    if (selectedVendor) {
-      filteredAvatars = filteredAvatars.filter(avatar =>
-        avatar.assigned_salesperson_id === selectedVendor.id
-      );
-    }
-
-    // Filter by period (last_order_date within period)
-    const avatarsInPeriod = filteredAvatars.filter(avatar => {
-      if (!avatar.last_order_date) return false;
-      const lastOrderDate = new Date(avatar.last_order_date);
-      return lastOrderDate >= startDate;
-    });
-
-    const totalRevenue = avatarsInPeriod.reduce((sum, a) => sum + Number(a.total_revenue || 0), 0);
-    const totalOrders = avatarsInPeriod.reduce((sum, a) => sum + Number(a.total_orders || 0), 0);
-    const activeCustomers = avatarsInPeriod.length;
-    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-    // TODO: Calculate trends by comparing with previous period data
-    // For now, set trends to 0 (no historical data available yet)
+    // Fallback to empty if no analytics data yet
     return {
-      totalRevenue,
+      totalRevenue: 0,
       revenueTrend: 0,
-      totalOrders,
+      totalOrders: 0,
       ordersTrend: 0,
-      activeCustomers,
+      activeCustomers: 0,
       customersTrend: 0,
-      avgOrderValue,
+      avgOrderValue: 0,
       avgOrderTrend: 0
     };
-  }, [avatarsData, period, selectedVendor]);
+  }, [analytics, period, selectedVendor]);
 
   // Filter REAL churn alerts (churn_risk_score > 70) - ONLY in selected period and vendor
+  // NOTE: API already filtered by date range and salesperson_id
   const churnAlerts = useMemo(() => {
     if (!avatarsData?.avatars) return [];
 
-    const startDate = getStartDate(period);
-
-    // Apply vendor filter first
-    let filteredAvatars = avatarsData.avatars;
-    if (selectedVendor) {
-      filteredAvatars = filteredAvatars.filter(avatar =>
-        avatar.assigned_salesperson_id === selectedVendor.id
-      );
-    }
-
-    return filteredAvatars
-      .filter(avatar => {
-        // Only customers with orders in the selected period
-        if (!avatar.last_order_date) return false;
-        const lastOrderDate = new Date(avatar.last_order_date);
-        return lastOrderDate >= startDate && avatar.churn_risk_score > 70;
-      })
+    // API already filtered, just find high-risk customers
+    return avatarsData.avatars
+      .filter(avatar => avatar.churn_risk_score > 70)
       .sort((a, b) => b.churn_risk_score - a.churn_risk_score)
       .slice(0, 5)
       .map(avatar => ({
@@ -167,7 +140,7 @@ export default function MaestroAIDashboard() {
         lastOrderDays: avatar.days_since_last_order,
         avgOrderValue: Math.round(avatar.avg_order_value)
       }));
-  }, [avatarsData, period, selectedVendor]);
+  }, [avatarsData]);
 
   // Loading state
   if (isLoading) {
