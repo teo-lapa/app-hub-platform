@@ -310,7 +310,7 @@ export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 
         trendDataSample: trendData.slice(0, 3)
       });
 
-      const revenueByMonth: Array<{ month: string; revenue: number; orders: number }> = trendData.map(item => {
+      const revenueByMonth: Array<{ month: string; revenue: number; orders: number }> = trendData.map((item: { date: string; revenue: number; orders: number }) => {
         const itemDate = new Date(item.date);
         let label: string;
 
@@ -400,9 +400,9 @@ export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 
         topProducts
       };
     },
-    // ✅ FIX: Wait for period data to be loaded before running combined query
-    // This ensures trendData is available (not empty array from fallback)
-    enabled: !!periodKPIsQuery.data && !periodKPIsQuery.isLoading,
+    // ✅ FIX: Only enable when we have either period data OR avatars data
+    // This allows the query to run and provide at least some data to the dashboard
+    enabled: (!!periodKPIsQuery.data && !periodKPIsQuery.isLoading) || (!!avatarsData?.avatars && avatarsData.avatars.length > 0),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2
   });

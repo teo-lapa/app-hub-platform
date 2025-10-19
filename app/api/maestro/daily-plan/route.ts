@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
 
     const dailyPlan: DailyPlan = {
       date: new Date(targetDate),
-      salesperson_id: params.salesperson_id || 0,
+      salesperson_id: params.salesperson_id ?? 0,
       salesperson_name: salesPersonName,
       urgent_customers: urgentCustomers.slice(0, 5), // Max 5 urgent
       high_priority_customers: highPriorityCustomers.slice(0, 5),
