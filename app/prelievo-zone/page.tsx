@@ -162,10 +162,13 @@ export default function PrelievoZonePage() {
 
   // Background refresh automatico ogni 30 secondi quando sei nella lista ubicazioni
   useEffect(() => {
-    if (showLocationList && currentZone && currentBatch) {
-      // console.log('🔄 [Auto-refresh] Attivato per zona:', currentZone.displayName);
+    if (!showLocationList || !currentZone || !currentBatch) {
+      return; // Early return if conditions not met
+    }
 
-      const refreshInterval = setInterval(async () => {
+    // console.log('🔄 [Auto-refresh] Attivato per zona:', currentZone.displayName);
+
+    const refreshInterval = setInterval(async () => {
         // console.log('🔄 [Auto-refresh] Aggiornamento dati zona in background...');
 
         try {
@@ -245,13 +248,12 @@ export default function PrelievoZonePage() {
         } catch (error) {
           // console.error('❌ [Auto-refresh] Errore aggiornamento:', error);
         }
-      }, 120000); // 120 secondi (2 minuti - ridotto carico su Odoo)
+    }, 120000); // 120 secondi (2 minuti - ridotto carico su Odoo)
 
-      return () => {
-        // console.log('🛑 [Auto-refresh] Disattivato');
-        clearInterval(refreshInterval);
-      };
-    }
+    return () => {
+      // console.log('🛑 [Auto-refresh] Disattivato');
+      clearInterval(refreshInterval);
+    };
   }, [showLocationList, currentZone, currentBatch]);
 
   // Funzioni di utilità
