@@ -13,7 +13,8 @@ import {
   Calendar,
   MapPin,
   Loader2,
-  UserCheck
+  UserCheck,
+  UsersRound
 } from 'lucide-react';
 import { KPICard } from '@/components/maestro/KPICard';
 import { HealthScoreBadge } from '@/components/maestro/HealthScoreBadge';
@@ -23,6 +24,7 @@ import { ChatWidget } from '@/components/maestro/ChatWidget';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { useCustomerAvatars, useAnalytics } from '@/hooks/useMaestroAI';
 import { useOfflineCache } from '@/hooks/useOfflineCache';
+import { useMaestroFilters } from '@/contexts/MaestroFiltersContext';
 import {
   LineChart,
   Line,
@@ -35,28 +37,29 @@ import {
 } from 'recharts';
 
 export default function MaestroAIDashboard() {
-  // Global period filter - DEFAULT: trimestre (3 mesi)
-  const [globalPeriod, setGlobalPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('quarter');
+  // Use global filter context (default period is now 'week')
+  const { period, setPeriod, selectedVendor, setSelectedVendor, clearVendorFilter, isVendorSelected, getPeriodLabel } = useMaestroFilters();
 
   // Fetch REAL customer avatars from database with period filter
   const { data: avatarsData, isLoading: avatarsLoading, error: avatarsError, refetch: refetchAvatars } = useCustomerAvatars({
     limit: 1000,
     sort_by: 'total_revenue',
     sort_order: 'desc',
-    period: globalPeriod
+    period: period,
+    salesperson_id: selectedVendor?.id // Apply vendor filter to API
   });
 
   // Fetch REAL analytics (aggregated from customer_avatars)
-  const { data: analytics, isLoading: analyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useAnalytics(globalPeriod);
+  const { data: analytics, isLoading: analyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useAnalytics(period);
 
   // Offline cache for dashboard data
   const { cachedData: cachedAvatars } = useOfflineCache({
-    key: 'dashboard-avatars',
+    key: `dashboard-avatars-${selectedVendor?.id || 'all'}`,
     data: avatarsData
   });
 
   const { cachedData: cachedAnalytics } = useOfflineCache({
-    key: `dashboard-analytics-${globalPeriod}`,
+    key: `dashboard-analytics-${period}-${selectedVendor?.id || 'all'}`,
     data: analytics
   });
 
@@ -79,17 +82,7 @@ export default function MaestroAIDashboard() {
     }
   };
 
-  // Helper function to get period label
-  const getPeriodLabel = (period: 'week' | 'month' | 'quarter' | 'year'): string => {
-    switch (period) {
-      case 'week': return 'Ultimi 7 giorni';
-      case 'month': return 'Ultimi 30 giorni';
-      case 'quarter': return 'Ultimi 90 giorni';
-      case 'year': return 'Ultimi 365 giorni';
-    }
-  };
-
-  // Calculate REAL KPIs from database filtered by period
+  // Calculate REAL KPIs from database filtered by period and vendor
   const kpis = useMemo(() => {
     if (!avatarsData?.avatars) {
       return {
@@ -104,10 +97,20 @@ export default function MaestroAIDashboard() {
       };
     }
 
-    const startDate = getStartDate(globalPeriod);
+    const startDate = getStartDate(period);
 
-    // Filter avatars by period (last_order_date within period)
-    const avatarsInPeriod = avatarsData.avatars.filter(avatar => {
+    // Filter avatars by period and vendor
+    let filteredAvatars = avatarsData.avatars;
+
+    // Apply vendor filter if selected
+    if (selectedVendor) {
+      filteredAvatars = filteredAvatars.filter(avatar =>
+        avatar.assigned_salesperson_id === selectedVendor.id
+      );
+    }
+
+    // Filter by period (last_order_date within period)
+    const avatarsInPeriod = filteredAvatars.filter(avatar => {
       if (!avatar.last_order_date) return false;
       const lastOrderDate = new Date(avatar.last_order_date);
       return lastOrderDate >= startDate;
@@ -130,15 +133,23 @@ export default function MaestroAIDashboard() {
       avgOrderValue,
       avgOrderTrend: 0
     };
-  }, [avatarsData, globalPeriod]);
+  }, [avatarsData, period, selectedVendor]);
 
-  // Filter REAL churn alerts (churn_risk_score > 70) - ONLY in selected period
+  // Filter REAL churn alerts (churn_risk_score > 70) - ONLY in selected period and vendor
   const churnAlerts = useMemo(() => {
     if (!avatarsData?.avatars) return [];
 
-    const startDate = getStartDate(globalPeriod);
+    const startDate = getStartDate(period);
 
-    return avatarsData.avatars
+    // Apply vendor filter first
+    let filteredAvatars = avatarsData.avatars;
+    if (selectedVendor) {
+      filteredAvatars = filteredAvatars.filter(avatar =>
+        avatar.assigned_salesperson_id === selectedVendor.id
+      );
+    }
+
+    return filteredAvatars
       .filter(avatar => {
         // Only customers with orders in the selected period
         if (!avatar.last_order_date) return false;
@@ -156,7 +167,7 @@ export default function MaestroAIDashboard() {
         lastOrderDays: avatar.days_since_last_order,
         avgOrderValue: Math.round(avatar.avg_order_value)
       }));
-  }, [avatarsData, globalPeriod]);
+  }, [avatarsData, period, selectedVendor]);
 
   // Loading state
   if (isLoading) {
@@ -225,7 +236,7 @@ export default function MaestroAIDashboard() {
           </div>
         </motion.div>
 
-        {/* Global Period Filter - NEW */}
+        {/* Global Period Filter */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -237,7 +248,7 @@ export default function MaestroAIDashboard() {
               <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
                 Periodo Analisi
                 <span className="text-xs text-green-400 font-medium px-2 py-1 bg-green-500/10 rounded border border-green-500/20">
-                  {getPeriodLabel(globalPeriod)}
+                  {getPeriodLabel(period)}
                 </span>
               </h3>
               <p className="text-xs text-slate-500 mt-1">Filtra tutti i dati del dashboard per periodo selezionato</p>
@@ -245,9 +256,9 @@ export default function MaestroAIDashboard() {
 
             <div className="flex gap-2 flex-wrap">
               <button
-                onClick={() => setGlobalPeriod('week')}
+                onClick={() => setPeriod('week')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-h-[44px] ${
-                  globalPeriod === 'week'
+                  period === 'week'
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
                     : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
                 }`}
@@ -256,9 +267,9 @@ export default function MaestroAIDashboard() {
               </button>
 
               <button
-                onClick={() => setGlobalPeriod('month')}
+                onClick={() => setPeriod('month')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-h-[44px] ${
-                  globalPeriod === 'month'
+                  period === 'month'
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
                     : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
                 }`}
@@ -267,9 +278,9 @@ export default function MaestroAIDashboard() {
               </button>
 
               <button
-                onClick={() => setGlobalPeriod('quarter')}
+                onClick={() => setPeriod('quarter')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-h-[44px] ${
-                  globalPeriod === 'quarter'
+                  period === 'quarter'
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
                     : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
                 }`}
@@ -278,9 +289,9 @@ export default function MaestroAIDashboard() {
               </button>
 
               <button
-                onClick={() => setGlobalPeriod('year')}
+                onClick={() => setPeriod('year')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-h-[44px] ${
-                  globalPeriod === 'year'
+                  period === 'year'
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
                     : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
                 }`}
@@ -334,7 +345,7 @@ export default function MaestroAIDashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <h3 className="text-base sm:text-lg font-semibold text-white">Trend Revenue & Ordini</h3>
               <span className="text-xs text-green-400 font-medium px-2 py-1 bg-green-500/10 rounded border border-green-500/20">
-                Dati reali • {getPeriodLabel(globalPeriod)}
+                Dati reali • {getPeriodLabel(period)}
               </span>
             </div>
             {analytics?.revenueByMonth && analytics.revenueByMonth.length > 0 ? (
@@ -381,37 +392,90 @@ export default function MaestroAIDashboard() {
             )}
           </motion.div>
 
-          {/* Top Performers - REAL DATA */}
+          {/* Top Performers - REAL DATA - SCROLLABLE & CLICKABLE */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6"
+            className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6 flex flex-col"
           >
             <div className="flex items-center gap-2 mb-4">
               <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
-              <h3 className="text-base sm:text-lg font-semibold text-white">Top Performers</h3>
+              <h3 className="text-base sm:text-lg font-semibold text-white">Venditori</h3>
+              {selectedVendor && (
+                <span className="ml-auto text-xs text-blue-400 font-medium px-2 py-1 bg-blue-500/10 rounded border border-blue-500/20">
+                  Filtrato: {selectedVendor.name}
+                </span>
+              )}
             </div>
+
+            {/* "Tutti" Button */}
+            <button
+              onClick={clearVendorFilter}
+              className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all mb-3 ${
+                !selectedVendor
+                  ? 'bg-blue-600 border-2 border-blue-400 shadow-lg shadow-blue-500/20'
+                  : 'bg-slate-900 border border-slate-700 hover:bg-slate-750'
+              }`}
+            >
+              <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                <UsersRound className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-bold text-white">
+                  Tutti i Venditori
+                </p>
+                <p className="text-xs text-slate-400">
+                  Vista completa team
+                </p>
+              </div>
+              {!selectedVendor && (
+                <div className="h-3 w-3 rounded-full bg-blue-400 animate-pulse" />
+              )}
+            </button>
+
+            {/* Scrollable Performers List */}
             {analytics?.topPerformers && analytics.topPerformers.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2 overflow-y-auto max-h-[400px] pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
                 {analytics.topPerformers.map((performer, idx) => (
-                  <div
+                  <button
                     key={performer.id}
-                    className="flex items-center gap-3 p-3 bg-slate-900 rounded-lg hover:bg-slate-750 transition-colors"
+                    onClick={() => setSelectedVendor({
+                      id: performer.id,
+                      name: performer.name,
+                      revenue: performer.revenue,
+                      orders: performer.orders,
+                      customers: performer.customers
+                    })}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${
+                      isVendorSelected(performer.id)
+                        ? 'bg-blue-600 border-2 border-blue-400 shadow-lg shadow-blue-500/20'
+                        : 'bg-slate-900 border border-slate-700 hover:bg-slate-750 hover:border-slate-600'
+                    }`}
                   >
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                    <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-white font-bold ${
+                      isVendorSelected(performer.id)
+                        ? 'bg-gradient-to-br from-yellow-400 to-orange-500'
+                        : 'bg-gradient-to-br from-blue-500 to-purple-600'
+                    }`}>
                       {idx + 1}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className={`text-sm font-medium truncate ${
+                        isVendorSelected(performer.id) ? 'text-white font-bold' : 'text-white'
+                      }`}>
                         {performer.name}
                       </p>
                       <p className="text-xs text-slate-400">
                         {formatCurrency(performer.revenue)} • {performer.orders} ordini • {performer.customers} clienti
                       </p>
                     </div>
-                    <UserCheck className="h-4 w-4 text-green-400" />
-                  </div>
+                    {isVendorSelected(performer.id) ? (
+                      <div className="h-3 w-3 rounded-full bg-blue-400 animate-pulse" />
+                    ) : (
+                      <UserCheck className="h-4 w-4 text-green-400 opacity-70" />
+                    )}
+                  </button>
                 ))}
               </div>
             ) : (

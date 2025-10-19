@@ -13,11 +13,14 @@ import {
   CheckCircle,
   Users,
   DollarSign,
-  ArrowLeft
+  ArrowLeft,
+  UserPlus
 } from 'lucide-react';
 import { CustomerCard } from '@/components/maestro/CustomerCard';
 import { InteractionModal } from '@/components/maestro/InteractionModal';
-import type { DailyPlan, CustomerWithRecommendations } from '@/lib/maestro/types';
+import { CustomerSearchInput } from '@/components/maestro/CustomerSearchInput';
+import { useMaestroFilters } from '@/contexts/MaestroFiltersContext';
+import type { DailyPlan, CustomerWithRecommendations, CustomerAvatar } from '@/lib/maestro/types';
 import toast from 'react-hot-toast';
 
 // ============================================================================
@@ -123,14 +126,15 @@ function calculateTotalDistance(plan: DailyPlan | null): number {
 // ============================================================================
 
 export default function DailyPlanPage() {
+  // Use global vendor filter from context
+  const { selectedVendor } = useMaestroFilters();
+
   // State
-  const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
-  const [selectedSalesperson, setSelectedSalesperson] = useState<number | null>(null);
   const [dailyPlan, setDailyPlan] = useState<DailyPlan | null>(null);
   const [summary, setSummary] = useState<DailyPlanResponse['summary'] | null>(null);
+  const [manuallyAddedCustomers, setManuallyAddedCustomers] = useState<CustomerCardData[]>([]);
 
   const [loading, setLoading] = useState(false);
-  const [loadingSalespeople, setLoadingSalespeople] = useState(true);
 
   const [selectedCustomer, setSelectedCustomer] = useState<{id: number, name: string} | null>(null);
   const [filterPriority, setFilterPriority] = useState<'all' | 'urgent' | 'high' | 'medium'>('all');
@@ -140,39 +144,17 @@ export default function DailyPlanPage() {
   // DATA FETCHING
   // ============================================================================
 
-  // Fetch lista venditori al mount
+  // Fetch daily plan when vendor changes
   useEffect(() => {
-    async function fetchSalespeople() {
-      try {
-        const res = await fetch('/api/maestro/salespeople');
-        if (!res.ok) throw new Error('Failed to fetch salespeople');
-
-        const data = await res.json();
-        setSalespeople(data.salespeople);
-
-        // Auto-select primo venditore se presente
-        if (data.salespeople.length > 0) {
-          setSelectedSalesperson(data.salespeople[0].id);
-        }
-      } catch (error) {
-        console.error('Error fetching salespeople:', error);
-        toast.error('Errore nel caricare i venditori');
-      } finally {
-        setLoadingSalespeople(false);
-      }
-    }
-
-    fetchSalespeople();
-  }, []);
-
-  // Fetch daily plan quando cambia venditore
-  useEffect(() => {
-    if (!selectedSalesperson) return;
-
     async function fetchDailyPlan() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/maestro/daily-plan?salesperson_id=${selectedSalesperson}`);
+        const params = new URLSearchParams();
+        if (selectedVendor?.id) {
+          params.append('salesperson_id', selectedVendor.id.toString());
+        }
+
+        const res = await fetch(`/api/maestro/daily-plan?${params.toString()}`);
         if (!res.ok) throw new Error('Failed to fetch daily plan');
 
         const data: DailyPlanResponse = await res.json();
@@ -189,7 +171,7 @@ export default function DailyPlanPage() {
     }
 
     fetchDailyPlan();
-  }, [selectedSalesperson]);
+  }, [selectedVendor]);
 
   // ============================================================================
   // DATA PROCESSING
@@ -200,6 +182,13 @@ export default function DailyPlanPage() {
   const highPriorityCards: CustomerCardData[] = dailyPlan?.high_priority_customers.map(c => mapToCardData(c, 'high')) || [];
   const upsellCards: CustomerCardData[] = dailyPlan?.upsell_opportunities.map(c => mapToCardData(c, 'medium')) || [];
   const followUpCards: CustomerCardData[] = dailyPlan?.routine_followups.map(c => mapToCardData(c, 'low')) || [];
+
+  // Combine manually added customers with AI recommendations
+  const allDailyCards = [
+    ...manuallyAddedCustomers,
+    ...urgentCards,
+    ...highPriorityCards
+  ];
 
   // Filtri
   const filterByPriority = (cards: CustomerCardData[]): CustomerCardData[] => {
@@ -235,28 +224,47 @@ export default function DailyPlanPage() {
     }
   };
 
+  const handleAddCustomer = (customer: CustomerAvatar) => {
+    // Check if customer is already in the list
+    const isAlreadyAdded = [
+      ...manuallyAddedCustomers,
+      ...urgentCards,
+      ...highPriorityCards,
+      ...upsellCards,
+      ...followUpCards
+    ].some(c => c.id === customer.odoo_partner_id);
+
+    if (isAlreadyAdded) {
+      toast.error('Cliente già presente nel piano giornaliero');
+      return;
+    }
+
+    // Add customer to manually added list
+    const newCustomerCard: CustomerCardData = {
+      id: customer.odoo_partner_id,
+      name: customer.name,
+      city: customer.city || 'N/A',
+      health_score: customer.health_score,
+      churn_risk: customer.churn_risk_score,
+      avg_order_value: customer.avg_order_value,
+      last_order_days: customer.days_since_last_order,
+      recommendation: 'Visita aggiunta manualmente',
+      suggested_products: [],
+      priority: 'high'
+    };
+
+    setManuallyAddedCustomers(prev => [newCustomerCard, ...prev]);
+    toast.success(`${customer.name} aggiunto al piano giornaliero`);
+  };
+
+  const handleRemoveManualCustomer = (customerId: number) => {
+    setManuallyAddedCustomers(prev => prev.filter(c => c.id !== customerId));
+    toast.success('Cliente rimosso dalla lista');
+  };
+
   // ============================================================================
   // RENDER
   // ============================================================================
-
-  if (loadingSalespeople) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-white text-xl">Caricamento...</div>
-      </div>
-    );
-  }
-
-  if (salespeople.length === 0) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl text-white font-bold mb-2">Nessun venditore trovato</h1>
-          <p className="text-slate-400">Assicurati che ci siano customer avatars con venditori assegnati.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
@@ -281,25 +289,24 @@ export default function DailyPlanPage() {
               </h1>
               <p className="text-slate-400">
                 Visite prioritizzate AI-driven
+                {selectedVendor && (
+                  <span className="ml-2 text-blue-400 font-medium">
+                    • Venditore: {selectedVendor.name}
+                  </span>
+                )}
               </p>
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Salesperson Selector */}
-              <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2">
-                <Users className="h-4 w-4 text-blue-400" />
-                <select
-                  value={selectedSalesperson || ''}
-                  onChange={(e) => setSelectedSalesperson(parseInt(e.target.value))}
-                  className="bg-transparent text-white text-sm font-medium outline-none cursor-pointer"
-                >
-                  {salespeople.map(sp => (
-                    <option key={sp.id} value={sp.id}>
-                      {sp.name} ({sp.customer_count} clienti)
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Vendor Filter Badge */}
+              {selectedVendor && (
+                <div className="px-4 py-2 bg-blue-600/20 border border-blue-500 rounded-lg">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Users className="h-4 w-4 text-blue-400" />
+                    <span className="text-blue-300 font-medium">{selectedVendor.name}</span>
+                  </div>
+                </div>
+              )}
 
               {/* Date */}
               <div className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg">
@@ -422,6 +429,97 @@ export default function DailyPlanPage() {
             <div className="inline-block h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-slate-400 mt-4">Caricamento piano giornaliero...</p>
           </div>
+        )}
+
+        {/* DA FARE OGGI - Customer Search & Manual Additions */}
+        {!loading && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="bg-slate-800 border border-slate-700 rounded-lg p-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <UserPlus className="h-6 w-6 text-blue-500" />
+              <h2 className="text-2xl font-bold text-white">
+                Da Fare Oggi
+              </h2>
+              <span className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-sm text-blue-400 font-medium">
+                {allDailyCards.length} visite pianificate
+              </span>
+            </div>
+
+            <p className="text-slate-400 text-sm mb-4">
+              Aggiungi clienti manualmente o visualizza le visite prioritarie suggerite dall'AI
+            </p>
+
+            {/* Customer Search Input */}
+            <CustomerSearchInput
+              onSelectCustomer={handleAddCustomer}
+              vendorId={selectedVendor?.id || null}
+              placeholder="Cerca cliente per aggiungere alla lista..."
+              className="mb-6"
+            />
+
+            {/* Manually Added Customers */}
+            {manuallyAddedCustomers.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm text-slate-300">
+                  <div className="h-px flex-1 bg-slate-700" />
+                  <span>Aggiunti Manualmente ({manuallyAddedCustomers.length})</span>
+                  <div className="h-px flex-1 bg-slate-700" />
+                </div>
+                {manuallyAddedCustomers.map((customer) => (
+                  <CustomerCard
+                    key={customer.id}
+                    customer={customer}
+                    variant="default"
+                    onComplete={handleCompleteVisit}
+                    onRemove={() => handleRemoveManualCustomer(customer.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* AI-Generated Priority Customers */}
+            {(urgentCards.length > 0 || highPriorityCards.length > 0) && (
+              <div className="space-y-4 mt-6">
+                <div className="flex items-center gap-2 text-sm text-slate-300">
+                  <div className="h-px flex-1 bg-slate-700" />
+                  <span>Priorità AI ({urgentCards.length + highPriorityCards.length})</span>
+                  <div className="h-px flex-1 bg-slate-700" />
+                </div>
+
+                {/* Show urgent customers */}
+                {applyFilters(urgentCards).map((customer) => (
+                  <CustomerCard
+                    key={customer.id}
+                    customer={customer}
+                    variant="urgent"
+                    onComplete={handleCompleteVisit}
+                  />
+                ))}
+
+                {/* Show high priority customers */}
+                {applyFilters(highPriorityCards).map((customer) => (
+                  <CustomerCard
+                    key={customer.id}
+                    customer={customer}
+                    variant="default"
+                    onComplete={handleCompleteVisit}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Empty state */}
+            {allDailyCards.length === 0 && (
+              <div className="text-center py-8 text-slate-500">
+                <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>Nessuna visita pianificata. Cerca un cliente per iniziare.</p>
+              </div>
+            )}
+          </motion.section>
         )}
 
         {/* URGENT Section */}

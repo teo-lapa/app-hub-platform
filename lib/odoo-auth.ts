@@ -6,14 +6,17 @@
  *
  * IMPORTANTE: Usa la sessione Odoo dell'utente loggato dal cookie 'odoo_session'
  * Se non disponibile, usa credenziali di fallback (solo per sviluppo)
+ *
+ * NEW: Now integrated with SessionManager for automatic session refresh
  */
 
-const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
-const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24517859';
+import { getOdooSessionManager } from './odoo/sessionManager';
 
-// Credenziali Odoo FALLBACK - solo se utente non loggato
-const ODOO_LOGIN = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+// Lazy eval env vars to allow dotenv to load first
+const getOdooUrl = () => process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24721327.dev.odoo.com';
+const getOdooDb = () => process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24721327';
+const getOdooLogin = () => process.env.ODOO_USERNAME || 'paul@lapa.ch';
+const getOdooPassword = () => process.env.ODOO_PASSWORD || 'lapa201180';
 
 // Cache sessione fallback per evitare re-autenticazioni multiple
 let cachedFallbackSession: { cookie: string; expires: number } | null = null;
@@ -24,6 +27,11 @@ let cachedFallbackSession: { cookie: string; expires: number } | null = null;
  * @returns {Promise<{cookies: string | null, uid: number}>}
  */
 export async function getOdooSession(userCookies?: string) {
+  const ODOO_URL = getOdooUrl();
+  const ODOO_DB = getOdooDb();
+  const ODOO_LOGIN = getOdooLogin();
+  const ODOO_PASSWORD = getOdooPassword();
+
   console.log('🔐 [ODOO-AUTH] Autenticazione con:', ODOO_URL);
   console.log('🔐 [ODOO-AUTH] Cookies ricevuti:', userCookies ? 'SI' : 'NO');
 
@@ -178,7 +186,26 @@ export async function callOdoo(
   kwargs: any = {},
   retryWithFallback: boolean = true
 ) {
+  const ODOO_URL = getOdooUrl();
+  const ODOO_DB = getOdooDb();
+  const ODOO_LOGIN = getOdooLogin();
+  const ODOO_PASSWORD = getOdooPassword();
+
   console.log(`🔵 [ODOO-CALL] ${model}.${method}`, { args: args.length, kwargs: Object.keys(kwargs).length });
+
+  // NEW: If no cookies provided and we have credentials, use SessionManager
+  if (!cookies && retryWithFallback && ODOO_LOGIN && ODOO_PASSWORD) {
+    try {
+      console.log('🔄 [ODOO-CALL] No cookies, using SessionManager...');
+      const sessionManager = getOdooSessionManager();
+      const result = await sessionManager.callKw(model, method, args, kwargs, 2);
+      console.log(`✅ [ODOO-CALL] ${model}.${method} SUCCESS (SessionManager)`);
+      return result;
+    } catch (error: any) {
+      console.error(`❌ [ODOO-CALL] SessionManager failed:`, error.message);
+      // Fall through to legacy method as last resort
+    }
+  }
 
   const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
     method: 'POST',
@@ -275,4 +302,4 @@ export async function callOdoo(
   return data.result;
 }
 
-export { ODOO_URL, ODOO_DB };
+export { getOdooUrl as ODOO_URL, getOdooDb as ODOO_DB };

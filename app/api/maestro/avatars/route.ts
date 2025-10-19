@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       salesperson_id: searchParams.get('salesperson_id') || undefined,
       health_score_min: searchParams.get('health_score_min') || undefined,
       churn_risk_min: searchParams.get('churn_risk_min') || undefined,
+      search: searchParams.get('search') || undefined,
       limit: searchParams.get('limit') || undefined,
       offset: searchParams.get('offset') || undefined,
       sort_by: searchParams.get('sort_by') || undefined,
@@ -54,6 +55,12 @@ export async function GET(request: NextRequest) {
     if (params.churn_risk_min !== undefined) {
       whereConditions.push(`churn_risk_score >= $${paramIndex}`);
       queryParams.push(params.churn_risk_min);
+      paramIndex++;
+    }
+
+    if (params.search !== undefined) {
+      whereConditions.push(`name ILIKE $${paramIndex}`);
+      queryParams.push(`%${params.search}%`);
       paramIndex++;
     }
 

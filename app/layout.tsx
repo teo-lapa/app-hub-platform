@@ -5,21 +5,29 @@ import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistration';
 import { PWAInstaller } from '@/components/pwa/PWAInstaller';
 import { Toaster } from 'react-hot-toast';
+import { ChatWidget } from '@/components/maestro/ChatWidget';
+import { OfflineIndicator } from '@/components/maestro/OfflineIndicator';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'LAPA App - Fornitore Finest Italian Food',
   description: 'Piattaforma LAPA per grossisti alimentari. Gestisci ordini ristoranti, clienti e dipendenti.',
-  keywords: 'LAPA, grossista, fornitore ristoranti, italian food, ordini, clienti, dipendenti, PWA',
+  keywords: 'LAPA, grossista, fornitore ristoranti, italian food, ordini, clienti, dipendenti, PWA, Maestro AI',
   authors: [{ name: 'LAPA Team' }],
-  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover, user-scalable=yes',
   robots: 'index, follow',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'LAPA App',
+    startupImage: [
+      {
+        url: '/logos/logo-monday.png',
+        media: '(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)',
+      },
+    ],
   },
   openGraph: {
     title: 'LAPA App - Fornitore Finest Italian Food',
@@ -31,12 +39,13 @@ export const metadata: Metadata = {
   other: {
     'mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-capable': 'yes',
-    'apple-mobile-web-app-status-bar-style': 'default',
+    'apple-mobile-web-app-status-bar-style': 'black-translucent',
     'apple-mobile-web-app-title': 'LAPA App',
     'application-name': 'LAPA App',
     'msapplication-TileColor': '#dc2626',
     'msapplication-config': '/browserconfig.xml',
     'theme-color': '#dc2626',
+    'format-detection': 'telephone=no',
   },
 };
 
@@ -56,6 +65,9 @@ export default function RootLayout({
         >
           <>
             {children}
+            <ChatWidget />
+            <OfflineIndicator />
+            <Toaster position="top-right" />
           </>
         </ThemeProvider>
       </body>

@@ -1,65 +1,53 @@
-// Client RPC per Odoo - connessione REALE come nell'HTML
+import { callOdoo } from '../odoo-auth';
+import { getOdooSessionManager } from './sessionManager';
+
+// Client RPC per Odoo con AUTO-RECONNECT quando sessione scade
 export class OdooRPCClient {
   private odooUrl: string;
   private sessionId?: string;
   private csrfToken?: string;
+  private useSessionManager: boolean;
 
-  constructor(odooUrl: string, sessionId?: string) {
+  constructor(odooUrl: string, sessionId?: string, useSessionManager: boolean = true) {
     this.odooUrl = odooUrl;
     this.sessionId = sessionId;
+    this.useSessionManager = useSessionManager;
   }
 
-  // Chiamata RPC generica come nell'HTML
+  // Chiamata RPC generica con AUTO-RECONNECT integrato
   async callKw(model: string, method: string, args: any[] = [], kwargs: any = {}): Promise<any> {
-    const headers: any = {
-      'Content-Type': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest'
-    };
-
-    if (this.sessionId) {
-      headers['Cookie'] = `session_id=${this.sessionId}`;
-    }
-
-    if (this.csrfToken) {
-      headers['X-CSRFToken'] = this.csrfToken;
-    }
-
-    const requestData = {
-      jsonrpc: '2.0',
-      method: 'call',
-      params: {
-        model: model,
-        method: method,
-        args: args,
-        kwargs: kwargs
-      },
-      id: Date.now()
-    };
-
-    console.log('📡 RPC Request:', { model, method, args });
+    console.log('📡 RPC Request:', { model, method, args: args.length, kwargs: Object.keys(kwargs).length });
 
     try {
-      const response = await fetch(`${this.odooUrl}/web/dataset/call_kw/${model}/${method}`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(requestData),
-        credentials: 'include'
+      // NEW: Use session manager for automatic session refresh and retry
+      if (this.useSessionManager && !this.sessionId) {
+        const sessionManager = getOdooSessionManager();
+        const result = await sessionManager.callKw(model, method, args, kwargs, 2); // 2 retries max
+
+        console.log('✅ RPC Success (via SessionManager):', {
+          model,
+          method,
+          resultCount: Array.isArray(result) ? result.length : 'single'
+        });
+
+        return result;
+      }
+
+      // FALLBACK: Use legacy callOdoo for backward compatibility
+      const cookies = this.sessionId ? `session_id=${this.sessionId}` : null;
+
+      // callOdoo gestisce automaticamente session expired e fa re-login
+      const result = await callOdoo(cookies, model, method, args, kwargs, true);
+
+      console.log('✅ RPC Success (via legacy):', {
+        model,
+        method,
+        resultCount: Array.isArray(result) ? result.length : 'single'
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+      return result;
 
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.error.data?.message || data.error.message || 'RPC Error');
-      }
-
-      console.log('✅ RPC Success:', { model, method, resultCount: Array.isArray(data.result) ? data.result.length : 'single' });
-      return data.result;
-
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ RPC Error:', error);
       throw error;
     }

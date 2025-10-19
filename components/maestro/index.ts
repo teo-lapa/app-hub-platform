@@ -9,6 +9,8 @@ export {
   LoadingSpinner
 } from './LoadingSkeleton';
 
+// Navigation Components
+export { HomeButton } from './HomeButton';
 
 // Chat Components
 export { ChatWidget } from './ChatWidget';

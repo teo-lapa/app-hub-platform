@@ -119,11 +119,13 @@ export async function GET(
       console.log('⚠️  maestro_interactions table not found, skipping');
     }
 
-    // 4. Fetch recent orders from Odoo
+    // 4. Fetch recent orders from Odoo (with robust error handling)
     let recentOrders: OrderFromOdoo[] = [];
     let odooError: string | null = null;
+    let odooWarning: string | null = null;
 
     try {
+      console.log(`🔄 [MAESTRO-API] Fetching orders from Odoo for partner ${avatar.odoo_partner_id}...`);
       const odooClient = createOdooRPCClient();
 
       // Fetch last 10 orders for this customer
@@ -139,12 +141,23 @@ export async function GET(
       );
 
       recentOrders = orders as OrderFromOdoo[];
-      console.log(`✅ Fetched ${recentOrders.length} orders from Odoo`);
+      console.log(`✅ [MAESTRO-API] Fetched ${recentOrders.length} orders from Odoo`);
 
     } catch (error: any) {
-      console.error('❌ Failed to fetch orders from Odoo:', error.message);
-      odooError = error.message;
-      // Don't fail the whole request, just return empty orders
+      const isSessionError = error.isSessionExpired || error.message?.includes('session') || error.message?.includes('Session');
+
+      if (isSessionError) {
+        console.error('❌ [MAESTRO-API] Odoo session error:', error.message);
+        odooError = 'Session expired';
+        odooWarning = 'Impossibile recuperare ordini da Odoo. Visualizzando solo dati sincronizzati.';
+      } else {
+        console.error('❌ [MAESTRO-API] Failed to fetch orders from Odoo:', error.message);
+        odooError = error.message || 'Unknown error';
+        odooWarning = 'Impossibile connettersi a Odoo al momento. Visualizzando solo dati sincronizzati.';
+      }
+
+      // Don't fail the whole request - graceful degradation
+      // Return empty orders array and show warning to user
     }
 
     // 5. Calculate revenue trend (last 6 months)
@@ -207,6 +220,7 @@ export async function GET(
         fetched_at: new Date().toISOString(),
         odoo_connection: odooError ? 'error' : 'success',
         odoo_error: odooError,
+        odoo_warning: odooWarning,
       }
     };
 

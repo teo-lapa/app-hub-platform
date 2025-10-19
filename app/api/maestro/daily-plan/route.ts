@@ -30,15 +30,21 @@ export async function GET(request: NextRequest) {
     const params = validation.data;
     const targetDate = params.date || new Date().toISOString().split('T')[0]; // Default: oggi
 
-    console.log(`📅 [MAESTRO-API] Generating daily plan for salesperson ${params.salesperson_id}, date: ${targetDate}`);
+    console.log(`📅 [MAESTRO-API] Generating daily plan for salesperson ${params.salesperson_id || 'ALL'}, date: ${targetDate}`);
 
-    // 2. Fetch tutti i clienti del venditore attivi
-    const avatarsResult = await sql`
-      SELECT * FROM customer_avatars
-      WHERE assigned_salesperson_id = ${params.salesperson_id}
-        AND is_active = true
-      ORDER BY churn_risk_score DESC, health_score ASC
-    `;
+    // 2. Fetch tutti i clienti del venditore attivi (or all if no salesperson specified)
+    const avatarsResult = params.salesperson_id
+      ? await sql`
+          SELECT * FROM customer_avatars
+          WHERE assigned_salesperson_id = ${params.salesperson_id}
+            AND is_active = true
+          ORDER BY churn_risk_score DESC, health_score ASC
+        `
+      : await sql`
+          SELECT * FROM customer_avatars
+          WHERE is_active = true
+          ORDER BY churn_risk_score DESC, health_score ASC
+        `;
 
     if (avatarsResult.rows.length === 0) {
       return NextResponse.json({
@@ -166,7 +172,7 @@ export async function GET(request: NextRequest) {
 
     const dailyPlan: DailyPlan = {
       date: new Date(targetDate),
-      salesperson_id: params.salesperson_id,
+      salesperson_id: params.salesperson_id || 0,
       salesperson_name: salesPersonName,
       urgent_customers: urgentCustomers.slice(0, 5), // Max 5 urgent
       high_priority_customers: highPriorityCustomers.slice(0, 5),

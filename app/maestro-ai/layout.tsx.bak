@@ -1,7 +1,6 @@
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { MaestroFiltersProvider } from '@/contexts/MaestroFiltersContext';
 import { Toaster } from 'react-hot-toast';
-import { HomeButton } from '@/components/maestro/HomeButton';
 
 export default function MaestroAILayout({
   children,
@@ -12,7 +11,6 @@ export default function MaestroAILayout({
     <QueryProvider>
       <MaestroFiltersProvider>
         {children}
-        <HomeButton />
         <Toaster
           position="top-right"
           toastOptions={{

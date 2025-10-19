@@ -110,9 +110,9 @@ export function hasMovedSignificantly(
 // ==================== CURRENCY UTILITIES ====================
 
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('it-IT', {
+  return new Intl.NumberFormat('de-CH', {
     style: 'currency',
-    currency: 'EUR'
+    currency: 'CHF'
   }).format(amount);
 }
 

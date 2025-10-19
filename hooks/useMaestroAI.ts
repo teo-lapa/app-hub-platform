@@ -219,9 +219,9 @@ export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 
         }
       });
 
+      // Return ALL performers sorted by revenue (not just top 5)
       const topPerformers = Array.from(salesMap.values())
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 5);
+        .sort((a, b) => b.revenue - a.revenue);
 
       // Revenue aggregation based on time range
       const now = new Date();

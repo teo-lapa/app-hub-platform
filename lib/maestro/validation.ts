@@ -11,6 +11,7 @@ export const getAvatarsQuerySchema = z.object({
   salesperson_id: z.coerce.number().int().positive().optional(),
   health_score_min: z.coerce.number().min(0).max(100).optional(),
   churn_risk_min: z.coerce.number().min(0).max(100).optional(),
+  search: z.string().min(1).max(200).optional(),
   limit: z.coerce.number().int().positive().max(10000).default(20),
   offset: z.coerce.number().int().nonnegative().default(0),
   sort_by: z.enum(['health_score', 'churn_risk_score', 'total_revenue', 'last_order_date']).default('churn_risk_score'),
@@ -50,7 +51,7 @@ export const createInteractionSchema = z.object({
 
 // Schema per GET /api/maestro/daily-plan
 export const getDailyPlanQuerySchema = z.object({
-  salesperson_id: z.coerce.number().int().positive(),
+  salesperson_id: z.coerce.number().int().positive().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // YYYY-MM-DD
 });
 

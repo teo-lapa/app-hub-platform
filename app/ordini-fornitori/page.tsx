@@ -94,10 +94,10 @@ const formatNumber = (num: number | null | undefined, decimals: number = 1): str
 };
 
 const formatCurrency = (amount: number | null | undefined): string => {
-  if (amount === null || amount === undefined) return '€0,00';
-  return new Intl.NumberFormat('it-IT', {
+  if (amount === null || amount === undefined) return 'CHF 0.00';
+  return new Intl.NumberFormat('de-CH', {
     style: 'currency',
-    currency: 'EUR',
+    currency: 'CHF',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(amount);

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Building2, MapPin, Phone, Mail, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Building2, MapPin, Phone, Mail, TrendingUp, AlertTriangle, X } from 'lucide-react';
 import Link from 'next/link';
 import { HealthScoreBadge } from './HealthScoreBadge';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -21,6 +21,7 @@ interface CustomerCardProps {
   };
   variant?: 'urgent' | 'opportunity' | 'default';
   onComplete?: (customerId: number) => void;
+  onRemove?: () => void;
 }
 
 const variantStyles = {
@@ -29,17 +30,28 @@ const variantStyles = {
   default: 'border-slate-700 bg-slate-800 hover:border-slate-600'
 };
 
-export function CustomerCard({ customer, variant = 'default', onComplete }: CustomerCardProps) {
+export function CustomerCard({ customer, variant = 'default', onComplete, onRemove }: CustomerCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -2 }}
       className={cn(
-        'border rounded-lg p-5 transition-all duration-200',
+        'border rounded-lg p-5 transition-all duration-200 relative',
         variantStyles[variant]
       )}
     >
+      {/* Remove button (if onRemove provided) */}
+      {onRemove && (
+        <button
+          onClick={onRemove}
+          className="absolute top-3 right-3 p-1.5 bg-slate-700/50 hover:bg-red-600 text-slate-400 hover:text-white rounded-md transition-colors z-10"
+          title="Rimuovi dalla lista"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+
       <div className="flex items-start justify-between gap-4">
         {/* Left: Company Info */}
         <div className="flex-1 min-w-0">
