@@ -417,6 +417,13 @@ Rispondi SOLO con JSON in questo formato:
       creates_requiring_approval: comparisonResult.corrections_needed.filter((c: any) => c.action === 'create' && c.requires_user_approval).length
     });
 
+    // 🔍 DEBUG: Log tutte le correzioni in dettaglio per diagnostica
+    console.log('🔍 [ANALYZE-COMPARE] Detailed corrections:');
+    comparisonResult.corrections_needed.forEach((correction: any, index: number) => {
+      console.log(`  ${index + 1}. ${correction.action} line ${correction.line_id || 'N/A'}:`, JSON.stringify(correction.changes || correction.new_line));
+      console.log(`     Reason: ${correction.reason}`);
+    });
+
     return NextResponse.json({
       success: true,
       parsed_invoice: parsedInvoice,

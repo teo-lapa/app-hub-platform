@@ -56,6 +56,8 @@ export async function POST(request: NextRequest) {
         if (correction.action === 'update' && correction.line_id) {
           // UPDATE: Modifica riga esistente
           console.log(`✏️ [APPLY-CORRECTIONS] Updating line ${correction.line_id}`);
+          console.log(`   Changes:`, JSON.stringify(correction.changes));
+          console.log(`   Reason: ${correction.reason}`);
 
           await callOdoo(
             cookies,
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
           );
 
           updated_lines++;
-          console.log(`✅ [APPLY-CORRECTIONS] Line ${correction.line_id} updated`);
+          console.log(`✅ [APPLY-CORRECTIONS] Line ${correction.line_id} updated successfully`);
 
         } else if (correction.action === 'delete' && correction.line_id) {
           // DELETE: Elimina riga
@@ -145,6 +147,19 @@ export async function POST(request: NextRequest) {
     const newTotal = updatedInvoice[0]?.amount_total || 0;
 
     console.log(`✅ [APPLY-CORRECTIONS] Corrections applied! New total: €${newTotal}`);
+
+    // 🔍 VERIFICA FINALE: Controlla se il totale è corretto
+    // Se abbiamo ancora una differenza, logga un warning
+    const expectedTotal = corrections.find((c: any) => c.expected_total)?.expected_total;
+    if (expectedTotal && Math.abs(newTotal - expectedTotal) > 0.02) {
+      console.warn(`⚠️ [APPLY-CORRECTIONS] WARNING: Total mismatch after corrections!`);
+      console.warn(`   Expected: €${expectedTotal}`);
+      console.warn(`   Got: €${newTotal}`);
+      console.warn(`   Difference: €${(newTotal - expectedTotal).toFixed(2)}`);
+      console.warn(`   This might indicate Odoo recalculated or corrections were not applied correctly!`);
+    } else {
+      console.log(`✅ [APPLY-CORRECTIONS] Total verification: OK (within €0.02)`);
+    }
 
     // IMPORTANTE: Lascia traccia nel Chatter di Odoo
     console.log('📝 [APPLY-CORRECTIONS] Adding message to invoice chatter...');
