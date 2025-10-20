@@ -82,19 +82,64 @@ IMPORTANTE:
 - Sii ESTREMAMENTE preciso nei numeri e nelle quantità
 - **FONDAMENTALE**: Cerca la PARTITA IVA del fornitore (P.IVA, VAT, Partita IVA, ecc.)
 
+🚨 PRIORITÀ ASSOLUTA - QUANTITÀ CORRETTE:
+**CERCA SEMPRE PRIMA IL PACKING LIST** per le quantità esatte!
+- Se il documento contiene una pagina "PACKING LIST" (di solito pagina 2 o 3), USA QUELLA per le quantità!
+- Nel PACKING LIST cerca la colonna "PESO NETTO" - QUELLE sono le quantità VERE!
+- Nella fattura principale le quantità potrebbero essere peso lordo o arrotondate - IGNORA quelle se c'è il packing list
+- **FORMATO NUMERI**: I numeri possono avere punti come separatori delle migliaia (es: "83.646" = 83646 KG, "22.502" = 22502 KG)
+- Rimuovi i punti/virgole delle migliaia e converti correttamente (es: "83.646 KG" diventa quantity: 83.646)
+
+ESEMPIO MONTEVECCHIO (con PACKING LIST):
+Fattura dice: "PROSCIUTTO DI PARMA - Quantità: 10,000 KG"
+PACKING LIST dice: "PROSCIUTTO DI PARMA - PESO NETTO: 83.646"
+✅ USA: quantity: 83.646 (dal PACKING LIST "PESO NETTO")
+❌ NON usare: 10.0 (dalla fattura)
+
+ESEMPIO con più prodotti dal PACKING LIST pagina 3:
+| DESCRIZIONE | PESO NETTO | TARA | PESO LORDO |
+|-------------|------------|------|------------|
+| PROSCIUTTO DI PARMA DOP CLASSICO S/O ADDOBBO PULITO A COLTELLO SV | 83.646 | 5 | |
+| GRAN CULATTA PULITA A COLTELLO SV | 22.502 | | |
+| FIOR DI FESA LAVATO E SCOTENNATO SV | 57.976 | | |
+
+Output corretto:
+[
+  { "description": "PROSCIUTTO DI PARMA DOP CLASSICO S/O ADDOBBO PULITO A COLTELLO SV", "quantity": 83.646, "unit": "KG" },
+  { "description": "GRAN CULATTA PULITA A COLTELLO SV", "quantity": 22.502, "unit": "KG" },
+  { "description": "FIOR DI FESA LAVATO E SCOTENNATO SV", "quantity": 57.976, "unit": "KG" }
+]
+
 ⚠️ ATTENZIONE AI LOTTI E SCADENZE (PRIORITÀ MASSIMA):
 - Cerca le scritte "Lotto/Scadenza:" o "Lotto:" o numeri di lotto espliciti
+- Cerca anche nella tabella del PACKING LIST la colonna "NOM. COMBINATA" per i lotti
+- Nella fattura principale cerca "Cod. Lotto: XXXXXX"
 - Il formato delle date potrebbe essere gg/mm/aaaa (es: 02/11/2025) - converti in YYYY-MM-DD
 - **LOTTO - ORDINE DI PRIORITÀ**:
-  1. Cerca prima un vero numero di lotto (es: "197040/00", "LOTTO123", "L123456")
-  2. Se NON trovi un lotto esplicito MA c'è "NOMENCLATURA: XXXXXXXX", usa il codice NOMENCLATURA come lotto
+  1. Cerca prima un vero numero di lotto (es: "AQ25030", "CA2500103", "MY2500213", "197040/00", "LOTTO123")
+  2. Se NON trovi un lotto esplicito MA c'è "NOMENCLATURA: XXXXXXXX" o "NOM. COMBINATA: XXXXXXXX", usa quel codice come lotto
   3. **SE NON trovi né lotto né nomenclatura MA c'è una scadenza, USA LA DATA DI SCADENZA come lot_number** (es: se scadenza è "2025-11-02", metti lot_number: "2025-11-02")
   4. Solo se non c'è né lotto né nomenclatura né scadenza, metti null per lot_number
 - Possono esserci più righe dello stesso prodotto con lotti/scadenze diverse - crea prodotti separati!
 
 ESEMPI DI PARSING CORRETTO:
 
-Esempio 1 - Con nomenclatura:
+Esempio 1 - Montevecchio con Cod. Lotto dalla fattura:
+Testo fattura pagina 1: "PROSCIUTTO DI PARMA DOP CLASSICO S/O ADDOBBO PULITO A COLTELLO SV
+Cod. Lotto: AQ25030
+Quantità: 10,000 KG"
+PACKING LIST pagina 3: "PESO NETTO: 83.646"
+Output: {
+  "article_code": "PAR026",
+  "description": "PROSCIUTTO DI PARMA DOP CLASSICO S/O ADDOBBO PULITO A COLTELLO SV",
+  "quantity": 83.646,  // ← Dal PACKING LIST!
+  "unit": "KG",
+  "lot_number": "AQ25030",  // ← Dalla fattura!
+  "expiry_date": null,
+  "variant": ""
+}
+
+Esempio 2 - Con nomenclatura:
 Testo: "Julienne Taglio Napoli in vasc. da kg 2,5 - Monella
 NOMENCLATURA: 04061030
 Lotto/Scadenza: 02/11/2025"
@@ -108,7 +153,7 @@ Output: {
   "variant": ""
 }
 
-Esempio 2 - Solo scadenza (SENZA lotto):
+Esempio 3 - Solo scadenza (SENZA lotto):
 Testo: "Parmigiano Reggiano DOP 24 mesi
 Scadenza: 15/06/2026"
 Output: {
