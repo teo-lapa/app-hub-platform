@@ -81,6 +81,14 @@ export default function ValidaFatturePage() {
         body: JSON.stringify({ invoice_id: invoice.id })
       });
 
+      // Controlla se la risposta è JSON valido
+      const detailContentType = detailResponse.headers.get('content-type');
+      if (!detailContentType || !detailContentType.includes('application/json')) {
+        const errorText = await detailResponse.text();
+        console.error('❌ Server returned non-JSON response:', errorText.substring(0, 200));
+        throw new Error('Errore del server nel recupero dettagli fattura.');
+      }
+
       const detailData = await detailResponse.json();
       if (!detailData.success) throw new Error(detailData.error);
 
@@ -109,6 +117,14 @@ export default function ValidaFatturePage() {
           draft_invoice: fullInvoice
         })
       });
+
+      // Controlla se la risposta è JSON valido
+      const contentType = compareResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const errorText = await compareResponse.text();
+        console.error('❌ Server returned non-JSON response:', errorText.substring(0, 200));
+        throw new Error('Errore del server. Verifica i log o riprova.');
+      }
 
       const compareData = await compareResponse.json();
       if (!compareData.success) throw new Error(compareData.error);

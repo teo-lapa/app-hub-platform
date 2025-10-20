@@ -7,6 +7,9 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Consenti fino a 60 secondi per l'analisi AI
+
 /**
  * POST /api/valida-fatture/analyze-and-compare
  *
@@ -381,8 +384,26 @@ Rispondi SOLO con JSON in questo formato:
 
   } catch (error: any) {
     console.error('❌ [ANALYZE-COMPARE] Error:', error);
+
+    // Gestione errori specifici
+    let errorMessage = 'Errore analisi e confronto';
+
+    if (error.message?.includes('JSON')) {
+      errorMessage = 'Claude non ha restituito un formato JSON valido. Riprova.';
+    } else if (error.message?.includes('API key')) {
+      errorMessage = 'Errore configurazione API Anthropic';
+    } else if (error.message?.includes('timeout') || error.message?.includes('ETIMEDOUT')) {
+      errorMessage = 'Timeout durante l\'analisi. Il PDF potrebbe essere troppo grande o complesso.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
     return NextResponse.json(
-      { error: error.message || 'Errore analisi e confronto' },
+      {
+        success: false,
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     );
   }

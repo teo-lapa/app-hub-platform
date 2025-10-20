@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 /**
  * POST /api/valida-fatture/get-invoice-detail
  *
