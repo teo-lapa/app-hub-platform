@@ -82,7 +82,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ [GET-INVOICE-DETAIL] Loaded ${lines.length} invoice lines`);
 
-    // 3. Recupera allegati con contenuto base64
+    // 3. Recupera allegati (solo metadata, non il contenuto base64)
+    // Il PDF verrà scaricato dal backend quando necessario per evitare 413 errors
     const attachments = await callOdoo(
       cookies,
       'ir.attachment',
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
         ]
       ],
       {
-        fields: ['id', 'name', 'datas', 'mimetype', 'file_size', 'create_date'],
+        fields: ['id', 'name', 'mimetype', 'file_size', 'create_date'],
         order: 'create_date desc'
       }
     );
