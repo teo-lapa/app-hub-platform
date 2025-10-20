@@ -24,8 +24,6 @@ const getOdooDb = () => process.env.ODOO_DB;
 export async function getOdooSession(userCookies?: string) {
   const ODOO_URL = getOdooUrl();
   const ODOO_DB = getOdooDb();
-  const ODOO_LOGIN = getOdooLogin();
-  const ODOO_PASSWORD = getOdooPassword();
 
   console.log('🔐 [ODOO-AUTH] Autenticazione con:', ODOO_URL);
   console.log('🔐 [ODOO-AUTH] Cookies ricevuti:', userCookies ? 'SI' : 'NO');

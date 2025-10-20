@@ -36,8 +36,8 @@ export class OdooRPCClient {
       // FALLBACK: Use legacy callOdoo for backward compatibility
       const cookies = this.sessionId ? `session_id=${this.sessionId}` : null;
 
-      // callOdoo gestisce automaticamente session expired e fa re-login
-      const result = await callOdoo(cookies, model, method, args, kwargs, true);
+      // callOdoo ora richiede che l'utente sia loggato
+      const result = await callOdoo(cookies, model, method, args, kwargs);
 
       console.log('✅ RPC Success (via legacy):', {
         model,
