@@ -1,11 +1,44 @@
-const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
-const ODOO_DB = process.env.NEXT_PUBLIC_ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24517859';
-const ODOO_USERNAME = process.env.ODOO_USERNAME || 'admin';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'admin';
+/**
+ * 🚨🚨🚨 DEPRECATED - NON USARE QUESTO FILE 🚨🚨🚨
+ *
+ * Questo file viola le regole di autenticazione.
+ * USA INVECE: lib/odoo-auth.ts con getOdooSession() e callOdoo()
+ *
+ * MOTIVAZIONE:
+ * - Questo file si autenticava con credenziali hardcoded
+ * - Violava il principio "Utente loggato = accesso Odoo"
+ * - NON rispettava il cookie odoo_session_id dell'utente
+ *
+ * MIGRAZIONE:
+ * Prima:
+ *   const client = await getOdooClient();
+ *   const data = await client.searchRead('res.partner', [], ['id', 'name']);
+ *
+ * Dopo:
+ *   import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+ *   import { cookies } from 'next/headers';
+ *
+ *   const userCookies = cookies().toString();
+ *   const { cookies: odooCookies } = await getOdooSession(userCookies);
+ *   const data = await callOdoo(odooCookies, 'res.partner', 'search_read', [], {
+ *     fields: ['id', 'name']
+ *   });
+ *
+ * Vedi: ODOO_AUTH_SYSTEM.md per dettagli completi
+ */
+
+// Lazy eval env vars
+const ODOO_URL = process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL;
+const ODOO_DB = process.env.ODOO_DB || process.env.NEXT_PUBLIC_ODOO_DB;
+
+if (!ODOO_URL) {
+  throw new Error('ODOO_URL or NEXT_PUBLIC_ODOO_URL environment variable is required');
+}
+if (!ODOO_DB) {
+  throw new Error('ODOO_DB or NEXT_PUBLIC_ODOO_DB environment variable is required');
+}
 
 interface OdooClient {
-  uid: number | null;
-  sessionId: string | null;
   searchRead: (model: string, domain: any[], fields: string[], limit?: number, offset?: number) => Promise<any[]>;
   create: (model: string, values: any[]) => Promise<number[]>;
   write: (model: string, ids: number[], values: any) => Promise<boolean>;
@@ -13,186 +46,27 @@ interface OdooClient {
 }
 
 class OdooRPC implements OdooClient {
-  uid: number | null = null;
-  sessionId: string | null = null;
-
-  private async authenticate() {
-    try {
-      const response = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {
-            db: ODOO_DB,
-            login: ODOO_USERNAME,
-            password: ODOO_PASSWORD
-          },
-          id: 1
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.result && data.result.uid) {
-        this.uid = data.result.uid;
-        this.sessionId = data.result.session_id;
-        return true;
-      }
-
-      throw new Error('Authentication failed');
-    } catch (error) {
-      console.error('Odoo authentication error:', error);
-      throw error;
-    }
-  }
-
-  private async ensureAuthenticated() {
-    if (!this.uid) {
-      await this.authenticate();
-    }
-  }
-
   async searchRead(model: string, domain: any[], fields: string[], limit: number = 100, offset: number = 0): Promise<any[]> {
-    await this.ensureAuthenticated();
-
-    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `session_id=${this.sessionId}`
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model: model,
-          method: 'search_read',
-          args: [],
-          kwargs: {
-            domain: domain,
-            fields: fields,
-            limit: limit,
-            offset: offset
-          }
-        },
-        id: Math.floor(Math.random() * 1000000)
-      })
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      console.error('Odoo searchRead error:', data.error);
-      throw new Error(data.error.message || 'Search failed');
-    }
-
-    return data.result || [];
+    throw new Error('🚨 DEPRECATED: Usa lib/odoo-auth.ts invece. Vedi documentazione in questo file.');
   }
 
   async create(model: string, values: any[]): Promise<number[]> {
-    await this.ensureAuthenticated();
-
-    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `session_id=${this.sessionId}`
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model: model,
-          method: 'create',
-          args: values,
-          kwargs: {}
-        },
-        id: Math.floor(Math.random() * 1000000)
-      })
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      console.error('Odoo create error:', data.error);
-      throw new Error(data.error.message || 'Create failed');
-    }
-
-    return data.result || [];
+    throw new Error('🚨 DEPRECATED: Usa lib/odoo-auth.ts invece. Vedi documentazione in questo file.');
   }
 
   async write(model: string, ids: number[], values: any): Promise<boolean> {
-    await this.ensureAuthenticated();
-
-    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `session_id=${this.sessionId}`
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model: model,
-          method: 'write',
-          args: [ids, values],
-          kwargs: {}
-        },
-        id: Math.floor(Math.random() * 1000000)
-      })
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      console.error('Odoo write error:', data.error);
-      throw new Error(data.error.message || 'Write failed');
-    }
-
-    return data.result || false;
+    throw new Error('🚨 DEPRECATED: Usa lib/odoo-auth.ts invece. Vedi documentazione in questo file.');
   }
 
   async call(model: string, method: string, args: any[]): Promise<any> {
-    await this.ensureAuthenticated();
-
-    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `session_id=${this.sessionId}`
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model: model,
-          method: method,
-          args: args,
-          kwargs: {}
-        },
-        id: Math.floor(Math.random() * 1000000)
-      })
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      console.error('Odoo call error:', data.error);
-      throw new Error(data.error.message || 'Call failed');
-    }
-
-    return data.result;
+    throw new Error('🚨 DEPRECATED: Usa lib/odoo-auth.ts invece. Vedi documentazione in questo file.');
   }
 }
 
 let clientInstance: OdooRPC | null = null;
 
 export async function getOdooClient(): Promise<OdooClient> {
+  console.warn('⚠️ DEPRECATION WARNING: getOdooClient() è deprecated. Usa lib/odoo-auth.ts invece.');
   if (!clientInstance) {
     clientInstance = new OdooRPC();
   }
