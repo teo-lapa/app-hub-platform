@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
 
       let estimatedTotal = 0;
       moveLines.forEach((ml: any) => {
-        const qty = ml.qty_done || ml.quantity || 0;
-        const price = productPriceMap.get(ml.product_id[0]) || 0;
+        const qty = Number(ml.qty_done || ml.quantity || 0);
+        const price = Number(productPriceMap.get(ml.product_id[0]) || 0);
         estimatedTotal += qty * price;
       });
 
