@@ -2652,8 +2652,8 @@ export default function DeliveryPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-            onClick={() => setShowPaymentModal(false)}
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+            onClick={() => {}}
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -2662,7 +2662,13 @@ export default function DeliveryPage() {
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-xl p-6 max-w-md w-full"
             >
-              <h2 className="text-xl font-bold mb-4">Pagamento alla Consegna</h2>
+              <h2 className="text-xl font-bold mb-2">💰 Pagamento alla Consegna</h2>
+
+              <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <p className="text-sm text-orange-800">
+                  <strong>⚠️ Obbligatorio:</strong> Devi inserire foto ricevuta E nota per confermare
+                </p>
+              </div>
 
               <div className="mb-4">
                 <label className="block text-sm font-semibold mb-2">Metodo Pagamento</label>
@@ -2752,47 +2758,34 @@ export default function DeliveryPage() {
                 )}
               </div>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setPaymentReceiptPhoto(null);
-                    setPaymentNote('');
-                    setShowPaymentModal(false);
-                  }}
-                  disabled={isValidating}
-                  className={`flex-1 py-3 rounded-lg font-semibold ${
-                    isValidating
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Annulla
-                </button>
-                <button
-                  onClick={processPayment}
-                  disabled={!paymentReceiptPhoto || !paymentNote.trim() || isValidating}
-                  className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
-                    isValidating
-                      ? 'bg-green-400 cursor-not-allowed text-white'
-                      : paymentReceiptPhoto && paymentNote.trim()
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  {isValidating ? (
-                    <>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                      />
-                      <span>Salvando...</span>
-                    </>
-                  ) : (
-                    '💰 Conferma Pagamento'
-                  )}
-                </button>
-              </div>
+              {/* Solo pulsante Conferma - OBBLIGATORIO */}
+              <button
+                onClick={processPayment}
+                disabled={!paymentReceiptPhoto || !paymentNote.trim() || isValidating}
+                className={`w-full py-4 rounded-lg font-semibold text-lg flex items-center justify-center gap-2 ${
+                  isValidating
+                    ? 'bg-green-400 cursor-not-allowed text-white'
+                    : paymentReceiptPhoto && paymentNote.trim()
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {isValidating ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                    />
+                    <span>Salvando...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>💰</span>
+                    <span>Conferma Pagamento</span>
+                  </>
+                )}
+              </button>
             </motion.div>
           </motion.div>
         )}
