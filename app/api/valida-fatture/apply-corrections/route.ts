@@ -84,14 +84,14 @@ export async function POST(request: NextRequest) {
           console.log(`✅ [APPLY-CORRECTIONS] Line ${correction.line_id} deleted`);
 
         } else if (correction.action === 'create' && correction.new_line) {
-          // CREATE: Nuova riga (solo se approvata dall'utente)
+          // CREATE: Nuova riga (solo se non richiede approvazione)
           if (!correction.requires_user_approval) {
             console.log(`➕ [APPLY-CORRECTIONS] Creating new line`);
 
             const newLineData = {
               move_id: invoice_id,
               ...correction.new_line,
-              display_type: false, // Assicura che non sia una riga di sezione
+              // NON impostare display_type, Odoo lo gestisce automaticamente
             };
 
             await callOdoo(
