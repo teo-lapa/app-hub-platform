@@ -7,6 +7,8 @@ import { cookies } from 'next/headers';
  * GET /api/test-lot-trace?lot=FPI060825
  */
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

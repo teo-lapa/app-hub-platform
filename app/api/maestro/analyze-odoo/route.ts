@@ -18,6 +18,8 @@ import type {
 } from '@/lib/maestro/types';
 import { createErrorResponse } from '@/lib/maestro/utils';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   console.log('🔍 [MAESTRO] Analyzing Odoo data...');
 

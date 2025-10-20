@@ -7,6 +7,9 @@ import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
  * Recupera tutte le fatture fornitori in bozza con info sugli allegati
  * Opzionale: filtra per azienda con query param company_id
  */
+
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     console.log('📋 [LIST-DRAFT-INVOICES] Starting...');

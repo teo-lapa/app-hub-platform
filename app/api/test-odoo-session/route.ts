@@ -7,6 +7,9 @@ const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-245178
 /**
  * TEST ENDPOINT - Verifica se la sessione Odoo è valida
  */
+
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     console.log('🧪 [TEST-ODOO-SESSION] Verifica sessione Odoo...');

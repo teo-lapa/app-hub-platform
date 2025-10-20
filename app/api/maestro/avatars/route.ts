@@ -10,6 +10,8 @@ import { sql } from '@vercel/postgres';
 import { getAvatarsQuerySchema, validateRequest } from '@/lib/maestro/validation';
 import type { CustomerAvatar } from '@/lib/maestro/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // 1. Parse e valida query params

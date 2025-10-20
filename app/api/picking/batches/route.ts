@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     console.log('🚛 [API] Recupero batch REALI da Odoo via RPC...');

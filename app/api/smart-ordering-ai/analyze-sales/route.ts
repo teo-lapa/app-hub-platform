@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { salesAnalyzer } from '@/lib/smart-ordering/sales-analyzer';
 
 export const maxDuration = 120;
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {

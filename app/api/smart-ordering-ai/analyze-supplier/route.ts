@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { leadTimeAnalyzer } from '@/lib/smart-ordering/lead-time-analyzer';
 
 export const maxDuration = 120;
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
