@@ -4,6 +4,9 @@ import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Gemini image generation can take up to 30 seconds
+
 export async function POST(request: NextRequest) {
   try {
     const sessionId = await getOdooSessionId();
@@ -33,15 +36,9 @@ export async function POST(request: NextRequest) {
 
     console.log('📝 Generating image with prompt:', imagePrompt);
 
-    // Generate image with Gemini 2.5 Flash Image
-    const result = await model.generateContent({
-      contents: [{
-        role: 'user',
-        parts: [{
-          text: imagePrompt
-        }]
-      }]
-    });
+    // Generate image with Gemini 2.5 Flash Image (Nano Banana)
+    // Using simplified API format for image generation
+    const result = await model.generateContent(imagePrompt);
 
     const response = result.response;
 
