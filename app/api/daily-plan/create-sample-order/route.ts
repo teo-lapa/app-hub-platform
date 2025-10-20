@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOdoo, searchReadOdoo, callOdoo } from '@/lib/odoo/odoo-helper';
+import { getOdooSession } from '@/lib/odoo-auth';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -18,8 +19,6 @@ interface CreateSampleOrderRequest {
   outcome: string;
   notes: string;
   sampleProducts: SampleOrderItem[];
-  userId: number;
-  userName: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -31,10 +30,28 @@ export async function POST(request: NextRequest) {
       interactionType,
       outcome,
       notes,
-      sampleProducts,
-      userId,
-      userName
+      sampleProducts
     } = body;
+
+    // Get current user from session
+    const userCookies = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(userCookies || undefined);
+
+    if (!uid) {
+      return NextResponse.json({
+        success: false,
+        error: 'Sessione non valida'
+      }, { status: 401 });
+    }
+
+    // Fetch user info from Odoo
+    const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
+    const users = await searchReadOdoo('res.users', [
+      ['id', '=', uidNum]
+    ], ['name']);
+
+    const userName = users && users.length > 0 ? users[0].name : 'Venditore';
+    const userId = uidNum;
 
     if (!customerId || !sampleProducts || sampleProducts.length === 0) {
       return NextResponse.json({

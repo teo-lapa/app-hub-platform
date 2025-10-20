@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Phone, Video, Mail, CheckCircle, XCircle, MinusCircle, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { SampleProductsSelector } from '@/components/daily-plan/SampleProductsSelector';
-import { useAuth } from '@/lib/auth/AuthContext';
 
 interface InteractionModalProps {
   isOpen: boolean;
@@ -34,7 +33,6 @@ export function InteractionModal({
   customerId,
   customerName
 }: InteractionModalProps) {
-  const { user } = useAuth();
   const [interactionType, setInteractionType] = useState<InteractionType>('visit');
   const [outcome, setOutcome] = useState<Outcome>('neutral');
   const [sampleFeedback, setSampleFeedback] = useState<SampleFeedback>('indifferent');
@@ -63,7 +61,7 @@ export function InteractionModal({
 
       // 1. Se ci sono campioni, crea l'ordine campioni in Odoo
       let sampleOrderId: number | null = null;
-      if (selectedProducts.length > 0 && user) {
+      if (selectedProducts.length > 0) {
         const sampleOrderResponse = await fetch('/api/daily-plan/create-sample-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -78,9 +76,7 @@ export function InteractionModal({
               productName: p.name,
               quantity: p.quantity,
               uom: p.uom
-            })),
-            userId: user.id,
-            userName: user.name
+            }))
           })
         });
 
