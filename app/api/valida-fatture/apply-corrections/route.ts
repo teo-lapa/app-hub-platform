@@ -59,20 +59,11 @@ export async function POST(request: NextRequest) {
           console.log(`   Changes:`, JSON.stringify(correction.changes));
           console.log(`   Reason: ${correction.reason}`);
 
-          // IMPORTANTE: Se abbiamo quantity E price_unit, calcoliamo price_subtotal manualmente
-          // per evitare che Odoo lo ricalcoli con i suoi arrotondamenti
-          const updatedChanges = { ...correction.changes };
-          if (updatedChanges.quantity !== undefined && updatedChanges.price_unit !== undefined) {
-            const subtotal = updatedChanges.quantity * updatedChanges.price_unit;
-            updatedChanges.price_subtotal = Math.round(subtotal * 100) / 100; // Arrotonda a 2 decimali
-            console.log(`   🔢 Calculated price_subtotal: €${updatedChanges.price_subtotal}`);
-          }
-
           await callOdoo(
             cookies,
             'account.move.line',
             'write',
-            [[correction.line_id], updatedChanges]
+            [[correction.line_id], correction.changes]
           );
 
           updated_lines++;

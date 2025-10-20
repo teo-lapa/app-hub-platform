@@ -314,17 +314,33 @@ CORREZIONE:
 
 🔢 GESTIONE ARROTONDAMENTI E CENTESIMI:
 Se tutte le righe sono corrette MA il totale finale ha differenza > €0.02:
-1. Identifica la riga con subtotal più alto
-2. Aggiusta price_unit di quella riga per far tornare il totale esatto
-3. L'aggiustamento deve essere MINIMO (pochi centesimi)
-4. Aggiungi reason: "Aggiustamento arrotondamento per far tornare totale fattura"
+1. NON modificare le righe esistenti!
+2. Crea una NUOVA riga di aggiustamento visibile:
+   - action: "create"
+   - name: "Aggiustamento arrotondamento"
+   - quantity: 1
+   - price_unit: [differenza] (può essere negativo se bozza > PDF, positivo se bozza < PDF)
+   - account_id: usa lo stesso account_id della prima riga prodotto
+3. Aggiungi reason: "Riga di aggiustamento arrotondamento: differenza €X tra PDF e totale calcolato"
+4. requires_user_approval: false (correzione automatica per arrotondamenti)
 
 ESEMPIO ARROTONDAMENTO:
 Tutte le righe OK individualmente, ma somma totale:
 - Bozza: €2056.24
 - PDF: €2056.17
-- Differenza: €0.07 (arrotondamenti cumulati)
-SOLUZIONE: Trova la riga più grande e aggiusta price_unit di €0.07/quantity
+- Differenza: -€0.07 (bozza ha €0.07 in più, serve aggiustamento NEGATIVO)
+SOLUZIONE:
+{
+  "action": "create",
+  "new_line": {
+    "name": "Aggiustamento arrotondamento",
+    "quantity": 1,
+    "price_unit": -0.07,
+    "account_id": [copia account_id dalla prima riga prodotto della bozza]
+  },
+  "reason": "Riga di aggiustamento arrotondamento: differenza -€0.07 tra PDF (€2056.17) e bozza (€2056.24)",
+  "requires_user_approval": false
+}
 
 Rispondi SOLO con JSON in questo formato:
 {
