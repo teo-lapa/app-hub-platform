@@ -1050,6 +1050,98 @@ export default function DeliveryPage() {
     return response.json();
   }
 
+  // Nuova funzione: Prima valida la consegna, poi apre modal pagamento con importo
+  async function handlePaymentCompletion() {
+    if (!currentDelivery) {
+      showToast('Errore: consegna non trovata', 'error');
+      return;
+    }
+
+    // Previeni chiamate multiple
+    if (isValidating) {
+      console.log('⚠️ Validazione già in corso, ignoro chiamata duplicata');
+      return;
+    }
+
+    setIsValidating(true);
+    setLoading(true);
+
+    try {
+      // STEP 1: Valida la consegna (chiude il picking in Odoo)
+      console.log('💰 [PAYMENT FLOW] STEP 1: Validazione consegna...');
+
+      const validatePayload = {
+        picking_id: currentDelivery.id,
+        products: scaricoProducts.map(p => ({
+          move_line_id: p.move_line_id || p.id,
+          product_id: p.product_id,
+          name: p.name,
+          qty: p.qty,
+          delivered: p.delivered || 0,
+          picked: p.picked || false
+        })),
+        completion_type: 'validate_only', // Flag per validare senza completare
+        notes: 'Validazione per incasso pagamento alla consegna'
+      };
+
+      if (isOnline) {
+        await validateDeliveryOnServer(validatePayload);
+        console.log('✅ [PAYMENT FLOW] Consegna validata con successo');
+      } else {
+        showToast('Devi essere online per registrare un pagamento', 'error');
+        setLoading(false);
+        setIsValidating(false);
+        return;
+      }
+
+      // STEP 2: Ottieni l'importo della fattura
+      console.log('💰 [PAYMENT FLOW] STEP 2: Recupero importo fattura...');
+
+      const invoiceResponse = await fetch('/api/delivery/get-invoice-amount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ picking_id: currentDelivery.id })
+      });
+
+      if (!invoiceResponse.ok) {
+        throw new Error('Errore recupero importo fattura');
+      }
+
+      const invoiceData = await invoiceResponse.json();
+      console.log('💰 [PAYMENT FLOW] Importo ricevuto:', invoiceData);
+
+      // Aggiorna il currentDelivery con i dati della fattura
+      setCurrentDelivery({
+        ...currentDelivery,
+        amount_total: invoiceData.amount_total,
+        payment_status: invoiceData.payment_status,
+        state: 'done', // Ora è completata
+        completed: true
+      });
+
+      // STEP 3: Pre-compila l'importo e apri il modal pagamento
+      setPaymentAmount(invoiceData.amount_total?.toString() || '0');
+
+      if (invoiceData.is_estimate) {
+        showToast('⚠️ ' + invoiceData.message, 'warning');
+      }
+
+      setShowPaymentModal(true);
+      showToast('✅ Consegna validata! Inserisci i dati del pagamento', 'success');
+
+      // Ricarica le consegne in background per aggiornare lo stato
+      loadDeliveries();
+
+    } catch (error: any) {
+      console.error('❌ [PAYMENT FLOW] Errore:', error);
+      showToast('Errore: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+      setIsValidating(false);
+    }
+  }
+
   // ==================== RESO ====================
   async function openResoModal() {
     if (!currentDelivery) {
@@ -2025,7 +2117,7 @@ export default function DeliveryPage() {
               <button
                 onClick={() => {
                   setShowCompletionOptionsModal(false);
-                  setShowPaymentModal(true);
+                  handlePaymentCompletion();
                 }}
                 className="w-full p-5 bg-orange-600 text-white rounded-lg font-semibold text-lg flex items-center justify-center gap-3 hover:bg-orange-700"
               >

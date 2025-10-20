@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import type { Delivery } from '../types';
 
 interface DeliveryMapProps {
@@ -16,6 +16,7 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
   const vehicleMarkerRef = useRef<google.maps.Marker | null>(null);
   const hasInitializedBounds = useRef(false); // Per fare fitBounds solo la prima volta
   const [mapLoaded, setMapLoaded] = useState(false);
+  const prevDeliveriesRef = useRef<string>(''); // Per tracciare cambiamenti reali
 
   useEffect(() => {
     // Load Google Maps script
@@ -61,9 +62,10 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
     if (!googleMapRef.current || !mapLoaded) return;
 
     if (currentPosition) {
-      // Se il marker esiste già, aggiorna solo la posizione
+      // Se il marker esiste già, aggiorna solo la posizione con animazione smooth
       if (vehicleMarkerRef.current) {
-        vehicleMarkerRef.current.setPosition(currentPosition);
+        const newPosition = new google.maps.LatLng(currentPosition.lat, currentPosition.lng);
+        vehicleMarkerRef.current.setPosition(newPosition);
       } else {
         // Altrimenti crea il marker
         vehicleMarkerRef.current = new google.maps.Marker({
@@ -88,16 +90,31 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
           },
           title: '🚚 Il tuo furgone',
           zIndex: 1000,
-          optimized: true
+          optimized: false // Disabilita per evitare tremolii
         });
       }
     }
   }, [currentPosition, mapLoaded]);
 
+  // Crea una chiave stabile per i deliveries basata su id e stato
+  const deliveriesKey = useMemo(() => {
+    return deliveries
+      .map(d => `${d.id}-${d.state}-${d.completed}`)
+      .sort()
+      .join('|');
+  }, [deliveries]);
+
   useEffect(() => {
     if (!googleMapRef.current || !mapLoaded) return;
 
+    // Controlla se i deliveries sono realmente cambiati
+    if (prevDeliveriesRef.current === deliveriesKey) {
+      console.log('🗺️ [MAP] Deliveries non cambiati, skip aggiornamento markers');
+      return;
+    }
+
     console.log('🗺️ [MAP] Aggiornamento markers con', deliveries.length, 'consegne');
+    prevDeliveriesRef.current = deliveriesKey;
 
     // Clear existing markers (solo marker delle consegne, non il veicolo)
     markersRef.current.forEach(marker => marker.setMap(null));
@@ -156,7 +173,7 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
         map: googleMapRef.current,
         icon: pinIcon,
         title: delivery.customerName,
-        optimized: true, // Abilita rendering ottimizzato per evitare tremolii
+        optimized: false, // Disabilita per evitare tremolii su Android/zoom
         zIndex: isCompleted ? 1 : 10
       });
 
@@ -222,7 +239,7 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
       hasInitializedBounds.current = true; // Segna come inizializzato
       console.log('🎯 [MAP] Bounds aggiustati per mostrare tutti i markers (SOLO PRIMA VOLTA)');
     }
-  }, [deliveries, onMarkerClick, mapLoaded]);
+  }, [deliveriesKey, onMarkerClick, mapLoaded, deliveries]);
 
   return (
     <div className="h-full w-full relative">

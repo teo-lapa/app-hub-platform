@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 [DELIVERY] Domain filtro con driver_id=' + driverId + ':', JSON.stringify(domain));
 
-    // Load pickings con move_ids (prodotti)
+    // Load pickings con move_ids (prodotti) + sale_id e amount_total per pagamenti
     const pickings = await callOdoo(
       cookies,
       'stock.picking',
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
         fields: [
           'id', 'name', 'partner_id', 'scheduled_date',
           'state', 'note', 'origin', 'driver_id',
-          'backorder_id', 'move_ids'
+          'backorder_id', 'move_ids', 'sale_id'
         ],
         limit: 50,
         order: 'scheduled_date ASC'
@@ -310,7 +310,10 @@ export async function GET(request: NextRequest) {
         scheduledDate: picking.scheduled_date,
         backorderId: picking.backorder_id,
         isBackorder: picking.backorder_id ? true : false,
-        completed: picking.state === 'done'
+        completed: picking.state === 'done',
+        sale_id: picking.sale_id || null,
+        amount_total: null, // Verrà calcolato dopo la validazione
+        payment_status: null // Verrà impostato dopo la validazione
       });
     }
 
