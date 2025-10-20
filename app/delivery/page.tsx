@@ -91,6 +91,16 @@ export default function DeliveryPage() {
   const [resoNote, setResoNote] = useState('');
   const [resoPhoto, setResoPhoto] = useState<string | null>(null);
 
+  // Estados giustificazione scarico parziale
+  const [showPartialJustificationModal, setShowPartialJustificationModal] = useState(false);
+  const [partialJustificationText, setPartialJustificationText] = useState('');
+  const [partialJustificationAudio, setPartialJustificationAudio] = useState<Blob | null>(null);
+  const [isRecordingPartial, setIsRecordingPartial] = useState(false);
+  const [audioRecorder, setAudioRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // Estados mappa
   const mapRef = useRef<any>(null);
   const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -903,6 +913,135 @@ export default function DeliveryPage() {
     } finally {
       setLoading(false);
       setIsValidating(false);
+    }
+  }
+
+  // Controlla se ci sono prodotti non scaricati completamente
+  function handleCheckPartialDelivery() {
+    const hasPartialProducts = scaricoProducts.some(p => {
+      const delivered = p.delivered || 0;
+      const requested = p.qty || 0;
+      return delivered > 0 && delivered < requested;
+    });
+
+    const hasUndeliveredProducts = scaricoProducts.some(p => {
+      const delivered = p.delivered || 0;
+      const requested = p.qty || 0;
+      return delivered === 0 && requested > 0;
+    });
+
+    // Se ci sono prodotti non completamente scaricati, chiedi giustificazione
+    if (hasPartialProducts || hasUndeliveredProducts) {
+      console.log('⚠️ [PARTIAL DELIVERY] Rilevati prodotti non completamente scaricati');
+      setShowPartialJustificationModal(true);
+    } else {
+      // Tutto scaricato, procedi normale
+      setShowCompletionOptionsModal(true);
+    }
+  }
+
+  // Funzioni per registrazione audio giustificazione
+  async function startRecordingJustification() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        setPartialJustificationAudio(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      setAudioChunks(chunks);
+      setAudioRecorder(recorder);
+      recorder.start();
+      setIsRecordingPartial(true);
+      setRecordingTime(0);
+
+      // Timer per mostrare durata registrazione
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+
+      console.log('🎤 Registrazione audio iniziata');
+    } catch (error) {
+      console.error('Errore avvio registrazione:', error);
+      showToast('Errore accesso microfono', 'error');
+    }
+  }
+
+  function stopRecordingJustification() {
+    if (audioRecorder && isRecordingPartial) {
+      audioRecorder.stop();
+      setIsRecordingPartial(false);
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+      console.log('🎤 Registrazione audio fermata');
+    }
+  }
+
+  function deleteJustificationAudio() {
+    setPartialJustificationAudio(null);
+    setRecordingTime(0);
+  }
+
+  async function confirmPartialJustification() {
+    // Verifica che ci sia almeno un motivo (testo O audio)
+    if (!partialJustificationText.trim() && !partialJustificationAudio) {
+      showToast('⚠️ Devi fornire un motivo (testo o audio)!', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Salva la giustificazione nel chatter Odoo
+      const formData = new FormData();
+      formData.append('picking_id', currentDelivery!.id.toString());
+      formData.append('driver_name', session?.user?.name || 'Autista');
+
+      if (partialJustificationText.trim()) {
+        formData.append('text_note', partialJustificationText);
+      }
+
+      if (partialJustificationAudio) {
+        formData.append('audio_note', partialJustificationAudio, 'giustificazione.webm');
+      }
+
+      // Salva nel chatter via API
+      const response = await fetch('/api/delivery/save-partial-justification', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore salvataggio giustificazione');
+      }
+
+      console.log('✅ Giustificazione scarico parziale salvata nel chatter');
+      showToast('✅ Giustificazione salvata!', 'success');
+
+      // Chiudi modal giustificazione e apri quello completion
+      setShowPartialJustificationModal(false);
+      setPartialJustificationText('');
+      setPartialJustificationAudio(null);
+      setShowCompletionOptionsModal(true);
+
+    } catch (error: any) {
+      console.error('❌ Errore salvataggio giustificazione:', error);
+      showToast('Errore salvataggio: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -1827,7 +1966,7 @@ export default function DeliveryPage() {
                 <div className="text-center"><div className="text-xl font-bold text-orange-500">{scaricoStats.remaining.toFixed(2)}</div><div className="text-[10px] text-gray-500">Mancanti</div></div>
               </div>
               {currentDelivery?.state !== 'done' && (
-                <button onClick={() => setShowCompletionOptionsModal(true)} className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold text-sm">✅ Completa</button>
+                <button onClick={handleCheckPartialDelivery} className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold text-sm">✅ Completa</button>
               )}
             </div>
           </div>
@@ -2131,6 +2270,126 @@ export default function DeliveryPage() {
               >
                 Annulla
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Giustificazione Scarico Parziale */}
+      <AnimatePresence>
+        {showPartialJustificationModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+            onClick={() => {}}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-orange-600">⚠️ Scarico Parziale</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {session?.user?.name || 'Autista'}, specifica il motivo
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-700 mb-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                <strong>Attenzione:</strong> Non hai scaricato tutti i prodotti.
+                Devi fornire un motivo (audio O testo) per procedere.
+              </p>
+
+              {/* Opzione 1: Registrazione Audio */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold mb-2">🎤 Registra Audio</label>
+                {!partialJustificationAudio ? (
+                  <button
+                    onClick={isRecordingPartial ? stopRecordingJustification : startRecordingJustification}
+                    className={`w-full py-4 rounded-lg font-semibold text-lg flex items-center justify-center gap-2 ${
+                      isRecordingPartial
+                        ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                    disabled={loading}
+                  >
+                    <span className="text-2xl">{isRecordingPartial ? '⏹️' : '🎤'}</span>
+                    <span>
+                      {isRecordingPartial
+                        ? `Registrando... ${recordingTime}s`
+                        : 'Inizia Registrazione'
+                      }
+                    </span>
+                  </button>
+                ) : (
+                  <div className="bg-green-50 border border-green-300 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">✅</span>
+                        <span className="font-semibold text-green-700">Audio registrato ({recordingTime}s)</span>
+                      </div>
+                      <button
+                        onClick={deleteJustificationAudio}
+                        className="text-red-600 hover:text-red-800 font-semibold"
+                      >
+                        🗑️ Elimina
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Divisore OR */}
+              <div className="flex items-center gap-2 mb-6">
+                <div className="flex-1 h-px bg-gray-300"></div>
+                <span className="text-gray-500 font-semibold">OPPURE</span>
+                <div className="flex-1 h-px bg-gray-300"></div>
+              </div>
+
+              {/* Opzione 2: Nota Testo */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold mb-2">✍️ Scrivi Nota</label>
+                <textarea
+                  value={partialJustificationText}
+                  onChange={(e) => setPartialJustificationText(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
+                  rows={4}
+                  placeholder="Es. Cliente ha rifiutato alcuni prodotti, merce danneggiata, ecc..."
+                  disabled={loading}
+                />
+              </div>
+
+              {/* Pulsanti Azione */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowPartialJustificationModal(false);
+                    setPartialJustificationText('');
+                    setPartialJustificationAudio(null);
+                  }}
+                  className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
+                  disabled={loading}
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={confirmPartialJustification}
+                  className={`flex-1 py-3 rounded-lg font-semibold text-white ${
+                    (partialJustificationText.trim() || partialJustificationAudio) && !loading
+                      ? 'bg-green-600 hover:bg-green-700'
+                      : 'bg-gray-400 cursor-not-allowed'
+                  }`}
+                  disabled={loading || (!partialJustificationText.trim() && !partialJustificationAudio)}
+                >
+                  {loading ? 'Salvataggio...' : '✅ Conferma e Procedi'}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
