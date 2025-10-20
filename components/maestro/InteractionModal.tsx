@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Phone, Video, Mail, CheckCircle, XCircle, MinusCircle, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { SampleProductsSelector } from '@/components/daily-plan/SampleProductsSelector';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 interface InteractionModalProps {
   isOpen: boolean;
@@ -16,31 +18,30 @@ type InteractionType = 'visit' | 'call' | 'email';
 type Outcome = 'positive' | 'neutral' | 'negative';
 type SampleFeedback = 'good' | 'bad' | 'indifferent';
 
+interface SelectedProduct {
+  id: number;
+  name: string;
+  code: string;
+  barcode?: string;
+  image?: string;
+  uom: string;
+  quantity: number;
+}
+
 export function InteractionModal({
   isOpen,
   onClose,
   customerId,
   customerName
 }: InteractionModalProps) {
+  const { user } = useAuth();
   const [interactionType, setInteractionType] = useState<InteractionType>('visit');
   const [outcome, setOutcome] = useState<Outcome>('neutral');
   const [sampleFeedback, setSampleFeedback] = useState<SampleFeedback>('indifferent');
-  const [samplesGiven, setSamplesGiven] = useState<string[]>([]);
-  const [sampleInput, setSampleInput] = useState('');
+  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
   const [orderGenerated, setOrderGenerated] = useState(false);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleAddSample = () => {
-    if (sampleInput.trim()) {
-      setSamplesGiven([...samplesGiven, sampleInput.trim()]);
-      setSampleInput('');
-    }
-  };
-
-  const handleRemoveSample = (index: number) => {
-    setSamplesGiven(samplesGiven.filter((_, i) => i !== index));
-  };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -54,12 +55,50 @@ export function InteractionModal({
       };
 
       // Map samples to API format
-      const samples_given = samplesGiven.map(sample => ({
-        product_id: 0, // Placeholder - future enhancement
-        product_name: sample,
-        quantity: 1
+      const samples_given = selectedProducts.map(product => ({
+        product_id: product.id,
+        product_name: product.name,
+        quantity: product.quantity
       }));
 
+      // 1. Se ci sono campioni, crea l'ordine campioni in Odoo
+      let sampleOrderId: number | null = null;
+      if (selectedProducts.length > 0 && user) {
+        const sampleOrderResponse = await fetch('/api/daily-plan/create-sample-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerId,
+            customerName,
+            interactionType,
+            outcome,
+            notes,
+            sampleProducts: selectedProducts.map(p => ({
+              productId: p.id,
+              productName: p.name,
+              quantity: p.quantity,
+              uom: p.uom
+            })),
+            userId: user.id,
+            userName: user.name
+          })
+        });
+
+        const sampleOrderData = await sampleOrderResponse.json();
+
+        if (sampleOrderData.success) {
+          sampleOrderId = sampleOrderData.orderId;
+          toast.success(`Ordine campioni ${sampleOrderId} creato con successo!`, {
+            duration: 5000,
+            icon: '🎁'
+          });
+        } else {
+          console.warn('Errore creazione ordine campioni:', sampleOrderData.error);
+          toast.error('Errore nella creazione dell\'ordine campioni');
+        }
+      }
+
+      // 2. Registra l'interazione nel sistema Maestro
       const response = await fetch('/api/maestro/interactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -68,7 +107,7 @@ export function InteractionModal({
           interaction_type: interactionType,
           outcome: outcomeMap[outcome],
           samples_given: samples_given.length > 0 ? samples_given : undefined,
-          order_placed: orderGenerated,
+          order_placed: orderGenerated || (sampleOrderId !== null),
           notes: notes || undefined
         })
       });
@@ -81,7 +120,7 @@ export function InteractionModal({
       // Reset form
       setInteractionType('visit');
       setOutcome('neutral');
-      setSamplesGiven([]);
+      setSelectedProducts([]);
       setSampleFeedback('indifferent');
       setOrderGenerated(false);
       setNotes('');
@@ -185,50 +224,35 @@ export function InteractionModal({
                   </div>
                 </div>
 
-                {/* Samples Given */}
+                {/* Samples Given - Nuovo componente con ricerca prodotti */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Campioni consegnati
-                  </label>
-                  <div className="flex gap-2 mb-3">
-                    <input
-                      type="text"
-                      value={sampleInput}
-                      onChange={(e) => setSampleInput(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddSample()}
-                      placeholder="Nome prodotto..."
-                      className="flex-1 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                    />
-                    <button
-                      onClick={handleAddSample}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    >
-                      Aggiungi
-                    </button>
-                  </div>
-                  {samplesGiven.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {samplesGiven.map((sample, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-sm text-blue-300"
-                        >
-                          <Package className="h-3 w-3" />
-                          {sample}
-                          <button
-                            onClick={() => handleRemoveSample(idx)}
-                            className="ml-1 hover:text-red-400"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
+                  <SampleProductsSelector
+                    selectedProducts={selectedProducts}
+                    onProductsChange={setSelectedProducts}
+                  />
+
+                  {/* Info Banner quando ci sono campioni selezionati */}
+                  {selectedProducts.length > 0 && (
+                    <div className="mt-3 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                      <div className="flex gap-3">
+                        <div className="text-2xl">🎁</div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-semibold text-green-400 mb-1">
+                            Ordine Campioni Omaggio
+                          </h4>
+                          <p className="text-xs text-slate-300">
+                            Confermando, verrà creato un ordine in Odoo con tutti i dettagli:
+                            data, ora, venditore, cliente, prodotti, note ed esito della visita.
+                            L'ordine resterà in <strong>bozza</strong> per revisione ufficio.
+                          </p>
                         </div>
-                      ))}
+                      </div>
                     </div>
                   )}
                 </div>
 
                 {/* Sample Feedback */}
-                {samplesGiven.length > 0 && (
+                {selectedProducts.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-3">
                       Feedback campioni
@@ -305,7 +329,15 @@ export function InteractionModal({
                       Salvando...
                     </>
                   ) : (
-                    'Salva interazione'
+                    <>
+                      {selectedProducts.length > 0 ? (
+                        <>
+                          🎁 Conferma e Crea Ordine Campioni ({selectedProducts.length})
+                        </>
+                      ) : (
+                        'Salva interazione'
+                      )}
+                    </>
                   )}
                 </button>
               </div>
