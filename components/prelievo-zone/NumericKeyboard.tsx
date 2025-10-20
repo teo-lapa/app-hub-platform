@@ -20,79 +20,146 @@ export function NumericKeyboard({
   onConfirm,
   initialValue = 0,
   maxValue,
-  title = "Inserisci Quantità",
+  title = "Calcolatrice",
   productName
 }: NumericKeyboardProps) {
   const [value, setValue] = useState(initialValue.toString());
+  const [displayValue, setDisplayValue] = useState(initialValue.toString());
+  const [operation, setOperation] = useState<string | null>(null);
+  const [previousValue, setPreviousValue] = useState<string | null>(null);
+  const [waitingForOperand, setWaitingForOperand] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setValue(initialValue.toString());
+      setDisplayValue(initialValue.toString());
+      setOperation(null);
+      setPreviousValue(null);
+      setWaitingForOperand(false);
       setError(null);
     }
   }, [isOpen, initialValue]);
 
+  const calculate = (firstOperand: number, secondOperand: number, op: string): number => {
+    switch (op) {
+      case '+':
+        return firstOperand + secondOperand;
+      case '-':
+        return firstOperand - secondOperand;
+      case '×':
+        return firstOperand * secondOperand;
+      case '÷':
+        if (secondOperand === 0) {
+          throw new Error('Divisione per zero');
+        }
+        return firstOperand / secondOperand;
+      default:
+        return secondOperand;
+    }
+  };
+
   const handleKeyPress = (key: string) => {
     setError(null);
 
+    // Clear (C)
     if (key === 'C') {
       setValue('0');
+      setDisplayValue('0');
+      setOperation(null);
+      setPreviousValue(null);
+      setWaitingForOperand(false);
       return;
     }
 
+    // Backspace (←)
     if (key === '←') {
-      if (value.length > 1) {
-        setValue(value.slice(0, -1));
+      if (waitingForOperand) return;
+
+      if (displayValue.length > 1) {
+        const newValue = displayValue.slice(0, -1);
+        setDisplayValue(newValue);
+        setValue(newValue);
       } else {
+        setDisplayValue('0');
         setValue('0');
       }
       return;
     }
 
+    // Decimal point (.)
     if (key === '.') {
-      if (!value.includes('.')) {
-        setValue(value + '.');
+      if (waitingForOperand) {
+        setDisplayValue('0.');
+        setValue('0.');
+        setWaitingForOperand(false);
+      } else if (!displayValue.includes('.')) {
+        const newValue = displayValue + '.';
+        setDisplayValue(newValue);
+        setValue(newValue);
       }
       return;
     }
 
-    // Aggiungi numero
-    if (value === '0' && key !== '.') {
+    // Operations (+, -, ×, ÷)
+    if (['+', '-', '×', '÷'].includes(key)) {
+      const currentValue = parseFloat(displayValue);
+
+      if (previousValue !== null && operation && !waitingForOperand) {
+        try {
+          const result = calculate(parseFloat(previousValue), currentValue, operation);
+          setDisplayValue(result.toString());
+          setValue(result.toString());
+          setPreviousValue(result.toString());
+        } catch (err: any) {
+          setError(err.message);
+          return;
+        }
+      } else {
+        setPreviousValue(displayValue);
+      }
+
+      setOperation(key);
+      setWaitingForOperand(true);
+      return;
+    }
+
+    // Equals (=)
+    if (key === '=') {
+      if (previousValue !== null && operation) {
+        try {
+          const result = calculate(parseFloat(previousValue), parseFloat(displayValue), operation);
+          setDisplayValue(result.toString());
+          setValue(result.toString());
+          setPreviousValue(null);
+          setOperation(null);
+          setWaitingForOperand(true);
+        } catch (err: any) {
+          setError(err.message);
+        }
+      }
+      return;
+    }
+
+    // Numbers (0-9)
+    if (waitingForOperand) {
+      setDisplayValue(key);
       setValue(key);
+      setWaitingForOperand(false);
     } else {
-      const newValue = value + key;
-
-      // Rimuovi verifica max value - permetti quantità superiore
-      // if (maxValue !== undefined) {
-      //   const numValue = parseFloat(newValue);
-      //   if (numValue > maxValue) {
-      //     setError(`Max: ${maxValue}`);
-      //     // Vibrazione per feedback errore
-      //     if ('vibrate' in navigator) {
-      //       navigator.vibrate(100);
-      //     }
-      //     return;
-      //   }
-      // }
-
+      const newValue = displayValue === '0' ? key : displayValue + key;
+      setDisplayValue(newValue);
       setValue(newValue);
     }
   };
 
   const handleConfirm = () => {
-    const numValue = parseFloat(value);
+    const numValue = parseFloat(displayValue);
 
     if (isNaN(numValue) || numValue < 0) {
       setError('Valore non valido');
       return;
     }
-
-    // Rimuovi controllo max value - permetti quantità superiore
-    // if (maxValue !== undefined && numValue > maxValue) {
-    //   setError(`Il valore non può superare ${maxValue}`);
-    //   return;
-    // }
 
     // Vibrazione per feedback conferma
     if ('vibrate' in navigator) {
@@ -103,17 +170,18 @@ export function NumericKeyboard({
     onClose();
   };
 
+  // Layout calcolatrice con operazioni
   const keys = [
-    ['7', '8', '9'],
-    ['4', '5', '6'],
-    ['1', '2', '3'],
-    ['.', '0', '←']
+    ['7', '8', '9', '÷'],
+    ['4', '5', '6', '×'],
+    ['1', '2', '3', '-'],
+    ['.', '0', '=', '+']
   ];
 
   if (!isOpen) return null;
 
-  const displayValue = parseFloat(value) || 0;
-  const percentage = maxValue ? Math.min((displayValue / maxValue) * 100, 100) : 0;
+  const currentDisplayValue = parseFloat(displayValue) || 0;
+  const percentage = maxValue ? Math.min((currentDisplayValue / maxValue) * 100, 100) : 0;
 
   return (
     <AnimatePresence>
@@ -156,8 +224,15 @@ export function NumericKeyboard({
           {/* Display */}
           <div className="glass-strong p-4 border-b border-white/20">
             <div className="text-center">
+              {/* Mostra operazione in corso */}
+              {previousValue && operation && (
+                <div className="text-sm text-blue-400 mb-1 font-mono">
+                  {previousValue} {operation}
+                </div>
+              )}
+
               <div className="text-4xl font-bold mb-2 font-mono">
-                {value}
+                {displayValue}
               </div>
 
               {maxValue !== undefined && (
@@ -192,42 +267,48 @@ export function NumericKeyboard({
 
           {/* Keyboard */}
           <div className="glass-strong p-4 rounded-b-xl">
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              {/* Clear button */}
+            {/* Clear and Delete buttons */}
+            <div className="grid grid-cols-2 gap-2 mb-2">
               <button
                 onClick={() => handleKeyPress('C')}
-                className="glass py-4 px-4 rounded-lg hover:bg-red-500/20 transition-colors text-red-400 font-semibold"
+                className="glass py-3 px-4 rounded-lg hover:bg-red-500/20 transition-colors text-red-400 font-semibold"
               >
                 C
               </button>
-
-              {/* Empty space */}
-              <div></div>
-
-              {/* Delete button */}
               <button
                 onClick={() => handleKeyPress('←')}
-                className="glass py-4 px-4 rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center"
+                className="glass py-3 px-4 rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center gap-2"
               >
-                <Delete className="w-5 h-5" />
+                <Delete className="w-4 h-4" />
+                Cancella
               </button>
             </div>
 
-            {/* Number Keys */}
+            {/* Number Keys with Operations - 4 columns */}
             {keys.map((row, rowIndex) => (
-              <div key={rowIndex} className="grid grid-cols-3 gap-2 mb-2">
-                {row.map((key) => (
-                  <button
-                    key={key}
-                    onClick={() => handleKeyPress(key)}
-                    className={`glass py-4 px-4 rounded-lg hover:bg-white/20 transition-all text-lg font-semibold
-                      ${key === '0' ? 'col-span-1' : ''}
-                      ${key === '←' ? 'flex items-center justify-center' : ''}
-                    `}
-                  >
-                    {key === '←' ? <Delete className="w-5 h-5" /> : key}
-                  </button>
-                ))}
+              <div key={rowIndex} className="grid grid-cols-4 gap-2 mb-2">
+                {row.map((key) => {
+                  const isOperation = ['+', '-', '×', '÷', '='].includes(key);
+                  const isEquals = key === '=';
+
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => handleKeyPress(key)}
+                      className={`py-4 px-4 rounded-lg transition-all text-lg font-semibold
+                        ${isEquals
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : isOperation
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                            : 'glass hover:bg-white/20'
+                        }
+                        ${operation === key && !isEquals ? 'ring-2 ring-blue-400' : ''}
+                      `}
+                    >
+                      {key}
+                    </button>
+                  );
+                })}
               </div>
             ))}
 
