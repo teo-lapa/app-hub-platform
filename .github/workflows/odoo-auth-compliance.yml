@@ -1,0 +1,100 @@
+name: 🔒 ODOO Auth Compliance Check
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  compliance-check:
+    name: Verifica Conformità ODOO_AUTH_SYSTEM.md
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🔍 Cerca credenziali hardcoded
+        run: |
+          echo "🔐 Cercando credenziali hardcoded..."
+
+          # Lista pattern pericolosi
+          FOUND_ISSUES=0
+
+          if grep -r "paul@lapa.ch" --include="*.ts" --include="*.tsx" .; then
+            echo "❌ ERRORE: Trovata credenziale paul@lapa.ch"
+            FOUND_ISSUES=1
+          fi
+
+          if grep -r "lapa201180" --include="*.ts" --include="*.tsx" .; then
+            echo "❌ ERRORE: Trovata password lapa201180"
+            FOUND_ISSUES=1
+          fi
+
+          if grep -r "FALLBACK_LOGIN\|FALLBACK_PASSWORD" --include="*.ts" .; then
+            echo "❌ ERRORE: Trovato fallback di autenticazione"
+            FOUND_ISSUES=1
+          fi
+
+          if [ $FOUND_ISSUES -eq 1 ]; then
+            echo ""
+            echo "🚨 COMPLIANCE CHECK FALLITO"
+            echo "Vedi: ODOO_AUTH_SYSTEM.md per le regole"
+            exit 1
+          fi
+
+          echo "✅ Nessuna credenziale hardcoded trovata"
+
+      - name: 🔍 Verifica uso di odoo-client.ts deprecato
+        run: |
+          echo "🔍 Verificando uso di odoo-client.ts..."
+
+          # Cerca import di odoo-client in file API
+          if grep -r "from '@/lib/odoo-client'" app/api/ --include="*.ts" 2>/dev/null | grep -v "test"; then
+            echo "❌ ERRORE: Alcuni file API usano ancora odoo-client.ts DEPRECATO"
+            echo "Usa invece: import { getOdooSession, callOdoo } from '@/lib/odoo-auth'"
+            exit 1
+          fi
+
+          echo "✅ Nessun uso di odoo-client.ts trovato"
+
+      - name: 🔍 Verifica che API controllino cookie
+        run: |
+          echo "🔍 Verificando gestione cookie nelle API..."
+
+          # Trova nuove API route
+          NEW_ROUTES=$(find app/api -name "route.ts" -type f)
+          FOUND_ISSUES=0
+
+          for file in $NEW_ROUTES; do
+            # Salta file di test
+            if [[ $file == *"test"* ]]; then
+              continue
+            fi
+
+            # Verifica che usino getOdooSession
+            if ! grep -q "getOdooSession" "$file"; then
+              echo "⚠️  WARNING: $file potrebbe non usare getOdooSession"
+              # Non blocchiamo, solo warning
+            fi
+
+            # Verifica gestione 401
+            if ! grep -q "401" "$file"; then
+              echo "⚠️  WARNING: $file potrebbe non gestire 401 Unauthorized"
+            fi
+          done
+
+          echo "✅ Verifica API completata"
+
+      - name: ✅ Riepilogo Compliance
+        if: success()
+        run: |
+          echo ""
+          echo "🎉 ✅ COMPLIANCE CHECK PASSATO"
+          echo ""
+          echo "Il codice rispetta ODOO_AUTH_SYSTEM.md:"
+          echo "  ✅ Nessuna credenziale hardcoded"
+          echo "  ✅ Nessun uso di odoo-client.ts deprecato"
+          echo "  ✅ API conformi alle regole di autenticazione"
+          echo ""

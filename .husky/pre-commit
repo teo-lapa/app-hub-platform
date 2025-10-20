@@ -1,0 +1,70 @@
+#!/bin/sh
+# 🚨 PRE-COMMIT HOOK - Verifica conformità ODOO_AUTH_SYSTEM.md
+
+echo "🔍 Verificando conformità ODOO_AUTH_SYSTEM.md..."
+
+# Cerca credenziali hardcoded
+echo "🔐 Controllo credenziali hardcoded..."
+
+# Lista di pattern pericolosi
+DANGEROUS_PATTERNS=(
+  "paul@lapa.ch"
+  "lapa201180"
+  "FALLBACK_LOGIN"
+  "FALLBACK_PASSWORD"
+  "|| 'admin'"
+  "|| \"admin\""
+  "password.*=.*['\"].*['\"]"
+)
+
+FOUND_ISSUES=0
+
+for pattern in "${DANGEROUS_PATTERNS[@]}"; do
+  if git diff --cached --name-only | xargs grep -l "$pattern" 2>/dev/null; then
+    echo "❌ ERRORE: Trovata credenziale hardcoded: $pattern"
+    FOUND_ISSUES=1
+  fi
+done
+
+# Verifica uso di odoo-client.ts deprecato in nuovi file
+echo "🔍 Controllo uso di lib/odoo-client.ts deprecato..."
+NEW_FILES=$(git diff --cached --name-only --diff-filter=A | grep "\.ts$\|\.tsx$")
+
+for file in $NEW_FILES; do
+  if grep -q "from.*odoo-client" "$file" 2>/dev/null; then
+    echo "❌ ERRORE: $file usa odoo-client.ts DEPRECATO"
+    echo "   Usa invece: import { getOdooSession, callOdoo } from '@/lib/odoo-auth'"
+    FOUND_ISSUES=1
+  fi
+done
+
+# Verifica che nuove API route controllino i cookie
+API_FILES=$(git diff --cached --name-only --diff-filter=A | grep "app/api/.*route\.ts$")
+
+for file in $API_FILES; do
+  if ! grep -q "cookies()" "$file" 2>/dev/null; then
+    echo "⚠️  WARNING: $file potrebbe non controllare i cookie utente"
+    echo "   Verifica che usi getOdooSession(cookies().toString())"
+  fi
+done
+
+if [ $FOUND_ISSUES -eq 1 ]; then
+  echo ""
+  echo "🚨🚨🚨 COMMIT BLOCCATO 🚨🚨🚨"
+  echo ""
+  echo "Il tuo codice viola le regole di ODOO_AUTH_SYSTEM.md"
+  echo ""
+  echo "REGOLE:"
+  echo "  ❌ NESSUNA credenziale hardcoded"
+  echo "  ❌ NESSUN uso di odoo-client.ts"
+  echo "  ✅ Usa getOdooSession() e callOdoo()"
+  echo "  ✅ Verifica cookie odoo_session_id"
+  echo "  ✅ Ritorna 401 se utente non loggato"
+  echo ""
+  echo "Vedi: app-hub-platform/ODOO_AUTH_SYSTEM.md"
+  echo ""
+  exit 1
+fi
+
+echo "✅ Verifica completata - Codice conforme!"
+exit 0
