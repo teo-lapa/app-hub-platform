@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import { cookies } from 'next/headers';
+import { getOdooClient } from '@/lib/odoo-client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,28 +12,21 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ✅ Usa sessione utente loggato
-    const userCookies = cookies().toString();
-    const { cookies: odooCookies } = await getOdooSession(userCookies);
+    const client = await getOdooClient();
 
     // Cerca quants nell'ubicazione
-    const quants = await callOdoo(
-      odooCookies,
+    const quants = await client.searchRead(
       'stock.quant',
-      'search_read',
-      [],
-      {
-        domain: [
-          ['location_id', '=', locationId],
-          ['quantity', '>', 0]
-        ],
-        fields: [
-          'id', 'product_id', 'location_id', 'lot_id', 'quantity',
-          'inventory_quantity', 'inventory_date', 'last_count_date', 'inventory_diff_quantity',
-          'user_id', 'product_uom_id'
-        ],
-        limit: 100
-      }
+      [
+        ['location_id', '=', locationId],
+        ['quantity', '>', 0]
+      ],
+      [
+        'id', 'product_id', 'location_id', 'lot_id', 'quantity',
+        'inventory_quantity', 'inventory_date', 'last_count_date', 'inventory_diff_quantity',
+        'user_id', 'product_uom_id'
+      ],
+      100
     );
 
     if (!quants || quants.length === 0) {
@@ -52,16 +44,11 @@ export async function POST(req: NextRequest) {
 
       if (!productMap.has(productId)) {
         // Carica dettagli prodotto
-        const products = await callOdoo(
-          odooCookies,
+        const products = await client.searchRead(
           'product.product',
-          'search_read',
-          [],
-          {
-            domain: [['id', '=', productId]],
-            fields: ['id', 'name', 'default_code', 'barcode', 'image_128'],
-            limit: 1
-          }
+          [['id', '=', productId]],
+          ['id', 'name', 'default_code', 'barcode', 'image_128'],
+          1
         );
 
         if (products && products.length > 0) {
@@ -118,16 +105,11 @@ export async function POST(req: NextRequest) {
             existingLot.qty += quant.quantity;
           } else {
             // Carica dettagli lotto
-            const lots = await callOdoo(
-              odooCookies,
+            const lots = await client.searchRead(
               'stock.lot',
-              'search_read',
-              [],
-              {
-                domain: [['id', '=', quant.lot_id[0]]],
-                fields: ['id', 'name', 'expiration_date'],
-                limit: 1
-              }
+              [['id', '=', quant.lot_id[0]]],
+              ['id', 'name', 'expiration_date'],
+              1
             );
 
             const lotData = {
@@ -173,20 +155,11 @@ export async function POST(req: NextRequest) {
       products
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Errore caricamento prodotti:', error);
-
-    // ✅ Se utente non loggato, ritorna 401
-    if (error.message?.includes('non autenticato') || error.message?.includes('Devi fare login')) {
-      return NextResponse.json({
-        success: false,
-        error: 'Devi fare login per accedere a questa funzione'
-      }, { status: 401 });
-    }
-
     return NextResponse.json({
       success: false,
       error: 'Errore nel caricamento dei prodotti'
-    }, { status: 500 });
+    });
   }
 }

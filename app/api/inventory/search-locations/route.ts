@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import { cookies } from 'next/headers';
+import { getOdooClient } from '@/lib/odoo-client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,26 +12,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ✅ Usa sessione utente loggato
-    const userCookies = cookies().toString();
-    const { cookies: odooCookies } = await getOdooSession(userCookies);
+    const client = await getOdooClient();
 
     // Cerca ubicazioni per nome o barcode
-    const locations = await callOdoo(
-      odooCookies,
+    const locations = await client.searchRead(
       'stock.location',
-      'search_read',
-      [],
-      {
-        domain: [
-          ['usage', '=', 'internal'],
-          '|',
-          ['name', 'ilike', query],
-          ['barcode', 'ilike', query]
-        ],
-        fields: ['id', 'name', 'barcode', 'display_name'],
-        limit: 50
-      }
+      [
+        ['usage', '=', 'internal'],
+        '|',
+        ['name', 'ilike', query],
+        ['barcode', 'ilike', query]
+      ],
+      ['id', 'name', 'barcode', 'display_name'],
+      50
     );
 
     return NextResponse.json({
@@ -40,20 +32,11 @@ export async function POST(req: NextRequest) {
       locations: locations || []
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Errore ricerca ubicazioni:', error);
-
-    // ✅ Se utente non loggato, ritorna 401
-    if (error.message?.includes('non autenticato') || error.message?.includes('Devi fare login')) {
-      return NextResponse.json({
-        success: false,
-        error: 'Devi fare login per accedere a questa funzione'
-      }, { status: 401 });
-    }
-
     return NextResponse.json({
       success: false,
       error: 'Errore nella ricerca ubicazioni'
-    }, { status: 500 });
+    });
   }
 }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import { cookies } from 'next/headers';
+import { getOdooClient } from '@/lib/odoo-client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,9 +12,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ✅ Usa sessione utente loggato
-    const userCookies = cookies().toString();
-    const { cookies: odooCookies } = await getOdooSession(userCookies);
+    const client = await getOdooClient();
 
     // Cerca disponibilità in altre ubicazioni (incluso buffer)
     const domain: any[] = [
@@ -28,16 +25,11 @@ export async function POST(req: NextRequest) {
       domain.push(['location_id', '!=', excludeLocationId]);
     }
 
-    const quants = await callOdoo(
-      odooCookies,
+    const quants = await client.searchRead(
       'stock.quant',
-      'search_read',
-      [],
-      {
-        domain,
-        fields: ['id', 'location_id', 'quantity', 'lot_id', 'product_uom_id'],
-        limit: 100
-      }
+      domain,
+      ['id', 'location_id', 'quantity', 'lot_id', 'product_uom_id'],
+      100
     );
 
     const totalQty = quants.reduce((sum: number, q: any) => sum + q.quantity, 0);
@@ -48,20 +40,11 @@ export async function POST(req: NextRequest) {
       quants
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Errore verifica disponibilità:', error);
-
-    // ✅ Se utente non loggato, ritorna 401
-    if (error.message?.includes('non autenticato') || error.message?.includes('Devi fare login')) {
-      return NextResponse.json({
-        success: false,
-        error: 'Devi fare login per accedere a questa funzione'
-      }, { status: 401 });
-    }
-
     return NextResponse.json({
       success: false,
       error: 'Errore nella verifica disponibilità'
-    }, { status: 500 });
+    });
   }
 }

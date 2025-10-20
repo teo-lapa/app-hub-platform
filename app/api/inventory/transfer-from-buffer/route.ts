@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import { cookies } from 'next/headers';
+import { getOdooClient } from '@/lib/odoo-client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,66 +12,48 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ✅ Usa sessione utente loggato
-    const userCookies = cookies().toString();
-    const { cookies: odooCookies } = await getOdooSession(userCookies);
+    const client = await getOdooClient();
 
     // Trova buffer location (WH/Stock/Buffer o simile)
-    const bufferLocations = await callOdoo(
-      odooCookies,
+    const bufferLocations = await client.searchRead(
       'stock.location',
-      'search_read',
-      [],
-      {
-        domain: [
-          ['usage', '=', 'internal'],
-          '|',
-          ['name', 'ilike', 'buffer'],
-          ['name', 'ilike', 'transit']
-        ],
-        fields: ['id'],
-        limit: 1
-      }
+      [
+        ['usage', '=', 'internal'],
+        '|',
+        ['name', 'ilike', 'buffer'],
+        ['name', 'ilike', 'transit']
+      ],
+      ['id'],
+      1
     );
 
-    let bufferLocationId;
     if (!bufferLocations || bufferLocations.length === 0) {
       // Se non c'è buffer, usa stock location principale
-      const stockLocations = await callOdoo(
-        odooCookies,
+      const stockLocations = await client.searchRead(
         'stock.location',
-        'search_read',
-        [],
-        {
-          domain: [
-            ['usage', '=', 'internal'],
-            ['name', '=', 'Stock']
-          ],
-          fields: ['id'],
-          limit: 1
-        }
+        [
+          ['usage', '=', 'internal'],
+          ['name', '=', 'Stock']
+        ],
+        ['id'],
+        1
       );
 
       if (!stockLocations || stockLocations.length === 0) {
         throw new Error('Ubicazione buffer/stock non trovata');
       }
 
-      bufferLocationId = stockLocations[0].id;
-    } else {
-      bufferLocationId = bufferLocations[0].id;
+      bufferLocations.push(stockLocations[0]);
     }
 
+    const bufferLocationId = bufferLocations[0].id;
+
     // Trova picking type interno
-    const pickingTypes = await callOdoo(
-      odooCookies,
+    const pickingTypes = await client.searchRead(
       'stock.picking.type',
-      'search_read',
-      [],
-      {
-        domain: [['code', '=', 'internal']],
-        fields: ['id'],
-        limit: 1
-      }
+      [['code', '=', 'internal']],
+      ['id'],
+      1
     );
 
     if (!pickingTypes || pickingTypes.length === 0) {
@@ -83,19 +64,14 @@ export async function POST(req: NextRequest) {
     let lotId = null;
     if (lotNumber) {
       // Cerca lotto esistente
-      const existingLots = await callOdoo(
-        odooCookies,
+      const existingLots = await client.searchRead(
         'stock.lot',
-        'search_read',
-        [],
-        {
-          domain: [
-            ['product_id', '=', productId],
-            ['name', '=', lotNumber]
-          ],
-          fields: ['id'],
-          limit: 1
-        }
+        [
+          ['product_id', '=', productId],
+          ['name', '=', lotNumber]
+        ],
+        ['id'],
+        1
       );
 
       if (existingLots && existingLots.length > 0) {
@@ -103,9 +79,9 @@ export async function POST(req: NextRequest) {
 
         // Aggiorna scadenza se fornita
         if (expiryDate) {
-          await callOdoo(odooCookies, 'stock.lot', 'write', [[lotId], {
+          await client.write('stock.lot', [lotId], {
             expiration_date: expiryDate
-          }]);
+          });
         }
       } else {
         // Crea nuovo lotto
@@ -119,7 +95,7 @@ export async function POST(req: NextRequest) {
           lotData.expiration_date = expiryDate;
         }
 
-        const newLotIds = await callOdoo(odooCookies, 'stock.lot', 'create', [[lotData]]);
+        const newLotIds = await client.create('stock.lot', [lotData]);
         lotId = newLotIds[0];
       }
     }
@@ -133,7 +109,7 @@ export async function POST(req: NextRequest) {
       immediate_transfer: true
     };
 
-    const pickingId = await callOdoo(odooCookies, 'stock.picking', 'create', [[pickingData]]);
+    const pickingId = await client.create('stock.picking', [pickingData]);
 
     // Crea stock move
     const moveData: any = {
@@ -146,7 +122,7 @@ export async function POST(req: NextRequest) {
       company_id: 1
     };
 
-    const moveId = await callOdoo(odooCookies, 'stock.move', 'create', [[moveData]]);
+    const moveId = await client.create('stock.move', [moveData]);
 
     // Se c'è un lotto, crea move line
     if (lotId) {
@@ -160,36 +136,31 @@ export async function POST(req: NextRequest) {
         company_id: 1
       };
 
-      await callOdoo(odooCookies, 'stock.move.line', 'create', [[moveLineData]]);
+      await client.create('stock.move.line', [moveLineData]);
     }
 
     // Conferma e valida picking
-    await callOdoo(odooCookies, 'stock.picking', 'action_confirm', [[pickingId[0]]]);
-    await callOdoo(odooCookies, 'stock.picking', 'action_assign', [[pickingId[0]]]);
+    await client.call('stock.picking', 'action_confirm', [[pickingId[0]]]);
+    await client.call('stock.picking', 'action_assign', [[pickingId[0]]]);
 
     // Se non c'è lotto, imposta quantità fatto
     if (!lotId) {
-      const moves = await callOdoo(
-        odooCookies,
+      const moves = await client.searchRead(
         'stock.move',
-        'search_read',
-        [],
-        {
-          domain: [['picking_id', '=', pickingId[0]]],
-          fields: ['id'],
-          limit: 100
-        }
+        [['picking_id', '=', pickingId[0]]],
+        ['id'],
+        100
       );
 
       for (const move of moves) {
-        await callOdoo(odooCookies, 'stock.move', 'write', [[move.id], {
+        await client.write('stock.move', [move.id], {
           quantity_done: quantity
-        }]);
+        });
       }
     }
 
     // Valida trasferimento
-    await callOdoo(odooCookies, 'stock.picking', 'button_validate', [[pickingId[0]]]);
+    await client.call('stock.picking', 'button_validate', [[pickingId[0]]]);
 
     return NextResponse.json({
       success: true,
@@ -197,20 +168,11 @@ export async function POST(req: NextRequest) {
       message: 'Trasferimento completato con successo'
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Errore trasferimento:', error);
-
-    // ✅ Se utente non loggato, ritorna 401
-    if (error.message?.includes('non autenticato') || error.message?.includes('Devi fare login')) {
-      return NextResponse.json({
-        success: false,
-        error: 'Devi fare login per accedere a questa funzione'
-      }, { status: 401 });
-    }
-
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Errore nel trasferimento'
-    }, { status: 500 });
+    });
   }
 }

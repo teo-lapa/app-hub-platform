@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import { cookies } from 'next/headers';
+import { getOdooClient } from '@/lib/odoo-client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,26 +12,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ✅ Usa sessione utente loggato
-    const userCookies = cookies().toString();
-    const { cookies: odooCookies } = await getOdooSession(userCookies);
+    const client = await getOdooClient();
 
     // Cerca prodotti per nome, codice o barcode
-    const products = await callOdoo(
-      odooCookies,
+    const products = await client.searchRead(
       'product.product',
-      'search_read',
-      [],
-      {
-        domain: [
-          '|', '|',
-          ['name', 'ilike', query],
-          ['default_code', 'ilike', query],
-          ['barcode', '=', query]
-        ],
-        fields: ['id', 'name', 'default_code', 'barcode', 'uom_id', 'tracking', 'image_128'],
-        limit: 50
-      }
+      [
+        '|', '|',
+        ['name', 'ilike', query],
+        ['default_code', 'ilike', query],
+        ['barcode', '=', query]
+      ],
+      ['id', 'name', 'default_code', 'barcode', 'uom_id', 'tracking', 'image_128'],
+      50
     );
 
     const formattedProducts = products.map((p: any) => ({
@@ -52,20 +44,11 @@ export async function POST(req: NextRequest) {
       products: formattedProducts
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Errore ricerca prodotti:', error);
-
-    // ✅ Se utente non loggato, ritorna 401
-    if (error.message?.includes('non autenticato') || error.message?.includes('Devi fare login')) {
-      return NextResponse.json({
-        success: false,
-        error: 'Devi fare login per accedere a questa funzione'
-      }, { status: 401 });
-    }
-
     return NextResponse.json({
       success: false,
       error: 'Errore nella ricerca prodotti'
-    }, { status: 500 });
+    });
   }
 }

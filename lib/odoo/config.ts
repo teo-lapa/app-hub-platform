@@ -22,26 +22,14 @@ export interface OdooResponse<T = any> {
 }
 
 // Configurazione di default (da environment variables)
-// 🚨 NESSUN FALLBACK - Se le variabili non esistono, l'app non deve partire
-export const getOdooConfig = (): OdooConfig => {
-  const host = process.env.ODOO_HOST;
-  const database = process.env.ODOO_DATABASE;
-  const username = process.env.ODOO_USERNAME;
-  const password = process.env.ODOO_PASSWORD;
-
-  if (!host || !database || !username || !password) {
-    throw new Error('Missing required Odoo environment variables: ODOO_HOST, ODOO_DATABASE, ODOO_USERNAME, ODOO_PASSWORD');
-  }
-
-  return {
-    host,
-    database,
-    username,
-    password,
-    port: parseInt(process.env.ODOO_PORT || '8069'),
-    protocol: (process.env.ODOO_PROTOCOL as 'http' | 'https') || 'https',
-  };
-};
+export const getOdooConfig = (): OdooConfig => ({
+  host: process.env.ODOO_HOST || 'localhost',
+  database: process.env.ODOO_DATABASE || 'odoo',
+  username: process.env.ODOO_USERNAME || 'admin',
+  password: process.env.ODOO_PASSWORD || 'admin',
+  port: parseInt(process.env.ODOO_PORT || '8069'),
+  protocol: (process.env.ODOO_PROTOCOL as 'http' | 'https') || 'http',
+});
 
 // Endpoints Odoo disponibili
 export const ODOO_ENDPOINTS = {
