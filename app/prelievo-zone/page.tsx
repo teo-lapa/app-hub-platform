@@ -231,9 +231,12 @@ export default function PrelievoZonePage() {
               operationsCacheRef.current[result.cacheKey] = result.operations;
               cacheTimestampsRef.current[result.cacheKey] = now;
 
-              const completedOps = result.operations.filter((op: Operation) => op.qty_done >= op.quantity).length;
+              // Conta operazioni completate E parziali per il calcolo arancione
+              const fullyCompletedOps = result.operations.filter((op: Operation) => op.qty_done >= op.quantity).length;
+              const partialOps = result.operations.filter((op: Operation) => op.qty_done > 0 && op.qty_done < op.quantity).length;
+              const completedOps = fullyCompletedOps + partialOps; // Include anche i parziali per l'arancione!
               const totalOps = result.operations.length;
-              const isFullyCompleted = totalOps > 0 && completedOps === totalOps;
+              const isFullyCompleted = totalOps > 0 && fullyCompletedOps === totalOps;
 
               locationStatusCacheRef.current[result.locationId] = { completedOps, totalOps, isFullyCompleted };
             }
@@ -439,10 +442,12 @@ export default function PrelievoZonePage() {
               operationsCacheRef.current[cacheKey] = sortedOperations;
               cacheTimestampsRef.current[cacheKey] = now;
 
-              // Calcola stato
-              const completedOps = sortedOperations.filter(op => op.qty_done >= op.quantity).length;
+              // Calcola stato (includi operazioni parziali per l'arancione)
+              const fullyCompletedOps = sortedOperations.filter(op => op.qty_done >= op.quantity).length;
+              const partialOps = sortedOperations.filter(op => op.qty_done > 0 && op.qty_done < op.quantity).length;
+              const completedOps = fullyCompletedOps + partialOps;
               const totalOps = sortedOperations.length;
-              const isFullyCompleted = totalOps > 0 && completedOps === totalOps;
+              const isFullyCompleted = totalOps > 0 && fullyCompletedOps === totalOps;
               locationStatusCacheRef.current[location.id] = { completedOps, totalOps, isFullyCompleted };
 
               // Salva in sessionStorage
@@ -519,10 +524,12 @@ export default function PrelievoZonePage() {
       operationsCacheRef.current[cacheKey] = sortedOperations;
       cacheTimestampsRef.current[cacheKey] = now;
 
-      // Calcola e salva stato completamento nella cache
-      const completedOps = sortedOperations.filter(op => op.qty_done >= op.quantity).length;
+      // Calcola e salva stato completamento nella cache (includi parziali)
+      const fullyCompletedOps = sortedOperations.filter(op => op.qty_done >= op.quantity).length;
+      const partialOps = sortedOperations.filter(op => op.qty_done > 0 && op.qty_done < op.quantity).length;
+      const completedOps = fullyCompletedOps + partialOps;
       const totalOps = sortedOperations.length;
-      const isFullyCompleted = totalOps > 0 && completedOps === totalOps;
+      const isFullyCompleted = totalOps > 0 && fullyCompletedOps === totalOps;
 
       locationStatusCacheRef.current[location.id] = { completedOps, totalOps, isFullyCompleted };
 
@@ -572,9 +579,11 @@ export default function PrelievoZonePage() {
 
       // Aggiorna cache stato ubicazione corrente E la cache delle operazioni
       if (currentLocation && currentBatch) {
-        const completedOps = updated.filter(op => op.qty_done >= op.quantity).length;
+        const fullyCompletedOps = updated.filter(op => op.qty_done >= op.quantity).length;
+        const partialOps = updated.filter(op => op.qty_done > 0 && op.qty_done < op.quantity).length;
+        const completedOps = fullyCompletedOps + partialOps;
         const totalOps = updated.length;
-        const isFullyCompleted = totalOps > 0 && completedOps === totalOps;
+        const isFullyCompleted = totalOps > 0 && fullyCompletedOps === totalOps;
 
         locationStatusCacheRef.current[currentLocation.id] = { completedOps, totalOps, isFullyCompleted };
 
