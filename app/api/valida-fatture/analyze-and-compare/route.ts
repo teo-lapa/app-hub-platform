@@ -312,6 +312,20 @@ CORREZIONE:
 - FOCUS ASSOLUTO: far tornare i NUMERI (prezzo × quantità = subtotal)
 - Se subtotal bozza = subtotal PDF → NON correggere anche se quantità/prezzo diversi!
 
+🔢 GESTIONE ARROTONDAMENTI E CENTESIMI:
+Se tutte le righe sono corrette MA il totale finale ha differenza > €0.02:
+1. Identifica la riga con subtotal più alto
+2. Aggiusta price_unit di quella riga per far tornare il totale esatto
+3. L'aggiustamento deve essere MINIMO (pochi centesimi)
+4. Aggiungi reason: "Aggiustamento arrotondamento per far tornare totale fattura"
+
+ESEMPIO ARROTONDAMENTO:
+Tutte le righe OK individualmente, ma somma totale:
+- Bozza: €2056.24
+- PDF: €2056.17
+- Differenza: €0.07 (arrotondamenti cumulati)
+SOLUZIONE: Trova la riga più grande e aggiusta price_unit di €0.07/quantity
+
 Rispondi SOLO con JSON in questo formato:
 {
   "is_valid": false,
