@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 // TODO: Riabilitare supporto XML FatturaPA quando testato su Vercel
 // import { parseFatturaPA, isFatturaPA } from '@/lib/fatturapa-parser';
 
@@ -18,11 +19,11 @@ export const maxDuration = 60; // Consenti fino a 60 secondi per l'analisi AI
  */
 export async function POST(request: NextRequest) {
   try {
-    const { pdf_base64, pdf_mimetype, draft_invoice } = await request.json();
+    const { attachment_id, draft_invoice } = await request.json();
 
-    if (!pdf_base64 || !draft_invoice) {
+    if (!attachment_id || !draft_invoice) {
       return NextResponse.json(
-        { error: 'Dati mancanti: pdf_base64 e draft_invoice richiesti' },
+        { error: 'Dati mancanti: attachment_id e draft_invoice richiesti' },
         { status: 400 }
       );
     }
@@ -30,6 +31,32 @@ export async function POST(request: NextRequest) {
     console.log('🤖 [ANALYZE-COMPARE] Starting AI analysis...');
     console.log(`📄 Invoice: ${draft_invoice.name}, Total: €${draft_invoice.amount_total}`);
     console.log(`📋 Lines in draft: ${draft_invoice.invoice_line_ids?.length || 0}`);
+    console.log(`📎 Attachment ID: ${attachment_id}`);
+
+    // Scarica il PDF da Odoo usando l'attachment_id
+    const userCookies = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(userCookies || undefined);
+
+    if (!uid) {
+      return NextResponse.json({ error: 'Sessione Odoo non valida' }, { status: 401 });
+    }
+
+    console.log('📥 [ANALYZE-COMPARE] Downloading PDF from Odoo...');
+    const attachments = await callOdoo(
+      cookies,
+      'ir.attachment',
+      'read',
+      [[attachment_id]],
+      { fields: ['datas', 'mimetype', 'name'] }
+    );
+
+    if (!attachments || attachments.length === 0) {
+      throw new Error('PDF non trovato in Odoo');
+    }
+
+    const pdf_base64 = attachments[0].datas;
+    const pdf_mimetype = attachments[0].mimetype;
+    console.log(`✅ [ANALYZE-COMPARE] PDF downloaded: ${attachments[0].name}, size: ${(pdf_base64.length / 1024 / 1024).toFixed(2)} MB`);
 
     // STEP 0: Check formato file
     let parsedInvoice;

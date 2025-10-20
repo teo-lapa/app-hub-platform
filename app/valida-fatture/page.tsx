@@ -108,12 +108,13 @@ export default function ValidaFatturePage() {
       // 2. Analizza e confronta con AI
       const pdfAttachment = fullInvoice.attachments[0];
 
+      // OTTIMIZZAZIONE: Invece di inviare il PDF base64 (troppo grande),
+      // inviamo solo l'attachment_id e il backend lo scarica da Odoo
       const compareResponse = await fetch('/api/valida-fatture/analyze-and-compare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pdf_base64: pdfAttachment.datas,
-          pdf_mimetype: pdfAttachment.mimetype,
+          attachment_id: pdfAttachment.id,
           draft_invoice: fullInvoice
         })
       });
