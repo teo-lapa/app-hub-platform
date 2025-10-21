@@ -64,7 +64,7 @@ export default function ControlloConsegnePage() {
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.headerContent}>
-          <a href="/" className={styles.homeBtn}>
+          <a href="/dashboard" className={styles.homeBtn}>
             ← Home
           </a>
           <div className={styles.headerTitle}>

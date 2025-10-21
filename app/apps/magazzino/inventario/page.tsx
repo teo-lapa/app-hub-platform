@@ -17,7 +17,7 @@ export default function InventarioPage() {
     <div className="min-h-screen bg-gray-900">
       {/* Header */}
       <div className="bg-gray-800 p-4 flex items-center gap-4">
-        <Link href="/" className="text-white hover:text-gray-300">
+        <Link href="/dashboard" className="text-white hover:text-gray-300">
           <Home className="w-6 h-6" />
         </Link>
         <h1 className="text-xl font-bold text-white flex items-center gap-2">
