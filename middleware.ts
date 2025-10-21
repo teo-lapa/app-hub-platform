@@ -2,42 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Routes che richiedono autenticazione
-const protectedRoutes = [
-  '/dashboard',
-  '/profile',
-  '/admin',
-  '/api/admin',
-  '/api/auth/update-profile',
-  '/api/auth/me'
-];
-
 // Routes pubbliche che non richiedono autenticazione
 const publicRoutes = [
-  '/',
   '/auth',
   '/api/auth/login',
   '/api/auth/register',
-  '/api/auth/logout',
-  '/valida-fatture'
+  '/api/auth/logout'
 ];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Controlla se è una route protetta
-  const isProtectedRoute = protectedRoutes.some(route =>
-    pathname.startsWith(route)
-  );
-
+  // Controlla se è una route pubblica
   const isPublicRoute = publicRoutes.some(route =>
     pathname === route || pathname.startsWith(route)
   );
 
-  // Se non è una route protetta, continua
-  if (!isProtectedRoute || isPublicRoute) {
+  // Se è una route pubblica, continua senza controlli
+  if (isPublicRoute) {
     return NextResponse.next();
   }
+
+  // TUTTE le altre route richiedono autenticazione
 
   // Ottieni il token dai cookie
   const token = request.cookies.get('token')?.value;
