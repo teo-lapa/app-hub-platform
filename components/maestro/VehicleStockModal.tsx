@@ -71,7 +71,7 @@ export function VehicleStockModal({
 
     try {
       // Cookie-based auth: no need to pass vendor_id, it's extracted from session
-      const response = await fetch('/api/maestro/vehicle-stock');
+      const response = await fetch('/api/maestro/vehicle-stock', { credentials: 'include' });
       const data = await response.json();
 
       if (data.success) {
@@ -145,6 +145,7 @@ export function VehicleStockModal({
     try {
       // Cookie-based auth: no need to pass vendor_id
       const response = await fetch('/api/maestro/vehicle-stock/transfer', {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
