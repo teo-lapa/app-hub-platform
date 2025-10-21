@@ -156,6 +156,18 @@ export default function ArrivoMercePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check file size (10 MB max)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError(`File troppo grande (${(file.size / 1024 / 1024).toFixed(2)} MB). Dimensione massima: 10 MB. Prova a ridurre la qualità del PDF.`);
+      return;
+    }
+
+    // Warn for large files
+    if (file.size > 5 * 1024 * 1024) {
+      console.warn(`File grande (${(file.size / 1024 / 1024).toFixed(2)} MB) - il parsing potrebbe richiedere più tempo`);
+    }
+
     setSelectedFile(file);
     setError(null);
 
@@ -535,6 +547,13 @@ export default function ArrivoMercePage() {
                     </div>
                   )}
 
+                  {selectedFile.size > 5 * 1024 * 1024 && (
+                    <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+                      <AlertTriangle className="inline mr-2" size={16} />
+                      File grande ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB) - l'analisi potrebbe richiedere 30-60 secondi
+                    </div>
+                  )}
+
                   <button
                     onClick={handleParsePDF}
                     disabled={loading}
@@ -543,7 +562,9 @@ export default function ArrivoMercePage() {
                     {loading ? (
                       <>
                         <Loader className="animate-spin" size={20} />
-                        Analisi in corso...
+                        {selectedFile.size > 5 * 1024 * 1024
+                          ? 'Analisi documento grande in corso... (può richiedere fino a 60 secondi)'
+                          : 'Analisi in corso...'}
                       </>
                     ) : (
                       <>
