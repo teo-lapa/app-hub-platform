@@ -93,11 +93,28 @@ function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRo
 
   // Determina se l'utente è interno o portale
   const isInternalUser = userRole === 'admin' || userRole === 'dipendente';
-  const isPortalUser = userRole === 'cliente_gratuito' || userRole === 'cliente_premium' || userRole === 'visitor';
+
+  // ✅ FIX: Riconosce TUTTI i tipi di clienti (cliente_gratuito, cliente_premium, visitor)
+  // e anche ruoli custom che contengono "cliente"
+  const isPortalUser = userRole === 'visitor' ||
+                       userRole.includes('cliente') ||
+                       userRole === 'customer' ||
+                       userRole === 'portal_user';
+
+  console.log(`🔍 isAppVisibleForRole - userRole: ${userRole}, isInternal: ${isInternalUser}, isPortal: ${isPortalUser}, visibilityGroup: ${settings.visibilityGroup}`);
 
   // Controlla la visibilità in base al gruppo
-  if (settings.visibilityGroup === 'internal' && isInternalUser) return true;
-  if (settings.visibilityGroup === 'portal' && isPortalUser) return true;
+  if (settings.visibilityGroup === 'internal') {
+    // Solo utenti interni possono vedere
+    console.log(`  ➜ App internal-only: ${isInternalUser ? 'VISIBLE' : 'HIDDEN'} for ${userRole}`);
+    return isInternalUser;
+  }
+
+  if (settings.visibilityGroup === 'portal') {
+    // Solo utenti portal possono vedere
+    console.log(`  ➜ App portal-only: ${isPortalUser ? 'VISIBLE' : 'HIDDEN'} for ${userRole}`);
+    return isPortalUser;
+  }
 
   return false;
 }
