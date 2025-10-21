@@ -4,10 +4,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Routes pubbliche che non richiedono autenticazione
 const publicRoutes = [
-  '/auth',
+  '/',  // Landing page con login integrato
   '/api/auth/login',
   '/api/auth/register',
-  '/api/auth/logout'
+  '/api/auth/logout',
+  '/api/auth/me'  // Necessario per checkAuth
 ];
 
 export async function middleware(request: NextRequest) {
@@ -27,11 +28,10 @@ export async function middleware(request: NextRequest) {
 
   // Ottieni il token dai cookie
   const token = request.cookies.get('token')?.value;
-  const odooSessionCookie = request.cookies.get('odoo_session')?.value;
 
   if (!token) {
-    // Reindirizza al login se non autenticato
-    return NextResponse.redirect(new URL('/auth', request.url));
+    // Nessun token - reindirizza alla home che mostra il login
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   try {
@@ -48,8 +48,8 @@ export async function middleware(request: NextRequest) {
   } catch (error) {
     console.error('Token validation failed:', error);
 
-    // Token non valido, reindirizza al login
-    const response = NextResponse.redirect(new URL('/auth', request.url));
+    // Token non valido, elimina i cookie e reindirizza alla home
+    const response = NextResponse.redirect(new URL('/', request.url));
     response.cookies.delete('token');
     response.cookies.delete('odoo_session');
     return response;
