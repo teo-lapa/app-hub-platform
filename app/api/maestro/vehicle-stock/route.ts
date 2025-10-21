@@ -8,9 +8,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getVehicleStockService } from '@/lib/maestro/vehicle-stock-service';
+import { getVehicleStockService, ADMIN_USER_IDS, getVehicleLocationId, getAllVendorIds } from '@/lib/maestro/vehicle-stock-service';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import { ADMIN_USER_IDS } from '@/lib/maestro/vehicle-stock-service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -146,8 +145,49 @@ export async function GET(request: NextRequest) {
 
     console.log(`   Target Odoo User ID: ${targetOdooUserId}`);
     console.log(`   Salesperson Name: ${salespersonName}`);
+    console.log(`   Is Admin: ${isAdmin}`);
 
-    // 5. Get vehicle stock
+    // 5. Check if user has a vehicle location mapped
+    const hasVehicleLocation = getVehicleLocationId(targetOdooUserId) !== null;
+    console.log(`   Has Vehicle Location: ${hasVehicleLocation}`);
+
+    if (!hasVehicleLocation && !isAdmin) {
+      // Non-admin without vehicle location
+      console.warn(`⚠️  User ${targetOdooUserId} has no vehicle location mapped`);
+      return NextResponse.json({
+        success: false,
+        error: {
+          code: 'NO_VEHICLE_LOCATION',
+          message: 'Non hai una ubicazione veicolo assegnata. Contatta l\'amministratore.'
+        }
+      }, { status: 404 });
+    }
+
+    if (!hasVehicleLocation && isAdmin) {
+      // Admin without vehicle location - return list of available vendors
+      console.log('   Admin without personal vehicle - returning vendor list');
+      const vendorIds = getAllVendorIds();
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          isAdmin: true,
+          hasOwnVehicle: false,
+          availableVendors: vendorIds,
+          message: 'Seleziona un venditore per visualizzare il suo veicolo',
+          products: [],
+          total_products: 0,
+          total_items: 0
+        },
+        salesperson: {
+          id: targetOdooUserId,
+          name: salespersonName
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 6. Get vehicle stock
     const vehicleStockService = getVehicleStockService();
     const stock = await vehicleStockService.getVehicleStock(targetOdooUserId);
 
@@ -156,7 +196,7 @@ export async function GET(request: NextRequest) {
     console.log(`   Products: ${stock.total_products}`);
     console.log(`   Total items: ${stock.total_items}`);
 
-    // 6. Return success response with salesperson info
+    // 7. Return success response with salesperson info
     return NextResponse.json({
       success: true,
       data: {

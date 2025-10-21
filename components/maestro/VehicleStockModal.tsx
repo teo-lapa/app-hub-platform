@@ -75,7 +75,17 @@ export function VehicleStockModal({
       const data = await response.json();
 
       if (data.success) {
-        setCurrentStock(data.data.products || []);
+        // Check if admin without own vehicle
+        if (data.data.isAdmin && !data.data.hasOwnVehicle) {
+          setCurrentStock([]);
+          setError('Sei un amministratore. Seleziona un venditore per visualizzare il suo veicolo.');
+          toast('Seleziona un venditore per visualizzare il suo veicolo', {
+            icon: 'ℹ️',
+            duration: 5000
+          });
+        } else {
+          setCurrentStock(data.data.products || []);
+        }
       } else {
         setError(data.error?.message || 'Errore nel caricamento dello stock');
         toast.error(data.error?.message || 'Errore nel caricamento dello stock veicolo');
