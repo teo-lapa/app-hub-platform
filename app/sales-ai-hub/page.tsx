@@ -136,7 +136,7 @@ export default function SalesAIHub() {
             Devi effettuare il login per accedere al Sales AI Hub
           </p>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/dashboard')}
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition"
           >
             Torna alla Home
@@ -164,7 +164,7 @@ export default function SalesAIHub() {
             </div>
 
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/dashboard')}
               className="text-sm text-slate-400 hover:text-white transition"
             >
               Torna alla Home

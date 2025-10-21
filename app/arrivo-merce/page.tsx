@@ -402,7 +402,7 @@ export default function ArrivoMercePage() {
         >
           {/* Back to Dashboard Button */}
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/dashboard')}
             className="mb-4 flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg shadow-sm border border-gray-200 transition-colors"
           >
             <ArrowLeft size={20} />

@@ -265,7 +265,7 @@ export default function SmartOrderingV2() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/dashboard')}
             className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all flex items-center gap-2 border border-white/20"
           >
             <span>←</span>

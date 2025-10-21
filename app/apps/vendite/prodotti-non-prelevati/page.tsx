@@ -411,7 +411,7 @@ export default function ProdottiNonPrelevatiPage() {
     <div className="min-h-screen bg-gray-900">
       {/* Header */}
       <div className="bg-gray-800 p-4 flex items-center gap-4 border-b border-gray-700">
-        <Link href="/" className="text-white hover:text-gray-300">
+        <Link href="/dashboard" className="text-white hover:text-gray-300">
           🏠 Home
         </Link>
         <h1 className="text-xl font-bold text-white flex-1">

@@ -261,7 +261,7 @@ export default function ValidaFatturePage() {
               </div>
             </div>
             <a
-              href="/"
+              href="/dashboard"
               className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-colors"
             >
               <Home className="w-5 h-5" />

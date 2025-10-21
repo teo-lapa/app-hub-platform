@@ -1162,7 +1162,7 @@ export default function PickResiduiPage() {
         <div className="wrap">
           <div className="topbar">
             <a
-              href="/"
+              href="/dashboard"
               className="btn ghost"
               style={{
                 textDecoration: 'none',

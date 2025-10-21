@@ -50,7 +50,7 @@ export default function MenuApp() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => router.push('/')}
+                onClick={() => router.push('/dashboard')}
                 className="glass-strong p-3 rounded-xl hover:bg-white/20 dark:hover:bg-black/20 transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />

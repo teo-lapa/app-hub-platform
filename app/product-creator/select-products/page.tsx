@@ -248,7 +248,7 @@ export default function SelectProducts() {
 
         // Redirect to success or home
         setTimeout(() => {
-          router.push('/');
+          router.push('/dashboard');
         }, 2000);
       } else {
         toast.error(result.error || 'Errore creazione prodotti', {

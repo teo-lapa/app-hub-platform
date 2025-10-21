@@ -83,7 +83,7 @@ export default function DashboardVenditori() {
           <div className="flex items-center gap-4">
             {/* Home Button */}
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/dashboard')}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
               title="Torna alla home"
             >
