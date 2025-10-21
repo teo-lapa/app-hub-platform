@@ -14,7 +14,7 @@ import { MobileNavigation } from '@/components/mobile/MobileNavigation';
 import { MobileHeader } from '@/components/mobile/MobileHeader';
 import { PullToRefresh } from '@/components/mobile/PullToRefresh';
 import { InstallButton } from '@/components/ui/InstallButton';
-import JokeBanner from './components/JokeBanner';
+import JokeBanner from '../components/JokeBanner';
 
 export default function HomePage() {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
