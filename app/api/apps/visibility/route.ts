@@ -41,18 +41,39 @@ async function loadVisibilitySettings(): Promise<Record<string, AppVisibilitySet
 // Salva le impostazioni di visibilità
 async function saveVisibilitySettings(settings: Record<string, AppVisibilitySettings>): Promise<boolean> {
   try {
+    console.log('🔷 saveVisibilitySettings - Start');
+    const appIds = Object.keys(settings);
+    console.log(`🔷 Apps da salvare: ${appIds.length}`);
+
+    let savedCount = 0;
+    let errorCount = 0;
+
     // Salva ogni app nel Vercel KV con TUTTI i campi
     for (const [appId, setting] of Object.entries(settings)) {
-      await saveAppVisibility(appId, {
-        excludedUsers: setting.excludedUsers || [],
-        excludedCustomers: setting.excludedCustomers || [],
-        visible: setting.visible,
-        visibilityGroup: setting.visibilityGroup,
-        developmentStatus: setting.developmentStatus  // ✅ Ora salva anche questo!
-      });
+      try {
+        console.log(`  💾 Salvando app: ${appId}`);
+        const result = await saveAppVisibility(appId, {
+          excludedUsers: setting.excludedUsers || [],
+          excludedCustomers: setting.excludedCustomers || [],
+          visible: setting.visible,
+          visibilityGroup: setting.visibilityGroup,
+          developmentStatus: setting.developmentStatus  // ✅ Ora salva anche questo!
+        });
+        console.log(`  ✅ App salvata: ${appId}`, result);
+        savedCount++;
+      } catch (appError) {
+        console.error(`  ❌ Errore salvataggio app ${appId}:`, appError);
+        errorCount++;
+      }
     }
-    console.log('✅ Impostazioni salvate in Vercel KV');
-    return true;
+
+    console.log(`✅ Salvataggio completato: ${savedCount} success, ${errorCount} errors`);
+
+    if (errorCount > 0) {
+      console.warn(`⚠️ Ci sono stati ${errorCount} errori durante il salvataggio`);
+    }
+
+    return errorCount === 0;
   } catch (error) {
     console.error('❌ Errore salvataggio visibility settings in KV:', error);
     return false;
@@ -99,13 +120,31 @@ export async function GET(request: NextRequest) {
       const isVisible = userRole ? isAppVisibleForRole(settings, userRole) : settings.visible;
 
       // Converti excludedUsers/excludedCustomers in formato groups per la pagina gestione
+      // E converti visibilityGroup in enabled flags
+      let dipendentiEnabled = true;
+      let clientiEnabled = true;
+
+      if (settings.visibilityGroup === 'none') {
+        dipendentiEnabled = false;
+        clientiEnabled = false;
+      } else if (settings.visibilityGroup === 'internal') {
+        dipendentiEnabled = true;
+        clientiEnabled = false;  // Solo dipendenti, NON clienti
+      } else if (settings.visibilityGroup === 'portal') {
+        dipendentiEnabled = false;  // Solo clienti, NON dipendenti
+        clientiEnabled = true;
+      } else {  // 'all'
+        dipendentiEnabled = true;
+        clientiEnabled = true;
+      }
+
       const groups = {
         dipendenti: {
-          enabled: true,
+          enabled: dipendentiEnabled,
           excluded: (settings.excludedUsers || []).map((id: string) => parseInt(id, 10))
         },
         clienti: {
-          enabled: true,
+          enabled: clientiEnabled,
           excluded: (settings.excludedCustomers || []).map((id: string) => parseInt(id, 10))
         }
       };
@@ -138,18 +177,25 @@ export async function GET(request: NextRequest) {
 // POST: Salva impostazioni visibilità
 export async function POST(request: NextRequest) {
   try {
-    const { apps } = await request.json();
+    console.log('🔵 POST /api/apps/visibility - Start');
+    const body = await request.json();
+    console.log('📦 Body ricevuto:', JSON.stringify(body, null, 2));
+
+    const { apps } = body;
 
     if (!apps || !Array.isArray(apps)) {
+      console.log('❌ Dati non validi - apps:', apps);
       return NextResponse.json({
         success: false,
         error: 'Dati non validi'
       }, { status: 400 });
     }
 
+    console.log(`📊 Numero di app da salvare: ${apps.length}`);
+
     // Crea oggetto con visibilità e gruppo per ogni app
     const visibilitySettings: Record<string, AppVisibilitySettings> = {};
-    apps.forEach((app: any) => {
+    apps.forEach((app: any, index: number) => {
       // Estrai gli utenti esclusi dalla struttura groups se presente
       const excludedUsers: string[] = [];
       const excludedCustomers: string[] = [];
@@ -164,36 +210,71 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Determina il visibilityGroup basandosi su groups.enabled
+      let visibilityGroup: VisibilityGroup = 'all';
+
+      if (app.groups) {
+        const dipendentiEnabled = app.groups.dipendenti?.enabled !== false;
+        const clientiEnabled = app.groups.clienti?.enabled !== false;
+
+        if (!dipendentiEnabled && !clientiEnabled) {
+          visibilityGroup = 'none';  // Nessuno può vedere
+        } else if (dipendentiEnabled && !clientiEnabled) {
+          visibilityGroup = 'internal';  // Solo dipendenti
+        } else if (!dipendentiEnabled && clientiEnabled) {
+          visibilityGroup = 'portal';  // Solo clienti
+        } else {
+          visibilityGroup = 'all';  // Tutti
+        }
+      }
+
       visibilitySettings[app.id] = {
         visible: app.visible,
-        visibilityGroup: (app.visibilityGroup || 'all') as VisibilityGroup,
+        visibilityGroup,  // Usa il visibilityGroup derivato da groups
         excludedUsers,
         excludedCustomers,
         developmentStatus: app.developmentStatus || 'pronta'  // Salva anche lo stato sviluppo
       };
+
+      console.log(`  App ${index + 1}/${apps.length}: ${app.id}`, {
+        visible: app.visible,
+        visibilityGroup,  // Mostra il visibilityGroup DERIVATO
+        groups: app.groups ? {
+          dipendenti: app.groups.dipendenti?.enabled,
+          clienti: app.groups.clienti?.enabled
+        } : null,
+        developmentStatus: app.developmentStatus,
+        excludedUsers: excludedUsers.length,
+        excludedCustomers: excludedCustomers.length
+      });
     });
 
-    console.log('💾 Salvataggio impostazioni visibilità:', visibilitySettings);
+    console.log('💾 Salvataggio impostazioni visibilità (totale apps):', Object.keys(visibilitySettings).length);
 
     // Salva le impostazioni
+    console.log('🔄 Chiamata saveVisibilitySettings...');
     const saved = await saveVisibilitySettings(visibilitySettings);
+    console.log('✅ saveVisibilitySettings completato:', saved);
 
     if (saved) {
+      console.log('✅ POST /api/apps/visibility - Success');
       return NextResponse.json({
         success: true,
-        message: 'Impostazioni salvate con successo'
+        message: 'Impostazioni salvate con successo',
+        saved: Object.keys(visibilitySettings).length
       });
     } else {
+      console.log('❌ POST /api/apps/visibility - Save failed');
       return NextResponse.json({
         success: false,
         error: 'Errore salvataggio impostazioni'
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Errore POST visibility:', error);
+    console.error('❌ Errore POST visibility:', error);
     return NextResponse.json({
       success: false,
-      error: 'Errore salvataggio'
+      error: 'Errore salvataggio: ' + (error instanceof Error ? error.message : String(error))
     }, { status: 500 });
   }
 }

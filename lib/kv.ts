@@ -28,8 +28,17 @@ export interface AppVisibility {
  */
 export async function saveAppVisibility(appId: string, visibility: Omit<AppVisibility, 'appId'>) {
   const key = `app_visibility:${appId}`;
-  await kv.set(key, visibility);
-  return { success: true, key };
+  console.log(`🔹 KV.saveAppVisibility - appId: ${appId}, key: ${key}`);
+  console.log(`🔹 KV.saveAppVisibility - data:`, JSON.stringify(visibility, null, 2));
+
+  try {
+    const result = await kv.set(key, visibility);
+    console.log(`✅ KV.set completato per ${appId}:`, result);
+    return { success: true, key };
+  } catch (error) {
+    console.error(`❌ KV.set fallito per ${appId}:`, error);
+    throw error;
+  }
 }
 
 /**
