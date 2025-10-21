@@ -34,32 +34,26 @@ export default function HomePage() {
     }
   }, [user, loadUserFavorites]);
 
-  // Ricarica dati quando l'app torna in focus o viene ricaricata
+  // Ricarica dati solo quando l'app torna visibile dopo essere stata nascosta
+  // (evita reload eccessivi che interferiscono con la navigazione)
   useEffect(() => {
-    const handleFocus = () => {
-      console.log('🔄 App in focus, ricaricando dati utente...');
-      checkAuth();
-    };
+    let wasHidden = false;
 
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        console.log('🔄 App visibile, ricaricando dati utente...');
+      if (document.hidden) {
+        // L'app è stata nascosta (es. cambio tab)
+        wasHidden = true;
+      } else if (wasHidden) {
+        // L'app torna visibile DOPO essere stata nascosta
+        console.log('🔄 App tornata visibile dopo essere stata nascosta, ricaricando dati utente...');
         checkAuth();
+        wasHidden = false;
       }
     };
 
-    const handlePageShow = () => {
-      console.log('🔄 Pagina mostrata, ricaricando dati utente...');
-      checkAuth();
-    };
-
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('pageshow', handlePageShow);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('pageshow', handlePageShow);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [checkAuth]);
