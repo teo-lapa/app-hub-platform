@@ -120,13 +120,31 @@ export async function GET(request: NextRequest) {
       const isVisible = userRole ? isAppVisibleForRole(settings, userRole) : settings.visible;
 
       // Converti excludedUsers/excludedCustomers in formato groups per la pagina gestione
+      // E converti visibilityGroup in enabled flags
+      let dipendentiEnabled = true;
+      let clientiEnabled = true;
+
+      if (settings.visibilityGroup === 'none') {
+        dipendentiEnabled = false;
+        clientiEnabled = false;
+      } else if (settings.visibilityGroup === 'internal') {
+        dipendentiEnabled = true;
+        clientiEnabled = false;  // Solo dipendenti, NON clienti
+      } else if (settings.visibilityGroup === 'portal') {
+        dipendentiEnabled = false;  // Solo clienti, NON dipendenti
+        clientiEnabled = true;
+      } else {  // 'all'
+        dipendentiEnabled = true;
+        clientiEnabled = true;
+      }
+
       const groups = {
         dipendenti: {
-          enabled: true,
+          enabled: dipendentiEnabled,
           excluded: (settings.excludedUsers || []).map((id: string) => parseInt(id, 10))
         },
         clienti: {
-          enabled: true,
+          enabled: clientiEnabled,
           excluded: (settings.excludedCustomers || []).map((id: string) => parseInt(id, 10))
         }
       };
@@ -192,9 +210,27 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Determina il visibilityGroup basandosi su groups.enabled
+      let visibilityGroup: VisibilityGroup = 'all';
+
+      if (app.groups) {
+        const dipendentiEnabled = app.groups.dipendenti?.enabled !== false;
+        const clientiEnabled = app.groups.clienti?.enabled !== false;
+
+        if (!dipendentiEnabled && !clientiEnabled) {
+          visibilityGroup = 'none';  // Nessuno può vedere
+        } else if (dipendentiEnabled && !clientiEnabled) {
+          visibilityGroup = 'internal';  // Solo dipendenti
+        } else if (!dipendentiEnabled && clientiEnabled) {
+          visibilityGroup = 'portal';  // Solo clienti
+        } else {
+          visibilityGroup = 'all';  // Tutti
+        }
+      }
+
       visibilitySettings[app.id] = {
         visible: app.visible,
-        visibilityGroup: (app.visibilityGroup || 'all') as VisibilityGroup,
+        visibilityGroup,  // Usa il visibilityGroup derivato da groups
         excludedUsers,
         excludedCustomers,
         developmentStatus: app.developmentStatus || 'pronta'  // Salva anche lo stato sviluppo
@@ -202,7 +238,11 @@ export async function POST(request: NextRequest) {
 
       console.log(`  App ${index + 1}/${apps.length}: ${app.id}`, {
         visible: app.visible,
-        visibilityGroup: app.visibilityGroup,
+        visibilityGroup,  // Mostra il visibilityGroup DERIVATO
+        groups: app.groups ? {
+          dipendenti: app.groups.dipendenti?.enabled,
+          clienti: app.groups.clienti?.enabled
+        } : null,
         developmentStatus: app.developmentStatus,
         excludedUsers: excludedUsers.length,
         excludedCustomers: excludedCustomers.length
