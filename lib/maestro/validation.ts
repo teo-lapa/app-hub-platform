@@ -55,6 +55,53 @@ export const getDailyPlanQuerySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // YYYY-MM-DD
 });
 
+// ============================================================================
+// VEHICLE STOCK VALIDATION SCHEMAS
+// ============================================================================
+
+// Schema per GET /api/maestro/vehicle-stock
+export const getVehicleStockQuerySchema = z.object({
+  salesperson_id: z.coerce.number().int().positive({
+    message: 'salesperson_id must be a positive integer'
+  })
+});
+
+// Schema per singolo prodotto nel transfer
+export const transferProductSchema = z.object({
+  product_id: z.number().int().positive({
+    message: 'product_id must be a positive integer'
+  }),
+  quantity: z.number().positive({
+    message: 'quantity must be a positive number'
+  }),
+  lot_id: z.number().int().positive().optional()
+});
+
+// Schema per POST /api/maestro/vehicle-stock/transfer
+// NOTE: salesperson_id is now optional because it's extracted from cookies
+export const createTransferSchema = z.object({
+  salesperson_id: z.number().int().positive({
+    message: 'salesperson_id must be a positive integer'
+  }).optional(),  // Made optional - will be overridden by authenticated user ID
+  products: z.array(transferProductSchema).min(1, {
+    message: 'At least one product is required'
+  }).max(100, {
+    message: 'Maximum 100 products per transfer'
+  }),
+  type: z.enum(['reload', 'request_gift'], {
+    errorMap: () => ({ message: 'type must be either "reload" or "request_gift"' })
+  }),
+  notes: z.string().max(500).optional()
+});
+
+// Schema per GET /api/maestro/vehicle-stock/history
+export const getTransferHistoryQuerySchema = z.object({
+  salesperson_id: z.coerce.number().int().positive({
+    message: 'salesperson_id must be a positive integer'
+  }),
+  limit: z.coerce.number().int().positive().max(100).default(20)
+});
+
 // Helper: Valida e parse con error handling
 export function validateRequest<T>(
   schema: z.ZodSchema<T>,

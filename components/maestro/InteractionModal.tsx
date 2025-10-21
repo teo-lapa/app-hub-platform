@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Phone, Video, Mail, CheckCircle, XCircle, MinusCircle, Package } from 'lucide-react';
+import { X, Phone, Video, Mail, CheckCircle, XCircle, MinusCircle, Package, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { SampleProductsSelector } from '@/components/daily-plan/SampleProductsSelector';
+import { VehicleProductSelector } from '@/components/maestro/VehicleProductSelector';
 
 interface InteractionModalProps {
   isOpen: boolean;
@@ -40,6 +40,7 @@ export function InteractionModal({
   const [orderGenerated, setOrderGenerated] = useState(false);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showVehicleSelector, setShowVehicleSelector] = useState(false);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -59,10 +60,10 @@ export function InteractionModal({
         quantity: product.quantity
       }));
 
-      // 1. Se ci sono campioni, crea l'ordine campioni in Odoo
-      let sampleOrderId: number | null = null;
+      // 1. Se ci sono campioni dalla macchina, crea il preventivo in Odoo
+      let quotationId: number | null = null;
       if (selectedProducts.length > 0) {
-        const sampleOrderResponse = await fetch('/api/daily-plan/create-sample-order', {
+        const quotationResponse = await fetch('/api/maestro/create-quotation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -80,17 +81,17 @@ export function InteractionModal({
           })
         });
 
-        const sampleOrderData = await sampleOrderResponse.json();
+        const quotationData = await quotationResponse.json();
 
-        if (sampleOrderData.success) {
-          sampleOrderId = sampleOrderData.orderId;
-          toast.success(`Ordine campioni ${sampleOrderId} creato con successo!`, {
+        if (quotationData.success) {
+          quotationId = quotationData.quotationId;
+          toast.success(`Preventivo campioni ${quotationId} creato con successo!`, {
             duration: 5000,
             icon: '🎁'
           });
         } else {
-          console.warn('Errore creazione ordine campioni:', sampleOrderData.error);
-          toast.error('Errore nella creazione dell\'ordine campioni');
+          console.warn('Errore creazione preventivo campioni:', quotationData.error);
+          toast.error('Errore nella creazione del preventivo campioni');
         }
       }
 
@@ -103,7 +104,7 @@ export function InteractionModal({
           interaction_type: interactionType,
           outcome: outcomeMap[outcome],
           samples_given: samples_given.length > 0 ? samples_given : undefined,
-          order_placed: orderGenerated || (sampleOrderId !== null),
+          order_placed: orderGenerated || (quotationId !== null),
           notes: notes || undefined
         })
       });
@@ -220,12 +221,67 @@ export function InteractionModal({
                   </div>
                 </div>
 
-                {/* Samples Given - Nuovo componente con ricerca prodotti */}
+                {/* Samples Given - Vehicle Products Selector */}
                 <div>
-                  <SampleProductsSelector
-                    selectedProducts={selectedProducts}
-                    onProductsChange={setSelectedProducts}
-                  />
+                  <label className="block text-sm font-medium text-slate-300 mb-3">
+                    Campioni Omaggio dalla Macchina
+                  </label>
+
+                  {/* Selected Products List */}
+                  {selectedProducts.length > 0 && (
+                    <div className="mb-3 space-y-2 max-h-48 overflow-y-auto">
+                      {selectedProducts.map((product) => (
+                        <div
+                          key={product.id}
+                          className="bg-slate-900 border border-slate-700 rounded-lg p-3 flex items-center gap-3"
+                        >
+                          {/* Product Image */}
+                          <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                            {product.image ? (
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            ) : (
+                              <Package className="w-6 h-6 text-slate-400" />
+                            )}
+                          </div>
+
+                          {/* Product Info */}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm text-white truncate">{product.name}</h4>
+                            <p className="text-xs text-slate-400">{product.code}</p>
+                          </div>
+
+                          {/* Quantity */}
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-white">{product.quantity}</span>
+                            <span className="text-xs text-slate-400">{product.uom}</span>
+                          </div>
+
+                          {/* Remove Button */}
+                          <button
+                            onClick={() => setSelectedProducts(selectedProducts.filter(p => p.id !== product.id))}
+                            className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-red-400"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Button to Open Vehicle Selector */}
+                  <button
+                    onClick={() => setShowVehicleSelector(true)}
+                    className="w-full p-4 bg-blue-500/10 border-2 border-blue-500/20 hover:border-blue-500/40 rounded-lg transition-all flex items-center justify-center gap-3 text-blue-400 hover:text-blue-300"
+                  >
+                    <Truck className="w-5 h-5" />
+                    <span className="font-medium">
+                      {selectedProducts.length > 0 ? 'Aggiungi Altri Campioni dalla Macchina' : 'Seleziona Campioni dalla Macchina'}
+                    </span>
+                  </button>
 
                   {/* Info Banner quando ci sono campioni selezionati */}
                   {selectedProducts.length > 0 && (
@@ -234,18 +290,32 @@ export function InteractionModal({
                         <div className="text-2xl">🎁</div>
                         <div className="flex-1">
                           <h4 className="text-sm font-semibold text-green-400 mb-1">
-                            Ordine Campioni Omaggio
+                            Preventivo Campioni Omaggio
                           </h4>
                           <p className="text-xs text-slate-300">
-                            Confermando, verrà creato un ordine in Odoo con tutti i dettagli:
-                            data, ora, venditore, cliente, prodotti, note ed esito della visita.
-                            L'ordine resterà in <strong>bozza</strong> per revisione ufficio.
+                            Confermando, verrà creato un <strong>preventivo (bozza)</strong> in Odoo con tutti i dettagli:
+                            data, ora, venditore, cliente, prodotti dalla macchina, note ed esito della visita.
+                            Il preventivo resterà in bozza per revisione ufficio.
                           </p>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
+
+                {/* Vehicle Product Selector Modal */}
+                {showVehicleSelector && (
+                  <VehicleProductSelector
+                    onConfirm={(products) => {
+                      // Merge new products with existing ones
+                      const existingIds = new Set(selectedProducts.map(p => p.id));
+                      const newProducts = products.filter(p => !existingIds.has(p.id));
+                      setSelectedProducts([...selectedProducts, ...newProducts]);
+                      setShowVehicleSelector(false);
+                    }}
+                    onClose={() => setShowVehicleSelector(false)}
+                  />
+                )}
 
                 {/* Sample Feedback */}
                 {selectedProducts.length > 0 && (
@@ -328,7 +398,7 @@ export function InteractionModal({
                     <>
                       {selectedProducts.length > 0 ? (
                         <>
-                          🎁 Conferma e Crea Ordine Campioni ({selectedProducts.length})
+                          🎁 Conferma e Crea Preventivo Campioni ({selectedProducts.length})
                         </>
                       ) : (
                         'Salva interazione'

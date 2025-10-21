@@ -666,3 +666,88 @@ export interface RateLimitInfo {
   remaining: number;
   resetAt: Date;
 }
+
+// ============================================================================
+// VEHICLE STOCK TYPES
+// ============================================================================
+
+/**
+ * Vehicle stock location for a salesperson
+ */
+export interface VehicleLocation {
+  id: number;
+  name: string;
+  complete_name: string;
+  barcode?: string;
+}
+
+/**
+ * Product in vehicle stock
+ */
+export interface VehicleProduct {
+  product_id: number;
+  name: string;
+  default_code: string;
+  image_url: string | null;
+  quantity: number;
+  uom: string;
+  category: string;
+  lot_id?: number;
+  lot_name?: string;
+  expiry_date?: string;
+}
+
+/**
+ * Complete vehicle stock data
+ */
+export interface VehicleStock {
+  location: VehicleLocation;
+  products: VehicleProduct[];
+  total_products: number;
+  total_items: number;
+  last_updated: string;
+}
+
+/**
+ * Transfer product item
+ */
+export interface TransferProduct {
+  product_id: number;
+  quantity: number;
+  lot_id?: number;
+}
+
+/**
+ * Transfer request
+ */
+export interface TransferRequest {
+  salesperson_id: number;
+  products: TransferProduct[];
+  type: 'reload' | 'request_gift';
+  notes?: string;
+}
+
+/**
+ * Transfer result
+ */
+export interface TransferResult {
+  transfer_id: number;
+  picking_id: number;
+  state: string;
+  move_ids: number[];
+}
+
+/**
+ * Transfer history entry
+ */
+export interface TransferHistory {
+  id: number;
+  name: string;
+  date: string;
+  type: 'reload' | 'request_gift';
+  state: string;
+  products_count: number;
+  total_quantity: number;
+  notes?: string;
+  origin?: string;
+}

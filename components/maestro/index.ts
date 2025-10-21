@@ -16,3 +16,9 @@ export { HomeButton } from './HomeButton';
 export { ChatWidget } from './ChatWidget';
 export { ChatMessage, type ChatMessageProps } from './ChatMessage';
 export { ChatInput, type ChatInputProps } from './ChatInput';
+
+// Vehicle Stock Components
+export { VehicleStockButton } from './VehicleStockButton';
+export { VehicleStockModal } from './VehicleStockModal';
+export { ProductCard } from './ProductCard';
+export { ProductSearchBar } from './ProductSearchBar';
