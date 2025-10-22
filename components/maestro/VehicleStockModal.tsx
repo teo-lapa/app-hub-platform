@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ProductCard } from './ProductCard';
-import { ProductSearchBar } from './ProductSearchBar';
+import { ProductSearch } from '@/components/inventario/ProductSearch';
 import { cn } from '@/lib/utils';
 
 interface Product {
@@ -52,6 +52,7 @@ export function VehicleStockModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isReloadSectionOpen, setIsReloadSectionOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showProductSearch, setShowProductSearch] = useState(false);
 
   // Fetch current vehicle stock when modal opens
   useEffect(() => {
@@ -114,6 +115,7 @@ export function VehicleStockModal({
     }
 
     // Add product with default transfer quantity of 1
+    // Handle both BasicProduct (from ProductSearch) and SearchProduct formats
     setSelectedProducts([
       ...selectedProducts,
       {
@@ -121,7 +123,7 @@ export function VehicleStockModal({
         name: product.name,
         code: product.code || product.barcode || '',
         barcode: product.barcode,
-        image_url: product.image_url,
+        image_url: product.image || product.image_url, // ProductSearch uses 'image', not 'image_url'
         quantity: 0, // Current quantity in vehicle (new product)
         uom: product.uom || 'pz',
         transferQuantity: 1
@@ -129,6 +131,7 @@ export function VehicleStockModal({
     ]);
 
     toast.success(`${product.name} aggiunto`);
+    setShowProductSearch(false); // Close search modal after selection
   };
 
   const handleQuantityChange = (productId: number, delta: number) => {
@@ -333,12 +336,15 @@ export function VehicleStockModal({
                         transition={{ duration: 0.2 }}
                         className="overflow-visible"
                       >
-                        <div className="p-4 space-y-4 border-t border-slate-700 overflow-visible">
-                          {/* Product Search */}
-                          <ProductSearchBar
-                            onProductSelect={handleProductSelect}
-                            placeholder="Cerca prodotto (nome, codice, EAN)..."
-                          />
+                        <div className="p-4 space-y-4 border-t border-slate-700">
+                          {/* Product Search Button */}
+                          <button
+                            onClick={() => setShowProductSearch(true)}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Plus className="h-5 w-5" />
+                            Cerca Prodotto da Aggiungere
+                          </button>
 
                           {/* Selected Products List */}
                           {selectedProducts.length > 0 && (
@@ -443,6 +449,14 @@ export function VehicleStockModal({
           </div>
         </>
       )}
+
+      {/* Product Search Modal */}
+      <ProductSearch
+        isOpen={showProductSearch}
+        onClose={() => setShowProductSearch(false)}
+        onSelectProduct={handleProductSelect}
+        currentLocationName={`Veicolo ${vendorName}`}
+      />
     </AnimatePresence>
   );
 }
