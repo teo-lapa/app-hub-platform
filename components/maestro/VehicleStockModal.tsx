@@ -72,8 +72,13 @@ export function VehicleStockModal({
 
     try {
       // Cookie-based auth: pass vendor_id as query param for admin
-      const url = vendorId
-        ? `/api/maestro/vehicle-stock?salesperson_id=${vendorId}`
+      // Ensure vendorId is a number (extract from array if needed)
+      const numericVendorId = vendorId
+        ? (Array.isArray(vendorId) ? vendorId[0] : Number(vendorId))
+        : undefined;
+
+      const url = numericVendorId
+        ? `/api/maestro/vehicle-stock?salesperson_id=${numericVendorId}`
         : '/api/maestro/vehicle-stock';
 
       const response = await fetch(url, { credentials: 'include' });
@@ -161,8 +166,13 @@ export function VehicleStockModal({
 
     try {
       // Cookie-based auth: pass vendor_id as query param for admin
-      const transferUrl = vendorId
-        ? `/api/maestro/vehicle-stock/transfer?salesperson_id=${vendorId}`
+      // Ensure vendorId is a number (extract from array if needed)
+      const numericVendorId = vendorId
+        ? (Array.isArray(vendorId) ? vendorId[0] : Number(vendorId))
+        : undefined;
+
+      const transferUrl = numericVendorId
+        ? `/api/maestro/vehicle-stock/transfer?salesperson_id=${numericVendorId}`
         : '/api/maestro/vehicle-stock/transfer';
 
       const response = await fetch(transferUrl, {
