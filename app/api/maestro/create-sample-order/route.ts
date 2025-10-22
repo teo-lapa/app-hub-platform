@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
           product_id: item.productId,
           product_uom_qty: item.quantity,
           product_uom: product.uom_id[0],
-          price_unit: 0, // Price 0 for gift samples
+          discount: 100, // 100% discount for gift samples (price from pricelist)
           name: lineDescription,
           customer_lead: 0
         }]);
@@ -202,7 +202,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🚚 ORIGINE PRODOTTI: Stock Furgone Venditore
-💰 VALORE COMMERCIALE: Campioni Omaggio (€0)
+💰 VALORE COMMERCIALE: Listino Cliente con Sconto 100%
 📋 STATO: ORDINE CONFERMATO E CONSEGNATO
 
 🤖 Ordine generato e validato automaticamente tramite Maestro AI
