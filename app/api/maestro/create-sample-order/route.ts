@@ -271,12 +271,12 @@ ${notes || '   Nessuna nota aggiuntiva'}
     const confirmData = await confirmResponse.json();
     console.log(`✅ Ordine confermato: ${orderId}`);
 
-    // 9. If we have a vehicle location, create and validate picking
+    // 9. Find the auto-created picking and modify it to use vehicle location
     if (vehicleLocationId) {
-      console.log(`\n📦 Creazione picking per delivery dalla macchina...`);
+      console.log(`\n📦 Ricerca picking auto-creato da sale.order...`);
 
-      // Get picking type for delivery
-      const pickingTypeResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      // Find picking created by sale.order
+      const pickingSearchResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -286,11 +286,11 @@ ${notes || '   Nessuna nota aggiuntiva'}
           jsonrpc: '2.0',
           method: 'call',
           params: {
-            model: 'stock.picking.type',
+            model: 'stock.picking',
             method: 'search_read',
-            args: [[['code', '=', 'outgoing']]],
+            args: [[['sale_id', '=', orderId]]],
             kwargs: {
-              fields: ['id'],
+              fields: ['id', 'move_ids'],
               limit: 1
             }
           },
@@ -298,17 +298,16 @@ ${notes || '   Nessuna nota aggiuntiva'}
         })
       });
 
-      const pickingTypeData = await pickingTypeResponse.json();
-      const pickingTypes = pickingTypeData.result || [];
+      const pickingSearchData = await pickingSearchResponse.json();
+      const pickings = pickingSearchData.result || [];
 
-      if (pickingTypes.length > 0) {
-        const pickingTypeId = pickingTypes[0].id;
+      if (pickings.length > 0) {
+        const pickingId = pickings[0].id;
+        const moveIds = pickings[0].move_ids || [];
+        console.log(`📋 Picking trovato: ${pickingId} con ${moveIds.length} moves`);
 
-        // Customer location (destination for delivery)
-        const customerLocationId = 9; // Partners/Customers location
-
-        // Create picking
-        const pickingCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+        // Update picking location_id to vehicle location
+        await fetch(`${odooUrl}/web/dataset/call_kw`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -319,61 +318,19 @@ ${notes || '   Nessuna nota aggiuntiva'}
             method: 'call',
             params: {
               model: 'stock.picking',
-              method: 'create',
-              args: [{
-                picking_type_id: pickingTypeId,
-                location_id: vehicleLocationId,
-                location_dest_id: customerLocationId,
-                origin: `SO-${orderId}`,
-                partner_id: odooPartnerId,
-                sale_id: orderId,
-                note: `Consegna campioni omaggio dalla macchina venditore`
+              method: 'write',
+              args: [[pickingId], {
+                location_id: vehicleLocationId
               }],
               kwargs: {}
             },
             id: 5
           })
         });
+        console.log(`✅ Picking location_id aggiornata a veicolo (${vehicleLocationId})`);
 
-        const pickingCreateData = await pickingCreateResponse.json();
-        const pickingId = pickingCreateData.result;
-
-        if (pickingId) {
-          console.log(`📋 Picking creato: ${pickingId}`);
-
-          // Create stock.move for each product
-          for (const product of sampleProducts) {
-            const moveCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Cookie': `session_id=${sessionId}`
-              },
-              body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'call',
-                params: {
-                  model: 'stock.move',
-                  method: 'create',
-                  args: [{
-                    picking_id: pickingId,
-                    product_id: product.productId,
-                    name: `Campione: ${product.productName}`,
-                    product_uom_qty: product.quantity,
-                    location_id: vehicleLocationId,
-                    location_dest_id: customerLocationId
-                  }],
-                  kwargs: {}
-                },
-                id: 6
-              })
-            });
-
-            const moveCreateData = await moveCreateResponse.json();
-            console.log(`  ✓ Move creato per prodotto ${product.productId}`);
-          }
-
-          // Confirm picking
+        // Update all move location_id to vehicle location
+        if (moveIds.length > 0) {
           await fetch(`${odooUrl}/web/dataset/call_kw`, {
             method: 'POST',
             headers: {
@@ -384,61 +341,84 @@ ${notes || '   Nessuna nota aggiuntiva'}
               jsonrpc: '2.0',
               method: 'call',
               params: {
-                model: 'stock.picking',
-                method: 'action_confirm',
-                args: [[pickingId]],
+                model: 'stock.move',
+                method: 'write',
+                args: [moveIds, {
+                  location_id: vehicleLocationId
+                }],
                 kwargs: {}
               },
-              id: 7
+              id: 6
             })
           });
-
-          console.log('✅ Picking confermato');
-
-          // Assign picking
-          await fetch(`${odooUrl}/web/dataset/call_kw`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Cookie': `session_id=${sessionId}`
-            },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              method: 'call',
-              params: {
-                model: 'stock.picking',
-                method: 'action_assign',
-                args: [[pickingId]],
-                kwargs: {}
-              },
-              id: 8
-            })
-          });
-
-          console.log('✅ Picking assigned');
-
-          // VALIDATE picking - products delivered!
-          await fetch(`${odooUrl}/web/dataset/call_kw`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Cookie': `session_id=${sessionId}`
-            },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              method: 'call',
-              params: {
-                model: 'stock.picking',
-                method: 'button_validate',
-                args: [[pickingId]],
-                kwargs: {}
-              },
-              id: 9
-            })
-          });
-
-          console.log('✅ Picking VALIDATO - prodotti consegnati!');
+          console.log(`✅ ${moveIds.length} moves aggiornati con location_id veicolo`);
         }
+
+        // Confirm picking
+        await fetch(`${odooUrl}/web/dataset/call_kw`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': `session_id=${sessionId}`
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {
+              model: 'stock.picking',
+              method: 'action_confirm',
+              args: [[pickingId]],
+              kwargs: {}
+            },
+            id: 7
+          })
+        });
+
+        console.log('✅ Picking confermato');
+
+        // Assign picking
+        await fetch(`${odooUrl}/web/dataset/call_kw`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': `session_id=${sessionId}`
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {
+              model: 'stock.picking',
+              method: 'action_assign',
+              args: [[pickingId]],
+              kwargs: {}
+            },
+            id: 8
+          })
+        });
+
+        console.log('✅ Picking assigned');
+
+        // VALIDATE picking - products delivered!
+        await fetch(`${odooUrl}/web/dataset/call_kw`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': `session_id=${sessionId}`
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {
+              model: 'stock.picking',
+              method: 'button_validate',
+              args: [[pickingId]],
+              kwargs: {}
+            },
+            id: 9
+          })
+        });
+
+        console.log('✅ Picking VALIDATO - prodotti consegnati!');
       }
     }
 
