@@ -14,6 +14,10 @@ export async function POST(request: NextRequest) {
   const cronSecret = request.headers.get('X-CRON-SECRET');
   const expectedSecret = process.env.CRON_SECRET;
 
+  console.log('🔍 [CRON DEBUG] Received header:', cronSecret ? `${cronSecret.substring(0, 10)}...` : 'MISSING');
+  console.log('🔍 [CRON DEBUG] Expected secret:', expectedSecret ? `${expectedSecret.substring(0, 10)}...` : 'UNDEFINED');
+  console.log('🔍 [CRON DEBUG] Match:', cronSecret === expectedSecret);
+
   if (!expectedSecret || cronSecret !== expectedSecret) {
     console.error('❌ [MANUAL SYNC] Unauthorized - Invalid CRON_SECRET');
     return NextResponse.json(
