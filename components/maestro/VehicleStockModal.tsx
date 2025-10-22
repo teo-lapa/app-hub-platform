@@ -70,8 +70,12 @@ export function VehicleStockModal({
     setError(null);
 
     try {
-      // Cookie-based auth: no need to pass vendor_id, it's extracted from session
-      const response = await fetch('/api/maestro/vehicle-stock', { credentials: 'include' });
+      // Cookie-based auth: pass vendor_id as query param for admin
+      const url = vendorId
+        ? `/api/maestro/vehicle-stock?salesperson_id=${vendorId}`
+        : '/api/maestro/vehicle-stock';
+
+      const response = await fetch(url, { credentials: 'include' });
       const data = await response.json();
 
       if (data.success) {
@@ -153,8 +157,12 @@ export function VehicleStockModal({
     setIsSubmitting(true);
 
     try {
-      // Cookie-based auth: no need to pass vendor_id
-      const response = await fetch('/api/maestro/vehicle-stock/transfer', {
+      // Cookie-based auth: pass vendor_id as query param for admin
+      const transferUrl = vendorId
+        ? `/api/maestro/vehicle-stock/transfer?salesperson_id=${vendorId}`
+        : '/api/maestro/vehicle-stock/transfer';
+
+      const response = await fetch(transferUrl, {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

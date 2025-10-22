@@ -224,12 +224,13 @@ export class VehicleStockService {
 
     console.log(`📍 [VehicleStock] Found location: ${location.complete_name} (ID: ${locationId})`);
 
-    // 3. Query stock.quant for this location (only positive quantities)
+    // 3. Query stock.quant for this location AND child locations (only positive quantities)
+    // IMPORTANT: Use 'child_of' to include child locations (e.g. WH/BMW ZH969307 M/Storage, /Damaged, etc.)
     const quants = await this.sessionManager.callKw(
       'stock.quant',
       'search_read',
       [[
-        ['location_id', '=', location.id],
+        ['location_id', 'child_of', location.id],
         ['quantity', '>', 0]
       ]],
       {

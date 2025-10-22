@@ -88,7 +88,10 @@ export async function POST(request: NextRequest) {
     const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
     console.log(`   Odoo UID: ${uidNum}`);
 
-    // 3. Parse and validate request body
+    // 3. Check if user is admin (can transfer for other salespersons)
+    const isAdmin = ADMIN_USER_IDS.includes(uidNum);
+
+    // 4. Parse and validate request body
     const body = await request.json();
 
     const validation = validateRequest(createTransferSchema, body);
@@ -106,19 +109,33 @@ export async function POST(request: NextRequest) {
 
     const validatedData = validation.data;
 
-    // 4. Build TransferRequest with authenticated user's Odoo UID
+    // 5. Determine target salesperson ID
+    // Admin can specify salesperson_id via query param OR use their own ID
+    const searchParams = request.nextUrl.searchParams;
+    const requestedSalespersonId = searchParams.get('salesperson_id');
+
+    let targetSalespersonId: number;
+    if (requestedSalespersonId && isAdmin) {
+      targetSalespersonId = parseInt(requestedSalespersonId);
+      console.log(`   Admin creating transfer for salesperson: ${targetSalespersonId}`);
+    } else {
+      targetSalespersonId = uidNum;
+      console.log(`   Regular user creating transfer for self: ${targetSalespersonId}`);
+    }
+
+    // 6. Build TransferRequest with target salesperson ID
     const transferRequest: import('@/lib/maestro/vehicle-stock-service').TransferRequest = {
-      salesperson_id: uidNum,
+      salesperson_id: targetSalespersonId,
       products: validatedData.products,
       type: validatedData.type,
       notes: validatedData.notes
     };
 
-    console.log(`   Salesperson ID (from session): ${transferRequest.salesperson_id}`);
+    console.log(`   Target Salesperson ID: ${transferRequest.salesperson_id}`);
     console.log(`   Transfer type: ${transferRequest.type}`);
     console.log(`   Products count: ${transferRequest.products.length}`);
 
-    // 5. Create transfer
+    // 7. Create transfer
     const vehicleStockService = getVehicleStockService();
     const result = await vehicleStockService.createTransfer(transferRequest);
 
