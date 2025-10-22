@@ -12,11 +12,12 @@ import {
   AlertCircle,
   CheckCircle,
   Plus,
-  Minus
+  Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ProductCard } from './ProductCard';
-import { ProductSearchBar } from './ProductSearchBar';
+import { ProductSearch } from '@/components/inventario/ProductSearch';
+import { Calculator } from '@/components/inventario/Calculator';
 import { cn } from '@/lib/utils';
 
 interface Product {
@@ -52,6 +53,9 @@ export function VehicleStockModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isReloadSectionOpen, setIsReloadSectionOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
 
   // Fetch current vehicle stock when modal opens
   useEffect(() => {
@@ -70,8 +74,27 @@ export function VehicleStockModal({
     setError(null);
 
     try {
-      // Cookie-based auth: no need to pass vendor_id, it's extracted from session
-      const response = await fetch('/api/maestro/vehicle-stock', { credentials: 'include' });
+      // Cookie-based auth: pass vendor_id as query param for admin
+      // CRITICAL FIX: Ensure vendorId is always a clean integer number
+      // vendorId might come as [14, "Name"] from Odoo or as string "14"
+      let numericVendorId: number | undefined;
+      if (vendorId) {
+        if (Array.isArray(vendorId)) {
+          numericVendorId = Number(vendorId[0]); // Extract first element from Odoo array
+        } else if (typeof vendorId === 'string') {
+          numericVendorId = parseInt(vendorId, 10); // Parse string to int
+        } else {
+          numericVendorId = Number(vendorId); // Convert to number
+        }
+      }
+
+      console.log('🚗 [VehicleStock] Fetching with vendorId:', { vendorId, numericVendorId });
+
+      const url = numericVendorId
+        ? `/api/maestro/vehicle-stock?salesperson_id=${numericVendorId}`
+        : '/api/maestro/vehicle-stock';
+
+      const response = await fetch(url, { credentials: 'include' });
       const data = await response.json();
 
       if (data.success) {
@@ -110,6 +133,7 @@ export function VehicleStockModal({
     }
 
     // Add product with default transfer quantity of 1
+    // Handle both BasicProduct (from ProductSearch) and SearchProduct formats
     setSelectedProducts([
       ...selectedProducts,
       {
@@ -117,7 +141,7 @@ export function VehicleStockModal({
         name: product.name,
         code: product.code || product.barcode || '',
         barcode: product.barcode,
-        image_url: product.image_url,
+        image_url: product.image || product.image_url, // ProductSearch uses 'image', not 'image_url'
         quantity: 0, // Current quantity in vehicle (new product)
         uom: product.uom || 'pz',
         transferQuantity: 1
@@ -125,19 +149,27 @@ export function VehicleStockModal({
     ]);
 
     toast.success(`${product.name} aggiunto`);
+    setShowProductSearch(false); // Close search modal after selection
   };
 
-  const handleQuantityChange = (productId: number, delta: number) => {
-    setSelectedProducts((prev) =>
-      prev.map((p) =>
-        p.id === productId
-          ? {
-              ...p,
-              transferQuantity: Math.max(1, p.transferQuantity + delta)
-            }
-          : p
-      )
-    );
+  const handleOpenCalculator = (productId: number) => {
+    setEditingProductId(productId);
+    setShowCalculator(true);
+  };
+
+  const handleCalculatorConfirm = (value: string) => {
+    const quantity = parseFloat(value);
+    if (editingProductId && !isNaN(quantity) && quantity > 0) {
+      setSelectedProducts((prev) =>
+        prev.map((p) =>
+          p.id === editingProductId
+            ? { ...p, transferQuantity: quantity }
+            : p
+        )
+      );
+    }
+    setShowCalculator(false);
+    setEditingProductId(null);
   };
 
   const handleRemoveProduct = (productId: number) => {
@@ -153,8 +185,26 @@ export function VehicleStockModal({
     setIsSubmitting(true);
 
     try {
-      // Cookie-based auth: no need to pass vendor_id
-      const response = await fetch('/api/maestro/vehicle-stock/transfer', {
+      // Cookie-based auth: pass vendor_id as query param for admin
+      // CRITICAL FIX: Ensure vendorId is always a clean integer number
+      let numericVendorId: number | undefined;
+      if (vendorId) {
+        if (Array.isArray(vendorId)) {
+          numericVendorId = Number(vendorId[0]);
+        } else if (typeof vendorId === 'string') {
+          numericVendorId = parseInt(vendorId, 10);
+        } else {
+          numericVendorId = Number(vendorId);
+        }
+      }
+
+      console.log('🚚 [VehicleStock] Creating transfer with vendorId:', { vendorId, numericVendorId });
+
+      const transferUrl = numericVendorId
+        ? `/api/maestro/vehicle-stock/transfer?salesperson_id=${numericVendorId}`
+        : '/api/maestro/vehicle-stock/transfer';
+
+      const response = await fetch(transferUrl, {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -323,14 +373,17 @@ export function VehicleStockModal({
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
+                        className="overflow-visible"
                       >
                         <div className="p-4 space-y-4 border-t border-slate-700">
-                          {/* Product Search */}
-                          <ProductSearchBar
-                            onProductSelect={handleProductSelect}
-                            placeholder="Cerca prodotto (nome, codice, EAN)..."
-                          />
+                          {/* Product Search Button */}
+                          <button
+                            onClick={() => setShowProductSearch(true)}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Plus className="h-5 w-5" />
+                            Cerca Prodotto da Aggiungere
+                          </button>
 
                           {/* Selected Products List */}
                           {selectedProducts.length > 0 && (
@@ -362,36 +415,21 @@ export function VehicleStockModal({
 
                                       {/* Quantity Controls */}
                                       <div className="flex items-center gap-2">
+                                        {/* Clickable quantity - opens calculator */}
                                         <button
-                                          onClick={() =>
-                                            handleQuantityChange(product.id, -1)
-                                          }
-                                          disabled={product.transferQuantity <= 1}
-                                          className="p-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
+                                          onClick={() => handleOpenCalculator(product.id)}
+                                          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors font-mono text-lg font-bold text-white min-w-[60px] text-center"
                                         >
-                                          <Minus className="h-4 w-4 text-white" />
-                                        </button>
-
-                                        <span className="text-sm font-bold text-white min-w-[40px] text-center">
                                           {product.transferQuantity}
-                                        </span>
-
-                                        <button
-                                          onClick={() =>
-                                            handleQuantityChange(product.id, 1)
-                                          }
-                                          className="p-1 bg-slate-700 hover:bg-slate-600 rounded transition-colors"
-                                        >
-                                          <Plus className="h-4 w-4 text-white" />
                                         </button>
 
+                                        {/* Delete button with trash icon */}
                                         <button
-                                          onClick={() =>
-                                            handleRemoveProduct(product.id)
-                                          }
-                                          className="ml-2 p-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+                                          onClick={() => handleRemoveProduct(product.id)}
+                                          className="p-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-red-400 rounded-lg transition-colors"
+                                          title="Rimuovi prodotto"
                                         >
-                                          <X className="h-4 w-4" />
+                                          <Trash2 className="h-4 w-4" />
                                         </button>
                                       </div>
                                     </div>
@@ -435,6 +473,30 @@ export function VehicleStockModal({
           </div>
         </>
       )}
+
+      {/* Product Search Modal */}
+      <ProductSearch
+        isOpen={showProductSearch}
+        onClose={() => setShowProductSearch(false)}
+        onSelectProduct={handleProductSelect}
+        currentLocationName={`Veicolo ${vendorName}`}
+      />
+
+      {/* Calculator Modal */}
+      <Calculator
+        isOpen={showCalculator}
+        onClose={() => {
+          setShowCalculator(false);
+          setEditingProductId(null);
+        }}
+        onConfirm={handleCalculatorConfirm}
+        title="Quantità"
+        initialValue={
+          editingProductId
+            ? selectedProducts.find((p) => p.id === editingProductId)?.transferQuantity.toString() || '1'
+            : '1'
+        }
+      />
     </AnimatePresence>
   );
 }

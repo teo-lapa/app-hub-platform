@@ -8,8 +8,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getVehicleStockService, ADMIN_USER_IDS, getVehicleLocationId, getAllVendorIds } from '@/lib/maestro/vehicle-stock-service';
-import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { getVehicleLocationId, ADMIN_USER_IDS, getAllVendorIds } from '@/lib/maestro/vehicle-stock-service';
+import { getOdooSessionId, callOdoo as callOdooHelper } from '@/lib/odoo/odoo-helper';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -54,25 +54,43 @@ export async function GET(request: NextRequest) {
   console.log('\n🚗 [API] GET /api/maestro/vehicle-stock');
 
   try {
-    // 1. Get user cookies (SAME AS DELIVERY APP)
-    const userCookies = request.headers.get('cookie');
+    // 1. Get Odoo session_id (SAME AS UBICAZIONI APP)
+    const sessionId = await getOdooSessionId();
 
-    if (!userCookies) {
-      console.warn('⚠️  [API] No cookies provided');
+    if (!sessionId) {
+      console.warn('⚠️  [API] No valid session_id');
       return NextResponse.json({
         success: false,
         error: {
           code: 'AUTHENTICATION_REQUIRED',
-          message: 'Devi effettuare il login sulla piattaforma prima di accedere al tuo magazzino'
+          message: 'Sessione non valida. Effettua il login.'
         }
       }, { status: 401 });
     }
 
-    // 2. Get Odoo session and uid (SAME AS DELIVERY APP)
-    const { cookies, uid } = await getOdooSession(userCookies);
+    console.log(`✅ Session ID ottenuto`);
 
-    if (!uid || !cookies) {
-      console.warn('⚠️  [API] Invalid Odoo session');
+    // 2. Get current user UID from session
+    const odooUrl = process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL;
+
+    const sessionInfoResponse = await fetch(`${odooUrl}/web/session/get_session_info`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {}
+      })
+    });
+
+    const sessionInfoData = await sessionInfoResponse.json();
+    const uidNum = sessionInfoData.result?.uid;
+
+    if (!uidNum) {
+      console.warn('⚠️  [API] Cannot get UID from session');
       return NextResponse.json({
         success: false,
         error: {
@@ -82,7 +100,6 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
-    const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
     console.log(`   Odoo UID: ${uidNum}`);
 
     // 3. Check if user is admin (can view other salespersons' vehicles)
@@ -101,43 +118,73 @@ export async function GET(request: NextRequest) {
       console.log(`   Admin viewing salesperson: ${targetOdooUserId}`);
 
       // Get salesperson name
-      const users = await callOdoo(
-        cookies,
-        'res.users',
-        'read',
-        [[targetOdooUserId]],
-        { fields: ['name'] }
-      );
-      salespersonName = users[0]?.name || 'Unknown';
+      const usersResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'res.users',
+            method: 'read',
+            args: [[targetOdooUserId]],
+            kwargs: { fields: ['name'] }
+          }
+        })
+      });
+      const usersData = await usersResponse.json();
+      salespersonName = usersData.result?.[0]?.name || 'Unknown';
 
     } else {
       // Regular user or admin viewing own vehicle
       targetOdooUserId = uidNum;
 
-      // Try to find hr.employee linked to this user (SAME AS DELIVERY APP)
-      const employees = await callOdoo(
-        cookies,
-        'hr.employee',
-        'search_read',
-        [],
-        {
-          domain: [['user_id', '=', uidNum]],
-          fields: ['id', 'name'],
-          limit: 1
-        }
-      );
+      // Try to find hr.employee linked to this user
+      const employeesResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'hr.employee',
+            method: 'search_read',
+            args: [[['user_id', '=', uidNum]]],
+            kwargs: { fields: ['id', 'name'], limit: 1 }
+          }
+        })
+      });
+      const employeesData = await employeesResponse.json();
+      const employees = employeesData.result || [];
 
       if (employees.length === 0) {
-        // Fallback: use res.users if no hr.employee found (SAME AS DELIVERY APP)
+        // Fallback: use res.users if no hr.employee found
         console.log(`   No hr.employee found for uid ${uidNum}, using res.users`);
-        const users = await callOdoo(
-          cookies,
-          'res.users',
-          'read',
-          [[uidNum]],
-          { fields: ['name'] }
-        );
-        salespersonName = users[0]?.name || 'Unknown';
+        const usersResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': `session_id=${sessionId}`
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {
+              model: 'res.users',
+              method: 'read',
+              args: [[uidNum]],
+              kwargs: { fields: ['name'] }
+            }
+          })
+        });
+        const usersData = await usersResponse.json();
+        salespersonName = usersData.result?.[0]?.name || 'Unknown';
       } else {
         salespersonName = employees[0].name;
       }
@@ -187,20 +234,160 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 6. Get vehicle stock
-    const vehicleStockService = getVehicleStockService();
-    const stock = await vehicleStockService.getVehicleStock(targetOdooUserId);
+    // 6. Get vehicle location ID
+    const locationId = getVehicleLocationId(targetOdooUserId);
+
+    if (!locationId) {
+      return NextResponse.json({
+        success: false,
+        error: {
+          code: 'NO_VEHICLE_LOCATION',
+          message: `No vehicle location mapped for salesperson ${targetOdooUserId}`
+        }
+      }, { status: 404 });
+    }
+
+    // 7. Get location details
+    const locationResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.location',
+          method: 'read',
+          args: [[locationId]],
+          kwargs: { fields: ['id', 'name', 'complete_name', 'barcode'] }
+        }
+      })
+    });
+    const locationData = await locationResponse.json();
+    const location = locationData.result?.[0];
+
+    if (!location) {
+      return NextResponse.json({
+        success: false,
+        error: {
+          code: 'LOCATION_NOT_FOUND',
+          message: `Vehicle location ID ${locationId} not found in Odoo`
+        }
+      }, { status: 404 });
+    }
+
+    console.log(`📍 Location: ${location.complete_name} (ID: ${locationId})`);
+
+    // 8. Query stock.quant
+    const quantsResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.quant',
+          method: 'search_read',
+          args: [[
+            ['location_id', '=', locationId],
+            ['quantity', '>', 0]
+          ]],
+          kwargs: {
+            fields: ['id', 'product_id', 'quantity', 'product_uom_id', 'lot_id'],
+            order: 'product_id'
+          }
+        }
+      })
+    });
+    const quantsData = await quantsResponse.json();
+    const quants = quantsData.result || [];
+
+    console.log(`📦 Found ${quants.length} quants`);
+
+    if (quants.length === 0) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          location: {
+            id: location.id,
+            name: location.name,
+            complete_name: location.complete_name,
+            barcode: location.barcode || undefined
+          },
+          products: [],
+          total_products: 0,
+          total_items: 0,
+          last_updated: new Date().toISOString(),
+          salesperson: {
+            id: targetOdooUserId,
+            name: salespersonName
+          }
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 9. Get product details
+    const productIds = Array.from(new Set(quants.map((q: any) => q.product_id[0])));
+    const productsResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'product.product',
+          method: 'read',
+          args: [productIds],
+          kwargs: { fields: ['id', 'name', 'default_code', 'image_128', 'uom_id', 'categ_id', 'barcode'] }
+        }
+      })
+    });
+    const productsData = await productsResponse.json();
+    const products = productsData.result || [];
+
+    // 10. Map to final product format
+    const productMap = new Map(products.map((p: any) => [p.id, p]));
+    const vehicleProducts = quants.map((quant: any) => {
+      const product: any = productMap.get(quant.product_id[0]);
+      return {
+        id: quant.product_id[0],
+        name: product?.name || quant.product_id[1],
+        code: product?.default_code || '',
+        barcode: product?.barcode || '',
+        image_url: product?.image_128 ? `data:image/png;base64,${product.image_128}` : null,
+        quantity: quant.quantity || 0,
+        uom: quant.product_uom_id ? quant.product_uom_id[1] : 'Units'
+      };
+    });
 
     console.log(`✅ [API] Vehicle stock retrieved successfully`);
-    console.log(`   Location: ${stock.location.name}`);
-    console.log(`   Products: ${stock.total_products}`);
-    console.log(`   Total items: ${stock.total_items}`);
+    console.log(`   Location: ${location.name}`);
+    console.log(`   Products: ${vehicleProducts.length}`);
+    console.log(`   Total items: ${vehicleProducts.reduce((sum: number, p: any) => sum + p.quantity, 0)}`);
 
-    // 7. Return success response with salesperson info
+    // 11. Return success response
     return NextResponse.json({
       success: true,
       data: {
-        ...stock,
+        location: {
+          id: location.id,
+          name: location.name,
+          complete_name: location.complete_name,
+          barcode: location.barcode || undefined
+        },
+        products: vehicleProducts,
+        total_products: vehicleProducts.length,
+        total_items: vehicleProducts.reduce((sum: number, p: any) => sum + p.quantity, 0),
+        last_updated: new Date().toISOString(),
         salesperson: {
           id: targetOdooUserId,
           name: salespersonName

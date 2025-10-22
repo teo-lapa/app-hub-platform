@@ -224,27 +224,57 @@ export class VehicleStockService {
 
     console.log(`📍 [VehicleStock] Found location: ${location.complete_name} (ID: ${locationId})`);
 
-    // 3. Query stock.quant for this location (only positive quantities)
-    const quants = await this.sessionManager.callKw(
-      'stock.quant',
-      'search_read',
-      [[
-        ['location_id', '=', location.id],
-        ['quantity', '>', 0]
-      ]],
-      {
-        fields: [
-          'id',
-          'product_id',
-          'quantity',
-          'product_uom_id',
-          'lot_id',
-          'package_id',
-          'inventory_quantity'
-        ],
-        order: 'product_id'
-      }
-    );
+    // 3. Query stock.quant for this location AND child locations (only positive quantities)
+    // IMPORTANT: Try child_of first, fallback to '=' if it fails
+    let quants: any[] = [];
+
+    try {
+      // Try with child_of operator (includes child locations)
+      quants = await this.sessionManager.callKw(
+        'stock.quant',
+        'search_read',
+        [[
+          ['location_id', 'child_of', location.id],
+          ['quantity', '>', 0]
+        ]],
+        {
+          fields: [
+            'id',
+            'product_id',
+            'quantity',
+            'product_uom_id',
+            'lot_id',
+            'package_id',
+            'inventory_quantity'
+          ],
+          order: 'product_id'
+        }
+      );
+    } catch (error: any) {
+      console.warn(`⚠️  child_of failed, fallback to '=' operator:`, error.message);
+
+      // Fallback: query only parent location
+      quants = await this.sessionManager.callKw(
+        'stock.quant',
+        'search_read',
+        [[
+          ['location_id', '=', location.id],
+          ['quantity', '>', 0]
+        ]],
+        {
+          fields: [
+            'id',
+            'product_id',
+            'quantity',
+            'product_uom_id',
+            'lot_id',
+            'package_id',
+            'inventory_quantity'
+          ],
+          order: 'product_id'
+        }
+      );
+    }
 
     console.log(`📦 [VehicleStock] Found ${quants.length} quants`);
 

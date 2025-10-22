@@ -22,3 +22,4 @@ export { VehicleStockButton } from './VehicleStockButton';
 export { VehicleStockModal } from './VehicleStockModal';
 export { ProductCard } from './ProductCard';
 export { ProductSearchBar } from './ProductSearchBar';
+export { VehicleProductSelector } from './VehicleProductSelectorSimple';

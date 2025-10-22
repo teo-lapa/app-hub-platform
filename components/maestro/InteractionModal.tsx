@@ -4,13 +4,15 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Phone, Video, Mail, CheckCircle, XCircle, MinusCircle, Package, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { VehicleProductSelector } from '@/components/maestro/VehicleProductSelector';
+import { VehicleProductSelector } from '@/components/maestro/VehicleProductSelectorSimple';
 
 interface InteractionModalProps {
   isOpen: boolean;
   onClose: () => void;
   customerId: number;
   customerName: string;
+  odooPartnerId: number;
+  salesPersonId?: number; // ID del venditore per mostrare i suoi prodotti in macchina
 }
 
 type InteractionType = 'visit' | 'call' | 'email';
@@ -31,7 +33,9 @@ export function InteractionModal({
   isOpen,
   onClose,
   customerId,
-  customerName
+  customerName,
+  odooPartnerId,
+  salesPersonId
 }: InteractionModalProps) {
   const [interactionType, setInteractionType] = useState<InteractionType>('visit');
   const [outcome, setOutcome] = useState<Outcome>('neutral');
@@ -60,17 +64,19 @@ export function InteractionModal({
         quantity: product.quantity
       }));
 
-      // 1. Se ci sono campioni dalla macchina, crea il preventivo in Odoo
-      let quotationId: number | null = null;
+      // 1. Se ci sono campioni dalla macchina, crea l'ordine confermato in Odoo
+      let orderId: number | null = null;
       if (selectedProducts.length > 0) {
-        const quotationResponse = await fetch('/api/maestro/create-quotation', {
+        const orderResponse = await fetch('/api/maestro/create-sample-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            customerId,
+            odooPartnerId,
             customerName,
+            salesPersonId,
             interactionType,
             outcome,
+            sampleFeedback,
             notes,
             sampleProducts: selectedProducts.map(p => ({
               productId: p.id,
@@ -81,17 +87,18 @@ export function InteractionModal({
           })
         });
 
-        const quotationData = await quotationResponse.json();
+        const orderData = await orderResponse.json();
 
-        if (quotationData.success) {
-          quotationId = quotationData.quotationId;
-          toast.success(`Preventivo campioni ${quotationId} creato con successo!`, {
+        if (orderData.success) {
+          orderId = orderData.orderId;
+          toast.success(`Ordine campioni ${orderId} creato e validato con successo!`, {
             duration: 5000,
             icon: '🎁'
           });
         } else {
-          console.warn('Errore creazione preventivo campioni:', quotationData.error);
-          toast.error('Errore nella creazione del preventivo campioni');
+          console.warn('Errore creazione ordine campioni:', orderData.error);
+          toast.error('Errore nella creazione dell\'ordine campioni: ' + (orderData.error?.message || 'Errore sconosciuto'));
+          return; // Non continuare se l'ordine fallisce
         }
       }
 
@@ -104,7 +111,8 @@ export function InteractionModal({
           interaction_type: interactionType,
           outcome: outcomeMap[outcome],
           samples_given: samples_given.length > 0 ? samples_given : undefined,
-          order_placed: orderGenerated || (quotationId !== null),
+          order_placed: orderGenerated || (orderId !== null),
+          odoo_order_id: orderId,
           notes: notes || undefined
         })
       });
@@ -290,12 +298,12 @@ export function InteractionModal({
                         <div className="text-2xl">🎁</div>
                         <div className="flex-1">
                           <h4 className="text-sm font-semibold text-green-400 mb-1">
-                            Preventivo Campioni Omaggio
+                            Ordine Campioni Omaggio Confermato
                           </h4>
                           <p className="text-xs text-slate-300">
-                            Confermando, verrà creato un <strong>preventivo (bozza)</strong> in Odoo con tutti i dettagli:
-                            data, ora, venditore, cliente, prodotti dalla macchina, note ed esito della visita.
-                            Il preventivo resterà in bozza per revisione ufficio.
+                            Confermando, verrà creato un <strong>ordine già confermato e validato</strong> in Odoo con:
+                            prodotti dalla macchina (prezzo €0), picking automatico validato (prodotti consegnati),
+                            tutte le note (tipo visita, esito, feedback) nel Chatter dell'ordine.
                           </p>
                         </div>
                       </div>
@@ -306,6 +314,7 @@ export function InteractionModal({
                 {/* Vehicle Product Selector Modal */}
                 {showVehicleSelector && (
                   <VehicleProductSelector
+                    salesPersonId={salesPersonId}
                     onConfirm={(products) => {
                       // Merge new products with existing ones
                       const existingIds = new Set(selectedProducts.map(p => p.id));

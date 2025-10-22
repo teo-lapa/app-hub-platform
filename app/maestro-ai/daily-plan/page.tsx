@@ -47,6 +47,7 @@ interface DailyPlanResponse {
 
 interface CustomerCardData {
   id: number;
+  odoo_partner_id: number;
   name: string;
   city: string;
   health_score: number;
@@ -73,6 +74,7 @@ function mapToCardData(customer: CustomerWithRecommendations, priority: 'urgent'
 
   return {
     id: avatar.odoo_partner_id, // Use Odoo Partner ID for linking to customer detail page
+    odoo_partner_id: avatar.odoo_partner_id,
     name: avatar.name,
     city: avatar.city || 'N/A',
     health_score: avatar.health_score,
@@ -136,7 +138,7 @@ export default function DailyPlanPage() {
 
   const [loading, setLoading] = useState(false);
 
-  const [selectedCustomer, setSelectedCustomer] = useState<{id: number, name: string} | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<{id: number, name: string, odoo_partner_id: number} | null>(null);
   const [filterPriority, setFilterPriority] = useState<'all' | 'urgent' | 'high' | 'medium'>('all');
   const [filterCity, setFilterCity] = useState<string>('all');
 
@@ -220,7 +222,11 @@ export default function DailyPlanPage() {
   const handleCompleteVisit = (customerId: number) => {
     const customer = allCards.find(c => c.id === customerId);
     if (customer) {
-      setSelectedCustomer({ id: customerId, name: customer.name });
+      setSelectedCustomer({
+        id: customerId,
+        name: customer.name,
+        odoo_partner_id: customer.odoo_partner_id
+      });
     }
   };
 
@@ -242,6 +248,7 @@ export default function DailyPlanPage() {
     // Add customer to manually added list
     const newCustomerCard: CustomerCardData = {
       id: customer.odoo_partner_id,
+      odoo_partner_id: customer.odoo_partner_id,
       name: customer.name,
       city: customer.city || 'N/A',
       health_score: customer.health_score,
@@ -659,6 +666,7 @@ export default function DailyPlanPage() {
           onClose={() => setSelectedCustomer(null)}
           customerId={selectedCustomer.id}
           customerName={selectedCustomer.name}
+          odooPartnerId={selectedCustomer.odoo_partner_id}
         />
       )}
     </div>

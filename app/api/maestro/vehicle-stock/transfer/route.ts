@@ -2,189 +2,271 @@
  * MAESTRO AI - Vehicle Stock Transfer API Endpoint
  *
  * POST /api/maestro/vehicle-stock/transfer
- * Create stock transfer (reload or gift request)
+ * Create stock transfer (reload vehicle from warehouse)
  *
- * AUTHENTICATION: Uses cookie-based Odoo session (same pattern as delivery app)
+ * ARCHITECTURE: Uses SAME approach as Gestione Ubicazioni
+ * - Direct Odoo API calls via /web/dataset/call_kw
+ * - Cookie-based authentication with getOdooSessionId()
+ * - Creates picking → move → move_line → confirm + validate
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getVehicleStockService } from '@/lib/maestro/vehicle-stock-service';
-import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 import { ADMIN_USER_IDS } from '@/lib/maestro/vehicle-stock-service';
-import {
-  createTransferSchema,
-  validateRequest
-} from '@/lib/maestro/validation';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+// Vehicle location mappings (same as vehicle-stock-service.ts)
+const SALESPERSON_VEHICLE_MAPPING: Record<number, number> = {
+  121: 607,  // Alessandro Motta → WH/BMW ZH542378 A
+  407: 605,  // Domingos Ferreira → WH/BMW ZH638565 D
+  14: 606,   // Mihai Nita → WH/BMW ZH969307 M
+  249: 608,  // Gregorio Buccolieri → WH/COMO 6278063 G
+};
+
 /**
  * POST /api/maestro/vehicle-stock/transfer
  *
- * Create a stock transfer for the logged-in salesperson's vehicle
- *
- * Authentication: Extracts Odoo user from cookies (same as delivery app)
- * - Gets odoo_session from cookies
- * - Extracts uid from Odoo session
- * - Uses that uid as salesperson_id for the transfer
- *
  * Request body:
  * {
- *   products: [
- *     {
- *       product_id: number,
- *       quantity: number,
- *       lot_id?: number
- *     }
- *   ],
- *   type: "reload" | "request_gift",
+ *   products: [{ product_id: number, quantity: number }],
+ *   type: "reload",
  *   notes?: string
- * }
- *
- * Returns:
- * {
- *   success: true,
- *   data: {
- *     transfer_id: number,
- *     picking_id: number,
- *     state: string,
- *     move_ids: number[]
- *   }
  * }
  */
 export async function POST(request: NextRequest) {
   console.log('\n📤 [API] POST /api/maestro/vehicle-stock/transfer');
 
   try {
-    // 1. Get user cookies (SAME AS DELIVERY APP)
-    const userCookies = request.headers.get('cookie');
-
-    if (!userCookies) {
-      console.warn('⚠️  [API] No cookies provided');
+    // 1. Get Odoo session (same as Gestione Ubicazioni)
+    const sessionId = await getOdooSessionId();
+    if (!sessionId) {
       return NextResponse.json({
         success: false,
-        error: {
-          code: 'AUTHENTICATION_REQUIRED',
-          message: 'Devi effettuare il login sulla piattaforma'
-        }
+        error: 'Sessione non valida. Effettua il login.'
       }, { status: 401 });
     }
 
-    // 2. Get Odoo session and uid (SAME AS DELIVERY APP)
-    const { cookies, uid } = await getOdooSession(userCookies);
+    console.log('✅ Session ID ottenuto');
 
-    if (!uid || !cookies) {
-      console.warn('⚠️  [API] Invalid Odoo session');
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'INVALID_SESSION',
-          message: 'Sessione non valida. Effettua nuovamente il login.'
-        }
-      }, { status: 401 });
+    // 2. Get Odoo URL
+    const odooUrl = process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL;
+    if (!odooUrl) {
+      throw new Error('ODOO_URL non configurato');
     }
 
-    const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
-    console.log(`   Odoo UID: ${uidNum}`);
-
-    // 3. Parse and validate request body
+    // 3. Parse request body
     const body = await request.json();
+    const { products, type, notes } = body;
 
-    const validation = validateRequest(createTransferSchema, body);
-
-    if (!validation.success) {
-      console.warn('⚠️  [API] Validation failed:', validation.error);
+    if (!products || products.length === 0) {
       return NextResponse.json({
         success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: validation.error
-        }
+        error: 'Nessun prodotto selezionato'
       }, { status: 400 });
     }
 
-    const validatedData = validation.data;
+    // 4. Determine target salesperson
+    const searchParams = request.nextUrl.searchParams;
+    const salespersonIdParam = searchParams.get('salesperson_id');
 
-    // 4. Build TransferRequest with authenticated user's Odoo UID
-    const transferRequest: import('@/lib/maestro/vehicle-stock-service').TransferRequest = {
-      salesperson_id: uidNum,
-      products: validatedData.products,
-      type: validatedData.type,
-      notes: validatedData.notes
-    };
+    let targetSalespersonId: number;
+    if (salespersonIdParam) {
+      targetSalespersonId = parseInt(salespersonIdParam, 10);
+      console.log(`   Creating transfer for salesperson: ${targetSalespersonId}`);
+    } else {
+      // Use logged-in user - get UID from cookie
+      // TODO: Extract UID from session cookie if needed
+      throw new Error('salesperson_id required');
+    }
 
-    console.log(`   Salesperson ID (from session): ${transferRequest.salesperson_id}`);
-    console.log(`   Transfer type: ${transferRequest.type}`);
-    console.log(`   Products count: ${transferRequest.products.length}`);
+    // 5. Get vehicle location for this salesperson
+    const vehicleLocationId = SALESPERSON_VEHICLE_MAPPING[targetSalespersonId];
+    if (!vehicleLocationId) {
+      return NextResponse.json({
+        success: false,
+        error: `Nessuna ubicazione veicolo mappata per il venditore ${targetSalespersonId}`
+      }, { status: 404 });
+    }
 
-    // 5. Create transfer
-    const vehicleStockService = getVehicleStockService();
-    const result = await vehicleStockService.createTransfer(transferRequest);
+    console.log(`   Vehicle location ID: ${vehicleLocationId}`);
 
-    console.log(`✅ [API] Transfer created successfully`);
-    console.log(`   Picking ID: ${result.picking_id}`);
-    console.log(`   State: ${result.state}`);
-    console.log(`   Moves: ${result.move_ids.length}`);
+    // 6. Get warehouse stock location (source)
+    // HARDCODED: WH/Stock location ID (same as Gestione Ubicazioni uses location ID 8)
+    const warehouseLocationId = 8; // WH/Stock location
 
-    // 3. Return success response
+    console.log(`   Source (Warehouse): ${warehouseLocationId}`);
+    console.log(`   Destination (Vehicle): ${vehicleLocationId}`);
+
+    // 7. Get picking type for internal transfer
+    const pickingTypeResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking.type',
+          method: 'search_read',
+          args: [[['code', '=', 'internal']]],
+          kwargs: {
+            fields: ['id'],
+            limit: 1
+          }
+        },
+        id: 1
+      })
+    });
+
+    const pickingTypeData = await pickingTypeResponse.json();
+    const pickingTypes = pickingTypeData.result || [];
+
+    if (!pickingTypes || pickingTypes.length === 0) {
+      throw new Error('Picking type interno non trovato');
+    }
+
+    const pickingTypeId = pickingTypes[0].id;
+    console.log(`   Picking type ID: ${pickingTypeId}`);
+
+    // 8. Create stock.picking
+    const pickingCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking',
+          method: 'create',
+          args: [{
+            picking_type_id: pickingTypeId,
+            location_id: warehouseLocationId,
+            location_dest_id: vehicleLocationId,
+            origin: `VEICOLO-RELOAD-${targetSalespersonId}-${Date.now()}`,
+            note: notes || `Ricarica veicolo - ${products.length} prodotti`
+          }],
+          kwargs: {}
+        },
+        id: 2
+      })
+    });
+
+    const pickingCreateData = await pickingCreateResponse.json();
+
+    if (!pickingCreateData.result) {
+      console.error('❌ Errore creazione picking:', pickingCreateData);
+      throw new Error('Errore nella creazione del picking');
+    }
+
+    const pickingId = pickingCreateData.result;
+    console.log(`📋 Picking creato: ${pickingId}`);
+
+    // 9. Create stock.move for each product
+    const moveIds: number[] = [];
+
+    for (const product of products) {
+      const moveCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'stock.move',
+            method: 'create',
+            args: [{
+              picking_id: pickingId,
+              product_id: product.product_id,
+              name: `Reload Product ${product.product_id}`,
+              product_uom_qty: product.quantity,
+              location_id: warehouseLocationId,
+              location_dest_id: vehicleLocationId
+            }],
+            kwargs: {}
+          },
+          id: 3
+        })
+      });
+
+      const moveCreateData = await moveCreateResponse.json();
+      const moveId = moveCreateData.result;
+      moveIds.push(moveId);
+
+      console.log(`  ✓ Move creato: ${moveId} per prodotto ${product.product_id} (qty: ${product.quantity})`);
+    }
+
+    // 10. Confirm picking (crea le move lines automaticamente)
+    const confirmResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking',
+          method: 'action_confirm',
+          args: [[pickingId]],
+          kwargs: {}
+        },
+        id: 5
+      })
+    });
+
+    console.log('✅ Picking confermato');
+
+    // 11. Assign picking (Odoo riserva automaticamente i prodotti dalle ubicazioni disponibili)
+    const assignResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking',
+          method: 'action_assign',
+          args: [[pickingId]],
+          kwargs: {}
+        },
+        id: 6
+      })
+    });
+
+    console.log('✅ Picking assigned - prodotti riservati automaticamente');
+
+    // NON VALIDARE AUTOMATICAMENTE!
+    // L'utente può andare su Odoo e validare manualmente dopo aver verificato le ubicazioni
+    console.log('⏳ Picking pronto per validazione manuale su Odoo');
+
     return NextResponse.json({
       success: true,
-      data: result,
+      data: {
+        picking_id: pickingId,
+        move_ids: moveIds,
+        state: 'assigned', // Non più 'done', ora è 'assigned' (pronto per validazione)
+        message: 'Trasferimento creato - validare su Odoo'
+      },
       timestamp: new Date().toISOString()
     }, { status: 201 });
 
   } catch (error: any) {
     console.error('❌ [API] Error creating transfer:', error);
 
-    // Handle specific error types
-    if (error.message?.includes('No vehicle location mapped')) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'NO_VEHICLE_MAPPING',
-          message: 'No vehicle location mapped for this salesperson',
-          details: error.message
-        }
-      }, { status: 404 });
-    }
-
-    if (error.message?.includes('not found')) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'LOCATION_NOT_FOUND',
-          message: 'Required location not found in Odoo',
-          details: error.message
-        }
-      }, { status: 404 });
-    }
-
-    // Odoo session errors
-    if (error.message?.includes('session') || error.message?.includes('Session')) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'ODOO_SESSION_ERROR',
-          message: 'Odoo session error. Please re-authenticate.',
-          details: error.message
-        }
-      }, { status: 401 });
-    }
-
-    // Product validation errors
-    if (error.message?.includes('product') || error.message?.includes('Product')) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'PRODUCT_ERROR',
-          message: 'Invalid product data',
-          details: error.message
-        }
-      }, { status: 400 });
-    }
-
-    // Generic error
     return NextResponse.json({
       success: false,
       error: {

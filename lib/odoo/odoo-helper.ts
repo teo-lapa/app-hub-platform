@@ -57,24 +57,22 @@ async function authenticateWithCredentials(): Promise<string | null> {
 }
 
 /**
- * Ottiene il session_id Odoo dell'utente loggato (o crea nuova sessione)
+ * Ottiene il session_id Odoo dell'utente loggato
  */
 export async function getOdooSessionId(): Promise<string | null> {
   try {
     const cookieStore = cookies();
     const sessionId = cookieStore.get('odoo_session_id')?.value;
 
-    if (sessionId) {
-      return sessionId;
+    if (!sessionId) {
+      console.warn('⚠️ Nessun session_id trovato - utente deve fare login');
+      return null;
     }
 
-    // Fallback: crea nuova sessione
-    console.log('⚠️ Nessun session_id trovato, creo nuova sessione...');
-    return await authenticateWithCredentials();
+    return sessionId;
   } catch (error) {
     console.error('❌ Errore ottenimento session_id:', error);
-    // Ultimo tentativo: crea sessione
-    return await authenticateWithCredentials();
+    return null;
   }
 }
 
