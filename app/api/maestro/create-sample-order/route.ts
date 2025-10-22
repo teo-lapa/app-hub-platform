@@ -306,6 +306,27 @@ ${notes || '   Nessuna nota aggiuntiva'}
         const moveIds = pickings[0].move_ids || [];
         console.log(`📋 Picking trovato: ${pickingId} con ${moveIds.length} moves`);
 
+        // First: unreserve the picking to allow modifications
+        await fetch(`${odooUrl}/web/dataset/call_kw`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': `session_id=${sessionId}`
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {
+              model: 'stock.picking',
+              method: 'do_unreserve',
+              args: [[pickingId]],
+              kwargs: {}
+            },
+            id: 4
+          })
+        });
+        console.log(`🔓 Picking unreserved per permettere modifiche`);
+
         // Update picking location_id to vehicle location
         await fetch(`${odooUrl}/web/dataset/call_kw`, {
           method: 'POST',
