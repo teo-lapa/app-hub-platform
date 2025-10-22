@@ -28,6 +28,8 @@ interface Product {
   image_url?: string;
   quantity: number;
   uom?: string;
+  lot_name?: string;
+  expiry_date?: string;
 }
 
 interface SelectedProductForTransfer extends Product {
