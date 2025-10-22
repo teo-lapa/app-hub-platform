@@ -203,39 +203,9 @@ export async function POST(request: NextRequest) {
       moveIds.push(moveId);
 
       console.log(`  ✓ Move creato: ${moveId} per prodotto ${product.product_id} (qty: ${product.quantity})`);
-
-      // 10. Create stock.move.line for this move
-      const moveLineResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': `session_id=${sessionId}`
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {
-            model: 'stock.move.line',
-            method: 'create',
-            args: [{
-              move_id: moveId,
-              picking_id: pickingId,
-              product_id: product.product_id,
-              qty_done: product.quantity,
-              location_id: warehouseLocationId,
-              location_dest_id: vehicleLocationId
-            }],
-            kwargs: {}
-          },
-          id: 4
-        })
-      });
-
-      const moveLineData = await moveLineResponse.json();
-      console.log(`  ✓ Move line creata per move ${moveId}`);
     }
 
-    // 11. Confirm picking
+    // 10. Confirm picking (crea le move lines automaticamente)
     const confirmResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
@@ -257,8 +227,8 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Picking confermato');
 
-    // 12. Validate picking (complete the transfer)
-    const validateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+    // 11. Assign picking (Odoo riserva automaticamente i prodotti dalle ubicazioni disponibili)
+    const assignResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -269,7 +239,7 @@ export async function POST(request: NextRequest) {
         method: 'call',
         params: {
           model: 'stock.picking',
-          method: 'button_validate',
+          method: 'action_assign',
           args: [[pickingId]],
           kwargs: {}
         },
@@ -277,14 +247,19 @@ export async function POST(request: NextRequest) {
       })
     });
 
-    console.log('✅ Picking validato - trasferimento completato');
+    console.log('✅ Picking assigned - prodotti riservati automaticamente');
+
+    // NON VALIDARE AUTOMATICAMENTE!
+    // L'utente può andare su Odoo e validare manualmente dopo aver verificato le ubicazioni
+    console.log('⏳ Picking pronto per validazione manuale su Odoo');
 
     return NextResponse.json({
       success: true,
       data: {
         picking_id: pickingId,
         move_ids: moveIds,
-        state: 'done'
+        state: 'assigned', // Non più 'done', ora è 'assigned' (pronto per validazione)
+        message: 'Trasferimento creato - validare su Odoo'
       },
       timestamp: new Date().toISOString()
     }, { status: 201 });
