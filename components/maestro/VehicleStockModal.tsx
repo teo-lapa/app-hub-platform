@@ -331,9 +331,9 @@ export function VehicleStockModal({
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
+                        className="overflow-visible"
                       >
-                        <div className="p-4 space-y-4 border-t border-slate-700">
+                        <div className="p-4 space-y-4 border-t border-slate-700 overflow-visible">
                           {/* Product Search */}
                           <ProductSearchBar
                             onProductSelect={handleProductSelect}
