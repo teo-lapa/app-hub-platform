@@ -75,10 +75,20 @@ export function VehicleStockModal({
 
     try {
       // Cookie-based auth: pass vendor_id as query param for admin
-      // Ensure vendorId is a number (extract from array if needed)
-      const numericVendorId = vendorId
-        ? (Array.isArray(vendorId) ? vendorId[0] : Number(vendorId))
-        : undefined;
+      // CRITICAL FIX: Ensure vendorId is always a clean integer number
+      // vendorId might come as [14, "Name"] from Odoo or as string "14"
+      let numericVendorId: number | undefined;
+      if (vendorId) {
+        if (Array.isArray(vendorId)) {
+          numericVendorId = Number(vendorId[0]); // Extract first element from Odoo array
+        } else if (typeof vendorId === 'string') {
+          numericVendorId = parseInt(vendorId, 10); // Parse string to int
+        } else {
+          numericVendorId = Number(vendorId); // Convert to number
+        }
+      }
+
+      console.log('🚗 [VehicleStock] Fetching with vendorId:', { vendorId, numericVendorId });
 
       const url = numericVendorId
         ? `/api/maestro/vehicle-stock?salesperson_id=${numericVendorId}`
@@ -176,10 +186,19 @@ export function VehicleStockModal({
 
     try {
       // Cookie-based auth: pass vendor_id as query param for admin
-      // Ensure vendorId is a number (extract from array if needed)
-      const numericVendorId = vendorId
-        ? (Array.isArray(vendorId) ? vendorId[0] : Number(vendorId))
-        : undefined;
+      // CRITICAL FIX: Ensure vendorId is always a clean integer number
+      let numericVendorId: number | undefined;
+      if (vendorId) {
+        if (Array.isArray(vendorId)) {
+          numericVendorId = Number(vendorId[0]);
+        } else if (typeof vendorId === 'string') {
+          numericVendorId = parseInt(vendorId, 10);
+        } else {
+          numericVendorId = Number(vendorId);
+        }
+      }
+
+      console.log('🚚 [VehicleStock] Creating transfer with vendorId:', { vendorId, numericVendorId });
 
       const transferUrl = numericVendorId
         ? `/api/maestro/vehicle-stock/transfer?salesperson_id=${numericVendorId}`
