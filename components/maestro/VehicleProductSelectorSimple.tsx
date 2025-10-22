@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { Calculator } from '@/components/inventario/Calculator';
 
 interface VehicleProduct {
-  product_id: number;
+  id: number;
   name: string;
   default_code: string;
   image_url?: string | null;
@@ -108,9 +108,9 @@ export function VehicleProductSelector({ salesPersonId, onConfirm, onClose }: Pr
   const confirm = () => {
     const result: SelectedProduct[] = [];
     selected.forEach(id => {
-      const p = products.find(x => x.product_id === id);
+      const p = products.find(x => x.id === id);
       if (p) result.push({
-        id: p.product_id,
+        id: p.id,
         name: p.name,
         code: p.default_code,
         image: p.image_url || undefined,
@@ -173,11 +173,11 @@ export function VehicleProductSelector({ salesPersonId, onConfirm, onClose }: Pr
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {products.map((p) => {
-                  const isSelected = selected.has(p.product_id);
+                  const isSelected = selected.has(p.id);
                   return (
                     <div
-                      key={p.product_id}
-                      onClick={() => toggle(p.product_id)}
+                      key={p.id}
+                      onClick={() => toggle(p.id)}
                       className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
                         isSelected
                           ? 'border-blue-500 bg-blue-500/10'
@@ -204,11 +204,11 @@ export function VehicleProductSelector({ salesPersonId, onConfirm, onClose }: Pr
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openCalculator(p.product_id);
+                                  openCalculator(p.id);
                                 }}
                                 className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full font-medium transition-colors"
                               >
-                                Qty: {quantities.get(p.product_id) || 1}
+                                Qty: {quantities.get(p.id) || 1}
                               </button>
                             )}
                           </div>
