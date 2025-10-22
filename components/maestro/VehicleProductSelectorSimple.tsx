@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Truck, Package, CheckCircle, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Calculator } from './Calculator';
+import { Calculator } from '@/components/inventario/Calculator';
 
 interface VehicleProduct {
   product_id: number;
@@ -90,13 +90,16 @@ export function VehicleProductSelector({ salesPersonId, onConfirm, onClose }: Pr
     setShowCalculator(true);
   };
 
-  const handleCalculatorConfirm = (value: number) => {
+  const handleCalculatorConfirm = (value: string) => {
     if (calculatorProductId !== null) {
-      setQuantities(prev => {
-        const newMap = new Map(prev);
-        newMap.set(calculatorProductId, value);
-        return newMap;
-      });
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue) && numValue > 0) {
+        setQuantities(prev => {
+          const newMap = new Map(prev);
+          newMap.set(calculatorProductId, numValue);
+          return newMap;
+        });
+      }
     }
     setShowCalculator(false);
     setCalculatorProductId(null);
@@ -260,7 +263,7 @@ export function VehicleProductSelector({ salesPersonId, onConfirm, onClose }: Pr
             setCalculatorProductId(null);
           }}
           onConfirm={handleCalculatorConfirm}
-          initialValue={quantities.get(calculatorProductId) || 1}
+          initialValue={String(quantities.get(calculatorProductId) || 1)}
           title="Quantità Campioni"
         />
       )}
