@@ -1,0 +1,62 @@
+name: Nightly Customer Avatars Sync
+
+on:
+  schedule:
+    # Runs every night at 2:00 AM UTC (4:00 AM in summer, 3:00 AM in winter Italy time)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  sync-customer-avatars:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Maestro Sync API
+        run: |
+          echo "🔄 Starting nightly customer avatars sync..."
+
+          # Call staging sync endpoint
+          STAGING_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            https://staging.hub.lapa.ch/api/maestro/sync/manual \
+            -H "Content-Type: application/json" \
+            -H "X-CRON-SECRET: ${{ secrets.CRON_SECRET }}" \
+            -d '{"force": true}')
+
+          STAGING_BODY=$(echo "$STAGING_RESPONSE" | head -n -1)
+          STAGING_CODE=$(echo "$STAGING_RESPONSE" | tail -n 1)
+
+          echo "📊 Staging Response ($STAGING_CODE): $STAGING_BODY"
+
+          if [ "$STAGING_CODE" = "200" ]; then
+            echo "✅ Staging sync completed successfully"
+          else
+            echo "❌ Staging sync failed with status $STAGING_CODE"
+            exit 1
+          fi
+
+          # Call production sync endpoint
+          PROD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            https://hub.lapa.ch/api/maestro/sync/manual \
+            -H "Content-Type: application/json" \
+            -H "X-CRON-SECRET: ${{ secrets.CRON_SECRET }}" \
+            -d '{"force": true}')
+
+          PROD_BODY=$(echo "$PROD_RESPONSE" | head -n -1)
+          PROD_CODE=$(echo "$PROD_RESPONSE" | tail -n 1)
+
+          echo "📊 Production Response ($PROD_CODE): $PROD_BODY"
+
+          if [ "$PROD_CODE" = "200" ]; then
+            echo "✅ Production sync completed successfully"
+          else
+            echo "❌ Production sync failed with status $PROD_CODE"
+            exit 1
+          fi
+
+          echo "🎉 Nightly sync completed for both environments!"
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "⚠️  Nightly sync failed! Check the logs above for details."
+          echo "You can manually trigger the sync from the Actions tab."

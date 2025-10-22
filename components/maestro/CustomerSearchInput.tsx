@@ -39,27 +39,22 @@ export function CustomerSearchInput({
       setIsSearching(true);
       try {
         const params = new URLSearchParams({
+          search: searchTerm,
           limit: '20',
           sort_by: 'name',
           sort_order: 'asc'
         });
 
-        // Add vendor filter if provided
-        if (vendorId) {
-          params.append('salesperson_id', vendorId.toString());
-        }
+        // NO FILTER: Search ALL customers (not just assigned to this salesperson)
+        // This allows salespeople to add any customer to their daily plan
+        // (e.g., visiting a colleague's customer or leaving a sample gift)
 
         const res = await fetch(`/api/maestro/avatars?${params.toString()}`);
         if (!res.ok) throw new Error('Failed to search customers');
 
         const data = await res.json();
 
-        // Filter results client-side by search term (name contains)
-        const filtered = data.avatars.filter((avatar: CustomerAvatar) =>
-          avatar.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        setSearchResults(filtered);
+        setSearchResults(data.avatars || []);
         setShowDropdown(true);
         setSelectedIndex(-1);
       } catch (error) {
