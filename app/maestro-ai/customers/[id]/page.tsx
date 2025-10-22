@@ -783,6 +783,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
         onClose={() => setShowInteractionModal(false)}
         customerId={customer.id}
         customerName={customer.name}
+        salesPersonId={customer.assigned_salesperson_id}
       />
     </div>
   );

@@ -11,6 +11,7 @@ interface InteractionModalProps {
   onClose: () => void;
   customerId: number;
   customerName: string;
+  salesPersonId?: number; // ID del venditore per mostrare i suoi prodotti in macchina
 }
 
 type InteractionType = 'visit' | 'call' | 'email';
@@ -31,7 +32,8 @@ export function InteractionModal({
   isOpen,
   onClose,
   customerId,
-  customerName
+  customerName,
+  salesPersonId
 }: InteractionModalProps) {
   const [interactionType, setInteractionType] = useState<InteractionType>('visit');
   const [outcome, setOutcome] = useState<Outcome>('neutral');
@@ -306,6 +308,7 @@ export function InteractionModal({
                 {/* Vehicle Product Selector Modal */}
                 {showVehicleSelector && (
                   <VehicleProductSelector
+                    salesPersonId={salesPersonId}
                     onConfirm={(products) => {
                       // Merge new products with existing ones
                       const existingIds = new Set(selectedProducts.map(p => p.id));
