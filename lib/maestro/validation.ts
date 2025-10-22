@@ -14,7 +14,7 @@ export const getAvatarsQuerySchema = z.object({
   search: z.string().min(1).max(200).optional(),
   limit: z.coerce.number().int().positive().max(10000).default(20),
   offset: z.coerce.number().int().nonnegative().default(0),
-  sort_by: z.enum(['health_score', 'churn_risk_score', 'total_revenue', 'last_order_date']).default('churn_risk_score'),
+  sort_by: z.enum(['health_score', 'churn_risk_score', 'total_revenue', 'last_order_date', 'name']).default('churn_risk_score'),
   sort_order: z.enum(['asc', 'desc']).default('desc'),
 });
 

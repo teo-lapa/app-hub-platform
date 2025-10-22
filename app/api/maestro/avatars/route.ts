@@ -73,7 +73,8 @@ export async function GET(request: NextRequest) {
       health_score: 'health_score',
       churn_risk_score: 'churn_risk_score',
       total_revenue: 'total_revenue',
-      last_order_date: 'last_order_date'
+      last_order_date: 'last_order_date',
+      name: 'name'
     };
     const sortBy = params.sort_by || 'health_score';
     const sortColumn = validSortColumns[sortBy] || 'health_score';
