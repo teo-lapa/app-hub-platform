@@ -357,7 +357,7 @@ export async function GET(request: NextRequest) {
     // 10. Map to final product format
     const productMap = new Map(products.map((p: any) => [p.id, p]));
     const vehicleProducts = quants.map((quant: any) => {
-      const product = productMap.get(quant.product_id[0]);
+      const product: any = productMap.get(quant.product_id[0]);
       return {
         id: quant.product_id[0],
         name: product?.name || quant.product_id[1],
