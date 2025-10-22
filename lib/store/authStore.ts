@@ -1,12 +1,15 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { AuthState, User, ApiResponse } from '@/lib/types';
 import toast from 'react-hot-toast';
 
-export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  isAuthenticated: false,
-  isLoading: false,
-  token: null,
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      token: null,
 
   login: async (email: string, password: string) => {
     set({ isLoading: true });
@@ -307,4 +310,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     toast.success(data.message || 'Utente eliminato con successo!');
   },
-}));
+    }),
+    {
+      name: 'lapa-auth-storage', // nome univoco per localStorage
+      storage: createJSONStorage(() => localStorage), // persiste in localStorage
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+        token: state.token,
+        // NON persistere isLoading (sempre false all'avvio)
+      }),
+    }
+  )
+);

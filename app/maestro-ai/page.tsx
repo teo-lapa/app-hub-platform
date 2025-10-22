@@ -22,6 +22,7 @@ import { HealthScoreBadge } from '@/components/maestro/HealthScoreBadge';
 import { OfflineIndicator } from '@/components/maestro/OfflineIndicator';
 import { PullToRefresh } from '@/components/maestro/PullToRefresh';
 import { ChatWidget } from '@/components/maestro/ChatWidget';
+import { VehicleStockButton } from '@/components/maestro/VehicleStockButton';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { useCustomerAvatars, useAnalytics } from '@/hooks/useMaestroAI';
 import { useOfflineCache } from '@/hooks/useOfflineCache';
@@ -196,6 +197,10 @@ export default function MaestroAIDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <VehicleStockButton
+              vendorName={selectedVendor?.name || 'Tutti i Venditori'}
+              vendorId={selectedVendor?.id}
+            />
             <Link href="/maestro-ai/daily-plan">
               <button className="px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-lg transition-colors flex items-center gap-2 min-h-[44px]">
                 <Calendar className="h-4 w-4" />

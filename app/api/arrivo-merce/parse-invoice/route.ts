@@ -2,11 +2,37 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 300; // 5 minutes for large PDFs
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// Helper function to compress large PDFs
+async function compressPDF(buffer: Buffer): Promise<Buffer> {
+  // For now, we'll just return the original buffer
+  // In production, you could use pdf-lib or similar to actually compress
+  return buffer;
+}
+
+// Helper function to validate file size
+function validateFileSize(size: number): { valid: boolean; message?: string } {
+  const maxSize = 10 * 1024 * 1024; // 10 MB
+  const warningSize = 5 * 1024 * 1024; // 5 MB
+
+  if (size > maxSize) {
+    return {
+      valid: false,
+      message: `File troppo grande (${(size / 1024 / 1024).toFixed(2)} MB). Dimensione massima: 10 MB. Prova a ridurre la qualità del PDF o dividerlo in più parti.`
+    };
+  }
+
+  if (size > warningSize) {
+    console.warn(`⚠️ File grande (${(size / 1024 / 1024).toFixed(2)} MB) - il parsing potrebbe richiedere più tempo`);
+  }
+
+  return { valid: true };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,9 +45,22 @@ export async function POST(request: NextRequest) {
 
     console.log('📄 File ricevuto:', file.name, 'Type:', file.type, 'Size:', file.size);
 
+    // Validate file size
+    const sizeValidation = validateFileSize(file.size);
+    if (!sizeValidation.valid) {
+      return NextResponse.json({ error: sizeValidation.message }, { status: 400 });
+    }
+
     // Convert file to base64
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    let buffer = Buffer.from(bytes);
+
+    // Compress if needed (for future implementation)
+    if (file.size > 5 * 1024 * 1024) {
+      console.log('🗜️ File grande, preparazione per processing...');
+      buffer = await compressPDF(buffer);
+    }
+
     const base64 = buffer.toString('base64');
 
     // Determine media type
@@ -63,157 +102,130 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    // Call Claude API with vision/document
-    const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            contentBlock,
+    // Call Claude API with vision/document - RETRY LOGIC
+    let message;
+    let attempt = 0;
+    const maxAttempts = 2;
+
+    while (attempt < maxAttempts) {
+      attempt++;
+      console.log(`🤖 Tentativo ${attempt}/${maxAttempts} - Invio a Claude...`);
+
+      try {
+        message = await anthropic.messages.create({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 8192,
+          temperature: 0,
+          messages: [
             {
-              type: 'text',
-              text: `Analizza questa fattura/documento di trasporto e estrai TUTTE le informazioni con MASSIMA PRECISIONE.
+              role: 'user',
+              content: [
+                contentBlock,
+                {
+                  type: 'text',
+                  text: `Analizza questa fattura e estrai i dati. Cerca il PACKING LIST (pagine 5-6) per le quantità PESO NETTO.
 
-IMPORTANTE:
-- Estrai TUTTI i prodotti, anche se sono tanti
-- Per ogni prodotto, estrai TUTTE le varianti (forma, colore, grammatura, ecc.)
-- Sii ESTREMAMENTE preciso nei numeri e nelle quantità
-- **FONDAMENTALE**: Cerca la PARTITA IVA del fornitore (P.IVA, VAT, Partita IVA, ecc.)
+REGOLE CRITICHE:
+1. Quantità: Usa PESO NETTO dal packing list (es: 5,000 KG = 5.0, 24,000 KG = 24.0)
+2. Lotti: Cerca "Lotto" o "Scad." - se trovi solo scadenza, usa quella come lot_number
+3. Date: Converti gg/mm/aaaa in YYYY-MM-DD
+4. VAT: Cerca P.IVA del fornitore (mittente)
 
-🚨 PRIORITÀ ASSOLUTA - QUANTITÀ CORRETTE:
-**CERCA SEMPRE PRIMA IL PACKING LIST** per le quantità esatte!
-- Se il documento contiene una pagina "PACKING LIST" (di solito pagina 2 o 3), USA QUELLA per le quantità!
-- Nel PACKING LIST cerca la colonna "PESO NETTO" - QUELLE sono le quantità VERE!
-- Nella fattura principale le quantità potrebbero essere peso lordo o arrotondate - IGNORA quelle se c'è il packing list
-- **FORMATO NUMERI**: I numeri possono avere punti come separatori delle migliaia (es: "83.646" = 83646 KG, "22.502" = 22502 KG)
-- Rimuovi i punti/virgole delle migliaia e converti correttamente (es: "83.646 KG" diventa quantity: 83.646)
-
-ESEMPIO MONTEVECCHIO (con PACKING LIST):
-Fattura dice: "PROSCIUTTO DI PARMA - Quantità: 10,000 KG"
-PACKING LIST dice: "PROSCIUTTO DI PARMA - PESO NETTO: 83.646"
-✅ USA: quantity: 83.646 (dal PACKING LIST "PESO NETTO")
-❌ NON usare: 10.0 (dalla fattura)
-
-ESEMPIO con più prodotti dal PACKING LIST pagina 3:
-| DESCRIZIONE | PESO NETTO | TARA | PESO LORDO |
-|-------------|------------|------|------------|
-| PROSCIUTTO DI PARMA DOP CLASSICO S/O ADDOBBO PULITO A COLTELLO SV | 83.646 | 5 | |
-| GRAN CULATTA PULITA A COLTELLO SV | 22.502 | | |
-| FIOR DI FESA LAVATO E SCOTENNATO SV | 57.976 | | |
-
-Output corretto:
-[
-  { "description": "PROSCIUTTO DI PARMA DOP CLASSICO S/O ADDOBBO PULITO A COLTELLO SV", "quantity": 83.646, "unit": "KG" },
-  { "description": "GRAN CULATTA PULITA A COLTELLO SV", "quantity": 22.502, "unit": "KG" },
-  { "description": "FIOR DI FESA LAVATO E SCOTENNATO SV", "quantity": 57.976, "unit": "KG" }
-]
-
-⚠️ ATTENZIONE AI LOTTI E SCADENZE (PRIORITÀ MASSIMA):
-- Cerca le scritte "Lotto/Scadenza:" o "Lotto:" o numeri di lotto espliciti
-- Cerca anche nella tabella del PACKING LIST la colonna "NOM. COMBINATA" per i lotti
-- Nella fattura principale cerca "Cod. Lotto: XXXXXX"
-- Il formato delle date potrebbe essere gg/mm/aaaa (es: 02/11/2025) - converti in YYYY-MM-DD
-- **LOTTO - ORDINE DI PRIORITÀ**:
-  1. Cerca prima un vero numero di lotto (es: "AQ25030", "CA2500103", "MY2500213", "197040/00", "LOTTO123")
-  2. Se NON trovi un lotto esplicito MA c'è "NOMENCLATURA: XXXXXXXX" o "NOM. COMBINATA: XXXXXXXX", usa quel codice come lotto
-  3. **SE NON trovi né lotto né nomenclatura MA c'è una scadenza, USA LA DATA DI SCADENZA come lot_number** (es: se scadenza è "2025-11-02", metti lot_number: "2025-11-02")
-  4. Solo se non c'è né lotto né nomenclatura né scadenza, metti null per lot_number
-- Possono esserci più righe dello stesso prodotto con lotti/scadenze diverse - crea prodotti separati!
-
-ESEMPI DI PARSING CORRETTO:
-
-Esempio 1 - Montevecchio con Cod. Lotto dalla fattura:
-Testo fattura pagina 1: "PROSCIUTTO DI PARMA DOP CLASSICO S/O ADDOBBO PULITO A COLTELLO SV
-Cod. Lotto: AQ25030
-Quantità: 10,000 KG"
-PACKING LIST pagina 3: "PESO NETTO: 83.646"
-Output: {
-  "article_code": "PAR026",
-  "description": "PROSCIUTTO DI PARMA DOP CLASSICO S/O ADDOBBO PULITO A COLTELLO SV",
-  "quantity": 83.646,  // ← Dal PACKING LIST!
-  "unit": "KG",
-  "lot_number": "AQ25030",  // ← Dalla fattura!
-  "expiry_date": null,
-  "variant": ""
-}
-
-Esempio 2 - Con nomenclatura:
-Testo: "Julienne Taglio Napoli in vasc. da kg 2,5 - Monella
-NOMENCLATURA: 04061030
-Lotto/Scadenza: 02/11/2025"
-Output: {
-  "article_code": "VI2500JN1MN",
-  "description": "Julienne Taglio Napoli in vasc. da kg 2,5 - Monella",
-  "quantity": 330.0,
-  "unit": "KG",
-  "lot_number": "04061030",  // ← Usa NOMENCLATURA come lotto
-  "expiry_date": "2025-11-02",
-  "variant": ""
-}
-
-Esempio 3 - Solo scadenza (SENZA lotto):
-Testo: "Parmigiano Reggiano DOP 24 mesi
-Scadenza: 15/06/2026"
-Output: {
-  "article_code": "PARM24",
-  "description": "Parmigiano Reggiano DOP 24 mesi",
-  "quantity": 10.0,
-  "unit": "KG",
-  "lot_number": "2026-06-15",  // ← USA LA SCADENZA come lotto quando manca!
-  "expiry_date": "2026-06-15",
-  "variant": ""
-}
-
-Rispondi SOLO con un JSON valido in questo formato esatto:
-
+RISPOSTA - SOLO JSON, NESSUN TESTO AGGIUNTIVO:
 {
-  "supplier_name": "nome del fornitore",
-  "supplier_vat": "partita IVA del fornitore (CERCA CON ATTENZIONE!)",
-  "document_number": "numero documento",
-  "document_date": "data documento in formato YYYY-MM-DD",
+  "supplier_name": "nome fornitore",
+  "supplier_vat": "P.IVA (es: 00829240282)",
+  "document_number": "numero fattura",
+  "document_date": "YYYY-MM-DD",
   "products": [
     {
-      "article_code": "codice articolo se presente",
-      "description": "descrizione completa del prodotto",
-      "quantity": numero_quantità,
-      "unit": "unità di misura (KG, PZ, ecc.)",
-      "lot_number": "numero lotto (o NOMENCLATURA o DATA SCADENZA se lotto manca) oppure null",
+      "article_code": "codice o null",
+      "description": "nome prodotto",
+      "quantity": numero_decimale,
+      "unit": "KG o PZ o CT",
+      "lot_number": "lotto o scadenza o null",
       "expiry_date": "YYYY-MM-DD o null",
-      "variant": "varianti del prodotto (es: Quadrato, Verde, 250gr)"
+      "variant": "variante o stringa vuota"
     }
   ]
-}
-
-NON aggiungere testo prima o dopo il JSON. SOLO il JSON valido.`,
+}`,
+                },
+              ],
             },
           ],
-        },
-      ],
-    });
+        });
+
+        // If successful, break the loop
+        break;
+      } catch (apiError: any) {
+        console.error(`❌ Tentativo ${attempt} fallito:`, apiError.message);
+
+        if (attempt === maxAttempts) {
+          throw new Error(`Parsing fallito dopo ${maxAttempts} tentativi. Il file potrebbe essere troppo complesso o danneggiato.`);
+        }
+
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    if (!message) {
+      throw new Error('Impossibile processare il documento dopo tutti i tentativi');
+    }
 
     // Extract JSON from response
     const firstContent = message.content[0];
     const responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
-    console.log('📥 Risposta Claude:', responseText.substring(0, 500) + '...');
+    console.log('📥 Risposta Claude (primi 300 char):', responseText.substring(0, 300));
 
-    // Parse JSON response
+    // Parse JSON response - ROBUST PARSING
     let parsedData;
     try {
-      // Try to extract JSON if there's any text before/after
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsedData = JSON.parse(jsonMatch[0]);
-      } else {
+      // Method 1: Try direct JSON parse
+      try {
         parsedData = JSON.parse(responseText);
+        console.log('✅ Metodo 1: JSON diretto - successo');
+      } catch {
+        // Method 2: Extract JSON from markdown code blocks
+        const codeBlockMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (codeBlockMatch) {
+          parsedData = JSON.parse(codeBlockMatch[1]);
+          console.log('✅ Metodo 2: JSON da code block - successo');
+        } else {
+          // Method 3: Find first { to last }
+          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            parsedData = JSON.parse(jsonMatch[0]);
+            console.log('✅ Metodo 3: Estrazione { } - successo');
+          } else {
+            throw new Error('Nessun JSON valido trovato nella risposta');
+          }
+        }
       }
-    } catch (parseError) {
-      console.error('❌ Errore parsing JSON:', parseError);
-      console.error('❌ Response text:', responseText);
+
+      // Validate parsed data structure
+      if (!parsedData || typeof parsedData !== 'object') {
+        throw new Error('Risposta non è un oggetto JSON valido');
+      }
+
+      if (!parsedData.supplier_name || !parsedData.document_number || !parsedData.products) {
+        throw new Error('JSON mancante di campi obbligatori (supplier_name, document_number, products)');
+      }
+
+      if (!Array.isArray(parsedData.products)) {
+        throw new Error('Il campo products deve essere un array');
+      }
+
+      console.log('✅ Validazione JSON completata');
+
+    } catch (parseError: any) {
+      console.error('❌ Errore parsing JSON:', parseError.message);
+      console.error('❌ Response text completo:', responseText);
+
       return NextResponse.json({
-        error: 'Errore nel parsing della risposta AI',
-        details: responseText
+        error: 'Errore nel parsing della risposta AI. Il documento potrebbe essere troppo complesso o in un formato non supportato.',
+        details: parseError.message,
+        hint: 'Prova a convertire il PDF in un formato più semplice o a ridurre il numero di pagine.'
       }, { status: 500 });
     }
 

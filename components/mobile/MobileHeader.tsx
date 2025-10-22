@@ -17,7 +17,13 @@ export function MobileHeader({ title, showBackButton = false, showLogo = false, 
   const router = useRouter();
 
   const handleBack = () => {
-    router.back();
+    // Fix: invece di router.back() che può tornare a login,
+    // controlliamo se c'è history, altrimenti andiamo a dashboard
+    if (window.history.length > 2) {
+      router.back();
+    } else {
+      router.push('/dashboard');
+    }
   };
 
   return (
