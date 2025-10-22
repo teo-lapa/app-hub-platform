@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
       });
 
       const productData = await productResponse.json();
+      console.log(`📦 Product response for ID ${item.productId}:`, JSON.stringify(productData).substring(0, 200));
       const products = productData.result || [];
 
       if (products.length > 0) {
