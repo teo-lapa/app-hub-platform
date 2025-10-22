@@ -210,7 +210,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
 🔗 Fonte: https://lapa-app-platform.vercel.app
 `.trim();
 
-    // 8. Create sale.order (CONFIRMED state)
+    // 8. Create sale.order (DRAFT first, then confirm)
     const orderCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
@@ -229,8 +229,8 @@ ${notes || '   Nessuna nota aggiuntiva'}
             order_line: orderLines,
             note: detailedNotes,
             client_order_ref: `CAMPIONI-${now.getTime()}`,
-            commitment_date: odooDate,
-            state: 'sale' // CONFIRMED ORDER!
+            commitment_date: odooDate
+            // NO state - viene creato come draft
           }],
           kwargs: {}
         },
@@ -246,7 +246,30 @@ ${notes || '   Nessuna nota aggiuntiva'}
     }
 
     const orderId = orderCreateData.result;
-    console.log(`✅ Ordine creato e confermato: ${orderId}`);
+    console.log(`✅ Ordine creato (draft): ${orderId}`);
+
+    // 8.5 Confirm the order (draft → sale)
+    const confirmResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'sale.order',
+          method: 'action_confirm',
+          args: [[orderId]],
+          kwargs: {}
+        },
+        id: 3
+      })
+    });
+
+    const confirmData = await confirmResponse.json();
+    console.log(`✅ Ordine confermato: ${orderId}`);
 
     // 9. If we have a vehicle location, create and validate picking
     if (vehicleLocationId) {
@@ -271,7 +294,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
               limit: 1
             }
           },
-          id: 3
+          id: 4
         })
       });
 
@@ -308,7 +331,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
               }],
               kwargs: {}
             },
-            id: 4
+            id: 5
           })
         });
 
@@ -342,7 +365,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
                   }],
                   kwargs: {}
                 },
-                id: 5
+                id: 6
               })
             });
 
@@ -366,7 +389,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
                 args: [[pickingId]],
                 kwargs: {}
               },
-              id: 6
+              id: 7
             })
           });
 
@@ -388,7 +411,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
                 args: [[pickingId]],
                 kwargs: {}
               },
-              id: 7
+              id: 8
             })
           });
 
@@ -410,7 +433,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
                 args: [[pickingId]],
                 kwargs: {}
               },
-              id: 8
+              id: 9
             })
           });
 
@@ -455,7 +478,7 @@ ${notes ? `<p><strong>Note:</strong> ${notes}</p>` : ''}
               subtype_xmlid: 'mail.mt_note'
             }
           },
-          id: 9
+          id: 10
         })
       });
 
