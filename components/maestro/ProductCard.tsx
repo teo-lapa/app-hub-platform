@@ -13,6 +13,8 @@ interface Product {
   image_url?: string;
   quantity?: number;
   uom?: string;
+  lot_name?: string;
+  expiry_date?: string;
 }
 
 interface ProductCardProps {
@@ -92,19 +94,21 @@ export function ProductCard({
           </h3>
 
           <div className="space-y-0.5">
-            <p className="text-xs text-slate-400">
-              Codice: <span className="text-slate-300 font-mono">{product.code}</span>
-            </p>
-
-            {product.barcode && (
+            {product.lot_name && (
               <p className="text-xs text-slate-400">
-                EAN: <span className="text-slate-300 font-mono">{product.barcode}</span>
+                Lotto: <span className="text-slate-300 font-mono">{product.lot_name}</span>
+              </p>
+            )}
+
+            {product.expiry_date && (
+              <p className="text-xs text-slate-400">
+                Scadenza: <span className="text-slate-300 font-mono">{product.expiry_date}</span>
               </p>
             )}
 
             {showQuantity && product.quantity !== undefined && (
               <p className="text-xs font-semibold text-blue-400">
-                Qty: {product.quantity} {product.uom || 'pz'}
+                {product.quantity} {product.uom || 'PZ'}
               </p>
             )}
           </div>

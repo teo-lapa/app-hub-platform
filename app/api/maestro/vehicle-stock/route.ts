@@ -354,10 +354,41 @@ export async function GET(request: NextRequest) {
     const productsData = await productsResponse.json();
     const products = productsData.result || [];
 
-    // 10. Map to final product format
+    // 10. Get lot details if any quants have lots
+    const lotIds = Array.from(new Set(
+      quants.filter((q: any) => q.lot_id).map((q: any) => q.lot_id[0])
+    ));
+
+    let lotMap = new Map();
+    if (lotIds.length > 0) {
+      const lotsResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'stock.lot',
+            method: 'read',
+            args: [lotIds],
+            kwargs: { fields: ['id', 'name', 'expiration_date'] }
+          }
+        })
+      });
+      const lotsData = await lotsResponse.json();
+      const lots = lotsData.result || [];
+      lotMap = new Map(lots.map((lot: any) => [lot.id, lot]));
+    }
+
+    // 11. Map to final product format
     const productMap = new Map(products.map((p: any) => [p.id, p]));
     const vehicleProducts = quants.map((quant: any) => {
       const product: any = productMap.get(quant.product_id[0]);
+      const lot: any = quant.lot_id ? lotMap.get(quant.lot_id[0]) : null;
+
       return {
         id: quant.product_id[0],
         name: product?.name || quant.product_id[1],
@@ -365,7 +396,9 @@ export async function GET(request: NextRequest) {
         barcode: product?.barcode || '',
         image_url: product?.image_128 ? `data:image/png;base64,${product.image_128}` : null,
         quantity: quant.quantity || 0,
-        uom: quant.product_uom_id ? quant.product_uom_id[1] : 'Units'
+        uom: quant.product_uom_id ? quant.product_uom_id[1] : 'Units',
+        lot_name: lot?.name || (quant.lot_id ? quant.lot_id[1] : undefined),
+        expiry_date: lot?.expiration_date ? new Date(lot.expiration_date).toLocaleDateString('it-IT') : undefined
       };
     });
 
@@ -374,7 +407,7 @@ export async function GET(request: NextRequest) {
     console.log(`   Products: ${vehicleProducts.length}`);
     console.log(`   Total items: ${vehicleProducts.reduce((sum: number, p: any) => sum + p.quantity, 0)}`);
 
-    // 11. Return success response
+    // 12. Return success response
     return NextResponse.json({
       success: true,
       data: {
