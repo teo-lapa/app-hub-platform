@@ -12,11 +12,12 @@ import {
   AlertCircle,
   CheckCircle,
   Plus,
-  Minus
+  Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ProductCard } from './ProductCard';
 import { ProductSearch } from '@/components/inventario/ProductSearch';
+import { Calculator } from '@/components/inventario/Calculator';
 import { cn } from '@/lib/utils';
 
 interface Product {
@@ -53,6 +54,8 @@ export function VehicleStockModal({
   const [isReloadSectionOpen, setIsReloadSectionOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showProductSearch, setShowProductSearch] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
 
   // Fetch current vehicle stock when modal opens
   useEffect(() => {
@@ -139,17 +142,24 @@ export function VehicleStockModal({
     setShowProductSearch(false); // Close search modal after selection
   };
 
-  const handleQuantityChange = (productId: number, delta: number) => {
-    setSelectedProducts((prev) =>
-      prev.map((p) =>
-        p.id === productId
-          ? {
-              ...p,
-              transferQuantity: Math.max(1, p.transferQuantity + delta)
-            }
-          : p
-      )
-    );
+  const handleOpenCalculator = (productId: number) => {
+    setEditingProductId(productId);
+    setShowCalculator(true);
+  };
+
+  const handleCalculatorConfirm = (value: string) => {
+    const quantity = parseFloat(value);
+    if (editingProductId && !isNaN(quantity) && quantity > 0) {
+      setSelectedProducts((prev) =>
+        prev.map((p) =>
+          p.id === editingProductId
+            ? { ...p, transferQuantity: quantity }
+            : p
+        )
+      );
+    }
+    setShowCalculator(false);
+    setEditingProductId(null);
   };
 
   const handleRemoveProduct = (productId: number) => {
@@ -386,36 +396,21 @@ export function VehicleStockModal({
 
                                       {/* Quantity Controls */}
                                       <div className="flex items-center gap-2">
+                                        {/* Clickable quantity - opens calculator */}
                                         <button
-                                          onClick={() =>
-                                            handleQuantityChange(product.id, -1)
-                                          }
-                                          disabled={product.transferQuantity <= 1}
-                                          className="p-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
+                                          onClick={() => handleOpenCalculator(product.id)}
+                                          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors font-mono text-lg font-bold text-white min-w-[60px] text-center"
                                         >
-                                          <Minus className="h-4 w-4 text-white" />
-                                        </button>
-
-                                        <span className="text-sm font-bold text-white min-w-[40px] text-center">
                                           {product.transferQuantity}
-                                        </span>
-
-                                        <button
-                                          onClick={() =>
-                                            handleQuantityChange(product.id, 1)
-                                          }
-                                          className="p-1 bg-slate-700 hover:bg-slate-600 rounded transition-colors"
-                                        >
-                                          <Plus className="h-4 w-4 text-white" />
                                         </button>
 
+                                        {/* Delete button with trash icon */}
                                         <button
-                                          onClick={() =>
-                                            handleRemoveProduct(product.id)
-                                          }
-                                          className="ml-2 p-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+                                          onClick={() => handleRemoveProduct(product.id)}
+                                          className="p-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-red-400 rounded-lg transition-colors"
+                                          title="Rimuovi prodotto"
                                         >
-                                          <X className="h-4 w-4" />
+                                          <Trash2 className="h-4 w-4" />
                                         </button>
                                       </div>
                                     </div>
@@ -466,6 +461,22 @@ export function VehicleStockModal({
         onClose={() => setShowProductSearch(false)}
         onSelectProduct={handleProductSelect}
         currentLocationName={`Veicolo ${vendorName}`}
+      />
+
+      {/* Calculator Modal */}
+      <Calculator
+        isOpen={showCalculator}
+        onClose={() => {
+          setShowCalculator(false);
+          setEditingProductId(null);
+        }}
+        onConfirm={handleCalculatorConfirm}
+        title="Quantità"
+        initialValue={
+          editingProductId
+            ? selectedProducts.find((p) => p.id === editingProductId)?.transferQuantity.toString() || '1'
+            : '1'
+        }
       />
     </AnimatePresence>
   );
