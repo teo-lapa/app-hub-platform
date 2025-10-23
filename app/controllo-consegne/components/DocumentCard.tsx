@@ -16,6 +16,7 @@ export default function DocumentCard({ document }: DocumentCardProps) {
   const hasPhoto = !!document.attachments.photo;
   const hasPayment = !!document.attachments.payment;
   const hasReso = !!document.attachments.reso;
+  const hasScaricoP = !!document.attachments.scarico_parziale;
 
   const formatTime = (datetime: string) => {
     const date = new Date(datetime);
@@ -54,6 +55,7 @@ export default function DocumentCard({ document }: DocumentCardProps) {
             {hasPhoto && <span className={styles.badge} title="Foto">📸</span>}
             {hasPayment && <span className={styles.badge} title="Pagamento">💰</span>}
             {hasReso && <span className={styles.badge} title="Reso">🔄</span>}
+            {hasScaricoP && <span className={styles.badge} title="Scarico Parziale">📦</span>}
           </div>
         </div>
 
@@ -130,6 +132,20 @@ export default function DocumentCard({ document }: DocumentCardProps) {
               </button>
               {(document.attachments.reso as any)?.note && (
                 <div className={styles.resoInfo} dangerouslySetInnerHTML={{ __html: (document.attachments.reso as any).note }} />
+              )}
+            </div>
+          )}
+          {hasScaricoP && (
+            <div className={styles.resoSection}>
+              <button
+                className={`${styles.attachmentBtn} ${styles.resoBtn}`}
+                onClick={() => setSelectedAttachment(document.attachments.scarico_parziale)}
+              >
+                <span className={styles.icon}>📦</span>
+                <span>Scarico Parziale</span>
+              </button>
+              {(document.attachments.scarico_parziale as any)?.note && (
+                <div className={styles.resoInfo} dangerouslySetInnerHTML={{ __html: (document.attachments.scarico_parziale as any).note }} />
               )}
             </div>
           )}
