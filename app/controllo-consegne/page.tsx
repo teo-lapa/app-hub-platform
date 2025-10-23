@@ -58,6 +58,7 @@ export default function ControlloConsegnePage() {
     { type: 'photo' as const, label: 'Foto', icon: '📸' },
     { type: 'payment' as const, label: 'Pagamento', icon: '💰' },
     { type: 'reso' as const, label: 'Reso', icon: '🔄' },
+    { type: 'scarico_parziale' as const, label: 'Scarico Parziale', icon: '📦' },
   ];
 
   return (
