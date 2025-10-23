@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       const moveIds = selectedPicking.move_ids_without_package || [];
       console.log('📦 Move IDs trovati:', moveIds.length);
 
-      let moves = [];
+      let moves: any[] = [];
       if (moveIds.length > 0) {
         moves = await callOdoo(cookies, 'stock.move', 'search_read', [
           [['id', 'in', moveIds]],
@@ -349,7 +349,7 @@ export async function POST(request: NextRequest) {
     const moveIds = selectedPicking.move_ids_without_package || [];
     console.log('📦 Move IDs trovati:', moveIds.length);
 
-    let moves = [];
+    let moves: any[] = [];
     if (moveIds.length > 0) {
       moves = await callOdoo(cookies, 'stock.move', 'search_read', [
         [['id', 'in', moveIds]],
