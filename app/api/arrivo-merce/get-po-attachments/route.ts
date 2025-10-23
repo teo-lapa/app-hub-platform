@@ -139,9 +139,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Ordina per score (più alto prima)
-    scoredAttachments.sort((a, b) => b.score - a.score);
+    scoredAttachments.sort((a: any, b: any) => b.score - a.score);
 
-    const recommended = scoredAttachments.find(a => a.is_recommended);
+    const recommended = scoredAttachments.find((a: any) => a.is_recommended);
 
     console.log('✅ Allegati processati e ordinati');
     if (recommended) {
