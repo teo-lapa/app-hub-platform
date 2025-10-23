@@ -751,6 +751,24 @@ export default function ArrivoMercePage() {
                 2. Verifica Dati Estratti
               </h2>
 
+              {/* 🆕 Info Ricezione già selezionata */}
+              {odooPicking && (
+                <div className="mb-6 bg-green-50 border-2 border-green-500 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="text-green-600" size={20} />
+                    <span className="font-bold text-green-900">
+                      Ricezione già selezionata: {odooPicking.name}
+                    </span>
+                  </div>
+                  <p className="text-sm text-green-700">
+                    Fornitore: {odooPicking.partner_name} | Data: {odooPicking.scheduled_date}
+                  </p>
+                  <p className="text-xs text-green-600 mt-1">
+                    ✅ Salteremo la ricerca e caricheremo direttamente le righe di questa ricezione
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-blue-50 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -834,18 +852,28 @@ export default function ArrivoMercePage() {
                   Ricarica
                 </button>
                 <button
-                  onClick={handleIdentifySupplier}
+                  onClick={async () => {
+                    // 🆕 BYPASS: Se abbiamo già il picking dallo Step 0, carica direttamente le righe
+                    if (odooPicking && odooPicking.id) {
+                      console.log('🚀 BYPASS: Picking già selezionato, carico righe direttamente');
+                      await handleLoadReceptionDetails(odooPicking.id);
+                    } else {
+                      // Altrimenti usa il vecchio metodo di ricerca
+                      console.log('🔍 Nessun picking selezionato, uso ricerca tradizionale');
+                      await handleIdentifySupplier();
+                    }
+                  }}
                   disabled={loading}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <>
                       <Loader className="animate-spin" size={20} />
-                      Ricerca in corso...
+                      {odooPicking ? 'Caricamento righe...' : 'Ricerca in corso...'}
                     </>
                   ) : (
                     <>
-                      Trova Ricezione in Odoo
+                      {odooPicking ? 'Procedi con Ricezione' : 'Trova Ricezione in Odoo'}
                     </>
                   )}
                 </button>
