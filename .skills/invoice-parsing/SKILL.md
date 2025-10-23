@@ -1,6 +1,6 @@
 ---
 name: invoice-parsing
-version: 1.1.0
+version: 1.2.0
 description: Estrae dati strutturati da fatture fornitori per arrivi merce
 tags: [parsing, invoice, pdf, vision, ocr]
 model: claude-3-5-sonnet-20241022
@@ -147,7 +147,7 @@ Alcuni prodotti hanno varianti (colore, dimensione, formato).
 
 ---
 
-### 📑 REGOLA #6: Fatture Multi-Riga (NUOVA!)
+### 📑 REGOLA #6: Fatture Multi-Riga
 
 Alcune fatture (es. Pastificio Marcello) hanno una struttura particolare dove le informazioni sono distribuite su **più righe**.
 
@@ -223,12 +223,171 @@ Riga 2:               LOTTO ABC - SCADENZA 31/12/2025
 
 ---
 
+### 🔄 REGOLA #7: Gestione Duplicati e Multi-DDT (CRITICA!)
+
+Alcune fatture (es. RISTORIS) contengono **più DDT** (Documenti di Trasporto) in una singola fattura.
+Questo causa lo **STESSO PRODOTTO** con lo **STESSO LOTTO** ripetuto più volte.
+
+#### 🚨 PROBLEMA
+
+**Scenario**:
+```
+D.d.T. numero 000234-C del 20/10/2025
+008126 CARCIOFI A SPICCHI OLIO - S.P. LATTA 3/1 - 2400 G  NR  30  9,200  276,00
+       Lotto/Lot: LR248-040928  Scad./Exp.: 4/09/2028
+
+D.d.T. numero 000235-C del 20/10/2025
+008126 CARCIOFI A SPICCHI OLIO - S.P. LATTA 3/1 - 2400 G  NR  6   9,200  55,20
+       Lotto/Lot: LR248-040928  Scad./Exp.: 4/09/2028
+```
+
+❌ **Errore comune**: Creare 2 prodotti separati nel JSON
+✅ **Comportamento corretto**: Sommare le quantità in 1 solo prodotto
+
+#### 📊 Algoritmo di Consolidamento
+
+**PRIMA di generare il JSON finale, segui questi passi**:
+
+1. **Estrai tutti i prodotti** dalla fattura (inclusi duplicati)
+2. **Identifica duplicati** con chiave: `article_code + lot_number + expiry_date`
+3. **Somma le quantità** dei duplicati
+4. **Crea UN SOLO prodotto** nel JSON finale
+
+#### 🎯 Esempio di Consolidamento
+
+**Input dalla fattura**:
+```
+Riga 1: 001507 POMODORI CILIEG ROSSI  Qtà: 24  Lotto: LR214-020828  Scad: 2/08/2028
+Riga 2: 001507 POMODORI CILIEG ROSSI  Qtà: 18  Lotto: LR214-020828  Scad: 2/08/2028
+```
+
+**Output JSON corretto**:
+```json
+{
+  "products": [
+    {
+      "article_code": "001507",
+      "description": "POMODORI CILIEG ROSSI SEMISEC LATTA 4/4 - 750 G",
+      "quantity": 42.0,
+      "unit": "NR",
+      "lot_number": "LR214-020828",
+      "expiry_date": "2028-08-02"
+    }
+  ]
+}
+```
+**Calcolo**: 24 + 18 = 42 ✅
+
+#### ⚙️ Chiave di Consolidamento
+
+Due prodotti sono **duplicati** se hanno:
+- ✅ Stesso `article_code` (o entrambi null)
+- ✅ Stesso `lot_number`
+- ✅ Stesso `expiry_date`
+- ✅ Stessa `unit`
+
+**NOTA**: La `description` può variare leggermente (spazi, maiuscole) → usa la versione più completa
+
+#### 📝 Regole Aggiuntive
+
+1. **Descrizione**: Se i duplicati hanno descrizioni diverse, usa quella più completa
+2. **Unità di misura**: Devono essere identiche per sommare (KG+KG ✅, KG+PZ ❌)
+3. **Somma solo quantità**: Altri campi (prezzo, totale) vengono ignorati
+
+#### 🔢 Conteggio Prodotti
+
+**IMPORTANTE**: All'inizio del JSON, aggiungi un campo `parsing_summary`:
+
+```json
+{
+  "parsing_summary": {
+    "total_lines_in_invoice": 32,
+    "unique_products_after_consolidation": 29,
+    "duplicates_found": 3
+  },
+  "supplier_name": "...",
+  "products": [...]
+}
+```
+
+**Campi**:
+- `total_lines_in_invoice`: Numero di righe prodotto nella fattura (prima del consolidamento)
+- `unique_products_after_consolidation`: Numero di prodotti nel JSON finale (dopo consolidamento)
+- `duplicates_found`: Numero di prodotti che sono stati consolidati
+
+#### ✅ Esempio Completo
+
+**Fattura con**:
+- 32 righe totali
+- 3 prodotti duplicati (001507×2, 012605×2, 008126×2)
+- 29 prodotti unici finali
+
+**Output JSON**:
+```json
+{
+  "parsing_summary": {
+    "total_lines_in_invoice": 32,
+    "unique_products_after_consolidation": 29,
+    "duplicates_found": 3
+  },
+  "supplier_name": "RISTORIS SRL",
+  "supplier_vat": "09017940967",
+  "document_number": "650/E",
+  "document_date": "2025-10-21",
+  "products": [
+    {
+      "article_code": "001507",
+      "description": "POMODORI CILIEG ROSSI SEMISEC LATTA 4/4 - 750 G",
+      "quantity": 42.0,
+      "unit": "NR",
+      "lot_number": "LR214-020828",
+      "expiry_date": "2028-08-02"
+    },
+    {
+      "article_code": "012605",
+      "description": "SALSA DI PISTACCHIO - RICETTA VASO VETRO ML 580 - 520 G",
+      "quantity": 18.0,
+      "unit": "NR",
+      "lot_number": "LC25078-030327",
+      "expiry_date": "2027-03-03"
+    },
+    {
+      "article_code": "008126",
+      "description": "CARCIOFI A SPICCHI OLIO - S.P. LATTA 3/1 - 2400 G",
+      "quantity": 36.0,
+      "unit": "NR",
+      "lot_number": "LR248-040928",
+      "expiry_date": "2028-09-04"
+    }
+  ]
+}
+```
+
+#### 🚫 Cosa NON Fare
+
+❌ **Non consolidare** se:
+- Lotti diversi (anche se stesso prodotto)
+- Scadenze diverse (anche se stesso lotto)
+- Unità di misura diverse (KG vs PZ)
+
+❌ **Non creare righe con qty=0**
+❌ **Non duplicare prodotti nel JSON finale**
+
+✅ **Sempre consolidare** prodotti identici sommando le quantità
+
+---
+
 ## Formato Output
 
 Rispondi SOLO con JSON valido. NESSUN testo aggiuntivo prima o dopo.
 
 ```json
 {
+  "parsing_summary": {
+    "total_lines_in_invoice": 15,
+    "unique_products_after_consolidation": 14,
+    "duplicates_found": 1
+  },
   "supplier_name": "Nome Fornitore SRL",
   "supplier_vat": "12345678901",
   "document_number": "FAT/2025/001",
@@ -260,6 +419,10 @@ Rispondi SOLO con JSON valido. NESSUN testo aggiuntivo prima o dopo.
 
 | Campo | Tipo | Obbligatorio | Note |
 |-------|------|--------------|------|
+| parsing_summary | object | ✅ | Riepilogo parsing (NUOVO in v1.2.0) |
+| parsing_summary.total_lines_in_invoice | number | ✅ | Righe prodotto nella fattura |
+| parsing_summary.unique_products_after_consolidation | number | ✅ | Prodotti unici nel JSON |
+| parsing_summary.duplicates_found | number | ✅ | Prodotti consolidati |
 | supplier_name | string | ✅ | Nome completo fornitore |
 | supplier_vat | string | ❌ | Solo numeri, senza prefisso IT |
 | document_number | string | ✅ | Numero fattura/DDT |
@@ -268,7 +431,7 @@ Rispondi SOLO con JSON valido. NESSUN testo aggiuntivo prima o dopo.
 | products[].article_code | string\|null | ❌ | Codice articolo fornitore |
 | products[].description | string | ✅ | Nome prodotto chiaro |
 | products[].quantity | number | ✅ | Numero decimale (es: 24.0) |
-| products[].unit | string | ✅ | KG, PZ, CT, L, ML |
+| products[].unit | string | ✅ | KG, PZ, CT, L, ML, NR |
 | products[].lot_number | string\|null | ❌ | Numero lotto |
 | products[].expiry_date | string\|null | ❌ | YYYY-MM-DD |
 | products[].variant | string | ❌ | Variante (può essere "") |
@@ -410,6 +573,17 @@ Rispondi SOLO con JSON valido. NESSUN testo aggiuntivo prima o dopo.
 ---
 
 ## 📝 Changelog
+
+### v1.2.0 (2025-01-23)
+- ✅ **REGOLA #7**: Gestione duplicati e multi-DDT
+- ✅ Consolidamento automatico prodotti con stesso lotto+scadenza
+- ✅ Campo `parsing_summary` con conteggio righe e prodotti unici
+- ✅ Prevenzione creazione righe con qty=0
+
+### v1.1.0 (2025-01-22)
+- ✅ **REGOLA #6**: Gestione fatture multi-riga (es. Pastificio Marcello)
+- ✅ Supporto lotto/scadenza su righe separate
+- ✅ Riconoscimento header non-prodotto
 
 ### v1.0.0 (2025-01-15)
 - ✅ Prima versione stabile
