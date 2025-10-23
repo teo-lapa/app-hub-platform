@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import Anthropic from '@anthropic-ai/sdk';
 import { loadSkill, logSkillInfo } from '@/lib/ai/skills-loader';
+import { PDFDocument } from 'pdf-lib';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes for large PDFs
@@ -11,10 +12,206 @@ const anthropic = new Anthropic({
 });
 
 /**
+ * Split PDF into individual pages
+ * Returns array of base64-encoded single-page PDFs
+ */
+async function splitPDFPages(base64PDF: string): Promise<string[]> {
+  try {
+    // Decode base64 to buffer
+    const pdfBytes = Buffer.from(base64PDF, 'base64');
+
+    // Load PDF
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const pageCount = pdfDoc.getPageCount();
+
+    console.log(`📄 PDF ha ${pageCount} pagine, splitting...`);
+
+    const pages: string[] = [];
+
+    // Create a separate PDF for each page
+    for (let i = 0; i < pageCount; i++) {
+      const newPdf = await PDFDocument.create();
+      const [copiedPage] = await newPdf.copyPages(pdfDoc, [i]);
+      newPdf.addPage(copiedPage);
+
+      // Save as base64
+      const pdfBytesPage = await newPdf.save();
+      const base64Page = Buffer.from(pdfBytesPage).toString('base64');
+      pages.push(base64Page);
+
+      console.log(`  ✅ Pagina ${i + 1}/${pageCount} estratta (${(pdfBytesPage.length / 1024).toFixed(1)} KB)`);
+    }
+
+    return pages;
+  } catch (error: any) {
+    console.error('❌ Errore split PDF:', error.message);
+    throw new Error(`Impossibile splittare PDF: ${error.message}`);
+  }
+}
+
+/**
+ * Parse a single page with Claude + Skill
+ */
+async function parsePage(
+  pageBase64: string,
+  pageNumber: number,
+  totalPages: number,
+  mediaType: string,
+  skill: any
+): Promise<any | null> {
+  const isPDF = mediaType === 'application/pdf';
+
+  const contentBlock: any = isPDF ? {
+    type: 'document',
+    source: {
+      type: 'base64',
+      media_type: 'application/pdf',
+      data: pageBase64,
+    },
+  } : {
+    type: 'image',
+    source: {
+      type: 'base64',
+      media_type: mediaType,
+      data: pageBase64,
+    },
+  };
+
+  const maxAttempts = 2;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`🤖 Tentativo ${attempt}/${maxAttempts} per pagina ${pageNumber}/${totalPages}...`);
+
+      const message = await anthropic.messages.create({
+        model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
+        max_tokens: 8192, // Originale - ogni pagina ha meno prodotti
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              contentBlock,
+              {
+                type: 'text',
+                text: `${skill.content}\n\n---\n\nAnalizza questa pagina di fattura ed estrai i prodotti. Questa è la pagina ${pageNumber} di ${totalPages}.`,
+              },
+            ],
+          },
+        ],
+      });
+
+      // Extract JSON from response
+      const firstContent = message.content[0];
+      const responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
+
+      // Try to parse JSON
+      let parsedData;
+      try {
+        parsedData = JSON.parse(responseText);
+      } catch {
+        const codeBlockMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (codeBlockMatch) {
+          parsedData = JSON.parse(codeBlockMatch[1]);
+        } else {
+          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            parsedData = JSON.parse(jsonMatch[0]);
+          } else {
+            throw new Error('Nessun JSON valido trovato');
+          }
+        }
+      }
+
+      // Validate basic structure
+      if (!parsedData || typeof parsedData !== 'object') {
+        throw new Error('JSON non valido');
+      }
+
+      console.log(`✅ Pagina ${pageNumber} parsata: ${parsedData.products?.length || 0} prodotti trovati`);
+
+      return {
+        data: parsedData,
+        tokens: message.usage,
+      };
+
+    } catch (error: any) {
+      console.error(`❌ Errore pagina ${pageNumber}, tentativo ${attempt}:`, error.message);
+      if (attempt === maxAttempts) {
+        console.error(`⚠️ Pagina ${pageNumber} saltata dopo ${maxAttempts} tentativi`);
+        return null;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Merge results from multiple pages
+ * Consolidates duplicate products
+ */
+function mergePages(pageResults: any[]): any {
+  if (pageResults.length === 0) {
+    throw new Error('Nessuna pagina processata con successo');
+  }
+
+  // Take supplier info from first page
+  const mergedData: any = {
+    supplier_name: pageResults[0].supplier_name,
+    supplier_vat: pageResults[0].supplier_vat,
+    document_number: pageResults[0].document_number,
+    document_date: pageResults[0].document_date,
+    products: [],
+  };
+
+  // Collect all products
+  const allProducts: any[] = [];
+  for (const page of pageResults) {
+    if (page.products && Array.isArray(page.products)) {
+      allProducts.push(...page.products);
+    }
+  }
+
+  console.log(`📦 Totale prodotti da tutte le pagine: ${allProducts.length}`);
+
+  // Consolidate duplicates (same code + lot + expiry + unit)
+  const productMap = new Map<string, any>();
+
+  for (const product of allProducts) {
+    const key = `${product.article_code || 'NO_CODE'}_${product.lot_number || 'NO_LOT'}_${product.expiry_date || 'NO_EXP'}_${product.unit}`;
+
+    if (productMap.has(key)) {
+      // Duplicate found - sum quantities
+      const existing = productMap.get(key);
+      existing.quantity += product.quantity;
+      console.log(`🔄 Consolidato: ${product.article_code} (${existing.quantity})`);
+    } else {
+      // New product
+      productMap.set(key, { ...product });
+    }
+  }
+
+  mergedData.products = Array.from(productMap.values());
+
+  // Add parsing summary
+  mergedData.parsing_summary = {
+    total_lines_in_invoice: allProducts.length,
+    unique_products_after_consolidation: mergedData.products.length,
+    duplicates_found: allProducts.length - mergedData.products.length,
+  };
+
+  console.log(`✅ Dopo consolidamento: ${mergedData.products.length} prodotti unici`);
+  console.log(`📊 Parsing summary:`, mergedData.parsing_summary);
+
+  return mergedData;
+}
+
+/**
  * PARSE ATTACHMENT FROM ODOO
  *
  * Scarica un allegato da Odoo e lo parsea con AI
- * Usa lo stesso skill di parse-invoice
+ * Per PDF multi-pagina, splitta e processa ogni pagina separatamente
  */
 export async function POST(request: NextRequest) {
   try {
@@ -89,150 +286,78 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('🤖 Invio a Claude per analisi...', 'Format:', mediaType);
-
     // 🆕 CARICA LO SKILL PER INVOICE PARSING
     const skill = loadSkill('invoice-parsing');
     logSkillInfo('invoice-parsing');
     console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version}`);
 
-    // Determine content type based on file format
+    // 🆕 SPLIT STRATEGY FOR MULTI-PAGE PDFs
+    let pagesToProcess: string[] = [];
     const isPDF = mediaType === 'application/pdf';
-    const contentBlock: any = isPDF ? {
-      type: 'document',
-      source: {
-        type: 'base64',
-        media_type: 'application/pdf',
-        data: base64,
-      },
-    } : {
-      type: 'image',
-      source: {
-        type: 'base64',
-        media_type: mediaType,
-        data: base64,
-      },
-    };
 
-    // Call Claude API with vision/document - RETRY LOGIC
-    let message;
-    let attempt = 0;
-    const maxAttempts = 2;
-
-    while (attempt < maxAttempts) {
-      attempt++;
-      console.log(`🤖 Tentativo ${attempt}/${maxAttempts} - Invio a Claude...`);
-
+    if (isPDF) {
       try {
-        message = await anthropic.messages.create({
-          model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
-          max_tokens: 12000, // Compromesso per PDF lunghi (3+ pagine, ~30 prodotti)
-          temperature: 0,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                contentBlock,
-                {
-                  type: 'text',
-                  text: `${skill.content}\n\n---\n\nAnalizza questo documento e estrai i dati secondo le regole sopra.\n\nIMPORTANTE: Assicurati di parsare TUTTE le pagine del PDF, inclusa l'ultima pagina. Questo PDF potrebbe contenere 30+ prodotti distribuiti su 3-4 pagine.`,
-                },
-              ],
-            },
-          ],
-        });
+        pagesToProcess = await splitPDFPages(base64);
+      } catch (splitError: any) {
+        console.error('⚠️ Impossibile splittare PDF, uso PDF intero:', splitError.message);
+        pagesToProcess = [base64]; // Fallback
+      }
+    } else {
+      pagesToProcess = [base64]; // Images: no split
+    }
 
-        // If successful, break the loop
-        break;
-      } catch (apiError: any) {
-        console.error(`❌ Tentativo ${attempt} fallito:`, apiError.message);
+    console.log(`\n🚀 Inizio processamento di ${pagesToProcess.length} pagina/e...\n`);
 
-        if (attempt === maxAttempts) {
-          throw new Error(`Parsing fallito dopo ${maxAttempts} tentativi. Il file potrebbe essere troppo complesso o danneggiato.`);
-        }
+    // Process each page
+    const pageResults: any[] = [];
+    let totalTokensUsed = { input_tokens: 0, output_tokens: 0 };
 
-        // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, 1000));
+    for (let i = 0; i < pagesToProcess.length; i++) {
+      const result = await parsePage(
+        pagesToProcess[i],
+        i + 1,
+        pagesToProcess.length,
+        mediaType,
+        skill
+      );
+
+      if (result) {
+        pageResults.push(result.data);
+        totalTokensUsed.input_tokens += result.tokens.input_tokens;
+        totalTokensUsed.output_tokens += result.tokens.output_tokens;
       }
     }
 
-    if (!message) {
-      throw new Error('Impossibile processare il documento dopo tutti i tentativi');
-    }
-
-    // Extract JSON from response
-    const firstContent = message.content[0];
-    const responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
-    console.log('📥 Risposta Claude (primi 300 char):', responseText.substring(0, 300));
-
-    // Parse JSON response - ROBUST PARSING
-    let parsedData;
-    try {
-      // Method 1: Try direct JSON parse
-      try {
-        parsedData = JSON.parse(responseText);
-        console.log('✅ Metodo 1: JSON diretto - successo');
-      } catch {
-        // Method 2: Extract JSON from markdown code blocks
-        const codeBlockMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-        if (codeBlockMatch) {
-          parsedData = JSON.parse(codeBlockMatch[1]);
-          console.log('✅ Metodo 2: JSON da code block - successo');
-        } else {
-          // Method 3: Find first { to last }
-          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            parsedData = JSON.parse(jsonMatch[0]);
-            console.log('✅ Metodo 3: Estrazione { } - successo');
-          } else {
-            throw new Error('Nessun JSON valido trovato nella risposta');
-          }
-        }
-      }
-
-      // Validate parsed data structure
-      if (!parsedData || typeof parsedData !== 'object') {
-        throw new Error('Risposta non è un oggetto JSON valido');
-      }
-
-      if (!parsedData.supplier_name || !parsedData.document_number || !parsedData.products) {
-        throw new Error('JSON mancante di campi obbligatori (supplier_name, document_number, products)');
-      }
-
-      if (!Array.isArray(parsedData.products)) {
-        throw new Error('Il campo products deve essere un array');
-      }
-
-      console.log('✅ Validazione JSON completata');
-
-    } catch (parseError: any) {
-      console.error('❌ Errore parsing JSON:', parseError.message);
-      console.error('❌ Response text completo:', responseText);
-
+    if (pageResults.length === 0) {
       return NextResponse.json({
-        error: 'Errore nel parsing della risposta AI. Il documento potrebbe essere troppo complesso o in un formato non supportato.',
-        details: parseError.message,
-        hint: 'Prova a convertire il PDF in un formato più semplice o a ridurre il numero di pagine.'
+        error: 'Nessuna pagina processata con successo. Il PDF potrebbe essere danneggiato o troppo complesso.',
+        hint: 'Prova a ricaricarlo o convertirlo in un formato più semplice.'
       }, { status: 500 });
     }
 
-    console.log('✅ Dati estratti:', {
-      supplier: parsedData.supplier_name,
-      products: parsedData.products?.length || 0,
-      parsing_summary: parsedData.parsing_summary || 'N/A', // Nuovo in v1.2.0
-      attachment_name: attachment.name
+    console.log(`\n✅ ${pageResults.length}/${pagesToProcess.length} pagine processate con successo`);
+
+    // Merge all pages
+    const mergedData = mergePages(pageResults);
+
+    console.log('\n✅ COMPLETATO:', {
+      supplier: mergedData.supplier_name,
+      products: mergedData.products.length,
+      parsing_summary: mergedData.parsing_summary,
     });
 
     return NextResponse.json({
       success: true,
-      data: parsedData,
+      data: mergedData,
       source: {
         type: 'odoo_attachment',
         attachment_id: attachment.id,
         attachment_name: attachment.name,
-        mimetype: attachment.mimetype
+        mimetype: attachment.mimetype,
+        pages_processed: pageResults.length,
+        pages_total: pagesToProcess.length,
       },
-      tokens_used: message.usage
+      tokens_used: totalTokensUsed
     });
 
   } catch (error: any) {
