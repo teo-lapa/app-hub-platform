@@ -20,6 +20,7 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import UnmatchedProductsHandler from '@/components/arrivo-merce/UnmatchedProductsHandler';
 import TodayArrivalsList from '@/components/arrivo-merce/TodayArrivalsList';
+import AttachmentSelector from '@/components/arrivo-merce/AttachmentSelector';
 
 interface ParsedProduct {
   article_code?: string;
@@ -67,6 +68,11 @@ export default function ArrivoMercePage() {
 
   // 🆕 Step 0: Selected arrival from list
   const [selectedArrival, setSelectedArrival] = useState<any | null>(null);
+
+  // 🆕 Step 0.5: Attachments from P.O.
+  const [availableAttachments, setAvailableAttachments] = useState<any[]>([]);
+  const [recommendedAttachment, setRecommendedAttachment] = useState<any | null>(null);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
 
   // Step 1: Upload file
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -500,7 +506,7 @@ export default function ArrivoMercePage() {
           >
             <div className="bg-white rounded-xl shadow-lg p-8">
               <TodayArrivalsList
-                onSelectArrival={(arrival) => {
+                onSelectArrival={async (arrival) => {
                   console.log('✅ Arrivo selezionato:', arrival);
                   setSelectedArrival(arrival);
                   setOdooPicking({
@@ -511,8 +517,39 @@ export default function ArrivoMercePage() {
                     state: arrival.state,
                     origin: arrival.origin
                   });
-                  // Vai allo step 1 (carica fattura) o skip se ha allegati
-                  setStep(1);
+
+                  // Se ha allegati, caricali e vai a Step 0.5
+                  if (arrival.has_attachments && arrival.purchase_order_id) {
+                    setLoadingAttachments(true);
+                    try {
+                      const response = await fetch('/api/arrivo-merce/get-po-attachments', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ purchase_order_id: arrival.purchase_order_id })
+                      });
+
+                      const data = await response.json();
+
+                      if (response.ok) {
+                        console.log('✅ Allegati caricati:', data.attachments.length);
+                        setAvailableAttachments(data.attachments);
+                        setRecommendedAttachment(data.recommended_attachment);
+                        setStep(0.5); // Step 0.5: Seleziona allegato
+                      } else {
+                        console.error('❌ Errore caricamento allegati:', data.error);
+                        setStep(1); // Fallback a upload manuale
+                      }
+                    } catch (error) {
+                      console.error('❌ Errore fetch allegati:', error);
+                      setStep(1); // Fallback a upload manuale
+                    } finally {
+                      setLoadingAttachments(false);
+                    }
+                  } else {
+                    // Nessun allegato, vai direttamente a upload manuale
+                    setStep(1);
+                  }
                 }}
               />
 
@@ -527,6 +564,79 @@ export default function ArrivoMercePage() {
                 >
                   <Upload size={20} />
                   Oppure carica fattura manualmente
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* 🆕 Step 0.5: Seleziona Allegato da P.O. */}
+        {step === 0.5 && selectedArrival && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="max-w-4xl mx-auto"
+          >
+            <div className="bg-white rounded-xl shadow-lg p-8">
+              {/* Info arrivo selezionato */}
+              <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-bold text-blue-900 mb-2">
+                  📦 {selectedArrival.name} - {selectedArrival.partner_name}
+                </h3>
+                <p className="text-sm text-blue-700">
+                  Ordine: {selectedArrival.purchase_order_name} | {selectedArrival.attachments_count} allegati trovati
+                </p>
+              </div>
+
+              <AttachmentSelector
+                attachments={availableAttachments}
+                recommendedAttachment={recommendedAttachment}
+                loading={loadingAttachments}
+                onSelect={async (attachment) => {
+                  console.log('✅ Allegato selezionato:', attachment.name);
+                  setLoading(true);
+                  setError(null);
+
+                  try {
+                    // Scarica e parsea l'allegato
+                    const response = await fetch('/api/arrivo-merce/parse-attachment', {
+                      method: 'POST',
+                      credentials: 'include',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ attachment_id: attachment.id })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                      throw new Error(data.error || 'Errore durante il parsing');
+                    }
+
+                    console.log('✅ Allegato parsato:', data.data);
+                    setParsedInvoice(data.data);
+                    setStep(2); // Vai a Step 2: Verifica Dati
+
+                  } catch (err: any) {
+                    console.error('❌ Errore parsing allegato:', err);
+                    setError(err.message || 'Errore durante il parsing dell\'allegato');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                onManualUpload={() => {
+                  console.log('🔄 Passaggio a upload manuale');
+                  setStep(1);
+                }}
+              />
+
+              {/* Button Indietro */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => setStep(0)}
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft size={20} />
+                  Torna alla lista arrivi
                 </button>
               </div>
             </div>
