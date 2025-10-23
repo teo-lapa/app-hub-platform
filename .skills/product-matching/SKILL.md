@@ -135,45 +135,134 @@ Odoo:    "ROSSO POMODORO G.500"
 
 ## 🔥 Gestione Multi-Lotto (CRITICISSIMO!)
 
-### Scenario: Stesso Prodotto, Lotti Diversi
+### ⚠️ REGOLA PRIORITARIA #1 - MULTI-LOTTO DELLO STESSO PRODOTTO
 
-Se UN prodotto nella fattura ha **MULTIPLI lotti**, DEVI creare righe separate!
+**ATTENZIONE**: Questa è la regola PIÙ IMPORTANTE di tutto lo skill!
 
-**Esempio Problematico**:
+Se nella fattura ci sono **DUE o più righe con lo STESSO PRODOTTO ma LOTTI DIVERSI**, DEVI **SEMPRE** creare righe separate!
+
+### ❌ ERRORE COMUNE (DA EVITARE ASSOLUTAMENTE!)
+
+```json
+// SBAGLIATO! NON FARE MAI QUESTO!
+Fattura ha:
+  - OLIO 4 PZ, Lotto 25E172
+  - OLIO 208 PZ, Lotto 25E458
+
+Odoo ha:
+  - OLIO 212 PZ (1 sola riga)
+
+ERRORE: Fare una sola "update" con 4 o 208
+✅ CORRETTO: Fare "update" per il primo + "create_new_line" per il secondo
 ```
-Fattura:
-- Mozzarella Lotto A: 10kg
-- Mozzarella Lotto B: 15kg
 
-Odoo (prima del match):
-- Mozzarella: 25kg previsti (1 riga)
+### ✅ SOLUZIONE CORRETTA PASSO-PASSO
+
+#### Step 1: Identifica se è multi-lotto
+```javascript
+// Controlla se ci sono prodotti duplicati nella fattura
+const olio_products = fattura.filter(p => p.description includes "OLIO")
+if (olio_products.length > 1) {
+  // È MULTI-LOTTO! Devi creare righe separate!
+}
 ```
 
-**Soluzione CORRETTA**:
+#### Step 2: Prima occorrenza → `action: "update"`
+```json
+{
+  "move_line_id": 123,
+  "invoice_product_index": 0,  // Prima riga nella fattura
+  "quantity": 4.0,
+  "lot_number": "25E172",
+  "expiry_date": "2026-08-30",
+  "action": "update",  // ← Aggiorna la riga esistente
+  "match_reason": "First occurrence - updating existing line"
+}
+```
+
+#### Step 3: Seconda occorrenza → `action: "create_new_line"`
+```json
+{
+  "move_line_id": 123,  // ← STESSO move_line_id della prima!
+  "invoice_product_index": 1,  // Seconda riga nella fattura
+  "quantity": 208.0,
+  "lot_number": "25E458",
+  "expiry_date": "2026-11-30",
+  "action": "create_new_line",  // ← Crea NUOVA riga per secondo lotto
+  "match_reason": "Same product, different lot - creating new line"
+}
+```
+
+### 🎯 Esempio Reale (OLIO EXTRAVERGINE)
+
+**Input Fattura**:
 ```json
 [
   {
-    "move_line_id": 123,
+    "description": "OLIO EXTRAVERGINE DI OLIVA 100% ITALIA OLIVUM 5L 4PZ CRT PRIM",
+    "quantity": 4.0,
+    "lot_number": "25E172",
+    "expiry_date": "2026-08-30"
+  },
+  {
+    "description": "OLIO EXTRAVERGINE DI OLIVA 100% ITALIA OLIVUM 5L 4PZ CRT PRIM",
+    "quantity": 208.0,
+    "lot_number": "25E458",
+    "expiry_date": "2026-11-30"
+  }
+]
+```
+
+**Input Odoo**:
+```json
+[
+  {
+    "id": 853309,
+    "product_name": "OLIO EXTRAVERGINE DI OLIVA 100% ITALIA OLIVUM SL 4PZ CRT PRIM",
+    "product_uom_qty": 212.0  // Totale atteso
+  }
+]
+```
+
+**Output CORRETTO**:
+```json
+[
+  {
+    "move_line_id": 853309,
     "invoice_product_index": 0,
-    "quantity": 10.0,
-    "lot_number": "LOTTO_A",
-    "expiry_date": "2025-02-15",
+    "quantity": 4.0,
+    "lot_number": "25E172",
+    "expiry_date": "2026-08-30",
+    "match_confidence": 0.95,
+    "match_reason": "Exact product match - First lot occurrence",
     "action": "update"
   },
   {
-    "move_line_id": 123,
+    "move_line_id": 853309,
     "invoice_product_index": 1,
-    "quantity": 15.0,
-    "lot_number": "LOTTO_B",
-    "expiry_date": "2025-02-20",
+    "quantity": 208.0,
+    "lot_number": "25E458",
+    "expiry_date": "2026-11-30",
+    "match_confidence": 0.95,
+    "match_reason": "Same product as index 0 - Second lot occurrence, creating new line",
     "action": "create_new_line"
   }
 ]
 ```
 
-**Regola**:
-- Prima occorrenza: `action: "update"` (aggiorna riga esistente)
-- Seconda+ occorrenza: `action: "create_new_line"` (crea nuova riga)
+### 🚨 CHECKLIST PRIMA DI RISPONDERE
+
+Prima di generare l'output finale, verifica:
+
+- [ ] Ho controllato se ci sono prodotti duplicati nella fattura?
+- [ ] Se ci sono duplicati, ho usato `action: "update"` per il PRIMO?
+- [ ] Se ci sono duplicati, ho usato `action: "create_new_line"` per il SECONDO e successivi?
+- [ ] Ho usato lo STESSO `move_line_id` per tutte le occorrenze dello stesso prodotto?
+- [ ] Ho impostato `invoice_product_index` diversi per ogni occorrenza?
+
+**Regola d'oro**:
+- **Primo** dello stesso prodotto → `action: "update"` (aggiorna riga esistente)
+- **Secondo+** dello stesso prodotto → `action: "create_new_line"` (crea nuova riga)
 
 ---
 
