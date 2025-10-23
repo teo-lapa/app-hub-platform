@@ -135,6 +135,9 @@ export async function POST(request: NextRequest) {
         const product = products.find((p: any) => p.id === ml.product_id[0]);
         const lot = ml.lot_id && ml.lot_id[0] ? lots.find((l: any) => l.id === ml.lot_id[0]) : null;
 
+        // 🔧 FIX: Trova il move collegato per prendere product_uom_qty
+        const relatedMove = moves.find((m: any) => m.id === ml.move_id[0]);
+
         return {
           id: ml.id,
           move_id: ml.move_id,
@@ -145,7 +148,7 @@ export async function POST(request: NextRequest) {
           variant_ids: product?.product_template_variant_value_ids || [],
           product_uom_id: ml.product_uom_id,
           qty_done: ml.qty_done || 0,
-          product_uom_qty: ml.quantity || 0,
+          product_uom_qty: relatedMove?.product_uom_qty || ml.quantity || 0, // 🔧 Prendi da stock.move
           lot_id: ml.lot_id,
           lot_name: ml.lot_name || (lot ? lot.name : false),
           expiry_date: lot ? (lot.expiration_date || lot.use_date || false) : false,
@@ -428,6 +431,9 @@ export async function POST(request: NextRequest) {
       const product = products.find((p: any) => p.id === ml.product_id[0]);
       const lot = ml.lot_id && ml.lot_id[0] ? lots.find((l: any) => l.id === ml.lot_id[0]) : null;
 
+      // 🔧 FIX: Trova il move collegato per prendere product_uom_qty
+      const relatedMove = moves.find((m: any) => m.id === ml.move_id[0]);
+
       return {
         id: ml.id,
         move_id: ml.move_id,
@@ -438,7 +444,7 @@ export async function POST(request: NextRequest) {
         variant_ids: product?.product_template_variant_value_ids || [],
         product_uom_id: ml.product_uom_id,
         qty_done: ml.qty_done || 0,
-        product_uom_qty: ml.quantity || 0,
+        product_uom_qty: relatedMove?.product_uom_qty || ml.quantity || 0, // 🔧 Prendi da stock.move
         lot_id: ml.lot_id,
         lot_name: ml.lot_name || (lot ? lot.name : false),
         expiry_date: lot ? (lot.expiration_date || lot.use_date || false) : false,
