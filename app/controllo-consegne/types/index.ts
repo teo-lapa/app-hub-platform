@@ -1,6 +1,6 @@
 // Types for Controllo Consegne App
 
-export type AttachmentType = 'signature' | 'photo' | 'payment' | 'reso';
+export type AttachmentType = 'signature' | 'photo' | 'payment' | 'reso' | 'scarico_parziale';
 
 export interface DeliveryDocument {
   id: number;
@@ -20,6 +20,7 @@ export interface DeliveryDocument {
     photo?: DocumentAttachment;
     payment?: DocumentAttachment;
     reso?: DocumentAttachment;
+    scarico_parziale?: DocumentAttachment;
   };
 
   // Payment details (if applicable)

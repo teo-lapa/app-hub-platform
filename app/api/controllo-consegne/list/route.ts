@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const date = searchParams.get('date'); // Format: YYYY-MM-DD
-    const type = searchParams.get('type'); // 'signature' | 'photo' | 'payment' | 'reso' | 'all'
+    const type = searchParams.get('type'); // 'signature' | 'photo' | 'payment' | 'reso' | 'scarico_parziale' | 'all'
 
     if (!date) {
       return NextResponse.json(
@@ -359,6 +359,56 @@ export async function GET(request: NextRequest) {
           message_id: resoMessage.id,
           odoo_attachment_id: returnAttachment?.id,
           reason: reason,
+        };
+      }
+
+      // SCARICO PARZIALE: cerca messaggio "SCARICO PARZIALE" (con o senza emoji)
+      const scaricoParzialMessage = pickingMessages.find(
+        (msg: any) => msg.body?.includes('SCARICO PARZIALE')
+      );
+      if (scaricoParzialMessage) {
+        // La giustificazione/nota dello scarico parziale è nel messaggio
+        // Può avere anche attachment se c'è una foto
+        const messageDate = new Date(scaricoParzialMessage.date);
+
+        console.log(`[SCARICO PARZIALE DEBUG] Picking ${picking.name}: Searching for partial delivery attachment`);
+        console.log('[SCARICO PARZIALE DEBUG] Message date:', scaricoParzialMessage.date);
+        console.log('[SCARICO PARZIALE DEBUG] Total attachments for this picking:', pickingAttachments.length);
+
+        const scaricoParzialAttachment = pickingAttachments.find((att: any) => {
+          if (!att.create_date) return false;
+          const attDate = new Date(att.create_date);
+          const timeDiff = Math.abs(attDate.getTime() - messageDate.getTime());
+          // Cerca immagini/documenti creati entro 2 minuti dal messaggio
+          return timeDiff < 120000 && att.mimetype && (att.mimetype.startsWith('image/') || att.mimetype === 'application/pdf');
+        });
+
+        console.log('[SCARICO PARZIALE DEBUG] Found partial delivery attachment:', scaricoParzialAttachment ? 'YES' : 'NO');
+        if (scaricoParzialAttachment) {
+          console.log('[SCARICO PARZIALE DEBUG] Attachment ID:', scaricoParzialAttachment.id, 'mimetype:', scaricoParzialAttachment.mimetype);
+          console.log('[SCARICO PARZIALE DEBUG] Has data:', !!scaricoParzialAttachment.datas, 'data length:', scaricoParzialAttachment.datas?.length || 0);
+        }
+
+        const body = scaricoParzialMessage.body || '';
+        // Estrai giustificazione dal messaggio (se presente)
+        let justification: string | undefined;
+        // Il messaggio può contenere: **Nota:** seguito dalla giustificazione
+        const justificationMatch = body.match(/\*\*Nota:\*\*\s*([^<]+)/i);
+        if (justificationMatch) {
+          justification = justificationMatch[1].trim();
+          console.log('[SCARICO PARZIALE DEBUG] Extracted justification:', justification);
+        } else {
+          console.log('[SCARICO PARZIALE DEBUG] No specific justification pattern found in body');
+        }
+
+        attachmentsByType.scarico_parziale = {
+          type: 'scarico_parziale',
+          data: scaricoParzialAttachment?.datas || null,
+          timestamp: scaricoParzialMessage.date,
+          note: body,
+          message_id: scaricoParzialMessage.id,
+          odoo_attachment_id: scaricoParzialAttachment?.id,
+          justification: justification,
         };
       }
 
