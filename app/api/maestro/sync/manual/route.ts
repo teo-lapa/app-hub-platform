@@ -1,80 +1,115 @@
-/**
- * Manual Sync Endpoint - Protected with CRON_SECRET
- * Used by GitHub Actions nightly sync job
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { syncAllCustomers } from '@/lib/maestro/sync-engine';
+import { syncCustomersFromOdoo, getSyncStatus } from '@/lib/maestro/sync-odoo-v2';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // 5 minutes timeout
+export const maxDuration = 300; // 5 minuti per sync completo
 
+/**
+ * POST /api/maestro/sync/manual
+ * 
+ * Endpoint per triggerare manualmente la sincronizzazione
+ * Odoo → Maestro AI Database
+ */
 export async function POST(request: NextRequest) {
-  // Verify CRON_SECRET header for security
-  const cronSecret = request.headers.get('X-CRON-SECRET');
-  const expectedSecret = process.env.CRON_SECRET;
-
-  if (!expectedSecret || cronSecret !== expectedSecret) {
-    console.error('❌ [MANUAL SYNC] Unauthorized - Invalid CRON_SECRET');
-    return NextResponse.json(
-      { success: false, error: 'Unauthorized' },
-      { status: 401 }
-    );
-  }
-
-  console.log('\n🚀 [MANUAL SYNC] Starting manual sync...\n');
+  const startTime = Date.now();
 
   try {
-    const body = await request.json();
-    const force = body.force || false;
+    console.log('🔄 [MAESTRO SYNC] Sync manuale iniziata...');
 
-    const result = await syncAllCustomers({
-      fullSync: force,      // Full sync if force=true
-      monthsBack: 6,        // 6 mesi
-      batchSize: 20,
+    // Parse request body (opzionale)
+    let options = {
+      maxCustomers: undefined as number | undefined,
+      monthsBack: 4,
       dryRun: false
+    };
+
+    try {
+      const body = await request.json();
+      options = {
+        maxCustomers: body.maxCustomers,
+        monthsBack: body.monthsBack || 4,
+        dryRun: body.dryRun || false
+      };
+    } catch {
+      // Body opzionale, usiamo defaults
+    }
+
+    console.log('📋 [MAESTRO SYNC] Opzioni sync:', options);
+
+    // STEP 1: Get status prima del sync
+    const statusBefore = await getSyncStatus();
+    console.log('📊 [MAESTRO SYNC] Status prima:', {
+      totalAvatars: statusBefore.totalAvatars,
+      activeAvatars: statusBefore.activeAvatars,
+      lastSync: statusBefore.lastSync
     });
 
-    console.log('\n✅ [MANUAL SYNC] Completed successfully!\n');
+    // STEP 2: Esegui sync
+    const syncResult = await syncCustomersFromOdoo(options);
+
+    console.log('✅ [MAESTRO SYNC] Sync completata:', syncResult);
+
+    // STEP 3: Get status dopo il sync
+    const statusAfter = await getSyncStatus();
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
     return NextResponse.json({
       success: true,
-      result
+      message: options.dryRun
+        ? 'Dry run completato con successo'
+        : 'Sincronizzazione completata con successo',
+      sync: {
+        ...syncResult,
+        duration_seconds: parseFloat(duration)
+      },
+      before: {
+        totalAvatars: statusBefore.totalAvatars,
+        activeAvatars: statusBefore.activeAvatars,
+        lastSync: statusBefore.lastSync
+      },
+      after: {
+        totalAvatars: statusAfter.totalAvatars,
+        activeAvatars: statusAfter.activeAvatars,
+        lastSync: statusAfter.lastSync
+      }
     });
+
   } catch (error: any) {
-    console.error('\n❌ [MANUAL SYNC] Failed:', error.message);
+    console.error('❌ [MAESTRO SYNC] Errore:', error);
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: error.message || 'Errore durante la sincronizzazione',
+      duration_seconds: parseFloat(duration)
     }, { status: 500 });
   }
 }
 
-// Keep GET for backward compatibility (local testing only)
-export async function GET() {
-  console.log('\n🚀 [MANUAL SYNC] Starting manual sync (GET - local testing)...\n');
-
+/**
+ * GET /api/maestro/sync/manual
+ * 
+ * Ottiene lo status corrente del database senza eseguire sync
+ */
+export async function GET(request: NextRequest) {
   try {
-    const result = await syncAllCustomers({
-      fullSync: false,
-      monthsBack: 6,
-      batchSize: 20,
-      dryRun: false
-    });
+    console.log('📊 [MAESTRO SYNC] Richiesta status database...');
 
-    console.log('\n✅ [MANUAL SYNC] Completed successfully!\n');
+    const status = await getSyncStatus();
 
     return NextResponse.json({
       success: true,
-      result
+      status
     });
+
   } catch (error: any) {
-    console.error('\n❌ [MANUAL SYNC] Failed:', error.message);
+    console.error('❌ [MAESTRO SYNC] Errore get status:', error);
 
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: error.message || 'Errore durante recupero status'
     }, { status: 500 });
   }
 }

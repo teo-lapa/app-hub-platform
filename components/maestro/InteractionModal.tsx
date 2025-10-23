@@ -407,7 +407,7 @@ export function InteractionModal({
                     <>
                       {selectedProducts.length > 0 ? (
                         <>
-                          🎁 Conferma e Crea Ordine Campioni ({selectedProducts.length})
+                          🎁 Conferma e Crea Preventivo Campioni ({selectedProducts.length})
                         </>
                       ) : (
                         'Salva interazione'
