@@ -62,7 +62,7 @@ interface OdooPicking {
 export default function ArrivoMercePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [step, setStep] = useState(0); // 🆕 Inizia da Step 0 (lista arrivi)
+  const [step, setStep] = useState(0); // Step: 0=Lista, 1=Allegati, 2=Upload, 3=Verifica, 4=Trova, 5=Completa
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -216,7 +216,7 @@ export default function ArrivoMercePage() {
 
       console.log('✅ Dati estratti:', data.data);
       setParsedInvoice(data.data);
-      setStep(2);
+      setStep(3);
 
     } catch (err: any) {
       console.error('❌ Errore parsing:', err);
@@ -258,7 +258,7 @@ export default function ArrivoMercePage() {
       setOdooPicking(data.picking);
       setOdooMoveLines(data.move_lines);
       setAlternatives(data.alternatives || []);
-      setStep(3);
+      setStep(4);
 
     } catch (err: any) {
       console.error('❌ Errore ricerca ricezione:', err);
@@ -344,7 +344,7 @@ export default function ArrivoMercePage() {
       console.log('✅ Dettagli ricezione caricati:', detailsData.picking);
       setOdooPicking(detailsData.picking);
       setOdooMoveLines(detailsData.move_lines);
-      setStep(3);
+      setStep(4);
 
     } catch (err: any) {
       console.error('❌ Errore caricamento dettagli:', err);
@@ -390,7 +390,7 @@ export default function ArrivoMercePage() {
         setShowUnmatchedModal(true);
       } else {
         // Nessun prodotto non matchato, vai direttamente ai risultati
-        setStep(4);
+        setStep(5);
       }
 
     } catch (err: any) {
@@ -402,7 +402,7 @@ export default function ArrivoMercePage() {
   };
 
   const handleReset = () => {
-    setStep(1);
+    setStep(0);
     setSelectedFile(null);
     setPreviewUrl(null);
     setParsedInvoice(null);
@@ -411,6 +411,9 @@ export default function ArrivoMercePage() {
     setAlternatives([]);
     setResults(null);
     setError(null);
+    setSelectedArrival(null);
+    setAvailableAttachments([]);
+    setRecommendedAttachment(null);
   };
 
   return (
@@ -441,43 +444,45 @@ export default function ArrivoMercePage() {
           </div>
         </motion.div>
 
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center max-w-3xl mx-auto">
-            {[
-              { num: 1, label: 'Carica Fattura', icon: Upload },
-              { num: 2, label: 'Verifica Dati', icon: FileText },
-              { num: 3, label: 'Trova Ricezione', icon: Search },
-              { num: 4, label: 'Completa', icon: CheckCircle },
-            ].map((s, idx) => (
-              <React.Fragment key={s.num}>
-                <div className="flex flex-col items-center">
-                  <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                      step >= s.num
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-200 text-gray-500'
-                    } transition-all`}
-                  >
-                    {step > s.num ? (
-                      <CheckCircle size={24} />
-                    ) : (
-                      <s.icon size={24} />
-                    )}
+        {/* Progress Steps - Solo da Step 2 in poi */}
+        {step >= 2 && (
+          <div className="mb-8">
+            <div className="flex justify-between items-center max-w-3xl mx-auto">
+              {[
+                { num: 2, label: 'Carica Fattura', icon: Upload },
+                { num: 3, label: 'Verifica Dati', icon: FileText },
+                { num: 4, label: 'Trova Ricezione', icon: Search },
+                { num: 5, label: 'Completa', icon: CheckCircle },
+              ].map((s, idx) => (
+                <React.Fragment key={s.num}>
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                        step >= s.num
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-200 text-gray-500'
+                      } transition-all`}
+                    >
+                      {step > s.num ? (
+                        <CheckCircle size={24} />
+                      ) : (
+                        <s.icon size={24} />
+                      )}
+                    </div>
+                    <span className="text-xs mt-2 text-gray-600">{s.label}</span>
                   </div>
-                  <span className="text-xs mt-2 text-gray-600">{s.label}</span>
-                </div>
-                {idx < 3 && (
-                  <div
-                    className={`flex-1 h-1 mx-2 ${
-                      step > s.num ? 'bg-green-500' : 'bg-gray-200'
-                    } transition-all`}
-                  />
-                )}
-              </React.Fragment>
-            ))}
+                  {idx < 3 && (
+                    <div
+                      className={`flex-1 h-1 mx-2 ${
+                        step > s.num ? 'bg-green-500' : 'bg-gray-200'
+                      } transition-all`}
+                    />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Error Display */}
         <AnimatePresence>
@@ -535,20 +540,20 @@ export default function ArrivoMercePage() {
                         console.log('✅ Allegati caricati:', data.attachments.length);
                         setAvailableAttachments(data.attachments);
                         setRecommendedAttachment(data.recommended_attachment);
-                        setStep(0.5); // Step 0.5: Seleziona allegato
+                        setStep(1); // Step 1: Seleziona allegato
                       } else {
                         console.error('❌ Errore caricamento allegati:', data.error);
-                        setStep(1); // Fallback a upload manuale
+                        setStep(2); // Fallback a upload manuale
                       }
                     } catch (error) {
                       console.error('❌ Errore fetch allegati:', error);
-                      setStep(1); // Fallback a upload manuale
+                      setStep(2); // Fallback a upload manuale
                     } finally {
                       setLoadingAttachments(false);
                     }
                   } else {
                     // Nessun allegato, vai direttamente a upload manuale
-                    setStep(1);
+                    setStep(2);
                   }
                 }}
               />
@@ -557,7 +562,7 @@ export default function ArrivoMercePage() {
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <button
                   onClick={() => {
-                    setStep(1);
+                    setStep(2);
                     setSelectedArrival(null);
                   }}
                   className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -570,8 +575,8 @@ export default function ArrivoMercePage() {
           </motion.div>
         )}
 
-        {/* 🆕 Step 0.5: Seleziona Allegato da P.O. */}
-        {step === 0.5 && selectedArrival && (
+        {/* 🆕 Step 1: Seleziona Allegato da P.O. */}
+        {step === 1 && selectedArrival && availableAttachments.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -614,7 +619,7 @@ export default function ArrivoMercePage() {
 
                     console.log('✅ Allegato parsato:', data.data);
                     setParsedInvoice(data.data);
-                    setStep(2); // Vai a Step 2: Verifica Dati
+                    setStep(3); // Vai a Step 3: Verifica Dati
 
                   } catch (err: any) {
                     console.error('❌ Errore parsing allegato:', err);
@@ -625,7 +630,7 @@ export default function ArrivoMercePage() {
                 }}
                 onManualUpload={() => {
                   console.log('🔄 Passaggio a upload manuale');
-                  setStep(1);
+                  setStep(2);
                 }}
               />
 
@@ -643,8 +648,8 @@ export default function ArrivoMercePage() {
           </motion.div>
         )}
 
-        {/* Step 1: Upload File */}
-        {step === 1 && (
+        {/* Step 2: Upload File Manuale */}
+        {step === 2 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -734,8 +739,8 @@ export default function ArrivoMercePage() {
           </motion.div>
         )}
 
-        {/* Step 2: Verify Parsed Data */}
-        {step === 2 && parsedInvoice && (
+        {/* Step 3: Verify Parsed Data */}
+        {step === 3 && parsedInvoice && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -849,8 +854,8 @@ export default function ArrivoMercePage() {
           </motion.div>
         )}
 
-        {/* Step 3: Odoo Picking Found */}
-        {step === 3 && odooPicking && (
+        {/* Step 4: Odoo Picking Found */}
+        {step === 4 && odooPicking && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -920,7 +925,7 @@ export default function ArrivoMercePage() {
 
               <div className="flex gap-4">
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(3)}
                   className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg transition-colors"
                 >
                   Indietro
@@ -946,8 +951,8 @@ export default function ArrivoMercePage() {
           </motion.div>
         )}
 
-        {/* Step 4: Results */}
-        {step === 4 && results && (
+        {/* Step 5: Results */}
+        {step === 5 && results && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1060,11 +1065,11 @@ export default function ArrivoMercePage() {
             pickingId={odooPicking.id}
             onComplete={() => {
               setShowUnmatchedModal(false);
-              setStep(4);
+              setStep(5);
             }}
             onCancel={() => {
               setShowUnmatchedModal(false);
-              setStep(4);
+              setStep(5);
             }}
           />
         )}
