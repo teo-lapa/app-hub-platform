@@ -1,11 +1,12 @@
 ---
 name: invoice-parsing
-version: 1.0.0
+version: 1.1.0
 description: Estrae dati strutturati da fatture fornitori per arrivi merce
 tags: [parsing, invoice, pdf, vision, ocr]
 model: claude-3-5-sonnet-20241022
 author: Lapa Team
 created: 2025-01-15
+updated: 2025-01-23
 ---
 
 # 📄 Invoice Parsing Skill
@@ -143,6 +144,82 @@ Alcuni prodotti hanno varianti (colore, dimensione, formato).
 - Cerca: colori (Rosso, Verde, Giallo)
 - Cerca: forme (Quadrato, Rotondo)
 - Cerca: tipi (Fresco, Surgelato)
+
+---
+
+### 📑 REGOLA #6: Fatture Multi-Riga (NUOVA!)
+
+Alcune fatture (es. Pastificio Marcello) hanno una struttura particolare dove le informazioni sono distribuite su **più righe**.
+
+#### 🎯 Pattern da Riconoscere
+
+**Pattern 1: Lotto/Scadenza su Riga Separata**
+```
+1BRASELLO-SV    QUADRATO ROSSO BRASELLO GR.250      KG  2,00
+                LOTTO 2210- SCADENZA 10/11/25
+```
+✅ **Estrazione corretta**:
+- article_code: "1BRASELLO-SV"
+- description: "QUADRATO ROSSO BRASELLO GR.250"
+- quantity: 2.0
+- unit: "KG"
+- lot_number: "2210"
+- expiry_date: "2025-10-11"
+
+**Pattern 2: Header di Gruppo NON è un Prodotto**
+```
+ORDINE P10083    ← Non è un prodotto! È solo un header di raggruppamento
+
+1BRASELLO-SV    QUADRATO ROSSO BRASELLO GR.250      KG  2,00
+```
+✅ **Azione**: Ignora la riga "ORDINE P10083" come prodotto
+
+**Pattern 3: Codice Articolo in Prima Colonna**
+```
+Articolo         Descrizione                         UM  Quantità
+1FUSILLI         FUSILLONI UOVO GR. 1000            KG  3,00
+1PAPPARD         PAPPARDELLE ALL'UOVO GR.1000       KG  3,00
+                 LOTTO 2210 - SCADENZA 07/11/25
+```
+✅ **Estrazione**:
+- Prodotto 1: article_code="1FUSILLI", quantity=3.0, lot_number="2210", expiry_date="2025-07-11"
+- Prodotto 2: article_code="1PAPPARD", quantity=3.0, lot_number="2210", expiry_date="2025-07-11"
+
+#### ⚠️ Regole di Identificazione
+
+**NON è un prodotto se la riga contiene SOLO**:
+- "ORDINE" + numero (es: "ORDINE P10083")
+- "LOTTO" + numero (es: "LOTTO 2210")
+- Solo date senza descrizione
+- Testo generico tipo "PER LA PASTA VIENE USATA" (note informative)
+
+**È un prodotto se la riga ha**:
+- Codice articolo valido (es: "1BRASELLO-SV")
+- Descrizione prodotto significativa
+- Quantità e unità di misura
+- Anche se lotto/scadenza sono su riga successiva!
+
+#### 🔗 Come Unire Righe Multiple
+
+Quando vedi:
+```
+Riga 1: PRODOTTO X    3,00 KG
+Riga 2:               LOTTO ABC - SCADENZA 31/12/2025
+```
+
+**Processo**:
+1. Estrai prodotto da Riga 1
+2. Leggi Riga 2 per lotto/scadenza
+3. Combina in **UN SOLO** prodotto nel JSON
+
+❌ **Non fare**:
+- Non creare due prodotti separati
+- Non ignorare la riga 2
+- Non considerare "LOTTO ABC" come descrizione prodotto
+
+✅ **Fai**:
+- Unisci le info in un prodotto unico
+- Associa lotto e scadenza al prodotto sopra
 
 ---
 
