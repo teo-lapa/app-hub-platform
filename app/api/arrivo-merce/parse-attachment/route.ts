@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       try {
         message = await anthropic.messages.create({
           model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
-          max_tokens: 16384, // Aumentato per PDF lunghi (3+ pagine con molti prodotti)
+          max_tokens: 12000, // Compromesso per PDF lunghi (3+ pagine, ~30 prodotti)
           temperature: 0,
           messages: [
             {
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
                 contentBlock,
                 {
                   type: 'text',
-                  text: `${skill.content}\n\n---\n\nAnalizza questo documento e estrai i dati secondo le regole sopra.`,
+                  text: `${skill.content}\n\n---\n\nAnalizza questo documento e estrai i dati secondo le regole sopra.\n\nIMPORTANTE: Assicurati di parsare TUTTE le pagine del PDF, inclusa l'ultima pagina. Questo PDF potrebbe contenere 30+ prodotti distribuiti su 3-4 pagine.`,
                 },
               ],
             },
