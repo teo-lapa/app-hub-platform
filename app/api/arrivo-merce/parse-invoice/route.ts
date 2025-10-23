@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { loadSkill, logSkillInfo } from '@/lib/ai/skills-loader';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes for large PDFs
@@ -84,6 +85,11 @@ export async function POST(request: NextRequest) {
 
     console.log('🤖 Invio a Claude per analisi...', 'Format:', mediaType);
 
+    // 🆕 CARICA LO SKILL PER INVOICE PARSING
+    const skill = loadSkill('invoice-parsing');
+    logSkillInfo('invoice-parsing'); // Log per debugging
+    console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version}`);
+
     // Determine content type based on file format (PDF uses 'document', images use 'image')
     const isPDF = mediaType === 'application/pdf';
     const contentBlock: any = isPDF ? {
@@ -113,7 +119,7 @@ export async function POST(request: NextRequest) {
 
       try {
         message = await anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
+          model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
           max_tokens: 8192,
           temperature: 0,
           messages: [
@@ -123,32 +129,7 @@ export async function POST(request: NextRequest) {
                 contentBlock,
                 {
                   type: 'text',
-                  text: `Analizza questa fattura e estrai i dati. Cerca il PACKING LIST (pagine 5-6) per le quantità PESO NETTO.
-
-REGOLE CRITICHE:
-1. Quantità: Usa PESO NETTO dal packing list (es: 5,000 KG = 5.0, 24,000 KG = 24.0)
-2. Lotti: Cerca "Lotto" o "Scad." - se trovi solo scadenza, usa quella come lot_number
-3. Date: Converti gg/mm/aaaa in YYYY-MM-DD
-4. VAT: Cerca P.IVA del fornitore (mittente)
-
-RISPOSTA - SOLO JSON, NESSUN TESTO AGGIUNTIVO:
-{
-  "supplier_name": "nome fornitore",
-  "supplier_vat": "P.IVA (es: 00829240282)",
-  "document_number": "numero fattura",
-  "document_date": "YYYY-MM-DD",
-  "products": [
-    {
-      "article_code": "codice o null",
-      "description": "nome prodotto",
-      "quantity": numero_decimale,
-      "unit": "KG o PZ o CT",
-      "lot_number": "lotto o scadenza o null",
-      "expiry_date": "YYYY-MM-DD o null",
-      "variant": "variante o stringa vuota"
-    }
-  ]
-}`,
+                  text: `${skill.content}\n\n---\n\nAnalizza questo documento e estrai i dati secondo le regole sopra.`,
                 },
               ],
             },

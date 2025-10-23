@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import Anthropic from '@anthropic-ai/sdk';
+import { loadSkill, logSkillInfo } from '@/lib/ai/skills-loader';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -68,77 +69,32 @@ export async function POST(request: NextRequest) {
       console.log('🏢 Fornitore ID:', supplierId);
     }
 
-    // Usa Claude per fare il matching intelligente tra prodotti fattura e righe Odoo
-    const matchingPrompt = `Sei un sistema di matching tra prodotti di fattura e righe di un sistema gestionale.
+    // 🆕 USA LO SKILL PER PRODUCT MATCHING
+    const skill = loadSkill('product-matching');
+    logSkillInfo('product-matching'); // Log per debugging
+    console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version}`);
 
+    // Prepara i dati per il matching
+    const matchingData = `
 PRODOTTI DALLA FATTURA:
 ${JSON.stringify(parsed_products, null, 2)}
 
 RIGHE DEL SISTEMA ODOO:
 ${JSON.stringify(move_lines, null, 2)}
 
-Il tuo compito è fare il MATCHING PERFETTO tra ogni prodotto della fattura e la corrispondente riga Odoo.
-
-REGOLE IMPORTANTISSIME:
-1. Confronta descrizioni, codici articolo, e varianti
-2. Le varianti possono essere scritte diversamente (es: "Quadrato, Verde, 250gr" vs "QUADRATO RICOTTA/SPINACI VERDE GR.250")
-3. Se un prodotto ha più lotti diversi, DEVI creare righe separate
-4. Ogni riga deve avere: move_line_id, quantity, lot_number, expiry_date
-5. Se non c'è match, segnalalo come "no_match"
-
-Rispondi SOLO con un JSON array in questo formato esatto:
-
-[
-  {
-    "move_line_id": 123,
-    "invoice_product_index": 0,
-    "quantity": 5.0,
-    "lot_number": "LOTTO123",
-    "expiry_date": "2025-12-31",
-    "match_confidence": 0.95,
-    "match_reason": "Match esatto su codice articolo e variante",
-    "action": "update"
-  },
-  {
-    "move_line_id": 124,
-    "invoice_product_index": 0,
-    "quantity": 3.0,
-    "lot_number": "LOTTO456",
-    "expiry_date": "2025-11-30",
-    "match_confidence": 0.95,
-    "match_reason": "Stesso prodotto, lotto diverso",
-    "action": "create_new_line"
-  },
-  {
-    "move_line_id": null,
-    "invoice_product_index": 5,
-    "quantity": 0,
-    "lot_number": null,
-    "expiry_date": null,
-    "match_confidence": 0.0,
-    "match_reason": "Prodotto non trovato in Odoo",
-    "action": "no_match"
-  }
-]
-
-IMPORTANTE:
-- Se un prodotto dalla fattura ha QUANTITÀ TOTALE che va distribuita su più lotti, CREA PIÙ RIGHE
-- Ogni riga con lotto diverso deve essere una riga separata
-- Usa "create_new_line" quando serve aggiungere una nuova riga per lo stesso prodotto ma lotto diverso
-- Usa "update" quando aggiorni una riga esistente
-- Usa "no_match" quando non trovi corrispondenza
-
-NON aggiungere testo. SOLO il JSON array.`;
+Esegui il matching seguendo le regole sopra.
+`;
 
     console.log('🤖 Invio a Claude per matching intelligente...');
 
     const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
       max_tokens: 8000,
+      temperature: 0,
       messages: [
         {
           role: 'user',
-          content: matchingPrompt,
+          content: `${skill.content}\n\n---\n\n${matchingData}`,
         },
       ],
     });
