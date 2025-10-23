@@ -864,7 +864,7 @@ export default function PrelievoZonePage() {
     return Math.round((workStats.completedOperations / workStats.totalOperations) * 100);
   }, [workStats.completedOperations, workStats.totalOperations]);
 
-  // Genera e salva report zona completata
+  // Genera e salva report zona completata - VERSIONE DETTAGLIATA
   const generateAndSaveZoneReport = async () => {
     if (!currentBatch || !currentZone || !user) {
       return;
@@ -878,38 +878,94 @@ export default function PrelievoZonePage() {
       const zoneTime = workStats.currentZoneTime || 0;
       const zoneTimeStr = formatTime(zoneTime);
 
-      // Conta prodotti prelevati e peso totale
-      let productsCount = 0;
+      // Raccogli statistiche dettagliate dalle operazioni
+      let totalProducts = 0;
+      let totalQuantity = 0;
       let totalWeight = 0;
+      const productsByLocation = new Map<string, { products: any[], qty: number, time?: number }>();
 
-      // Raccogli statistiche dalle operazioni completate
+      // Raggruppa operazioni per ubicazione
       currentOperations.forEach(op => {
         if (op.qty_done > 0) {
-          productsCount++;
+          totalProducts++;
+          totalQuantity += op.qty_done;
+
+          const locationKey = op.locationName || 'Sconosciuta';
+          if (!productsByLocation.has(locationKey)) {
+            productsByLocation.set(locationKey, { products: [], qty: 0 });
+          }
+
+          const loc = productsByLocation.get(locationKey)!;
+          loc.products.push({
+            name: op.productName,
+            code: op.productCode,
+            qty: op.qty_done,
+            uom: op.uom
+          });
+          loc.qty += op.qty_done;
         }
       });
 
-      // Genera report testuale
-      const report = `📊 REPORT LAVORO - ${currentZone.displayName.toUpperCase()}
+      // Calcola metriche performance
+      const locationsCount = productsByLocation.size;
+      const avgTimePerLocation = locationsCount > 0 ? zoneTime / locationsCount : 0;
+      const pickingSpeed = zoneTime > 0 ? (totalProducts / (zoneTime / 60)).toFixed(1) : '0';
 
-👤 Operatore: ${user.name || 'Operatore'}
-📅 Data: ${dateStr}
-⏱️ Tempo totale zona: ${zoneTimeStr}
+      // Genera report HTML per chatter
+      let reportHtml = `
+<div style="font-family: Arial, sans-serif; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+  <h3 style="color: #2c3e50; margin-top: 0;">📦 REPORT PRELIEVO - ${currentZone.displayName.toUpperCase()}</h3>
 
-📦 STATISTICHE:
-- Prodotti prelevati: ${productsCount}
-- Peso totale: ${totalWeight.toFixed(2)} kg
-- Operazioni completate: ${workStats.completedOperations}`;
+  <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+    <p style="margin: 5px 0;"><strong>👤 Operatore:</strong> ${user.name || 'Operatore'}</p>
+    <p style="margin: 5px 0;"><strong>📅 Data:</strong> ${dateStr}</p>
+    <p style="margin: 5px 0;"><strong>⏱️ Tempo totale:</strong> ${zoneTimeStr}</p>
+  </div>
 
-      // Salva il report nel batch
-      const saved = await pickingClient.saveBatchReport(currentBatch.id, report);
+  <div style="background: #e8f5e9; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+    <h4 style="color: #2e7d32; margin-top: 0;">📊 STATISTICHE GENERALI</h4>
+    <p style="margin: 5px 0;">• Prodotti prelevati: <strong>${totalProducts} articoli</strong></p>
+    <p style="margin: 5px 0;">• Quantità totale: <strong>${totalQuantity} pz</strong></p>
+    <p style="margin: 5px 0;">• Ubicazioni visitate: <strong>${locationsCount}</strong></p>
+    <p style="margin: 5px 0;">• Tempo medio per ubicazione: <strong>${formatTime(Math.floor(avgTimePerLocation))}</strong></p>
+    <p style="margin: 5px 0;">• Velocità picking: <strong>${pickingSpeed} articoli/min</strong></p>
+  </div>
+
+  <div style="background: white; padding: 12px; border-radius: 6px;">
+    <h4 style="color: #2c3e50; margin-top: 0;">📍 DETTAGLIO PER UBICAZIONE</h4>`;
+
+      // Aggiungi dettaglio per ogni ubicazione
+      Array.from(productsByLocation.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .forEach(([locationName, data]) => {
+          reportHtml += `
+    <div style="margin: 10px 0; padding: 10px; background: #f5f5f5; border-left: 3px solid #2196F3; border-radius: 4px;">
+      <p style="margin: 0 0 5px 0;"><strong>${locationName}</strong></p>
+      <p style="margin: 5px 0; font-size: 12px; color: #666;">
+        ${data.products.length} prodotti • ${data.qty} pz totali
+      </p>
+      <ul style="margin: 5px 0 0 20px; padding: 0; font-size: 12px;">
+        ${data.products.map(p => `<li>${p.name} (${p.code || 'N/A'}) - ${p.qty} ${p.uom}</li>`).join('')}
+      </ul>
+    </div>`;
+        });
+
+      reportHtml += `
+  </div>
+</div>`;
+
+      // Invia nel chatter invece di creare file TXT
+      const saved = await pickingClient.postBatchChatterMessage(currentBatch.id, reportHtml);
 
       if (saved) {
-        toast.success('Report salvato nel batch! ✅');
+        toast.success('✅ Report salvato nel chatter del batch!');
+      } else {
+        toast.error('⚠️ Errore salvataggio report (ma il lavoro è salvato)');
       }
 
     } catch (error) {
-      toast.error('Errore nel salvataggio del report');
+      console.error('Errore generazione report:', error);
+      toast.error('⚠️ Errore nel salvataggio del report');
     }
   };
 

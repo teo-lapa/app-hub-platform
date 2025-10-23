@@ -804,7 +804,33 @@ export class PickingOdooClient {
     }
   }
 
-  // Salva report di lavoro nel batch come attachment
+  // 🆕 Invia messaggio nel chatter del batch (invece di file TXT)
+  async postBatchChatterMessage(batchId: number, message: string): Promise<boolean> {
+    try {
+      console.log('📝 [Picking] Invio messaggio nel chatter del batch:', batchId);
+
+      // Usa message_post per inviare un messaggio nel chatter di Odoo
+      await this.rpc(
+        'stock.picking.batch',
+        'message_post',
+        [[batchId]],
+        {
+          body: message.replace(/\n/g, '<br/>'), // Converti newline in HTML
+          message_type: 'comment',
+          subtype_xmlid: 'mail.mt_note' // Nota interna
+        }
+      );
+
+      console.log('✅ [Picking] Messaggio inviato nel chatter!');
+      return true;
+
+    } catch (error) {
+      console.error('❌ [Picking] Errore invio messaggio chatter:', error);
+      return false;
+    }
+  }
+
+  // Salva report di lavoro nel batch come attachment (DEPRECATO - usa postBatchChatterMessage)
   async saveBatchReport(batchId: number, reportText: string): Promise<boolean> {
     try {
       // Salva il report come attachment invece che nel campo note (che non esiste)
