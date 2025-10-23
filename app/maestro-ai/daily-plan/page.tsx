@@ -667,6 +667,7 @@ export default function DailyPlanPage() {
           customerId={selectedCustomer.id}
           customerName={selectedCustomer.name}
           odooPartnerId={selectedCustomer.odoo_partner_id}
+          salesPersonId={selectedVendor?.id}
         />
       )}
     </div>
