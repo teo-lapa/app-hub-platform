@@ -409,11 +409,21 @@ export default function ArrivoMercePage() {
 
         // Accumula risultati
         if (data.results) {
-          if (data.results.updated_lines) allUpdatedLines.push(...data.results.updated_lines);
-          if (data.results.created_lines) allCreatedLines.push(...data.results.created_lines);
-          if (data.results.set_to_zero) allSetToZero.push(...data.results.set_to_zero);
-          if (data.results.unmatched_products) allUnmatchedProducts.push(...data.results.unmatched_products);
-          if (data.results.supplier_products_updated) allSupplierProductsUpdated.push(...data.results.supplier_products_updated);
+          if (Array.isArray(data.results.updated_lines)) {
+            allUpdatedLines.push(...data.results.updated_lines);
+          }
+          if (Array.isArray(data.results.created_lines)) {
+            allCreatedLines.push(...data.results.created_lines);
+          }
+          if (Array.isArray(data.results.set_to_zero)) {
+            allSetToZero.push(...data.results.set_to_zero);
+          }
+          if (Array.isArray(data.results.unmatched_products)) {
+            allUnmatchedProducts.push(...data.results.unmatched_products);
+          }
+          if (Array.isArray(data.results.supplier_products_updated)) {
+            allSupplierProductsUpdated.push(...data.results.supplier_products_updated);
+          }
         }
       }
 
