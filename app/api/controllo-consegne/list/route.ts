@@ -379,8 +379,12 @@ export async function GET(request: NextRequest) {
           if (!att.create_date) return false;
           const attDate = new Date(att.create_date);
           const timeDiff = Math.abs(attDate.getTime() - messageDate.getTime());
-          // Cerca immagini/documenti creati entro 2 minuti dal messaggio
-          return timeDiff < 120000 && att.mimetype && (att.mimetype.startsWith('image/') || att.mimetype === 'application/pdf');
+          // Cerca immagini/documenti/audio creati entro 2 minuti dal messaggio
+          return timeDiff < 120000 && att.mimetype && (
+            att.mimetype.startsWith('image/') ||
+            att.mimetype === 'application/pdf' ||
+            att.mimetype.startsWith('audio/')
+          );
         });
 
         console.log('[SCARICO PARZIALE DEBUG] Found partial delivery attachment:', scaricoParzialAttachment ? 'YES' : 'NO');
@@ -409,6 +413,7 @@ export async function GET(request: NextRequest) {
           message_id: scaricoParzialMessage.id,
           odoo_attachment_id: scaricoParzialAttachment?.id,
           justification: justification,
+          mimetype: scaricoParzialAttachment?.mimetype || null,
         };
       }
 

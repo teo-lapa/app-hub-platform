@@ -12,8 +12,10 @@ interface AttachmentViewerProps {
 export default function AttachmentViewer({ attachment, onClose }: AttachmentViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
 
-  // Determine if this is a PDF (signature) or image
+  // Determine file type
   const isPDF = attachment.type === 'signature';
+  const mimetype = (attachment as any).mimetype || '';
+  const isAudio = mimetype.startsWith('audio/');
 
   // Convert base64 to appropriate data URL
   const fileUrl = attachment.data && attachment.data.startsWith('data:')
@@ -21,7 +23,9 @@ export default function AttachmentViewer({ attachment, onClose }: AttachmentView
     : attachment.data
       ? isPDF
         ? `data:application/pdf;base64,${attachment.data}`
-        : `data:image/png;base64,${attachment.data}`
+        : isAudio
+          ? `data:${mimetype};base64,${attachment.data}`
+          : `data:image/png;base64,${attachment.data}`
       : '';
 
   const typeLabels = {
@@ -65,6 +69,25 @@ export default function AttachmentViewer({ attachment, onClose }: AttachmentView
               </a>
               <p style={{ marginTop: '20px', color: '#666', fontSize: '0.9rem' }}>
                 Clicca per scaricare e visualizzare il documento firmato
+              </p>
+            </div>
+          ) : isAudio ? (
+            <div style={{ padding: '40px', textAlign: 'center' }}>
+              <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🎤</div>
+              <h3 style={{ color: '#000', marginBottom: '20px' }}>Audio Registrato</h3>
+              <audio
+                controls
+                style={{
+                  width: '100%',
+                  maxWidth: '500px',
+                  marginBottom: '20px',
+                }}
+              >
+                <source src={fileUrl} type={mimetype} />
+                Il tuo browser non supporta l'audio player.
+              </audio>
+              <p style={{ marginTop: '20px', color: '#666', fontSize: '0.9rem' }}>
+                Clicca play per ascoltare la registrazione
               </p>
             </div>
           ) : (
