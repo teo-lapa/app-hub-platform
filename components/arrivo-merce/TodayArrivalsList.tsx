@@ -29,6 +29,7 @@ interface Arrival {
   has_purchase_order: boolean;
   has_attachments: boolean;
   is_ready: boolean;
+  is_completed: boolean; // 🆕
 }
 
 interface TodayArrivalsListProps {
@@ -72,8 +73,25 @@ export default function TodayArrivalsList({ onSelectArrival }: TodayArrivalsList
   };
 
   const handleSelect = (arrival: Arrival) => {
+    // Non permettere selezione se già completato
+    if (arrival.is_completed) {
+      alert('Questo arrivo è già stato completato!');
+      return;
+    }
+
     setSelectedId(arrival.id);
     onSelectArrival(arrival);
+  };
+
+  // 🆕 Funzione per aprire link Odoo
+  const openOdooLink = (e: React.MouseEvent, model: string, id: number) => {
+    e.stopPropagation(); // Non triggerare onSelectArrival
+
+    // URL base Odoo (prendi da env o usa default)
+    const odooBaseUrl = 'https://lapa.ch';
+    const url = `${odooBaseUrl}/web#id=${id}&model=${model}&view_type=form`;
+
+    window.open(url, '_blank');
   };
 
   const formatTime = (dateString: string) => {
@@ -167,23 +185,43 @@ export default function TodayArrivalsList({ onSelectArrival }: TodayArrivalsList
           transition={{ delay: index * 0.05 }}
           onClick={() => handleSelect(arrival)}
           className={`
-            bg-white rounded-xl border-2 p-4 cursor-pointer transition-all
-            hover:shadow-lg hover:scale-[1.02]
+            bg-white rounded-xl border-2 p-4 transition-all
+            ${arrival.is_completed
+              ? 'opacity-60 cursor-not-allowed border-green-300 bg-green-50'
+              : 'cursor-pointer hover:shadow-lg hover:scale-[1.02]'
+            }
             ${selectedId === arrival.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}
-            ${!arrival.is_ready ? 'opacity-75' : ''}
+            ${!arrival.is_ready && !arrival.is_completed ? 'opacity-75' : ''}
           `}
         >
           <div className="flex items-start justify-between">
             {/* Left: Info principale */}
             <div className="flex-1">
-              {/* Nome picking */}
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-bold text-gray-900 text-lg">
+              {/* Nome picking + Badges */}
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                {/* Nome picking CLICCABILE */}
+                <button
+                  onClick={(e) => openOdooLink(e, 'stock.picking', arrival.id)}
+                  className="font-bold text-blue-600 hover:text-blue-800 underline text-lg"
+                  title="Apri in Odoo"
+                >
                   {arrival.name}
-                </h3>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStateColor(arrival.state)}`}>
-                  {getStateLabel(arrival.state)}
-                </span>
+                </button>
+
+                {/* Badge COMPLETATO */}
+                {arrival.is_completed && (
+                  <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-600 text-white flex items-center gap-1">
+                    <CheckCircle size={12} />
+                    COMPLETATO
+                  </span>
+                )}
+
+                {/* Badge stato normale */}
+                {!arrival.is_completed && (
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStateColor(arrival.state)}`}>
+                    {getStateLabel(arrival.state)}
+                  </span>
+                )}
               </div>
 
               {/* Fornitore */}
@@ -206,11 +244,17 @@ export default function TodayArrivalsList({ onSelectArrival }: TodayArrivalsList
                   <span>{arrival.products_count} prodotti</span>
                 </div>
 
-                {/* P.O. */}
-                {arrival.has_purchase_order ? (
+                {/* P.O. CLICCABILE */}
+                {arrival.has_purchase_order && arrival.purchase_order_id ? (
                   <div className="flex items-center gap-1">
                     <FileText size={14} className="text-orange-600" />
-                    <span>{arrival.purchase_order_name}</span>
+                    <button
+                      onClick={(e) => openOdooLink(e, 'purchase.order', arrival.purchase_order_id!)}
+                      className="text-orange-600 hover:text-orange-800 underline font-medium"
+                      title="Apri P.O. in Odoo"
+                    >
+                      {arrival.purchase_order_name}
+                    </button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 text-red-600">

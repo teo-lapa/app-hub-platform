@@ -32,11 +32,12 @@ export async function GET(request: NextRequest) {
     console.log(`📅 Range: ${todayStartISO} → ${todayEndISO}`);
 
     // Cerca stock.picking di tipo "incoming" per oggi
+    // Include anche 'done' per mostrare quelli già completati con badge
     const domain = [
       ['picking_type_code', '=', 'incoming'],
       ['scheduled_date', '>=', todayStartISO],
       ['scheduled_date', '<=', todayEndISO],
-      ['state', 'in', ['assigned', 'confirmed', 'waiting']] // Solo quelli da processare
+      ['state', 'in', ['assigned', 'confirmed', 'waiting', 'done']]
     ];
 
     const pickings = await callOdoo(cookies, 'stock.picking', 'search_read', [
@@ -118,7 +119,8 @@ export async function GET(request: NextRequest) {
           // Flag per UI
           has_purchase_order: !!purchaseOrderId,
           has_attachments: attachmentsCount > 0,
-          is_ready: attachmentsCount > 0 && !!purchaseOrderId
+          is_ready: attachmentsCount > 0 && !!purchaseOrderId,
+          is_completed: picking.state === 'done' // 🆕 Completato!
         };
       })
     );
