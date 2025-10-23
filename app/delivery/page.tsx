@@ -1233,41 +1233,20 @@ export default function DeliveryPage() {
         return;
       }
 
-      // STEP 2: Ottieni l'importo della fattura
-      console.log('💰 [PAYMENT FLOW] STEP 2: Recupero importo fattura...');
+      // STEP 2: Apri direttamente il modal pagamento
+      console.log('💰 [PAYMENT FLOW] STEP 2: Apertura modal pagamento (importo manuale)');
 
-      const invoiceResponse = await fetch('/api/delivery/get-invoice-amount', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ picking_id: currentDelivery.id })
-      });
-
-      if (!invoiceResponse.ok) {
-        throw new Error('Errore recupero importo fattura');
-      }
-
-      const invoiceData = await invoiceResponse.json();
-      console.log('💰 [PAYMENT FLOW] Importo ricevuto:', invoiceData);
-
-      // Aggiorna il currentDelivery con i dati della fattura
+      // Aggiorna il currentDelivery come completato
       setCurrentDelivery({
         ...currentDelivery,
-        amount_total: invoiceData.amount_total,
-        payment_status: invoiceData.payment_status,
-        state: 'done', // Ora è completata
+        state: 'done',
         completed: true
       });
 
-      // STEP 3: Pre-compila l'importo e apri il modal pagamento
-      setPaymentAmount(invoiceData.amount_total?.toString() || '0');
-
-      if (invoiceData.is_estimate) {
-        showToast('⚠️ ' + invoiceData.message, 'warning');
-      }
-
+      // STEP 3: Apri il modal pagamento con importo 0 (l'autista lo inserirà manualmente)
+      setPaymentAmount('0');
       setShowPaymentModal(true);
-      showToast('✅ Consegna validata! Inserisci i dati del pagamento', 'success');
+      showToast('✅ Consegna validata! Inserisci l\'importo incassato\n💬 La fattura arriverà su WhatsApp', 'success');
 
       // Ricarica le consegne in background per aggiornare lo stato
       loadDeliveries();
