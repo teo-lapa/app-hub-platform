@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       try {
         message = await anthropic.messages.create({
           model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
-          max_tokens: 8192,
+          max_tokens: 16384, // Aumentato per PDF lunghi (3+ pagine con molti prodotti)
           temperature: 0,
           messages: [
             {
@@ -219,6 +219,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Dati estratti:', {
       supplier: parsedData.supplier_name,
       products: parsedData.products?.length || 0,
+      parsing_summary: parsedData.parsing_summary || 'N/A', // Nuovo in v1.2.0
       attachment_name: attachment.name
     });
 
