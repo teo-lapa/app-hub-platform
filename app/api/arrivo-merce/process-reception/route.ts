@@ -4,7 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { loadSkill, logSkillInfo } from '@/lib/ai/skills-loader';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
