@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Settings, Eye, EyeOff, Users, UserMinus } from 'lucide-react';
+import { ArrowLeft, Save, Settings, Eye, EyeOff, Users, UserMinus, Database } from 'lucide-react';
 import Link from 'next/link';
 import ExclusionModal from '@/components/visibility/ExclusionModal';
 
@@ -43,6 +43,7 @@ export default function GestioneVisibilitaAppPage() {
   const [customers, setCustomers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -222,6 +223,41 @@ export default function GestioneVisibilitaAppPage() {
     }
   };
 
+  const handleSyncDatabase = async () => {
+    setSyncing(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch('/api/maestro/sync/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          monthsBack: 4,
+          dryRun: false
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const stats = data.after?.status || {};
+        const synced = data.sync?.synced || 0;
+        const errors = data.sync?.errors || 0;
+
+        setMessage({
+          type: 'success',
+          text: `Database sincronizzato! ${synced} clienti sincronizzati, ${errors} errori. Totale DB: ${stats.totalCustomers || 0} clienti, ${stats.totalRecommendations || 0} raccomandazioni, ${stats.totalInteractions || 0} interazioni.`
+        });
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Errore nella sincronizzazione' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Errore di connessione durante la sincronizzazione' });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -263,14 +299,24 @@ export default function GestioneVisibilitaAppPage() {
                 <p className="text-slate-300 mt-1">Sistema di visibilità a 3 livelli</p>
               </div>
             </div>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-blue-600 transition-all disabled:opacity-50"
-            >
-              <Save className="h-5 w-5" />
-              <span>{saving ? 'Salvataggio...' : 'Salva Modifiche'}</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSyncDatabase}
+                disabled={syncing}
+                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-lg hover:from-cyan-600 hover:to-blue-600 transition-all disabled:opacity-50"
+              >
+                <Database className="h-5 w-5" />
+                <span>{syncing ? 'Sincronizzazione...' : 'Sincronizza Database'}</span>
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-blue-600 transition-all disabled:opacity-50"
+              >
+                <Save className="h-5 w-5" />
+                <span>{saving ? 'Salvataggio...' : 'Salva Modifiche'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Messaggio di conferma */}
