@@ -284,7 +284,6 @@ Esegui il matching seguendo le regole sopra.
             location_id: originalLine.location_id ? originalLine.location_id[0] : false,
             location_dest_id: originalLine.location_dest_id ? originalLine.location_dest_id[0] : false,
             move_id: originalLine.move_id[0],
-            product_uom_qty: 0,
             qty_done: match.quantity,
           };
 
