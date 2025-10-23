@@ -29,6 +29,7 @@ export default function AttachmentViewer({ attachment, onClose }: AttachmentView
     photo: 'Foto Consegna',
     payment: 'Ricevuta Pagamento',
     reso: 'Foto Reso',
+    scarico_parziale: 'Scarico Parziale',
   };
 
   return (
@@ -107,6 +108,14 @@ export default function AttachmentViewer({ attachment, onClose }: AttachmentView
           <div className={styles.resoDetails}>
             {(attachment as any).reason && (
               <p><strong>Motivo:</strong> {(attachment as any).reason}</p>
+            )}
+          </div>
+        )}
+
+        {attachment.type === 'scarico_parziale' && (
+          <div className={styles.resoDetails}>
+            {(attachment as any).justification && (
+              <p><strong>Giustificazione:</strong> {(attachment as any).justification}</p>
             )}
           </div>
         )}
