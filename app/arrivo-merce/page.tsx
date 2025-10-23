@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import UnmatchedProductsHandler from '@/components/arrivo-merce/UnmatchedProductsHandler';
+import TodayArrivalsList from '@/components/arrivo-merce/TodayArrivalsList';
 
 interface ParsedProduct {
   article_code?: string;
@@ -60,9 +61,12 @@ interface OdooPicking {
 export default function ArrivoMercePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0); // 🆕 Inizia da Step 0 (lista arrivi)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 🆕 Step 0: Selected arrival from list
+  const [selectedArrival, setSelectedArrival] = useState<any | null>(null);
 
   // Step 1: Upload file
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -486,6 +490,48 @@ export default function ArrivoMercePage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* 🆕 Step 0: Lista Arrivi di Oggi */}
+        {step === 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="max-w-4xl mx-auto"
+          >
+            <div className="bg-white rounded-xl shadow-lg p-8">
+              <TodayArrivalsList
+                onSelectArrival={(arrival) => {
+                  console.log('✅ Arrivo selezionato:', arrival);
+                  setSelectedArrival(arrival);
+                  setOdooPicking({
+                    id: arrival.id,
+                    name: arrival.name,
+                    partner_name: arrival.partner_name,
+                    scheduled_date: arrival.scheduled_date,
+                    state: arrival.state,
+                    origin: arrival.origin
+                  });
+                  // Vai allo step 1 (carica fattura) o skip se ha allegati
+                  setStep(1);
+                }}
+              />
+
+              {/* Opzione: Carica Manualmente */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    setStep(1);
+                    setSelectedArrival(null);
+                  }}
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <Upload size={20} />
+                  Oppure carica fattura manualmente
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Step 1: Upload File */}
         {step === 1 && (
