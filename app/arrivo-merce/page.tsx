@@ -597,6 +597,7 @@ export default function ArrivoMercePage() {
                 attachments={availableAttachments}
                 recommendedAttachment={recommendedAttachment}
                 loading={loadingAttachments}
+                processing={loading} // 🆕 Passa lo stato di processing
                 onSelect={async (attachment) => {
                   console.log('✅ Allegato selezionato:', attachment.name);
                   setLoading(true);
