@@ -91,6 +91,7 @@ export default function ArrivoMercePage() {
 
   // Step 4: Processing results
   const [results, setResults] = useState<any>(null);
+  const [processingBatch, setProcessingBatch] = useState<{ current: number; total: number } | null>(null);
 
   // Step 3.5: Unmatched products handling
   const [unmatchedProducts, setUnmatchedProducts] = useState<any[]>([]);
@@ -361,32 +362,83 @@ export default function ArrivoMercePage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/arrivo-merce/process-reception', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          picking_id: odooPicking.id,
-          move_lines: odooMoveLines,
-          parsed_products: parsedInvoice.products,
-        }),
-      });
+      const BATCH_SIZE = 10; // Processa 10 prodotti alla volta
+      const totalProducts = parsedInvoice.products.length;
+      const totalBatches = Math.ceil(totalProducts / BATCH_SIZE);
 
-      const data = await response.json();
+      console.log(`📦 Processamento in ${totalBatches} batch (${BATCH_SIZE} prodotti/batch)`);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Errore durante il processamento');
+      // Accumula risultati da tutti i batch
+      let allUpdatedLines: any[] = [];
+      let allCreatedLines: any[] = [];
+      let allSetToZero: any[] = [];
+      let allUnmatchedProducts: any[] = [];
+      let allSupplierProductsUpdated: any[] = [];
+
+      // Processa ogni batch
+      for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+        const startIdx = batchIndex * BATCH_SIZE;
+        const endIdx = Math.min(startIdx + BATCH_SIZE, totalProducts);
+        const batchProducts = parsedInvoice.products.slice(startIdx, endIdx);
+
+        // Aggiorna UI con batch corrente
+        setProcessingBatch({ current: batchIndex + 1, total: totalBatches });
+
+        console.log(`\n🔄 Batch ${batchIndex + 1}/${totalBatches}: Processando prodotti ${startIdx + 1}-${endIdx}...`);
+
+        const response = await fetch('/api/arrivo-merce/process-reception', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            picking_id: odooPicking.id,
+            move_lines: odooMoveLines,
+            parsed_products: batchProducts,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || `Errore nel batch ${batchIndex + 1}/${totalBatches}`);
+        }
+
+        console.log(`✅ Batch ${batchIndex + 1}/${totalBatches} completato`);
+
+        // Accumula risultati
+        if (data.results) {
+          if (data.results.updated_lines) allUpdatedLines.push(...data.results.updated_lines);
+          if (data.results.created_lines) allCreatedLines.push(...data.results.created_lines);
+          if (data.results.set_to_zero) allSetToZero.push(...data.results.set_to_zero);
+          if (data.results.unmatched_products) allUnmatchedProducts.push(...data.results.unmatched_products);
+          if (data.results.supplier_products_updated) allSupplierProductsUpdated.push(...data.results.supplier_products_updated);
+        }
       }
 
-      console.log('✅ Processamento completato:', data.results);
-      setResults(data.results);
+      // Crea risultato aggregato
+      const aggregatedResults = {
+        updated_lines: allUpdatedLines,
+        created_lines: allCreatedLines,
+        set_to_zero: allSetToZero,
+        unmatched_products: allUnmatchedProducts,
+        supplier_products_updated: allSupplierProductsUpdated,
+      };
+
+      console.log('\n✅ Tutti i batch completati:', {
+        updated: allUpdatedLines.length,
+        created: allCreatedLines.length,
+        set_to_zero: allSetToZero.length,
+        unmatched: allUnmatchedProducts.length,
+      });
+
+      setResults(aggregatedResults);
 
       // Controlla se ci sono prodotti non matchati
-      if (data.results.unmatched_products && data.results.unmatched_products.length > 0) {
-        console.log(`⚠️ Trovati ${data.results.unmatched_products.length} prodotti non matchati`);
-        setUnmatchedProducts(data.results.unmatched_products);
+      if (allUnmatchedProducts.length > 0) {
+        console.log(`⚠️ Trovati ${allUnmatchedProducts.length} prodotti non matchati`);
+        setUnmatchedProducts(allUnmatchedProducts);
         setShowUnmatchedModal(true);
       } else {
         // Nessun prodotto non matchato, vai direttamente ai risultati
@@ -398,6 +450,7 @@ export default function ArrivoMercePage() {
       setError(err.message || 'Errore durante il processamento della ricezione');
     } finally {
       setLoading(false);
+      setProcessingBatch(null); // Reset batch indicator
     }
   };
 
@@ -967,7 +1020,13 @@ export default function ArrivoMercePage() {
                   {loading ? (
                     <>
                       <Loader className="animate-spin" size={20} />
-                      Compilazione in corso...
+                      {processingBatch ? (
+                        <span>
+                          Batch {processingBatch.current}/{processingBatch.total} in corso...
+                        </span>
+                      ) : (
+                        <span>Compilazione in corso...</span>
+                      )}
                     </>
                   ) : (
                     <>
