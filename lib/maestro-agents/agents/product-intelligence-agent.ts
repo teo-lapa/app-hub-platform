@@ -30,7 +30,7 @@ export class ProductIntelligenceAgent extends BaseAgent {
   /**
    * Override execute to integrate skills when needed
    */
-  async execute(task: AgentTask): Promise<AgentResult> {
+  override async execute(task: AgentTask): Promise<AgentResult> {
     // Check if task requires specialized skills
     const query = task.user_query.toLowerCase();
 
