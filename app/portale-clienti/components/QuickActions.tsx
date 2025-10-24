@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ShoppingCart, MessageCircle, Truck, Package, FileText, User } from 'lucide-react';
+import { ShoppingCart, Truck, Package, User } from 'lucide-react';
 import Link from 'next/link';
 
 export function QuickActions() {
@@ -14,8 +14,6 @@ export function QuickActions() {
       color: 'from-blue-500 to-blue-600',
       bgColor: 'bg-blue-50 dark:bg-blue-900/20',
       iconColor: 'text-blue-600 dark:text-blue-400'
-    },
-    {
     },
     {
       title: 'Tracking Consegne',
@@ -34,8 +32,6 @@ export function QuickActions() {
       color: 'from-orange-500 to-orange-600',
       bgColor: 'bg-orange-50 dark:bg-orange-900/20',
       iconColor: 'text-orange-600 dark:text-orange-400'
-    },
-    {
     },
     {
       title: 'Profilo',
@@ -59,7 +55,7 @@ export function QuickActions() {
         Azioni Rapide
       </h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {actions.map((action, index) => {
           const Icon = action.icon;
           return (
@@ -75,36 +71,18 @@ export function QuickActions() {
                 whileTap={{ scale: 0.95 }}
                 className="relative group cursor-pointer"
               >
-                {/* Background gradient on hover */}
-                <div className={`
-                  absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-10
-                  rounded-xl transition-opacity duration-300
-                `} />
-
-                {/* Card content */}
-                <div className={`
-                  relative p-4 rounded-xl border border-gray-200 dark:border-gray-700
-                  bg-white dark:bg-gray-800
-                  group-hover:border-transparent group-hover:shadow-lg
-                  transition-all duration-300
-                `}>
-                  {/* Icon */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300`} />
+                <div className={`relative p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 group-hover:border-transparent group-hover:shadow-lg transition-all duration-300`}>
                   <div className={`${action.bgColor} rounded-lg p-3 w-fit mx-auto mb-3`}>
                     <Icon className={`h-6 w-6 ${action.iconColor}`} />
                   </div>
-
-                  {/* Title */}
                   <h3 className="text-sm font-semibold text-gray-900 dark:text-white text-center mb-1">
                     {action.title}
                   </h3>
-
-                  {/* Description */}
                   <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                     {action.description}
                   </p>
                 </div>
-
-                {/* Shine effect */}
                 <motion.div
                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0"
                   whileHover={{
