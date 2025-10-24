@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-
-const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
+import jwt from 'jsonwebtoken';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -17,35 +16,62 @@ export async function GET(request: NextRequest) {
   try {
     console.log('👤 [PROFILE-API] Recupero profilo cliente');
 
-    // Ottieni session_id
-    const cookieStore = cookies();
-    const sessionId = cookieStore.get('odoo_session_id')?.value;
+    // Extract and verify JWT token
+    const token = request.cookies.get('token')?.value;
 
-    if (!sessionId) {
-      console.error('❌ [PROFILE-API] Utente non loggato');
+    if (!token) {
+      console.error('❌ [PROFILE-API] No JWT token found');
       return NextResponse.json(
         { success: false, error: 'Devi fare login per visualizzare il profilo' },
         { status: 401 }
       );
     }
 
-    // Step 1: Ottieni l'utente corrente
-    const userInfo = await getCurrentUserInfo(sessionId);
+    // Decode JWT to get customer info
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    let decoded: any;
 
-    if (!userInfo.success || !userInfo.partnerId) {
-      console.error('❌ [PROFILE-API] Impossibile identificare il cliente');
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+      console.log('✅ [PROFILE-API] JWT decoded:', {
+        email: decoded.email,
+        userId: decoded.id
+      });
+    } catch (jwtError: any) {
+      console.error('❌ [PROFILE-API] JWT verification failed:', jwtError.message);
       return NextResponse.json(
-        { success: false, error: 'Cliente non identificato. Rieffettua il login.' },
+        { success: false, error: 'Token non valido' },
         { status: 401 }
       );
     }
 
-    const partnerId = userInfo.partnerId;
+    // Step 1: Get partner_id using admin session
+    console.log('🔍 [PROFILE-API] Fetching partner_id for user...');
+
+    const userPartners = await callOdooAsAdmin(
+      'res.partner',
+      'search_read',
+      [],
+      {
+        domain: [['email', '=', decoded.email]],
+        fields: ['id'],
+        limit: 1
+      }
+    );
+
+    if (!userPartners || userPartners.length === 0) {
+      console.error('❌ [PROFILE-API] No partner found for email:', decoded.email);
+      return NextResponse.json(
+        { success: false, error: 'Cliente non identificato' },
+        { status: 404 }
+      );
+    }
+
+    const partnerId = userPartners[0].id;
     console.log('✅ [PROFILE-API] Cliente identificato:', partnerId);
 
-    // Step 2: Recupera i dati completi del partner da Odoo
-    const partnerResult = await callOdoo(
-      sessionId,
+    // Step 2: Recupera i dati completi del partner da Odoo usando admin session
+    const partnerResult = await callOdooAsAdmin(
       'res.partner',
       'search_read',
       [],
@@ -74,7 +100,7 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    if (!partnerResult.success || !partnerResult.result || partnerResult.result.length === 0) {
+    if (!partnerResult || partnerResult.length === 0) {
       console.error('❌ [PROFILE-API] Cliente non trovato');
       return NextResponse.json(
         { success: false, error: 'Dati del cliente non trovati' },
@@ -82,7 +108,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const partner = partnerResult.result[0];
+    const partner = partnerResult[0];
 
     // Step 3: Formatta i dati per il frontend
     const profile = {
@@ -133,69 +159,5 @@ export async function GET(request: NextRequest) {
       { success: false, error: error.message || 'Errore interno del server' },
       { status: 500 }
     );
-  }
-}
-
-/**
- * Ottieni informazioni utente corrente
- */
-async function getCurrentUserInfo(sessionId: string) {
-  try {
-    const userResult = await callOdoo(sessionId, 'res.users', 'search_read', [], {
-      domain: [['id', '=', 'user_id']],
-      fields: ['id', 'partner_id'],
-      limit: 1,
-    });
-
-    if (!userResult.success || !userResult.result || userResult.result.length === 0) {
-      return { success: false, partnerId: null };
-    }
-
-    const user = userResult.result[0];
-    return {
-      success: true,
-      partnerId: user.partner_id?.[0] || null,
-    };
-  } catch (error) {
-    console.error('❌ Errore getCurrentUserInfo:', error);
-    return { success: false, partnerId: null };
-  }
-}
-
-/**
- * Chiama l'API JSON-RPC di Odoo
- */
-async function callOdoo(sessionId: string, model: string, method: string, args: any[], kwargs: any = {}) {
-  try {
-    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: `session_id=${sessionId}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model,
-          method,
-          args,
-          kwargs,
-        },
-        id: Math.floor(Math.random() * 1000000),
-      }),
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      console.error('❌ Errore Odoo:', data.error);
-      return { success: false, error: data.error.data?.message || data.error.message };
-    }
-
-    return { success: true, result: data.result };
-  } catch (error: any) {
-    console.error('❌ Errore callOdoo:', error);
-    return { success: false, error: error.message };
   }
 }

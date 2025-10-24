@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-
-const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
+import jwt from 'jsonwebtoken';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -22,14 +22,31 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🚚 [DELIVERIES-API] Inizio recupero consegne cliente');
 
-    // Ottieni session_id dell'utente loggato
-    const cookieStore = cookies();
-    const sessionId = cookieStore.get('odoo_session_id')?.value;
+    // Extract and verify JWT token
+    const token = request.cookies.get('token')?.value;
 
-    if (!sessionId) {
-      console.error('❌ [DELIVERIES-API] Utente non loggato');
+    if (!token) {
+      console.error('❌ [DELIVERIES-API] No JWT token found');
       return NextResponse.json(
         { success: false, error: 'Devi fare login per visualizzare le consegne' },
+        { status: 401 }
+      );
+    }
+
+    // Decode JWT to get customer info
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    let decoded: any;
+
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+      console.log('✅ [DELIVERIES-API] JWT decoded:', {
+        email: decoded.email,
+        userId: decoded.id
+      });
+    } catch (jwtError: any) {
+      console.error('❌ [DELIVERIES-API] JWT verification failed:', jwtError.message);
+      return NextResponse.json(
+        { success: false, error: 'Token non valido' },
         { status: 401 }
       );
     }
@@ -42,18 +59,27 @@ export async function GET(request: NextRequest) {
 
     console.log('📅 [DELIVERIES-API] Filtri:', { fromDate, toDate, stateFilter });
 
-    // Step 1: Ottieni l'utente corrente per recuperare il partner_id
-    const userInfo = await getCurrentUserInfo(sessionId);
+    // Step 1: Get partner_id using admin session
+    const userPartners = await callOdooAsAdmin(
+      'res.partner',
+      'search_read',
+      [],
+      {
+        domain: [['email', '=', decoded.email]],
+        fields: ['id', 'name'],
+        limit: 1
+      }
+    );
 
-    if (!userInfo.success || !userInfo.partnerId) {
-      console.error('❌ [DELIVERIES-API] Impossibile identificare il cliente');
+    if (!userPartners || userPartners.length === 0) {
+      console.error('❌ [DELIVERIES-API] No partner found for email:', decoded.email);
       return NextResponse.json(
-        { success: false, error: 'Cliente non identificato. Rieffettua il login.' },
-        { status: 401 }
+        { success: false, error: 'Cliente non identificato' },
+        { status: 404 }
       );
     }
 
-    const partnerId = userInfo.partnerId;
+    const partnerId = userPartners[0].id;
     console.log('✅ [DELIVERIES-API] Cliente identificato:', partnerId);
 
     // Step 2: Costruisci domain per la ricerca consegne
@@ -82,9 +108,8 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 [DELIVERIES-API] Domain ricerca:', JSON.stringify(domain));
 
-    // Step 3: Recupera le consegne da Odoo
-    const deliveriesResult = await callOdoo(
-      sessionId,
+    // Step 3: Recupera le consegne da Odoo usando admin session
+    const deliveries = await callOdooAsAdmin(
       'stock.picking',
       'search_read',
       [],
@@ -107,16 +132,6 @@ export async function GET(request: NextRequest) {
         limit: 100,
       }
     );
-
-    if (!deliveriesResult.success) {
-      console.error('❌ [DELIVERIES-API] Errore recupero consegne:', deliveriesResult.error);
-      return NextResponse.json(
-        { success: false, error: 'Errore durante il recupero delle consegne' },
-        { status: 500 }
-      );
-    }
-
-    const deliveries = deliveriesResult.result || [];
     console.log(`✅ [DELIVERIES-API] Trovate ${deliveries.length} consegne`);
 
     // Step 4: Formatta i dati per il frontend
@@ -148,70 +163,6 @@ export async function GET(request: NextRequest) {
       { success: false, error: error.message || 'Errore interno del server' },
       { status: 500 }
     );
-  }
-}
-
-/**
- * Ottieni informazioni utente corrente
- */
-async function getCurrentUserInfo(sessionId: string) {
-  try {
-    const userResult = await callOdoo(sessionId, 'res.users', 'search_read', [], {
-      domain: [['id', '=', 'user_id']], // Special: user_id è l'utente corrente
-      fields: ['id', 'partner_id'],
-      limit: 1,
-    });
-
-    if (!userResult.success || !userResult.result || userResult.result.length === 0) {
-      return { success: false, partnerId: null };
-    }
-
-    const user = userResult.result[0];
-    return {
-      success: true,
-      partnerId: user.partner_id?.[0] || null,
-    };
-  } catch (error) {
-    console.error('❌ Errore getCurrentUserInfo:', error);
-    return { success: false, partnerId: null };
-  }
-}
-
-/**
- * Chiama l'API JSON-RPC di Odoo
- */
-async function callOdoo(sessionId: string, model: string, method: string, args: any[], kwargs: any = {}) {
-  try {
-    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: `session_id=${sessionId}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model,
-          method,
-          args,
-          kwargs,
-        },
-        id: Math.floor(Math.random() * 1000000),
-      }),
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      console.error('❌ Errore Odoo:', data.error);
-      return { success: false, error: data.error.data?.message || data.error.message };
-    }
-
-    return { success: true, result: data.result };
-  } catch (error: any) {
-    console.error('❌ Errore callOdoo:', error);
-    return { success: false, error: error.message };
   }
 }
 

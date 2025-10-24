@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-
-const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
+import jwt from 'jsonwebtoken';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -19,36 +18,59 @@ export async function GET(
     const deliveryId = parseInt(params.id);
     console.log(`🚚 [DELIVERY-DETAIL-API] Recupero dettaglio consegna ${deliveryId}`);
 
-    // Ottieni session_id
-    const cookieStore = cookies();
-    const sessionId = cookieStore.get('odoo_session_id')?.value;
+    // Extract and verify JWT token
+    const token = request.cookies.get('token')?.value;
 
-    if (!sessionId) {
+    if (!token) {
       return NextResponse.json(
         { success: false, error: 'Sessione non valida' },
         { status: 401 }
       );
     }
 
-    // Step 1: Verifica che il cliente abbia accesso a questa consegna
-    const userInfo = await getCurrentUserInfo(sessionId);
-    if (!userInfo.success || !userInfo.partnerId) {
+    // Decode JWT to get customer info
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    let decoded: any;
+
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (jwtError: any) {
       return NextResponse.json(
-        { success: false, error: 'Cliente non identificato' },
+        { success: false, error: 'Token non valido' },
         { status: 401 }
       );
     }
 
-    // Step 2: Recupera la consegna
-    const deliveryResult = await callOdoo(
-      sessionId,
+    // Step 1: Get partner_id using admin session
+    const userPartners = await callOdooAsAdmin(
+      'res.partner',
+      'search_read',
+      [],
+      {
+        domain: [['email', '=', decoded.email]],
+        fields: ['id'],
+        limit: 1
+      }
+    );
+
+    if (!userPartners || userPartners.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Cliente non identificato' },
+        { status: 404 }
+      );
+    }
+
+    const partnerId = userPartners[0].id;
+
+    // Step 2: Recupera la consegna usando admin session
+    const deliveryResult = await callOdooAsAdmin(
       'stock.picking',
       'search_read',
       [],
       {
         domain: [
           ['id', '=', deliveryId],
-          ['partner_id', '=', userInfo.partnerId], // Security check
+          ['partner_id', '=', partnerId], // Security check
         ],
         fields: [
           'id',
@@ -68,20 +90,19 @@ export async function GET(
       }
     );
 
-    if (!deliveryResult.success || !deliveryResult.result || deliveryResult.result.length === 0) {
+    if (!deliveryResult || deliveryResult.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Consegna non trovata' },
         { status: 404 }
       );
     }
 
-    const delivery = deliveryResult.result[0];
+    const delivery = deliveryResult[0];
 
     // Step 3: Recupera i prodotti della consegna (stock.move)
     let products = [];
     if (delivery.move_ids_without_package && delivery.move_ids_without_package.length > 0) {
-      const movesResult = await callOdoo(
-        sessionId,
+      const movesResult = await callOdooAsAdmin(
         'stock.move',
         'search_read',
         [],
@@ -98,8 +119,8 @@ export async function GET(
         }
       );
 
-      if (movesResult.success && movesResult.result) {
-        products = movesResult.result.map((move: any) => ({
+      if (movesResult && movesResult.length > 0) {
+        products = movesResult.map((move: any) => ({
           id: move.id,
           productId: move.product_id?.[0],
           productName: move.product_id?.[1] || '',
@@ -116,8 +137,7 @@ export async function GET(
     if (delivery.delivery_man_id) {
       const deliveryManId = delivery.delivery_man_id[0];
       // Cerca posizione GPS dal custom model (se esiste)
-      const gpsResult = await callOdoo(
-        sessionId,
+      const gpsResult = await callOdooAsAdmin(
         'delivery.gps.position',
         'search_read',
         [],
@@ -132,8 +152,8 @@ export async function GET(
         }
       );
 
-      if (gpsResult.success && gpsResult.result && gpsResult.result.length > 0) {
-        const pos = gpsResult.result[0];
+      if (gpsResult && gpsResult.length > 0) {
+        const pos = gpsResult[0];
         gpsPosition = {
           lat: pos.latitude,
           lng: pos.longitude,
@@ -173,61 +193,6 @@ export async function GET(
       { success: false, error: error.message || 'Errore interno' },
       { status: 500 }
     );
-  }
-}
-
-async function getCurrentUserInfo(sessionId: string) {
-  try {
-    const userResult = await callOdoo(sessionId, 'res.users', 'search_read', [], {
-      domain: [['id', '=', 'user_id']],
-      fields: ['id', 'partner_id'],
-      limit: 1,
-    });
-
-    if (!userResult.success || !userResult.result || userResult.result.length === 0) {
-      return { success: false, partnerId: null };
-    }
-
-    const user = userResult.result[0];
-    return {
-      success: true,
-      partnerId: user.partner_id?.[0] || null,
-    };
-  } catch (error) {
-    return { success: false, partnerId: null };
-  }
-}
-
-async function callOdoo(sessionId: string, model: string, method: string, args: any[], kwargs: any = {}) {
-  try {
-    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: `session_id=${sessionId}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model,
-          method,
-          args,
-          kwargs,
-        },
-        id: Math.floor(Math.random() * 1000000),
-      }),
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      return { success: false, error: data.error.data?.message || data.error.message };
-    }
-
-    return { success: true, result: data.result };
-  } catch (error: any) {
-    return { success: false, error: error.message };
   }
 }
 

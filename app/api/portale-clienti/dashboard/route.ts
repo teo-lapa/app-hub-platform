@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
@@ -103,16 +103,10 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
       }, { status: 401 });
     }
 
-    // 2. Get Odoo session from cookies (same system as products/orders APIs)
-    const cookieStore = await cookies();
-    const userCookies = cookieStore.toString();
-    const { cookies: odooCookies } = await getOdooSession(userCookies);
+    // 2. Get partner_id for the logged-in user using ADMIN session
+    console.log('🔍 [DASHBOARD-API] Fetching partner_id for user with admin session...');
 
-    // 3. Get partner_id for the logged-in user
-    console.log('🔍 [DASHBOARD-API] Fetching partner_id for user...');
-
-    const userPartners = await callOdoo(
-      odooCookies,
+    const userPartners = await callOdooAsAdmin(
       'res.partner',
       'search_read',
       [],
@@ -154,8 +148,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
       openInvoices
     ] = await Promise.all([
       // All confirmed orders for YTD calculations
-      callOdoo(
-        odooCookies,
+      callOdooAsAdmin(
         'sale.order',
         'search_read',
         [],
@@ -171,8 +164,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
       ),
 
       // Recent 5 orders
-      callOdoo(
-        odooCookies,
+      callOdooAsAdmin(
         'sale.order',
         'search_read',
         [],
@@ -188,8 +180,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
       ),
 
       // Active deliveries (scheduled for today or in progress)
-      callOdoo(
-        odooCookies,
+      callOdooAsAdmin(
         'stock.picking',
         'search_read',
         [],
@@ -206,8 +197,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
       ),
 
       // Open invoices
-      callOdoo(
-        odooCookies,
+      callOdooAsAdmin(
         'account.move',
         'search_read',
         [],
