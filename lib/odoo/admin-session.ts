@@ -10,8 +10,8 @@
  * - NON esporre dati di altri clienti!
  */
 
-const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || '';
-const ODOO_DB = process.env.NEXT_PUBLIC_ODOO_DB || '';
+const ODOO_URL = process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL || '';
+const ODOO_DB = process.env.ODOO_DB || '';
 
 // Cache sessione admin (evita login ripetuti)
 let adminSessionCache: {
@@ -49,6 +49,12 @@ export async function getAdminSession(): Promise<{ sessionId: string; uid: numbe
   }
 
   console.log('🔐 [ADMIN-SESSION] Authenticating as admin/service account...');
+  console.log('🔍 [ADMIN-SESSION] Config:', {
+    url: ODOO_URL,
+    db: ODOO_DB,
+    emailSet: !!process.env.ODOO_ADMIN_EMAIL,
+    passwordSet: !!process.env.ODOO_ADMIN_PASSWORD
+  });
 
   const adminEmail = process.env.ODOO_ADMIN_EMAIL;
   const adminPassword = process.env.ODOO_ADMIN_PASSWORD;
