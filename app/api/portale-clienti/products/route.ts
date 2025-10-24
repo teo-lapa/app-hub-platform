@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
           'default_code',
           'list_price',
           'qty_available',
-          'image_128',
+          'image_256', // FOTO PIÙ GRANDI come Catalogo LAPA!
           'categ_id',
           'uom_id',
           'description_sale',
@@ -110,8 +110,8 @@ export async function GET(request: NextRequest) {
       hasCustomPrice: false, // TODO: implement custom pricing logic
       quantity: p.qty_available || 0,
       available: (p.qty_available || 0) > 0,
-      image: p.image_128
-        ? `data:image/png;base64,${p.image_128}`
+      image: p.image_256
+        ? `data:image/jpeg;base64,${p.image_256}`
         : '/placeholder-product.png',
       category: p.categ_id
         ? { id: p.categ_id[0], name: p.categ_id[1] }
