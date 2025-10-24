@@ -100,8 +100,29 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ [PRODUCTS-API] Fetched ${products.length} products (total: ${totalCount})`);
 
+    // Transform Odoo data to frontend format
+    const transformedProducts = products.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      code: p.default_code || null,
+      price: p.list_price || 0,
+      originalPrice: p.list_price || 0,
+      hasCustomPrice: false, // TODO: implement custom pricing logic
+      quantity: p.qty_available || 0,
+      available: (p.qty_available || 0) > 0,
+      image: p.image_128
+        ? `data:image/png;base64,${p.image_128}`
+        : '/placeholder-product.png',
+      category: p.categ_id
+        ? { id: p.categ_id[0], name: p.categ_id[1] }
+        : null,
+      unit: p.uom_id ? p.uom_id[1] : 'Pz',
+      description: p.description_sale || null,
+      barcode: p.barcode || null,
+    }));
+
     return NextResponse.json({
-      products,
+      products: transformedProducts,
       pagination: {
         page,
         limit,
