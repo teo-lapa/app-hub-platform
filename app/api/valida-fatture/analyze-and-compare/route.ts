@@ -180,7 +180,10 @@ Leggi così:
 3. RIGHE PRODOTTI (TUTTE, anche spese trasporto):
    Per OGNI riga:
    a) Descrizione completa (includi codici prodotto se presenti)
-   b) Codice articolo (es: "AZCOM051", "P09956")
+   b) Codice articolo - CRITICO PER IL MATCHING!
+      - Cerca nella PRIMA COLONNA a sinistra (es: "1TRECCE-SV", "1BRASELLO-SV")
+      - O dopo "Articolo" / "Art." / "Cod." (es: "AZCOM051", "P09956")
+      - Se manca, lascia null
    c) SUBTOTAL (totale riga) - PRIORITÀ MASSIMA
    d) Prezzo unitario
    e) Quantità = subtotal ÷ unit_price
