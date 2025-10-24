@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 🆕 USA LO SKILL PER PRODUCT MATCHING
-    const skill = loadSkill('product-matching');
-    logSkillInfo('product-matching'); // Log per debugging
+    const skill = loadSkill('inventory-management/product-matching');
+    logSkillInfo('inventory-management/product-matching'); // Log per debugging
     console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version}`);
 
     // Prepara i dati per il matching

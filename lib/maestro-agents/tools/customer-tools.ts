@@ -523,6 +523,427 @@ export const compareSimilarCustomersTool: AgentTool = {
 };
 
 // ============================================================================
+// TOOL 1.6: get_customer_purchase_history
+// ============================================================================
+
+export const getCustomerPurchaseHistoryTool: AgentTool = {
+  name: 'get_customer_purchase_history',
+  description:
+    'Get detailed purchase history with analytics including product diversity, spending trends, category preferences, and purchase patterns.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      customer_id: {
+        type: 'number',
+        description: 'Customer avatar ID',
+      },
+      days_back: {
+        type: 'number',
+        description: 'Number of days to look back (default: 365)',
+      },
+      include_analytics: {
+        type: 'boolean',
+        description: 'Include detailed analytics (default: true)',
+      },
+    },
+    required: ['customer_id'],
+  },
+  handler: async (input: { customer_id: number; days_back?: number; include_analytics?: boolean }) => {
+    console.log('🔍 get_customer_purchase_history', input);
+
+    const daysBack = input.days_back || 365;
+    const includeAnalytics = input.include_analytics !== false;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - daysBack);
+
+    // Get customer profile
+    const customerResult = await sql`
+      SELECT
+        id, name, total_orders, total_revenue,
+        avg_order_value, top_products, product_categories
+      FROM customer_avatars
+      WHERE id = ${input.customer_id}
+      LIMIT 1
+    `;
+
+    if (customerResult.rows.length === 0) {
+      return {
+        found: false,
+        message: 'Customer not found',
+      };
+    }
+
+    const customer = customerResult.rows[0];
+    const topProducts = JSON.parse(customer.top_products || '[]');
+    const productCategories = JSON.parse(customer.product_categories || '{}');
+
+    // Get orders within period
+    const ordersResult = await sql`
+      SELECT
+        si.order_id,
+        si.interaction_date as order_date,
+        si.order_amount,
+        si.notes,
+        si.salesperson_name
+      FROM sales_interactions si
+      WHERE si.customer_avatar_id = ${input.customer_id}
+        AND si.order_generated = true
+        AND si.interaction_date >= ${startDate.toISOString()}
+      ORDER BY si.interaction_date DESC
+    `;
+
+    const orders = ordersResult.rows.map(row => ({
+      order_id: row.order_id,
+      order_date: row.order_date,
+      amount: parseFloat(row.order_amount),
+      salesperson: row.salesperson_name,
+      notes: row.notes,
+    }));
+
+    if (!includeAnalytics) {
+      return {
+        customer_id: input.customer_id,
+        customer_name: customer.name,
+        period_days: daysBack,
+        total_orders: orders.length,
+        orders,
+      };
+    }
+
+    // Calculate analytics
+    const totalSpent = orders.reduce((sum, o) => sum + o.amount, 0);
+    const avgOrderValue = orders.length > 0 ? totalSpent / orders.length : 0;
+
+    // Calculate purchase frequency
+    const sortedOrders = [...orders].sort((a, b) =>
+      new Date(a.order_date).getTime() - new Date(b.order_date).getTime()
+    );
+
+    let avgDaysBetweenOrders = 0;
+    if (sortedOrders.length > 1) {
+      const intervals = [];
+      for (let i = 1; i < sortedOrders.length; i++) {
+        const interval = Math.floor(
+          (new Date(sortedOrders[i].order_date).getTime() -
+           new Date(sortedOrders[i-1].order_date).getTime()) /
+          (1000 * 60 * 60 * 24)
+        );
+        intervals.push(interval);
+      }
+      avgDaysBetweenOrders = intervals.reduce((sum, i) => sum + i, 0) / intervals.length;
+    }
+
+    // Calculate spending trend (last 3 months vs previous 3 months)
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const recentOrders = orders.filter(o => new Date(o.order_date) >= threeMonthsAgo);
+    const previousOrders = orders.filter(o =>
+      new Date(o.order_date) >= sixMonthsAgo &&
+      new Date(o.order_date) < threeMonthsAgo
+    );
+
+    const recentTotal = recentOrders.reduce((sum, o) => sum + o.amount, 0);
+    const previousTotal = previousOrders.reduce((sum, o) => sum + o.amount, 0);
+
+    let spendingTrend = 'stable';
+    let spendingChange = 0;
+    if (previousTotal > 0) {
+      spendingChange = ((recentTotal - previousTotal) / previousTotal) * 100;
+      if (spendingChange > 15) spendingTrend = 'increasing';
+      else if (spendingChange < -15) spendingTrend = 'decreasing';
+    }
+
+    // Product diversity
+    const uniqueProducts = topProducts.length;
+    const totalCategories = Object.keys(productCategories).length;
+
+    return {
+      customer_id: input.customer_id,
+      customer_name: customer.name,
+      period_days: daysBack,
+      total_orders: orders.length,
+      orders,
+      analytics: {
+        total_spent: Math.round(totalSpent * 100) / 100,
+        avg_order_value: Math.round(avgOrderValue * 100) / 100,
+        avg_days_between_orders: Math.round(avgDaysBetweenOrders),
+        spending_trend: spendingTrend,
+        spending_change_pct: Math.round(spendingChange * 10) / 10,
+        product_diversity: {
+          unique_products: uniqueProducts,
+          categories: totalCategories,
+          top_products: topProducts.slice(0, 5),
+        },
+        recent_vs_previous: {
+          recent_3mo_orders: recentOrders.length,
+          recent_3mo_total: Math.round(recentTotal * 100) / 100,
+          previous_3mo_orders: previousOrders.length,
+          previous_3mo_total: Math.round(previousTotal * 100) / 100,
+        },
+      },
+    };
+  },
+};
+
+// ============================================================================
+// TOOL 1.7: get_customer_segment_stats
+// ============================================================================
+
+export const getCustomerSegmentStatsTool: AgentTool = {
+  name: 'get_customer_segment_stats',
+  description:
+    'Get statistics and benchmarks for a customer segment (by city, revenue tier, personality type, etc). Useful for comparing individual customers against their segment.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      segment_type: {
+        type: 'string',
+        description: 'Type of segment: city, personality_type, revenue_tier (high/medium/low)',
+      },
+      segment_value: {
+        type: 'string',
+        description: 'Value to filter by (e.g., "Milano" for city, "high" for revenue_tier)',
+      },
+    },
+    required: ['segment_type', 'segment_value'],
+  },
+  handler: async (input: { segment_type: string; segment_value: string }) => {
+    console.log('🔍 get_customer_segment_stats', input);
+
+    let whereClause = 'is_active = true';
+    let params: any[] = [];
+    let paramIndex = 1;
+
+    if (input.segment_type === 'city') {
+      whereClause += ` AND city ILIKE $${paramIndex}`;
+      params.push(`%${input.segment_value}%`);
+      paramIndex++;
+    } else if (input.segment_type === 'personality_type') {
+      whereClause += ` AND personality_type = $${paramIndex}`;
+      params.push(input.segment_value);
+      paramIndex++;
+    } else if (input.segment_type === 'revenue_tier') {
+      // Define revenue tiers
+      if (input.segment_value === 'high') {
+        whereClause += ` AND total_revenue >= 10000`;
+      } else if (input.segment_value === 'medium') {
+        whereClause += ` AND total_revenue >= 5000 AND total_revenue < 10000`;
+      } else if (input.segment_value === 'low') {
+        whereClause += ` AND total_revenue < 5000`;
+      }
+    } else {
+      throw new Error('Invalid segment_type. Must be: city, personality_type, or revenue_tier');
+    }
+
+    const queryText = `
+      SELECT
+        COUNT(*) as total_customers,
+        AVG(total_revenue) as avg_revenue,
+        AVG(total_orders) as avg_orders,
+        AVG(avg_order_value) as avg_order_value,
+        AVG(health_score) as avg_health_score,
+        AVG(churn_risk_score) as avg_churn_risk,
+        AVG(upsell_potential_score) as avg_upsell_potential,
+        AVG(days_since_last_order) as avg_days_since_order,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY total_revenue) as median_revenue,
+        MAX(total_revenue) as max_revenue,
+        MIN(total_revenue) as min_revenue
+      FROM customer_avatars
+      WHERE ${whereClause}
+    `;
+
+    const result = await sql.query(queryText, params);
+    const stats = result.rows[0];
+
+    return {
+      segment_type: input.segment_type,
+      segment_value: input.segment_value,
+      total_customers: parseInt(stats.total_customers),
+      benchmarks: {
+        avg_revenue: stats.avg_revenue ? parseFloat(stats.avg_revenue) : 0,
+        median_revenue: stats.median_revenue ? parseFloat(stats.median_revenue) : 0,
+        avg_orders: stats.avg_orders ? parseFloat(stats.avg_orders) : 0,
+        avg_order_value: stats.avg_order_value ? parseFloat(stats.avg_order_value) : 0,
+        avg_health_score: stats.avg_health_score ? parseFloat(stats.avg_health_score) : 0,
+        avg_churn_risk: stats.avg_churn_risk ? parseFloat(stats.avg_churn_risk) : 0,
+        avg_upsell_potential: stats.avg_upsell_potential ? parseFloat(stats.avg_upsell_potential) : 0,
+        avg_days_since_order: stats.avg_days_since_order ? parseFloat(stats.avg_days_since_order) : 0,
+      },
+      range: {
+        min_revenue: stats.min_revenue ? parseFloat(stats.min_revenue) : 0,
+        max_revenue: stats.max_revenue ? parseFloat(stats.max_revenue) : 0,
+      },
+    };
+  },
+};
+
+// ============================================================================
+// TOOL 1.8: search_customers_by_rfm
+// ============================================================================
+
+export const searchCustomersByRfmTool: AgentTool = {
+  name: 'search_customers_by_rfm',
+  description:
+    'Search customers by RFM (Recency, Frequency, Monetary) score ranges. Find customers matching specific buying behavior patterns.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      recency_max_days: {
+        type: 'number',
+        description: 'Maximum days since last order (lower = more recent)',
+      },
+      frequency_min: {
+        type: 'number',
+        description: 'Minimum number of total orders',
+      },
+      monetary_min: {
+        type: 'number',
+        description: 'Minimum total revenue',
+      },
+      monetary_max: {
+        type: 'number',
+        description: 'Maximum total revenue (optional)',
+      },
+      limit: {
+        type: 'number',
+        description: 'Maximum results (default: 20)',
+      },
+    },
+    required: [],
+  },
+  handler: async (input: {
+    recency_max_days?: number;
+    frequency_min?: number;
+    monetary_min?: number;
+    monetary_max?: number;
+    limit?: number;
+  }) => {
+    console.log('🔍 search_customers_by_rfm', input);
+
+    const limit = input.limit || 20;
+
+    const conditions: string[] = ['is_active = true'];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (input.recency_max_days !== undefined) {
+      conditions.push(`days_since_last_order <= $${paramIndex}`);
+      params.push(input.recency_max_days);
+      paramIndex++;
+    }
+
+    if (input.frequency_min !== undefined) {
+      conditions.push(`total_orders >= $${paramIndex}`);
+      params.push(input.frequency_min);
+      paramIndex++;
+    }
+
+    if (input.monetary_min !== undefined) {
+      conditions.push(`total_revenue >= $${paramIndex}`);
+      params.push(input.monetary_min);
+      paramIndex++;
+    }
+
+    if (input.monetary_max !== undefined) {
+      conditions.push(`total_revenue <= $${paramIndex}`);
+      params.push(input.monetary_max);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    const queryText = `
+      SELECT
+        id, odoo_partner_id, name, city,
+        total_orders, total_revenue, avg_order_value,
+        days_since_last_order, last_order_date,
+        health_score, churn_risk_score, upsell_potential_score,
+        assigned_salesperson_name
+      FROM customer_avatars
+      WHERE ${whereClause}
+      ORDER BY
+        total_revenue DESC,
+        days_since_last_order ASC
+      LIMIT $${paramIndex}
+    `;
+    params.push(limit);
+
+    const result = await sql.query(queryText, params);
+
+    // Calculate RFM scores for each customer
+    const customers = result.rows.map(row => {
+      // Simple RFM scoring (1-5 scale)
+      let rScore = 5; // Recency: 5 = recent, 1 = long ago
+      if (row.days_since_last_order > 90) rScore = 1;
+      else if (row.days_since_last_order > 60) rScore = 2;
+      else if (row.days_since_last_order > 30) rScore = 3;
+      else if (row.days_since_last_order > 15) rScore = 4;
+
+      let fScore = 1; // Frequency: 5 = many orders, 1 = few
+      if (row.total_orders >= 50) fScore = 5;
+      else if (row.total_orders >= 20) fScore = 4;
+      else if (row.total_orders >= 10) fScore = 3;
+      else if (row.total_orders >= 5) fScore = 2;
+
+      let mScore = 1; // Monetary: 5 = high value, 1 = low
+      const revenue = parseFloat(row.total_revenue);
+      if (revenue >= 20000) mScore = 5;
+      else if (revenue >= 10000) mScore = 4;
+      else if (revenue >= 5000) mScore = 3;
+      else if (revenue >= 2000) mScore = 2;
+
+      // RFM segment
+      let segment = 'Other';
+      if (rScore >= 4 && fScore >= 4 && mScore >= 4) segment = 'Champions';
+      else if (rScore >= 3 && fScore >= 3 && mScore >= 4) segment = 'Loyal Customers';
+      else if (rScore >= 4 && fScore <= 2 && mScore >= 3) segment = 'Potential Loyalists';
+      else if (rScore >= 4 && fScore <= 2 && mScore <= 2) segment = 'New Customers';
+      else if (rScore <= 2 && fScore >= 3 && mScore >= 3) segment = 'At Risk';
+      else if (rScore <= 2 && fScore <= 2) segment = 'Hibernating';
+
+      return {
+        id: row.id,
+        name: row.name,
+        city: row.city,
+        rfm_scores: {
+          recency: rScore,
+          frequency: fScore,
+          monetary: mScore,
+          segment,
+        },
+        metrics: {
+          total_orders: row.total_orders,
+          total_revenue: parseFloat(row.total_revenue),
+          avg_order_value: parseFloat(row.avg_order_value),
+          days_since_last_order: row.days_since_last_order,
+          last_order_date: row.last_order_date,
+        },
+        scores: {
+          health_score: row.health_score,
+          churn_risk_score: row.churn_risk_score,
+          upsell_potential_score: row.upsell_potential_score,
+        },
+        assigned_salesperson_name: row.assigned_salesperson_name,
+      };
+    });
+
+    return {
+      filters_applied: {
+        recency_max_days: input.recency_max_days,
+        frequency_min: input.frequency_min,
+        monetary_min: input.monetary_min,
+        monetary_max: input.monetary_max,
+      },
+      total_found: customers.length,
+      customers,
+    };
+  },
+};
+
+// ============================================================================
 // EXPORT ALL TOOLS
 // ============================================================================
 
@@ -532,4 +953,7 @@ export const customerTools: AgentTool[] = [
   searchCustomersTool,
   getCustomerRecommendationsTool,
   compareSimilarCustomersTool,
+  getCustomerPurchaseHistoryTool,
+  getCustomerSegmentStatsTool,
+  searchCustomersByRfmTool,
 ];

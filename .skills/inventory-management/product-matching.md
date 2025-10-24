@@ -2,6 +2,7 @@
 name: product-matching
 version: 1.0.0
 description: Match intelligente tra prodotti fattura e righe inventario Odoo
+category: inventory-management
 tags: [matching, inventory, fuzzy-match, odoo]
 model: claude-3-5-sonnet-20241022
 author: Lapa Team
