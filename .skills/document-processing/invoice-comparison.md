@@ -421,6 +421,43 @@ PRIORITÀ 2: fuzzy matching nome
 
 ---
 
+## ⚠️ FORMATO RISPOSTA
+
+**CRITICO:** Rispondi SOLO con JSON valido. NESSUN testo aggiuntivo prima o dopo.
+
+Schema JSON obbligatorio:
+```json
+{
+  "is_valid": boolean,
+  "total_difference": number,
+  "draft_total": number,
+  "real_total": number,
+  "differences": [
+    {
+      "type": "price_mismatch" | "quantity_mismatch" | "missing_product" | "extra_product",
+      "severity": "warning" | "error",
+      "draft_line_id": number,
+      "description": string,
+      "expected_value": number,
+      "actual_value": number,
+      "amount_difference": number
+    }
+  ],
+  "corrections_needed": [
+    {
+      "action": "update" | "delete" | "create",
+      "line_id": number,
+      "changes": object,
+      "reason": string,
+      "requires_user_approval": boolean
+    }
+  ],
+  "can_auto_fix": boolean
+}
+```
+
+---
+
 ## 🔧 Note Tecniche
 
 - **Model:** claude-3-5-sonnet-20241022
