@@ -172,44 +172,6 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Recupera informazioni utente corrente e partner_id
- */
-async function getCurrentUserInfo(sessionId: string): Promise<{
-  success: boolean;
-  partnerId?: number;
-  error?: string;
-}> {
-  try {
-    // Chiama Odoo per ottenere l'utente corrente
-    const userResult = await callOdoo(
-      sessionId,
-      'res.users',
-      'read',
-      [[]], // Empty array per current user
-      { fields: ['partner_id'] }
-    );
-
-    if (!userResult.success || !userResult.result || userResult.result.length === 0) {
-      return { success: false, error: 'Utente non trovato' };
-    }
-
-    const partnerId = userResult.result[0].partner_id?.[0];
-
-    if (!partnerId) {
-      return { success: false, error: 'Partner ID non trovato' };
-    }
-
-    return { success: true, partnerId };
-
-  } catch (error: any) {
-    console.error('❌ [GET-USER-INFO] Errore:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
-
-/**
  * Mapping stato ordine → label italiana
  */
 function getStateLabel(state: string): string {
