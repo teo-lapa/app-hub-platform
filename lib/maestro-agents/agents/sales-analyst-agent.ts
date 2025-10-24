@@ -5,7 +5,9 @@
 
 import { BaseAgent } from '../core/base-agent';
 import { salesAnalyticsTools } from '../tools/sales-analytics-tools';
-import type { AgentRole } from '../types';
+import { ANALYTICS_TOOLS, FORECASTING_TOOLS, MATH_TOOLS } from '../tools/shared-analytics-tools';
+import { loadSkill } from '@/lib/ai/skills-loader';
+import type { AgentRole, AgentTask, AgentResult } from '../types';
 
 export class SalesAnalystAgent extends BaseAgent {
   constructor() {
@@ -19,9 +21,63 @@ export class SalesAnalystAgent extends BaseAgent {
         'Calculate conversion rates and success metrics',
         'Provide daily performance summaries',
         'Forecast revenue and trends',
+        'Advanced analytics: KPI calculation, sales forecasting, performance benchmarking, opportunity detection',
       ],
-      salesAnalyticsTools
+      [...salesAnalyticsTools, ...ANALYTICS_TOOLS, ...FORECASTING_TOOLS, ...MATH_TOOLS]
     );
+  }
+
+  /**
+   * Override execute to integrate skills when needed
+   */
+  async execute(task: AgentTask): Promise<AgentResult> {
+    // Check if task requires specialized skills
+    const query = task.user_query.toLowerCase();
+
+    let skillContent = '';
+
+    // Load appropriate skill based on query intent
+    if (query.includes('kpi') || query.includes('metric') || query.includes('performance')) {
+      try {
+        const skill = loadSkill('sales-analyst/kpi-calculation');
+        skillContent = `\n\n# SKILL: KPI Calculation\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill kpi-calculation not available yet');
+      }
+    } else if (query.includes('forecast') || query.includes('previsio') || query.includes('prevedi')) {
+      try {
+        const skill = loadSkill('sales-analyst/sales-forecasting');
+        skillContent = `\n\n# SKILL: Sales Forecasting\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill sales-forecasting not available yet');
+      }
+    } else if (query.includes('benchmark') || query.includes('confronta') || query.includes('compara')) {
+      try {
+        const skill = loadSkill('sales-analyst/performance-benchmarking');
+        skillContent = `\n\n# SKILL: Performance Benchmarking\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill performance-benchmarking not available yet');
+      }
+    } else if (query.includes('opportun') || query.includes('identifica') || query.includes('trova')) {
+      try {
+        const skill = loadSkill('sales-analyst/opportunity-detection');
+        skillContent = `\n\n# SKILL: Opportunity Detection\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill opportunity-detection not available yet');
+      }
+    }
+
+    // If skill loaded, enhance the task
+    if (skillContent) {
+      const enhancedTask = {
+        ...task,
+        user_query: task.user_query + skillContent,
+      };
+      return super.execute(enhancedTask);
+    }
+
+    // Otherwise execute normally
+    return super.execute(task);
   }
 
   getSystemPrompt(): string {

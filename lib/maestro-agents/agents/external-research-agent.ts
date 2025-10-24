@@ -12,7 +12,8 @@
 
 import { BaseAgent } from '../core/base-agent';
 import { externalResearchTools } from '../tools/external-research-tools';
-import type { AgentRole } from '../types';
+import { loadSkill } from '@/lib/ai/skills-loader';
+import type { AgentRole, AgentTask, AgentResult } from '../types';
 
 export class ExternalResearchAgent extends BaseAgent {
   constructor() {
@@ -27,9 +28,56 @@ export class ExternalResearchAgent extends BaseAgent {
         'Find restaurant contact info and hours',
         'Track news, events, and awards',
         'Analyze competitor pricing and strategies',
+        'Advanced skills: menu analysis, competitor research, review aggregation',
       ],
       externalResearchTools
     );
+  }
+
+  /**
+   * Override execute to integrate skills when needed
+   */
+  async execute(task: AgentTask): Promise<AgentResult> {
+    // Check if task requires specialized skills
+    const query = task.user_query.toLowerCase();
+
+    let skillContent = '';
+
+    // Load appropriate skill based on query intent
+    if (query.includes('menu') || query.includes('piatt')) {
+      try {
+        const skill = loadSkill('external-research/menu-analysis');
+        skillContent = `\n\n# SKILL: Menu Analysis\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill menu-analysis not available yet');
+      }
+    } else if (query.includes('competitor') || query.includes('concorren')) {
+      try {
+        const skill = loadSkill('external-research/competitor-research');
+        skillContent = `\n\n# SKILL: Competitor Research\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill competitor-research not available yet');
+      }
+    } else if (query.includes('review') || query.includes('recensio')) {
+      try {
+        const skill = loadSkill('external-research/review-aggregation');
+        skillContent = `\n\n# SKILL: Review Aggregation\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill review-aggregation not available yet');
+      }
+    }
+
+    // If skill loaded, enhance the task
+    if (skillContent) {
+      const enhancedTask = {
+        ...task,
+        user_query: task.user_query + skillContent,
+      };
+      return super.execute(enhancedTask);
+    }
+
+    // Otherwise execute normally
+    return super.execute(task);
   }
 
   getSystemPrompt(): string {

@@ -5,7 +5,9 @@
 
 import { BaseAgent } from '../core/base-agent';
 import { customerTools } from '../tools/customer-tools';
-import type { AgentRole } from '../types';
+import { ANALYTICS_TOOLS, CHURN_TOOLS, MATH_TOOLS } from '../tools/shared-analytics-tools';
+import { loadSkill } from '@/lib/ai/skills-loader';
+import type { AgentRole, AgentTask, AgentResult } from '../types';
 
 export class CustomerIntelligenceAgent extends BaseAgent {
   constructor() {
@@ -19,9 +21,56 @@ export class CustomerIntelligenceAgent extends BaseAgent {
         'Find similar customers for benchmarking',
         'Access complete interaction history',
         'Provide actionable customer insights',
+        'Advanced analytics: churn prediction, customer profiling, purchase pattern analysis',
       ],
-      customerTools
+      [...customerTools, ...ANALYTICS_TOOLS, ...CHURN_TOOLS, ...MATH_TOOLS]
     );
+  }
+
+  /**
+   * Override execute to integrate skills when needed
+   */
+  async execute(task: AgentTask): Promise<AgentResult> {
+    // Check if task requires specialized skills
+    const query = task.user_query.toLowerCase();
+
+    let skillContent = '';
+
+    // Load appropriate skill based on query intent
+    if (query.includes('profil') || query.includes('segment') || query.includes('chi è')) {
+      try {
+        const skill = loadSkill('customer-intelligence/customer-profiling');
+        skillContent = `\n\n# SKILL: Customer Profiling\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill customer-profiling not available yet');
+      }
+    } else if (query.includes('churn') || query.includes('rischio') || query.includes('abbandono')) {
+      try {
+        const skill = loadSkill('customer-intelligence/churn-prediction');
+        skillContent = `\n\n# SKILL: Churn Prediction\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill churn-prediction not available yet');
+      }
+    } else if (query.includes('pattern') || query.includes('acquist') || query.includes('comportament')) {
+      try {
+        const skill = loadSkill('customer-intelligence/purchase-pattern-analysis');
+        skillContent = `\n\n# SKILL: Purchase Pattern Analysis\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill purchase-pattern-analysis not available yet');
+      }
+    }
+
+    // If skill loaded, enhance the task
+    if (skillContent) {
+      const enhancedTask = {
+        ...task,
+        user_query: task.user_query + skillContent,
+      };
+      return super.execute(enhancedTask);
+    }
+
+    // Otherwise execute normally
+    return super.execute(task);
   }
 
   getSystemPrompt(): string {

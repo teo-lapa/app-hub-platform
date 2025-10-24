@@ -5,7 +5,9 @@
 
 import { BaseAgent } from '../core/base-agent';
 import { productTools } from '../tools/product-tools';
-import type { AgentRole } from '../types';
+import { ANALYTICS_TOOLS, FORECASTING_TOOLS, MATH_TOOLS } from '../tools/shared-analytics-tools';
+import { loadSkill } from '@/lib/ai/skills-loader';
+import type { AgentRole, AgentTask, AgentResult } from '../types';
 
 export class ProductIntelligenceAgent extends BaseAgent {
   constructor() {
@@ -19,9 +21,63 @@ export class ProductIntelligenceAgent extends BaseAgent {
         'Find products frequently bought together',
         'Suggest products for specific customers',
         'Track product velocity and seasonality',
+        'Advanced analytics: product analysis, price optimization, category trends, cross-sell suggestions',
       ],
-      productTools
+      [...productTools, ...ANALYTICS_TOOLS, ...FORECASTING_TOOLS, ...MATH_TOOLS]
     );
+  }
+
+  /**
+   * Override execute to integrate skills when needed
+   */
+  async execute(task: AgentTask): Promise<AgentResult> {
+    // Check if task requires specialized skills
+    const query = task.user_query.toLowerCase();
+
+    let skillContent = '';
+
+    // Load appropriate skill based on query intent
+    if (query.includes('analiz') && (query.includes('prodott') || query.includes('product'))) {
+      try {
+        const skill = loadSkill('product-intelligence/product-analysis');
+        skillContent = `\n\n# SKILL: Product Analysis\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill product-analysis not available yet');
+      }
+    } else if (query.includes('prez') || query.includes('price') || query.includes('ottimizza')) {
+      try {
+        const skill = loadSkill('product-intelligence/price-optimization');
+        skillContent = `\n\n# SKILL: Price Optimization\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill price-optimization not available yet');
+      }
+    } else if (query.includes('categor') || query.includes('trend')) {
+      try {
+        const skill = loadSkill('product-intelligence/category-trends');
+        skillContent = `\n\n# SKILL: Category Trends\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill category-trends not available yet');
+      }
+    } else if (query.includes('cross') || query.includes('sugger') || query.includes('raccomand')) {
+      try {
+        const skill = loadSkill('product-intelligence/cross-sell-suggestions');
+        skillContent = `\n\n# SKILL: Cross-Sell Suggestions\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill cross-sell-suggestions not available yet');
+      }
+    }
+
+    // If skill loaded, enhance the task
+    if (skillContent) {
+      const enhancedTask = {
+        ...task,
+        user_query: task.user_query + skillContent,
+      };
+      return super.execute(enhancedTask);
+    }
+
+    // Otherwise execute normally
+    return super.execute(task);
   }
 
   getSystemPrompt(): string {

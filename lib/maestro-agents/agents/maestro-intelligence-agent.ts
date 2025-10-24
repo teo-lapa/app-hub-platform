@@ -5,7 +5,9 @@
 
 import { BaseAgent } from '../core/base-agent';
 import { maestroIntelligenceTools } from '../tools/maestro-intelligence-tools';
-import type { AgentRole } from '../types';
+import { ANALYTICS_TOOLS, FORECASTING_TOOLS, CHURN_TOOLS } from '../tools/shared-analytics-tools';
+import { loadSkill } from '@/lib/ai/skills-loader';
+import type { AgentRole, AgentTask, AgentResult } from '../types';
 
 export class MaestroIntelligenceAgent extends BaseAgent {
   constructor() {
@@ -19,9 +21,56 @@ export class MaestroIntelligenceAgent extends BaseAgent {
         'Optimize contact timing for maximum success',
         'Track recommendation effectiveness',
         'Provide strategic sales insights',
+        'Advanced analytics: recommendation engine, timing optimization, learning patterns',
       ],
-      maestroIntelligenceTools
+      [...maestroIntelligenceTools, ...ANALYTICS_TOOLS, ...FORECASTING_TOOLS, ...CHURN_TOOLS]
     );
+  }
+
+  /**
+   * Override execute to integrate skills when needed
+   */
+  async execute(task: AgentTask): Promise<AgentResult> {
+    // Check if task requires specialized skills
+    const query = task.user_query.toLowerCase();
+
+    let skillContent = '';
+
+    // Load appropriate skill based on query intent
+    if (query.includes('raccomand') || query.includes('sugger') || query.includes('recommendation')) {
+      try {
+        const skill = loadSkill('maestro-intelligence/recommendation-engine');
+        skillContent = `\n\n# SKILL: Recommendation Engine\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill recommendation-engine not available yet');
+      }
+    } else if (query.includes('timing') || query.includes('quando') || query.includes('momento')) {
+      try {
+        const skill = loadSkill('maestro-intelligence/timing-optimization');
+        skillContent = `\n\n# SKILL: Timing Optimization\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill timing-optimization not available yet');
+      }
+    } else if (query.includes('pattern') || query.includes('impar') || query.includes('learning')) {
+      try {
+        const skill = loadSkill('maestro-intelligence/learning-patterns');
+        skillContent = `\n\n# SKILL: Learning Patterns\n${skill.content}\n`;
+      } catch (error) {
+        console.warn('⚠️ Skill learning-patterns not available yet');
+      }
+    }
+
+    // If skill loaded, enhance the task
+    if (skillContent) {
+      const enhancedTask = {
+        ...task,
+        user_query: task.user_query + skillContent,
+      };
+      return super.execute(enhancedTask);
+    }
+
+    // Otherwise execute normally
+    return super.execute(task);
   }
 
   getSystemPrompt(): string {
