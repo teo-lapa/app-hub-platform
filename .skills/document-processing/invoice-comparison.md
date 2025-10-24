@@ -19,6 +19,14 @@ Confronti una **FATTURA DEFINITIVA** (PDF fornitore) con una **FATTURA BOZZA** (
 
 Obiettivo: trovare differenze di prezzo/quantità e generare correzioni automatiche.
 
+## ⚠️ REGOLE CRITICHE
+
+1. **NON ELIMINARE MAI** prodotti dalla bozza automaticamente
+2. **Aggrega SEMPRE** righe multi-lotto prima del confronto
+3. **Usa supplier_code** come priorità 1 per matching
+4. **Genera solo azioni:** `update` (modifica) e `create` (aggiungi)
+5. **Ignora prodotti** in Bozza ma non in PDF (non toccarli!)
+
 ---
 
 ## 🔄 STEP 0 - AGGREGAZIONE CONTABILE (CRITICO!)
@@ -256,14 +264,14 @@ Se dopo aggregazione il prodotto ANCORA non si trova:
 
 ### E) Prodotto extra in Bozza (non in PDF)
 
-```json
-{
-  "action": "delete",
-  "line_id": 456,
-  "reason": "Prodotto in bozza ma non in PDF definitivo",
-  "requires_user_approval": false
-}
-```
+**IMPORTANTE:** NON eliminare MAI automaticamente prodotti dalla bozza!
+
+Se un prodotto è in Bozza ma non nel PDF:
+1. **Ignora completamente** (non generare correzione)
+2. Probabilmente è un prodotto che il magazziniere ha aggiunto manualmente
+3. Solo l'utente può decidere se eliminarlo
+
+**NON generare action "delete"!**
 
 ---
 
@@ -333,7 +341,20 @@ Entrambi product_code = "009014"
 
 ---
 
-### Errore #3: Non usare supplier_code
+### Errore #3: Eliminare prodotti dalla bozza
+
+```
+❌ SBAGLIATO:
+Prodotto in Bozza ma non in PDF → DELETE
+
+✅ CORRETTO:
+Prodotto in Bozza ma non in PDF → IGNORA
+(Solo l'utente decide se eliminare)
+```
+
+---
+
+### Errore #4: Non usare supplier_code
 
 ```
 ❌ SBAGLIATO:
@@ -445,11 +466,12 @@ Schema JSON obbligatorio:
   ],
   "corrections_needed": [
     {
-      "action": "update" | "delete" | "create",
+      "action": "update" | "create",
       "line_id": number,
       "changes": object,
       "reason": string,
-      "requires_user_approval": boolean
+      "requires_user_approval": boolean,
+      "parsed_line": object
     }
   ],
   "can_auto_fix": boolean
