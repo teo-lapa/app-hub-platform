@@ -163,29 +163,44 @@ Se codice non matcha, confronta nomi con fuzzy matching.
 **Normalizzazione:**
 1. Lowercase
 2. Rimuovi "SRL", "SPA", "& C."
-3. Rimuovi punteggiatura (., -)
-4. Rimuovi "LOTTO", "SCAD", "CONF", "CA", "CRT", "MARC", numeri lotto
-5. Rimuovi "KG", "GR", "250", "1000" (grammature)
-6. Rimuovi articoli "IL", "LA", "ALL", "E"
+3. Rimuovi punteggiatura (., -, ')
+4. Rimuovi numeri lotto: "LOTTO", "SCAD", "LR214", "LR248", date
+5. Rimuovi parole confezionamento: "CONF", "CA", "CRT", "MARC", "LATTA"
+6. Rimuovi grammature: "KG", "GR", "250", "1000", "500", "3KG", "5KG"
+7. Rimuovi articoli: "IL", "LA", "LO", "I", "GLI", "LE", "DI", "DA", "IN", "CON", "PER"
+8. Rimuovi parole generiche: "PASTA", "RIPIENA", "ALL", "UOVO", "FRESCO", "FRESCA"
 
 **Strategia Matching:**
-- Estrai prime 2-3 parole chiave significative (es: "TRECCE PIACENTINE")
-- Se PDF ha "TRECCE PIACENTINE GR.250" e Bozza ha "TRECCE PIACENTINE RICOTTA E SPINACI..."
-- → MATCH se le prime parole combaciano (confidence: 0.85)
+- Estrai **PRIMA PAROLA DISTINTIVA** (es: "FUSILLONI", "TRECCE", "BRASELLO")
+- Ignora completamente parole generiche: "PASTA", "RIPIENA", "ALL", "UOVO", "CONF"
+- Se la prima parola distintiva compare in entrambi → MATCH!
+- Esempi parole distintive: FUSILLONI, PAPPARDELLE, TORTELLONE, BRASELLO, TRECCE
+
+**Algoritmo:**
+1. Normalizza entrambe le stringhe (lowercase, rimuovi punteggiatura)
+2. Rimuovi parole generiche comuni
+3. Trova prima parola significativa (>3 caratteri, non numero)
+4. Se questa parola compare nell'altra stringa → MATCH (confidence: 0.85-0.90)
 
 **Esempi:**
 ```
+"FUSILLONI UOVO GR. 1000" ≈ "FUSILLONI 1KG CA 5KG CRT MARC"
+→ MATCH (confidence: 0.90) - parola distintiva "FUSILLONI" presente in entrambi!
+
+"PAPPARDELLE ALL'UOVO GR.1000" ≈ "PAPPARDELLE ALL'UOVO 1KG CONF 5KG CRT MARC"
+→ MATCH (confidence: 0.95) - "PAPPARDELLE" è distintivo e raro
+
 "TRECCE PIACENTINE GR.250" ≈ "TRECCE PIACENTINE RICOTTA E SPINACI CONF 250 CA 3KG"
-→ MATCH (confidence: 0.90) - prime 2 parole identiche!
+→ MATCH (confidence: 0.90) - "TRECCE" + "PIACENTINE" combinazione unica!
 
 "CARCIOFI LOTTO LR248" ≈ "Carciofi grigliati 4/4"
-→ MATCH (confidence: 0.85)
-
-"POMODORI CILIEG ROSSI SEMISEC" ≈ "Pomodori ciliegino rossi"
-→ MATCH (confidence: 0.80)
+→ MATCH (confidence: 0.85) - "CARCIOFI" è distintivo
 
 "BRASELLO QUADRATO GR. 250" ≈ "PASTA RIPIENA AL BRASELLO CONF CA 5KG CRT MARC"
-→ MATCH (confidence: 0.80) - "BRASELLO" è distintivo
+→ MATCH (confidence: 0.90) - "BRASELLO" è parola rara e distintiva
+
+"TORTELLONE MANZO" ≈ "PASTA RIPIENA AL MANZO CONF CRT CA 5KG MARC"
+→ NO MATCH - "TORTELLONE" non compare nella bozza, "MANZO" è troppo generico
 ```
 
 ---
@@ -381,7 +396,61 @@ PRIORITÀ 2: fuzzy matching nome
 
 ## 🧪 Esempi Completi
 
-### Caso 0: Match su nome parziale (senza codice)
+### Caso 0A: Match su parola distintiva singola (FUSILLONI)
+
+**Input PDF:**
+```json
+{
+  "lines": [
+    {
+      "product_code": "1FUSILLI",
+      "description": "FUSILLONI UOVO GR. 1000",
+      "quantity": 3,
+      "unit_price": 6.54,
+      "subtotal": 19.62
+    }
+  ]
+}
+```
+
+**Input Bozza:**
+```json
+{
+  "lines": [
+    {
+      "id": 126,
+      "supplier_code": null,
+      "product": "FUSILLONI 1KG CA 5KG CRT MARC",
+      "quantity": 3,
+      "unit_price": 6.54,
+      "subtotal": 19.62
+    }
+  ]
+}
+```
+
+**Analisi:**
+- Codice PDF ("1FUSILLI") non matcha con supplier_code bozza (null)
+- Fallback fuzzy matching:
+  - Normalizza PDF: "fusilloni uovo gr 1000" → rimuovi generiche → "**fusilloni**"
+  - Normalizza Bozza: "fusilloni 1kg ca 5kg crt marc" → "**fusilloni**"
+  - Prima parola distintiva "FUSILLONI" presente in entrambi!
+- Quantità, prezzo, subtotal identici
+- **MATCH! (confidence: 0.90)**
+
+**Output:**
+```json
+{
+  "is_valid": true,
+  "total_difference": 0,
+  "corrections_needed": [],
+  "can_auto_fix": true
+}
+```
+
+---
+
+### Caso 0B: Match su nome parziale (TRECCE PIACENTINE)
 
 **Input PDF:**
 ```json
@@ -418,7 +487,7 @@ PRIORITÀ 2: fuzzy matching nome
 - Codice non disponibile in entrambi
 - Fuzzy matching: "TRECCE PIACENTINE" compare in entrambi
 - Quantità, prezzo, subtotal identici
-- **MATCH! (confidence: 0.90)**
+- **MATCH! (confidence: 0.95)** - combinazione di 2 parole rare è molto affidabile
 
 **Output:**
 ```json
@@ -502,6 +571,45 @@ PRIORITÀ 2: fuzzy matching nome
   ]
 }
 ```
+
+---
+
+## ⚠️ REGOLA CRITICA: NON SEGNALARE PRODOTTI MANCANTI TROPPO FACILMENTE
+
+**IMPORTANTE:** Prima di creare una correzione `action: "create"` (prodotto mancante):
+
+1. **VERIFICA 3 VOLTE** il fuzzy matching
+2. **CERCA LA PAROLA DISTINTIVA** del prodotto PDF in TUTTE le righe bozza
+3. **IGNORA parole generiche** come PASTA, UOVO, RIPIENA, ALL, FRESCO
+4. **SE TROVI ANCHE SOLO 1 PAROLA DISTINTIVA IN COMUNE** → è probabilmente lo stesso prodotto!
+
+**Parole distintive (esempi):**
+- FUSILLONI (raro, specifico)
+- PAPPARDELLE (raro, specifico)
+- BRASELLO (molto raro!)
+- TRECCE + PIACENTINE (combinazione unica)
+- TORTELLONE + MANZO (se entrambi presenti)
+- TAGLIOLINI (specifico)
+- PACCHERI (specifico)
+
+**Parole NON distintive (ignora):**
+- PASTA, UOVO, FRESCO, ALL, RIPIENA
+- KG, GR, CONF, CA, CRT, MARC
+- Numeri: 250, 1000, 3KG, 5KG
+
+**Esempio decisionale:**
+```
+PDF: "FUSILLONI UOVO GR. 1000"
+Bozza: "FUSILLONI 1KG CA 5KG CRT MARC"
+
+Analisi:
+- "FUSILLONI" è parola distintiva (rara, specifica)
+- "FUSILLONI" presente in entrambi
+- "UOVO" è generica → IGNORA
+→ MATCH! NON creare "prodotto mancante"
+```
+
+Se dopo questo processo non trovi NESSUNA parola distintiva in comune → allora sì, crea `action: "create"`.
 
 ---
 
