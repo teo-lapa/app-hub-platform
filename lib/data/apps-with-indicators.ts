@@ -504,6 +504,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-10-19'),
     updatedAt: new Date('2025-10-19'),
   },
+  {
+    id: 's30',
+    name: 'Portale Clienti [P]',
+    description: 'Area clienti completa: ordini, fatture, consegne, catalogo prodotti, carrello e checkout. Dashboard personalizzata con KPI, storico ordini e tracking consegne in tempo reale.',
+    icon: '🛒',
+    badge: 'PRO',
+    category: 'Business',
+    url: '/portale-clienti',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-10-24'),
+    updatedAt: new Date('2025-10-24'),
+  },
 ];
 
 // Combina tutte le app

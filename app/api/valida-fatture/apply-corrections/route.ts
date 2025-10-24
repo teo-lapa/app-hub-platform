@@ -70,18 +70,14 @@ export async function POST(request: NextRequest) {
           console.log(`✅ [APPLY-CORRECTIONS] Line ${correction.line_id} updated successfully`);
 
         } else if (correction.action === 'delete' && correction.line_id) {
-          // DELETE: Elimina riga
-          console.log(`🗑️ [APPLY-CORRECTIONS] Deleting line ${correction.line_id}`);
-
-          await callOdoo(
-            cookies,
-            'account.move.line',
-            'unlink',
-            [[correction.line_id]]
-          );
-
-          deleted_lines++;
-          console.log(`✅ [APPLY-CORRECTIONS] Line ${correction.line_id} deleted`);
+          // DELETE: NON PIÙ SUPPORTATO per sicurezza
+          console.warn(`⚠️ [APPLY-CORRECTIONS] DELETE action BLOCKED for safety!`);
+          console.warn(`   Line ID: ${correction.line_id}`);
+          console.warn(`   Reason: ${correction.reason}`);
+          console.warn(`   DELETE operations are permanently disabled to prevent data loss.`);
+          console.warn(`   If you need to delete lines, do it manually in Odoo.`);
+          errors.push(`DELETE blocked for safety: line ${correction.line_id} - ${correction.reason}`);
+          // NON eseguire unlink!
 
         } else if (correction.action === 'create' && correction.new_line) {
           // CREATE: Nuova riga (solo se non richiede approvazione)
