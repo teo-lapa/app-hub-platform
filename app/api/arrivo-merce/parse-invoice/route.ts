@@ -86,8 +86,8 @@ export async function POST(request: NextRequest) {
     console.log('🤖 Invio a Claude per analisi...', 'Format:', mediaType);
 
     // 🆕 CARICA LO SKILL PER INVOICE PARSING
-    const skill = loadSkill('invoice-parsing');
-    logSkillInfo('invoice-parsing'); // Log per debugging
+    const skill = loadSkill('document-processing/invoice-parsing');
+    logSkillInfo('document-processing/invoice-parsing'); // Log per debugging
     console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version}`);
 
     // Determine content type based on file format (PDF uses 'document', images use 'image')

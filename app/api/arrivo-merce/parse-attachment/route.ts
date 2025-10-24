@@ -287,8 +287,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 🆕 CARICA LO SKILL PER INVOICE PARSING
-    const skill = loadSkill('invoice-parsing');
-    logSkillInfo('invoice-parsing');
+    const skill = loadSkill('document-processing/invoice-parsing');
+    logSkillInfo('document-processing/invoice-parsing');
     console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version}`);
 
     // 🆕 SPLIT STRATEGY FOR MULTI-PAGE PDFs
