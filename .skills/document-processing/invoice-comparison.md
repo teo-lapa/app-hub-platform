@@ -163,16 +163,29 @@ Se codice non matcha, confronta nomi con fuzzy matching.
 **Normalizzazione:**
 1. Lowercase
 2. Rimuovi "SRL", "SPA", "& C."
-3. Rimuovi punteggiatura
-4. Rimuovi "LOTTO", "SCAD", numeri lotto
+3. Rimuovi punteggiatura (., -)
+4. Rimuovi "LOTTO", "SCAD", "CONF", "CA", "CRT", "MARC", numeri lotto
+5. Rimuovi "KG", "GR", "250", "1000" (grammature)
+6. Rimuovi articoli "IL", "LA", "ALL", "E"
+
+**Strategia Matching:**
+- Estrai prime 2-3 parole chiave significative (es: "TRECCE PIACENTINE")
+- Se PDF ha "TRECCE PIACENTINE GR.250" e Bozza ha "TRECCE PIACENTINE RICOTTA E SPINACI..."
+- → MATCH se le prime parole combaciano (confidence: 0.85)
 
 **Esempi:**
 ```
+"TRECCE PIACENTINE GR.250" ≈ "TRECCE PIACENTINE RICOTTA E SPINACI CONF 250 CA 3KG"
+→ MATCH (confidence: 0.90) - prime 2 parole identiche!
+
 "CARCIOFI LOTTO LR248" ≈ "Carciofi grigliati 4/4"
 → MATCH (confidence: 0.85)
 
 "POMODORI CILIEG ROSSI SEMISEC" ≈ "Pomodori ciliegino rossi"
 → MATCH (confidence: 0.80)
+
+"BRASELLO QUADRATO GR. 250" ≈ "PASTA RIPIENA AL BRASELLO CONF CA 5KG CRT MARC"
+→ MATCH (confidence: 0.80) - "BRASELLO" è distintivo
 ```
 
 ---
@@ -367,6 +380,57 @@ PRIORITÀ 2: fuzzy matching nome
 ---
 
 ## 🧪 Esempi Completi
+
+### Caso 0: Match su nome parziale (senza codice)
+
+**Input PDF:**
+```json
+{
+  "lines": [
+    {
+      "product_code": null,
+      "description": "TRECCE PIACENTINE GR.250",
+      "quantity": 3,
+      "unit_price": 11.98,
+      "subtotal": 35.94
+    }
+  ]
+}
+```
+
+**Input Bozza:**
+```json
+{
+  "lines": [
+    {
+      "id": 125,
+      "supplier_code": null,
+      "product": "TRECCE PIACENTINE RICOTTA E SPINACI CONF 250 CA 3KG CRT MARC",
+      "quantity": 3,
+      "unit_price": 11.98,
+      "subtotal": 35.94
+    }
+  ]
+}
+```
+
+**Analisi:**
+- Codice non disponibile in entrambi
+- Fuzzy matching: "TRECCE PIACENTINE" compare in entrambi
+- Quantità, prezzo, subtotal identici
+- **MATCH! (confidence: 0.90)**
+
+**Output:**
+```json
+{
+  "is_valid": true,
+  "total_difference": 0,
+  "corrections_needed": [],
+  "can_auto_fix": true
+}
+```
+
+---
 
 ### Caso 1: Multi-lotto perfetto
 
