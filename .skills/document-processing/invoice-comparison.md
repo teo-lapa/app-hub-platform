@@ -176,31 +176,48 @@ Se codice non matcha, confronta nomi con fuzzy matching.
 - Se la prima parola distintiva compare in entrambi → MATCH!
 - Esempi parole distintive: FUSILLONI, PAPPARDELLE, TORTELLONE, BRASELLO, TRECCE
 
-**Algoritmo:**
+**Algoritmo Multi-Level:**
 1. Normalizza entrambe le stringhe (lowercase, rimuovi punteggiatura)
 2. Rimuovi parole generiche comuni
-3. Trova prima parola significativa (>3 caratteri, non numero)
-4. Se questa parola compare nell'altra stringa → MATCH (confidence: 0.85-0.90)
+3. **LEVEL 1**: Cerca prima parola distintiva (>3 caratteri, non numero)
+   - Se trovata in entrambi → MATCH (confidence: 0.90)
+4. **LEVEL 2**: Se Level 1 fallisce, cerca combinazione 2-3 parole consecutive significative
+   - Es: "RICOTTA E LIMONE", "PORCINI E PATATE", "RICOTTA E SPINACI"
+   - Se trovata in entrambi → MATCH (confidence: 0.85)
+5. **LEVEL 3**: Se Level 2 fallisce, cerca almeno 2 parole non consecutive in comune
+   - Es: "RICOTTA" + "LIMONE" presenti in entrambi
+   - Se trovate → MATCH (confidence: 0.75)
 
 **Esempi:**
 ```
 "FUSILLONI UOVO GR. 1000" ≈ "FUSILLONI 1KG CA 5KG CRT MARC"
-→ MATCH (confidence: 0.90) - parola distintiva "FUSILLONI" presente in entrambi!
+→ MATCH Level 1 (confidence: 0.90) - parola distintiva "FUSILLONI" presente!
 
 "PAPPARDELLE ALL'UOVO GR.1000" ≈ "PAPPARDELLE ALL'UOVO 1KG CONF 5KG CRT MARC"
-→ MATCH (confidence: 0.95) - "PAPPARDELLE" è distintivo e raro
+→ MATCH Level 1 (confidence: 0.95) - "PAPPARDELLE" è distintivo e raro
 
 "TRECCE PIACENTINE GR.250" ≈ "TRECCE PIACENTINE RICOTTA E SPINACI CONF 250 CA 3KG"
-→ MATCH (confidence: 0.90) - "TRECCE" + "PIACENTINE" combinazione unica!
+→ MATCH Level 1 (confidence: 0.95) - "TRECCE" + "PIACENTINE" combinazione unica!
+
+"MEZZELUNE RICOTTA E LIMONE GR. 1000" ≈ "PASTA RIPIENA RICOTTA E LIMONE CONF CA 5KG"
+→ MATCH Level 2 (confidence: 0.85) - "RICOTTA E LIMONE" combinazione presente!
+
+"TORTELLONE PORCINI E PATATE" ≈ "PASTA RIPIENA PORCINI E PATATE CONF CA 5KG"
+→ MATCH Level 2 (confidence: 0.85) - "PORCINI E PATATE" presente in entrambi!
 
 "CARCIOFI LOTTO LR248" ≈ "Carciofi grigliati 4/4"
-→ MATCH (confidence: 0.85) - "CARCIOFI" è distintivo
+→ MATCH Level 1 (confidence: 0.85) - "CARCIOFI" è distintivo
 
 "BRASELLO QUADRATO GR. 250" ≈ "PASTA RIPIENA AL BRASELLO CONF CA 5KG CRT MARC"
-→ MATCH (confidence: 0.90) - "BRASELLO" è parola rara e distintiva
+→ MATCH Level 1 (confidence: 0.90) - "BRASELLO" è parola rara!
+
+"RAVIOLI ZUCCA E AMARETTI" ≈ "PASTA RIPIENA ZUCCA CONF CA 3KG"
+→ MATCH Level 3 (confidence: 0.75) - "ZUCCA" in comune (+ context simile)
 
 "TORTELLONE MANZO" ≈ "PASTA RIPIENA AL MANZO CONF CRT CA 5KG MARC"
-→ NO MATCH - "TORTELLONE" non compare nella bozza, "MANZO" è troppo generico
+→ NO MATCH Level 1 - "TORTELLONE" non compare
+→ NO MATCH Level 2 - solo "MANZO" troppo generico
+→ Controlla quantità/prezzo: se identici → probabile MATCH Level 3
 ```
 
 ---
@@ -501,6 +518,65 @@ PRIORITÀ 2: fuzzy matching nome
 
 ---
 
+### Caso 0C: Match Level 2 - Combinazione parole (MEZZELUNE)
+
+**Input PDF:**
+```json
+{
+  "lines": [
+    {
+      "product_code": "1MEZZELU-SV",
+      "description": "MEZZELUNE RICOTTA E LIMONE GR. 1000",
+      "quantity": 3.25,
+      "unit_price": 12.62,
+      "subtotal": 41.02
+    }
+  ]
+}
+```
+
+**Input Bozza:**
+```json
+{
+  "lines": [
+    {
+      "id": 127,
+      "supplier_code": null,
+      "product": "PASTA RIPIENA RICOTTA E LIMONE CONF CA 5KG CRT MARC",
+      "quantity": 3.25,
+      "unit_price": 12.62,
+      "subtotal": 41.02
+    }
+  ]
+}
+```
+
+**Analisi:**
+- **Level 1 FAIL**: "MEZZELUNE" non compare in bozza
+- **Level 2 SUCCESS**:
+  - PDF: normalizza → "mezzelune **ricotta e limone** gr 1000"
+  - Bozza: normalizza → "pasta ripiena **ricotta e limone** conf ca 5kg"
+  - Combinazione "RICOTTA E LIMONE" (3 parole consecutive) presente in entrambi!
+  - Quantità, prezzo, subtotal identici
+- **MATCH! (confidence: 0.85)**
+
+**Ragionamento:**
+- "MEZZELUNE" è solo la forma della pasta (tipo ravioli, tortelloni, ecc.)
+- Il ripieno "RICOTTA E LIMONE" è la caratteristica distintiva del prodotto
+- Se ripieno + quantità + prezzo coincidono → stesso prodotto!
+
+**Output:**
+```json
+{
+  "is_valid": true,
+  "total_difference": 0,
+  "corrections_needed": [],
+  "can_auto_fix": true
+}
+```
+
+---
+
 ### Caso 1: Multi-lotto perfetto
 
 **Input PDF:**
@@ -583,22 +659,35 @@ PRIORITÀ 2: fuzzy matching nome
 3. **IGNORA parole generiche** come PASTA, UOVO, RIPIENA, ALL, FRESCO
 4. **SE TROVI ANCHE SOLO 1 PAROLA DISTINTIVA IN COMUNE** → è probabilmente lo stesso prodotto!
 
-**Parole distintive (esempi):**
-- FUSILLONI (raro, specifico)
-- PAPPARDELLE (raro, specifico)
+**Parole/Combinazioni distintive (esempi):**
+
+**Level 1 - Singole parole rare:**
+- FUSILLONI, PAPPARDELLE, TAGLIOLINI, PACCHERI (tipi pasta specifici)
 - BRASELLO (molto raro!)
 - TRECCE + PIACENTINE (combinazione unica)
-- TORTELLONE + MANZO (se entrambi presenti)
-- TAGLIOLINI (specifico)
-- PACCHERI (specifico)
 
-**Parole NON distintive (ignora):**
-- PASTA, UOVO, FRESCO, ALL, RIPIENA
-- KG, GR, CONF, CA, CRT, MARC
+**Level 2 - Combinazioni ripieno (per paste ripiene):**
+- RICOTTA E LIMONE (distintivo!)
+- PORCINI E PATATE (distintivo!)
+- RICOTTA E SPINACI (comune ma utile)
+- SALSICCIA E TALEGGIO (raro!)
+- ROBIOLA MELANZANE E PINOLI (molto specifico!)
+
+**IMPORTANTE per paste ripiene:**
+- Ignora la FORMA (mezzelune, tortellone, ravioli, quadrato)
+- Privilegia il RIPIENO (ricotta limone, porcini patate, ecc.)
+- Il ripieno è più distintivo della forma!
+
+**Parole NON distintive (ignora completamente):**
+- PASTA, UOVO, FRESCO, ALL, RIPIENA, CONF, AL
+- Forme pasta: MEZZELUNE, TORTELLONE, RAVIOLI, QUADRATO (da sole non bastano!)
+- Confezionamento: KG, GR, CONF, CA, CRT, MARC, LATTA
 - Numeri: 250, 1000, 3KG, 5KG
 
-**Esempio decisionale:**
+**Esempi decisionali:**
+
 ```
+Esempio 1 - Level 1:
 PDF: "FUSILLONI UOVO GR. 1000"
 Bozza: "FUSILLONI 1KG CA 5KG CRT MARC"
 
@@ -606,7 +695,24 @@ Analisi:
 - "FUSILLONI" è parola distintiva (rara, specifica)
 - "FUSILLONI" presente in entrambi
 - "UOVO" è generica → IGNORA
-→ MATCH! NON creare "prodotto mancante"
+→ MATCH Level 1! NON creare "prodotto mancante"
+```
+
+```
+Esempio 2 - Level 2:
+PDF: "MEZZELUNE RICOTTA E LIMONE GR. 1000"
+Bozza: "PASTA RIPIENA RICOTTA E LIMONE CONF CA 5KG CRT MARC"
+
+Analisi Level 1:
+- "MEZZELUNE" non compare in bozza → FAIL
+
+Analisi Level 2:
+- Cerca combinazioni significative
+- "RICOTTA E LIMONE" presente in entrambi! ✅
+- Quantità/prezzo identici
+→ MATCH Level 2! NON creare "prodotto mancante"
+
+Ragionamento: MEZZELUNE è solo la forma, RICOTTA E LIMONE è il ripieno distintivo
 ```
 
 Se dopo questo processo non trovi NESSUNA parola distintiva in comune → allora sì, crea `action: "create"`.
