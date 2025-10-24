@@ -33,13 +33,45 @@ export async function POST(request: NextRequest) {
     console.log(`📋 Lines in draft: ${draft_invoice.invoice_line_ids?.length || 0}`);
     console.log(`📎 Attachment ID: ${attachment_id}`);
 
-    // Scarica il PDF da Odoo usando l'attachment_id
+    // Get Odoo session for API calls
     const userCookies = request.headers.get('cookie');
     const { cookies, uid } = await getOdooSession(userCookies || undefined);
 
     if (!uid) {
       return NextResponse.json({ error: 'Sessione Odoo non valida' }, { status: 401 });
     }
+
+    // STEP 0.5: Arricchisci righe bozza con default_code (codice fornitore) per matching preciso
+    console.log('📚 [ANALYZE-COMPARE] Enriching draft lines with supplier codes...');
+    const productIds = draft_invoice.invoice_line_ids
+      .filter((line: any) => line.product_id && line.product_id[0])
+      .map((line: any) => line.product_id[0]);
+
+    let productData: any[] = [];
+    if (productIds.length > 0) {
+      productData = await callOdoo(
+        cookies,
+        'product.product',
+        'read',
+        [productIds],
+        { fields: ['id', 'default_code', 'name'] }
+      );
+    }
+
+    // Crea mappa product_id → default_code
+    const productCodeMap = new Map(
+      productData.map((p: any) => [p.id, p.default_code || null])
+    );
+
+    // Arricchisci righe con default_code
+    const enrichedLines = draft_invoice.invoice_line_ids.map((line: any) => ({
+      ...line,
+      default_code: line.product_id ? productCodeMap.get(line.product_id[0]) : null
+    }));
+
+    console.log(`✅ [ANALYZE-COMPARE] Enriched ${enrichedLines.length} lines with supplier codes`);
+
+    // Scarica il PDF da Odoo usando l'attachment_id
 
     console.log('📥 [ANALYZE-COMPARE] Downloading PDF from Odoo...');
     const attachments = await callOdoo(
@@ -239,9 +271,10 @@ IVA: €${draft_invoice.amount_tax}
 TOTALE: €${draft_invoice.amount_total}
 
 RIGHE BOZZA:
-${JSON.stringify(draft_invoice.invoice_line_ids.map((line: any) => ({
+${JSON.stringify(enrichedLines.map((line: any) => ({
   id: line.id,
   product: line.product_id ? line.product_id[1] : 'N/A',
+  supplier_code: line.default_code || null,
   description: line.name,
   quantity: line.quantity,
   unit_price: line.price_unit,
@@ -253,8 +286,8 @@ ${JSON.stringify(draft_invoice.invoice_line_ids.map((line: any) => ({
 
 STEP 1 - MATCHING INTELLIGENTE:
 Per ogni riga PDF, trova la riga Bozza corrispondente:
-a) Cerca CODICE PRODOTTO (es: "AZCOM051", "[RI1500TS]", "P09956")
-b) Se non trovi codice, usa SOMIGLIANZA SEMANTICA:
+a) PRIORITÀ 1: Matcha product_code PDF con supplier_code Bozza (es: "009014" → "009014")
+b) PRIORITÀ 2: Se supplier_code non matcha, usa SOMIGLIANZA SEMANTICA:
    - "MORTADELLA C/P 3.5KG" = "Mortadella 3,5kg" = "[MORT35] Mortadella"
    - "P.COTTO BLU COATI" = "Prosciutto Cotto Blu"
    - "SALAME VENTRICINA" = "Ventricina" = "Salame Vent."
