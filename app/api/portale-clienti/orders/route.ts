@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-
-const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
+import jwt from 'jsonwebtoken';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -22,14 +21,31 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🛒 [ORDERS-API] Inizio recupero ordini cliente');
 
-    // Ottieni session_id dell'utente loggato
-    const cookieStore = cookies();
-    const sessionId = cookieStore.get('odoo_session_id')?.value;
+    // Extract and verify JWT token
+    const token = request.cookies.get('token')?.value;
 
-    if (!sessionId) {
-      console.error('❌ [ORDERS-API] Utente non loggato');
+    if (!token) {
+      console.error('❌ [ORDERS-API] No JWT token found');
       return NextResponse.json(
         { success: false, error: 'Devi fare login per visualizzare gli ordini' },
+        { status: 401 }
+      );
+    }
+
+    // Decode JWT to get customer info
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    let decoded: any;
+
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+      console.log('✅ [ORDERS-API] JWT decoded:', {
+        email: decoded.email,
+        userId: decoded.id
+      });
+    } catch (jwtError: any) {
+      console.error('❌ [ORDERS-API] JWT verification failed:', jwtError.message);
+      return NextResponse.json(
+        { success: false, error: 'Token non valido' },
         { status: 401 }
       );
     }
@@ -42,18 +58,27 @@ export async function GET(request: NextRequest) {
 
     console.log('📅 [ORDERS-API] Filtri:', { fromDate, toDate, stateFilter });
 
-    // Step 1: Ottieni l'utente corrente per recuperare il partner_id
-    const userInfo = await getCurrentUserInfo(sessionId);
+    // Step 1: Get partner_id using admin session
+    const userPartners = await callOdooAsAdmin(
+      'res.partner',
+      'search_read',
+      [],
+      {
+        domain: [['email', '=', decoded.email]],
+        fields: ['id', 'name'],
+        limit: 1
+      }
+    );
 
-    if (!userInfo.success || !userInfo.partnerId) {
-      console.error('❌ [ORDERS-API] Impossibile identificare il cliente');
+    if (!userPartners || userPartners.length === 0) {
+      console.error('❌ [ORDERS-API] No partner found for email:', decoded.email);
       return NextResponse.json(
         { success: false, error: 'Cliente non identificato. Rieffettua il login.' },
         { status: 401 }
       );
     }
 
-    const partnerId = userInfo.partnerId;
+    const partnerId = userPartners[0].id;
     console.log('✅ [ORDERS-API] Cliente identificato:', partnerId);
 
     // Step 2: Costruisci domain per la ricerca ordini
@@ -82,9 +107,8 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 [ORDERS-API] Domain ricerca:', JSON.stringify(domain));
 
-    // Step 3: Recupera gli ordini da Odoo
-    const ordersResult = await callOdoo(
-      sessionId,
+    // Step 3: Recupera gli ordini da Odoo usando admin session
+    const ordersResult = await callOdooAsAdmin(
       'sale.order',
       'search_read',
       [],
@@ -111,15 +135,7 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    if (!ordersResult.success) {
-      console.error('❌ [ORDERS-API] Errore recupero ordini:', ordersResult.error);
-      return NextResponse.json(
-        { success: false, error: ordersResult.error },
-        { status: 500 }
-      );
-    }
-
-    const orders = ordersResult.result || [];
+    const orders = ordersResult || [];
     console.log(`✅ [ORDERS-API] Recuperati ${orders.length} ordini`);
 
     // Step 4: Per ogni ordine, recupera info aggiuntive (conteggio prodotti)
@@ -192,63 +208,6 @@ async function getCurrentUserInfo(sessionId: string): Promise<{
 }
 
 /**
- * Helper function per chiamate RPC a Odoo
- */
-async function callOdoo(
-  sessionId: string,
-  model: string,
-  method: string,
-  args: any[],
-  kwargs: any
-): Promise<{ success: boolean; result?: any; error?: string }> {
-  try {
-    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw/${model}/${method}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `session_id=${sessionId}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model,
-          method,
-          args,
-          kwargs: kwargs || {},
-        },
-        id: Date.now(),
-      }),
-    });
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: `Errore HTTP ${response.status}`,
-      };
-    }
-
-    const data = await response.json();
-
-    if (data.error) {
-      return {
-        success: false,
-        error: data.error.data?.message || data.error.message || 'Errore chiamata Odoo',
-      };
-    }
-
-    return {
-      success: true,
-      result: data.result,
-    };
-
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
-}
 
 /**
  * Mapping stato ordine → label italiana
