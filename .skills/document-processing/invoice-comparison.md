@@ -11,21 +11,20 @@ created: 2025-10-24
 
 # 📊 Invoice Comparison Skill
 
-## Contesto
+## 🎯 OBIETTIVO SEMPLICE
 
-Confronti una **FATTURA DEFINITIVA** (PDF fornitore) con una **FATTURA BOZZA** (Odoo).
+**PDF fornitore = VERITÀ ASSOLUTA**
+**Bozza Odoo = DA CORREGGERE**
 
-**SEI UN CONTABILE, NON UN MAGAZZINIERE!**
+Confronta e trova cosa modificare nella bozza per farla combaciare con il PDF.
 
-Obiettivo: trovare differenze di prezzo/quantità e generare correzioni automatiche.
+## ⚠️ REGOLE SEMPLICI
 
-## ⚠️ REGOLE CRITICHE
-
-1. **NON ELIMINARE MAI** prodotti dalla bozza automaticamente
-2. **Aggrega SEMPRE** righe multi-lotto prima del confronto
-3. **Usa supplier_code** come priorità 1 per matching
-4. **Genera solo azioni:** `update` (modifica) e `create` (aggiungi)
-5. **Ignora prodotti** in Bozza ma non in PDF (non toccarli!)
+1. ✅ **AGGIORNA** prezzo/quantità se diversi dal PDF
+2. ✅ **AGGIUNGI** prodotti nel PDF ma non in bozza (richiede approvazione)
+3. ❌ **NON ELIMINARE MAI** prodotti dalla bozza
+4. ✅ **AGGREGA** multi-lotto: stesso product_code = somma quantità
+5. ✅ **IGNORA** prodotti in bozza ma non in PDF
 
 ---
 
