@@ -16,13 +16,6 @@ export function QuickActions() {
       iconColor: 'text-blue-600 dark:text-blue-400'
     },
     {
-      title: 'Assistente AI',
-      description: 'Chatta con noi',
-      icon: MessageCircle,
-      href: '/portale-clienti/assistente',
-      color: 'from-purple-500 to-purple-600',
-      bgColor: 'bg-purple-50 dark:bg-purple-900/20',
-      iconColor: 'text-purple-600 dark:text-purple-400'
     },
     {
       title: 'Tracking Consegne',
@@ -43,13 +36,6 @@ export function QuickActions() {
       iconColor: 'text-orange-600 dark:text-orange-400'
     },
     {
-      title: 'Fatture',
-      description: 'Gestisci pagamenti',
-      icon: FileText,
-      href: '/portale-clienti/fatture',
-      color: 'from-pink-500 to-pink-600',
-      bgColor: 'bg-pink-50 dark:bg-pink-900/20',
-      iconColor: 'text-pink-600 dark:text-pink-400'
     },
     {
       title: 'Profilo',

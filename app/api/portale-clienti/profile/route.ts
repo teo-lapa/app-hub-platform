@@ -66,8 +66,6 @@ export async function GET(request: NextRequest) {
           'vat',
           'website',
           'comment',
-          'credit_limit',
-          'credit',
           'user_id', // Agente di vendita
           'payment_term_id', // Termini di pagamento
           'property_product_pricelist', // Listino prezzi
@@ -108,9 +106,9 @@ export async function GET(request: NextRequest) {
       vat: partner.vat || '',
 
       // Info commerciali
-      creditLimit: partner.credit_limit || 0,
-      currentCredit: partner.credit || 0,
-      availableCredit: (partner.credit_limit || 0) - (partner.credit || 0),
+      creditLimit: 0, // Not accessible to portal users
+      currentCredit: 0, // Not accessible to portal users
+      availableCredit: 0, // Not accessible to portal users
 
       // Agente e termini
       salesPerson: partner.user_id?.[1] || null,

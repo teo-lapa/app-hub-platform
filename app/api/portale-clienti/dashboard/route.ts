@@ -118,7 +118,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
       [],
       {
         domain: [['email', '=', decoded.email]],
-        fields: ['id', 'name', 'credit_limit', 'credit'],
+        fields: ['id', 'name'],
         limit: 1
       }
     );
@@ -136,8 +136,8 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
     console.log('✅ [DASHBOARD-API] Partner found:', {
       id: partnerId,
       name: partner.name,
-      credit_limit: partner.credit_limit,
-      credit: partner.credit
+      credit_limit: 0, // Not accessible to portal users
+      credit: 0 // Not accessible to portal users
     });
 
     // 4. Fetch dashboard data in parallel
@@ -256,8 +256,8 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
       orders_count: ordersThisMonth.length,
       revenue_ytd: revenueYTD,
       avg_order: avgOrder,
-      credit_limit: partner.credit_limit || 0,
-      credit_available: Math.max(0, (partner.credit_limit || 0) - (partner.credit || 0)),
+      credit_limit: 0, // Not accessible to portal users
+      credit_available: 0, // Not accessible to portal users
       overdue_invoices: overdueInvoices.length,
       overdue_amount: overdueAmount
     };
