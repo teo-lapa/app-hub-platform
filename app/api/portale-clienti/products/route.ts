@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import { cookies } from 'next/headers';
+import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
 
 /**
  * GET /api/portale-clienti/products
  *
- * Fetches products from Odoo with search, filters, and pagination
+ * Fetches products from Odoo with search, filters, and pagination using admin session
  *
  * Query params:
  * - q: search query (searches name and default_code)
@@ -34,11 +33,6 @@ export async function GET(request: NextRequest) {
       page,
       limit
     });
-
-    // Get Odoo session from cookies
-    const cookieStore = await cookies();
-    const userCookies = cookieStore.toString();
-    const { cookies: odooCookies } = await getOdooSession(userCookies);
 
     // Build domain for Odoo search
     const domain: any[] = [
@@ -71,9 +65,8 @@ export async function GET(request: NextRequest) {
       order = 'list_price DESC';
     }
 
-    // Fetch products from Odoo
-    const products = await callOdoo(
-      odooCookies,
+    // Fetch products from Odoo using admin session
+    const products = await callOdooAsAdmin(
       'product.product',
       'search_read',
       [],
@@ -98,104 +91,22 @@ export async function GET(request: NextRequest) {
     );
 
     // Get total count for pagination
-    const totalCount = await callOdoo(
-      odooCookies,
+    const totalCount = await callOdooAsAdmin(
       'product.product',
       'search_count',
       [],
       { domain }
     );
 
-    // Get customer-specific pricelist if available
-    // First, get the customer's partner ID from session
-    try {
-      const sessionInfo = await callOdoo(
-        odooCookies,
-        'res.users',
-        'read',
-        [[2]], // User ID
-        { fields: ['partner_id'] }
-      );
-
-      if (sessionInfo && sessionInfo[0]?.partner_id) {
-        const partnerId = sessionInfo[0].partner_id[0];
-
-        // Get partner's pricelist
-        const partnerData = await callOdoo(
-          odooCookies,
-          'res.partner',
-          'read',
-          [[partnerId]],
-          { fields: ['property_product_pricelist'] }
-        );
-
-        if (partnerData && partnerData[0]?.property_product_pricelist) {
-          const pricelistId = partnerData[0].property_product_pricelist[0];
-
-          // Get custom prices for each product
-          const productIds = products.map((p: any) => p.id);
-
-          const customPrices = await callOdoo(
-            odooCookies,
-            'product.pricelist',
-            'get_products_price',
-            [[pricelistId], productIds],
-            {}
-          );
-
-          // Merge custom prices with products
-          products.forEach((product: any) => {
-            if (customPrices && customPrices[product.id]) {
-              product.customer_price = customPrices[product.id];
-              product.has_custom_price = product.customer_price !== product.list_price;
-            } else {
-              product.customer_price = product.list_price;
-              product.has_custom_price = false;
-            }
-          });
-        }
-      }
-    } catch (priceError) {
-      console.warn('⚠️ [PRODUCTS-API] Could not fetch custom prices:', priceError);
-      // Continue without custom prices
-      products.forEach((product: any) => {
-        product.customer_price = product.list_price;
-        product.has_custom_price = false;
-      });
-    }
-
-    // Format products for frontend
-    const formattedProducts = products.map((product: any) => ({
-      id: product.id,
-      name: product.name,
-      code: product.default_code || null,
-      price: product.customer_price || product.list_price,
-      originalPrice: product.list_price,
-      hasCustomPrice: product.has_custom_price || false,
-      quantity: product.qty_available || 0,
-      available: product.qty_available > 0,
-      image: product.image_128
-        ? `data:image/png;base64,${product.image_128}`
-        : '/placeholder-product.png',
-      category: product.categ_id ? {
-        id: product.categ_id[0],
-        name: product.categ_id[1],
-      } : null,
-      unit: product.uom_id ? product.uom_id[1] : 'Pz',
-      description: product.description_sale || null,
-      barcode: product.barcode || null,
-    }));
-
-    console.log(`✅ [PRODUCTS-API] Fetched ${formattedProducts.length} products`);
+    console.log(`✅ [PRODUCTS-API] Fetched ${products.length} products (total: ${totalCount})`);
 
     return NextResponse.json({
-      products: formattedProducts,
+      products,
       pagination: {
         page,
         limit,
         total: totalCount,
         totalPages: Math.ceil(totalCount / limit),
-        hasMore: offset + products.length < totalCount,
       },
     });
 

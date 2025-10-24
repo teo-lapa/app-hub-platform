@@ -1,24 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
 
 /**
  * GET /api/portale-clienti/categories
  *
- * Fetches product categories from Odoo
+ * Fetches product categories from Odoo using admin session
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log('📂 [CATEGORIES-API] Fetching categories from Odoo');
 
-    // Get Odoo session from cookies
-    const cookieStore = await cookies();
-    const userCookies = cookieStore.toString();
-    const { cookies: odooCookies } = await getOdooSession(userCookies);
-
-    // Fetch categories with product count
-    const categories = await callOdoo(
-      odooCookies,
+    // Fetch categories with product count using admin session
+    const categories = await callOdooAsAdmin(
       'product.category',
       'search_read',
       [],
