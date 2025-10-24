@@ -284,7 +284,52 @@ ${JSON.stringify(enrichedLines.map((line: any) => ({
 
 🎯 METODO DI CONFRONTO:
 
-STEP 1 - MATCHING INTELLIGENTE:
+⚠️ **SEI UN CONTABILE, NON UN MAGAZZINIERE!**
+
+🔄 STEP 0 - AGGREGAZIONE CONTABILE (CRITICO!):
+**PRIMA** di fare qualsiasi matching, AGGREGA le righe PDF con STESSO product_code:
+
+**REGOLA FONDAMENTALE:**
+Se nel PDF ci sono 2+ righe con STESSO product_code ma lotti diversi:
+→ **SOMMA LE QUANTITÀ** e **SOMMA I SUBTOTAL**
+→ Considera come **UNA SOLA RIGA** per il confronto contabile
+→ **IGNORA completamente i lotti** (non siamo in magazzino!)
+
+**ESEMPIO REALE:**
+PDF fattura fornitore:
+```
+009014 CARCIOFI LOTTO LR248 qty=30 subtotal=276.00
+009014 CARCIOFI LOTTO LR248 qty=6  subtotal=55.20
+```
+AGGREGAZIONE CONTABILE:
+```
+009014 CARCIOFI qty=36 (30+6) subtotal=331.20 (276+55.20)
+```
+Bozza Odoo:
+```
+009014 CARCIOFI qty=36 subtotal=331.20
+```
+**RISULTATO:** MATCH PERFETTO! ✅ Nessuna correzione necessaria!
+
+**ALTRO ESEMPIO:**
+PDF:
+```
+001507 POMODORI LOTTO A qty=24 subtotal=165.60
+001507 POMODORI LOTTO B qty=18 subtotal=124.20
+```
+DOPO AGGREGAZIONE:
+```
+001507 POMODORI qty=42 (24+18) subtotal=289.80 (165.60+124.20)
+```
+Se Bozza ha: `001507 POMODORI qty=42 subtotal=289.80` → MATCH! ✅
+
+**IMPORTANTE:**
+- Aggregazione si fa SOLO su righe con STESSO product_code
+- Se product_code diverso → righe separate
+- Se product_code null → usa description per aggregare
+- Alla fine del processo, confronta TOTALI AGGREGATI vs BOZZA
+
+STEP 1 - MATCHING INTELLIGENTE (su righe AGGREGATE):
 Per ogni riga PDF, trova la riga Bozza corrispondente:
 a) PRIORITÀ 1: Matcha product_code PDF con supplier_code Bozza (es: "009014" → "009014")
 b) PRIORITÀ 2: Se supplier_code non matcha, usa SOMIGLIANZA SEMANTICA:
