@@ -1,0 +1,45 @@
+
+> app-hub-platform@1.0.0 build
+> next build
+
+   ▲ Next.js 14.0.3
+   - Environments: .env.production.local, .env.local, .env.production
+
+   Creating an optimized production build ...
+Failed to compile.
+
+./app/portale-clienti/carrello/page.tsx
+Module not found: Can't resolve '@/lib/store/cartStore'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./components/portale-clienti/CartBadge.tsx
+Module not found: Can't resolve '@/lib/store/cartStore'
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./components/portale-clienti/CustomerLayout.tsx
+./app/portale-clienti/layout.tsx
+
+./app/api/portale-clienti/checkout/route.ts
+Module not found: Can't resolve '@/lib/validation/checkout'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./app/api/portale-clienti/checkout/route.ts
+Module not found: Can't resolve '@/lib/services/order-service'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./app/api/portale-clienti/invoices/[id]/pdf/route.ts
+Error: Failed to read source code from C:\Users\lapa\Desktop\Claude Code\app-hub-platform\app\api\portale-clienti\invoices\[id]\pdf\route.ts
+
+Caused by:
+    stream did not contain valid UTF-8
+
+Import trace for requested module:
+./app/api/portale-clienti/invoices/[id]/pdf/route.ts
+
+
+> Build failed because of webpack errors
