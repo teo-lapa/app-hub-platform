@@ -1,729 +1,174 @@
 ---
 name: invoice-comparison
-version: 1.0.0
-description: Confronto intelligente fattura definitiva vs bozza contabile con aggregazione multi-lotto
+version: 2.0.0
+description: Confronto fattura PDF vs bozza Odoo - Logica semplice basata su SUBTOTAL
 category: document-processing
-tags: [invoice, comparison, accounting, reconciliation, multi-lot]
+tags: [invoice, comparison, accounting, simple]
 model: claude-3-5-sonnet-20241022
 author: Lapa Team
 created: 2025-10-24
+updated: 2025-10-25
 ---
 
-# 📊 Invoice Comparison Skill
+# 📊 Invoice Comparison Skill v2.0 - LOGICA SEMPLICE
 
-## 🎯 OBIETTIVO SEMPLICE
+## 🎯 FILOSOFIA
 
-**PDF fornitore = VERITÀ ASSOLUTA**
-**Bozza Odoo = DA CORREGGERE**
+**Ragiona come un UMANO che controlla una fattura manualmente:**
 
-Confronta e trova cosa modificare nella bozza per farla combaciare con il PDF.
+1. Guardo il TOTALE - torna? Bene, se no cerco il problema
+2. Per ogni riga PDF, cerco riga bozza con **SUBTOTAL identico**
+3. Se subtotal torna → riga OK, passo alla prossima
+4. Se subtotal NON torna → controllo prezzo e quantità
 
-## ⚠️ REGOLE SEMPLICI
-
-1. ✅ **AGGIORNA** prezzo/quantità se diversi dal PDF
-2. ✅ **AGGIUNGI** prodotti nel PDF ma non in bozza (richiede approvazione)
-3. ❌ **NON ELIMINARE MAI** prodotti dalla bozza
-4. ✅ **AGGREGA** multi-lotto: stesso product_code = somma quantità
-5. ✅ **IGNORA** prodotti in bozza ma non in PDF
+**FINE. Niente fuzzy matching complicati, niente Level 1/2/3.**
 
 ---
 
-## 🔄 STEP 0 - AGGREGAZIONE CONTABILE (CRITICO!)
+## 📋 ALGORITMO STEP-BY-STEP
 
-**PRIMA** di fare qualsiasi matching, **AGGREGA** le righe PDF con STESSO product_code:
+### STEP 0: Aggregazione Multi-Lotto (IMPORTANTE!)
 
-### Regola Fondamentale
-
-Se nel PDF ci sono 2+ righe con STESSO `product_code` ma lotti diversi:
-- ✅ **SOMMA LE QUANTITÀ**
-- ✅ **SOMMA I SUBTOTAL**
-- ✅ Considera come **UNA SOLA RIGA** per il confronto contabile
-- ✅ **IGNORA completamente i lotti** (non siamo in magazzino!)
-
-### Esempio Reale 1
-
-**PDF fattura fornitore:**
-```json
-[
-  {
-    "product_code": "009014",
-    "description": "CARCIOFI LOTTO LR248-040928",
-    "quantity": 30,
-    "unit_price": 9.20,
-    "subtotal": 276.00
-  },
-  {
-    "product_code": "009014",
-    "description": "CARCIOFI LOTTO LR248-040928",
-    "quantity": 6,
-    "unit_price": 9.20,
-    "subtotal": 55.20
-  }
-]
-```
-
-**AGGREGAZIONE CONTABILE:**
-```json
-{
-  "product_code": "009014",
-  "description": "CARCIOFI",
-  "quantity": 36,
-  "unit_price": 9.20,
-  "subtotal": 331.20
-}
-```
-
-**Bozza Odoo:**
-```json
-{
-  "supplier_code": "009014",
-  "quantity": 36,
-  "unit_price": 9.20,
-  "subtotal": 331.20
-}
-```
-
-**RISULTATO:** MATCH PERFETTO! ✅ Nessuna correzione necessaria!
-
----
-
-### Esempio Reale 2
-
-**PDF:**
-```json
-[
-  {
-    "product_code": "001507",
-    "description": "POMODORI CILIEG LOTTO LR214",
-    "quantity": 24,
-    "subtotal": 165.60
-  },
-  {
-    "product_code": "001507",
-    "description": "POMODORI CILIEG LOTTO LR214",
-    "quantity": 18,
-    "subtotal": 124.20
-  }
-]
-```
-
-**DOPO AGGREGAZIONE:**
-```json
-{
-  "product_code": "001507",
-  "description": "POMODORI CILIEG",
-  "quantity": 42,
-  "subtotal": 289.80
-}
-```
-
-**Se Bozza ha:** `001507 qty=42 subtotal=289.80` → **MATCH!** ✅
-
----
-
-### Algoritmo Aggregazione
-
-```
-1. Raggruppa righe PDF per product_code
-2. Per ogni gruppo:
-   - quantity_totale = SUM(quantity)
-   - subtotal_totale = SUM(subtotal)
-   - unit_price = subtotal_totale / quantity_totale
-   - description = prima riga del gruppo (senza riferimenti lotto)
-3. Output: lista righe aggregate
-```
-
----
-
-## 🎯 STEP 1 - MATCHING INTELLIGENTE
-
-**Lavora SOLO su righe AGGREGATE dal Step 0!**
-
-Per ogni riga PDF aggregata, trova la riga Bozza corrispondente:
-
-### Priorità 1: Match per Codice Fornitore (95% confidence)
-
-```
-product_code PDF = supplier_code Bozza
-```
+Se nel PDF ci sono 2+ righe con **STESSO product_code**:
+- Somma le quantità
+- Somma i subtotal
+- Tratta come **UNA SOLA RIGA** per il confronto
 
 **Esempio:**
 ```
-PDF:   product_code = "009014"
-Bozza: supplier_code = "009014"
-→ MATCH! (confidence: 0.95)
+PDF ha:
+  - 009014 CARCIOFI LOTTO A: qty=30, subtotal=276.00
+  - 009014 CARCIOFI LOTTO B: qty=6, subtotal=55.20
+
+Aggrega in:
+  - 009014 CARCIOFI: qty=36, subtotal=331.20
 ```
 
 ---
 
-### Priorità 2: Match Fuzzy per Nome (70-90% confidence)
+### STEP 1: Match su SUBTOTAL (Priorità Massima)
 
-Se codice non matcha, confronta nomi con fuzzy matching.
+**Per ogni riga PDF aggregata:**
 
-**Normalizzazione:**
-1. Lowercase
-2. Rimuovi "SRL", "SPA", "& C."
-3. Rimuovi punteggiatura (., -, ')
-4. Rimuovi numeri lotto: "LOTTO", "SCAD", "LR214", "LR248", date
-5. Rimuovi parole confezionamento: "CONF", "CA", "CRT", "MARC", "LATTA"
-6. Rimuovi grammature: "KG", "GR", "250", "1000", "500", "3KG", "5KG"
-7. Rimuovi articoli: "IL", "LA", "LO", "I", "GLI", "LE", "DI", "DA", "IN", "CON", "PER"
-8. Rimuovi parole generiche: "PASTA", "RIPIENA", "ALL", "UOVO", "FRESCO", "FRESCA"
+1. Cerca nella bozza righe con **subtotal identico** (±0.01€ tolleranza)
+2. Se trovi **1 SOLA riga** con quel subtotal → **MATCH!** ✅
+3. Se trovi **0 righe** → prodotto mancante
+4. Se trovi **2+ righe** → passa a Step 2 (match su descrizione)
 
-**Strategia Matching:**
-- Estrai **PRIMA PAROLA DISTINTIVA** (es: "FUSILLONI", "TRECCE", "BRASELLO")
-- Ignora completamente parole generiche: "PASTA", "RIPIENA", "ALL", "UOVO", "CONF"
-- Se la prima parola distintiva compare in entrambi → MATCH!
-- Esempi parole distintive: FUSILLONI, PAPPARDELLE, TORTELLONE, BRASELLO, TRECCE
+**Perché funziona:**
+- Il subtotal è **quasi sempre univoco** (es: €41.02, €35.94, €49.22)
+- Se quantità e prezzo sono giusti, il subtotal torna
+- Non serve controllare descrizioni complicate
 
-**Algoritmo Multi-Level:**
-1. Normalizza entrambe le stringhe (lowercase, rimuovi punteggiatura)
-2. Rimuovi parole generiche comuni
-3. **LEVEL 1**: Cerca prima parola distintiva (>3 caratteri, non numero)
-   - Se trovata in entrambi → MATCH (confidence: 0.90)
-4. **LEVEL 2**: Se Level 1 fallisce, cerca combinazione 2-3 parole consecutive significative
-   - Es: "RICOTTA E LIMONE", "PORCINI E PATATE", "RICOTTA E SPINACI"
-   - Se trovata in entrambi → MATCH (confidence: 0.85)
-5. **LEVEL 3**: Se Level 2 fallisce, cerca almeno 2 parole non consecutive in comune
-   - Es: "RICOTTA" + "LIMONE" presenti in entrambi
-   - Se trovate → MATCH (confidence: 0.75)
+---
 
-**Esempi:**
+### STEP 2: Match su Descrizione (solo se Step 1 fallisce)
+
+**Solo se** Step 1 trova 0 righe o 2+ righe con stesso subtotal:
+
+1. Cerca **parole chiave distinctive** nella descrizione PDF
+2. Cerca quelle parole nelle descrizioni bozza
+3. Se trovi match → confronta subtotal
+
+**Parole chiave da cercare (in ordine):**
+1. Codici: numeri/lettere tipo "009014", "1TRECCE-SV"
+2. Nomi specifici: FUSILLONI, BRASELLO, PAPPARDELLE, TAGLIOLINI
+3. Ripieno (per paste): RICOTTA LIMONE, PORCINI PATATE, SALSICCIA TALEGGIO
+
+**Parole da IGNORARE:**
+- Generiche: PASTA, RIPIENA, UOVO, ALL, FRESCO, CONF
+- Forme: MEZZELUNE, TORTELLONE, RAVIOLI, QUADRATO
+- Confezione: KG, GR, CA, CRT, MARC, LATTA
+
+---
+
+### STEP 3: Verifica Matematica
+
+Quando trovi un match (Step 1 o Step 2):
+
 ```
-"FUSILLONI UOVO GR. 1000" ≈ "FUSILLONI 1KG CA 5KG CRT MARC"
-→ MATCH Level 1 (confidence: 0.90) - parola distintiva "FUSILLONI" presente!
+Se subtotal_pdf = subtotal_bozza (±0.01€):
+  → Riga OK ✅ Nessuna correzione
 
-"PAPPARDELLE ALL'UOVO GR.1000" ≈ "PAPPARDELLE ALL'UOVO 1KG CONF 5KG CRT MARC"
-→ MATCH Level 1 (confidence: 0.95) - "PAPPARDELLE" è distintivo e raro
+Se subtotal_pdf ≠ subtotal_bozza:
+  → Calcola: differenza = subtotal_pdf - subtotal_bozza
 
-"TRECCE PIACENTINE GR.250" ≈ "TRECCE PIACENTINE RICOTTA E SPINACI CONF 250 CA 3KG"
-→ MATCH Level 1 (confidence: 0.95) - "TRECCE" + "PIACENTINE" combinazione unica!
+  Se unit_price_pdf ≠ unit_price_bozza:
+    → Correzione: UPDATE prezzo
 
-"MEZZELUNE RICOTTA E LIMONE GR. 1000" ≈ "PASTA RIPIENA RICOTTA E LIMONE CONF CA 5KG"
-→ MATCH Level 2 (confidence: 0.85) - "RICOTTA E LIMONE" combinazione presente!
+  Se quantity_pdf ≠ quantity_bozza:
+    → Correzione: UPDATE quantità
 
-"TORTELLONE PORCINI E PATATE" ≈ "PASTA RIPIENA PORCINI E PATATE CONF CA 5KG"
-→ MATCH Level 2 (confidence: 0.85) - "PORCINI E PATATE" presente in entrambi!
-
-"CARCIOFI LOTTO LR248" ≈ "Carciofi grigliati 4/4"
-→ MATCH Level 1 (confidence: 0.85) - "CARCIOFI" è distintivo
-
-"BRASELLO QUADRATO GR. 250" ≈ "PASTA RIPIENA AL BRASELLO CONF CA 5KG CRT MARC"
-→ MATCH Level 1 (confidence: 0.90) - "BRASELLO" è parola rara!
-
-"RAVIOLI ZUCCA E AMARETTI" ≈ "PASTA RIPIENA ZUCCA CONF CA 3KG"
-→ MATCH Level 3 (confidence: 0.75) - "ZUCCA" in comune (+ context simile)
-
-"TORTELLONE MANZO" ≈ "PASTA RIPIENA AL MANZO CONF CRT CA 5KG MARC"
-→ NO MATCH Level 1 - "TORTELLONE" non compare
-→ NO MATCH Level 2 - solo "MANZO" troppo generico
-→ Controlla quantità/prezzo: se identici → probabile MATCH Level 3
+  Se entrambi diversi:
+    → Correzione: UPDATE prezzo E quantità
 ```
 
 ---
 
-## 🔢 STEP 2 - VERIFICA MATEMATICA
+## 🔧 CORREZIONI DA GENERARE
 
-Per ogni match trovato, verifica:
-
-```
-SUBTOTAL_PDF = quantity_pdf × unit_price_pdf
-SUBTOTAL_BOZZA = quantity_bozza × unit_price_bozza
-
-Se SUBTOTAL_PDF ≠ SUBTOTAL_BOZZA:
-  → trova cosa correggere (prezzo o quantità)
-```
+### A) Riga OK (subtotal identico)
+**Non generare nessuna correzione!** Passa alla riga successiva.
 
 ---
 
-## 🛠️ STEP 3 - GENERA CORREZIONI
-
-### A) Prezzo diverso + Quantità OK
-
+### B) Prezzo diverso
 ```json
 {
   "action": "update",
   "line_id": 123,
-  "changes": {"price_unit": 11.50},
-  "reason": "Prezzo da €10.00 a €11.50",
+  "changes": {"price_unit": 12.62},
+  "reason": "Prezzo errato: bozza €13.12, reale €12.62 (diff: -€0.50)",
   "requires_user_approval": false
 }
 ```
 
 ---
 
-### B) Quantità diversa + Prezzo OK
-
+### C) Quantità diversa
 ```json
 {
   "action": "update",
-  "line_id": 123,
-  "changes": {"quantity": 42},
-  "reason": "Quantità da 40 a 42 (aggregazione multi-lotto)",
+  "line_id": 124,
+  "changes": {"quantity": 3.25},
+  "reason": "Quantità errata: bozza 3.00, reale 3.25 (diff: +€3.18)",
   "requires_user_approval": false
 }
 ```
 
 ---
 
-### C) Prezzo E Quantità diversi
-
-```json
-{
-  "action": "update",
-  "line_id": 123,
-  "changes": {
-    "price_unit": 11.50,
-    "quantity": 42
-  },
-  "reason": "Aggiornamento prezzo e quantità",
-  "requires_user_approval": false
-}
-```
-
----
-
-### D) Prodotto mancante in Bozza
-
-**ATTENZIONE:** Verifica PRIMA aggregazione!
-
-Se dopo aggregazione il prodotto ANCORA non si trova:
-
+### D) Prodotto mancante (non trovato in bozza)
 ```json
 {
   "action": "create",
   "parsed_line": {
-    "description": "NUOVO PRODOTTO XYZ",
+    "description": "PRODOTTO XYZ",
     "product_code": "ABC123",
-    "quantity": 10,
-    "unit_price": 15.00,
-    "subtotal": 150.00
+    "quantity": 5,
+    "unit_price": 10.00,
+    "subtotal": 50.00
   },
-  "reason": "Prodotto presente in PDF ma non in bozza",
+  "reason": "Prodotto presente in PDF ma non trovato in bozza",
   "requires_user_approval": true
 }
 ```
 
 ---
 
-### E) Prodotto extra in Bozza (non in PDF)
+### E) Prodotto extra in bozza (non in PDF)
 
-**IMPORTANTE:** NON eliminare MAI automaticamente prodotti dalla bozza!
+**NON GENERARE NESSUNA CORREZIONE!**
 
-Se un prodotto è in Bozza ma non nel PDF:
-1. **Ignora completamente** (non generare correzione)
-2. Probabilmente è un prodotto che il magazziniere ha aggiunto manualmente
-3. Solo l'utente può decidere se eliminarlo
-
-**NON generare action "delete"!**
+Se un prodotto è in bozza ma non in PDF:
+- Probabilmente aggiunto manualmente dal magazziniere
+- Solo l'utente può decidere se eliminarlo
+- **IGNORA completamente** - non segnalare
 
 ---
 
-## 📋 Formato Output
+## 📊 FORMATO OUTPUT
 
-```json
-{
-  "is_valid": false,
-  "total_difference": 97.20,
-  "draft_total": 3252.48,
-  "real_total": 3349.68,
-  "differences": [
-    {
-      "type": "quantity_mismatch",
-      "severity": "warning",
-      "draft_line_id": 123,
-      "description": "Quantità Carciofi: bozza 24, reale 36 (multi-lotto aggregato)",
-      "expected_value": 36,
-      "actual_value": 24,
-      "amount_difference": 110.40
-    }
-  ],
-  "corrections_needed": [
-    {
-      "action": "update",
-      "line_id": 123,
-      "changes": {"quantity": 36},
-      "reason": "Aggregazione 2 lotti: 30 + 6 = 36",
-      "requires_user_approval": false
-    }
-  ],
-  "can_auto_fix": true
-}
-```
-
----
-
-## ❌ Errori Comuni da Evitare
-
-### Errore #1: Non aggregare multi-lotto
-
-```
-❌ SBAGLIATO:
-PDF ha 2 righe 009014 (30pz + 6pz)
-Bozza ha 1 riga 009014 (36pz)
-→ Dice "mancante secondo prodotto"
-
-✅ CORRETTO:
-PDF: aggrega 30 + 6 = 36pz
-Bozza: 36pz
-→ MATCH PERFETTO!
-```
-
----
-
-### Errore #2: Guardare descrizione lotto
-
-```
-❌ SBAGLIATO:
-"CARCIOFI LOTTO A" ≠ "CARCIOFI LOTTO B"
-→ Considera prodotti diversi
-
-✅ CORRETTO:
-Entrambi product_code = "009014"
-→ Stesso prodotto, aggrega!
-```
-
----
-
-### Errore #3: Eliminare prodotti dalla bozza
-
-```
-❌ SBAGLIATO:
-Prodotto in Bozza ma non in PDF → DELETE
-
-✅ CORRETTO:
-Prodotto in Bozza ma non in PDF → IGNORA
-(Solo l'utente decide se eliminare)
-```
-
----
-
-### Errore #4: Non usare supplier_code
-
-```
-❌ SBAGLIATO:
-Matcha solo su nome prodotto
-
-✅ CORRETTO:
-PRIORITÀ 1: product_code = supplier_code
-PRIORITÀ 2: fuzzy matching nome
-```
-
----
-
-## 🧪 Esempi Completi
-
-### Caso 0A: Match su parola distintiva singola (FUSILLONI)
-
-**Input PDF:**
-```json
-{
-  "lines": [
-    {
-      "product_code": "1FUSILLI",
-      "description": "FUSILLONI UOVO GR. 1000",
-      "quantity": 3,
-      "unit_price": 6.54,
-      "subtotal": 19.62
-    }
-  ]
-}
-```
-
-**Input Bozza:**
-```json
-{
-  "lines": [
-    {
-      "id": 126,
-      "supplier_code": null,
-      "product": "FUSILLONI 1KG CA 5KG CRT MARC",
-      "quantity": 3,
-      "unit_price": 6.54,
-      "subtotal": 19.62
-    }
-  ]
-}
-```
-
-**Analisi:**
-- Codice PDF ("1FUSILLI") non matcha con supplier_code bozza (null)
-- Fallback fuzzy matching:
-  - Normalizza PDF: "fusilloni uovo gr 1000" → rimuovi generiche → "**fusilloni**"
-  - Normalizza Bozza: "fusilloni 1kg ca 5kg crt marc" → "**fusilloni**"
-  - Prima parola distintiva "FUSILLONI" presente in entrambi!
-- Quantità, prezzo, subtotal identici
-- **MATCH! (confidence: 0.90)**
-
-**Output:**
-```json
-{
-  "is_valid": true,
-  "total_difference": 0,
-  "corrections_needed": [],
-  "can_auto_fix": true
-}
-```
-
----
-
-### Caso 0B: Match su nome parziale (TRECCE PIACENTINE)
-
-**Input PDF:**
-```json
-{
-  "lines": [
-    {
-      "product_code": null,
-      "description": "TRECCE PIACENTINE GR.250",
-      "quantity": 3,
-      "unit_price": 11.98,
-      "subtotal": 35.94
-    }
-  ]
-}
-```
-
-**Input Bozza:**
-```json
-{
-  "lines": [
-    {
-      "id": 125,
-      "supplier_code": null,
-      "product": "TRECCE PIACENTINE RICOTTA E SPINACI CONF 250 CA 3KG CRT MARC",
-      "quantity": 3,
-      "unit_price": 11.98,
-      "subtotal": 35.94
-    }
-  ]
-}
-```
-
-**Analisi:**
-- Codice non disponibile in entrambi
-- Fuzzy matching: "TRECCE PIACENTINE" compare in entrambi
-- Quantità, prezzo, subtotal identici
-- **MATCH! (confidence: 0.95)** - combinazione di 2 parole rare è molto affidabile
-
-**Output:**
-```json
-{
-  "is_valid": true,
-  "total_difference": 0,
-  "corrections_needed": [],
-  "can_auto_fix": true
-}
-```
-
----
-
-### Caso 0C: Match Level 2 - Combinazione parole (MEZZELUNE)
-
-**Input PDF:**
-```json
-{
-  "lines": [
-    {
-      "product_code": "1MEZZELU-SV",
-      "description": "MEZZELUNE RICOTTA E LIMONE GR. 1000",
-      "quantity": 3.25,
-      "unit_price": 12.62,
-      "subtotal": 41.02
-    }
-  ]
-}
-```
-
-**Input Bozza:**
-```json
-{
-  "lines": [
-    {
-      "id": 127,
-      "supplier_code": null,
-      "product": "PASTA RIPIENA RICOTTA E LIMONE CONF CA 5KG CRT MARC",
-      "quantity": 3.25,
-      "unit_price": 12.62,
-      "subtotal": 41.02
-    }
-  ]
-}
-```
-
-**Analisi:**
-- **Level 1 FAIL**: "MEZZELUNE" non compare in bozza
-- **Level 2 SUCCESS**:
-  - PDF: normalizza → "mezzelune **ricotta e limone** gr 1000"
-  - Bozza: normalizza → "pasta ripiena **ricotta e limone** conf ca 5kg"
-  - Combinazione "RICOTTA E LIMONE" (3 parole consecutive) presente in entrambi!
-  - Quantità, prezzo, subtotal identici
-- **MATCH! (confidence: 0.85)**
-
-**Ragionamento:**
-- "MEZZELUNE" è solo la forma della pasta (tipo ravioli, tortelloni, ecc.)
-- Il ripieno "RICOTTA E LIMONE" è la caratteristica distintiva del prodotto
-- Se ripieno + quantità + prezzo coincidono → stesso prodotto!
-
-**Output:**
-```json
-{
-  "is_valid": true,
-  "total_difference": 0,
-  "corrections_needed": [],
-  "can_auto_fix": true
-}
-```
-
----
-
-### Caso 1: Multi-lotto perfetto
-
-**Input PDF:**
-```json
-{
-  "lines": [
-    {"product_code": "009014", "quantity": 30, "subtotal": 276.00},
-    {"product_code": "009014", "quantity": 6, "subtotal": 55.20}
-  ]
-}
-```
-
-**Input Bozza:**
-```json
-{
-  "lines": [
-    {"id": 123, "supplier_code": "009014", "quantity": 36, "subtotal": 331.20}
-  ]
-}
-```
-
-**Output:**
-```json
-{
-  "is_valid": true,
-  "total_difference": 0,
-  "corrections_needed": [],
-  "can_auto_fix": true
-}
-```
-
----
-
-### Caso 2: Multi-lotto con differenza prezzo
-
-**Input PDF:**
-```json
-{
-  "lines": [
-    {"product_code": "001507", "quantity": 24, "unit_price": 7.00, "subtotal": 168.00},
-    {"product_code": "001507", "quantity": 18, "unit_price": 7.00, "subtotal": 126.00}
-  ]
-}
-```
-
-**Input Bozza:**
-```json
-{
-  "lines": [
-    {"id": 124, "supplier_code": "001507", "quantity": 42, "unit_price": 6.50, "subtotal": 273.00}
-  ]
-}
-```
-
-**Output:**
-```json
-{
-  "is_valid": false,
-  "total_difference": 21.00,
-  "corrections_needed": [
-    {
-      "action": "update",
-      "line_id": 124,
-      "changes": {"price_unit": 7.00},
-      "reason": "Prezzo da €6.50 a €7.00 (aggregazione 2 lotti)",
-      "requires_user_approval": false
-    }
-  ]
-}
-```
-
----
-
-## ⚠️ REGOLA CRITICA: NON SEGNALARE PRODOTTI MANCANTI TROPPO FACILMENTE
-
-**IMPORTANTE:** Prima di creare una correzione `action: "create"` (prodotto mancante):
-
-1. **VERIFICA 3 VOLTE** il fuzzy matching
-2. **CERCA LA PAROLA DISTINTIVA** del prodotto PDF in TUTTE le righe bozza
-3. **IGNORA parole generiche** come PASTA, UOVO, RIPIENA, ALL, FRESCO
-4. **SE TROVI ANCHE SOLO 1 PAROLA DISTINTIVA IN COMUNE** → è probabilmente lo stesso prodotto!
-
-**Parole/Combinazioni distintive (esempi):**
-
-**Level 1 - Singole parole rare:**
-- FUSILLONI, PAPPARDELLE, TAGLIOLINI, PACCHERI (tipi pasta specifici)
-- BRASELLO (molto raro!)
-- TRECCE + PIACENTINE (combinazione unica)
-
-**Level 2 - Combinazioni ripieno (per paste ripiene):**
-- RICOTTA E LIMONE (distintivo!)
-- PORCINI E PATATE (distintivo!)
-- RICOTTA E SPINACI (comune ma utile)
-- SALSICCIA E TALEGGIO (raro!)
-- ROBIOLA MELANZANE E PINOLI (molto specifico!)
-
-**IMPORTANTE per paste ripiene:**
-- Ignora la FORMA (mezzelune, tortellone, ravioli, quadrato)
-- Privilegia il RIPIENO (ricotta limone, porcini patate, ecc.)
-- Il ripieno è più distintivo della forma!
-
-**Parole NON distintive (ignora completamente):**
-- PASTA, UOVO, FRESCO, ALL, RIPIENA, CONF, AL
-- Forme pasta: MEZZELUNE, TORTELLONE, RAVIOLI, QUADRATO (da sole non bastano!)
-- Confezionamento: KG, GR, CONF, CA, CRT, MARC, LATTA
-- Numeri: 250, 1000, 3KG, 5KG
-
-**Esempi decisionali:**
-
-```
-Esempio 1 - Level 1:
-PDF: "FUSILLONI UOVO GR. 1000"
-Bozza: "FUSILLONI 1KG CA 5KG CRT MARC"
-
-Analisi:
-- "FUSILLONI" è parola distintiva (rara, specifica)
-- "FUSILLONI" presente in entrambi
-- "UOVO" è generica → IGNORA
-→ MATCH Level 1! NON creare "prodotto mancante"
-```
-
-```
-Esempio 2 - Level 2:
-PDF: "MEZZELUNE RICOTTA E LIMONE GR. 1000"
-Bozza: "PASTA RIPIENA RICOTTA E LIMONE CONF CA 5KG CRT MARC"
-
-Analisi Level 1:
-- "MEZZELUNE" non compare in bozza → FAIL
-
-Analisi Level 2:
-- Cerca combinazioni significative
-- "RICOTTA E LIMONE" presente in entrambi! ✅
-- Quantità/prezzo identici
-→ MATCH Level 2! NON creare "prodotto mancante"
-
-Ragionamento: MEZZELUNE è solo la forma, RICOTTA E LIMONE è il ripieno distintivo
-```
-
-Se dopo questo processo non trovi NESSUNA parola distintiva in comune → allora sì, crea `action: "create"`.
-
----
-
-## ⚠️ FORMATO RISPOSTA
-
-**CRITICO:** Rispondi SOLO con JSON valido. NESSUN testo aggiuntivo prima o dopo.
-
-Schema JSON obbligatorio:
 ```json
 {
   "is_valid": boolean,
@@ -732,9 +177,9 @@ Schema JSON obbligatorio:
   "real_total": number,
   "differences": [
     {
-      "type": "price_mismatch" | "quantity_mismatch" | "missing_product" | "extra_product",
+      "type": "price_mismatch" | "quantity_mismatch" | "missing_product",
       "severity": "warning" | "error",
-      "draft_line_id": number,
+      "draft_line_id": number | null,
       "description": string,
       "expected_value": number,
       "actual_value": number,
@@ -744,11 +189,11 @@ Schema JSON obbligatorio:
   "corrections_needed": [
     {
       "action": "update" | "create",
-      "line_id": number,
-      "changes": object,
+      "line_id": number | null,
+      "changes": object | null,
+      "parsed_line": object | null,
       "reason": string,
-      "requires_user_approval": boolean,
-      "parsed_line": object
+      "requires_user_approval": boolean
     }
   ],
   "can_auto_fix": boolean
@@ -757,20 +202,188 @@ Schema JSON obbligatorio:
 
 ---
 
-## 🔧 Note Tecniche
+## ✅ ESEMPI PRATICI
 
-- **Model:** claude-3-5-sonnet-20241022
-- **Max tokens:** 8000
-- **Temperature:** 0 (deterministico per contabilità)
-- **Timeout:** 60s
+### Esempio 1: Match perfetto su subtotal
+
+**PDF:**
+```json
+{
+  "description": "FUSILLONI UOVO GR. 1000",
+  "quantity": 3,
+  "unit_price": 6.54,
+  "subtotal": 19.62
+}
+```
+
+**Bozza:**
+```json
+{
+  "id": 100,
+  "product": "FUSILLONI 1KG CA 5KG CRT MARC",
+  "quantity": 3,
+  "unit_price": 6.54,
+  "subtotal": 19.62
+}
+```
+
+**Analisi:**
+1. Cerco righe bozza con subtotal = 19.62€
+2. Trovata 1 riga con id=100
+3. Subtotal identico → **MATCH!**
+4. Nessuna correzione necessaria
+
+**Output:** Nessuna correzione per questa riga ✅
 
 ---
 
-## 📝 Changelog
+### Esempio 2: Prezzo errato
 
-### v1.0.0 (2025-10-24)
-- ✅ Prima versione
-- ✅ Aggregazione multi-lotto contabile
-- ✅ Match su supplier_code
-- ✅ Fuzzy matching fallback
-- ✅ Gestione differenze prezzo/quantità
+**PDF:**
+```json
+{
+  "description": "TORTELLONE MANZO GR. 1000",
+  "quantity": 2,
+  "unit_price": 12.62,
+  "subtotal": 25.24
+}
+```
+
+**Bozza:**
+```json
+{
+  "id": 101,
+  "product": "PASTA RIPIENA AL MANZO CONF CRT CA 5KG MARC",
+  "quantity": 2,
+  "unit_price": 13.12,
+  "subtotal": 26.24
+}
+```
+
+**Analisi:**
+1. Cerco subtotal = 25.24€ → non trovato
+2. Cerco subtotal simile: 26.24€ → trovato id=101
+3. Differenza: €1.00 (€26.24 - €25.24)
+4. Quantità OK (2=2), prezzo diverso (€12.62 vs €13.12)
+5. Causa: prezzo errato
+
+**Output:**
+```json
+{
+  "action": "update",
+  "line_id": 101,
+  "changes": {"price_unit": 12.62},
+  "reason": "Prezzo TORTELLONE MANZO: bozza €13.12, reale €12.62 (impatto: -€1.00)",
+  "requires_user_approval": false
+}
+```
+
+---
+
+### Esempio 3: Prodotto mancante
+
+**PDF:**
+```json
+{
+  "description": "PACCHERI GR.500",
+  "quantity": 1,
+  "unit_price": 6.54,
+  "subtotal": 6.54
+}
+```
+
+**Bozza:** (nessuna riga con subtotal ≈ 6.54€)
+
+**Analisi:**
+1. Cerco subtotal = 6.54€ → non trovato
+2. Cerco "PACCHERI" in descrizioni bozza → non trovato
+3. Prodotto mancante!
+
+**Output:**
+```json
+{
+  "action": "create",
+  "parsed_line": {
+    "description": "PACCHERI GR.500",
+    "quantity": 1,
+    "unit_price": 6.54,
+    "subtotal": 6.54
+  },
+  "reason": "Prodotto PACCHERI presente in PDF ma non trovato in bozza (€6.54)",
+  "requires_user_approval": true
+}
+```
+
+---
+
+## 🚨 REGOLE CRITICHE
+
+### 1. SUBTOTAL È LA PRIORITÀ #1
+Non perdere tempo con fuzzy matching complicati.
+Se subtotal torna → riga OK, punto.
+
+### 2. NON segnalare prodotti extra in bozza
+Se bozza ha righe non presenti in PDF → IGNORA.
+Non creare "differenze" o "warning" per questo.
+
+### 3. Tolleranza arrotondamento: ±€0.01
+Es: subtotal PDF = €19.62, bozza = €19.63 → **OK** (arrotondamento)
+
+### 4. Aggregazione multi-lotto SEMPRE
+Prima di tutto, somma righe PDF con stesso product_code.
+
+### 5. Descrizioni: cerca solo parole CHIAVE
+Non fare matching completo di stringhe.
+Cerca solo 1-2 parole distintive.
+
+---
+
+## ⚠️ OUTPUT FINALE
+
+**IMPORTANTE:** Rispondi SOLO con JSON valido. NO testo prima/dopo.
+
+Esempio output completo:
+
+```json
+{
+  "is_valid": false,
+  "total_difference": 1.95,
+  "draft_total": 764.84,
+  "real_total": 766.79,
+  "differences": [
+    {
+      "type": "price_mismatch",
+      "severity": "warning",
+      "draft_line_id": 101,
+      "description": "Prezzo TORTELLONE MANZO: bozza €13.12, reale €12.62",
+      "expected_value": 12.62,
+      "actual_value": 13.12,
+      "amount_difference": 1.00
+    }
+  ],
+  "corrections_needed": [
+    {
+      "action": "update",
+      "line_id": 101,
+      "changes": {"price_unit": 12.62},
+      "reason": "Prezzo errato: -€0.50 per unità (impatto totale: -€1.00)",
+      "requires_user_approval": false
+    }
+  ],
+  "can_auto_fix": true
+}
+```
+
+---
+
+## 🎯 RICORDA
+
+**Sei un contabile che controlla manualmente una fattura.**
+
+1. Confronta SUBTOTAL delle righe
+2. Se subtotal torna → OK
+3. Se non torna → controlla prezzo/quantità
+4. Segnala SOLO problemi reali
+5. NON inventare problemi che non esistono
+
+**SEMPLICE. EFFICACE. PRECISO.**
