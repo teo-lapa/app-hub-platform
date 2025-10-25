@@ -250,6 +250,21 @@ NUMERI PRECISI: 123,45 → 123.45 (punto decimale), arrotonda a 2 decimali.`
         total: parsedInvoice.total_amount,
         lines: parsedInvoice.lines.length
       });
+
+      // 🔍 CRITICAL DEBUG: Log TOTALE da Vision vs Bozza
+      console.log('🔍 [CRITICAL] TOTALI COMPARISON:');
+      console.log(`   Vision PDF total: €${parsedInvoice.total_amount}`);
+      console.log(`   Vision PDF subtotal: €${parsedInvoice.subtotal_amount}`);
+      console.log(`   Draft Odoo total: €${draft_invoice.amount_total}`);
+      console.log(`   DIFF: €${(parsedInvoice.total_amount - draft_invoice.amount_total).toFixed(2)}`);
+
+      // Verifica somma righe PDF
+      const sumPdfLines = parsedInvoice.lines.reduce((sum: number, line: any) => sum + parseFloat(line.subtotal || 0), 0);
+      console.log(`   Sum PDF lines: €${sumPdfLines.toFixed(2)}`);
+      if (Math.abs(sumPdfLines - parsedInvoice.total_amount) > 0.10) {
+        console.error(`   ⚠️ WARNING: Sum of lines (${sumPdfLines}) != total (${parsedInvoice.total_amount})`);
+        console.error(`   Vision might be parsing incorrectly!`);
+      }
     }
 
     // STEP 2: Confronto Intelligente con Claude + SKILL
@@ -484,8 +499,7 @@ NUMERI PRECISI: 123,45 → 123.45 (punto decimale), arrotonda a 2 decimali.`
     console.log(`   Exact matches: ${matches.filter(m => m.matchType === 'exact').length}`);
     console.log(`   Corrections: ${corrections.length}`);
 
-    // 🎯 SKIP chiamata Claude - matching fatto server-side!
-    /*
+    // 🎯 RIPRISTINO chiamata Claude per debug
     const comparisonSkill = loadSkill('document-processing/invoice-comparison');
     console.log(`📚 [ANALYZE-COMPARE] Using skill: ${comparisonSkill.metadata.name} v${comparisonSkill.metadata.version}`);
 
@@ -550,11 +564,11 @@ ${JSON.stringify(enrichedLines.map((line: any) => ({
         return correction;
       });
     }
-    */
 
-    // comparisonResult già generato sopra da server-side matching!
+    // OVERRIDE: Usa risultato Claude invece di server-side per debug
+    console.log('🔄 [DEBUG] Using Claude result instead of server-side matching');
 
-    console.log('✅ [ANALYZE-COMPARE] Comparison completed (server-side):', {
+    console.log('✅ [ANALYZE-COMPARE] Comparison completed:', {
       is_valid: comparisonResult.is_valid,
       difference: comparisonResult.total_difference,
       corrections: comparisonResult.corrections_needed.length,
