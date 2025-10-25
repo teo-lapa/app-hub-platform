@@ -255,6 +255,17 @@ NUMERI PRECISI: 123,45 → 123.45 (punto decimale), arrotonda a 2 decimali.`
     // STEP 2: Confronto Intelligente con Claude + SKILL
     console.log('🧠 [ANALYZE-COMPARE] Step 2: Smart comparison with invoice-comparison skill...');
 
+    // 🔍 DEBUG: Log dati in ingresso per diagnostica
+    console.log('📄 [DEBUG] PDF INVOICE LINES:');
+    parsedInvoice.lines.forEach((line: any, idx: number) => {
+      console.log(`  ${idx + 1}. ${line.product_code || 'NO-CODE'} | ${line.description} | qty=${line.quantity} | price=${line.unit_price} | subtotal=${line.subtotal}`);
+    });
+
+    console.log('📋 [DEBUG] DRAFT INVOICE LINES:');
+    enrichedLines.forEach((line: any, idx: number) => {
+      console.log(`  ${idx + 1}. ${line.default_code || 'NO-CODE'} | ${line.product_id?.[1] || line.name} | qty=${line.quantity} | price=${line.price_unit} | subtotal=${line.price_subtotal}`);
+    });
+
     // Carica skill per confronto contabile
     const comparisonSkill = loadSkill('document-processing/invoice-comparison');
     console.log(`📚 [ANALYZE-COMPARE] Using skill: ${comparisonSkill.metadata.name} v${comparisonSkill.metadata.version}`);
@@ -331,9 +342,18 @@ ${JSON.stringify(enrichedLines.map((line: any) => ({
     // 🔍 DEBUG: Log tutte le correzioni in dettaglio per diagnostica
     console.log('🔍 [ANALYZE-COMPARE] Detailed corrections:');
     comparisonResult.corrections_needed.forEach((correction: any, index: number) => {
-      console.log(`  ${index + 1}. ${correction.action} line ${correction.line_id || 'N/A'}:`, JSON.stringify(correction.changes || correction.new_line));
+      console.log(`  ${index + 1}. ${correction.action} line ${correction.line_id || 'N/A'}:`, JSON.stringify(correction.changes || correction.new_line || correction.parsed_line));
       console.log(`     Reason: ${correction.reason}`);
     });
+
+    // 🔍 DEBUG: Log anche le differences per capire cosa Claude ha trovato
+    if (comparisonResult.differences && Array.isArray(comparisonResult.differences)) {
+      console.log('🔍 [ANALYZE-COMPARE] Detailed differences:');
+      comparisonResult.differences.forEach((diff: any, index: number) => {
+        console.log(`  ${index + 1}. ${diff.type} | ${diff.description}`);
+        console.log(`     Severity: ${diff.severity}, Amount: €${diff.amount_difference || 0}`);
+      });
+    }
 
     return NextResponse.json({
       success: true,
