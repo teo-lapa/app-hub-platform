@@ -260,10 +260,26 @@ NUMERI PRECISI: 123,45 → 123.45 (punto decimale), arrotonda a 2 decimali.`
     parsedInvoice.lines.forEach((line: any, idx: number) => {
       console.log(`  ${idx + 1}. ${line.product_code || 'NO-CODE'} | ${line.description} | qty=${line.quantity} | price=${line.unit_price} | subtotal=${line.subtotal}`);
     });
+    console.log(`📄 [DEBUG] PDF TOTAL: €${parsedInvoice.total_amount}`);
 
     console.log('📋 [DEBUG] DRAFT INVOICE LINES:');
     enrichedLines.forEach((line: any, idx: number) => {
       console.log(`  ${idx + 1}. ${line.default_code || 'NO-CODE'} | ${line.product_id?.[1] || line.name} | qty=${line.quantity} | price=${line.price_unit} | subtotal=${line.price_subtotal}`);
+    });
+    console.log(`📋 [DEBUG] DRAFT TOTAL: €${draft_invoice.amount_total}`);
+
+    // 🔍 DEBUG: Crea mappa subtotal per verificare matching
+    const draftSubtotalMap = new Map<number, number>();
+    enrichedLines.forEach((line: any) => {
+      const subtotal = parseFloat(line.price_subtotal);
+      draftSubtotalMap.set(subtotal, (draftSubtotalMap.get(subtotal) || 0) + 1);
+    });
+
+    console.log('🔍 [DEBUG] SUBTOTAL MATCHING TEST:');
+    parsedInvoice.lines.forEach((pdfLine: any, idx: number) => {
+      const pdfSubtotal = parseFloat(pdfLine.subtotal);
+      const matchCount = draftSubtotalMap.get(pdfSubtotal) || 0;
+      console.log(`  PDF #${idx + 1} subtotal=${pdfSubtotal} → Found ${matchCount} match(es) in draft`);
     });
 
     // Carica skill per confronto contabile
