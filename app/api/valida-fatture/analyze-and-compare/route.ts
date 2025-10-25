@@ -282,7 +282,210 @@ NUMERI PRECISI: 123,45 → 123.45 (punto decimale), arrotonda a 2 decimali.`
       console.log(`  PDF #${idx + 1} subtotal=${pdfSubtotal} → Found ${matchCount} match(es) in draft`);
     });
 
-    // Carica skill per confronto contabile
+    // 🎯 PRE-MATCHING: Fai matching subtotal PRIMA di chiamare Claude
+    console.log('🎯 [PRE-MATCH] Starting server-side subtotal matching...');
+
+    interface MatchResult {
+      pdfLine: any;
+      draftLine: any | null;
+      matchType: 'exact' | 'price_diff' | 'qty_diff' | 'both_diff' | 'not_found';
+      subtotalDiff: number;
+    }
+
+    const matches: MatchResult[] = [];
+    const usedDraftLines = new Set<number>();
+
+    // Per ogni riga PDF, trova match in bozza
+    for (const pdfLine of parsedInvoice.lines) {
+      const pdfSubtotal = parseFloat(pdfLine.subtotal);
+
+      // Cerca match ESATTO su subtotal (±0.02€ tolleranza per arrotondamenti)
+      let matchedDraft = enrichedLines.find((draft: any, idx: number) => {
+        if (usedDraftLines.has(idx)) return false;
+        const draftSubtotal = parseFloat(draft.price_subtotal);
+        return Math.abs(draftSubtotal - pdfSubtotal) <= 0.02;
+      });
+
+      if (matchedDraft) {
+        const draftIdx = enrichedLines.indexOf(matchedDraft);
+        usedDraftLines.add(draftIdx);
+        matches.push({
+          pdfLine,
+          draftLine: matchedDraft,
+          matchType: 'exact',
+          subtotalDiff: 0
+        });
+        console.log(`  ✅ MATCH: ${pdfLine.description.substring(0, 40)} → subtotal ${pdfSubtotal}`);
+        continue;
+      }
+
+      // Se non trova match esatto, cerca riga simile (stesso prezzo O stessa quantità)
+      matchedDraft = enrichedLines.find((draft: any, idx: number) => {
+        if (usedDraftLines.has(idx)) return false;
+        const priceSimilar = Math.abs(parseFloat(draft.price_unit) - parseFloat(pdfLine.unit_price)) <= 0.02;
+        const qtySimilar = Math.abs(parseFloat(draft.quantity) - parseFloat(pdfLine.quantity)) <= 0.1;
+        return priceSimilar || qtySimilar;
+      });
+
+      if (matchedDraft) {
+        const draftIdx = enrichedLines.indexOf(matchedDraft);
+        usedDraftLines.add(draftIdx);
+        const draftSubtotal = parseFloat(matchedDraft.price_subtotal);
+        const diff = pdfSubtotal - draftSubtotal;
+
+        const priceMatch = Math.abs(parseFloat(matchedDraft.price_unit) - parseFloat(pdfLine.unit_price)) <= 0.02;
+        const qtyMatch = Math.abs(parseFloat(matchedDraft.quantity) - parseFloat(pdfLine.quantity)) <= 0.1;
+
+        let matchType: 'price_diff' | 'qty_diff' | 'both_diff' = 'both_diff';
+        if (priceMatch && !qtyMatch) matchType = 'qty_diff';
+        if (!priceMatch && qtyMatch) matchType = 'price_diff';
+
+        matches.push({
+          pdfLine,
+          draftLine: matchedDraft,
+          matchType,
+          subtotalDiff: diff
+        });
+        console.log(`  ⚠️ PARTIAL MATCH: ${pdfLine.description.substring(0, 40)} → ${matchType}, diff €${diff.toFixed(2)}`);
+        continue;
+      }
+
+      // Nessun match trovato
+      matches.push({
+        pdfLine,
+        draftLine: null,
+        matchType: 'not_found',
+        subtotalDiff: pdfSubtotal
+      });
+      console.log(`  ❌ NOT FOUND: ${pdfLine.description.substring(0, 40)} → subtotal ${pdfSubtotal}`);
+    }
+
+    console.log(`✅ [PRE-MATCH] Completed: ${matches.filter(m => m.matchType === 'exact').length} exact, ${matches.filter(m => m.matchType !== 'exact' && m.matchType !== 'not_found').length} partial, ${matches.filter(m => m.matchType === 'not_found').length} not found`);
+
+    // 🎯 GENERA CORREZIONI da pre-matching (BYPASSA Claude per righe exact match)
+    const corrections: any[] = [];
+    const differences: any[] = [];
+    let totalDifference = 0;
+
+    for (const match of matches) {
+      if (match.matchType === 'exact') {
+        // Riga OK, nessuna correzione
+        continue;
+      }
+
+      if (match.matchType === 'not_found') {
+        // Prodotto mancante
+        corrections.push({
+          action: 'create',
+          parsed_line: {
+            description: match.pdfLine.description,
+            product_code: match.pdfLine.product_code,
+            quantity: match.pdfLine.quantity,
+            unit_price: match.pdfLine.unit_price,
+            subtotal: match.pdfLine.subtotal
+          },
+          reason: `Prodotto presente in PDF ma non trovato in bozza (€${match.pdfLine.subtotal})`,
+          requires_user_approval: true
+        });
+
+        differences.push({
+          type: 'missing_product',
+          severity: 'error',
+          draft_line_id: null,
+          description: `Prodotto mancante: ${match.pdfLine.description}`,
+          expected_value: match.pdfLine.subtotal,
+          actual_value: 0,
+          amount_difference: match.pdfLine.subtotal
+        });
+
+        totalDifference += match.pdfLine.subtotal;
+        continue;
+      }
+
+      // Prezzo o quantità diversi
+      if (match.matchType === 'price_diff') {
+        corrections.push({
+          action: 'update',
+          line_id: match.draftLine.id,
+          changes: { price_unit: match.pdfLine.unit_price },
+          reason: `Prezzo errato: bozza €${match.draftLine.price_unit}, reale €${match.pdfLine.unit_price} (impatto: €${match.subtotalDiff.toFixed(2)})`,
+          requires_user_approval: false
+        });
+
+        differences.push({
+          type: 'price_mismatch',
+          severity: 'warning',
+          draft_line_id: match.draftLine.id,
+          description: `Prezzo ${match.pdfLine.description}: bozza €${match.draftLine.price_unit}, reale €${match.pdfLine.unit_price}`,
+          expected_value: match.pdfLine.unit_price,
+          actual_value: match.draftLine.price_unit,
+          amount_difference: match.subtotalDiff
+        });
+      }
+
+      if (match.matchType === 'qty_diff') {
+        corrections.push({
+          action: 'update',
+          line_id: match.draftLine.id,
+          changes: { quantity: match.pdfLine.quantity },
+          reason: `Quantità errata: bozza ${match.draftLine.quantity}, reale ${match.pdfLine.quantity} (impatto: €${match.subtotalDiff.toFixed(2)})`,
+          requires_user_approval: false
+        });
+
+        differences.push({
+          type: 'quantity_mismatch',
+          severity: 'warning',
+          draft_line_id: match.draftLine.id,
+          description: `Quantità ${match.pdfLine.description}: bozza ${match.draftLine.quantity}, reale ${match.pdfLine.quantity}`,
+          expected_value: match.pdfLine.quantity,
+          actual_value: match.draftLine.quantity,
+          amount_difference: match.subtotalDiff
+        });
+      }
+
+      if (match.matchType === 'both_diff') {
+        corrections.push({
+          action: 'update',
+          line_id: match.draftLine.id,
+          changes: {
+            price_unit: match.pdfLine.unit_price,
+            quantity: match.pdfLine.quantity
+          },
+          reason: `Prezzo e quantità errati (impatto: €${match.subtotalDiff.toFixed(2)})`,
+          requires_user_approval: false
+        });
+
+        differences.push({
+          type: 'both_mismatch',
+          severity: 'warning',
+          draft_line_id: match.draftLine.id,
+          description: `Prezzo e quantità ${match.pdfLine.description}`,
+          expected_value: match.pdfLine.subtotal,
+          actual_value: match.draftLine.price_subtotal,
+          amount_difference: match.subtotalDiff
+        });
+      }
+
+      totalDifference += Math.abs(match.subtotalDiff);
+    }
+
+    // Genera risultato finale (BYPASSA Claude!)
+    const comparisonResult = {
+      is_valid: corrections.length === 0,
+      total_difference: totalDifference,
+      draft_total: draft_invoice.amount_total,
+      real_total: parsedInvoice.total_amount,
+      differences,
+      corrections_needed: corrections,
+      can_auto_fix: corrections.every((c: any) => !c.requires_user_approval)
+    };
+
+    console.log('✅ [SERVER-MATCH] Bypassed Claude, generated corrections directly from TypeScript');
+    console.log(`   Exact matches: ${matches.filter(m => m.matchType === 'exact').length}`);
+    console.log(`   Corrections: ${corrections.length}`);
+
+    // 🎯 SKIP chiamata Claude - matching fatto server-side!
+    /*
     const comparisonSkill = loadSkill('document-processing/invoice-comparison');
     console.log(`📚 [ANALYZE-COMPARE] Using skill: ${comparisonSkill.metadata.name} v${comparisonSkill.metadata.version}`);
 
@@ -347,8 +550,11 @@ ${JSON.stringify(enrichedLines.map((line: any) => ({
         return correction;
       });
     }
+    */
 
-    console.log('✅ [ANALYZE-COMPARE] Comparison completed:', {
+    // comparisonResult già generato sopra da server-side matching!
+
+    console.log('✅ [ANALYZE-COMPARE] Comparison completed (server-side):', {
       is_valid: comparisonResult.is_valid,
       difference: comparisonResult.total_difference,
       corrections: comparisonResult.corrections_needed.length,
