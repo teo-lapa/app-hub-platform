@@ -92,15 +92,14 @@ export default function CarrelloPage() {
     }
   }
 
-  async function handleUpdateQuantity(productId: number, newQuantity: number) {
+  async function handleUpdateQuantity(itemId: number, newQuantity: number) {
     try {
-      // Find item by productId to get item.id
-      const item = cart?.items.find(i => i.productId === productId);
+      // Find item by unique itemId (cart_items.id - PRIMARY KEY)
+      const item = cart?.items.find(i => i.id === itemId);
       if (!item) {
         throw new Error('Prodotto non trovato nel carrello');
       }
 
-      const itemId = item.id; // Use unique cart_item ID
       const oldQuantity = item.quantity;
       const priceDiff = (newQuantity - oldQuantity) * item.price;
 
@@ -152,15 +151,15 @@ export default function CarrelloPage() {
     }
   }
 
-  async function handleRemoveItem(productId: number) {
+  async function handleRemoveItem(itemId: number) {
     try {
-      // Find item by productId to get item.id
-      const item = cart?.items.find(i => i.productId === productId);
+      // Find item by unique itemId (cart_items.id - PRIMARY KEY)
+      const item = cart?.items.find(i => i.id === itemId);
       if (!item) {
         throw new Error('Prodotto non trovato nel carrello');
       }
 
-      const response = await fetch(`/api/portale-clienti/cart/items/${item.id}`, {
+      const response = await fetch(`/api/portale-clienti/cart/items/${itemId}`, {
         method: 'DELETE',
         credentials: 'include',
       });

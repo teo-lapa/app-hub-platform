@@ -20,8 +20,8 @@ interface CartItem {
 
 interface CartItemCardProps {
   item: CartItem;
-  onUpdateQuantity: (productId: number, newQuantity: number) => Promise<void>;
-  onRemove: (productId: number) => Promise<void>;
+  onUpdateQuantity: (itemId: number, newQuantity: number) => Promise<void>;
+  onRemove: (itemId: number) => Promise<void>;
   index: number;
 }
 
@@ -64,7 +64,7 @@ export function CartItemCard({
 
     setIsUpdating(true);
     try {
-      await onUpdateQuantity(item.productId, item.quantity + 1);
+      await onUpdateQuantity(item.id, item.quantity + 1);
       // Celebration effect for adding items
       if (typeof window !== 'undefined' && (window as any).confetti) {
         (window as any).confetti({
@@ -89,7 +89,7 @@ export function CartItemCard({
 
     setIsUpdating(true);
     try {
-      await onUpdateQuantity(item.productId, item.quantity - 1);
+      await onUpdateQuantity(item.id, item.quantity - 1);
     } catch (error: any) {
       toast.error(error.message || 'Errore aggiornamento quantità');
     } finally {
@@ -100,7 +100,7 @@ export function CartItemCard({
   const handleRemove = async () => {
     setIsRemoving(true);
     try {
-      await onRemove(item.productId);
+      await onRemove(item.id);
       toast.success('Prodotto rimosso dal carrello', { icon: '🗑️' });
     } catch (error: any) {
       toast.error(error.message || 'Errore rimozione prodotto');
