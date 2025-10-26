@@ -130,13 +130,19 @@ export function InteractionModal({
         interactionPayload.notes = notes.trim();
       }
 
+      console.log('🔥 [FIX-VERSION-2] Payload pulito:', interactionPayload);
+
       const response = await fetch('/api/maestro/interactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(interactionPayload)
       });
 
-      if (!response.ok) throw new Error('Failed to save interaction');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ [FIX-VERSION-2] Error response:', errorData);
+        throw new Error('Failed to save interaction');
+      }
 
       toast.success('Interazione registrata con successo!');
       onClose();
