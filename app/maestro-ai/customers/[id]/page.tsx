@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -53,6 +53,7 @@ async function fetchCustomerDetail(customerId: string) {
 export default function CustomerDetailPage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showInteractionModal, setShowInteractionModal] = useState(false);
+  const queryClient = useQueryClient();
 
   // Fetch real data using React Query
   const { data, isLoading, error } = useQuery({
@@ -61,6 +62,13 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     retry: 2,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
+
+  // Handler per chiusura modal con refresh
+  const handleCloseInteractionModal = () => {
+    setShowInteractionModal(false);
+    // Invalida la cache per forzare il refresh
+    queryClient.invalidateQueries({ queryKey: ['customer-detail', params.id] });
+  };
 
   // Debug logging
   if (data) {
@@ -780,7 +788,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
       {/* Interaction Modal */}
       <InteractionModal
         isOpen={showInteractionModal}
-        onClose={() => setShowInteractionModal(false)}
+        onClose={handleCloseInteractionModal}
         customerId={customer.id}
         customerName={customer.name}
         odooPartnerId={customer.odoo_partner_id}
