@@ -28,9 +28,10 @@ export function MobileNavigation() {
     router.push(href);
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push('/auth');
+  const handleLogout = async () => {
+    await logout();
+    // Dopo logout, vai alla homepage (landing page)
+    router.push('/');
   };
 
   return (
