@@ -82,10 +82,12 @@ export async function GET(request: NextRequest) {
 
       const companyResult = await callOdooAsAdmin(
         'res.partner',
-        'read',
-        [user.parent_id[0]],
+        'search_read',
+        [],
         {
-          fields: ['name', 'phone', 'email', 'total_invoiced', 'street', 'city', 'vat', 'ref']
+          domain: [['id', '=', user.parent_id[0]]],
+          fields: ['name', 'phone', 'email', 'total_invoiced', 'street', 'city', 'vat', 'ref'],
+          limit: 1
         }
       );
 
