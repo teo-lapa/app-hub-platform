@@ -99,6 +99,31 @@ export async function GET(
 
     const delivery = deliveryResult[0];
 
+    // Step 2b: Recupera coordinate destinazione (partner)
+    let destinationCoordinates = null;
+    if (delivery.partner_id && delivery.partner_id[0]) {
+      const partnerResult = await callOdooAsAdmin(
+        'res.partner',
+        'search_read',
+        [],
+        {
+          domain: [['id', '=', delivery.partner_id[0]]],
+          fields: ['partner_latitude', 'partner_longitude'],
+          limit: 1,
+        }
+      );
+
+      if (partnerResult && partnerResult.length > 0) {
+        const partner = partnerResult[0];
+        if (partner.partner_latitude && partner.partner_longitude) {
+          destinationCoordinates = {
+            lat: partner.partner_latitude,
+            lng: partner.partner_longitude,
+          };
+        }
+      }
+    }
+
     // Step 3: Recupera i prodotti della consegna (stock.move)
     let products = [];
     if (delivery.move_ids_without_package && delivery.move_ids_without_package.length > 0) {
@@ -160,7 +185,8 @@ export async function GET(
       // deliveryManId: delivery.delivery_man_id?.[0] || null, // REMOVED: campo custom
       note: delivery.note || '',
       products,
-      gpsPosition,
+      gpsPosition, // Posizione autista (se disponibile)
+      destinationCoordinates, // Coordinate destinazione cliente
     };
 
     return NextResponse.json({

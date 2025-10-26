@@ -44,6 +44,7 @@ interface Delivery {
   note: string;
   products: Product[];
   gpsPosition: GPSPosition | null;
+  destinationCoordinates: { lat: number; lng: number } | null;
 }
 
 const mapContainerStyle = {
@@ -80,11 +81,16 @@ export default function DeliveryDetailPage() {
 
       setDelivery(data.delivery);
 
-      // Imposta centro mappa su posizione GPS se disponibile
+      // Imposta centro mappa: priorità GPS autista, poi destinazione cliente
       if (data.delivery.gpsPosition) {
         setMapCenter({
           lat: data.delivery.gpsPosition.lat,
           lng: data.delivery.gpsPosition.lng,
+        });
+      } else if (data.delivery.destinationCoordinates) {
+        setMapCenter({
+          lat: data.delivery.destinationCoordinates.lat,
+          lng: data.delivery.destinationCoordinates.lng,
         });
       }
     } catch (err: any) {
@@ -224,11 +230,11 @@ export default function DeliveryDetailPage() {
         </div>
 
         {/* Google Maps Tracking */}
-        {delivery.state === 'assigned' && (
+        {(delivery.destinationCoordinates || delivery.gpsPosition) && (
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <MapPinIcon className="w-5 h-5" />
-              Tracciamento in Tempo Reale
+              {delivery.state === 'assigned' ? 'Tracciamento in Tempo Reale' : 'Posizione Destinazione'}
             </h2>
 
             {GOOGLE_MAPS_API_KEY ? (
@@ -244,6 +250,27 @@ export default function DeliveryDetailPage() {
                     fullscreenControl: true,
                   }}
                 >
+                  {/* Marker destinazione cliente */}
+                  {delivery.destinationCoordinates && (
+                    <Marker
+                      position={{
+                        lat: delivery.destinationCoordinates.lat,
+                        lng: delivery.destinationCoordinates.lng,
+                      }}
+                      icon={{
+                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                          <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="20" cy="20" r="18" fill="#10b981" stroke="#059669" stroke-width="2"/>
+                            <text x="20" y="28" font-size="24" text-anchor="middle" fill="white">📍</text>
+                          </svg>
+                        `),
+                        scaledSize: new google.maps.Size(40, 40),
+                      }}
+                      title={delivery.partnerName}
+                    />
+                  )}
+
+                  {/* Marker autista (se disponibile) */}
                   {delivery.gpsPosition && (
                     <Marker
                       position={{
@@ -251,9 +278,15 @@ export default function DeliveryDetailPage() {
                         lng: delivery.gpsPosition.lng,
                       }}
                       icon={{
-                        url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIyMCIgZmlsbD0iIzM1ODRGRiIvPgogIDxwYXRoIGQ9Ik0yMCAxMEMxNi42ODYzIDEwIDEzLjk5OTkgMTIuNjg2MyAxMy45OTk5IDE2QzEzLjk5OTkgMjAgMjAgMjggMjAgMjhDMjAgMjggMjYgMjAgMjYgMTZDMjYgMTIuNjg2MyAyMy4zMTM3IDEwIDIwIDEwWk0yMCAxOEMxOC44OTU0IDE4IDE3Ljk5OTkgMTcuMTA0NSAxNy45OTk5IDE2QzE3Ljk5OTkgMTQuODk1NCAxOC44OTU0IDE0IDIwIDE0QzIxLjEwNDYgMTQgMjIgMTQuODk1NCAyMiAxNkMyMiAxNy4xMDQ1IDIxLjEwNDYgMTggMjAgMThaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K',
-                        scaledSize: new google.maps.Size(40, 40),
+                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                          <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="25" cy="25" r="22" fill="#3b82f6" stroke="#1e40af" stroke-width="3"/>
+                            <text x="25" y="34" font-size="28" text-anchor="middle" fill="white">🚚</text>
+                          </svg>
+                        `),
+                        scaledSize: new google.maps.Size(50, 50),
                       }}
+                      title="Autista in arrivo"
                     />
                   )}
                 </GoogleMap>
@@ -270,22 +303,35 @@ export default function DeliveryDetailPage() {
 
             {delivery.gpsPosition && (
               <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  📍 Ultima posizione aggiornata: {formatDate(delivery.gpsPosition.timestamp)}
+                <p className="text-sm text-blue-800 font-medium">
+                  🚚 L'autista è in arrivo!
                 </p>
                 <p className="text-xs text-blue-600 mt-1">
-                  L'autista si trova vicino alla tua destinazione
+                  📍 Ultima posizione aggiornata: {formatDate(delivery.gpsPosition.timestamp)}
                 </p>
               </div>
             )}
 
-            {!delivery.gpsPosition && (
+            {!delivery.gpsPosition && delivery.destinationCoordinates && (
+              <div className="mt-4 p-4 bg-green-50 rounded-lg">
+                <p className="text-sm text-green-800 font-medium">
+                  📍 Indirizzo di consegna: {delivery.partnerName}
+                </p>
+                <p className="text-xs text-green-600 mt-1">
+                  {delivery.state === 'assigned'
+                    ? 'Il tracciamento GPS dell\'autista verrà attivato durante la consegna'
+                    : 'Destinazione della consegna'}
+                </p>
+              </div>
+            )}
+
+            {!delivery.gpsPosition && !delivery.destinationCoordinates && (
               <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
                 <p className="text-sm text-yellow-800">
-                  ⚠️ Posizione GPS non disponibile
+                  ⚠️ Coordinate non disponibili
                 </p>
                 <p className="text-xs text-yellow-600 mt-1">
-                  Il tracciamento verrà attivato quando l'autista avvia la consegna
+                  Contatta il supporto per aggiornare le coordinate di consegna
                 </p>
               </div>
             )}
