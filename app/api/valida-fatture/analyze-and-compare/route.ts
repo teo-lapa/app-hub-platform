@@ -484,8 +484,8 @@ NUMERI PRECISI: 123,45 → 123.45 (punto decimale), arrotonda a 2 decimali.`
       totalDifference += Math.abs(match.subtotalDiff);
     }
 
-    // Genera risultato finale (BYPASSA Claude!)
-    const comparisonResult = {
+    // Genera risultato finale (BYPASSA Claude!) - per debug
+    const bypassedResult = {
       is_valid: corrections.length === 0,
       total_difference: totalDifference,
       draft_total: draft_invoice.amount_total,
