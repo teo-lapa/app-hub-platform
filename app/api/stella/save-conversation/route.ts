@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { sql } from '@vercel/postgres';
 
-// ✅ CREA TICKET IN ODOO USANDO CREDENZIALI ADMIN (NON IL CLIENTE)
-// Il cliente NON ha permessi per creare task, quindi usiamo le credenziali server
+// ✅ SALVA IN DUE POSTI:
+// 1. Odoo (task/ticket) - usando credenziali ADMIN
+// 2. Database Vercel (maestro_conversations) - per storico chat
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -289,13 +291,64 @@ ${newMessageText}
       console.log('✅ Task creato con successo - ID:', taskId);
     }
 
-    // 5. RITORNA SUCCESSO
+    // 5. SALVA ANCHE NEL DATABASE VERCEL
+    let conversationId: number | null = null;
+    try {
+      console.log('💾 Salvataggio anche nel database Vercel...');
+
+      const userId = userEmail || 'guest';
+      const today = new Date().toISOString().split('T')[0];
+
+      // Cerca conversazione esistente per oggi
+      const existingConv = await sql`
+        SELECT id FROM maestro_conversations
+        WHERE user_id = ${userId}
+        AND DATE(created_at AT TIME ZONE 'Europe/Rome') = ${today}
+        LIMIT 1
+      `;
+
+      if (existingConv.rows.length > 0) {
+        conversationId = existingConv.rows[0].id;
+        console.log('✅ Conversazione esistente trovata - ID:', conversationId);
+      } else {
+        // Crea nuova conversazione
+        const newConv = await sql`
+          INSERT INTO maestro_conversations (user_id, title, context)
+          VALUES (${userId}, ${actionTitle}, ${JSON.stringify({ actionType, userEmail })})
+          RETURNING id
+        `;
+        conversationId = newConv.rows[0].id;
+        console.log('✅ Nuova conversazione creata - ID:', conversationId);
+      }
+
+      // Salva il messaggio
+      await sql`
+        INSERT INTO maestro_interactions (conversation_id, user_id, role, content, metadata)
+        VALUES (
+          ${conversationId},
+          ${userId},
+          ${lastMessage.isUser ? 'user' : 'assistant'},
+          ${lastMessage.text},
+          ${JSON.stringify({ timestamp: lastMessage.timestamp, taskId })}
+        )
+      `;
+
+      console.log('✅ Messaggio salvato nel database Vercel');
+
+    } catch (dbError) {
+      console.error('⚠️ Errore salvataggio database (Odoo OK):', dbError);
+      // Non blocchiamo se Odoo è andato bene
+    }
+
+    // 6. RITORNA SUCCESSO
     return NextResponse.json({
       success: true,
       message: 'Conversazione salvata con successo',
       taskId: taskId,
       taskUrl: `${odooUrl}/web#id=${taskId}&model=project.task&view_type=form`,
-      wasUpdated: !!existingTaskId
+      wasUpdated: !!existingTaskId,
+      conversationId: conversationId,
+      savedToDatabase: !!conversationId
     });
 
   } catch (error) {
