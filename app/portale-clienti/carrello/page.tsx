@@ -100,6 +100,24 @@ export default function CarrelloPage() {
         throw new Error('Prodotto non trovato nel carrello');
       }
 
+      // Optimistic update - aggiorna UI immediatamente
+      const oldQuantity = item.quantity;
+      const priceDiff = (newQuantity - oldQuantity) * item.price;
+
+      setCart((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((i) =>
+            i.productId === productId
+              ? { ...i, quantity: newQuantity }
+              : i
+          ),
+          subtotal: prev.subtotal + priceDiff,
+        };
+      });
+
+      // Call API in background
       const response = await fetch(`/api/portale-clienti/cart/items/${item.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -110,11 +128,24 @@ export default function CarrelloPage() {
       const data = await response.json();
 
       if (!response.ok || data.error) {
+        // Rollback on error
+        setCart((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            items: prev.items.map((i) =>
+              i.productId === productId
+                ? { ...i, quantity: oldQuantity }
+                : i
+            ),
+            subtotal: prev.subtotal - priceDiff,
+          };
+        });
         throw new Error(data.error || 'Errore aggiornamento quantità');
       }
 
-      // Refresh cart to get updated totals
-      await fetchCart();
+      // Refresh cart to sync with server (in background)
+      setTimeout(() => fetchCart(), 500);
     } catch (err: any) {
       console.error('Failed to update quantity:', err);
       throw err;

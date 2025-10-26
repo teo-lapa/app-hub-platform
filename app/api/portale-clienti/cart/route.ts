@@ -211,7 +211,8 @@ export async function POST(request: NextRequest) {
           'qty_available',
           'uom_id',
           'active',
-          'sale_ok'
+          'sale_ok',
+          'image_128'
         ],
         limit: 1
       }
@@ -264,7 +265,7 @@ export async function POST(request: NextRequest) {
     const cartId = cartResult.rows[0].cart_id;
 
     // Add product to cart using PostgreSQL function
-    await sql`
+    const addResult = await sql`
       SELECT add_to_cart(
         ${cartId}::BIGINT,
         ${product.id}::INTEGER,
@@ -276,7 +277,20 @@ export async function POST(request: NextRequest) {
       ) as item_id
     `;
 
-    console.log('✅ [CART-API] Product added to cart');
+    const itemId = addResult.rows[0].item_id;
+
+    // Update image URL and stock if available (Odoo image_128 is base64)
+    if (product.image_128) {
+      const imageUrl = `data:image/png;base64,${product.image_128}`;
+      await sql`
+        UPDATE cart_items
+        SET product_image_url = ${imageUrl},
+            available_stock = ${product.qty_available}::DECIMAL
+        WHERE id = ${itemId}
+      `;
+    }
+
+    console.log('✅ [CART-API] Product added to cart with image');
 
     // Get updated cart summary
     const summaryResult = await sql`
