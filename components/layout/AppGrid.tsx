@@ -16,13 +16,21 @@ export function AppGrid() {
   // Carica impostazioni visibilità (ricarica quando cambia l'utente)
   useEffect(() => {
     loadVisibility();
-  }, [user?.role]);
+  }, [user?.role, user?.id]);
 
   const loadVisibility = async () => {
     try {
-      // Passa il ruolo dell'utente per filtrare le app in base al gruppo
+      // Passa il ruolo e userId dell'utente per filtrare le app in base al gruppo e esclusioni
       const userRole = user?.role || 'visitor';
-      const response = await fetch(`/api/apps/visibility?role=${userRole}`);
+      const userId = user?.id;
+
+      // Costruisci URL con parametri
+      const params = new URLSearchParams({ role: userRole });
+      if (userId) {
+        params.append('userId', String(userId));
+      }
+
+      const response = await fetch(`/api/apps/visibility?${params.toString()}`);
       const data = await response.json();
 
       if (data.success) {
