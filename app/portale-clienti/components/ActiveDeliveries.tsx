@@ -64,12 +64,12 @@ export function ActiveDeliveries({ deliveries, isLoading }: ActiveDeliveriesProp
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-6">
-          <div className="h-6 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-          <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-3 sm:p-4 md:p-6 border border-gray-100 dark:border-gray-700">
+        <div className="flex items-center justify-between mb-3 sm:mb-4 md:mb-6">
+          <div className="h-5 w-32 sm:h-6 sm:w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div className="h-8 w-24 sm:h-9 sm:w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
         </div>
-        <div className="space-y-4">
+        <div className="space-y-2 sm:space-y-3 md:space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 animate-pulse">
               <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
@@ -84,16 +84,17 @@ export function ActiveDeliveries({ deliveries, isLoading }: ActiveDeliveriesProp
 
   if (!deliveries || deliveries.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Truck className="h-6 w-6 text-green-600" />
-            Consegne Attive
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-3 sm:p-4 md:p-6 border border-gray-100 dark:border-gray-700">
+        <div className="flex items-center justify-between mb-3 sm:mb-4 md:mb-6">
+          <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Truck className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+            <span className="hidden sm:inline">Consegne Attive</span>
+            <span className="sm:hidden">Consegne</span>
           </h2>
         </div>
-        <div className="text-center py-12">
-          <Truck className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Nessuna consegna attiva</p>
+        <div className="text-center py-8 sm:py-12">
+          <Truck className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Nessuna consegna attiva</p>
         </div>
       </div>
     );
@@ -104,24 +105,26 @@ export function ActiveDeliveries({ deliveries, isLoading }: ActiveDeliveriesProp
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.3 }}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700"
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-3 sm:p-4 md:p-6 border border-gray-100 dark:border-gray-700"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <Truck className="h-6 w-6 text-green-600" />
-          Consegne Attive
+      <div className="flex items-center justify-between mb-3 sm:mb-4 md:mb-6">
+        <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <Truck className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+          <span className="hidden sm:inline">Consegne Attive</span>
+          <span className="sm:hidden">Consegne</span>
         </h2>
         <Link
           href="/portale-clienti/consegne"
-          className="px-4 py-2 text-sm font-medium text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+          className="px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 rounded-lg transition-colors"
         >
-          Tracking
+          <span className="hidden sm:inline">Tracking</span>
+          <Truck className="h-4 w-4 sm:hidden" />
         </Link>
       </div>
 
       {/* Deliveries List */}
-      <div className="space-y-4">
+      <div className="space-y-2 sm:space-y-3 md:space-y-4">
         {deliveries.map((delivery, index) => {
           const stateColor = getStateColor(delivery.state);
           const todayDelivery = isToday(delivery.scheduled_date);
@@ -134,7 +137,7 @@ export function ActiveDeliveries({ deliveries, isLoading }: ActiveDeliveriesProp
               transition={{ duration: 0.3, delay: index * 0.1 }}
               whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
               className={`
-                border rounded-lg p-4 bg-gradient-to-br
+                border rounded-lg p-2 sm:p-3 md:p-4 bg-gradient-to-br
                 ${todayDelivery
                   ? 'border-green-300 dark:border-green-600 from-green-50 to-white dark:from-green-900/20 dark:to-gray-800'
                   : 'border-gray-200 dark:border-gray-700 from-gray-50 to-white dark:from-gray-900/50 dark:to-gray-800'

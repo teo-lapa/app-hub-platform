@@ -101,10 +101,10 @@ export default function OrderDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50 py-4 sm:py-6 md:py-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="flex justify-center items-center py-8 sm:py-12">
+            <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
           </div>
         </div>
       </div>
@@ -113,13 +113,13 @@ export default function OrderDetailPage() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <p className="text-red-600 font-medium">{error || 'Ordine non trovato'}</p>
+      <div className="min-h-screen bg-gray-50 py-4 sm:py-6 md:py-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6 text-center">
+            <p className="text-sm sm:text-base text-red-600 font-medium">{error || 'Ordine non trovato'}</p>
             <Link
               href="/portale-clienti/ordini"
-              className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              className="mt-3 sm:mt-4 inline-block px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
               Torna agli ordini
             </Link>
@@ -130,15 +130,16 @@ export default function OrderDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-6 md:py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         {/* Breadcrumb */}
-        <nav className="mb-6 flex items-center text-sm text-gray-600">
-          <Link href="/portale-clienti/ordini" className="hover:text-blue-600">
-            I Miei Ordini
+        <nav className="mb-4 sm:mb-6 flex items-center text-xs sm:text-sm text-gray-600">
+          <Link href="/portale-clienti/ordini" className="hover:text-blue-600 truncate">
+            <span className="hidden sm:inline">I Miei Ordini</span>
+            <span className="sm:hidden">Ordini</span>
           </Link>
           <svg
-            className="w-4 h-4 mx-2"
+            className="w-3 h-3 sm:w-4 sm:h-4 mx-1.5 sm:mx-2 flex-shrink-0"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -150,59 +151,66 @@ export default function OrderDetailPage() {
               d="M9 5l7 7-7 7"
             />
           </svg>
-          <span className="text-gray-900 font-medium">{order.name}</span>
+          <span className="text-gray-900 font-medium truncate">{order.name}</span>
         </nav>
 
         {/* Header ordine */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Ordine {order.name}
+        <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 md:p-6 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3 sm:mb-4 gap-2">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2 truncate">
+                <span className="hidden sm:inline">Ordine </span>{order.name}
               </h1>
               {order.clientReference && (
-                <p className="text-sm text-gray-600">
-                  Riferimento cliente: <span className="font-medium">{order.clientReference}</span>
+                <p className="text-xs sm:text-sm text-gray-600 truncate">
+                  <span className="hidden sm:inline">Riferimento cliente: </span>
+                  <span className="font-medium">{order.clientReference}</span>
                 </p>
               )}
             </div>
 
             <span
-              className={`px-3 py-1.5 rounded-full text-sm font-medium ${getStateBadgeColor(
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium ${getStateBadgeColor(
                 order.state
-              )}`}
+              )} w-fit flex-shrink-0`}
             >
               {order.stateLabel}
             </span>
           </div>
 
           {/* Info riepilogo */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-gray-200">
             <div>
-              <p className="text-sm text-gray-600">Data Ordine</p>
-              <p className="text-base font-medium text-gray-900">
+              <p className="text-xs sm:text-sm text-gray-600">
+                <span className="hidden sm:inline">Data Ordine</span>
+                <span className="sm:hidden">Data</span>
+              </p>
+              <p className="text-sm sm:text-base font-medium text-gray-900 truncate">
                 {formatDate(order.dateOrder)}
               </p>
             </div>
 
             <div>
-              <p className="text-sm text-gray-600">Totale</p>
-              <p className="text-xl font-bold text-gray-900">
+              <p className="text-xs sm:text-sm text-gray-600">Totale</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900">
                 {formatCurrency(order.amountTotal)}
               </p>
             </div>
 
-            <div>
-              <p className="text-sm text-gray-600">Venditore</p>
-              <p className="text-base font-medium text-gray-900">
+            <div className="col-span-2 sm:col-span-1">
+              <p className="text-xs sm:text-sm text-gray-600">Venditore</p>
+              <p className="text-sm sm:text-base font-medium text-gray-900 truncate">
                 {order.salesperson}
               </p>
             </div>
 
             {order.commitmentDate && (
-              <div>
-                <p className="text-sm text-gray-600">Consegna Prevista</p>
-                <p className="text-base font-medium text-orange-600">
+              <div className="col-span-2 sm:col-span-1">
+                <p className="text-xs sm:text-sm text-gray-600">
+                  <span className="hidden sm:inline">Consegna Prevista</span>
+                  <span className="sm:hidden">Consegna</span>
+                </p>
+                <p className="text-sm sm:text-base font-medium text-orange-600 truncate">
                   {formatDate(order.commitmentDate)}
                 </p>
               </div>
@@ -211,9 +219,9 @@ export default function OrderDetailPage() {
         </div>
 
         {/* Griglia principale */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Colonna sinistra - Dettagli */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Prodotti */}
             <OrderProductsTable
               products={order.products}
@@ -224,22 +232,22 @@ export default function OrderDetailPage() {
 
             {/* Note */}
             {order.note && (
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Note Ordine</h3>
-                <p className="text-gray-700 whitespace-pre-wrap">{order.note}</p>
+              <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 md:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Note Ordine</h3>
+                <p className="text-sm sm:text-base text-gray-700 whitespace-pre-wrap">{order.note}</p>
               </div>
             )}
           </div>
 
           {/* Colonna destra - Timeline e info aggiuntive */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Timeline */}
             <OrderTimeline events={order.timeline} />
 
             {/* Fatture */}
             {order.invoices && order.invoices.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Fatture</h3>
+              <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 md:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Fatture</h3>
                 <div className="space-y-3">
                   {order.invoices.map((invoice: any) => (
                     <div
@@ -333,26 +341,28 @@ export default function OrderDetailPage() {
         </div>
 
         {/* Azioni */}
-        <div className="mt-6 flex gap-3">
+        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-2 sm:gap-3">
           <Link
             href="/portale-clienti/ordini"
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors font-medium"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors font-medium text-center"
           >
-            Torna agli ordini
+            <span className="hidden sm:inline">Torna agli ordini</span>
+            <span className="sm:hidden">Indietro</span>
           </Link>
           <button
             onClick={() => {
               alert('Funzione stampa in sviluppo');
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
           >
-            Stampa Ordine
+            <span className="hidden sm:inline">Stampa Ordine</span>
+            <span className="sm:hidden">Stampa</span>
           </button>
           <button
             onClick={() => {
               alert('Funzione riordina in sviluppo');
             }}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium"
           >
             Riordina
           </button>

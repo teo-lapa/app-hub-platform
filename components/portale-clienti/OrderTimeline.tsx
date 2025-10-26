@@ -138,26 +138,26 @@ export function OrderTimeline({ events }: OrderTimelineProps) {
 
   if (!events || events.length === 0) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-        <p className="text-gray-500">Nessun evento disponibile per questo ordine</p>
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-6 text-center">
+        <p className="text-xs sm:text-sm text-gray-500">Nessun evento disponibile per questo ordine</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Timeline Ordine</h3>
+    <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 md:p-6">
+      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Timeline Ordine</h3>
 
       <div className="relative">
         {/* Linea verticale */}
-        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200" />
+        <div className="absolute left-3 sm:left-4 top-0 bottom-0 w-0.5 bg-gray-200" />
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {events.map((event, index) => (
-            <div key={index} className="relative flex items-start gap-4">
+            <div key={index} className="relative flex items-start gap-2 sm:gap-3 md:gap-4">
               {/* Icona */}
               <div
-                className={`relative z-10 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${getEventColor(
+                className={`relative z-10 flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${getEventColor(
                   event.type
                 )}`}
               >
@@ -166,22 +166,22 @@ export function OrderTimeline({ events }: OrderTimelineProps) {
 
               {/* Contenuto */}
               <div className="flex-1 min-w-0 pt-0.5">
-                <div className="flex items-center justify-between mb-1">
-                  <h4 className="text-sm font-semibold text-gray-900">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 gap-0.5 sm:gap-2">
+                  <h4 className="text-xs sm:text-sm font-semibold text-gray-900 truncate">
                     {event.label}
                   </h4>
-                  <span className="text-xs text-gray-500 ml-2">
+                  <span className="text-xs text-gray-500 flex-shrink-0">
                     {formatDate(event.date)}
                   </span>
                 </div>
 
-                <p className="text-sm text-gray-600 mb-1">{event.description}</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">{event.description}</p>
 
                 {/* Info aggiuntive */}
                 {event.trackingRef && (
-                  <div className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                  <div className="mt-1.5 sm:mt-2 inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">
                     <svg
-                      className="w-3 h-3"
+                      className="w-3 h-3 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -193,12 +193,12 @@ export function OrderTimeline({ events }: OrderTimelineProps) {
                         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    Tracking: {event.trackingRef}
+                    <span className="truncate">Tracking: {event.trackingRef}</span>
                   </div>
                 )}
 
                 {event.invoiceId && (
-                  <div className="mt-2 inline-flex items-center gap-1 text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
+                  <div className="mt-1.5 sm:mt-2 inline-flex items-center gap-1 text-xs text-purple-600 bg-purple-50 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">
                     ID Fattura: {event.invoiceId}
                   </div>
                 )}

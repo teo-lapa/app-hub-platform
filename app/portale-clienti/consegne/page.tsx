@@ -85,59 +85,59 @@ export default function ConsegnePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Le Mie Consegne</h1>
-          <p className="text-gray-600">Traccia le tue consegne in tempo reale</p>
+        <div className="mb-4 sm:mb-6 md:mb-8">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">Le Mie Consegne</h1>
+          <p className="text-sm sm:text-base text-gray-600">Traccia le tue consegne in tempo reale</p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <TruckIcon className="w-6 h-6 text-blue-600" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
+          <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 border border-gray-200">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <TruckIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Totale Consegne</p>
-                <p className="text-2xl font-bold text-gray-900">{deliveries.length}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <ClockIcon className="w-6 h-6 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">In Consegna</p>
-                <p className="text-2xl font-bold text-gray-900">{activeCount}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-gray-600">Totale Consegne</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">{deliveries.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircleIcon className="w-6 h-6 text-green-600" />
+          <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 border border-gray-200">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <ClockIcon className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Consegnate</p>
-                <p className="text-2xl font-bold text-gray-900">{completedCount}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-gray-600">In Consegna</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">{activeCount}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 border border-gray-200">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <CheckCircleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-gray-600">Consegnate</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">{completedCount}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-6 border border-gray-200">
-          <div className="flex gap-2">
+        <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6 border border-gray-200">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-lg font-medium transition-colors ${
                 filter === 'all'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -147,17 +147,18 @@ export default function ConsegnePage() {
             </button>
             <button
               onClick={() => setFilter('assigned')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-lg font-medium transition-colors ${
                 filter === 'assigned'
                   ? 'bg-orange-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              In Consegna ({activeCount})
+              <span className="hidden sm:inline">In Consegna ({activeCount})</span>
+              <span className="sm:hidden">In corso ({activeCount})</span>
             </button>
             <button
               onClick={() => setFilter('done')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-lg font-medium transition-colors ${
                 filter === 'done'
                   ? 'bg-green-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -170,91 +171,94 @@ export default function ConsegnePage() {
 
         {/* Deliveries List */}
         {loading && (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Caricamento consegne...</p>
+          <div className="text-center py-8 sm:py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-blue-600"></div>
+            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-gray-600">Caricamento consegne...</p>
           </div>
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-red-800">{error}</p>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+            <p className="text-sm sm:text-base text-red-800">{error}</p>
           </div>
         )}
 
         {!loading && !error && filteredDeliveries.length === 0 && (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center border border-gray-200">
-            <TruckIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Nessuna consegna trovata</p>
+          <div className="bg-white rounded-lg shadow-sm p-8 sm:p-12 text-center border border-gray-200">
+            <TruckIcon className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+            <p className="text-sm sm:text-base text-gray-600">Nessuna consegna trovata</p>
           </div>
         )}
 
         {!loading && !error && filteredDeliveries.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {filteredDeliveries.map((delivery) => (
               <div
                 key={delivery.id}
                 onClick={() => router.push(`/portale-clienti/consegne/${delivery.id}`)}
-                className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+                className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <TruckIcon className="w-6 h-6 text-blue-600" />
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3 sm:mb-4 gap-2">
+                  <div className="flex items-start gap-2 sm:gap-3 md:gap-4 min-w-0">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <TruckIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{delivery.name}</h3>
-                      <p className="text-sm text-gray-600">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{delivery.name}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600 truncate">
                         {delivery.origin ? `Ordine: ${delivery.origin}` : 'Consegna diretta'}
                       </p>
                     </div>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStateColor(delivery.state)}`}>
+                  <span className={`px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs font-medium ${getStateColor(delivery.state)} w-fit flex-shrink-0`}>
                     {delivery.stateLabel}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
-                  <div className="flex items-center gap-2 text-sm">
-                    <ClockIcon className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-600">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                    <ClockIcon className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-600 truncate">
                       {delivery.dateDone
-                        ? `Consegnata: ${formatDate(delivery.dateDone)}`
-                        : `Prevista: ${formatDate(delivery.scheduledDate)}`
+                        ? `${formatDate(delivery.dateDone)}`
+                        : `${formatDate(delivery.scheduledDate)}`
                       }
                     </span>
                   </div>
 
                   {delivery.deliveryMan && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <TruckIcon className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-600">Autista: {delivery.deliveryMan}</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                      <TruckIcon className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                      <span className="text-gray-600 truncate">
+                        <span className="hidden sm:inline">Autista: </span>{delivery.deliveryMan}
+                      </span>
                     </div>
                   )}
 
                   {delivery.locationDest && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPinIcon className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-600">{delivery.locationDest}</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm col-span-1 sm:col-span-2 md:col-span-1">
+                      <MapPinIcon className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                      <span className="text-gray-600 truncate">{delivery.locationDest}</span>
                     </div>
                   )}
 
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
                     <span className="text-gray-600">{delivery.itemsCount} prodotti</span>
                   </div>
                 </div>
 
                 {delivery.trackingRef && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <p className="text-sm text-gray-600">
+                  <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-100">
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">
                       Tracking: <span className="font-mono font-medium text-gray-900">{delivery.trackingRef}</span>
                     </p>
                   </div>
                 )}
 
-                <div className="mt-4">
-                  <button className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1">
-                    Vedi dettagli e mappa →
+                <div className="mt-3 sm:mt-4">
+                  <button className="text-blue-600 hover:text-blue-700 font-medium text-xs sm:text-sm flex items-center gap-1">
+                    <span className="hidden sm:inline">Vedi dettagli e mappa →</span>
+                    <span className="sm:hidden">Dettagli →</span>
                   </button>
                 </div>
               </div>

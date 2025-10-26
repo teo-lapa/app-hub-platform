@@ -142,53 +142,56 @@ export default function PortaleClientiPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-3 sm:p-4 md:p-6">
+      <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="flex items-center justify-between"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4"
         >
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
             <button
               onClick={() => router.push('/dashboard')}
-              className="flex items-center gap-2 px-3 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              className="flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="text-sm font-medium">Dashboard</span>
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-xs sm:text-sm font-medium">Dashboard</span>
             </button>
-            <div className="h-8 w-px bg-gray-300 dark:bg-gray-600" />
+            <div className="hidden sm:block h-8 w-px bg-gray-300 dark:bg-gray-600" />
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
                 Portale Clienti
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400">
                 Benvenuto nel tuo portale personalizzato LAPA
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 w-full sm:w-auto justify-between sm:justify-end">
             {dashboardData && (
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Aggiornato alle {formatLastSync(dashboardData.last_sync)}
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                <span className="hidden sm:inline">Aggiornato alle </span>
+                <span className="sm:hidden">Agg. </span>
+                {formatLastSync(dashboardData.last_sync)}
               </div>
             )}
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all
+                flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm font-medium transition-all
                 ${isRefreshing
                   ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }
               `}
             >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Aggiornamento...' : 'Aggiorna'}
+              <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{isRefreshing ? 'Aggiornamento...' : 'Aggiorna'}</span>
+              <span className="sm:hidden">{isRefreshing ? '...' : 'Agg.'}</span>
             </button>
           </div>
         </motion.div>

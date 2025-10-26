@@ -97,15 +97,15 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
         {[1, 2, 3, 4, 5].map((i) => (
           <div
             key={i}
-            className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg animate-pulse"
+            className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 md:p-6 shadow-lg animate-pulse"
           >
-            <div className="h-12 w-12 bg-gray-200 dark:bg-gray-700 rounded-lg mb-4" />
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-3 w-2/3" />
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-full" />
+            <div className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 bg-gray-200 dark:bg-gray-700 rounded-lg mb-2 sm:mb-3 md:mb-4" />
+            <div className="h-3 sm:h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2 sm:mb-3 w-2/3" />
+            <div className="h-6 sm:h-7 md:h-8 bg-gray-200 dark:bg-gray-700 rounded w-full" />
           </div>
         ))}
       </div>
@@ -113,7 +113,7 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
       {kpiCards.map((card, index) => {
         const Icon = card.icon;
         return (
@@ -138,20 +138,20 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
             <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-5`} />
 
             {/* Content */}
-            <div className="relative p-6">
+            <div className="relative p-3 sm:p-4 md:p-6">
               {/* Icon */}
-              <div className={`${card.bgColor} rounded-lg p-3 w-fit mb-4`}>
-                <Icon className={`h-6 w-6 ${card.iconColor}`} />
+              <div className={`${card.bgColor} rounded-lg p-2 sm:p-2.5 md:p-3 w-fit mb-2 sm:mb-3 md:mb-4`}>
+                <Icon className={`h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 ${card.iconColor}`} />
               </div>
 
               {/* Title */}
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-1 sm:mb-2">
                 {card.title}
               </p>
 
               {/* Value */}
               <p className={`
-                text-2xl font-bold mb-1
+                text-base sm:text-xl md:text-2xl font-bold mb-0.5 sm:mb-1
                 ${card.alert ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}
               `}>
                 {card.value}
@@ -159,7 +159,7 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
 
               {/* Subtitle */}
               {card.subtitle && (
-                <p className="text-xs text-gray-500 dark:text-gray-500">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-500">
                   {card.subtitle}
                 </p>
               )}
@@ -170,10 +170,11 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 }}
-                  className="mt-3 flex items-center text-xs text-red-600 dark:text-red-400 font-medium"
+                  className="mt-2 sm:mt-3 flex items-center text-[10px] sm:text-xs text-red-600 dark:text-red-400 font-medium"
                 >
-                  <AlertTriangle className="h-3 w-3 mr-1" />
-                  Richiede attenzione
+                  <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
+                  <span className="hidden sm:inline">Richiede attenzione</span>
+                  <span className="sm:hidden">Attenzione</span>
                 </motion.div>
               )}
             </div>

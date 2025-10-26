@@ -49,13 +49,13 @@ export function QuickActions() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.5 }}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700"
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-3 sm:p-4 md:p-6 border border-gray-100 dark:border-gray-700"
     >
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+      <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 md:mb-6">
         Azioni Rapide
       </h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
         {actions.map((action, index) => {
           const Icon = action.icon;
           return (
@@ -72,14 +72,14 @@ export function QuickActions() {
                 className="relative group cursor-pointer"
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300`} />
-                <div className={`relative p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 group-hover:border-transparent group-hover:shadow-lg transition-all duration-300`}>
-                  <div className={`${action.bgColor} rounded-lg p-3 w-fit mx-auto mb-3`}>
-                    <Icon className={`h-6 w-6 ${action.iconColor}`} />
+                <div className={`relative p-2 sm:p-3 md:p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 group-hover:border-transparent group-hover:shadow-lg transition-all duration-300`}>
+                  <div className={`${action.bgColor} rounded-lg p-2 sm:p-2.5 md:p-3 w-fit mx-auto mb-2 sm:mb-2.5 md:mb-3`}>
+                    <Icon className={`h-5 w-5 sm:h-5 sm:w-5 md:h-6 md:w-6 ${action.iconColor}`} />
                   </div>
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white text-center mb-1">
+                  <h3 className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white text-center mb-0.5 sm:mb-1">
                     {action.title}
                   </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 text-center">
                     {action.description}
                   </p>
                 </div>

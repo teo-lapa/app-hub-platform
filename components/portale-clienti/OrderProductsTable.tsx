@@ -38,14 +38,14 @@ export function OrderProductsTable({
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">
+      <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-50 border-b border-gray-200">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900">
           Prodotti Ordinati ({products.length})
         </h3>
       </div>
 
-      {/* Tabella prodotti */}
-      <div className="overflow-x-auto">
+      {/* Desktop: Tabella prodotti */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -144,26 +144,89 @@ export function OrderProductsTable({
         </table>
       </div>
 
+      {/* Mobile: Card list */}
+      <div className="md:hidden divide-y divide-gray-200">
+        {products.map((product) => (
+          <div key={product.id} className="p-3 sm:p-4">
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex-1 min-w-0 pr-2">
+                <h4 className="text-sm font-medium text-gray-900 truncate">
+                  {product.productName}
+                </h4>
+                {product.description !== product.productName && (
+                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                    {product.description}
+                  </p>
+                )}
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-sm font-semibold text-gray-900">
+                  {formatCurrency(product.subtotal)}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-gray-500">Quantità:</span>
+                <span className="ml-1 font-medium text-gray-900">
+                  {product.quantity} {product.uom}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Consegnato:</span>
+                <span className={`ml-1 font-medium ${
+                  product.quantityDelivered === product.quantity
+                    ? 'text-green-600'
+                    : product.quantityDelivered > 0
+                    ? 'text-orange-600'
+                    : 'text-gray-400'
+                }`}>
+                  {product.quantityDelivered} / {product.quantity}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Prezzo:</span>
+                <span className="ml-1 font-medium text-gray-900">
+                  {formatCurrency(product.unitPrice)}
+                </span>
+              </div>
+              {product.discount > 0 && (
+                <div>
+                  <span className="text-gray-500">Sconto:</span>
+                  <span className="ml-1 font-medium text-green-600">
+                    -{product.discount}%
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Riepilogo totali */}
-      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-        <div className="max-w-sm ml-auto space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Subtotale (imponibile):</span>
+      <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-50 border-t border-gray-200">
+        <div className="max-w-sm ml-auto space-y-1.5 sm:space-y-2">
+          <div className="flex justify-between text-xs sm:text-sm">
+            <span className="text-gray-600">
+              <span className="hidden sm:inline">Subtotale (imponibile):</span>
+              <span className="sm:hidden">Subtotale:</span>
+            </span>
             <span className="font-medium text-gray-900">
               {formatCurrency(amountUntaxed)}
             </span>
           </div>
 
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-gray-600">IVA:</span>
             <span className="font-medium text-gray-900">
               {formatCurrency(amountTax)}
             </span>
           </div>
 
-          <div className="flex justify-between text-base pt-2 border-t border-gray-300">
+          <div className="flex justify-between text-sm sm:text-base pt-1.5 sm:pt-2 border-t border-gray-300">
             <span className="font-semibold text-gray-900">TOTALE:</span>
-            <span className="font-bold text-gray-900 text-lg">
+            <span className="font-bold text-gray-900 text-base sm:text-lg">
               {formatCurrency(amountTotal)}
             </span>
           </div>
