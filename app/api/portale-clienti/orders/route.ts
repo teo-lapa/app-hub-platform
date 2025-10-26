@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     // Step 2: Costruisci domain per la ricerca ordini
     const domain: any[] = [
       ['partner_id', '=', partnerId],
-      ['state', 'in', ['sale', 'done']], // Solo ordini confermati
+      ['state', 'in', ['draft', 'sent', 'sale', 'done']], // Preventivi (draft, sent) + Ordini (sale, done)
     ];
 
     // Aggiungi filtro date se presenti

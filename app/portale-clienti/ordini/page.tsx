@@ -156,6 +156,8 @@ export default function OrdiniPage() {
                 className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Tutti</option>
+                <option value="draft">Preventivi (Bozza)</option>
+                <option value="sent">Preventivi (Inviati)</option>
                 <option value="sale">Confermati</option>
                 <option value="done">Completati</option>
               </select>
