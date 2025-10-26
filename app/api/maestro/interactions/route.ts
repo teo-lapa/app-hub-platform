@@ -98,9 +98,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    console.log('📝 [MAESTRO-API] POST /interactions - Request body:', JSON.stringify(body));
+
     // Valida input
     const validation = validateRequest(createInteractionSchema, body);
     if (!validation.success) {
+      console.error('❌ [MAESTRO-API] Validation failed:', validation.error);
+      console.error('❌ [MAESTRO-API] Received body:', JSON.stringify(body));
       return NextResponse.json(
         { error: validation.error },
         { status: 400 }
