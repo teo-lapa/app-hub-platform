@@ -60,7 +60,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     queryKey: ['customer-detail', params.id],
     queryFn: () => fetchCustomerDetail(params.id),
     retry: 2,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 0, // Always fresh
   });
 
   // Handler per chiusura modal con refresh
