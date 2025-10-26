@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
           [],
           {
             domain: [
-              ['partner_id', '=', parseInt(partnerId)],
+              ['partner_id', '=', partnerId],
               ['state', 'in', ['sale', 'done']]
             ],
             fields: ['id'],
@@ -148,13 +148,13 @@ export async function GET(request: NextRequest) {
           );
 
           // Step 3: Extract unique product IDs
-          const purchasedProductIds = [
-            ...new Set(
+          const purchasedProductIds = Array.from(
+            new Set(
               orderLines
                 .map((line: any) => line.product_id?.[0])
                 .filter((id: any) => id !== undefined && id !== null)
-            ),
-          ];
+            )
+          );
 
           console.log(`✅ [PRODUCTS-API] Found ${purchasedProductIds.length} unique purchased products`);
 
