@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-
-const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
+import jwt from 'jsonwebtoken';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -29,25 +28,42 @@ export async function GET(
 
     console.log(`🛒 [ORDER-DETAIL-API] Recupero dettagli ordine ${orderId}`);
 
-    // Ottieni session_id dell'utente loggato
-    const cookieStore = cookies();
-    const sessionId = cookieStore.get('odoo_session_id')?.value;
+    // Extract and verify JWT token
+    const token = request.cookies.get('token')?.value;
 
-    if (!sessionId) {
-      console.error('❌ [ORDER-DETAIL-API] Utente non loggato');
+    if (!token) {
+      console.error('❌ [ORDER-DETAIL-API] No JWT token found');
       return NextResponse.json(
         { success: false, error: 'Devi fare login per visualizzare questo ordine' },
         { status: 401 }
       );
     }
 
-    // Step 1: Recupera l'ordine principale
-    const orderResult = await callOdoo(
-      sessionId,
+    // Decode JWT to get customer info
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    let decoded: any;
+
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+      console.log('✅ [ORDER-DETAIL-API] JWT decoded:', {
+        email: decoded.email,
+        userId: decoded.id
+      });
+    } catch (jwtError: any) {
+      console.error('❌ [ORDER-DETAIL-API] JWT verification failed:', jwtError.message);
+      return NextResponse.json(
+        { success: false, error: 'Token non valido' },
+        { status: 401 }
+      );
+    }
+
+    // Step 1: Recupera l'ordine principale usando admin session
+    const orderResult = await callOdooAsAdmin(
       'sale.order',
-      'read',
-      [[orderId]],
+      'search_read',
+      [],
       {
+        domain: [['id', '=', orderId]],
         fields: [
           'id',
           'name',
@@ -70,10 +86,10 @@ export async function GET(
           'picking_ids',
           'client_order_ref',
         ],
-      }
+      },
     );
 
-    if (!orderResult.success || !orderResult.result || orderResult.result.length === 0) {
+    if (!orderResult || orderResult.length === 0) {
       console.error('❌ [ORDER-DETAIL-API] Ordine non trovato');
       return NextResponse.json(
         { success: false, error: 'Ordine non trovato' },
@@ -81,18 +97,18 @@ export async function GET(
       );
     }
 
-    const order = orderResult.result[0];
+    const order = orderResult[0];
     console.log('✅ [ORDER-DETAIL-API] Ordine recuperato:', order.name);
 
     // Step 2: Recupera le righe ordine (prodotti)
     let orderLines: any[] = [];
     if (order.order_line && order.order_line.length > 0) {
-      const linesResult = await callOdoo(
-        sessionId,
+      const linesResult = await callOdooAsAdmin(
         'sale.order.line',
-        'read',
-        [order.order_line],
+        'search_read',
+        [],
         {
+          domain: [['id', 'in', order.order_line]],
           fields: [
             'id',
             'product_id',
@@ -107,11 +123,11 @@ export async function GET(
             'discount',
             'product_uom',
           ],
-        }
+        },
       );
 
-      if (linesResult.success && linesResult.result) {
-        orderLines = linesResult.result;
+      if (linesResult) {
+        orderLines = linesResult;
       }
     }
 
@@ -120,12 +136,12 @@ export async function GET(
     // Step 3: Recupera fatture collegate
     let invoices: any[] = [];
     if (order.invoice_ids && order.invoice_ids.length > 0) {
-      const invoicesResult = await callOdoo(
-        sessionId,
+      const invoicesResult = await callOdooAsAdmin(
         'account.move',
-        'read',
-        [order.invoice_ids],
+        'search_read',
+        [],
         {
+          domain: [['id', 'in', order.invoice_ids]],
           fields: [
             'id',
             'name',
@@ -134,11 +150,11 @@ export async function GET(
             'state',
             'payment_state',
           ],
-        }
+        },
       );
 
-      if (invoicesResult.success && invoicesResult.result) {
-        invoices = invoicesResult.result;
+      if (invoicesResult) {
+        invoices = invoicesResult;
       }
     }
 
@@ -147,12 +163,12 @@ export async function GET(
     // Step 4: Recupera consegne/picking collegate
     let pickings: any[] = [];
     if (order.picking_ids && order.picking_ids.length > 0) {
-      const pickingsResult = await callOdoo(
-        sessionId,
+      const pickingsResult = await callOdooAsAdmin(
         'stock.picking',
-        'read',
-        [order.picking_ids],
+        'search_read',
+        [],
         {
+          domain: [['id', 'in', order.picking_ids]],
           fields: [
             'id',
             'name',
@@ -162,11 +178,11 @@ export async function GET(
             'location_dest_id',
             'carrier_tracking_ref',
           ],
-        }
+        },
       );
 
-      if (pickingsResult.success && pickingsResult.result) {
-        pickings = pickingsResult.result;
+      if (pickingsResult) {
+        pickings = pickingsResult;
       }
     }
 
@@ -342,65 +358,6 @@ function buildOrderTimeline(order: any, pickings: any[], invoices: any[]): any[]
   events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return events;
-}
-
-/**
- * Helper function per chiamate RPC a Odoo
- */
-async function callOdoo(
-  sessionId: string,
-  model: string,
-  method: string,
-  args: any[],
-  kwargs: any
-): Promise<{ success: boolean; result?: any; error?: string }> {
-  try {
-    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw/${model}/${method}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `session_id=${sessionId}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model,
-          method,
-          args,
-          kwargs: kwargs || {},
-        },
-        id: Date.now(),
-      }),
-    });
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: `Errore HTTP ${response.status}`,
-      };
-    }
-
-    const data = await response.json();
-
-    if (data.error) {
-      return {
-        success: false,
-        error: data.error.data?.message || data.error.message || 'Errore chiamata Odoo',
-      };
-    }
-
-    return {
-      success: true,
-      result: data.result,
-    };
-
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
 }
 
 /**
