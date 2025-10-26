@@ -147,7 +147,6 @@ export async function POST(request: NextRequest) {
         order_value,
         samples_given,
         next_follow_up_date,
-        recommendation_id,
         created_at,
         updated_at
       ) VALUES (
@@ -162,7 +161,6 @@ export async function POST(request: NextRequest) {
         ${data.order_value || null},
         ${data.samples_given ? JSON.stringify(data.samples_given) : null},
         ${data.next_follow_up_date || null},
-        ${data.recommendation_id || null},
         NOW(),
         NOW()
       )
@@ -179,19 +177,6 @@ export async function POST(request: NextRequest) {
       data.outcome,
       data.order_placed || false
     );
-
-    // 4. Se l'interazione è legata a una raccomandazione, marca come in_progress
-    if (data.recommendation_id) {
-      await sql`
-        UPDATE maestro_recommendations
-        SET
-          status = 'in_progress',
-          updated_at = NOW()
-        WHERE id = ${data.recommendation_id}
-          AND status = 'pending'
-      `;
-      console.log(`📋 [MAESTRO-API] Recommendation ${data.recommendation_id} marked as in_progress`);
-    }
 
     return NextResponse.json({
       success: true,

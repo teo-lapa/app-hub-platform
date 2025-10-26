@@ -47,7 +47,7 @@ export const createInteractionSchema = z.object({
     quantity: z.number().positive(),
   })).optional(),
   next_follow_up_date: z.string().optional(), // Accetta qualsiasi string (date o datetime)
-  recommendation_id: z.number().int().positive().optional(), // Also integer (not UUID)
+  // recommendation_id rimosso - colonna non esiste nel database
 });
 
 // Schema per GET /api/maestro/daily-plan
