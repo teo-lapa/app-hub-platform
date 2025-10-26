@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, PhoneOff, Volume2, VolumeX } from 'lucide-react';
 import toast from 'react-hot-toast';
-import StellaVideoAvatar from './StellaVideoAvatar';
+import StellaVideoAvatarSimple from './StellaVideoAvatarSimple';
 
 interface StellaRealTimeProps {
   action: any;
@@ -532,11 +532,10 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
               ease: "easeInOut"
             }}
           >
-            {/* NUOVO: Avatar con lip-sync DID */}
-            <StellaVideoAvatar
+            {/* NUOVO: Avatar con lip-sync basato su audio */}
+            <StellaVideoAvatarSimple
               isSpeaking={isSpeaking}
               isListening={isListening}
-              audioStream={audioStreamRef.current || undefined}
             />
           </motion.div>
         </div>
