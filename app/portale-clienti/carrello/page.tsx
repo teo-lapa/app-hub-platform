@@ -210,8 +210,8 @@ export default function CarrelloPage() {
         duration: 5000,
       });
 
-      // Redirect to order detail page
-      router.push(`/portale-clienti/ordini/${data.order_id}`);
+      // Redirect to order detail page (use camelCase from API response)
+      router.push(`/portale-clienti/ordini/${data.orderId}`);
     } catch (err: any) {
       console.error('Checkout failed:', err);
       toast.error(err.message || 'Errore durante il checkout');
