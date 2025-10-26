@@ -284,7 +284,7 @@ export default function CarrelloPage() {
           </h2>
           <p className="text-slate-300 mb-6">{error}</p>
           <button
-            onClick={fetchCart}
+            onClick={() => fetchCart()}
             className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors"
           >
             Riprova
