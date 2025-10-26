@@ -111,8 +111,8 @@ export async function GET(
           fields: [
             'id',
             'product_id',
-            'product_uom_qty',
-            'quantity_done',
+            'product_uom_qty', // Quantità ordinata
+            // 'quantity_done', // REMOVED: campo non esistente su Odoo standard
             'product_uom',
             'state',
           ],
@@ -120,15 +120,22 @@ export async function GET(
       );
 
       if (movesResult && movesResult.length > 0) {
-        products = movesResult.map((move: any) => ({
-          id: move.id,
-          productId: move.product_id?.[0],
-          productName: move.product_id?.[1] || '',
-          quantityOrdered: move.product_uom_qty || 0,
-          quantityDone: move.quantity_done || 0,
-          uom: move.product_uom?.[1] || 'Units',
-          state: move.state,
-        }));
+        products = movesResult.map((move: any) => {
+          const quantityOrdered = move.product_uom_qty || 0;
+          // Se stato = done, quantità consegnata = quantità ordinata
+          // Altrimenti 0 (non ancora consegnato)
+          const quantityDone = move.state === 'done' ? quantityOrdered : 0;
+
+          return {
+            id: move.id,
+            productId: move.product_id?.[0],
+            productName: move.product_id?.[1] || '',
+            quantityOrdered,
+            quantityDone,
+            uom: move.product_uom?.[1] || 'Units',
+            state: move.state,
+          };
+        });
       }
     }
 
