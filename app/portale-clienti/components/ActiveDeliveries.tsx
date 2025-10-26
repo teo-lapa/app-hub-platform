@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Truck, MapPin, Calendar, Package2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { DeliveryMapModal } from './DeliveryMapModal';
 
 interface ActiveDelivery {
   id: number;
@@ -20,6 +22,8 @@ interface ActiveDeliveriesProps {
 }
 
 export function ActiveDeliveries({ deliveries, isLoading }: ActiveDeliveriesProps) {
+  const [selectedDelivery, setSelectedDelivery] = useState<{ id: number; name: string } | null>(null);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
@@ -136,13 +140,18 @@ export function ActiveDeliveries({ deliveries, isLoading }: ActiveDeliveriesProp
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
               whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+              onClick={() => {
+                if (todayDelivery) {
+                  setSelectedDelivery({ id: delivery.id, name: delivery.name });
+                }
+              }}
               className={`
                 border rounded-lg p-2 sm:p-3 md:p-4 bg-gradient-to-br
                 ${todayDelivery
                   ? 'border-green-300 dark:border-green-600 from-green-50 to-white dark:from-green-900/20 dark:to-gray-800'
                   : 'border-gray-200 dark:border-gray-700 from-gray-50 to-white dark:from-gray-900/50 dark:to-gray-800'
                 }
-                hover:shadow-md transition-all cursor-pointer
+                hover:shadow-md transition-all ${todayDelivery ? 'cursor-pointer' : 'cursor-default'}
               `}
             >
               {/* Delivery info header */}
@@ -218,6 +227,16 @@ export function ActiveDeliveries({ deliveries, isLoading }: ActiveDeliveriesProp
             {deliveries.filter(d => isToday(d.scheduled_date)).length} consegna/e prevista/e per oggi
           </span>
         </motion.div>
+      )}
+
+      {/* Map Modal */}
+      {selectedDelivery && (
+        <DeliveryMapModal
+          isOpen={!!selectedDelivery}
+          onClose={() => setSelectedDelivery(null)}
+          deliveryId={selectedDelivery.id}
+          deliveryName={selectedDelivery.name}
+        />
       )}
     </motion.div>
   );
