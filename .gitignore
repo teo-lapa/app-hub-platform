@@ -42,3 +42,4 @@ next-env.d.ts
 
 # WIP apps (in development elsewhere)
 .env.preview
+dev.log
