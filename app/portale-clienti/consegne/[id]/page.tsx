@@ -312,7 +312,7 @@ export default function DeliveryDetailPage() {
                             <text x="20" y="28" font-size="24" text-anchor="middle" fill="white">📍</text>
                           </svg>
                         `),
-                        scaledSize: new google.maps.Size(40, 40),
+                        scaledSize: { width: 40, height: 40 },
                       }}
                       title={delivery.partnerName}
                     />
@@ -332,7 +332,7 @@ export default function DeliveryDetailPage() {
                             <text x="25" y="34" font-size="28" text-anchor="middle" fill="white">🚚</text>
                           </svg>
                         `),
-                        scaledSize: new google.maps.Size(50, 50),
+                        scaledSize: { width: 50, height: 50 },
                       }}
                       title="Autista in arrivo"
                     />
