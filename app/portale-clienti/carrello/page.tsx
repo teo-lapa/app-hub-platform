@@ -185,7 +185,7 @@ export default function CarrelloPage() {
     setShowCheckoutModal(true);
   }
 
-  async function confirmCheckout() {
+  async function confirmCheckout(deliveryDate: string) {
     try {
       setIsCheckingOut(true);
 
@@ -195,6 +195,7 @@ export default function CarrelloPage() {
         credentials: 'include',
         body: JSON.stringify({
           deliveryNotes: deliveryNotes.trim() || null,
+          deliveryDate: deliveryDate, // Pass delivery date to API
         }),
       });
 

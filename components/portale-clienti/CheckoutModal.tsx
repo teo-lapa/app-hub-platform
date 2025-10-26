@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle,
@@ -9,12 +10,13 @@ import {
   AlertTriangle,
   X,
   Loader2,
+  Calendar,
 } from 'lucide-react';
 
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (deliveryDate: string) => void;
   subtotal: number;
   totalItems: number;
   deliveryNotes?: string;
@@ -30,6 +32,21 @@ export function CheckoutModal({
   deliveryNotes,
   isProcessing = false,
 }: CheckoutModalProps) {
+  // Calculate tomorrow's date as default
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0]; // YYYY-MM-DD format
+  };
+
+  const [deliveryDate, setDeliveryDate] = useState(getTomorrowDate());
+
+  // Reset to tomorrow when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setDeliveryDate(getTomorrowDate());
+    }
+  }, [isOpen]);
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('it-CH', {
       style: 'currency',
@@ -145,6 +162,31 @@ export function CheckoutModal({
                 </div>
               </div>
 
+              {/* Delivery Date Input */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-slate-700/30 rounded-xl p-5"
+              >
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-3">
+                  <Calendar className="h-5 w-5 text-emerald-400" />
+                  Data Consegna Richiesta
+                </h3>
+                <div className="space-y-2">
+                  <input
+                    type="date"
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    min={getTomorrowDate()}
+                    disabled={isProcessing}
+                    className="w-full px-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <p className="text-xs text-slate-400">
+                    Seleziona la data in cui desideri ricevere l'ordine (minimo domani)
+                  </p>
+                </div>
+              </motion.div>
+
               {/* Delivery Notes */}
               {deliveryNotes && (
                 <motion.div
@@ -200,8 +242,8 @@ export function CheckoutModal({
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={onConfirm}
-                  disabled={isProcessing}
+                  onClick={() => onConfirm(deliveryDate)}
+                  disabled={isProcessing || !deliveryDate}
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                 >
                   {isProcessing ? (

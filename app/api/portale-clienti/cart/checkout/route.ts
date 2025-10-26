@@ -193,16 +193,49 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ [CHECKOUT-API] All items validated for stock availability');
 
+    // Parse request body for delivery date
+    let deliveryDate = null;
+    try {
+      const body = await request.json();
+      deliveryDate = body.deliveryDate;
+      console.log('📅 [CHECKOUT-API] Delivery date requested:', deliveryDate);
+    } catch (e) {
+      // No body or invalid JSON - use default
+      console.log('⚠️ [CHECKOUT-API] No delivery date specified');
+    }
+
     // Create sale.order in Odoo
     console.log('📝 [CHECKOUT-API] Creating sale.order in Odoo...');
 
+    // Format dates for Odoo (YYYY-MM-DD HH:MM:SS)
+    const formatDateForOdoo = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    };
+
     const orderData: any = {
       partner_id: partnerId,
-      date_order: new Date().toISOString(),
+      date_order: formatDateForOdoo(new Date()),
       state: 'draft',
       origin: `Portale Clienti - Cart #${cartId}`,
       note: cart.delivery_notes || 'Ordine creato dal Portale Clienti',
     };
+
+    // Add commitment_date (requested delivery date) if specified
+    if (deliveryDate) {
+      try {
+        const parsedDate = new Date(deliveryDate);
+        orderData.commitment_date = formatDateForOdoo(parsedDate);
+        console.log('✅ [CHECKOUT-API] Commitment date set:', orderData.commitment_date);
+      } catch (dateError: any) {
+        console.warn('⚠️ [CHECKOUT-API] Invalid delivery date format:', dateError.message);
+      }
+    }
 
     // Add payment term if available
     if (partner.property_payment_term_id) {
