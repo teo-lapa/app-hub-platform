@@ -112,18 +112,28 @@ export function InteractionModal({
       const customerAvatarId = customerData.customer.id; // UUID del customer_avatar
 
       // 3. Registra l'interazione nel sistema Maestro
+      const interactionPayload: any = {
+        customer_avatar_id: customerAvatarId,
+        interaction_type: interactionType,
+        outcome: outcomeMap[outcome],
+        order_placed: orderGenerated || (orderId !== null),
+      };
+
+      // Aggiungi solo i campi opzionali se hanno valori validi
+      if (samples_given.length > 0) {
+        interactionPayload.samples_given = samples_given;
+      }
+      if (orderId !== null) {
+        interactionPayload.odoo_order_id = orderId;
+      }
+      if (notes && notes.trim()) {
+        interactionPayload.notes = notes.trim();
+      }
+
       const response = await fetch('/api/maestro/interactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_avatar_id: customerAvatarId,
-          interaction_type: interactionType,
-          outcome: outcomeMap[outcome],
-          samples_given: samples_given.length > 0 ? samples_given : undefined,
-          order_placed: orderGenerated || (orderId !== null),
-          odoo_order_id: orderId !== null ? orderId : undefined, // FIX: null → undefined
-          notes: notes || undefined
-        })
+        body: JSON.stringify(interactionPayload)
       });
 
       if (!response.ok) throw new Error('Failed to save interaction');
