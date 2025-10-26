@@ -16,6 +16,7 @@ import {
   UserCircleIcon,
   Bars3Icon,
   XMarkIcon,
+  ReceiptPercentIcon,
 } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +25,7 @@ const navigation = [
   { name: 'Catalogo', href: '/portale-clienti/catalogo', icon: ShoppingBagIcon },
   { name: 'Ordini', href: '/portale-clienti/ordini', icon: DocumentTextIcon },
   { name: 'Consegne', href: '/portale-clienti/consegne', icon: TruckIcon },
+  { name: 'Fatture', href: '/portale-clienti/fatture', icon: ReceiptPercentIcon },
   { name: 'Profilo', href: '/portale-clienti/profilo', icon: UserCircleIcon },
 ];
 

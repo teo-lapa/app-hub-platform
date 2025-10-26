@@ -12,6 +12,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
     "@google/generative-ai": "^0.24.1",
+    "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.2.0",
     "@next/font": "^14.0.0",
     "@react-google-maps/api": "^2.20.7",
