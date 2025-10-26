@@ -23,11 +23,15 @@ export async function POST(request: NextRequest) {
     // 1. AUTENTICAZIONE ADMIN SU ODOO
     const odooUrl = process.env.ODOO_URL;
     const odooDb = process.env.ODOO_DB;
-    const odooUsername = process.env.ODOO_USERNAME;
-    const odooPassword = process.env.ODOO_PASSWORD;
+    const odooUsername = process.env.ODOO_ADMIN_EMAIL?.trim();
+    const odooPassword = process.env.ODOO_ADMIN_PASSWORD?.trim();
 
     if (!odooUrl || !odooDb || !odooUsername || !odooPassword) {
       console.error('❌ Credenziali Odoo mancanti nel server');
+      console.error('❌ ODOO_URL:', !!odooUrl);
+      console.error('❌ ODOO_DB:', !!odooDb);
+      console.error('❌ ODOO_ADMIN_EMAIL:', !!odooUsername);
+      console.error('❌ ODOO_ADMIN_PASSWORD:', !!odooPassword);
       return NextResponse.json({
         success: false,
         error: 'Configurazione server non completa'
