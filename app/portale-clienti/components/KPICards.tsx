@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ShoppingCart,
@@ -8,6 +9,7 @@ import {
   CreditCard,
   AlertTriangle
 } from 'lucide-react';
+import { DashboardCardModal, type CardType } from './DashboardCardModal';
 
 interface DashboardKPIs {
   orders_count: number;
@@ -25,11 +27,26 @@ interface KPICardsProps {
 }
 
 export function KPICards({ kpis, isLoading }: KPICardsProps) {
+  const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
       currency: 'EUR'
     }).format(amount);
+  };
+
+  const handleCardClick = (cardType: CardType) => {
+    if (isLoading) return;
+    setSelectedCard(cardType);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    // Keep selectedCard for a moment to prevent content flash
+    setTimeout(() => setSelectedCard(null), 300);
   };
 
   const cardVariants = {
@@ -45,14 +62,25 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
     })
   };
 
-  const kpiCards = [
+  const kpiCards: Array<{
+    title: string;
+    value: string;
+    icon: any;
+    color: string;
+    bgColor: string;
+    iconColor: string;
+    subtitle?: string;
+    alert?: boolean;
+    cardType: CardType;
+  }> = [
     {
       title: 'Ordini questo mese',
       value: isLoading ? '...' : kpis.orders_count.toString(),
       icon: ShoppingCart,
       color: 'from-blue-500 to-blue-600',
       bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-      iconColor: 'text-blue-600 dark:text-blue-400'
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      cardType: 'orders'
     },
     {
       title: 'Fatturato YTD',
@@ -60,7 +88,8 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
       icon: TrendingUp,
       color: 'from-green-500 to-green-600',
       bgColor: 'bg-green-50 dark:bg-green-900/20',
-      iconColor: 'text-green-600 dark:text-green-400'
+      iconColor: 'text-green-600 dark:text-green-400',
+      cardType: 'revenue'
     },
     {
       title: 'Ordine Medio',
@@ -68,7 +97,8 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
       icon: DollarSign,
       color: 'from-purple-500 to-purple-600',
       bgColor: 'bg-purple-50 dark:bg-purple-900/20',
-      iconColor: 'text-purple-600 dark:text-purple-400'
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      cardType: 'avg'
     },
     {
       title: 'Credito Disponibile',
@@ -77,7 +107,8 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
       icon: CreditCard,
       color: 'from-indigo-500 to-indigo-600',
       bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
-      iconColor: 'text-indigo-600 dark:text-indigo-400'
+      iconColor: 'text-indigo-600 dark:text-indigo-400',
+      cardType: 'credit'
     },
     {
       title: 'Fatture Scadute',
@@ -91,7 +122,8 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
       iconColor: kpis.overdue_invoices > 0
         ? 'text-red-600 dark:text-red-400'
         : 'text-gray-600 dark:text-gray-400',
-      alert: kpis.overdue_invoices > 0
+      alert: kpis.overdue_invoices > 0,
+      cardType: 'overdue'
     }
   ];
 
@@ -113,27 +145,32 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
-      {kpiCards.map((card, index) => {
-        const Icon = card.icon;
-        return (
-          <motion.div
-            key={card.title}
-            custom={index}
-            initial="hidden"
-            animate="visible"
-            variants={cardVariants}
-            whileHover={{
-              scale: 1.05,
-              transition: { duration: 0.2 }
-            }}
-            className={`
-              relative overflow-hidden rounded-xl shadow-lg
-              bg-white dark:bg-gray-800
-              border border-gray-100 dark:border-gray-700
-              ${card.alert ? 'ring-2 ring-red-500 ring-opacity-50' : ''}
-            `}
-          >
+    <>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+        {kpiCards.map((card, index) => {
+          const Icon = card.icon;
+          return (
+            <motion.div
+              key={card.title}
+              custom={index}
+              initial="hidden"
+              animate="visible"
+              variants={cardVariants}
+              whileHover={{
+                scale: 1.05,
+                transition: { duration: 0.2 }
+              }}
+              onClick={() => handleCardClick(card.cardType)}
+              className={`
+                relative overflow-hidden rounded-xl shadow-lg
+                bg-white dark:bg-gray-800
+                border border-gray-100 dark:border-gray-700
+                cursor-pointer transition-all
+                hover:shadow-xl
+                ${card.alert ? 'ring-2 ring-red-500 ring-opacity-50' : ''}
+                ${isLoading ? 'pointer-events-none' : ''}
+              `}
+            >
             {/* Background gradient */}
             <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-5`} />
 
@@ -192,5 +229,16 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
         );
       })}
     </div>
+
+    {/* Dashboard Card Modal */}
+    {selectedCard && (
+      <DashboardCardModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        cardType={selectedCard}
+        kpis={kpis}
+      />
+    )}
+    </>
   );
 }

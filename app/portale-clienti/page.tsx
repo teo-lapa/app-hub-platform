@@ -62,6 +62,7 @@ interface DashboardData {
 export default function PortaleClientiPage() {
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [customerName, setCustomerName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -92,8 +93,32 @@ export default function PortaleClientiPage() {
     }
   };
 
+  const fetchCustomerProfile = async () => {
+    try {
+      const response = await fetch('/api/portale-clienti/profile');
+
+      if (!response.ok) {
+        console.error('Failed to fetch profile');
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.profile) {
+        // Extract first name from full name
+        const fullName = data.profile.name || '';
+        const firstName = fullName.split(' ')[0];
+        setCustomerName(firstName || fullName);
+      }
+    } catch (err: any) {
+      console.error('Error fetching profile:', err);
+      // Don't show error, just use default welcome message
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
+    fetchCustomerProfile();
   }, []);
 
   const handleRefresh = () => {
@@ -165,7 +190,10 @@ export default function PortaleClientiPage() {
                 Portale Clienti
               </h1>
               <p className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400">
-                Benvenuto nel tuo portale personalizzato LAPA
+                {customerName
+                  ? `Benvenuto ${customerName}, nel tuo portale personalizzato LAPA`
+                  : 'Benvenuto nel tuo portale personalizzato LAPA'
+                }
               </p>
             </div>
           </div>
