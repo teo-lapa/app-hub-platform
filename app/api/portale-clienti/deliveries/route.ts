@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
           'location_dest_id',
           'move_ids_without_package',
           'carrier_tracking_ref',
-          'delivery_man_id', // Autista
+          // 'delivery_man_id', // REMOVED: Campo custom non presente su production
         ],
         order: 'scheduled_date desc',
         limit: 100,
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
       partnerName: delivery.partner_id?.[1] || '',
       locationDest: delivery.location_dest_id?.[1] || '',
       trackingRef: delivery.carrier_tracking_ref || null,
-      deliveryMan: delivery.delivery_man_id?.[1] || null,
+      // deliveryMan: delivery.delivery_man_id?.[1] || null, // REMOVED: Campo custom
       itemsCount: delivery.move_ids_without_package?.length || 0,
     }));
 
