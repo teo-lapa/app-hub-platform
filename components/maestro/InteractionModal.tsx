@@ -102,12 +102,21 @@ export function InteractionModal({
         }
       }
 
-      // 2. Registra l'interazione nel sistema Maestro
+      // 2. Trova customer_avatar UUID dall'Odoo Partner ID
+      const avatarResponse = await fetch(`/api/maestro/customers/${odooPartnerId}`);
+      if (!avatarResponse.ok) {
+        toast.error('Errore nel trovare il cliente');
+        return;
+      }
+      const customerData = await avatarResponse.json();
+      const customerAvatarId = customerData.avatar.id; // UUID del customer_avatar
+
+      // 3. Registra l'interazione nel sistema Maestro
       const response = await fetch('/api/maestro/interactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customer_avatar_id: customerId.toString(),
+          customer_avatar_id: customerAvatarId,
           interaction_type: interactionType,
           outcome: outcomeMap[outcome],
           samples_given: samples_given.length > 0 ? samples_given : undefined,
