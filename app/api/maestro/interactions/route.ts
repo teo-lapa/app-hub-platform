@@ -130,8 +130,8 @@ export async function POST(request: NextRequest) {
     }
 
     const avatar = avatarResult.rows[0];
-    const salespersonId = avatar.assigned_salesperson_id;
-    const salespersonName = avatar.assigned_salesperson_name;
+    const salespersonId = avatar.assigned_salesperson_id || 0; // Default to 0 if not assigned
+    const salespersonName = avatar.assigned_salesperson_name || 'Non assegnato';
 
     // 2. Insert interaction
     const interactionResult = await sql`
