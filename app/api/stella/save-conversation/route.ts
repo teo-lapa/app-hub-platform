@@ -291,41 +291,15 @@ ${newMessageText}
       console.log('✅ Task creato con successo - ID:', taskId);
     }
 
-    // 5. SALVA ANCHE NEL DATABASE VERCEL
-    let conversationId: number | null = null;
+    // 5. SALVA IN maestro_interactions (unica fonte di verità!)
     let maestroInteractionId: string | null = null;
 
     try {
-      console.log('💾 Salvataggio anche nel database Vercel...');
+      console.log('💾 Salvataggio interazione Stella in maestro_interactions...');
 
-      const userId = userEmail || 'guest';
-      const today = new Date().toISOString().split('T')[0];
-
-      // A) SALVA IN maestro_conversations (storico chat completo)
-      const existingConv = await sql`
-        SELECT id FROM maestro_conversations
-        WHERE user_id = ${userId}
-        AND DATE(created_at AT TIME ZONE 'Europe/Rome') = ${today}
-        LIMIT 1
-      `;
-
-      if (existingConv.rows.length > 0) {
-        conversationId = existingConv.rows[0].id;
-        console.log('✅ Conversazione esistente trovata - ID:', conversationId);
-      } else {
-        const newConv = await sql`
-          INSERT INTO maestro_conversations (user_id, title, context)
-          VALUES (${userId}, ${actionTitle}, ${JSON.stringify({ actionType, userEmail })})
-          RETURNING id
-        `;
-        conversationId = newConv.rows[0].id;
-        console.log('✅ Nuova conversazione creata - ID:', conversationId);
-      }
-
-      // B) SALVA ANCHE IN maestro_interactions (per customer detail page)
       // Solo se abbiamo un partnerId (cliente valido)
       if (partnerId) {
-        console.log('💬 Salvataggio interazione Stella per cliente ID:', partnerId);
+        console.log('💬 Cliente ID:', partnerId);
 
         // Trova customer_avatar_id dall'odoo_partner_id
         const avatarResult = await sql`
@@ -338,38 +312,75 @@ ${newMessageText}
           const customerAvatarId = avatarResult.rows[0].id;
           console.log('✅ Customer avatar trovato - ID:', customerAvatarId);
 
-          // Crea interazione nella tab "Interazioni" del cliente
-          const interactionResult = await sql`
-            INSERT INTO maestro_interactions (
-              customer_avatar_id,
-              salesperson_id,
-              salesperson_name,
-              interaction_type,
-              interaction_date,
-              outcome,
-              notes,
-              order_placed,
-              order_value
-            )
-            VALUES (
-              ${customerAvatarId},
-              1,
-              'Stella AI Assistant',
-              'other',
-              NOW(),
-              ${lastMessage.isUser ? 'neutral' : 'successful'},
-              ${`[Stella AI] ${actionTitle}\n\n${lastMessage.text.substring(0, 500)}${lastMessage.text.length > 500 ? '...' : ''}`},
-              false,
-              NULL
-            )
-            RETURNING id
+          // Formatta il nuovo messaggio
+          const time = new Date(lastMessage.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+          const sender = lastMessage.isUser ? '👤 Cliente' : '🌟 Stella';
+          const newMessageLine = `[${time}] ${sender}: ${lastMessage.text}`;
+
+          // Cerca interazione Stella esistente per OGGI
+          const today = new Date().toISOString().split('T')[0];
+          const existingInteraction = await sql`
+            SELECT id, notes FROM maestro_interactions
+            WHERE customer_avatar_id = ${customerAvatarId}
+            AND salesperson_name = 'Stella AI Assistant'
+            AND DATE(interaction_date AT TIME ZONE 'Europe/Rome') = ${today}
+            LIMIT 1
           `;
 
-          maestroInteractionId = interactionResult.rows[0].id;
-          console.log('✅ Interazione salvata per customer detail - ID:', maestroInteractionId);
+          if (existingInteraction.rows.length > 0) {
+            // AGGIORNA interazione esistente aggiungendo nuovo messaggio
+            const existingId = existingInteraction.rows[0].id;
+            const existingNotes = existingInteraction.rows[0].notes || '';
+            const updatedNotes = existingNotes + '\n' + newMessageLine;
+
+            await sql`
+              UPDATE maestro_interactions
+              SET notes = ${updatedNotes},
+                  updated_at = NOW()
+              WHERE id = ${existingId}
+            `;
+
+            maestroInteractionId = existingId;
+            console.log('✅ Interazione aggiornata (append) - ID:', maestroInteractionId);
+
+          } else {
+            // CREA NUOVA interazione per oggi
+            const initialNotes = `🤖 Conversazione Stella AI - ${actionTitle}\n\n${newMessageLine}`;
+
+            const interactionResult = await sql`
+              INSERT INTO maestro_interactions (
+                customer_avatar_id,
+                salesperson_id,
+                salesperson_name,
+                interaction_type,
+                interaction_date,
+                outcome,
+                notes,
+                order_placed,
+                order_value
+              )
+              VALUES (
+                ${customerAvatarId},
+                1,
+                'Stella AI Assistant',
+                'other',
+                NOW(),
+                'successful',
+                ${initialNotes},
+                false,
+                NULL
+              )
+              RETURNING id
+            `;
+
+            maestroInteractionId = interactionResult.rows[0].id;
+            console.log('✅ Nuova interazione creata - ID:', maestroInteractionId);
+          }
         } else {
           console.log('⚠️ Customer avatar non trovato per partner ID:', partnerId);
         }
+      } else {
+        console.log('⚠️ Nessun partnerId - conversazione non salvata in maestro_interactions');
       }
 
     } catch (dbError) {
@@ -384,9 +395,7 @@ ${newMessageText}
       taskId: taskId,
       taskUrl: `${odooUrl}/web#id=${taskId}&model=project.task&view_type=form`,
       wasUpdated: !!existingTaskId,
-      conversationId: conversationId,
       maestroInteractionId: maestroInteractionId,
-      savedToDatabase: !!conversationId,
       savedToCustomerInteractions: !!maestroInteractionId
     });
 
