@@ -56,8 +56,8 @@ export async function getAdminSession(): Promise<{ sessionId: string; uid: numbe
     passwordSet: !!process.env.ODOO_ADMIN_PASSWORD
   });
 
-  const adminEmail = process.env.ODOO_ADMIN_EMAIL;
-  const adminPassword = process.env.ODOO_ADMIN_PASSWORD;
+  const adminEmail = process.env.ODOO_ADMIN_EMAIL?.trim();
+  const adminPassword = process.env.ODOO_ADMIN_PASSWORD?.trim();
 
   if (!adminEmail || !adminPassword) {
     throw new Error(
