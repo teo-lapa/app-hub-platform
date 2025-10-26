@@ -43,13 +43,14 @@ export default function CarrelloPage() {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [deliveryNotes, setDeliveryNotes] = useState('');
+  const [imagesSynced, setImagesSynced] = useState(false);
 
   // Fetch cart on mount
   useEffect(() => {
     fetchCart();
   }, []);
 
-  async function fetchCart() {
+  async function fetchCart(skipImageSync = false) {
     try {
       setLoading(true);
       setError(null);
@@ -83,12 +84,47 @@ export default function CarrelloPage() {
         subtotal: parseFloat(data.cart?.total_amount) || 0,
         totalItems: parseInt(data.cart?.item_count) || 0,
       });
+
+      // Sync images in background if any items have placeholder (only once)
+      if (!skipImageSync && !imagesSynced) {
+        const hasPlaceholders = mappedItems.some((item: any) =>
+          item.image === '/placeholder-product.png'
+        );
+
+        if (hasPlaceholders) {
+          console.log('🖼️ Detecting missing images, syncing in background...');
+          syncCartImages();
+        }
+      }
     } catch (err: any) {
       console.error('Failed to fetch cart:', err);
       setError(err.message || 'Errore nel caricamento del carrello');
       toast.error('Impossibile caricare il carrello');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function syncCartImages() {
+    try {
+      const response = await fetch('/api/portale-clienti/cart/sync-images', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.stats.updated > 0) {
+        console.log(`✅ Synced ${data.stats.updated} product images`);
+        setImagesSynced(true);
+        // Refresh cart to show updated images (skip sync to avoid loop)
+        await fetchCart(true);
+      } else {
+        setImagesSynced(true);
+      }
+    } catch (error) {
+      console.error('Failed to sync images:', error);
+      // Non mostrare errore all'utente, è un'operazione in background
     }
   }
 
