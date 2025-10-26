@@ -281,16 +281,27 @@ export async function POST(request: NextRequest) {
 
     // Update image URL and stock if available (Odoo image_128 is base64)
     if (product.image_128) {
-      const imageUrl = `data:image/png;base64,${product.image_128}`;
-      await sql`
-        UPDATE cart_items
-        SET product_image_url = ${imageUrl},
-            available_stock = ${product.qty_available}::DECIMAL
-        WHERE id = ${itemId}
-      `;
+      try {
+        const imageUrl = `data:image/png;base64,${product.image_128}`;
+        console.log(`📷 [CART-API] Updating image for item ${itemId}, image size: ${imageUrl.length} chars`);
+
+        await sql`
+          UPDATE cart_items
+          SET product_image_url = ${imageUrl},
+              available_stock = ${product.qty_available}::DECIMAL
+          WHERE id = ${itemId}
+        `;
+
+        console.log('✅ [CART-API] Image updated successfully');
+      } catch (imgError: any) {
+        console.error('⚠️ [CART-API] Failed to update image:', imgError.message);
+        // Continue anyway - image is optional
+      }
+    } else {
+      console.log('⚠️ [CART-API] No image_128 from Odoo');
     }
 
-    console.log('✅ [CART-API] Product added to cart with image');
+    console.log('✅ [CART-API] Product added to cart');
 
     // Get updated cart summary
     const summaryResult = await sql`

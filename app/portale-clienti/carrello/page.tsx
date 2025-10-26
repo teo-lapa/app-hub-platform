@@ -144,8 +144,7 @@ export default function CarrelloPage() {
         throw new Error(data.error || 'Errore aggiornamento quantità');
       }
 
-      // Refresh cart to sync with server (in background)
-      setTimeout(() => fetchCart(), 500);
+      // Success - optimistic update è già completo, no refresh needed
     } catch (err: any) {
       console.error('Failed to update quantity:', err);
       throw err;
