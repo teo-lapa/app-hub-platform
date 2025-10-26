@@ -85,6 +85,8 @@ export async function GET(
           'carrier_tracking_ref',
           // 'delivery_man_id', // REMOVED: campo custom non presente su production
           'note',
+          'user_id', // Responsabile/Autista
+          'vehicle_id', // Veicolo (se esiste campo custom)
         ],
         limit: 1,
       }
@@ -99,8 +101,9 @@ export async function GET(
 
     const delivery = deliveryResult[0];
 
-    // Step 2b: Recupera coordinate destinazione (partner)
+    // Step 2b: Recupera info destinazione completa (partner)
     let destinationCoordinates = null;
+    let destinationAddress = '';
     if (delivery.partner_id && delivery.partner_id[0]) {
       const partnerResult = await callOdooAsAdmin(
         'res.partner',
@@ -108,19 +111,41 @@ export async function GET(
         [],
         {
           domain: [['id', '=', delivery.partner_id[0]]],
-          fields: ['partner_latitude', 'partner_longitude'],
+          fields: [
+            'partner_latitude',
+            'partner_longitude',
+            'street',
+            'street2',
+            'city',
+            'zip',
+            'state_id',
+            'country_id',
+          ],
           limit: 1,
         }
       );
 
       if (partnerResult && partnerResult.length > 0) {
         const partner = partnerResult[0];
+
+        // Coordinate GPS
         if (partner.partner_latitude && partner.partner_longitude) {
           destinationCoordinates = {
             lat: partner.partner_latitude,
             lng: partner.partner_longitude,
           };
         }
+
+        // Indirizzo completo
+        const addressParts = [
+          partner.street,
+          partner.street2,
+          partner.zip,
+          partner.city,
+          partner.state_id?.[1],
+          partner.country_id?.[1],
+        ].filter(Boolean);
+        destinationAddress = addressParts.join(', ');
       }
     }
 
@@ -180,9 +205,10 @@ export async function GET(
       partnerId: delivery.partner_id?.[0],
       partnerName: delivery.partner_id?.[1] || '',
       locationDest: delivery.location_dest_id?.[1] || '',
+      destinationAddress, // Indirizzo completo destinazione
       trackingRef: delivery.carrier_tracking_ref || null,
-      // deliveryMan: delivery.delivery_man_id?.[1] || null, // REMOVED: campo custom
-      // deliveryManId: delivery.delivery_man_id?.[0] || null, // REMOVED: campo custom
+      driverName: delivery.user_id?.[1] || null, // Nome autista/responsabile
+      vehiclePlate: delivery.vehicle_id?.[1] || null, // Targa veicolo (se esiste)
       note: delivery.note || '',
       products,
       gpsPosition, // Posizione autista (se disponibile)

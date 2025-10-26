@@ -39,8 +39,10 @@ interface Delivery {
   origin: string;
   partnerName: string;
   locationDest: string;
+  destinationAddress: string;
   trackingRef: string | null;
-  // deliveryMan: string | null; // REMOVED: campo custom
+  driverName: string | null;
+  vehiclePlate: string | null;
   note: string;
   products: Product[];
   gpsPosition: GPSPosition | null;
@@ -66,6 +68,7 @@ export default function DeliveryDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [mapCenter, setMapCenter] = useState(defaultCenter);
+  const [isRefreshingGPS, setIsRefreshingGPS] = useState(false);
 
   const fetchDeliveryDetail = useCallback(async () => {
     try {
@@ -101,6 +104,38 @@ export default function DeliveryDetailPage() {
     }
   }, [deliveryId]);
 
+  // Funzione per aggiornare SOLO il GPS senza reload pagina
+  const refreshGPSPosition = useCallback(async () => {
+    if (!delivery) return;
+
+    try {
+      setIsRefreshingGPS(true);
+      const response = await fetch(`/api/portale-clienti/deliveries/${deliveryId}`);
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Aggiorna SOLO gpsPosition e mapCenter senza toccare altro
+        setDelivery(prev => prev ? {
+          ...prev,
+          gpsPosition: data.delivery.gpsPosition,
+        } : null);
+
+        // Aggiorna centro mappa se c'è nuovo GPS
+        if (data.delivery.gpsPosition) {
+          setMapCenter({
+            lat: data.delivery.gpsPosition.lat,
+            lng: data.delivery.gpsPosition.lng,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Errore refresh GPS:', err);
+      // Non mostrare errore all'utente, è solo un refresh silenzioso
+    } finally {
+      setIsRefreshingGPS(false);
+    }
+  }, [delivery, deliveryId]);
+
   useEffect(() => {
     fetchDeliveryDetail();
   }, [fetchDeliveryDetail]);
@@ -109,12 +144,12 @@ export default function DeliveryDetailPage() {
   useEffect(() => {
     if (!delivery || delivery.state !== 'assigned') return;
 
-      const interval = setInterval(() => {
-        fetchDeliveryDetail();
-      }, 30000); // 30 secondi
+    const interval = setInterval(() => {
+      refreshGPSPosition(); // Usa la nuova funzione silenziosa
+    }, 30000); // 30 secondi
 
-      return () => clearInterval(interval);
-  }, [delivery, fetchDeliveryDetail]);
+    return () => clearInterval(interval);
+  }, [delivery, refreshGPSPosition]);
 
   function formatDate(dateString: string) {
     if (!dateString) return '-';
@@ -194,7 +229,7 @@ export default function DeliveryDetailPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-100">
             <div className="flex items-center gap-3">
               <ClockIcon className="w-5 h-5 text-gray-400" />
               <div>
@@ -207,22 +242,35 @@ export default function DeliveryDetailPage() {
               </div>
             </div>
 
+            {delivery.destinationAddress && (
+              <div className="flex items-center gap-3 md:col-span-2 lg:col-span-1">
+                <MapPinIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-500">Indirizzo Consegna</p>
+                  <p className="font-medium text-gray-900 text-sm">{delivery.destinationAddress}</p>
+                </div>
+              </div>
+            )}
+
+            {delivery.driverName && (
+              <div className="flex items-center gap-3">
+                <UserIcon className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-xs text-gray-500">Autista</p>
+                  <p className="font-medium text-gray-900">{delivery.driverName}</p>
+                  {delivery.vehiclePlate && (
+                    <p className="text-xs text-gray-600 mt-0.5">🚗 {delivery.vehiclePlate}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {delivery.trackingRef && (
               <div className="flex items-center gap-3">
                 <TruckIcon className="w-5 h-5 text-gray-400" />
                 <div>
                   <p className="text-xs text-gray-500">Tracking</p>
                   <p className="font-medium text-gray-900 font-mono text-sm">{delivery.trackingRef}</p>
-                </div>
-              </div>
-            )}
-
-            {delivery.locationDest && (
-              <div className="flex items-center gap-3">
-                <MapPinIcon className="w-5 h-5 text-gray-400" />
-                <div>
-                  <p className="text-xs text-gray-500">Destinazione</p>
-                  <p className="font-medium text-gray-900">{delivery.locationDest}</p>
                 </div>
               </div>
             )}
