@@ -54,17 +54,34 @@ export default function CarrelloPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/portale-clienti/cart');
+      const response = await fetch('/api/portale-clienti/cart', {
+        credentials: 'include'
+      });
+
       const data = await response.json();
 
-      if (data.error) {
-        throw new Error(data.error);
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Errore nel caricamento del carrello');
       }
 
+      // Map DB snake_case to frontend camelCase
+      const mappedItems = (data.items || []).map((item: any) => ({
+        id: item.id,
+        productId: item.odoo_product_id,
+        productName: item.product_name,
+        productCode: item.product_code,
+        price: parseFloat(item.unit_price) || 0,
+        quantity: parseFloat(item.quantity) || 0,
+        maxQuantity: parseFloat(item.available_stock) || 999,
+        image: item.product_image_url || '/placeholder-product.png',
+        unit: item.uom || 'Pz',
+        category: null
+      }));
+
       setCart({
-        items: data.items || [],
-        subtotal: data.subtotal || 0,
-        totalItems: data.totalItems || 0,
+        items: mappedItems,
+        subtotal: parseFloat(data.cart?.total_amount) || 0,
+        totalItems: parseInt(data.cart?.item_count) || 0,
       });
     } catch (err: any) {
       console.error('Failed to fetch cart:', err);
@@ -77,32 +94,27 @@ export default function CarrelloPage() {
 
   async function handleUpdateQuantity(productId: number, newQuantity: number) {
     try {
-      const response = await fetch('/api/portale-clienti/cart', {
-        method: 'PUT',
+      // Find item by productId to get item.id
+      const item = cart?.items.find(i => i.productId === productId);
+      if (!item) {
+        throw new Error('Prodotto non trovato nel carrello');
+      }
+
+      const response = await fetch(`/api/portale-clienti/cart/items/${item.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId, quantity: newQuantity }),
+        credentials: 'include',
+        body: JSON.stringify({ quantity: newQuantity }),
       });
 
       const data = await response.json();
 
-      if (data.error) {
-        throw new Error(data.error);
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Errore aggiornamento quantità');
       }
 
-      // Update local state
-      setCart((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          items: prev.items.map((item) =>
-            item.productId === productId
-              ? { ...item, quantity: newQuantity }
-              : item
-          ),
-          subtotal: data.subtotal || prev.subtotal,
-          totalItems: data.totalItems || prev.totalItems,
-        };
-      });
+      // Refresh cart to get updated totals
+      await fetchCart();
     } catch (err: any) {
       console.error('Failed to update quantity:', err);
       throw err;
@@ -111,28 +123,27 @@ export default function CarrelloPage() {
 
   async function handleRemoveItem(productId: number) {
     try {
-      const response = await fetch('/api/portale-clienti/cart', {
+      // Find item by productId to get item.id
+      const item = cart?.items.find(i => i.productId === productId);
+      if (!item) {
+        throw new Error('Prodotto non trovato nel carrello');
+      }
+
+      const response = await fetch(`/api/portale-clienti/cart/items/${item.id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId }),
+        credentials: 'include',
       });
 
       const data = await response.json();
 
-      if (data.error) {
-        throw new Error(data.error);
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Errore rimozione prodotto');
       }
 
-      // Update local state
-      setCart((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          items: prev.items.filter((item) => item.productId !== productId),
-          subtotal: data.subtotal || 0,
-          totalItems: data.totalItems || 0,
-        };
-      });
+      toast.success('Prodotto rimosso dal carrello');
+
+      // Refresh cart to get updated data
+      await fetchCart();
     } catch (err: any) {
       console.error('Failed to remove item:', err);
       throw err;
@@ -150,6 +161,7 @@ export default function CarrelloPage() {
       const response = await fetch('/api/portale-clienti/cart/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           deliveryNotes: deliveryNotes.trim() || null,
         }),
@@ -157,8 +169,8 @@ export default function CarrelloPage() {
 
       const data = await response.json();
 
-      if (data.error) {
-        throw new Error(data.error);
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Errore durante il checkout');
       }
 
       // Success!
@@ -168,7 +180,7 @@ export default function CarrelloPage() {
       });
 
       // Redirect to order detail page
-      router.push(`/portale-clienti/ordini/${data.orderId}`);
+      router.push(`/portale-clienti/ordini/${data.order_id}`);
     } catch (err: any) {
       console.error('Checkout failed:', err);
       toast.error(err.message || 'Errore durante il checkout');
