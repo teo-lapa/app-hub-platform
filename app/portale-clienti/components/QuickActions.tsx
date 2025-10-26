@@ -1,11 +1,20 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ShoppingCart, Truck, Package, User } from 'lucide-react';
+import { ShoppingCart, Truck, Package, User, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export function QuickActions() {
   const actions = [
+    {
+      title: '🌟 Stella AI',
+      description: 'Assistente personale',
+      icon: Sparkles,
+      href: '/stella-assistant',
+      color: 'from-pink-500 to-purple-600',
+      bgColor: 'bg-gradient-to-br from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20',
+      iconColor: 'text-pink-600 dark:text-pink-400'
+    },
     {
       title: 'Nuovo Ordine',
       description: 'Sfoglia il catalogo',

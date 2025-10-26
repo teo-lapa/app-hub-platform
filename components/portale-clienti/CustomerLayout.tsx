@@ -17,11 +17,13 @@ import {
   Bars3Icon,
   XMarkIcon,
   ReceiptPercentIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 
 const navigation = [
   { name: 'Home', href: '/portale-clienti', icon: HomeIcon },
+  { name: '🌟 Stella AI', href: '/stella-assistant', icon: SparklesIcon },
   { name: 'Catalogo', href: '/portale-clienti/catalogo', icon: ShoppingBagIcon },
   { name: 'Ordini', href: '/portale-clienti/ordini', icon: DocumentTextIcon },
   { name: 'Consegne', href: '/portale-clienti/consegne', icon: TruckIcon },

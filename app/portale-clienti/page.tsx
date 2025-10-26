@@ -9,6 +9,7 @@ import { RecentOrders } from './components/RecentOrders';
 import { ActiveDeliveries } from './components/ActiveDeliveries';
 import { OpenInvoices } from './components/OpenInvoices';
 import { QuickActions } from './components/QuickActions';
+import { StellaFloatingButton } from './components/StellaFloatingButton';
 
 interface DashboardKPIs {
   orders_count: number;
@@ -277,6 +278,9 @@ export default function PortaleClientiPage() {
           </p>
         </motion.div>
       </div>
+
+      {/* Stella Floating Button */}
+      <StellaFloatingButton />
     </div>
   );
 }
