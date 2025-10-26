@@ -109,7 +109,7 @@ export function InteractionModal({
         return;
       }
       const customerData = await avatarResponse.json();
-      const customerAvatarId = customerData.avatar.id; // UUID del customer_avatar
+      const customerAvatarId = customerData.customer.id; // UUID del customer_avatar
 
       // 3. Registra l'interazione nel sistema Maestro
       const response = await fetch('/api/maestro/interactions', {
