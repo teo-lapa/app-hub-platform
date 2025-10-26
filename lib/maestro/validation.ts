@@ -40,12 +40,13 @@ export const createInteractionSchema = z.object({
   notes: z.string().max(2000).optional(),
   order_placed: z.boolean().default(false),
   order_value: z.number().nonnegative().optional(),
+  odoo_order_id: z.number().int().positive().optional(), // ID ordine Odoo creato (campioni/ordine)
   samples_given: z.array(z.object({
     product_id: z.number().int().positive(),
     product_name: z.string(),
     quantity: z.number().positive(),
   })).optional(),
-  next_follow_up_date: z.string().datetime().optional(),
+  next_follow_up_date: z.string().optional(), // Accetta qualsiasi string (date o datetime)
   recommendation_id: z.string().uuid().optional(),
 });
 
