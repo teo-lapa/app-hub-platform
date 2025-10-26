@@ -5,6 +5,7 @@ import { ProductCard } from '@/components/portale-clienti/ProductCard';
 import { SearchBar } from '@/components/portale-clienti/SearchBar';
 import { ProductFilters } from '@/components/portale-clienti/ProductFilters';
 import { Loader2, ShoppingCart, ChevronLeft, ChevronRight, PackageX } from 'lucide-react';
+import { useAuthStore } from '@/lib/store/authStore';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -37,6 +38,7 @@ interface PaginationInfo {
 }
 
 export default function CatalogoPage() {
+  const { user } = useAuthStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,7 @@ export default function CatalogoPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [availability, setAvailability] = useState('all');
   const [sortBy, setSortBy] = useState('name');
+  const [showPurchasedOnly, setShowPurchasedOnly] = useState(false);
 
   // Pagination
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -68,7 +71,7 @@ export default function CatalogoPage() {
   // Fetch products when filters change
   useEffect(() => {
     fetchProducts();
-  }, [searchQuery, selectedCategory, availability, sortBy, pagination.page]);
+  }, [searchQuery, selectedCategory, availability, sortBy, showPurchasedOnly, pagination.page]);
 
   async function fetchCategories() {
     try {
@@ -96,11 +99,14 @@ export default function CatalogoPage() {
         category: selectedCategory,
         availability,
         sort: sortBy,
+        purchased: showPurchasedOnly ? 'true' : 'false',
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
       });
 
-      const response = await fetch(`/api/portale-clienti/products?${params}`);
+      const response = await fetch(`/api/portale-clienti/products?${params}`, {
+        credentials: 'include', // Include cookies for JWT token
+      });
       const data = await response.json();
 
       if (data.error) {
@@ -174,6 +180,11 @@ export default function CatalogoPage() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   }
 
+  function handlePurchasedOnlyChange(value: boolean) {
+    setShowPurchasedOnly(value);
+    setPagination((prev) => ({ ...prev, page: 1 })); // Reset to page 1
+  }
+
   function handlePageChange(newPage: number) {
     setPagination((prev) => ({ ...prev, page: newPage }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -228,6 +239,8 @@ export default function CatalogoPage() {
               onAvailabilityChange={handleAvailabilityChange}
               sortBy={sortBy}
               onSortChange={handleSortChange}
+              showPurchasedOnly={showPurchasedOnly}
+              onPurchasedOnlyChange={handlePurchasedOnlyChange}
             />
           </aside>
 

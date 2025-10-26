@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
+import jwt from 'jsonwebtoken';
 
 /**
  * GET /api/portale-clienti/products
@@ -11,6 +12,7 @@ import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
  * - category: category ID filter
  * - availability: 'in_stock' | 'all'
  * - sort: 'name' | 'price_asc' | 'price_desc'
+ * - purchased: 'true' | 'false' - filter only previously purchased products (requires auth)
  * - page: page number (default: 1)
  * - limit: items per page (default: 50)
  */
@@ -21,6 +23,7 @@ export async function GET(request: NextRequest) {
     const categoryId = searchParams.get('category');
     const availability = searchParams.get('availability') || 'all';
     const sort = searchParams.get('sort') || 'name';
+    const purchased = searchParams.get('purchased') === 'true';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = (page - 1) * limit;
@@ -30,9 +33,62 @@ export async function GET(request: NextRequest) {
       categoryId,
       availability,
       sort,
+      purchased,
       page,
       limit
     });
+
+    // Get partnerId from JWT if purchased filter is enabled
+    let partnerId: number | null = null;
+    if (purchased) {
+      const token = request.cookies.get('token')?.value;
+
+      if (!token) {
+        console.warn('⚠️ [PRODUCTS-API] Purchased filter requires authentication');
+        return NextResponse.json(
+          { error: 'Il filtro "prodotti acquistati" richiede autenticazione' },
+          { status: 401 }
+        );
+      }
+
+      // Decode JWT to get customer email
+      const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+      let decoded: any;
+
+      try {
+        decoded = jwt.verify(token, jwtSecret);
+        console.log('✅ [PRODUCTS-API] JWT decoded for purchased filter:', decoded.email);
+      } catch (jwtError: any) {
+        console.error('❌ [PRODUCTS-API] JWT verification failed:', jwtError.message);
+        return NextResponse.json(
+          { error: 'Token non valido' },
+          { status: 401 }
+        );
+      }
+
+      // Get partner_id from Odoo using email
+      const userPartners = await callOdooAsAdmin(
+        'res.partner',
+        'search_read',
+        [],
+        {
+          domain: [['email', '=', decoded.email]],
+          fields: ['id'],
+          limit: 1
+        }
+      );
+
+      if (!userPartners || userPartners.length === 0) {
+        console.error('❌ [PRODUCTS-API] No partner found for email:', decoded.email);
+        return NextResponse.json(
+          { error: 'Cliente non identificato' },
+          { status: 404 }
+        );
+      }
+
+      partnerId = userPartners[0].id;
+      console.log('✅ [PRODUCTS-API] Partner identified:', partnerId);
+    }
 
     // Build domain for Odoo search
     const domain: any[] = [
@@ -55,6 +111,68 @@ export async function GET(request: NextRequest) {
     // Add availability filter
     if (availability === 'in_stock') {
       domain.push(['qty_available', '>', 0]);
+    }
+
+    // Add "purchased products" filter
+    if (purchased && partnerId) {
+      console.log('🔍 [PRODUCTS-API] Filtering purchased products for partner:', partnerId);
+
+      try {
+        // Step 1: Find all confirmed orders for this partner
+        const orders = await callOdooAsAdmin(
+          'sale.order',
+          'search_read',
+          [],
+          {
+            domain: [
+              ['partner_id', '=', parseInt(partnerId)],
+              ['state', 'in', ['sale', 'done']]
+            ],
+            fields: ['id'],
+          }
+        );
+
+        const orderIds = orders.map((o: any) => o.id);
+        console.log(`📋 [PRODUCTS-API] Found ${orderIds.length} confirmed orders`);
+
+        if (orderIds.length > 0) {
+          // Step 2: Find all order lines from these orders
+          const orderLines = await callOdooAsAdmin(
+            'sale.order.line',
+            'search_read',
+            [],
+            {
+              domain: [['order_id', 'in', orderIds]],
+              fields: ['product_id'],
+            }
+          );
+
+          // Step 3: Extract unique product IDs
+          const purchasedProductIds = [
+            ...new Set(
+              orderLines
+                .map((line: any) => line.product_id?.[0])
+                .filter((id: any) => id !== undefined && id !== null)
+            ),
+          ];
+
+          console.log(`✅ [PRODUCTS-API] Found ${purchasedProductIds.length} unique purchased products`);
+
+          if (purchasedProductIds.length > 0) {
+            // Add to domain: only show products that were purchased
+            domain.push(['id', 'in', purchasedProductIds]);
+          } else {
+            // No purchased products - return empty result set
+            domain.push(['id', '=', -1]); // Impossible condition
+          }
+        } else {
+          // No orders - return empty result set
+          domain.push(['id', '=', -1]); // Impossible condition
+        }
+      } catch (purchaseFilterError: any) {
+        console.error('❌ [PRODUCTS-API] Error filtering purchased products:', purchaseFilterError);
+        // Don't fail the whole request, just skip the filter
+      }
     }
 
     // Determine sort order
