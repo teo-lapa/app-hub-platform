@@ -293,13 +293,15 @@ ${newMessageText}
 
     // 5. SALVA ANCHE NEL DATABASE VERCEL
     let conversationId: number | null = null;
+    let maestroInteractionId: string | null = null;
+
     try {
       console.log('💾 Salvataggio anche nel database Vercel...');
 
       const userId = userEmail || 'guest';
       const today = new Date().toISOString().split('T')[0];
 
-      // Cerca conversazione esistente per oggi
+      // A) SALVA IN maestro_conversations (storico chat completo)
       const existingConv = await sql`
         SELECT id FROM maestro_conversations
         WHERE user_id = ${userId}
@@ -311,7 +313,6 @@ ${newMessageText}
         conversationId = existingConv.rows[0].id;
         console.log('✅ Conversazione esistente trovata - ID:', conversationId);
       } else {
-        // Crea nuova conversazione
         const newConv = await sql`
           INSERT INTO maestro_conversations (user_id, title, context)
           VALUES (${userId}, ${actionTitle}, ${JSON.stringify({ actionType, userEmail })})
@@ -321,19 +322,55 @@ ${newMessageText}
         console.log('✅ Nuova conversazione creata - ID:', conversationId);
       }
 
-      // Salva il messaggio
-      await sql`
-        INSERT INTO maestro_interactions (conversation_id, user_id, role, content, metadata)
-        VALUES (
-          ${conversationId},
-          ${userId},
-          ${lastMessage.isUser ? 'user' : 'assistant'},
-          ${lastMessage.text},
-          ${JSON.stringify({ timestamp: lastMessage.timestamp, taskId })}
-        )
-      `;
+      // B) SALVA ANCHE IN maestro_interactions (per customer detail page)
+      // Solo se abbiamo un partnerId (cliente valido)
+      if (partnerId) {
+        console.log('💬 Salvataggio interazione Stella per cliente ID:', partnerId);
 
-      console.log('✅ Messaggio salvato nel database Vercel');
+        // Trova customer_avatar_id dall'odoo_partner_id
+        const avatarResult = await sql`
+          SELECT id FROM customer_avatars
+          WHERE odoo_partner_id = ${partnerId}
+          LIMIT 1
+        `;
+
+        if (avatarResult.rows.length > 0) {
+          const customerAvatarId = avatarResult.rows[0].id;
+          console.log('✅ Customer avatar trovato - ID:', customerAvatarId);
+
+          // Crea interazione nella tab "Interazioni" del cliente
+          const interactionResult = await sql`
+            INSERT INTO maestro_interactions (
+              customer_avatar_id,
+              salesperson_id,
+              salesperson_name,
+              interaction_type,
+              interaction_date,
+              outcome,
+              notes,
+              order_placed,
+              order_value
+            )
+            VALUES (
+              ${customerAvatarId},
+              1,
+              'Stella AI Assistant',
+              'other',
+              NOW(),
+              ${lastMessage.isUser ? 'neutral' : 'successful'},
+              ${`[Stella AI] ${actionTitle}\n\n${lastMessage.text.substring(0, 500)}${lastMessage.text.length > 500 ? '...' : ''}`},
+              false,
+              NULL
+            )
+            RETURNING id
+          `;
+
+          maestroInteractionId = interactionResult.rows[0].id;
+          console.log('✅ Interazione salvata per customer detail - ID:', maestroInteractionId);
+        } else {
+          console.log('⚠️ Customer avatar non trovato per partner ID:', partnerId);
+        }
+      }
 
     } catch (dbError) {
       console.error('⚠️ Errore salvataggio database (Odoo OK):', dbError);
@@ -348,7 +385,9 @@ ${newMessageText}
       taskUrl: `${odooUrl}/web#id=${taskId}&model=project.task&view_type=form`,
       wasUpdated: !!existingTaskId,
       conversationId: conversationId,
-      savedToDatabase: !!conversationId
+      maestroInteractionId: maestroInteractionId,
+      savedToDatabase: !!conversationId,
+      savedToCustomerInteractions: !!maestroInteractionId
     });
 
   } catch (error) {
