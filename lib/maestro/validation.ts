@@ -34,7 +34,7 @@ export const updateRecommendationSchema = z.object({
 
 // Schema per POST /api/maestro/interactions
 export const createInteractionSchema = z.object({
-  customer_avatar_id: z.string().uuid(),
+  customer_avatar_id: z.number().int().positive(), // SERIAL PRIMARY KEY (integer, non UUID)
   interaction_type: z.enum(['visit', 'call', 'email', 'whatsapp', 'other']),
   outcome: z.enum(['successful', 'unsuccessful', 'neutral', 'follow_up_needed']),
   notes: z.string().max(2000).optional(),
@@ -47,7 +47,7 @@ export const createInteractionSchema = z.object({
     quantity: z.number().positive(),
   })).optional(),
   next_follow_up_date: z.string().optional(), // Accetta qualsiasi string (date o datetime)
-  recommendation_id: z.string().uuid().optional(),
+  recommendation_id: z.number().int().positive().optional(), // Also integer (not UUID)
 });
 
 // Schema per GET /api/maestro/daily-plan
