@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       [],
       {
         domain: [['email', '=', userEmail]],
-        fields: ['id', 'name', 'phone', 'mobile', 'email', 'parent_id', 'is_company', 'total_invoiced', 'street', 'city', 'vat', 'ref'],
+        fields: ['id', 'name', 'phone', 'mobile', 'email', 'parent_id', 'is_company', 'street', 'city', 'vat', 'ref'],
         limit: 1
       }
     );
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
         [],
         {
           domain: [['id', '=', user.parent_id[0]]],
-          fields: ['name', 'phone', 'email', 'total_invoiced', 'street', 'city', 'vat', 'ref'],
+          fields: ['name', 'phone', 'email', 'street', 'city', 'vat', 'ref'],
           limit: 1
         }
       );
@@ -127,7 +127,6 @@ export async function GET(request: NextRequest) {
           name: companyData.name,
           vat: companyData.vat,
           ref: companyData.ref,
-          totalInvoiced: companyData.total_invoiced,
           street: companyData.street,
           city: companyData.city
         } : null
