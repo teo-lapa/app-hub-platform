@@ -121,7 +121,7 @@ export function InteractionModal({
           outcome: outcomeMap[outcome],
           samples_given: samples_given.length > 0 ? samples_given : undefined,
           order_placed: orderGenerated || (orderId !== null),
-          odoo_order_id: orderId,
+          odoo_order_id: orderId !== null ? orderId : undefined, // FIX: null → undefined
           notes: notes || undefined
         })
       });
