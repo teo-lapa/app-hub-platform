@@ -93,7 +93,6 @@ export async function GET(request: NextRequest) {
           'website',
           'comment',
           'user_id', // Agente di vendita
-          'payment_term_id', // Termini di pagamento
           'property_product_pricelist', // Listino prezzi
         ],
         limit: 1,
@@ -138,7 +137,6 @@ export async function GET(request: NextRequest) {
 
       // Agente e termini
       salesPerson: partner.user_id?.[1] || null,
-      paymentTerm: partner.payment_term_id?.[1] || null,
       pricelist: partner.property_product_pricelist?.[1] || null,
 
       // Extra
