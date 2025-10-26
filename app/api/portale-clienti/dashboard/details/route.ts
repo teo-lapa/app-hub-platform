@@ -119,33 +119,46 @@ export async function GET(request: NextRequest) {
     // 4. Fetch type-specific data
     let responseData: any = {};
 
-    switch (type) {
-      case 'orders':
-        responseData = await fetchOrdersDetails(partnerId);
-        break;
-      case 'revenue':
-        responseData = await fetchRevenueDetails(partnerId);
-        break;
-      case 'avg':
-        responseData = await fetchAvgOrderDetails(partnerId);
-        break;
-      case 'credit':
-        responseData = await fetchCreditDetails(partner);
-        break;
-      case 'overdue':
-        responseData = await fetchOverdueDetails(partnerId);
-        break;
+    try {
+      console.log(`🔍 [DASHBOARD-DETAILS-API] Fetching data for type: ${type}`);
+
+      switch (type) {
+        case 'orders':
+          responseData = await fetchOrdersDetails(partnerId);
+          break;
+        case 'revenue':
+          responseData = await fetchRevenueDetails(partnerId);
+          break;
+        case 'avg':
+          responseData = await fetchAvgOrderDetails(partnerId);
+          break;
+        case 'credit':
+          responseData = await fetchCreditDetails(partner);
+          break;
+        case 'overdue':
+          responseData = await fetchOverdueDetails(partnerId);
+          break;
+      }
+
+      console.log('✅ [DASHBOARD-DETAILS-API] Data fetched successfully:', Object.keys(responseData));
+
+      return NextResponse.json({
+        success: true,
+        data: responseData
+      });
+
+    } catch (fetchError: any) {
+      console.error(`❌ [DASHBOARD-DETAILS-API] Error fetching ${type} data:`, fetchError);
+      console.error('Stack:', fetchError.stack);
+      return NextResponse.json({
+        success: false,
+        error: `Failed to fetch ${type} details: ${fetchError.message}`
+      }, { status: 500 });
     }
 
-    console.log('✅ [DASHBOARD-DETAILS-API] Data fetched successfully');
-
-    return NextResponse.json({
-      success: true,
-      data: responseData
-    });
-
   } catch (error: any) {
-    console.error('❌ [DASHBOARD-DETAILS-API] Error:', error);
+    console.error('❌ [DASHBOARD-DETAILS-API] General error:', error);
+    console.error('Stack:', error.stack);
     return NextResponse.json({
       success: false,
       error: error.message || 'Failed to fetch details'
