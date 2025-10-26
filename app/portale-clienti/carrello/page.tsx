@@ -100,16 +100,17 @@ export default function CarrelloPage() {
         throw new Error('Prodotto non trovato nel carrello');
       }
 
-      // Optimistic update - aggiorna UI immediatamente
+      const itemId = item.id; // Use unique cart_item ID
       const oldQuantity = item.quantity;
       const priceDiff = (newQuantity - oldQuantity) * item.price;
 
+      // Optimistic update - usa item.id che è UNIVOCO
       setCart((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
           items: prev.items.map((i) =>
-            i.productId === productId
+            i.id === itemId // FIX: usa item.id invece di productId!
               ? { ...i, quantity: newQuantity }
               : i
           ),
@@ -118,7 +119,7 @@ export default function CarrelloPage() {
       });
 
       // Call API in background
-      const response = await fetch(`/api/portale-clienti/cart/items/${item.id}`, {
+      const response = await fetch(`/api/portale-clienti/cart/items/${itemId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -128,13 +129,13 @@ export default function CarrelloPage() {
       const data = await response.json();
 
       if (!response.ok || data.error) {
-        // Rollback on error
+        // Rollback on error - usa item.id
         setCart((prev) => {
           if (!prev) return prev;
           return {
             ...prev,
             items: prev.items.map((i) =>
-              i.productId === productId
+              i.id === itemId // FIX: usa item.id invece di productId!
                 ? { ...i, quantity: oldQuantity }
                 : i
             ),
