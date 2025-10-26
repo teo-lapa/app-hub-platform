@@ -277,8 +277,8 @@ export default function DeliveryDetailPage() {
           </div>
         </div>
 
-        {/* Google Maps Tracking */}
-        {(delivery.destinationCoordinates || delivery.gpsPosition) && (
+        {/* Google Maps Tracking - Solo per consegne non ancora completate */}
+        {delivery.state !== 'done' && (delivery.destinationCoordinates || delivery.gpsPosition) && (
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <MapPinIcon className="w-5 h-5" />
