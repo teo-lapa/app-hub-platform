@@ -83,7 +83,7 @@ export async function GET(
           'location_dest_id',
           'move_ids_without_package',
           'carrier_tracking_ref',
-          'delivery_man_id',
+          // 'delivery_man_id', // REMOVED: campo custom non presente su production
           'note',
         ],
         limit: 1,
@@ -133,34 +133,8 @@ export async function GET(
     }
 
     // Step 4: Recupera posizione GPS autista (se disponibile)
+    // TODO: Implementare tracking GPS in tempo reale quando disponibile
     let gpsPosition = null;
-    if (delivery.delivery_man_id) {
-      const deliveryManId = delivery.delivery_man_id[0];
-      // Cerca posizione GPS dal custom model (se esiste)
-      const gpsResult = await callOdooAsAdmin(
-        'delivery.gps.position',
-        'search_read',
-        [],
-        {
-          domain: [
-            ['delivery_man_id', '=', deliveryManId],
-            ['picking_id', '=', deliveryId],
-          ],
-          fields: ['latitude', 'longitude', 'timestamp'],
-          order: 'timestamp desc',
-          limit: 1,
-        }
-      );
-
-      if (gpsResult && gpsResult.length > 0) {
-        const pos = gpsResult[0];
-        gpsPosition = {
-          lat: pos.latitude,
-          lng: pos.longitude,
-          timestamp: pos.timestamp,
-        };
-      }
-    }
 
     // Step 5: Formatta risposta
     const formattedDelivery = {
@@ -175,8 +149,8 @@ export async function GET(
       partnerName: delivery.partner_id?.[1] || '',
       locationDest: delivery.location_dest_id?.[1] || '',
       trackingRef: delivery.carrier_tracking_ref || null,
-      deliveryMan: delivery.delivery_man_id?.[1] || null,
-      deliveryManId: delivery.delivery_man_id?.[0] || null,
+      // deliveryMan: delivery.delivery_man_id?.[1] || null, // REMOVED: campo custom
+      // deliveryManId: delivery.delivery_man_id?.[0] || null, // REMOVED: campo custom
       note: delivery.note || '',
       products,
       gpsPosition,
