@@ -39,6 +39,7 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const hasTriedConnecting = useRef(false);
+  const isCreatingResponse = useRef(false); // Previene risposte multiple
 
   // WebRTC connection ESATTAMENTE come nel tuo HTML errors.txt
   const initializeConnection = useCallback(async () => {
@@ -216,6 +217,7 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
     else if (data.type === 'response.created') {
       console.log('🤖 Stella sta creando una risposta...');
       setIsSpeaking(true);
+      isCreatingResponse.current = true;
     }
     else if (data.type === 'response.text.delta') {
       if (!currentResponseRef.current) {
@@ -272,6 +274,7 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
     else if (data.type === 'response.done') {
       console.log('✅ Risposta completa di Stella terminata');
       setIsSpeaking(false);
+      isCreatingResponse.current = false; // Reset flag
     }
     else if (data.type === 'error') {
       const errorMsg = data.error.message || 'Errore sconosciuto';
@@ -289,6 +292,13 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
     const text = textInput.trim();
 
     if (!text || !isConnected || !dataChannelRef.current) {
+      return;
+    }
+
+    // Check se c'è già una risposta in corso
+    if (isCreatingResponse.current) {
+      console.log('⚠️ Risposta già in corso, attendi...');
+      toast.error('Aspetta che Stella finisca di parlare!');
       return;
     }
 
@@ -313,14 +323,17 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
 
     dataChannelRef.current.send(JSON.stringify(message));
 
-    // Request response
-    const responseRequest = {
-      type: 'response.create'
-    };
+    // Request response SOLO se non c'è già una risposta
+    if (!isCreatingResponse.current) {
+      isCreatingResponse.current = true;
 
-    dataChannelRef.current.send(JSON.stringify(responseRequest));
+      const responseRequest = {
+        type: 'response.create'
+      };
 
-    setIsSpeaking(true);
+      dataChannelRef.current.send(JSON.stringify(responseRequest));
+      setIsSpeaking(true);
+    }
   };
 
   // Audio variables COME NEL TUO HTML
