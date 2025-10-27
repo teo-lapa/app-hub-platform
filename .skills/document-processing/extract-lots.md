@@ -21,15 +21,24 @@ Per ogni prodotto trova (se presente):
 - **Numero lotto** (LOT, LOTTO, BATCH, codice alfanumerico)
 - **Data scadenza** (SCAD, EXPIRY, EXP, TMC, BBD, data)
 
-## 🔍 Dove Cercare
+## 🔍 Dove Cercare - STRATEGIA INTELLIGENTE
 
-Cerca in TUTTO il documento:
+⚠️ **PRIORITÀ DOCUMENTI** (segui Agent 1):
+1. 🥇 Se c'è **FATTURA** → cerca lotti/scadenze PRIMA nella fattura
+2. 🥈 Se lotti/scadenze NON sono in fattura → cercali nel **DDT** o **PACKING LIST**
+3. 🥉 Se ci sono più documenti con STESSI prodotti → usa quello con più informazioni
+
+**Dove cercare:**
 - Tabelle "DETTAGLIO LOTTI"
-- Colonne "LOTTO", "LOT", "BATCH"
+- Colonne "LOTTO/SCADENZA" nella fattura
+- Colonne "LOT", "BATCH", "LOTTO"
 - Colonne "SCADENZA", "SCAD", "EXP", "EXPIRY"
 - Note a piè di pagina
-- Documenti di trasporto allegati
 - Prima pagina, ultima pagina, ovunque!
+
+**INTEGRAZIONE INTELLIGENTE:**
+- Se FATTURA ha prodotti MA NON ha lotti → cerca lotti nel DDT/PACKING LIST
+- Se FATTURA ha prodotti E lotti → usa SOLO la fattura
 
 ## ⚠️ Importante
 
@@ -37,6 +46,7 @@ Cerca in TUTTO il documento:
 - Se un prodotto NON ha scadenza → `null`
 - NON inventare dati
 - NON convertire le date (lascia formato originale)
+- Se trovi STESSO prodotto con STESSO lotto in più documenti → riportalo UNA volta sola
 
 ## ✅ Output Richiesto
 

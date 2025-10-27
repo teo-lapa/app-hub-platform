@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('🤖 Sistema 3-Agenti UNIVERSALE attivato...');
+    console.log('🤖 Sistema 4-Agenti UNIVERSALE attivato...');
 
     // Determine content type based on file format (PDF uses 'document', images use 'image')
     const isPDF = mediaType === 'application/pdf';
@@ -104,9 +104,13 @@ export async function POST(request: NextRequest) {
     };
 
     // Helper function to call Claude and parse JSON
-    const callAgent = async (skillPath: string, agentName: string) => {
+    const callAgent = async (skillPath: string, agentName: string, additionalContext?: string) => {
       console.log(`🤖 ${agentName}...`);
       const skill = loadSkill(skillPath);
+
+      const promptText = additionalContext
+        ? `${skill.content}\n\n---\n\n${additionalContext}`
+        : skill.content;
 
       const message = await anthropic.messages.create({
         model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
@@ -117,7 +121,7 @@ export async function POST(request: NextRequest) {
             role: 'user',
             content: [
               contentBlock,
-              { type: 'text', text: skill.content },
+              { type: 'text', text: promptText },
             ],
           },
         ],
@@ -142,11 +146,16 @@ export async function POST(request: NextRequest) {
       return json;
     };
 
+    // 🤖 AGENT 0: Identify Documents
+    const docInfo = await callAgent('document-processing/identify-documents', 'AGENT 0 - Identificazione Documenti');
+    console.log('📄 Documento principale identificato:', docInfo.primary_document.type, '- Pagine:', docInfo.primary_document.pages);
+
     // 🤖 AGENT 1: Extract Products (quantities + descriptions)
-    const productsData = await callAgent('document-processing/extract-products', 'AGENT 1 - Estrazione Prodotti');
+    const pagesContext = `IMPORTANTE: Estrai prodotti SOLO dalle pagine ${docInfo.primary_document.pages.join(', ')} che contengono il documento "${docInfo.primary_document.type}". IGNORA tutte le altre pagine!`;
+    const productsData = await callAgent('document-processing/extract-products', 'AGENT 1 - Estrazione Prodotti', pagesContext);
 
     // 🤖 AGENT 2: Extract Lots and Expiry Dates
-    const lotsData = await callAgent('document-processing/extract-lots', 'AGENT 2 - Estrazione Lotti');
+    const lotsData = await callAgent('document-processing/extract-lots', 'AGENT 2 - Estrazione Lotti', pagesContext);
 
     // 🤖 AGENT 3: Extract Supplier Info
     const supplierData = await callAgent('document-processing/extract-supplier', 'AGENT 3 - Estrazione Fornitore');
@@ -181,7 +190,9 @@ export async function POST(request: NextRequest) {
       products: products,
     };
 
-    console.log('✅ Sistema 3-Agenti completato:', {
+    console.log('✅ Sistema 4-Agenti completato:', {
+      documento_usato: docInfo.primary_document.type,
+      pagine: docInfo.primary_document.pages,
       supplier: parsedData.supplier_name,
       products: parsedData.products?.length || 0
     });

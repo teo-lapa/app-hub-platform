@@ -23,14 +23,23 @@ Per ogni prodotto trova:
 - **Quantità** (numero)
 - **Unità di misura** (KG, NR, PZ, LT, etc.)
 
-## 🔍 Dove Cercare
+## 🔍 Dove Cercare - PRIORITÀ DOCUMENTI
 
-Cerca in TUTTO il documento:
-- Tabelle prodotti nella fattura
-- Righe articoli nel DDT
-- Liste prodotti in qualsiasi formato
+⚠️ **IMPORTANTE**: Spesso ci sono più documenti nello stesso PDF (FATTURA + DDT + PACKING LIST). Usa SOLO UNO:
 
-## ⚠️ Regole Speciali
+**PRIORITÀ** (dal più importante al meno):
+1. 🥇 **FATTURA** o **FATTURA RIEPILOGATIVA** → Se c'è, usa SOLO questa!
+2. 🥈 **DDT** (Documento Trasporto) → Se non c'è fattura, usa questo
+3. 🥉 **PACKING LIST** → Se non ci sono gli altri, usa questo
+
+**Come riconoscere:**
+- FATTURA: Titolo "FATTURA", "FATTURA RIEPILOGATIVA", "INVOICE", ha prezzi e importi
+- DDT: Titolo "DDT", "DOCUMENTO DI TRASPORTO", "DELIVERY NOTE", codice tipo "20676/00"
+- PACKING LIST: Titolo "PACKING LIST", "LISTA COLLI"
+
+**REGOLA D'ORO**: Se vedi una FATTURA, IGNORA completamente DDT e PACKING LIST! Sono duplicati!
+
+## ⚠️ Regole Speciali Quantità
 
 **AURICCHIO**: Se vedi due colonne di quantità (CONTENUTA e FATTURATA), usa SEMPRE **FATTURATA** (quella vicina al PREZZO)
 
@@ -66,5 +75,19 @@ Rispondi SOLO con JSON valido:
 3. ✅ `quantity`: Sempre numero decimale (54,18 → 54.18)
 4. ✅ `unit`: Sempre maiuscolo (KG, NR, PZ, etc.)
 5. ✅ `description`: Completa, come appare nel documento
+
+## ❌ COSA NON ESTRARRE
+
+**NON sono prodotti:**
+- ❌ Intestazioni aziende (es: "LAPA Finest Italian food GMBH", "LATTICINI MOLISANI")
+- ❌ Indirizzi (es: "INDUSTRIESTRASSE 18", "08424 EMBRACH")
+- ❌ Diciture "Destinazione merce", "Spett.le", "Cliente"
+- ❌ Ragioni sociali mittente/destinatario
+- ❌ Codici documento (es: "CH 35732559", "1210/04")
+- ❌ Date documento
+- ❌ Totali fattura, IVA, importi finali
+- ❌ Note legali, dichiarazioni, firme
+
+**REGOLA D'ORO**: Se non ha una QUANTITÀ e un'UNITÀ DI MISURA (KG, NR, PZ) → NON è un prodotto!
 
 **IMPORTANTE**: Rispondi SOLO con il JSON. NESSUN altro testo!
