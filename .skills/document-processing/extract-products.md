@@ -11,9 +11,23 @@ created: 2025-01-27
 
 # 📦 Agent 1 - Estrazione Prodotti
 
+## 🚨 ISTRUZIONI OBBLIGATORIE - LEGGI PRIMA DI TUTTO
+
+Ti verrà detto quali PAGINE leggere. Esempio:
+> "Estrai prodotti SOLO dalle pagine 1, 2. IGNORA pagina 3, 4."
+
+**DEVI OBBEDIRE! Non leggere le pagine vietate!**
+
+Se ti dicono "SOLO pagine 1-2":
+- ✅ Leggi pagina 1
+- ✅ Leggi pagina 2
+- ❌ STOP! NON leggere pagina 3!
+- ❌ NON leggere pagina 4!
+- ❌ NON leggere nessun'altra pagina!
+
 ## 🎯 Obiettivo
 
-Estrarre SOLO i VERI prodotti alimentari dalle tabelle fattura/DDT. NON estrarre intestazioni, nomi aziende, o altre cose.
+Estrarre SOLO i VERI prodotti alimentari dalle tabelle nelle PAGINE INDICATE. NON estrarre intestazioni, note legali, o altre cose.
 
 ## 🧠 COME RICONOSCERE UN PRODOTTO VERO
 
@@ -126,19 +140,30 @@ Rispondi SOLO con JSON valido:
 - "IVA"
 - "Bolli/Stamps"
 
-❌ **Note legali:**
+❌ **Note legali e dichiarazioni:**
 - "L'esportatore delle merci..."
 - "Mod.di cons: risultante dagli..."
+- "DICHIARAZIONE IGIENE E TEMPERATURA..." → È una NOTA, non un prodotto!
+- "LA MERCE VIAGGIA A TEMPERATURA..." → È una DICHIARAZIONE, non un prodotto!
+- "CAC assolto" → È una nota doganale!
+- Qualsiasi frase lunga che NON sia nella tabella prodotti!
 
 ## ✅ COME VERIFICARE CHE SIA UN PRODOTTO VERO
 
-**CHECKLIST - Tutti devono essere SÌ:**
-1. [ ] È una RIGA in una TABELLA?
-2. [ ] Ha un CODICE prodotto (es: VT250ST1TA)?
-3. [ ] Ha una QUANTITÀ numerica (es: 3, 150.00)?
-4. [ ] Ha un'UNITÀ (KG, NR, PZ)?
-5. [ ] Ha una DESCRIZIONE alimentare (formaggio, salume, etc.)?
+**CHECKLIST OBBLIGATORIA - Tutti devono essere SÌ:**
+1. [ ] È nella PAGINA giusta? (Controlla le istruzioni ricevute!)
+2. [ ] È una RIGA in una TABELLA con colonne (Codice, Descrizione, Quantità)?
+3. [ ] Ha un CODICE prodotto (es: CPASTA11, VT250ST1TA)?
+4. [ ] Ha una QUANTITÀ numerica (es: 48, 12, 24)?
+5. [ ] Ha un'UNITÀ (PZ, KG, NR)?
+6. [ ] Ha una DESCRIZIONE alimentare breve (ORECCHIETTE, Stracciatella, etc.)?
+7. [ ] NON è una frase lunga tipo dichiarazione o nota?
 
-**Se anche UNO è NO → NON è un prodotto, NON estrarla!**
+**Se anche UNO solo è NO → STOP! NON è un prodotto, NON estrarla!**
+
+**ESEMPI di cosa NON estrarre MAI:**
+❌ "DICHIARAZIONE IGIENE E TEMPERATURA AUTOMEZZO..." → Troppo lunga! È una nota!
+❌ "LA MERCE VIAGGIA A TEMPERATURA: +2°/+4° C" → È una dichiarazione!
+❌ Se è nella pagina SBAGLIATA → NON estrarla anche se sembra un prodotto!
 
 **IMPORTANTE**: Rispondi SOLO con il JSON. NESSUN altro testo!
