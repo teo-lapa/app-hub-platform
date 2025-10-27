@@ -115,11 +115,30 @@ export async function POST(request: NextRequest) {
 
     console.log(`📝 [MAESTRO-API] Creating interaction for customer ${data.customer_avatar_id}`);
 
+    // Se customer_avatar_id è un number (odoo_partner_id), convertilo in UUID
+    let customerAvatarId: string;
+    if (typeof data.customer_avatar_id === 'number') {
+      console.log(`🔄 [MAESTRO-API] Converting odoo_partner_id ${data.customer_avatar_id} to UUID...`);
+      const lookupResult = await sql`
+        SELECT id FROM customer_avatars WHERE odoo_partner_id = ${data.customer_avatar_id}
+      `;
+      if (lookupResult.rows.length === 0) {
+        return NextResponse.json(
+          { error: `Customer not found with odoo_partner_id: ${data.customer_avatar_id}` },
+          { status: 404 }
+        );
+      }
+      customerAvatarId = lookupResult.rows[0].id;
+      console.log(`✅ [MAESTRO-API] Converted to UUID: ${customerAvatarId}`);
+    } else {
+      customerAvatarId = data.customer_avatar_id;
+    }
+
     // 1. Fetch avatar per ottenere salesperson info
     const avatarResult = await sql`
       SELECT assigned_salesperson_id, assigned_salesperson_name
       FROM customer_avatars
-      WHERE id = ${data.customer_avatar_id}
+      WHERE id = ${customerAvatarId}
     `;
 
     if (avatarResult.rows.length === 0) {
@@ -150,7 +169,7 @@ export async function POST(request: NextRequest) {
         created_at,
         updated_at
       ) VALUES (
-        ${data.customer_avatar_id},
+        ${customerAvatarId},
         ${salespersonId},
         ${salespersonName},
         ${data.interaction_type},
@@ -173,7 +192,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Update avatar dopo interazione
     await updateAvatarAfterInteraction(
-      data.customer_avatar_id,
+      customerAvatarId,
       data.outcome,
       data.order_placed || false
     );
@@ -199,7 +218,7 @@ export async function POST(request: NextRequest) {
  * Update avatar dopo interazione (recalculate scores)
  */
 async function updateAvatarAfterInteraction(
-  avatarId: number,
+  avatarId: string, // UUID string - matches customer_avatars.id type
   outcome: string,
   orderPlaced: boolean
 ): Promise<void> {

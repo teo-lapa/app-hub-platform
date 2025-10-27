@@ -154,16 +154,22 @@ export function InteractionModal({
       console.log('📥 [INTERACTION-MODAL] Response:', responseData);
       console.log('🔄 [INTERACTION-MODAL] Closing modal and triggering refresh...');
 
-      toast.success('Interazione registrata con successo!');
-      onClose();
-
-      // Reset form
+      // Reset form BEFORE closing
       setInteractionType('visit');
       setOutcome('neutral');
       setSelectedProducts([]);
       setSampleFeedback('indifferent');
       setOrderGenerated(false);
       setNotes('');
+
+      // Show success message
+      toast.success('Interazione registrata con successo!');
+
+      // Close modal and trigger refresh
+      // Small delay to ensure the modal closes before refetch
+      setTimeout(() => {
+        onClose();
+      }, 100);
     } catch (error) {
       toast.error('Errore nel salvare l\'interazione');
       console.error(error);

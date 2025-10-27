@@ -75,101 +75,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     refetchOnWindowFocus: true, // Refetch on window focus
   });
 
-  // Handler per chiusura modal con refresh
-  const handleCloseInteractionModal = () => {
-    console.log('🔄 [CUSTOMER-PAGE] handleCloseInteractionModal called');
-    console.log('🔄 [CUSTOMER-PAGE] Invalidating query with key:', ['customer-detail', params.id]);
-
-    setShowInteractionModal(false);
-
-    // Invalida la cache per forzare il refresh
-    queryClient.invalidateQueries({ queryKey: ['customer-detail', params.id] });
-
-    console.log('✅ [CUSTOMER-PAGE] Query invalidated, React Query should refetch now');
-  };
-
-  // Debug logging
-  if (data) {
-    console.log('[CUSTOMER-DETAIL] Data received:', {
-      customer_name: data.customer?.name,
-      customer_id: data.customer?.id,
-      odoo_partner_id: data.customer?.odoo_partner_id,
-      revenue_trend: data.revenue_trend,
-      orders_count: data.orders?.length || 0,
-      interactions_count: data.interactions?.length || 0,
-      recommendations_count: data.recommendations?.length || 0,
-      top_products_count: data.customer?.top_products?.length || 0,
-      odoo_connection: data.metadata?.odoo_connection,
-    });
-
-    // Debug interazioni specifico
-    if (data.interactions && data.interactions.length > 0) {
-      console.log('[CUSTOMER-DETAIL] 🔍 INTERACTIONS DETAILED:', {
-        total: data.interactions.length,
-        first_interaction: data.interactions[0],
-        last_interaction: data.interactions[data.interactions.length - 1],
-        all_ids: data.interactions.map((i: any) => i.id)
-      });
-    } else {
-      console.warn('[CUSTOMER-DETAIL] ⚠️ NO INTERACTIONS FOUND IN DATA!', {
-        data_keys: Object.keys(data),
-        interactions_value: data.interactions
-      });
-    }
-  }
-
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: Building2 },
-    { id: 'orders', label: 'Ordini', icon: ShoppingCart },
-    { id: 'interactions', label: 'Interazioni', icon: MessageSquare },
-    { id: 'products', label: 'Prodotti', icon: Package },
-    { id: 'insights', label: 'AI Insights', icon: Lightbulb }
-  ];
-
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
-              <p className="text-slate-400">Caricamento dati cliente...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error || !data) {
-    return (
-      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-        <div className="max-w-7xl mx-auto">
-          <Link
-            href="/maestro-ai/daily-plan"
-            className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Torna al piano giornaliero
-          </Link>
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-6 w-6 text-red-400 flex-shrink-0 mt-1" />
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-2">Errore nel caricamento</h3>
-                <p className="text-slate-300">
-                  {error ? (error as Error).message : 'Cliente non trovato'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // Destructuring sicuro dei dati (prima degli early returns per evitare problemi con hooks)
   const {
     customer = {} as any,
     recommendations = [],
@@ -179,7 +85,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     metadata = {}
   } = data || {};
 
-  // Filtro e raggruppamento interazioni
+  // Filtro e raggruppamento interazioni (DEVE essere qui, prima degli early returns!)
   const filteredInteractions = useMemo(() => {
     if (!interactions || !Array.isArray(interactions) || interactions.length === 0) return [];
 
@@ -244,16 +150,92 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
       visits: filteredInteractions.filter((i: any) => i.interaction_type === 'visit').length,
       calls: filteredInteractions.filter((i: any) => i.interaction_type === 'call').length,
       emails: filteredInteractions.filter((i: any) => i.interaction_type === 'email').length,
-      other: filteredInteractions.filter((i: any) => i.interaction_type === 'other').length,
+      other: filteredInteractions.filter((i: any) => !['visit', 'call', 'email'].includes(i.interaction_type)).length,
     };
   }, [filteredInteractions]);
 
-  // Calculate category spend for pie chart
-  const categorySpend = Object.entries(customer.product_categories || {}).map(([name, stats]: [string, any], idx) => ({
-    name,
-    value: stats.total_revenue,
-    color: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6]
-  }));
+  // Calculate category spend for pie chart (safely)
+  const categorySpend = useMemo(() => {
+    if (!customer?.product_categories) return [];
+
+    return Object.entries(customer.product_categories).map(([name, stats]: [string, any], idx) => ({
+      name,
+      value: stats.total_revenue,
+      color: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6]
+    }));
+  }, [customer]);
+
+  // Handler per chiusura modal con refresh
+  const handleCloseInteractionModal = async () => {
+    console.log('🔄 [CUSTOMER-PAGE] handleCloseInteractionModal called');
+    setShowInteractionModal(false);
+
+    // Invalida E forza il refetch
+    console.log('🔄 [CUSTOMER-PAGE] Invalidating and refetching query...');
+    await queryClient.invalidateQueries({
+      queryKey: ['customer-detail', params.id],
+      refetchType: 'active' // Forza il refetch immediato
+    });
+
+    // Forza anche un refetch esplicito per sicurezza
+    await queryClient.refetchQueries({
+      queryKey: ['customer-detail', params.id]
+    });
+
+    console.log('✅ [CUSTOMER-PAGE] Query invalidated and refetched!');
+  };
+
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: Building2 },
+    { id: 'orders', label: 'Ordini', icon: ShoppingCart },
+    { id: 'interactions', label: 'Interazioni', icon: MessageSquare },
+    { id: 'products', label: 'Prodotti', icon: Package },
+    { id: 'insights', label: 'AI Insights', icon: Lightbulb }
+  ];
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
+              <p className="text-slate-400">Caricamento dati cliente...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !data) {
+    return (
+      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+        <div className="max-w-7xl mx-auto">
+          <Link
+            href="/maestro-ai/daily-plan"
+            className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Torna al piano giornaliero
+          </Link>
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-6 w-6 text-red-400 flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-2">Errore nel caricamento</h3>
+                <p className="text-slate-300">
+                  {error ? (error as Error).message : 'Cliente non trovato'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
