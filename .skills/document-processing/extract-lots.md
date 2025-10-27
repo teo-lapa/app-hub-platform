@@ -31,12 +31,13 @@ Agent 1 potrebbe aver estratto righe SBAGLIATE come:
 Prima di estrarre lotti per un prodotto, VERIFICA:
 
 1. [ ] **Ha un codice articolo CORTO** (max 15 caratteri)? Se è lunghissimo → NON è un prodotto!
-2. [ ] **La descrizione è alimentare**? (FORMAGGIO, PASTA, ORECCHIETTE, etc.)
-3. [ ] **NON è un nome di azienda**? (LAPA, TAMBURRO, AURICCHIO → SCARTA!)
+2. [ ] **La descrizione è alimentare**? (FORMAGGIO, PASTA, ORECCHIETTE, MOZZARELLA, etc.)
+3. [ ] **NON è un nome di azienda**? (LAPA, TAMBURRO, AURICCHIO, SORI → SCARTA!)
 4. [ ] **NON è una dichiarazione/nota legale**? Se ha parole come "DICHIARAZIONE", "VIAGGIA", "TEMPERATURA" → SCARTA!
-5. [ ] **NON è un indirizzo**? (VIA, STRADA, numero civico → SCARTA!)
-6. [ ] **Ha quantità RAGIONEVOLE**? (Se ha 229.6 KG di "DICHIARAZIONE" → SCARTA!)
-7. [ ] **NON è nella pagina SBAGLIATA**? (Controlla se Agent 1 ti ha passato istruzioni sulle pagine)
+5. [ ] **NON è un codice doganale**? Se ha "COMMODITY CODE", "DAIRY PRODUCTS", "******" → SCARTA!
+6. [ ] **NON è un indirizzo**? (VIA, STRADA, numero civico → SCARTA!)
+7. [ ] **Ha quantità RAGIONEVOLE per un singolo prodotto**? (Se ha 964 KG di qualcosa → probabilmente è un TOTALE, SCARTA!)
+8. [ ] **NON è nella pagina SBAGLIATA**? (Controlla se Agent 1 ti ha passato istruzioni sulle pagine)
 
 **SE ANCHE UNA SOLA risposta è NO → NON estrarre lotti per quel prodotto!**
 
@@ -77,6 +78,14 @@ Prima di estrarre lotti per un prodotto, VERIFICA:
   "unit": "NR"
 }
 
+// ❌ SCARTA - È un codice doganale!
+{
+  "article_code": "04061030",
+  "description": "COMMODITY CODE ****** DAIRY PRODUCTS ******",
+  "quantity": 964.38,
+  "unit": "KG"
+}
+
 // ✅ QUESTO È OK - È un vero prodotto!
 {
   "article_code": "CPASTA11",
@@ -84,9 +93,21 @@ Prima di estrarre lotti per un prodotto, VERIFICA:
   "quantity": 48,
   "unit": "PZ"
 }
+
+// ✅ QUESTO È OK - È un vero prodotto!
+{
+  "article_code": "336",
+  "description": "JULIENNE DI MOZZARELLA FIOR DI LATTE",
+  "quantity": 9,
+  "unit": "KG"
+}
 ```
 
-**REGOLA D'ORO**: Se la descrizione ha più di 50 caratteri O contiene parole come "DICHIARAZIONE", "VIAGGIA", "TEMPERATURA", "GMBH", "SRL" → **SCARTA!**
+**REGOLA D'ORO**: Se la descrizione contiene:
+- Parole tipo: "DICHIARAZIONE", "VIAGGIA", "TEMPERATURA", "COMMODITY CODE", "DAIRY PRODUCTS"
+- Simboli strani: "******", "***"
+- Nomi aziende: "GMBH", "SRL", "S.R.L.", "LAPA"
+→ **SCARTA IMMEDIATAMENTE!**
 
 ## 📋 Cosa Estrarre (SOLO per prodotti VALIDI)
 
