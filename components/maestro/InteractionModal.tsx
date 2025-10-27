@@ -109,7 +109,7 @@ export function InteractionModal({
         return;
       }
       const customerData = await avatarResponse.json();
-      const customerAvatarId = parseInt(customerData.customer.id); // customer_avatars.id è SERIAL (integer)
+      const customerAvatarId = customerData.customer.id; // customer_avatars.id è UUID (string)
 
       console.log('🔍 Customer Avatar ID type:', typeof customerAvatarId, 'value:', customerAvatarId);
 
