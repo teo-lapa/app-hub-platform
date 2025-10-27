@@ -1,0 +1,21 @@
+🧪 TEST AGENTI DI PARSING INVOICE
+
+📄 Caricando PDF: C:\Users\lapa\Downloads\stroppa2695lapa.pdf
+✅ PDF caricato: 259.80 KB
+
+
+================================================================================
+🤖 AGENT 0 - Identificazione Documenti
+================================================================================
+📝 Prompt length: 3244 chars
+The model 'claude-3-5-sonnet-20241022' is deprecated and will reach end-of-life on October 22, 2025
+Please migrate to a newer model. Visit https://docs.anthropic.com/en/docs/resources/model-deprecations for more information.
+
+❌ ERRORE DURANTE IL TEST: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the "X-Api-Key" or "Authorization" headers to be explicitly omitted
+Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the "X-Api-Key" or "Authorization" headers to be explicitly omitted
+    at Anthropic.validateHeaders (C:\Users\lapa\Desktop\Claude Code\app-hub-platform\node_modules\@anthropic-ai\sdk\src\client.ts:365:11)
+    at Anthropic.buildHeaders (C:\Users\lapa\Desktop\Claude Code\app-hub-platform\node_modules\@anthropic-ai\sdk\src\client.ts:884:10)
+    at async Anthropic.buildRequest (C:\Users\lapa\Desktop\Claude Code\app-hub-platform\node_modules\@anthropic-ai\sdk\src\client.ts:832:24)
+    at async Anthropic.makeRequest (C:\Users\lapa\Desktop\Claude Code\app-hub-platform\node_modules\@anthropic-ai\sdk\src\client.ts:528:35)
+    at async callAgent (C:\Users\lapa\Desktop\Claude Code\app-hub-platform\test-agents.ts:62:21)
+    at async testAgents (C:\Users\lapa\Desktop\Claude Code\app-hub-platform\test-agents.ts:102:21)

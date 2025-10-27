@@ -21,7 +21,10 @@
       "Bash(curl:*)",
       "Read(//c/Users/lapa/Downloads/**)",
       "Bash(vercel ls:*)",
-      "Bash(vercel inspect:*)"
+      "Bash(vercel inspect:*)",
+      "Bash(tee:*)",
+      "Bash(git rm:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

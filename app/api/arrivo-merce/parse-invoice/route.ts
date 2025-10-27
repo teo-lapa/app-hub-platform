@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { loadSkill, logSkillInfo } from '@/lib/ai/skills-loader';
+import { PDFDocument } from 'pdf-lib';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes for large PDFs
@@ -8,6 +9,27 @@ export const maxDuration = 300; // 5 minutes for large PDFs
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// Helper function to extract specific pages from PDF
+async function extractPDFPages(buffer: Buffer, pages: number[]): Promise<Buffer> {
+  try {
+    const pdfDoc = await PDFDocument.load(buffer);
+    const newPdf = await PDFDocument.create();
+
+    // Pages in pdf-lib are 0-indexed, but we receive 1-indexed pages
+    for (const pageNum of pages) {
+      const [copiedPage] = await newPdf.copyPages(pdfDoc, [pageNum - 1]);
+      newPdf.addPage(copiedPage);
+    }
+
+    const pdfBytes = await newPdf.save();
+    return Buffer.from(pdfBytes);
+  } catch (error) {
+    console.error('Error extracting PDF pages:', error);
+    // If extraction fails, return original buffer
+    return buffer;
+  }
+}
 
 // Helper function to compress large PDFs
 async function compressPDF(buffer: Buffer): Promise<Buffer> {
@@ -148,15 +170,76 @@ export async function POST(request: NextRequest) {
       return json;
     };
 
-    // 🤖 AGENT 0: Identify Documents
+    // 🤖 AGENT 0: Identify Documents (usa PDF completo)
     const docInfo = await callAgent('document-processing/identify-documents', 'AGENT 0 - Identificazione Documenti');
     console.log('📄 Documento principale identificato:', docInfo.primary_document.type, '- Pagine:', docInfo.primary_document.pages);
 
-    // 🤖 AGENT 1: Extract Products (quantities + descriptions)
-    const pagesContext = `IMPORTANTE: Estrai prodotti SOLO dalle pagine ${docInfo.primary_document.pages.join(', ')} che contengono il documento "${docInfo.primary_document.type}". IGNORA tutte le altre pagine!`;
-    const productsData = await callAgent('document-processing/extract-products', 'AGENT 1 - Estrazione Prodotti', pagesContext);
+    // 📄 ESTRAI SOLO LE PAGINE DEL DOCUMENTO PRINCIPALE
+    console.log(`✂️  Estrazione pagine ${docInfo.primary_document.pages.join(', ')} dal PDF...`);
+    const filteredPdfBuffer = await extractPDFPages(buffer, docInfo.primary_document.pages);
+    const filteredBase64 = filteredPdfBuffer.toString('base64');
 
-    // 🤖 AGENT 2: Extract Lots and Expiry Dates + VALIDATE PRODUCTS
+    // Crea nuovo content block con SOLO le pagine filtrate
+    const filteredContentBlock = {
+      type: 'document' as const,
+      source: {
+        type: 'base64' as const,
+        media_type: mediaType,
+        data: filteredBase64,
+      },
+    };
+
+    console.log(`✅ PDF filtrato creato: ${(filteredPdfBuffer.length / 1024).toFixed(2)} KB (originale: ${(buffer.length / 1024).toFixed(2)} KB)`);
+
+    // 🤖 AGENT 1: Extract Products (con PDF FILTRATO - solo pagine giuste!)
+    // Ora Agent 1 riceve SOLO le pagine 1-2, è FISICAMENTE IMPOSSIBILE che legga pagina 3!
+    const pagesContext = `Stai ricevendo un PDF che contiene SOLO il documento "${docInfo.primary_document.type}". Estrai TUTTI i prodotti che trovi.`;
+
+    // Modifica callAgent per accettare contentBlock custom
+    const callAgentWithPDF = async (skillPath: string, agentName: string, pdfContentBlock: any, additionalContext?: string) => {
+      console.log(`🤖 ${agentName}...`);
+      const skill = loadSkill(skillPath, { skipCache: true });
+
+      const promptText = additionalContext
+        ? `${skill.content}\n\n---\n\n${additionalContext}`
+        : skill.content;
+
+      const message = await anthropic.messages.create({
+        model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
+        max_tokens: 8192,
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              pdfContentBlock,
+              { type: 'text', text: promptText },
+            ],
+          },
+        ],
+      });
+
+      const responseText = message.content[0]?.type === 'text' ? message.content[0].text : '';
+
+      let json;
+      try {
+        json = JSON.parse(responseText);
+      } catch {
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          json = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error(`${agentName}: Nessun JSON valido nella risposta`);
+        }
+      }
+
+      console.log(`✅ ${agentName}: completato`);
+      return json;
+    };
+
+    const productsData = await callAgentWithPDF('document-processing/extract-products', 'AGENT 1 - Estrazione Prodotti (PDF filtrato)', filteredContentBlock, pagesContext);
+
+    // 🤖 AGENT 2: Extract Lots and Expiry Dates + VALIDATE PRODUCTS (usa PDF filtrato)
     const productsListContext = `
 ${pagesContext}
 
@@ -175,7 +258,7 @@ ${JSON.stringify(productsData, null, 2)}
 4. Estrai lotti SOLO per i prodotti VALIDI
 5. Ritorna lotti SOLO per i prodotti che hai validato come VERI
 `;
-    const lotsData = await callAgent('document-processing/extract-lots', 'AGENT 2 - Validazione + Estrazione Lotti', productsListContext);
+    const lotsData = await callAgentWithPDF('document-processing/extract-lots', 'AGENT 2 - Validazione + Estrazione Lotti (PDF filtrato)', filteredContentBlock, productsListContext);
 
     // 🤖 AGENT 3: Extract Supplier Info
     const supplierData = await callAgent('document-processing/extract-supplier', 'AGENT 3 - Estrazione Fornitore');
