@@ -213,7 +213,10 @@ export function loadSkill(
   }
 
   // Leggi contenuto
-  const rawContent = fs.readFileSync(absolutePath, 'utf-8');
+  let rawContent = fs.readFileSync(absolutePath, 'utf-8');
+
+  // Normalizza line endings (Windows CRLF → Unix LF)
+  rawContent = rawContent.replace(/\r\n/g, '\n');
 
   // Estrai metadata dal frontmatter YAML (tra --- e ---)
   const metadataMatch = rawContent.match(/^---\n([\s\S]*?)\n---/);
