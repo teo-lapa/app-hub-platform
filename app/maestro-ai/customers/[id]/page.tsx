@@ -165,7 +165,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   }
 
   const {
-    customer,
+    customer = {} as any,
     recommendations = [],
     interactions = [],
     orders = [],
