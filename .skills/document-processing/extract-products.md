@@ -76,4 +76,18 @@ Rispondi SOLO con JSON valido:
 4. ✅ `unit`: Sempre maiuscolo (KG, NR, PZ, etc.)
 5. ✅ `description`: Completa, come appare nel documento
 
+## ❌ COSA NON ESTRARRE
+
+**NON sono prodotti:**
+- ❌ Intestazioni aziende (es: "LAPA Finest Italian food GMBH", "LATTICINI MOLISANI")
+- ❌ Indirizzi (es: "INDUSTRIESTRASSE 18", "08424 EMBRACH")
+- ❌ Diciture "Destinazione merce", "Spett.le", "Cliente"
+- ❌ Ragioni sociali mittente/destinatario
+- ❌ Codici documento (es: "CH 35732559", "1210/04")
+- ❌ Date documento
+- ❌ Totali fattura, IVA, importi finali
+- ❌ Note legali, dichiarazioni, firme
+
+**REGOLA D'ORO**: Se non ha una QUANTITÀ e un'UNITÀ DI MISURA (KG, NR, PZ) → NON è un prodotto!
+
 **IMPORTANTE**: Rispondi SOLO con il JSON. NESSUN altro testo!
