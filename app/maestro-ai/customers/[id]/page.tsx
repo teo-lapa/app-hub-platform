@@ -143,12 +143,14 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
 
   const { customer, recommendations, interactions, orders, revenue_trend, metadata } = data;
 
-  // Calculate category spend for pie chart
-  const categorySpend = Object.entries(customer.product_categories || {}).map(([name, stats]: [string, any], idx) => ({
-    name,
-    value: stats.total_revenue,
-    color: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6]
-  }));
+  // Calculate category spend for pie chart (safely)
+  const categorySpend = customer?.product_categories
+    ? Object.entries(customer.product_categories).map(([name, stats]: [string, any], idx) => ({
+        name,
+        value: stats.total_revenue,
+        color: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6]
+      }))
+    : [];
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
