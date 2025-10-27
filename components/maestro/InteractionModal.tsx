@@ -102,12 +102,20 @@ export function InteractionModal({
         }
       }
 
-      // 2. Usa direttamente customerId passato come prop (è già l'UUID corretto)
-      console.log('🔍 [SIMPLIFIED] Using customerId from props:', customerId);
+      // 2. Fetch customer avatar per ottenere l'UUID corretto
+      const avatarResponse = await fetch(`/api/maestro/customers/${odooPartnerId}`);
+      if (!avatarResponse.ok) {
+        toast.error('Errore nel trovare il cliente');
+        return;
+      }
+      const customerData = await avatarResponse.json();
+      const customerAvatarUUID = customerData.customer.id; // string UUID, NON fare parseInt!
+
+      console.log('✅ Customer Avatar UUID:', customerAvatarUUID, 'type:', typeof customerAvatarUUID);
 
       // 3. Registra l'interazione nel sistema Maestro
       const interactionPayload: any = {
-        customer_avatar_id: customerId,
+        customer_avatar_id: customerAvatarUUID,
         interaction_type: interactionType,
         outcome: outcomeMap[outcome],
         order_placed: orderGenerated || (orderId !== null),
