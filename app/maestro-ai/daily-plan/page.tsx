@@ -219,11 +219,11 @@ export default function DailyPlanPage() {
   // EVENT HANDLERS
   // ============================================================================
 
-  const handleCompleteVisit = (customerId: number) => {
+  const handleCompleteVisit = (customerId: string) => {
     const customer = allCards.find(c => c.id === customerId);
     if (customer) {
       setSelectedCustomer({
-        id: customerId,
+        id: customer.odoo_partner_id,
         name: customer.name,
         odoo_partner_id: customer.odoo_partner_id
       });

@@ -8,7 +8,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 
 interface CustomerCardProps {
   customer: {
-    id: number;
+    id: string;
     name: string;
     city?: string;
     health_score: number;
@@ -20,7 +20,7 @@ interface CustomerCardProps {
     priority?: 'urgent' | 'high' | 'medium' | 'low';
   };
   variant?: 'urgent' | 'opportunity' | 'default';
-  onComplete?: (customerId: number) => void;
+  onComplete?: (customerId: string) => void;
   onRemove?: () => void;
 }
 
