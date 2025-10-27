@@ -170,11 +170,18 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     );
   }
 
-  const { customer, recommendations, interactions, orders, revenue_trend, metadata } = data;
+  const {
+    customer,
+    recommendations = [],
+    interactions = [],
+    orders = [],
+    revenue_trend = [],
+    metadata = {}
+  } = data || {};
 
   // Filtro e raggruppamento interazioni
   const filteredInteractions = useMemo(() => {
-    if (!interactions || !Array.isArray(interactions)) return [];
+    if (!interactions || !Array.isArray(interactions) || interactions.length === 0) return [];
 
     return interactions.filter((interaction: any) => {
       // Filtro per tipo
