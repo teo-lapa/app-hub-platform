@@ -61,6 +61,9 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     queryFn: () => fetchCustomerDetail(params.id),
     retry: 2,
     staleTime: 0, // Always fresh
+    cacheTime: 0, // Don't cache at all
+    refetchOnMount: 'always', // Always refetch on mount
+    refetchOnWindowFocus: true, // Refetch on window focus
   });
 
   // Handler per chiusura modal con refresh
@@ -74,6 +77,8 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   if (data) {
     console.log('[CUSTOMER-DETAIL] Data received:', {
       customer_name: data.customer?.name,
+      customer_id: data.customer?.id,
+      odoo_partner_id: data.customer?.odoo_partner_id,
       revenue_trend: data.revenue_trend,
       orders_count: data.orders?.length || 0,
       interactions_count: data.interactions?.length || 0,
@@ -81,6 +86,21 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
       top_products_count: data.customer?.top_products?.length || 0,
       odoo_connection: data.metadata?.odoo_connection,
     });
+
+    // Debug interazioni specifico
+    if (data.interactions && data.interactions.length > 0) {
+      console.log('[CUSTOMER-DETAIL] 🔍 INTERACTIONS DETAILED:', {
+        total: data.interactions.length,
+        first_interaction: data.interactions[0],
+        last_interaction: data.interactions[data.interactions.length - 1],
+        all_ids: data.interactions.map((i: any) => i.id)
+      });
+    } else {
+      console.warn('[CUSTOMER-DETAIL] ⚠️ NO INTERACTIONS FOUND IN DATA!', {
+        data_keys: Object.keys(data),
+        interactions_value: data.interactions
+      });
+    }
   }
 
   const tabs = [
@@ -614,7 +634,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-white">
-                  Timeline Interazioni ({interactions.length})
+                  Timeline Interazioni ({interactions?.length || 0})
                 </h3>
                 <button
                   onClick={() => setShowInteractionModal(true)}
