@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Phone, Video, Mail, CheckCircle, XCircle, MinusCircle, Package, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useQueryClient } from '@tanstack/react-query';
 import { VehicleProductSelector } from '@/components/maestro/VehicleProductSelectorSimple';
 
 interface InteractionModalProps {
@@ -38,7 +37,6 @@ export function InteractionModal({
   odooPartnerId,
   salesPersonId
 }: InteractionModalProps) {
-  const queryClient = useQueryClient();
   const [interactionType, setInteractionType] = useState<InteractionType>('visit');
   const [outcome, setOutcome] = useState<Outcome>('neutral');
   const [sampleFeedback, setSampleFeedback] = useState<SampleFeedback>('indifferent');
@@ -149,10 +147,6 @@ export function InteractionModal({
       }
 
       toast.success('Interazione registrata con successo!');
-
-      // Invalida la cache per ricaricare i dati del cliente aggiornati
-      queryClient.invalidateQueries({ queryKey: ['customer-detail', odooPartnerId.toString()] });
-
       onClose();
 
       // Reset form
