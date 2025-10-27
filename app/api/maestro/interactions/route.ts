@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
  * Update avatar dopo interazione (recalculate scores)
  */
 async function updateAvatarAfterInteraction(
-  avatarId: number,
+  avatarId: string, // UUID string - matches customer_avatars.id type
   outcome: string,
   orderPlaced: boolean
 ): Promise<void> {
