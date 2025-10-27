@@ -138,7 +138,7 @@ export default function DailyPlanPage() {
 
   const [loading, setLoading] = useState(false);
 
-  const [selectedCustomer, setSelectedCustomer] = useState<{id: number, name: string, odoo_partner_id: number} | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<{id: string, name: string, odoo_partner_id: number} | null>(null);
   const [filterPriority, setFilterPriority] = useState<'all' | 'urgent' | 'high' | 'medium'>('all');
   const [filterCity, setFilterCity] = useState<string>('all');
 
@@ -219,7 +219,7 @@ export default function DailyPlanPage() {
   // EVENT HANDLERS
   // ============================================================================
 
-  const handleCompleteVisit = (customerId: number) => {
+  const handleCompleteVisit = (customerId: string) => {
     const customer = allCards.find(c => c.id === customerId);
     if (customer) {
       setSelectedCustomer({
@@ -238,7 +238,7 @@ export default function DailyPlanPage() {
       ...highPriorityCards,
       ...upsellCards,
       ...followUpCards
-    ].some(c => c.id === customer.odoo_partner_id);
+    ].some(c => c.id === customer.id);
 
     if (isAlreadyAdded) {
       toast.error('Cliente già presente nel piano giornaliero');
@@ -264,7 +264,7 @@ export default function DailyPlanPage() {
     toast.success(`${customer.name} aggiunto al piano giornaliero`);
   };
 
-  const handleRemoveManualCustomer = (customerId: number) => {
+  const handleRemoveManualCustomer = (customerId: string) => {
     setManuallyAddedCustomers(prev => prev.filter(c => c.id !== customerId));
     toast.success('Cliente rimosso dalla lista');
   };
