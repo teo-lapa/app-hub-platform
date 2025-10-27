@@ -13,15 +13,34 @@ created: 2025-01-27
 
 ## 🎯 Obiettivo
 
-Estrarre TUTTI i prodotti dal documento (fattura/DDT) con quantità e descrizioni.
+Estrarre SOLO i VERI prodotti alimentari dalle tabelle fattura/DDT. NON estrarre intestazioni, nomi aziende, o altre cose.
 
-## 📋 Cosa Estrarre
+## 🧠 COME RICONOSCERE UN PRODOTTO VERO
 
-Per ogni prodotto trova:
-- **Codice articolo** (se presente)
-- **Descrizione** completa del prodotto
-- **Quantità** (numero)
-- **Unità di misura** (KG, NR, PZ, LT, etc.)
+Un prodotto VERO è una RIGA in una TABELLA che ha:
+1. ✅ Un CODICE o NOME prodotto (es: "VT250ST1TA", "Stracciatella")
+2. ✅ Una QUANTITÀ con numero (es: 3, 150, 21.5)
+3. ✅ Un'UNITÀ DI MISURA (KG, NR, PZ, LT, etc.)
+4. ✅ Spesso ha un PREZZO unitario
+
+**Esempio di riga prodotto VERA:**
+```
+VT250ST1TA | Stracciatella vasc. g.250 Tamburro | 3,000 | KG | 12,000 | PZ
+```
+
+**Esempio di NON-prodotto (intestazione):**
+```
+LAPA Finest Italian food GMBH
+INDUSTRIESTRASSE 18
+08424 EMBRACH (CH)
+```
+
+## 📋 Cosa Estrarre da Ogni Prodotto
+
+- **Codice articolo** (dalla colonna "Codice" o simile)
+- **Descrizione** (nome del prodotto)
+- **Quantità** (numero dalla colonna quantità)
+- **Unità di misura** (KG, NR, PZ, etc.)
 
 ## 🔍 Dove Cercare - PRIORITÀ DOCUMENTI
 
@@ -76,18 +95,50 @@ Rispondi SOLO con JSON valido:
 4. ✅ `unit`: Sempre maiuscolo (KG, NR, PZ, etc.)
 5. ✅ `description`: Completa, come appare nel documento
 
-## ❌ COSA NON ESTRARRE
+## ❌ COSA NON ESTRARRE MAI
 
-**NON sono prodotti:**
-- ❌ Intestazioni aziende (es: "LAPA Finest Italian food GMBH", "LATTICINI MOLISANI")
-- ❌ Indirizzi (es: "INDUSTRIESTRASSE 18", "08424 EMBRACH")
-- ❌ Diciture "Destinazione merce", "Spett.le", "Cliente"
-- ❌ Ragioni sociali mittente/destinatario
-- ❌ Codici documento (es: "CH 35732559", "1210/04")
-- ❌ Date documento
-- ❌ Totali fattura, IVA, importi finali
-- ❌ Note legali, dichiarazioni, firme
+🚫 **STOP! Prima di estrarre una riga, chiediti:**
+- È dentro una TABELLA con colonne (Codice, Descrizione, Quantità, Prezzo)?
+- HA un numero di quantità E un'unità (KG/NR/PZ)?
 
-**REGOLA D'ORO**: Se non ha una QUANTITÀ e un'UNITÀ DI MISURA (KG, NR, PZ) → NON è un prodotto!
+**Se la risposta è NO → NON estrarla!**
+
+**ESEMPI di cose da NON estrarre:**
+
+❌ **Intestazioni documento:**
+- "LAPA Finest Italian food GMBH" → È il CLIENTE, non un prodotto!
+- "LATTICINI MOLISANI TAMBURRO SRL" → È il FORNITORE, non un prodotto!
+- "Spett.le/Recipient" → È un'etichetta!
+
+❌ **Indirizzi:**
+- "INDUSTRIESTRASSE 18"
+- "08424 EMBRACH (CH)"
+- "1 L.D.F. SRL"
+
+❌ **Info documento:**
+- "Destinazione merce"
+- "FATTURA RIEPILOGATIVA"
+- "Numero doc./Doc no. 121004"
+- "Data doc./Doc date 25/10/2025"
+
+❌ **Totali:**
+- "TOTALE A PAGARE"
+- "IVA"
+- "Bolli/Stamps"
+
+❌ **Note legali:**
+- "L'esportatore delle merci..."
+- "Mod.di cons: risultante dagli..."
+
+## ✅ COME VERIFICARE CHE SIA UN PRODOTTO VERO
+
+**CHECKLIST - Tutti devono essere SÌ:**
+1. [ ] È una RIGA in una TABELLA?
+2. [ ] Ha un CODICE prodotto (es: VT250ST1TA)?
+3. [ ] Ha una QUANTITÀ numerica (es: 3, 150.00)?
+4. [ ] Ha un'UNITÀ (KG, NR, PZ)?
+5. [ ] Ha una DESCRIZIONE alimentare (formaggio, salume, etc.)?
+
+**Se anche UNO è NO → NON è un prodotto, NON estrarla!**
 
 **IMPORTANTE**: Rispondi SOLO con il JSON. NESSUN altro testo!
