@@ -9,7 +9,7 @@ import { VehicleProductSelector } from '@/components/maestro/VehicleProductSelec
 interface InteractionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  customerId: number;
+  customerId: number; // customer_avatar.id (number in DB)
   customerName: string;
   odooPartnerId: number;
   salesPersonId?: number; // ID del venditore per mostrare i suoi prodotti in macchina
@@ -102,20 +102,20 @@ export function InteractionModal({
         }
       }
 
-      // 2. Trova customer_avatar UUID dall'Odoo Partner ID
+      // 2. Fetch customer avatar per ottenere l'UUID corretto
       const avatarResponse = await fetch(`/api/maestro/customers/${odooPartnerId}`);
       if (!avatarResponse.ok) {
         toast.error('Errore nel trovare il cliente');
         return;
       }
       const customerData = await avatarResponse.json();
-      const customerAvatarId = parseInt(customerData.customer.id); // customer_avatars.id è SERIAL (integer)
+      const customerAvatarUUID = customerData.customer.id; // string UUID, NON fare parseInt!
 
-      console.log('🔍 Customer Avatar ID type:', typeof customerAvatarId, 'value:', customerAvatarId);
+      console.log('✅ Customer Avatar UUID:', customerAvatarUUID, 'type:', typeof customerAvatarUUID);
 
       // 3. Registra l'interazione nel sistema Maestro
       const interactionPayload: any = {
-        customer_avatar_id: customerAvatarId,
+        customer_avatar_id: customerAvatarUUID,
         interaction_type: interactionType,
         outcome: outcomeMap[outcome],
         order_placed: orderGenerated || (orderId !== null),
@@ -134,6 +134,9 @@ export function InteractionModal({
 
       console.log('🔥 [FIX-VERSION-2] Payload pulito:', interactionPayload);
 
+      console.log('📤 [INTERACTION-MODAL] Sending interaction to API...');
+      console.log('📦 [INTERACTION-MODAL] Payload:', JSON.stringify(interactionPayload, null, 2));
+
       const response = await fetch('/api/maestro/interactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,9 +145,14 @@ export function InteractionModal({
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('❌ [FIX-VERSION-2] Error response:', errorData);
+        console.error('❌ [INTERACTION-MODAL] Error response:', errorData);
         throw new Error('Failed to save interaction');
       }
+
+      const responseData = await response.json();
+      console.log('✅ [INTERACTION-MODAL] Interaction saved successfully!');
+      console.log('📥 [INTERACTION-MODAL] Response:', responseData);
+      console.log('🔄 [INTERACTION-MODAL] Closing modal and triggering refresh...');
 
       toast.success('Interazione registrata con successo!');
       onClose();
