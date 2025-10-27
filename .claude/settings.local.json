@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/lapa/Desktop/**)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)",
+      "Bash(git log:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge staging -m \"$(cat <<''EOF''\nMerge staging: Ottimizzazione mobile e tablet per Maestro AI\n\nMerge delle ottimizzazioni Android telefoni e tablet da staging a main.\n\nMigliorate le performance e l''esperienza utente:\n- CSS landscape per orientamento orizzontale tablet\n- Touch targets aumentati a 48x48px su tablet\n- Charts responsive con altezze adattive (200-300px)\n- Implementato 100dvh per gestione barra indirizzi mobile\n- Breakpoints tablet specifici (md:) per layout intermedi\n- Safe area insets applicati globalmente\n- Modali ottimizzate per tablet landscape\n\nTestato su staging e funzionante correttamente.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(npx tsx:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout:*)",
+      "Bash(git merge:*)",
+      "Bash(git pull:*)",
+      "Bash(vercel logs:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
