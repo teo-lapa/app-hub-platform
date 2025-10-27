@@ -106,7 +106,9 @@ export async function POST(request: NextRequest) {
     // Helper function to call Claude and parse JSON
     const callAgent = async (skillPath: string, agentName: string, additionalContext?: string) => {
       console.log(`🤖 ${agentName}...`);
-      const skill = loadSkill(skillPath);
+      // ⚠️ IMPORTANTE: skipCache: true per forzare reload degli skills modificati!
+      // In produzione la cache è ottimale, ma durante sviluppo vogliamo le modifiche immediate
+      const skill = loadSkill(skillPath, { skipCache: true });
 
       const promptText = additionalContext
         ? `${skill.content}\n\n---\n\n${additionalContext}`
@@ -181,9 +183,49 @@ ${JSON.stringify(productsData, null, 2)}
     // 🔗 MERGE: Use ONLY validated products from Agent 2
     // ⚠️ Agent 2 ha fatto il lavoro di validazione - usiamo SOLO i prodotti che ha approvato!
     console.log('🔗 Usando solo prodotti validati da Agent 2...');
+    console.log('DEBUG - lotsData format:', JSON.stringify(lotsData, null, 2));
 
+    // Check se Agent 2 ha usato il nuovo formato (validated_products) o il vecchio formato (lots)
     const validatedProducts = lotsData.validated_products || [];
     const rejectedProducts = lotsData.rejected_products || [];
+
+    if (validatedProducts.length === 0 && lotsData.lots && lotsData.lots.length > 0) {
+      // FALLBACK: Agent 2 ha usato il vecchio formato!
+      console.error('⚠️ WARNING: Agent 2 ha usato il vecchio formato "lots" invece di "validated_products"!');
+      console.error('⚠️ Questo significa che la skill NON è stata aggiornata correttamente o c\'è una cache!');
+      console.error('⚠️ FALLBACK: Uso tutti i prodotti da Agent 1 senza validazione (comportamento vecchio)');
+
+      // Usa il vecchio comportamento per non rompere il sistema
+      const lotsMap = new Map();
+      for (const lot of (lotsData.lots || [])) {
+        lotsMap.set(lot.article_code, {
+          lot_number: lot.lot_number,
+          expiry_date: lot.expiry_date,
+        });
+      }
+
+      const products = (productsData.products || []).map((product: any) => {
+        const lotInfo = lotsMap.get(product.article_code) || {};
+        return {
+          article_code: product.article_code,
+          description: product.description,
+          quantity: product.quantity,
+          unit: product.unit,
+          lot_number: lotInfo.lot_number || undefined,
+          expiry_date: lotInfo.expiry_date || undefined,
+        };
+      });
+
+      const parsedData = {
+        supplier_name: supplierData.supplier_name,
+        supplier_vat: supplierData.supplier_vat || '',
+        document_number: supplierData.document_number,
+        document_date: supplierData.document_date,
+        products,
+      };
+
+      return NextResponse.json(parsedData);
+    }
 
     console.log(`✅ Prodotti validati: ${validatedProducts.length}`);
     console.log(`❌ Prodotti scartati: ${rejectedProducts.length}`);
