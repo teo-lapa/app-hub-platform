@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { sql } from '@vercel/postgres';
 
-// ✅ CREA TICKET IN ODOO USANDO CREDENZIALI ADMIN (NON IL CLIENTE)
-// Il cliente NON ha permessi per creare task, quindi usiamo le credenziali server
+// ✅ SALVA IN DUE POSTI:
+// 1. Odoo (task/ticket) - usando credenziali ADMIN
+// 2. Database Vercel (maestro_conversations) - per storico chat
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -23,11 +25,15 @@ export async function POST(request: NextRequest) {
     // 1. AUTENTICAZIONE ADMIN SU ODOO
     const odooUrl = process.env.ODOO_URL;
     const odooDb = process.env.ODOO_DB;
-    const odooUsername = process.env.ODOO_USERNAME;
-    const odooPassword = process.env.ODOO_PASSWORD;
+    const odooUsername = process.env.ODOO_ADMIN_EMAIL?.trim();
+    const odooPassword = process.env.ODOO_ADMIN_PASSWORD?.trim();
 
     if (!odooUrl || !odooDb || !odooUsername || !odooPassword) {
       console.error('❌ Credenziali Odoo mancanti nel server');
+      console.error('❌ ODOO_URL:', !!odooUrl);
+      console.error('❌ ODOO_DB:', !!odooDb);
+      console.error('❌ ODOO_ADMIN_EMAIL:', !!odooUsername);
+      console.error('❌ ODOO_ADMIN_PASSWORD:', !!odooPassword);
       return NextResponse.json({
         success: false,
         error: 'Configurazione server non completa'
@@ -285,13 +291,112 @@ ${newMessageText}
       console.log('✅ Task creato con successo - ID:', taskId);
     }
 
-    // 5. RITORNA SUCCESSO
+    // 5. SALVA IN maestro_interactions (unica fonte di verità!)
+    let maestroInteractionId: string | null = null;
+
+    try {
+      console.log('💾 Salvataggio interazione Stella in maestro_interactions...');
+
+      // Solo se abbiamo un partnerId (cliente valido)
+      if (partnerId) {
+        console.log('💬 Cliente ID:', partnerId);
+
+        // Trova customer_avatar_id dall'odoo_partner_id
+        const avatarResult = await sql`
+          SELECT id FROM customer_avatars
+          WHERE odoo_partner_id = ${partnerId}
+          LIMIT 1
+        `;
+
+        if (avatarResult.rows.length > 0) {
+          const customerAvatarId = avatarResult.rows[0].id;
+          console.log('✅ Customer avatar trovato - ID:', customerAvatarId);
+
+          // Formatta il nuovo messaggio
+          const time = new Date(lastMessage.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+          const sender = lastMessage.isUser ? '👤 Cliente' : '🌟 Stella';
+          const newMessageLine = `[${time}] ${sender}: ${lastMessage.text}`;
+
+          // Cerca interazione Stella esistente per OGGI
+          const today = new Date().toISOString().split('T')[0];
+          const existingInteraction = await sql`
+            SELECT id, notes FROM maestro_interactions
+            WHERE customer_avatar_id = ${customerAvatarId}
+            AND salesperson_name = 'Stella AI Assistant'
+            AND DATE(interaction_date AT TIME ZONE 'Europe/Rome') = ${today}
+            LIMIT 1
+          `;
+
+          if (existingInteraction.rows.length > 0) {
+            // AGGIORNA interazione esistente aggiungendo nuovo messaggio
+            const existingId = existingInteraction.rows[0].id;
+            const existingNotes = existingInteraction.rows[0].notes || '';
+            const updatedNotes = existingNotes + '\n' + newMessageLine;
+
+            await sql`
+              UPDATE maestro_interactions
+              SET notes = ${updatedNotes},
+                  updated_at = NOW()
+              WHERE id = ${existingId}
+            `;
+
+            maestroInteractionId = existingId;
+            console.log('✅ Interazione aggiornata (append) - ID:', maestroInteractionId);
+
+          } else {
+            // CREA NUOVA interazione per oggi
+            const initialNotes = `🤖 Conversazione Stella AI - ${actionTitle}\n\n${newMessageLine}`;
+
+            const interactionResult = await sql`
+              INSERT INTO maestro_interactions (
+                customer_avatar_id,
+                salesperson_id,
+                salesperson_name,
+                interaction_type,
+                interaction_date,
+                outcome,
+                notes,
+                order_placed,
+                order_value
+              )
+              VALUES (
+                ${customerAvatarId},
+                1,
+                'Stella AI Assistant',
+                'other',
+                NOW(),
+                'successful',
+                ${initialNotes},
+                false,
+                NULL
+              )
+              RETURNING id
+            `;
+
+            maestroInteractionId = interactionResult.rows[0].id;
+            console.log('✅ Nuova interazione creata - ID:', maestroInteractionId);
+          }
+        } else {
+          console.log('⚠️ Customer avatar non trovato per partner ID:', partnerId);
+        }
+      } else {
+        console.log('⚠️ Nessun partnerId - conversazione non salvata in maestro_interactions');
+      }
+
+    } catch (dbError) {
+      console.error('⚠️ Errore salvataggio database (Odoo OK):', dbError);
+      // Non blocchiamo se Odoo è andato bene
+    }
+
+    // 6. RITORNA SUCCESSO
     return NextResponse.json({
       success: true,
       message: 'Conversazione salvata con successo',
       taskId: taskId,
       taskUrl: `${odooUrl}/web#id=${taskId}&model=project.task&view_type=form`,
-      wasUpdated: !!existingTaskId
+      wasUpdated: !!existingTaskId,
+      maestroInteractionId: maestroInteractionId,
+      savedToCustomerInteractions: !!maestroInteractionId
     });
 
   } catch (error) {

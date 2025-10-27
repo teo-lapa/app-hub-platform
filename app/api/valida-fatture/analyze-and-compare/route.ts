@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { loadSkill } from '@/lib/ai/skills-loader';
 // TODO: Riabilitare supporto XML FatturaPA quando testato su Vercel
 // import { parseFatturaPA, isFatturaPA } from '@/lib/fatturapa-parser';
 
@@ -33,13 +34,45 @@ export async function POST(request: NextRequest) {
     console.log(`📋 Lines in draft: ${draft_invoice.invoice_line_ids?.length || 0}`);
     console.log(`📎 Attachment ID: ${attachment_id}`);
 
-    // Scarica il PDF da Odoo usando l'attachment_id
+    // Get Odoo session for API calls
     const userCookies = request.headers.get('cookie');
     const { cookies, uid } = await getOdooSession(userCookies || undefined);
 
     if (!uid) {
       return NextResponse.json({ error: 'Sessione Odoo non valida' }, { status: 401 });
     }
+
+    // STEP 0.5: Arricchisci righe bozza con default_code (codice fornitore) per matching preciso
+    console.log('📚 [ANALYZE-COMPARE] Enriching draft lines with supplier codes...');
+    const productIds = draft_invoice.invoice_line_ids
+      .filter((line: any) => line.product_id && line.product_id[0])
+      .map((line: any) => line.product_id[0]);
+
+    let productData: any[] = [];
+    if (productIds.length > 0) {
+      productData = await callOdoo(
+        cookies,
+        'product.product',
+        'read',
+        [productIds],
+        { fields: ['id', 'default_code', 'name'] }
+      );
+    }
+
+    // Crea mappa product_id → default_code
+    const productCodeMap = new Map(
+      productData.map((p: any) => [p.id, p.default_code || null])
+    );
+
+    // Arricchisci righe con default_code
+    const enrichedLines = draft_invoice.invoice_line_ids.map((line: any) => ({
+      ...line,
+      default_code: line.product_id ? productCodeMap.get(line.product_id[0]) : null
+    }));
+
+    console.log(`✅ [ANALYZE-COMPARE] Enriched ${enrichedLines.length} lines with supplier codes`);
+
+    // Scarica il PDF da Odoo usando l'attachment_id
 
     console.log('📥 [ANALYZE-COMPARE] Downloading PDF from Odoo...');
     const attachments = await callOdoo(
@@ -147,7 +180,10 @@ Leggi così:
 3. RIGHE PRODOTTI (TUTTE, anche spese trasporto):
    Per OGNI riga:
    a) Descrizione completa (includi codici prodotto se presenti)
-   b) Codice articolo (es: "AZCOM051", "P09956")
+   b) Codice articolo - CRITICO PER IL MATCHING!
+      - Cerca nella PRIMA COLONNA a sinistra (es: "1TRECCE-SV", "1BRASELLO-SV")
+      - O dopo "Articolo" / "Art." / "Cod." (es: "AZCOM051", "P09956")
+      - Se manca, lascia null
    c) SUBTOTAL (totale riga) - PRIORITÀ MASSIMA
    d) Prezzo unitario
    e) Quantità = subtotal ÷ unit_price
@@ -214,10 +250,258 @@ NUMERI PRECISI: 123,45 → 123.45 (punto decimale), arrotonda a 2 decimali.`
         total: parsedInvoice.total_amount,
         lines: parsedInvoice.lines.length
       });
+
+      // 🔍 CRITICAL DEBUG: Log TOTALE da Vision vs Bozza
+      console.log('🔍 [CRITICAL] TOTALI COMPARISON:');
+      console.log(`   Vision PDF total: €${parsedInvoice.total_amount}`);
+      console.log(`   Vision PDF subtotal: €${parsedInvoice.subtotal_amount}`);
+      console.log(`   Draft Odoo total: €${draft_invoice.amount_total}`);
+      console.log(`   DIFF: €${(parsedInvoice.total_amount - draft_invoice.amount_total).toFixed(2)}`);
+
+      // Verifica somma righe PDF
+      const sumPdfLines = parsedInvoice.lines.reduce((sum: number, line: any) => sum + parseFloat(line.subtotal || 0), 0);
+      console.log(`   Sum PDF lines: €${sumPdfLines.toFixed(2)}`);
+      if (Math.abs(sumPdfLines - parsedInvoice.total_amount) > 0.10) {
+        console.error(`   ⚠️ WARNING: Sum of lines (${sumPdfLines}) != total (${parsedInvoice.total_amount})`);
+        console.error(`   Vision might be parsing incorrectly!`);
+      }
     }
 
-    // STEP 2: Confronto Intelligente con Claude
-    console.log('🧠 [ANALYZE-COMPARE] Step 2: Smart comparison...');
+    // STEP 2: Confronto Intelligente con Claude + SKILL
+    console.log('🧠 [ANALYZE-COMPARE] Step 2: Smart comparison with invoice-comparison skill...');
+
+    // 🔍 DEBUG: Log dati in ingresso per diagnostica
+    console.log('📄 [DEBUG] PDF INVOICE LINES:');
+    parsedInvoice.lines.forEach((line: any, idx: number) => {
+      console.log(`  ${idx + 1}. ${line.product_code || 'NO-CODE'} | ${line.description} | qty=${line.quantity} | price=${line.unit_price} | subtotal=${line.subtotal}`);
+    });
+    console.log(`📄 [DEBUG] PDF TOTAL: €${parsedInvoice.total_amount}`);
+
+    console.log('📋 [DEBUG] DRAFT INVOICE LINES:');
+    enrichedLines.forEach((line: any, idx: number) => {
+      console.log(`  ${idx + 1}. ${line.default_code || 'NO-CODE'} | ${line.product_id?.[1] || line.name} | qty=${line.quantity} | price=${line.price_unit} | subtotal=${line.price_subtotal}`);
+    });
+    console.log(`📋 [DEBUG] DRAFT TOTAL: €${draft_invoice.amount_total}`);
+
+    // 🔍 DEBUG: Crea mappa subtotal per verificare matching
+    const draftSubtotalMap = new Map<number, number>();
+    enrichedLines.forEach((line: any) => {
+      const subtotal = parseFloat(line.price_subtotal);
+      draftSubtotalMap.set(subtotal, (draftSubtotalMap.get(subtotal) || 0) + 1);
+    });
+
+    console.log('🔍 [DEBUG] SUBTOTAL MATCHING TEST:');
+    parsedInvoice.lines.forEach((pdfLine: any, idx: number) => {
+      const pdfSubtotal = parseFloat(pdfLine.subtotal);
+      const matchCount = draftSubtotalMap.get(pdfSubtotal) || 0;
+      console.log(`  PDF #${idx + 1} subtotal=${pdfSubtotal} → Found ${matchCount} match(es) in draft`);
+    });
+
+    // 🎯 PRE-MATCHING: Fai matching subtotal PRIMA di chiamare Claude
+    console.log('🎯 [PRE-MATCH] Starting server-side subtotal matching...');
+
+    interface MatchResult {
+      pdfLine: any;
+      draftLine: any | null;
+      matchType: 'exact' | 'price_diff' | 'qty_diff' | 'both_diff' | 'not_found';
+      subtotalDiff: number;
+    }
+
+    const matches: MatchResult[] = [];
+    const usedDraftLines = new Set<number>();
+
+    // Per ogni riga PDF, trova match in bozza
+    for (const pdfLine of parsedInvoice.lines) {
+      const pdfSubtotal = parseFloat(pdfLine.subtotal);
+
+      // Cerca match ESATTO su subtotal (±0.02€ tolleranza per arrotondamenti)
+      let matchedDraft = enrichedLines.find((draft: any, idx: number) => {
+        if (usedDraftLines.has(idx)) return false;
+        const draftSubtotal = parseFloat(draft.price_subtotal);
+        return Math.abs(draftSubtotal - pdfSubtotal) <= 0.02;
+      });
+
+      if (matchedDraft) {
+        const draftIdx = enrichedLines.indexOf(matchedDraft);
+        usedDraftLines.add(draftIdx);
+        matches.push({
+          pdfLine,
+          draftLine: matchedDraft,
+          matchType: 'exact',
+          subtotalDiff: 0
+        });
+        console.log(`  ✅ MATCH: ${pdfLine.description.substring(0, 40)} → subtotal ${pdfSubtotal}`);
+        continue;
+      }
+
+      // Se non trova match esatto, cerca riga simile (stesso prezzo O stessa quantità)
+      matchedDraft = enrichedLines.find((draft: any, idx: number) => {
+        if (usedDraftLines.has(idx)) return false;
+        const priceSimilar = Math.abs(parseFloat(draft.price_unit) - parseFloat(pdfLine.unit_price)) <= 0.02;
+        const qtySimilar = Math.abs(parseFloat(draft.quantity) - parseFloat(pdfLine.quantity)) <= 0.1;
+        return priceSimilar || qtySimilar;
+      });
+
+      if (matchedDraft) {
+        const draftIdx = enrichedLines.indexOf(matchedDraft);
+        usedDraftLines.add(draftIdx);
+        const draftSubtotal = parseFloat(matchedDraft.price_subtotal);
+        const diff = pdfSubtotal - draftSubtotal;
+
+        const priceMatch = Math.abs(parseFloat(matchedDraft.price_unit) - parseFloat(pdfLine.unit_price)) <= 0.02;
+        const qtyMatch = Math.abs(parseFloat(matchedDraft.quantity) - parseFloat(pdfLine.quantity)) <= 0.1;
+
+        let matchType: 'price_diff' | 'qty_diff' | 'both_diff' = 'both_diff';
+        if (priceMatch && !qtyMatch) matchType = 'qty_diff';
+        if (!priceMatch && qtyMatch) matchType = 'price_diff';
+
+        matches.push({
+          pdfLine,
+          draftLine: matchedDraft,
+          matchType,
+          subtotalDiff: diff
+        });
+        console.log(`  ⚠️ PARTIAL MATCH: ${pdfLine.description.substring(0, 40)} → ${matchType}, diff €${diff.toFixed(2)}`);
+        continue;
+      }
+
+      // Nessun match trovato
+      matches.push({
+        pdfLine,
+        draftLine: null,
+        matchType: 'not_found',
+        subtotalDiff: pdfSubtotal
+      });
+      console.log(`  ❌ NOT FOUND: ${pdfLine.description.substring(0, 40)} → subtotal ${pdfSubtotal}`);
+    }
+
+    console.log(`✅ [PRE-MATCH] Completed: ${matches.filter(m => m.matchType === 'exact').length} exact, ${matches.filter(m => m.matchType !== 'exact' && m.matchType !== 'not_found').length} partial, ${matches.filter(m => m.matchType === 'not_found').length} not found`);
+
+    // 🎯 GENERA CORREZIONI da pre-matching (BYPASSA Claude per righe exact match)
+    const corrections: any[] = [];
+    const differences: any[] = [];
+    let totalDifference = 0;
+
+    for (const match of matches) {
+      if (match.matchType === 'exact') {
+        // Riga OK, nessuna correzione
+        continue;
+      }
+
+      if (match.matchType === 'not_found') {
+        // Prodotto mancante
+        corrections.push({
+          action: 'create',
+          parsed_line: {
+            description: match.pdfLine.description,
+            product_code: match.pdfLine.product_code,
+            quantity: match.pdfLine.quantity,
+            unit_price: match.pdfLine.unit_price,
+            subtotal: match.pdfLine.subtotal
+          },
+          reason: `Prodotto presente in PDF ma non trovato in bozza (€${match.pdfLine.subtotal})`,
+          requires_user_approval: true
+        });
+
+        differences.push({
+          type: 'missing_product',
+          severity: 'error',
+          draft_line_id: null,
+          description: `Prodotto mancante: ${match.pdfLine.description}`,
+          expected_value: match.pdfLine.subtotal,
+          actual_value: 0,
+          amount_difference: match.pdfLine.subtotal
+        });
+
+        totalDifference += match.pdfLine.subtotal;
+        continue;
+      }
+
+      // Prezzo o quantità diversi
+      if (match.matchType === 'price_diff') {
+        corrections.push({
+          action: 'update',
+          line_id: match.draftLine.id,
+          changes: { price_unit: match.pdfLine.unit_price },
+          reason: `Prezzo errato: bozza €${match.draftLine.price_unit}, reale €${match.pdfLine.unit_price} (impatto: €${match.subtotalDiff.toFixed(2)})`,
+          requires_user_approval: false
+        });
+
+        differences.push({
+          type: 'price_mismatch',
+          severity: 'warning',
+          draft_line_id: match.draftLine.id,
+          description: `Prezzo ${match.pdfLine.description}: bozza €${match.draftLine.price_unit}, reale €${match.pdfLine.unit_price}`,
+          expected_value: match.pdfLine.unit_price,
+          actual_value: match.draftLine.price_unit,
+          amount_difference: match.subtotalDiff
+        });
+      }
+
+      if (match.matchType === 'qty_diff') {
+        corrections.push({
+          action: 'update',
+          line_id: match.draftLine.id,
+          changes: { quantity: match.pdfLine.quantity },
+          reason: `Quantità errata: bozza ${match.draftLine.quantity}, reale ${match.pdfLine.quantity} (impatto: €${match.subtotalDiff.toFixed(2)})`,
+          requires_user_approval: false
+        });
+
+        differences.push({
+          type: 'quantity_mismatch',
+          severity: 'warning',
+          draft_line_id: match.draftLine.id,
+          description: `Quantità ${match.pdfLine.description}: bozza ${match.draftLine.quantity}, reale ${match.pdfLine.quantity}`,
+          expected_value: match.pdfLine.quantity,
+          actual_value: match.draftLine.quantity,
+          amount_difference: match.subtotalDiff
+        });
+      }
+
+      if (match.matchType === 'both_diff') {
+        corrections.push({
+          action: 'update',
+          line_id: match.draftLine.id,
+          changes: {
+            price_unit: match.pdfLine.unit_price,
+            quantity: match.pdfLine.quantity
+          },
+          reason: `Prezzo e quantità errati (impatto: €${match.subtotalDiff.toFixed(2)})`,
+          requires_user_approval: false
+        });
+
+        differences.push({
+          type: 'both_mismatch',
+          severity: 'warning',
+          draft_line_id: match.draftLine.id,
+          description: `Prezzo e quantità ${match.pdfLine.description}`,
+          expected_value: match.pdfLine.subtotal,
+          actual_value: match.draftLine.price_subtotal,
+          amount_difference: match.subtotalDiff
+        });
+      }
+
+      totalDifference += Math.abs(match.subtotalDiff);
+    }
+
+    // Genera risultato finale (BYPASSA Claude!) - per debug
+    const bypassedResult = {
+      is_valid: corrections.length === 0,
+      total_difference: totalDifference,
+      draft_total: draft_invoice.amount_total,
+      real_total: parsedInvoice.total_amount,
+      differences,
+      corrections_needed: corrections,
+      can_auto_fix: corrections.every((c: any) => !c.requires_user_approval)
+    };
+
+    console.log('✅ [SERVER-MATCH] Bypassed Claude, generated corrections directly from TypeScript');
+    console.log(`   Exact matches: ${matches.filter(m => m.matchType === 'exact').length}`);
+    console.log(`   Corrections: ${corrections.length}`);
+
+    // 🎯 RIPRISTINO chiamata Claude per debug
+    const comparisonSkill = loadSkill('document-processing/invoice-comparison');
+    console.log(`📚 [ANALYZE-COMPARE] Using skill: ${comparisonSkill.metadata.name} v${comparisonSkill.metadata.version}`);
 
     const comparisonMessage = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
@@ -225,7 +509,11 @@ NUMERI PRECISI: 123,45 → 123.45 (punto decimale), arrotonda a 2 decimali.`
       messages: [
         {
           role: 'user',
-          content: `Sei un esperto contabile. Confronta FATTURA DEFINITIVA vs FATTURA BOZZA e trova TUTTE le differenze.
+          content: `${comparisonSkill.content}
+
+---
+
+# DATI DA CONFRONTARE:
 
 📄 FATTURA DEFINITIVA (PDF del fornitore):
 ${JSON.stringify(parsedInvoice, null, 2)}
@@ -238,166 +526,17 @@ Imponibile: €${draft_invoice.amount_untaxed}
 IVA: €${draft_invoice.amount_tax}
 TOTALE: €${draft_invoice.amount_total}
 
-RIGHE BOZZA:
-${JSON.stringify(draft_invoice.invoice_line_ids.map((line: any) => ({
+RIGHE BOZZA (con codici fornitore):
+${JSON.stringify(enrichedLines.map((line: any) => ({
   id: line.id,
   product: line.product_id ? line.product_id[1] : 'N/A',
+  supplier_code: line.default_code || null,
   description: line.name,
   quantity: line.quantity,
   unit_price: line.price_unit,
   subtotal: line.price_subtotal,
   total: line.price_total
-})), null, 2)}
-
-🎯 METODO DI CONFRONTO:
-
-STEP 1 - MATCHING INTELLIGENTE:
-Per ogni riga PDF, trova la riga Bozza corrispondente:
-a) Cerca CODICE PRODOTTO (es: "AZCOM051", "[RI1500TS]", "P09956")
-b) Se non trovi codice, usa SOMIGLIANZA SEMANTICA:
-   - "MORTADELLA C/P 3.5KG" = "Mortadella 3,5kg" = "[MORT35] Mortadella"
-   - "P.COTTO BLU COATI" = "Prosciutto Cotto Blu"
-   - "SALAME VENTRICINA" = "Ventricina" = "Salame Vent."
-c) Se stesso prodotto → confronta SUBTOTAL (totale riga)
-d) Se SUBTOTAL diverso → confronta prezzo e quantità
-
-STEP 2 - VERIFICA MATEMATICA DEL SUBTOTAL:
-Per ogni match trovato, verifica:
-- SUBTOTAL_PDF = quantity_pdf × unit_price_pdf
-- SUBTOTAL_BOZZA = quantity_bozza × unit_price_bozza
-- Se SUBTOTAL_PDF ≠ SUBTOTAL_BOZZA → trova cosa correggere
-
-⚠️ UNITÀ DI MISURA DIVERSE - PROBLEMA CRITICO:
-Molti fornitori vendono in KG, ma nel sistema registriamo in PZ (pezzi/vaschette).
-ESEMPI REALI:
-- Fornitore: "Mortadella 3.5kg" q.tà 9.97kg → 9.97kg effettivi
-- Sistema: "[MORT35] Mortadella" 3 PZ → registrato come 3 pezzi da 3.5kg
-- SOLUZIONE: Controlla SUBTOTAL! Se subtotal PDF = subtotal BOZZA → OK!
-  Se diverso → correggi quantity e/o price_unit
-
-STEP 3 - GENERA CORREZIONI:
-Per ogni differenza trovata:
-
-A) PREZZO DIVERSO + QUANTITÀ OK:
-   → action: "update", changes: {"price_unit": prezzo_da_pdf}
-
-B) QUANTITÀ DIVERSA + PREZZO OK:
-   → action: "update", changes: {"quantity": quantità_da_pdf}
-
-C) PREZZO E QUANTITÀ DIVERSI:
-   → action: "update", changes: {"price_unit": prezzo_pdf, "quantity": quantità_pdf}
-
-D) PRODOTTO MANCANTE IN BOZZA:
-   → action: "create", requires_user_approval: true, parsed_line: {...dati_da_pdf}
-
-E) PRODOTTO EXTRA IN BOZZA (non in PDF):
-   → action: "delete", requires_user_approval: false
-
-🎯 OBIETTIVO FINALE:
-Dopo le correzioni, il totale bozza DEVE essere = totale PDF ± €0.02
-
-ESEMPIO CONCRETO:
-PDF: "MORTADELLA C/P 3.5KG" q.tà=9.97 prezzo=4.70 subtotal=46.86
-BOZZA: "Mortadella" id=123 q.tà=3 prezzo=4.70 subtotal=14.10
-ANALISI:
-- Stesso prodotto (matching OK)
-- Prezzo OK (4.70 = 4.70)
-- Subtotal DIVERSO (46.86 ≠ 14.10)
-- Differenza causata da quantità (9.97 ≠ 3)
-CORREZIONE:
-{"action": "update", "line_id": 123, "changes": {"quantity": 9.97}, "reason": "Quantità reale: 9.97kg (non 3 pezzi)"}
-
-⚠️ IMPORTANTE:
-- NON correggere descrizioni
-- FOCUS ASSOLUTO: far tornare i NUMERI (prezzo × quantità = subtotal)
-- Se subtotal bozza = subtotal PDF → NON correggere anche se quantità/prezzo diversi!
-
-🔢 GESTIONE ARROTONDAMENTI E CENTESIMI:
-Se tutte le righe sono corrette MA il totale finale ha differenza > €0.02:
-1. NON modificare le righe esistenti!
-2. Crea una NUOVA riga di aggiustamento visibile:
-   - action: "create"
-   - name: "Aggiustamento arrotondamento"
-   - quantity: 1
-   - price_unit: [differenza] (può essere negativo se bozza > PDF, positivo se bozza < PDF)
-   - account_id: usa lo stesso account_id della prima riga prodotto
-3. Aggiungi reason: "Riga di aggiustamento arrotondamento: differenza €X tra PDF e totale calcolato"
-4. requires_user_approval: false (correzione automatica per arrotondamenti)
-
-ESEMPIO ARROTONDAMENTO:
-Tutte le righe OK individualmente, ma somma totale:
-- Bozza: €2056.24
-- PDF: €2056.17
-- Differenza: -€0.07 (bozza ha €0.07 in più, serve aggiustamento NEGATIVO)
-SOLUZIONE:
-{
-  "action": "create",
-  "new_line": {
-    "name": "Aggiustamento arrotondamento",
-    "quantity": 1,
-    "price_unit": -0.07,
-    "account_id": [copia account_id dalla prima riga prodotto della bozza]
-  },
-  "reason": "Riga di aggiustamento arrotondamento: differenza -€0.07 tra PDF (€2056.17) e bozza (€2056.24)",
-  "requires_user_approval": false
-}
-
-Rispondi SOLO con JSON in questo formato:
-{
-  "is_valid": false,
-  "total_difference": -10.50,
-  "draft_total": ${draft_invoice.amount_total},
-  "real_total": ${parsedInvoice.total_amount},
-  "differences": [
-    {
-      "type": "price_mismatch",
-      "severity": "warning",
-      "draft_line_id": 123,
-      "description": "Prezzo Prodotto X: bozza €10.00, reale €11.50",
-      "expected_value": 11.50,
-      "actual_value": 10.00,
-      "amount_difference": 1.50
-    }
-  ],
-  "corrections_needed": [
-    {
-      "action": "update",
-      "line_id": 123,
-      "changes": {
-        "price_unit": 11.50,
-        "quantity": 10
-      },
-      "reason": "Aggiornamento prezzo da €10.00 a €11.50",
-      "requires_user_approval": false
-    },
-    {
-      "action": "delete",
-      "line_id": 456,
-      "reason": "Prodotto non presente in fattura definitiva",
-      "requires_user_approval": false
-    },
-    {
-      "action": "create",
-      "parsed_line": {
-        "description": "Descrizione esatta dal PDF",
-        "product_code": "COD123 o null",
-        "quantity": 5,
-        "unit_price": 20.00,
-        "subtotal": 100.00,
-        "tax_rate": 22,
-        "unit": "pz"
-      },
-      "new_line": {
-        "name": "Nuovo Prodotto XYZ",
-        "quantity": 5,
-        "price_unit": 20.00
-      },
-      "reason": "Prodotto presente in fattura definitiva ma mancante in bozza",
-      "requires_user_approval": true
-    }
-  ],
-  "can_auto_fix": true
-}`
+})), null, 2)}`
         }
       ]
     });
@@ -426,6 +565,9 @@ Rispondi SOLO con JSON in questo formato:
       });
     }
 
+    // OVERRIDE: Usa risultato Claude invece di server-side per debug
+    console.log('🔄 [DEBUG] Using Claude result instead of server-side matching');
+
     console.log('✅ [ANALYZE-COMPARE] Comparison completed:', {
       is_valid: comparisonResult.is_valid,
       difference: comparisonResult.total_difference,
@@ -436,9 +578,18 @@ Rispondi SOLO con JSON in questo formato:
     // 🔍 DEBUG: Log tutte le correzioni in dettaglio per diagnostica
     console.log('🔍 [ANALYZE-COMPARE] Detailed corrections:');
     comparisonResult.corrections_needed.forEach((correction: any, index: number) => {
-      console.log(`  ${index + 1}. ${correction.action} line ${correction.line_id || 'N/A'}:`, JSON.stringify(correction.changes || correction.new_line));
+      console.log(`  ${index + 1}. ${correction.action} line ${correction.line_id || 'N/A'}:`, JSON.stringify(correction.changes || correction.new_line || correction.parsed_line));
       console.log(`     Reason: ${correction.reason}`);
     });
+
+    // 🔍 DEBUG: Log anche le differences per capire cosa Claude ha trovato
+    if (comparisonResult.differences && Array.isArray(comparisonResult.differences)) {
+      console.log('🔍 [ANALYZE-COMPARE] Detailed differences:');
+      comparisonResult.differences.forEach((diff: any, index: number) => {
+        console.log(`  ${index + 1}. ${diff.type} | ${diff.description}`);
+        console.log(`     Severity: ${diff.severity}, Amount: €${diff.amount_difference || 0}`);
+      });
+    }
 
     return NextResponse.json({
       success: true,

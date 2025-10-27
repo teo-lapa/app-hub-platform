@@ -34,19 +34,20 @@ export const updateRecommendationSchema = z.object({
 
 // Schema per POST /api/maestro/interactions
 export const createInteractionSchema = z.object({
-  customer_avatar_id: z.string().uuid(),
+  customer_avatar_id: z.number().int().positive(), // SERIAL PRIMARY KEY (integer, non UUID)
   interaction_type: z.enum(['visit', 'call', 'email', 'whatsapp', 'other']),
   outcome: z.enum(['successful', 'unsuccessful', 'neutral', 'follow_up_needed']),
   notes: z.string().max(2000).optional(),
   order_placed: z.boolean().default(false),
   order_value: z.number().nonnegative().optional(),
+  odoo_order_id: z.number().int().positive().optional(), // ID ordine Odoo creato (campioni/ordine)
   samples_given: z.array(z.object({
     product_id: z.number().int().positive(),
     product_name: z.string(),
     quantity: z.number().positive(),
   })).optional(),
-  next_follow_up_date: z.string().datetime().optional(),
-  recommendation_id: z.string().uuid().optional(),
+  next_follow_up_date: z.string().optional(), // Accetta qualsiasi string (date o datetime)
+  // recommendation_id rimosso - colonna non esiste nel database
 });
 
 // Schema per GET /api/maestro/daily-plan

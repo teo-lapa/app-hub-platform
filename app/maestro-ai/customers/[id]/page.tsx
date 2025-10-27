@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -18,7 +18,10 @@ import {
   ArrowLeft,
   ExternalLink,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Filter,
+  Search,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { HealthScoreBadge } from '@/components/maestro/HealthScoreBadge';
@@ -53,27 +56,120 @@ async function fetchCustomerDetail(customerId: string) {
 export default function CustomerDetailPage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showInteractionModal, setShowInteractionModal] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Filtri per interazioni
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterOutcome, setFilterOutcome] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Fetch real data using React Query
   const { data, isLoading, error } = useQuery({
     queryKey: ['customer-detail', params.id],
     queryFn: () => fetchCustomerDetail(params.id),
     retry: 2,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 0, // Always fresh
+    gcTime: 0, // Don't cache at all (was cacheTime in v4, renamed to gcTime in v5)
+    refetchOnMount: 'always', // Always refetch on mount
+    refetchOnWindowFocus: true, // Refetch on window focus
   });
 
-  // Debug logging
-  if (data) {
-    console.log('[CUSTOMER-DETAIL] Data received:', {
-      customer_name: data.customer?.name,
-      revenue_trend: data.revenue_trend,
-      orders_count: data.orders?.length || 0,
-      interactions_count: data.interactions?.length || 0,
-      recommendations_count: data.recommendations?.length || 0,
-      top_products_count: data.customer?.top_products?.length || 0,
-      odoo_connection: data.metadata?.odoo_connection,
+  // Destructuring sicuro dei dati (prima degli early returns per evitare problemi con hooks)
+  const {
+    customer = {} as any,
+    recommendations = [],
+    interactions = [],
+    orders = [],
+    revenue_trend = [],
+    metadata = {}
+  } = data || {};
+
+  // Filtro e raggruppamento interazioni (DEVE essere qui, prima degli early returns!)
+  const filteredInteractions = useMemo(() => {
+    if (!interactions || !Array.isArray(interactions) || interactions.length === 0) return [];
+
+    return interactions.filter((interaction: any) => {
+      // Filtro per tipo
+      if (filterType !== 'all' && interaction.interaction_type !== filterType) {
+        return false;
+      }
+
+      // Filtro per outcome
+      if (filterOutcome !== 'all' && interaction.outcome !== filterOutcome) {
+        return false;
+      }
+
+      // Filtro per ricerca nelle note
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesNotes = interaction.notes?.toLowerCase().includes(query);
+        const matchesType = interaction.interaction_type.toLowerCase().includes(query);
+        const matchesSalesperson = interaction.salesperson_name?.toLowerCase().includes(query);
+
+        if (!matchesNotes && !matchesType && !matchesSalesperson) {
+          return false;
+        }
+      }
+
+      return true;
     });
-  }
+  }, [interactions, filterType, filterOutcome, searchQuery]);
+
+  // Raggruppa interazioni per giorno
+  const interactionsByDay = useMemo(() => {
+    if (!filteredInteractions || filteredInteractions.length === 0) return {};
+
+    return filteredInteractions.reduce((acc: any, interaction: any) => {
+      const date = new Date(interaction.interaction_date).toLocaleDateString('it-IT', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(interaction);
+      return acc;
+    }, {});
+  }, [filteredInteractions]);
+
+  // Statistiche filtrate
+  const filteredStats = useMemo(() => {
+    if (!filteredInteractions || filteredInteractions.length === 0) {
+      return { total: 0, successful: 0, neutral: 0, unsuccessful: 0, visits: 0, calls: 0, emails: 0, other: 0 };
+    }
+
+    return {
+      total: filteredInteractions.length,
+      successful: filteredInteractions.filter((i: any) => i.outcome === 'successful').length,
+      neutral: filteredInteractions.filter((i: any) => i.outcome === 'neutral').length,
+      unsuccessful: filteredInteractions.filter((i: any) => i.outcome === 'unsuccessful').length,
+      visits: filteredInteractions.filter((i: any) => i.interaction_type === 'visit').length,
+      calls: filteredInteractions.filter((i: any) => i.interaction_type === 'call').length,
+      emails: filteredInteractions.filter((i: any) => i.interaction_type === 'email').length,
+      other: filteredInteractions.filter((i: any) => !['visit', 'call', 'email'].includes(i.interaction_type)).length,
+    };
+  }, [filteredInteractions]);
+
+  // Calculate category spend for pie chart (safely)
+  const categorySpend = useMemo(() => {
+    if (!customer?.product_categories) return [];
+
+    return Object.entries(customer.product_categories).map(([name, stats]: [string, any], idx) => ({
+      name,
+      value: stats.total_revenue,
+      color: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6]
+    }));
+  }, [customer]);
+
+  // Handler per chiusura modal con refresh
+  const handleCloseInteractionModal = () => {
+    setShowInteractionModal(false);
+    queryClient.invalidateQueries({ queryKey: ['customer-detail', params.id] });
+  };
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Building2 },
@@ -86,7 +182,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-96">
             <div className="text-center">
@@ -102,7 +198,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   // Error state
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
         <div className="max-w-7xl mx-auto">
           <Link
             href="/maestro-ai/daily-plan"
@@ -127,17 +223,8 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     );
   }
 
-  const { customer, recommendations, interactions, orders, revenue_trend, metadata } = data;
-
-  // Calculate category spend for pie chart
-  const categorySpend = Object.entries(customer.product_categories || {}).map(([name, stats]: [string, any], idx) => ({
-    name,
-    value: stats.total_revenue,
-    color: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6]
-  }));
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Back Button */}
         <Link
@@ -337,7 +424,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                 </div>
                 {revenue_trend && revenue_trend.length > 0 ? (
                   <>
-                    <ResponsiveContainer width="100%" height={250}>
+                    <ResponsiveContainer width="100%" className="h-[200px] sm:h-[250px] md:h-[280px] lg:h-[300px]">
                       <LineChart data={revenue_trend}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                         <XAxis dataKey="month" stroke="#94a3b8" />
@@ -375,7 +462,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
               <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Spesa per Categoria</h3>
                 {categorySpend.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
+                  <ResponsiveContainer width="100%" className="h-[200px] sm:h-[250px] md:h-[280px] lg:h-[300px]">
                     <PieChart>
                       <Pie
                         data={categorySpend}
@@ -602,67 +689,228 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-slate-800 border border-slate-700 rounded-lg p-6"
+              className="space-y-6"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white">
-                  Timeline Interazioni ({interactions.length})
-                </h3>
-                <button
-                  onClick={() => setShowInteractionModal(true)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
-                >
-                  + Nuova Interazione
-                </button>
-              </div>
-              {interactions.length > 0 ? (
-                <div className="space-y-4">
-                  {interactions.map((interaction: any) => (
-                    <div key={interaction.id} className="flex gap-4">
-                      <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${
-                        interaction.interaction_type === 'call' ? 'bg-blue-500/10 border border-blue-500/20' :
-                        interaction.interaction_type === 'visit' ? 'bg-green-500/10 border border-green-500/20' :
-                        interaction.interaction_type === 'email' ? 'bg-purple-500/10 border border-purple-500/20' :
-                        'bg-slate-500/10 border border-slate-500/20'
-                      }`}>
-                        {interaction.interaction_type === 'call' && <Phone className="h-5 w-5 text-blue-400" />}
-                        {interaction.interaction_type === 'visit' && <Building2 className="h-5 w-5 text-green-400" />}
-                        {interaction.interaction_type === 'email' && <Mail className="h-5 w-5 text-purple-400" />}
+              {/* Header con statistiche */}
+              <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-1">
+                      Timeline Interazioni
+                    </h3>
+                    <p className="text-sm text-slate-400">
+                      {filteredStats.total} di {interactions?.length || 0} interazioni
+                      {(filterType !== 'all' || filterOutcome !== 'all' || searchQuery) && ' (filtrate)'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowInteractionModal(true)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Nuova Interazione
+                  </button>
+                </div>
+
+                {/* Statistiche rapide */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                    <p className="text-xs text-green-400 mb-1">Successful</p>
+                    <p className="text-2xl font-bold text-white">{filteredStats.successful}</p>
+                  </div>
+                  <div className="bg-slate-500/10 border border-slate-500/20 rounded-lg p-3">
+                    <p className="text-xs text-slate-400 mb-1">Neutral</p>
+                    <p className="text-2xl font-bold text-white">{filteredStats.neutral}</p>
+                  </div>
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                    <p className="text-xs text-red-400 mb-1">Unsuccessful</p>
+                    <p className="text-2xl font-bold text-white">{filteredStats.unsuccessful}</p>
+                  </div>
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                    <p className="text-xs text-blue-400 mb-1">Totale</p>
+                    <p className="text-2xl font-bold text-white">{filteredStats.total}</p>
+                  </div>
+                </div>
+
+                {/* Filtri e ricerca */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowFilters(!showFilters)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                        showFilters
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      <Filter className="h-4 w-4" />
+                      Filtri
+                      {(filterType !== 'all' || filterOutcome !== 'all') && (
+                        <span className="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                          {[filterType !== 'all', filterOutcome !== 'all'].filter(Boolean).length}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Ricerca */}
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Cerca nelle note, tipo, venditore..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-10 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Pannello filtri */}
+                  {showFilters && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-700/50 rounded-lg border border-slate-600"
+                    >
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-2">Tipo</label>
+                        <select
+                          value={filterType}
+                          onChange={(e) => setFilterType(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="all">Tutti i tipi</option>
+                          <option value="visit">Visite</option>
+                          <option value="call">Chiamate</option>
+                          <option value="email">Email</option>
+                          <option value="other">Altre</option>
+                        </select>
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-white capitalize">{interaction.interaction_type}</span>
-                          <span className="text-xs text-slate-500">•</span>
-                          <span className="text-sm text-slate-400">
-                            {new Date(interaction.interaction_date).toLocaleDateString('it-IT')}
-                          </span>
-                          <span className="text-xs text-slate-500">•</span>
-                          <span className="text-sm text-slate-400">{interaction.salesperson_name}</span>
-                          <span className={`ml-auto px-2 py-0.5 rounded text-xs ${
-                            interaction.outcome === 'successful' ? 'bg-green-500/10 text-green-400' :
-                            interaction.outcome === 'unsuccessful' ? 'bg-red-500/10 text-red-400' :
-                            'bg-slate-500/10 text-slate-400'
-                          }`}>
-                            {interaction.outcome}
-                          </span>
+
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-2">Outcome</label>
+                        <select
+                          value={filterOutcome}
+                          onChange={(e) => setFilterOutcome(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="all">Tutti</option>
+                          <option value="successful">Successful</option>
+                          <option value="neutral">Neutral</option>
+                          <option value="unsuccessful">Unsuccessful</option>
+                        </select>
+                      </div>
+
+                      {(filterType !== 'all' || filterOutcome !== 'all' || searchQuery) && (
+                        <div className="col-span-full">
+                          <button
+                            onClick={() => {
+                              setFilterType('all');
+                              setFilterOutcome('all');
+                              setSearchQuery('');
+                            }}
+                            className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                          >
+                            <X className="h-4 w-4" />
+                            Reset filtri
+                          </button>
                         </div>
-                        {interaction.notes && (
-                          <p className="text-sm text-slate-300 mb-2">{interaction.notes}</p>
-                        )}
-                        {interaction.order_placed && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="px-2 py-1 bg-green-500/10 border border-green-500/20 rounded text-xs text-green-400">
-                              Ordine generato: {formatCurrency(interaction.order_value || 0)}
-                            </span>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+
+              {/* Interazioni raggruppate per giorno */}
+              {filteredInteractions.length > 0 ? (
+                <div className="space-y-6">
+                  {Object.entries(interactionsByDay).map(([day, dayInteractions]: [string, any]) => (
+                    <div key={day} className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+                      <h4 className="text-sm font-semibold text-blue-400 mb-4 capitalize">
+                        {day} ({dayInteractions.length} interazioni)
+                      </h4>
+                      <div className="space-y-4">
+                        {dayInteractions.map((interaction: any) => (
+                          <div key={interaction.id} className="flex gap-4 pb-4 border-b border-slate-700/50 last:border-0 last:pb-0">
+                            <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${
+                              interaction.interaction_type === 'call' ? 'bg-blue-500/10 border border-blue-500/20' :
+                              interaction.interaction_type === 'visit' ? 'bg-green-500/10 border border-green-500/20' :
+                              interaction.interaction_type === 'email' ? 'bg-purple-500/10 border border-purple-500/20' :
+                              'bg-slate-500/10 border border-slate-500/20'
+                            }`}>
+                              {interaction.interaction_type === 'call' && <Phone className="h-5 w-5 text-blue-400" />}
+                              {interaction.interaction_type === 'visit' && <Building2 className="h-5 w-5 text-green-400" />}
+                              {interaction.interaction_type === 'email' && <Mail className="h-5 w-5 text-purple-400" />}
+                              {interaction.interaction_type === 'other' && <MessageSquare className="h-5 w-5 text-slate-400" />}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="font-medium text-white capitalize">{interaction.interaction_type}</span>
+                                <span className="text-xs text-slate-500">•</span>
+                                <span className="text-sm text-slate-400">
+                                  {new Date(interaction.interaction_date).toLocaleTimeString('it-IT', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                                <span className="text-xs text-slate-500">•</span>
+                                <span className="text-sm text-slate-400">{interaction.salesperson_name}</span>
+                                <span className={`ml-auto px-2 py-0.5 rounded text-xs font-medium ${
+                                  interaction.outcome === 'successful' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                                  interaction.outcome === 'unsuccessful' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                  'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                                }`}>
+                                  {interaction.outcome}
+                                </span>
+                              </div>
+                              {interaction.notes && (
+                                <p className="text-sm text-slate-300 mb-2 whitespace-pre-wrap">{interaction.notes}</p>
+                              )}
+                              {interaction.order_placed && (
+                                <div className="flex items-center gap-2 text-sm mt-2">
+                                  <span className="px-2 py-1 bg-green-500/10 border border-green-500/20 rounded text-xs text-green-400 font-medium">
+                                    ✓ Ordine generato: {formatCurrency(interaction.order_value || 0)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
+                        ))}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 text-slate-500">
-                  Nessuna interazione registrata per questo cliente
+                <div className="bg-slate-800 border border-slate-700 rounded-lg p-12">
+                  <div className="text-center">
+                    <MessageSquare className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+                    <p className="text-slate-500">
+                      {searchQuery || filterType !== 'all' || filterOutcome !== 'all'
+                        ? 'Nessuna interazione trovata con questi filtri'
+                        : 'Nessuna interazione registrata per questo cliente'}
+                    </p>
+                    {(searchQuery || filterType !== 'all' || filterOutcome !== 'all') && (
+                      <button
+                        onClick={() => {
+                          setFilterType('all');
+                          setFilterOutcome('all');
+                          setSearchQuery('');
+                        }}
+                        className="mt-3 text-sm text-blue-400 hover:text-blue-300"
+                      >
+                        Reset filtri
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </motion.div>
@@ -780,7 +1028,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
       {/* Interaction Modal */}
       <InteractionModal
         isOpen={showInteractionModal}
-        onClose={() => setShowInteractionModal(false)}
+        onClose={handleCloseInteractionModal}
         customerId={customer.id}
         customerName={customer.name}
         odooPartnerId={customer.odoo_partner_id}

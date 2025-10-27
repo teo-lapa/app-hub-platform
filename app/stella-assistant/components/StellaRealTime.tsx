@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, PhoneOff, Volume2, VolumeX } from 'lucide-react';
 import toast from 'react-hot-toast';
+import StellaVideoAvatarSimple from './StellaVideoAvatarSimple';
 
 interface StellaRealTimeProps {
   action: any;
@@ -38,6 +39,7 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const hasTriedConnecting = useRef(false);
+  const isCreatingResponse = useRef(false); // Previene risposte multiple
 
   // WebRTC connection ESATTAMENTE come nel tuo HTML errors.txt
   const initializeConnection = useCallback(async () => {
@@ -215,6 +217,7 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
     else if (data.type === 'response.created') {
       console.log('🤖 Stella sta creando una risposta...');
       setIsSpeaking(true);
+      isCreatingResponse.current = true;
     }
     else if (data.type === 'response.text.delta') {
       if (!currentResponseRef.current) {
@@ -271,6 +274,7 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
     else if (data.type === 'response.done') {
       console.log('✅ Risposta completa di Stella terminata');
       setIsSpeaking(false);
+      isCreatingResponse.current = false; // Reset flag
     }
     else if (data.type === 'error') {
       const errorMsg = data.error.message || 'Errore sconosciuto';
@@ -288,6 +292,13 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
     const text = textInput.trim();
 
     if (!text || !isConnected || !dataChannelRef.current) {
+      return;
+    }
+
+    // Check se c'è già una risposta in corso
+    if (isCreatingResponse.current) {
+      console.log('⚠️ Risposta già in corso, attendi...');
+      toast.error('Aspetta che Stella finisca di parlare!');
       return;
     }
 
@@ -312,14 +323,17 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
 
     dataChannelRef.current.send(JSON.stringify(message));
 
-    // Request response
-    const responseRequest = {
-      type: 'response.create'
-    };
+    // Request response SOLO se non c'è già una risposta
+    if (!isCreatingResponse.current) {
+      isCreatingResponse.current = true;
 
-    dataChannelRef.current.send(JSON.stringify(responseRequest));
+      const responseRequest = {
+        type: 'response.create'
+      };
 
-    setIsSpeaking(true);
+      dataChannelRef.current.send(JSON.stringify(responseRequest));
+      setIsSpeaking(true);
+    }
   };
 
   // Audio variables COME NEL TUO HTML
@@ -505,7 +519,7 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
           <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-gray-800/30 to-transparent" />
         </div>
 
-        {/* Stella Video Container */}
+        {/* Stella Video Container - NUOVO AVATAR ANIMATO */}
         <div className="relative w-full h-full flex items-center justify-center">
           <motion.div
             className="relative w-full h-full max-w-md mx-auto"
@@ -518,112 +532,11 @@ export default function StellaRealTime({ action, userContext, onClose, onMessage
               ease: "easeInOut"
             }}
           >
-            {/* Video Avatar - Real Woman - UN SOLO VIDEO */}
-            <video
-              ref={videoRef}
-              className="w-full h-full object-cover object-center transition-all duration-300"
-              autoPlay
-              loop
-              muted
-              playsInline
-              style={{
-                transform: isSpeaking ? 'scale(1.02)' : 'scale(1)'
-              }}
-            >
-              {/* UN SOLO VIDEO PER TUTTI GLI STATI */}
-              <source src="/videos/stella.mp4" type="video/mp4" />
-
-              {/* Fallback for missing video - show professional woman image */}
-              <div className="w-full h-full bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center">
-                <div className="text-center text-gray-600">
-                  <div className="w-48 h-48 mx-auto mb-4 bg-white rounded-full shadow-xl flex items-center justify-center">
-                    <div className="text-8xl">👩‍💼</div>
-                  </div>
-                  <p className="text-lg font-semibold">Stella</p>
-                  <p className="text-sm">Assistente LAPA</p>
-                </div>
-              </div>
-            </video>
-
-            {/* Voice Visualization Overlay */}
-            {isSpeaking && (
-              <>
-                <motion.div
-                  className="absolute inset-0 border-4 border-pink-500/60 rounded-lg"
-                  animate={{
-                    opacity: [0.4, 0.9, 0.4],
-                    scale: [1, 1.02, 1],
-                    boxShadow: [
-                      '0 0 20px rgba(236, 72, 153, 0.3)',
-                      '0 0 40px rgba(236, 72, 153, 0.6)',
-                      '0 0 20px rgba(236, 72, 153, 0.3)'
-                    ]
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 1.2,
-                    ease: "easeInOut"
-                  }}
-                />
-                <motion.div
-                  className="absolute inset-0 border-2 border-blue-400/40 rounded-lg"
-                  animate={{
-                    opacity: [0.2, 0.7, 0.2],
-                    scale: [1, 1.04, 1],
-                    boxShadow: [
-                      '0 0 15px rgba(59, 130, 246, 0.2)',
-                      '0 0 30px rgba(59, 130, 246, 0.5)',
-                      '0 0 15px rgba(59, 130, 246, 0.2)'
-                    ]
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 1.8,
-                    ease: "easeInOut",
-                    delay: 0.4
-                  }}
-                />
-                {/* Pulse overlay quando parla */}
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-lg"
-                  animate={{
-                    opacity: [0, 0.3, 0]
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 0.8,
-                    ease: "easeInOut"
-                  }}
-                />
-              </>
-            )}
-
-            {/* Status Indicators */}
-            {isListening && (
-              <motion.div
-                animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-                className="absolute top-4 right-4 bg-green-500 text-white px-3 py-2 rounded-full text-sm font-semibold shadow-lg"
-              >
-                ASCOLTO
-              </motion.div>
-            )}
-
-            {isSpeaking && (
-              <motion.div
-                animate={{ scale: [1, 1.1, 1], opacity: [0.8, 1, 0.8] }}
-                transition={{ repeat: Infinity, duration: 0.8 }}
-                className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-2 rounded-full text-sm font-semibold shadow-lg"
-              >
-                PARLANDO
-              </motion.div>
-            )}
-
-            {/* Name Plate */}
-            <div className="absolute bottom-4 left-4 bg-black/70 text-white px-4 py-2 rounded-lg backdrop-blur-sm">
-              <h3 className="text-lg font-bold">Stella</h3>
-              <p className="text-sm text-gray-300">Assistente LAPA</p>
-            </div>
+            {/* NUOVO: Avatar con lip-sync basato su audio */}
+            <StellaVideoAvatarSimple
+              isSpeaking={isSpeaking}
+              isListening={isListening}
+            />
           </motion.div>
         </div>
       </motion.div>

@@ -98,9 +98,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    console.log('📝 [MAESTRO-API] POST /interactions - Request body:', JSON.stringify(body));
+
     // Valida input
     const validation = validateRequest(createInteractionSchema, body);
     if (!validation.success) {
+      console.error('❌ [MAESTRO-API] Validation failed:', validation.error);
+      console.error('❌ [MAESTRO-API] Received body:', JSON.stringify(body));
       return NextResponse.json(
         { error: validation.error },
         { status: 400 }
@@ -126,8 +130,8 @@ export async function POST(request: NextRequest) {
     }
 
     const avatar = avatarResult.rows[0];
-    const salespersonId = avatar.assigned_salesperson_id;
-    const salespersonName = avatar.assigned_salesperson_name;
+    const salespersonId = avatar.assigned_salesperson_id || 0; // Default to 0 if not assigned
+    const salespersonName = avatar.assigned_salesperson_name || 'Non assegnato';
 
     // 2. Insert interaction
     const interactionResult = await sql`
@@ -143,7 +147,6 @@ export async function POST(request: NextRequest) {
         order_value,
         samples_given,
         next_follow_up_date,
-        recommendation_id,
         created_at,
         updated_at
       ) VALUES (
@@ -158,7 +161,6 @@ export async function POST(request: NextRequest) {
         ${data.order_value || null},
         ${data.samples_given ? JSON.stringify(data.samples_given) : null},
         ${data.next_follow_up_date || null},
-        ${data.recommendation_id || null},
         NOW(),
         NOW()
       )
@@ -175,19 +177,6 @@ export async function POST(request: NextRequest) {
       data.outcome,
       data.order_placed || false
     );
-
-    // 4. Se l'interazione è legata a una raccomandazione, marca come in_progress
-    if (data.recommendation_id) {
-      await sql`
-        UPDATE maestro_recommendations
-        SET
-          status = 'in_progress',
-          updated_at = NOW()
-        WHERE id = ${data.recommendation_id}
-          AND status = 'pending'
-      `;
-      console.log(`📋 [MAESTRO-API] Recommendation ${data.recommendation_id} marked as in_progress`);
-    }
 
     return NextResponse.json({
       success: true,
@@ -210,7 +199,7 @@ export async function POST(request: NextRequest) {
  * Update avatar dopo interazione (recalculate scores)
  */
 async function updateAvatarAfterInteraction(
-  avatarId: string,
+  avatarId: number,
   outcome: string,
   orderPlaced: boolean
 ): Promise<void> {

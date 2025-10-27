@@ -76,17 +76,97 @@ export async function POST(request: NextRequest) {
         }, { status: 500 });
       }
 
-      // ========== STEP 2: CREA UTENTE DAI DATI ODOO ==========
-      console.log('✅ Step 2: Creating user object from Odoo data...');
+      // ========== STEP 2: DETERMINA RUOLO UTENTE DA ODOO ==========
+      console.log('✅ Step 2: Determining user role from Odoo groups...');
+
+      let userRole: 'admin' | 'dipendente' | 'cliente_premium' | 'visitor' = 'visitor';
+      let appPermessi: string[] = ['profile'];
+
+      // Prima controlla is_admin nella risposta di autenticazione
+      const isAdmin = odooAuthData.result.is_admin || odooAuthData.result.is_system;
+
+      console.log(`🔍 Initial check: is_admin=${isAdmin}, uid=${odooAuthData.result.uid}`);
+
+      try {
+        // Chiama API Odoo per ottenere i gruppi dell'utente
+        const userGroupsResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': `session_id=${odooSessionId}`
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {
+              model: 'res.users',
+              method: 'read',
+              args: [[odooAuthData.result.uid], ['groups_id', 'share']],
+              kwargs: {}
+            },
+            id: 2
+          })
+        });
+
+        const userGroupsData = await userGroupsResponse.json();
+        console.log(`🔍 User groups response:`, JSON.stringify(userGroupsData));
+
+        const groupIds = userGroupsData.result?.[0]?.groups_id || [];
+        const isShare = userGroupsData.result?.[0]?.share || false;  // share=true significa utente portale
+
+        console.log(`🔍 User groups: groupIds=${JSON.stringify(groupIds)}, is_share=${isShare}`);
+
+        // Determina ruolo basato sui gruppi
+        // Priorità: Admin > Dipendente (Interno) > Cliente Portal > Visitor
+
+        if (isAdmin) {
+          userRole = 'admin';
+          appPermessi = ['profile', 'dashboard', 'admin', 'gestione-visibilita-app'];
+          console.log('👑 User is ADMIN');
+        } else if (!isShare && groupIds.length > 0) {
+          // share=false significa utente interno (non portale)
+          // Se ha gruppi ed è NOT share → Dipendente
+          userRole = 'dipendente';
+          appPermessi = ['profile', 'dashboard'];
+          console.log('🏢 User is DIPENDENTE (Internal User - share=false)');
+        } else if (isShare) {
+          // share=true significa utente portale (cliente)
+          userRole = 'cliente_premium';
+          appPermessi = ['profile', 'portale-clienti'];
+          console.log('👤 User is CLIENTE PORTAL (share=true)');
+        } else {
+          // Fallback: visitor/pubblico
+          userRole = 'visitor';
+          appPermessi = ['profile'];
+          console.log('🌐 User is VISITOR (fallback)');
+        }
+
+      } catch (groupError) {
+        console.error('⚠️ Errore caricamento gruppi utente, uso fallback basato su email:', groupError);
+
+        // Fallback: se la chiamata ai gruppi fallisce, usa logica basata su email
+        if (email.includes('lapa.ch') || email.includes('@lapa.')) {
+          userRole = 'dipendente';
+          appPermessi = ['profile', 'dashboard'];
+          console.log('🏢 FALLBACK: User is DIPENDENTE (email lapa.ch)');
+        } else {
+          userRole = 'cliente_premium';
+          appPermessi = ['profile', 'portale-clienti'];
+          console.log('👤 FALLBACK: User is CLIENTE PORTAL (external email)');
+        }
+      }
+
+      // ========== STEP 3: CREA UTENTE DAI DATI ODOO ==========
+      console.log('✅ Step 3: Creating user object from Odoo data...');
 
       const user = {
         id: `odoo-${odooAuthData.result.uid}`,
         email: email,
         name: odooAuthData.result.name || odooAuthData.result.username || 'Utente Odoo',
-        role: 'admin' as const,  // Gli utenti Odoo sono admin per default
+        role: userRole,  // ✅ FIX: Ruolo determinato dinamicamente da Odoo!
         azienda: odooAuthData.result.company_name || 'LAPA',
         abilitato: true,
-        appPermessi: ['profile', 'dashboard', 'admin'],
+        appPermessi,  // ✅ FIX: Permessi basati sul ruolo
         createdAt: new Date(),
         updatedAt: new Date(),
         telefono: '',
@@ -95,13 +175,13 @@ export async function POST(request: NextRequest) {
         cap: '',
         partitaIva: '',
         codiceCliente: '',
-        note: 'Utente autenticato tramite Odoo'
+        note: `Utente Odoo - Ruolo: ${userRole}`
       };
 
       const token = generateToken(user);
-      console.log('✅ User object created:', user.name, '- UID:', odooAuthData.result.uid);
+      console.log(`✅ User object created: ${user.name} - UID: ${odooAuthData.result.uid} - Role: ${userRole}`);
 
-      // ========== STEP 3: CREA RESPONSE CON COOKIES ==========
+      // ========== STEP 4: CREA RESPONSE CON COOKIES ==========
       const response = NextResponse.json<ApiResponse>({
         success: true,
         data: { user, token },

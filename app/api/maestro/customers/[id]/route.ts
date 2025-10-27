@@ -97,11 +97,13 @@ export async function GET(
     // 3. Fetch interactions history
     let interactions: Interaction[] = [];
     try {
+      console.log(`🔍 [DEBUG] Fetching interactions for customer_avatar_id: ${avatarData.id}`);
+
       const interactionsResult = await sql`
         SELECT * FROM maestro_interactions
         WHERE customer_avatar_id = ${avatarData.id}
         ORDER BY interaction_date DESC
-        LIMIT 20
+        LIMIT 100
       `;
 
       interactions = interactionsResult.rows.map(row => ({
@@ -111,7 +113,16 @@ export async function GET(
           : null,
       })) as any[];
 
-      console.log(`✅ Found ${interactions.length} interactions`);
+      console.log(`✅ Found ${interactions.length} interactions for ${avatar.name}`);
+
+      // Log delle ultime 3 interazioni per debug
+      if (interactions.length > 0) {
+        console.log('🔍 [DEBUG] Ultime 3 interazioni:');
+        interactions.slice(0, 3).forEach((int, idx) => {
+          console.log(`  ${idx + 1}. ${int.interaction_type} - ${int.outcome} - ${new Date(int.interaction_date).toISOString()}`);
+          console.log(`     Created: ${new Date(int.created_at).toISOString()}`);
+        });
+      }
     } catch (error: any) {
       // Table might not exist yet
       if (error.code !== '42P01') throw error;

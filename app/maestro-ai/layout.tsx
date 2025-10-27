@@ -12,7 +12,9 @@ export default function MaestroAILayout({
   return (
     <QueryProvider>
       <MaestroFiltersProvider>
-        {children}
+        <div className="safe-area-inset-top safe-area-inset-bottom">
+          {children}
+        </div>
         <HomeButton />
         <ChatWidget />
         <Toaster

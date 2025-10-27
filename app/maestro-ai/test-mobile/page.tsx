@@ -30,7 +30,7 @@ export default function TestMobilePage() {
     <>
       <OfflineIndicator />
       <PullToRefresh onRefresh={handleRefresh}>
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-6">
+        <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-6">
           <div className="max-w-2xl mx-auto space-y-6">
             {/* Header */}
             <div className="text-center">
