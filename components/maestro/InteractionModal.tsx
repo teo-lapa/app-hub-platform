@@ -37,6 +37,12 @@ export function InteractionModal({
   odooPartnerId,
   salesPersonId
 }: InteractionModalProps) {
+  // DEBUG: Log props quando il modal si apre
+  if (isOpen) {
+    console.log('🔍 [MODAL-PROPS] customerId:', customerId, 'type:', typeof customerId);
+    console.log('🔍 [MODAL-PROPS] odooPartnerId:', odooPartnerId, 'type:', typeof odooPartnerId);
+  }
+
   const [interactionType, setInteractionType] = useState<InteractionType>('visit');
   const [outcome, setOutcome] = useState<Outcome>('neutral');
   const [sampleFeedback, setSampleFeedback] = useState<SampleFeedback>('indifferent');
