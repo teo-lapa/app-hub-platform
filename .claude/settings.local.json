@@ -18,7 +18,10 @@
       "Bash(git pull:*)",
       "Bash(vercel logs:*)",
       "Bash(npm run type-check:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Read(//c/Users/lapa/Downloads/**)",
+      "Bash(vercel ls:*)",
+      "Bash(vercel inspect:*)"
     ],
     "deny": [],
     "ask": []
