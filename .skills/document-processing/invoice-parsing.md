@@ -1,13 +1,13 @@
 ---
 name: invoice-parsing
-version: 1.2.0
+version: 1.3.0
 description: Estrae dati strutturati da fatture fornitori per arrivi merce
 category: document-processing
 tags: [parsing, invoice, pdf, vision, ocr]
 model: claude-3-5-sonnet-20241022
 author: Lapa Team
 created: 2025-01-15
-updated: 2025-01-23
+updated: 2025-01-27
 ---
 
 # 📄 Invoice Parsing Skill
@@ -378,6 +378,225 @@ Due prodotti sono **duplicati** se hanno:
 
 ---
 
+### 🧀 REGOLA #8: Auricchio - Colonna FATTURATA vs CONTENUTA (CRITICA!)
+
+**Fornitore specifico**: GENNARO AURICCHIO S.P.A. / AURICCHIO
+
+#### 🚨 PROBLEMA SPECIFICO
+
+Le fatture Auricchio hanno una struttura tabellare particolare con **DUE colonne di quantità**:
+
+1. **Colonna "CONTENUTA"**: Peso/pezzi contenuti nell'imballo (peso lordo o pezzi reali)
+2. **Colonna "FATTURATA"**: Quantità effettivamente fatturata e da registrare in magazzino ← **QUESTA È QUELLA GIUSTA!**
+
+**Layout tipico fattura Auricchio**:
+```
+ARTICOLO  DESCRIZIONE                  COLLI  CONTENUTA  FATTURATA  PREZZO
+71G       PECORINO ROMANO...           2 KG   20,00 NR   20         18,00
+CIA13     GORGONZOLA SANGIORGIO...     9 NR   36 KG      54,18      8,36
+E708      PEC.ROMANO F.1 CAPPA NERA    1 NR   1 KG       21,85      17,10
+```
+
+#### ⚠️ Errore Comune
+
+❌ **SBAGLIATO**: Estrarre quantità dalla colonna "CONTENUTA"
+```json
+{
+  "article_code": "CIA13",
+  "description": "GORGONZOLA SANGIORGIO 4 VASC.1/8 TS",
+  "quantity": 36.0,  // ❌ ERRATO! Questo è "CONTENUTA"
+  "unit": "KG"
+}
+```
+
+✅ **CORRETTO**: Estrarre quantità dalla colonna "FATTURATA"
+```json
+{
+  "article_code": "CIA13",
+  "description": "GORGONZOLA SANGIORGIO 4 VASC.1/8 TS",
+  "quantity": 54.18,  // ✅ CORRETTO! Questo è "FATTURATA"
+  "unit": "KG"
+}
+```
+
+#### 🎯 Regola di Identificazione
+
+**Come riconoscere una fattura Auricchio**:
+- Fornitore contiene: "AURICCHIO" o "GENNARO AURICCHIO"
+- Header tabella contiene le colonne: "CONTENUTA" e "FATTURATA"
+- Documento di trasporto con struttura simile
+
+**Quando applicare questa regola**:
+```
+SE fornitore == "AURICCHIO" O "GENNARO AURICCHIO S.P.A.":
+  → Cerca colonna "QUANTITA' FATTURATA" (o solo "FATTURATA")
+  → Ignora colonna "CONTENUTA"
+  → La colonna FATTURATA è tipicamente quella PIÙ A DESTRA nella tabella
+```
+
+#### 📊 Esempi Pratici
+
+**Esempio 1: Pecorino Romano**
+```
+Input fattura:
+ARTICOLO: 71G
+DESCRIZIONE: PECORINO ROMANO DOP GRATTUGIATO FRESCO - 10 BUSTER KG 1
+COLLI: 2 KG
+CONTENUTA: 20,00 NR
+FATTURATA: 20
+
+Output JSON corretto:
+{
+  "article_code": "71G",
+  "description": "PECORINO ROMANO DOP GRATTUGIATO FRESCO - 10 BUSTER KG 1",
+  "quantity": 20.0,    // ← Dalla colonna FATTURATA
+  "unit": "NR",        // ← Deriva da "COLLI: 2 KG" → unit principale
+  "lot_number": "5275MM2",
+  "expiry_date": "2026-08-02"
+}
+```
+
+**Esempio 2: Gorgonzola**
+```
+Input fattura:
+ARTICOLO: CIA13
+DESCRIZIONE: GORGONZOLA SANGIORGIO 4 VASC.1/8 TS
+COLLI: 9 NR
+CONTENUTA: 36 KG     ← NON questa!
+FATTURATA: 54,18     ← QUESTA!
+
+Output JSON corretto:
+{
+  "article_code": "CIA13",
+  "description": "GORGONZOLA SANGIORGIO 4 VASC.1/8 TS",
+  "quantity": 54.18,   // ← Dalla colonna FATTURATA
+  "unit": "KG",
+  "lot_number": "2595225H2",
+  "expiry_date": "2025-12-19"
+}
+```
+
+**Esempio 3: Prodotto senza decimali**
+```
+Input fattura:
+ARTICOLO: E708
+DESCRIZIONE: PEC.ROMANO F.1 CAPPA NERA
+COLLI: 1 NR
+CONTENUTA: 1 KG      ← NON questa!
+FATTURATA: 21,85     ← QUESTA!
+
+Output JSON corretto:
+{
+  "article_code": "E708",
+  "description": "PEC.ROMANO F.1 CAPPA NERA",
+  "quantity": 21.85,   // ← Dalla colonna FATTURATA (con decimali!)
+  "unit": "KG"
+}
+```
+
+#### 🔍 Posizionamento Colonne
+
+**Ordine tipico delle colonne in fattura Auricchio** (da sinistra a destra):
+1. ARTICOLO (codice)
+2. DESCRIZIONE
+3. COLLI (tipo: "2 KG", "9 NR")
+4. CONTENUTA ← ❌ NON usare
+5. **FATTURATA** ← ✅ USA QUESTA!
+6. PREZZO
+7. IMPORTO
+
+**Keyword per identificare la colonna giusta**:
+- "QUANTITA' FATTURATA"
+- "FATTURATA"
+- "QTÀ FATTURATA"
+- È la colonna **prima del PREZZO** e **dopo CONTENUTA**
+
+#### 🧠 Strategia di Estrazione
+
+```
+PASSO 1: Identifica se è fattura Auricchio
+  - Cerca "AURICCHIO" nel nome fornitore
+  - Cerca header tabella con "CONTENUTA" e "FATTURATA"
+
+PASSO 2: Se è Auricchio
+  → Localizza colonna "FATTURATA" (di solito 5a colonna)
+  → Estrai il valore da quella colonna
+  → Ignora completamente colonna "CONTENUTA"
+
+PASSO 3: Se NON è Auricchio
+  → Usa le regole normali (REGOLA #1)
+```
+
+#### ⚠️ Casi Speciali
+
+**Caso 1: Valori coincidenti**
+```
+CONTENUTA: 20,00
+FATTURATA: 20
+
+→ In questo caso i valori sono uguali, ma usa sempre FATTURATA
+```
+
+**Caso 2: Valori molto diversi**
+```
+CONTENUTA: 36 KG
+FATTURATA: 54,18
+
+→ È normale! La fatturata include peso netto effettivo
+→ Usa FATTURATA: 54.18
+```
+
+**Caso 3: Fatturata con decimali, Contenuta senza**
+```
+CONTENUTA: 1 KG
+FATTURATA: 21,85
+
+→ Usa FATTURATA: 21.85 (mantieni i decimali!)
+```
+
+#### ✅ Checklist Validazione
+
+Prima di estrarre quantità da fattura Auricchio, verifica:
+
+- [ ] Ho identificato correttamente che è una fattura Auricchio?
+- [ ] Ho localizzato la colonna "FATTURATA"?
+- [ ] Sto usando il valore dalla colonna FATTURATA e NON da CONTENUTA?
+- [ ] Ho mantenuto i decimali se presenti (es: 54,18 → 54.18)?
+- [ ] L'unità di misura è coerente con la descrizione prodotto?
+
+#### 🚫 Errori da Evitare
+
+❌ **Errore 1**: Confondere CONTENUTA con FATTURATA
+```json
+// SBAGLIATO
+{ "quantity": 36.0 }   // Preso da CONTENUTA
+
+// CORRETTO
+{ "quantity": 54.18 }  // Preso da FATTURATA
+```
+
+❌ **Errore 2**: Perdere i decimali
+```json
+// SBAGLIATO
+{ "quantity": 54 }     // Perso il .18
+
+// CORRETTO
+{ "quantity": 54.18 }  // Mantiene decimali
+```
+
+❌ **Errore 3**: Non riconoscere Auricchio
+```
+// Se non riconosci Auricchio, userai le regole normali
+// e rischierai di prendere CONTENUTA invece di FATTURATA
+```
+
+✅ **Best Practice**:
+- Controlla SEMPRE il nome fornitore all'inizio
+- Se è Auricchio, cerca esplicitamente "FATTURATA"
+- Mantieni massima precisione nei decimali
+
+---
+
 ## Formato Output
 
 Rispondi SOLO con JSON valido. NESSUN testo aggiuntivo prima o dopo.
@@ -574,6 +793,13 @@ Rispondi SOLO con JSON valido. NESSUN testo aggiuntivo prima o dopo.
 ---
 
 ## 📝 Changelog
+
+### v1.3.0 (2025-01-27)
+- ✅ **REGOLA #8**: Auricchio - Gestione colonne FATTURATA vs CONTENUTA
+- ✅ Riconoscimento automatico fatture Auricchio
+- ✅ Estrazione corretta quantità dalla colonna "FATTURATA"
+- ✅ Supporto decimali e precisione per formaggi Auricchio
+- ✅ Prevenzione errore estrazione da colonna "CONTENUTA"
 
 ### v1.2.0 (2025-01-23)
 - ✅ **REGOLA #7**: Gestione duplicati e multi-DDT
