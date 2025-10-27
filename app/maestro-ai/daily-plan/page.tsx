@@ -73,7 +73,7 @@ function mapToCardData(customer: CustomerWithRecommendations, priority: 'urgent'
   const topRec = recommendations[0];
 
   return {
-    id: avatar.odoo_partner_id, // Use Odoo Partner ID for linking to customer detail page
+    id: avatar.id, // UUID from customer_avatars.id
     odoo_partner_id: avatar.odoo_partner_id,
     name: avatar.name,
     city: avatar.city || 'N/A',
