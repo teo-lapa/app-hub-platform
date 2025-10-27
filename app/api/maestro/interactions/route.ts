@@ -114,25 +114,9 @@ export async function POST(request: NextRequest) {
     const data = validation.data;
 
     console.log(`📝 [MAESTRO-API] Creating interaction for customer ${data.customer_avatar_id}`);
+    console.log(`🔍 [MAESTRO-API] customer_avatar_id type: ${typeof data.customer_avatar_id}`);
 
-    // Se customer_avatar_id è un number (odoo_partner_id), convertilo in UUID
-    let customerAvatarId: string;
-    if (typeof data.customer_avatar_id === 'number') {
-      console.log(`🔄 [MAESTRO-API] Converting odoo_partner_id ${data.customer_avatar_id} to UUID...`);
-      const lookupResult = await sql`
-        SELECT id FROM customer_avatars WHERE odoo_partner_id = ${data.customer_avatar_id}
-      `;
-      if (lookupResult.rows.length === 0) {
-        return NextResponse.json(
-          { error: `Customer not found with odoo_partner_id: ${data.customer_avatar_id}` },
-          { status: 404 }
-        );
-      }
-      customerAvatarId = lookupResult.rows[0].id;
-      console.log(`✅ [MAESTRO-API] Converted to UUID: ${customerAvatarId}`);
-    } else {
-      customerAvatarId = data.customer_avatar_id;
-    }
+    const customerAvatarId = data.customer_avatar_id; // UUID string
 
     // 1. Fetch avatar per ottenere salesperson info
     const avatarResult = await sql`

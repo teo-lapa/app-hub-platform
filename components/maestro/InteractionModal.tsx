@@ -9,7 +9,7 @@ import { VehicleProductSelector } from '@/components/maestro/VehicleProductSelec
 interface InteractionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  customerId: number; // customer_avatar.id (number in DB)
+  customerId: string; // customer_avatar.id (UUID string in DB)
   customerName: string;
   odooPartnerId: number;
   salesPersonId?: number; // ID del venditore per mostrare i suoi prodotti in macchina
@@ -102,20 +102,13 @@ export function InteractionModal({
         }
       }
 
-      // 2. Fetch customer avatar per ottenere l'UUID corretto
-      const avatarResponse = await fetch(`/api/maestro/customers/${odooPartnerId}`);
-      if (!avatarResponse.ok) {
-        toast.error('Errore nel trovare il cliente');
-        return;
-      }
-      const customerData = await avatarResponse.json();
-      const customerAvatarUUID = customerData.customer.id; // string UUID, NON fare parseInt!
-
-      console.log('✅ Customer Avatar UUID:', customerAvatarUUID, 'type:', typeof customerAvatarUUID);
+      // 2. Usa l'UUID che arriva dal parent (customer.id già passato come customerId)
+      // NON serve fare fetch - abbiamo già l'UUID corretto!
+      console.log('✅ Customer Avatar UUID (from props):', customerId, 'type:', typeof customerId);
 
       // 3. Registra l'interazione nel sistema Maestro
       const interactionPayload: any = {
-        customer_avatar_id: customerAvatarUUID,
+        customer_avatar_id: customerId, // Usa direttamente l'UUID passato dal parent
         interaction_type: interactionType,
         outcome: outcomeMap[outcome],
         order_placed: orderGenerated || (orderId !== null),
