@@ -168,7 +168,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
 
   // Filtro e raggruppamento interazioni
   const filteredInteractions = useMemo(() => {
-    if (!interactions) return [];
+    if (!interactions || !Array.isArray(interactions)) return [];
 
     return interactions.filter((interaction: any) => {
       // Filtro per tipo
@@ -808,10 +808,10 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                           className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
                         >
                           <option value="all">Tutti ({interactions?.length || 0})</option>
-                          <option value="visit">Visite ({filteredStats.visits})</option>
-                          <option value="call">Chiamate ({filteredStats.calls})</option>
-                          <option value="email">Email ({filteredStats.emails})</option>
-                          {filteredStats.other > 0 && <option value="other">Altre ({filteredStats.other})</option>}
+                          <option value="visit">Visite</option>
+                          <option value="call">Chiamate</option>
+                          <option value="email">Email</option>
+                          <option value="other">Altre</option>
                         </select>
                       </div>
 
@@ -823,9 +823,9 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                           className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
                         >
                           <option value="all">Tutti</option>
-                          <option value="successful">Successful ({filteredStats.successful})</option>
-                          <option value="neutral">Neutral ({filteredStats.neutral})</option>
-                          <option value="unsuccessful">Unsuccessful ({filteredStats.unsuccessful})</option>
+                          <option value="successful">Successful</option>
+                          <option value="neutral">Neutral</option>
+                          <option value="unsuccessful">Unsuccessful</option>
                         </select>
                       </div>
 
