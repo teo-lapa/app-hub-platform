@@ -61,7 +61,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     queryFn: () => fetchCustomerDetail(params.id),
     retry: 2,
     staleTime: 0, // Always fresh
-    cacheTime: 0, // Don't cache at all
+    gcTime: 0, // Don't cache at all (was cacheTime in v4, renamed to gcTime in v5)
     refetchOnMount: 'always', // Always refetch on mount
     refetchOnWindowFocus: true, // Refetch on window focus
   });
