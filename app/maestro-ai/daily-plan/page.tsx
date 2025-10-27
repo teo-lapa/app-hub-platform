@@ -223,7 +223,7 @@ export default function DailyPlanPage() {
     const customer = allCards.find(c => c.id === customerId);
     if (customer) {
       setSelectedCustomer({
-        id: customer.odoo_partner_id,
+        id: customer.id,
         name: customer.name,
         odoo_partner_id: customer.odoo_partner_id
       });
@@ -247,7 +247,7 @@ export default function DailyPlanPage() {
 
     // Add customer to manually added list
     const newCustomerCard: CustomerCardData = {
-      id: customer.odoo_partner_id,
+      id: customer.id,
       odoo_partner_id: customer.odoo_partner_id,
       name: customer.name,
       city: customer.city || 'N/A',
