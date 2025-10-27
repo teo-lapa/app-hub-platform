@@ -1,6 +1,6 @@
 ---
 name: invoice-parsing
-version: 1.3.0
+version: 1.4.0
 description: Estrae dati strutturati da fatture fornitori per arrivi merce
 category: document-processing
 tags: [parsing, invoice, pdf, vision, ocr]
@@ -595,6 +595,238 @@ Prima di estrarre quantità da fattura Auricchio, verifica:
 - Se è Auricchio, cerca esplicitamente "FATTURATA"
 - Mantieni massima precisione nei decimali
 
+#### 🔗 LINK LOTTI E SCADENZE DA TABELLA DETTAGLIO (CRITICO!)
+
+**PROBLEMA**: Nei documenti Auricchio, le **quantità** sono nella FATTURA (pagine 2-3) ma i **lotti e scadenze** sono nel **DOCUMENTO DI TRASPORTO** (pagina 1)!
+
+#### 📄 Struttura Documento Auricchio
+
+**Pagina 1 - DOCUMENTO DI TRASPORTO**:
+```
+DETTAGLIO ARTICOLI PER LOTTO/PALLET
+
+Articolo  Peso   Quantità  Lotto        Pallet/SSCC         Scadenza    EAN
+71G       20,00  2         5275MM2      080046030481...     08/02/26    080046030...
+CIA13     54,18  9         2595225H2    080046030481...     19/12/25    980046030...
+E708      21,85  1         1000566879   080046030481...                 980046030...
+E721      6,72   1         1000566880   080046030481...                 980046030...
+```
+
+**Pagine 2-3 - FATTURA**:
+```
+ARTICOLO  DESCRIZIONE                  COLLI  CONTENUTA  FATTURATA  PREZZO
+71G       PECORINO ROMANO...           2 KG   20,00 NR   20         18,00
+CIA13     GORGONZOLA SANGIORGIO...     9 NR   36 KG      54,18      8,36
+E708      PEC.ROMANO F.1 CAPPA NERA    1 NR   1 KG       21,85      17,10
+```
+
+**NOTA**: La fattura **NON contiene lotti e scadenze**! Devi prenderli dalla tabella "DETTAGLIO ARTICOLI PER LOTTO/PALLET"!
+
+#### 🎯 Strategia di Linking
+
+```
+PASSO 1: Identifica il documento Auricchio
+  - Fornitore contiene "AURICCHIO"
+  - Cerca la tabella "DETTAGLIO ARTICOLI PER LOTTO/PALLET" (di solito pagina 1)
+
+PASSO 2: Estrai la tabella dettaglio
+  - Colonne: Articolo, Peso, Quantità, Lotto, Scadenza
+  - Crea una mappa: { codice_articolo → { lotto, scadenza } }
+
+PASSO 3: Estrai i prodotti dalla fattura (pagine 2-3)
+  - Quantità dalla colonna FATTURATA
+  - Descrizione, codice articolo
+
+PASSO 4: MATCH per codice articolo
+  - Per ogni prodotto nella fattura, cerca il suo codice nella tabella dettaglio
+  - Aggiungi lot_number e expiry_date dalla tabella dettaglio
+
+PASSO 5: Formato data scadenza
+  - Input: "08/02/26" → Output: "2026-02-08"
+  - Input: "19/12/25" → Output: "2025-12-19"
+```
+
+#### 📊 Esempio Completo di Linking
+
+**Input - Tabella Dettaglio (Pagina 1)**:
+```
+71G    | Lotto: 5275MM2    | Scadenza: 08/02/26
+CIA13  | Lotto: 2595225H2  | Scadenza: 19/12/25
+E708   | Lotto: 1000566879 | Scadenza: (vuota)
+```
+
+**Input - Fattura (Pagina 2)**:
+```
+71G    | PECORINO ROMANO... | FATTURATA: 20
+CIA13  | GORGONZOLA...      | FATTURATA: 54,18
+E708   | PEC.ROMANO...      | FATTURATA: 21,85
+```
+
+**Output JSON Corretto (con linking)**:
+```json
+{
+  "products": [
+    {
+      "article_code": "71G",
+      "description": "PECORINO ROMANO DOP GRATTUGIATO FRESCO - 10 BUSTER KG 1",
+      "quantity": 20.0,
+      "unit": "NR",
+      "lot_number": "5275MM2",       // ← Dalla tabella dettaglio!
+      "expiry_date": "2026-02-08"    // ← Dalla tabella dettaglio! (convertito)
+    },
+    {
+      "article_code": "CIA13",
+      "description": "GORGONZOLA SANGIORGIO 4 VASC.1/8 TS",
+      "quantity": 54.18,
+      "unit": "KG",
+      "lot_number": "2595225H2",     // ← Dalla tabella dettaglio!
+      "expiry_date": "2025-12-19"    // ← Dalla tabella dettaglio! (convertito)
+    },
+    {
+      "article_code": "E708",
+      "description": "PEC.ROMANO F.1 CAPPA NERA",
+      "quantity": 21.85,
+      "unit": "KG",
+      "lot_number": "1000566879",    // ← Dalla tabella dettaglio!
+      "expiry_date": null             // ← Scadenza vuota nella tabella
+    }
+  ]
+}
+```
+
+#### 🔍 Come Trovare la Tabella Dettaglio
+
+**Keyword da cercare nella pagina 1**:
+- "DETTAGLIO ARTICOLI PER LOTTO/PALLET"
+- "DETTAGLIO ARTICOLI PER LOTTO"
+- Header colonne: "Articolo | Peso | Quantità | Lotto | Scadenza"
+
+**Caratteristiche della tabella**:
+- È nella **prima pagina** del documento
+- Ha sempre le colonne: Articolo, Lotto, Scadenza
+- I codici articolo (71G, CIA13, E708) corrispondono a quelli nella fattura
+
+#### ⚠️ Casi Speciali
+
+**Caso 1: Lotto presente, scadenza vuota**
+```
+E708 | Lotto: 1000566879 | Scadenza: (vuota)
+
+→ lot_number: "1000566879"
+→ expiry_date: null
+```
+
+**Caso 2: Stesso prodotto, lotti multipli**
+```
+Se nella tabella dettaglio trovi:
+71G | Lotto: A123 | Scadenza: 08/02/26
+71G | Lotto: B456 | Scadenza: 10/03/26
+
+Nella fattura trovi:
+71G | FATTURATA: 40
+
+→ Crea DUE prodotti nel JSON:
+  - 71G, lotto A123, quantity: 20
+  - 71G, lotto B456, quantity: 20
+```
+
+**Caso 3: Codice articolo non trovato nella tabella**
+```
+Fattura ha: E721 | FATTURATA: 6,72
+Tabella dettaglio: NON ha E721
+
+→ lot_number: null
+→ expiry_date: null
+→ (meglio che niente, almeno registri il prodotto)
+```
+
+#### 🚨 Errori da Evitare
+
+❌ **Errore #1**: Ignorare la tabella dettaglio
+```json
+// SBAGLIATO
+{
+  "article_code": "71G",
+  "quantity": 20.0,
+  "lot_number": null,        // ❌ Ignorato!
+  "expiry_date": null        // ❌ Ignorato!
+}
+
+// CORRETTO
+{
+  "article_code": "71G",
+  "quantity": 20.0,
+  "lot_number": "5275MM2",   // ✅ Dalla tabella dettaglio
+  "expiry_date": "2026-02-08" // ✅ Dalla tabella dettaglio
+}
+```
+
+❌ **Errore #2**: Non convertire formato data
+```json
+// SBAGLIATO
+{ "expiry_date": "08/02/26" }  // ❌ Formato italiano
+
+// CORRETTO
+{ "expiry_date": "2026-02-08" } // ✅ YYYY-MM-DD
+```
+
+❌ **Errore #3**: Non matchare per codice articolo
+```
+// Non assumere che l'ordine sia lo stesso!
+// Matcha SEMPRE per codice articolo (71G, CIA13, etc.)
+```
+
+#### ✅ Checklist Linking
+
+Prima di generare il JSON finale, verifica:
+
+- [ ] Ho trovato la tabella "DETTAGLIO ARTICOLI PER LOTTO/PALLET"?
+- [ ] Ho estratto lotti e scadenze per ogni codice articolo?
+- [ ] Ho matchato correttamente fattura ↔ tabella dettaglio per codice?
+- [ ] Ho convertito le date in formato YYYY-MM-DD?
+- [ ] Se un codice non ha match, ho lasciato lot_number e expiry_date a null?
+
+#### 📍 Posizione Tabella nel PDF
+
+```
+Pagina 1 (Documento Trasporto):
+├── Header (GENNARO AURICCHIO S.P.A.)
+├── Dati spedizione
+├── DETTAGLIO ARTICOLI PER LOTTO/PALLET ← QUI!
+│   ├── Articolo | Peso | Quantità | Lotto | Scadenza
+│   ├── 71G      | 20,00| 2        | 5275MM2 | 08/02/26
+│   ├── CIA13    | 54,18| 9        | 2595225H2 | 19/12/25
+│   └── ...
+└── Footer
+
+Pagine 2-3 (Fattura):
+├── ARTICOLO | DESCRIZIONE | COLLI | CONTENUTA | FATTURATA ← Quantità qui
+└── ...
+```
+
+#### 🧠 Algoritmo di Estrazione Completo
+
+```
+1. Analizza TUTTE le pagine del documento
+2. Identifica fornitore: "AURICCHIO"
+3. Cerca tabella "DETTAGLIO ARTICOLI PER LOTTO/PALLET" (pagina 1)
+4. Crea mappa lotti:
+   map_lotti = {
+     "71G": { lotto: "5275MM2", scadenza: "08/02/26" },
+     "CIA13": { lotto: "2595225H2", scadenza: "19/12/25" },
+     ...
+   }
+5. Estrai prodotti dalla fattura (pagine 2-3):
+   - Codice articolo
+   - Descrizione
+   - Quantità da colonna FATTURATA
+6. Per ogni prodotto:
+   - Cerca codice in map_lotti
+   - Aggiungi lot_number e expiry_date (se trovati)
+   - Converti data scadenza in YYYY-MM-DD
+7. Genera JSON finale
+```
+
 ---
 
 ## Formato Output
@@ -793,6 +1025,14 @@ Rispondi SOLO con JSON valido. NESSUN testo aggiuntivo prima o dopo.
 ---
 
 ## 📝 Changelog
+
+### v1.4.0 (2025-01-27)
+- ✅ **REGOLA #8 EXTENDED**: Auricchio - Linking lotti/scadenze da tabella dettaglio
+- ✅ Algoritmo multi-page: estrae lotti da pagina 1, quantità da pagine 2-3
+- ✅ Matching automatico fattura ↔ documento trasporto per codice articolo
+- ✅ Supporto tabella "DETTAGLIO ARTICOLI PER LOTTO/PALLET"
+- ✅ Conversione automatica date scadenza (GG/MM/AA → YYYY-MM-DD)
+- ✅ Gestione prodotti multi-lotto nella stessa fattura
 
 ### v1.3.0 (2025-01-27)
 - ✅ **REGOLA #8**: Auricchio - Gestione colonne FATTURATA vs CONTENUTA
