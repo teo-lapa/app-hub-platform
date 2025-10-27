@@ -9,7 +9,7 @@ import { VehicleProductSelector } from '@/components/maestro/VehicleProductSelec
 interface InteractionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  customerId: string; // UUID del customer_avatar
+  customerId: number; // customer_avatar.id (number in DB)
   customerName: string;
   odooPartnerId: number;
   salesPersonId?: number; // ID del venditore per mostrare i suoi prodotti in macchina
