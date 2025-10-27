@@ -154,31 +154,62 @@ export async function POST(request: NextRequest) {
     const pagesContext = `IMPORTANTE: Estrai prodotti SOLO dalle pagine ${docInfo.primary_document.pages.join(', ')} che contengono il documento "${docInfo.primary_document.type}". IGNORA tutte le altre pagine!`;
     const productsData = await callAgent('document-processing/extract-products', 'AGENT 1 - Estrazione Prodotti', pagesContext);
 
-    // 🤖 AGENT 2: Extract Lots and Expiry Dates
-    const lotsData = await callAgent('document-processing/extract-lots', 'AGENT 2 - Estrazione Lotti', pagesContext);
+    // 🤖 AGENT 2: Extract Lots and Expiry Dates + VALIDATE PRODUCTS
+    const productsListContext = `
+${pagesContext}
+
+---
+
+**PRODOTTI ESTRATTI DA AGENT 1** (potrebbero contenere errori - TU DEVI VALIDARLI!):
+
+\`\`\`json
+${JSON.stringify(productsData, null, 2)}
+\`\`\`
+
+**TUO COMPITO**:
+1. Guarda ogni prodotto in questa lista
+2. Verifica se è un VERO prodotto alimentare (usa la CHECKLIST)
+3. SCARTA quelli che sono indirizzi, dichiarazioni, nomi azienda, note legali
+4. Estrai lotti SOLO per i prodotti VALIDI
+5. Ritorna lotti SOLO per i prodotti che hai validato come VERI
+`;
+    const lotsData = await callAgent('document-processing/extract-lots', 'AGENT 2 - Validazione + Estrazione Lotti', productsListContext);
 
     // 🤖 AGENT 3: Extract Supplier Info
     const supplierData = await callAgent('document-processing/extract-supplier', 'AGENT 3 - Estrazione Fornitore');
 
-    // 🔗 MERGE: Combine products with lots by article_code
-    console.log('🔗 Unione dati prodotti + lotti...');
-    const lotsMap = new Map();
-    for (const lot of (lotsData.lots || [])) {
-      lotsMap.set(lot.article_code, {
-        lot_number: lot.lot_number,
-        expiry_date: lot.expiry_date,
-      });
+    // 🔗 MERGE: Use ONLY validated products from Agent 2
+    // ⚠️ Agent 2 ha fatto il lavoro di validazione - usiamo SOLO i prodotti che ha approvato!
+    console.log('🔗 Usando solo prodotti validati da Agent 2...');
+
+    const validatedProducts = lotsData.validated_products || [];
+    const rejectedProducts = lotsData.rejected_products || [];
+
+    console.log(`✅ Prodotti validati: ${validatedProducts.length}`);
+    console.log(`❌ Prodotti scartati: ${rejectedProducts.length}`);
+    if (rejectedProducts.length > 0) {
+      console.log('🗑️ Scartati:', rejectedProducts.map((p: any) => `"${p.description}" (${p.reason})`).join(', '));
     }
 
-    const products = (productsData.products || []).map((product: any) => {
-      const lotInfo = lotsMap.get(product.article_code) || {};
-      return {
-        article_code: product.article_code,
+    // Combina i dati: usa validated_products da Agent 2 con quantità/descrizioni da Agent 1
+    const productsMap = new Map();
+    for (const product of (productsData.products || [])) {
+      productsMap.set(product.article_code, {
         description: product.description,
         quantity: product.quantity,
         unit: product.unit,
-        lot_number: lotInfo.lot_number || undefined,
-        expiry_date: lotInfo.expiry_date || undefined,
+      });
+    }
+
+    const products = validatedProducts.map((validatedProduct: any) => {
+      const productInfo = productsMap.get(validatedProduct.article_code) || {};
+      return {
+        article_code: validatedProduct.article_code,
+        description: productInfo.description || 'N/A',
+        quantity: productInfo.quantity || 0,
+        unit: productInfo.unit || 'NR',
+        lot_number: validatedProduct.lot_number || undefined,
+        expiry_date: validatedProduct.expiry_date || undefined,
       };
     });
 
