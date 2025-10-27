@@ -134,6 +134,9 @@ export function InteractionModal({
 
       console.log('🔥 [FIX-VERSION-2] Payload pulito:', interactionPayload);
 
+      console.log('📤 [INTERACTION-MODAL] Sending interaction to API...');
+      console.log('📦 [INTERACTION-MODAL] Payload:', JSON.stringify(interactionPayload, null, 2));
+
       const response = await fetch('/api/maestro/interactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,9 +145,14 @@ export function InteractionModal({
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('❌ [FIX-VERSION-2] Error response:', errorData);
+        console.error('❌ [INTERACTION-MODAL] Error response:', errorData);
         throw new Error('Failed to save interaction');
       }
+
+      const responseData = await response.json();
+      console.log('✅ [INTERACTION-MODAL] Interaction saved successfully!');
+      console.log('📥 [INTERACTION-MODAL] Response:', responseData);
+      console.log('🔄 [INTERACTION-MODAL] Closing modal and triggering refresh...');
 
       toast.success('Interazione registrata con successo!');
       onClose();
