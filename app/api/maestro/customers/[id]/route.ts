@@ -101,7 +101,7 @@ export async function GET(
         SELECT * FROM maestro_interactions
         WHERE customer_avatar_id = ${avatarData.id}
         ORDER BY interaction_date DESC
-        LIMIT 20
+        LIMIT 100
       `;
 
       interactions = interactionsResult.rows.map(row => ({
