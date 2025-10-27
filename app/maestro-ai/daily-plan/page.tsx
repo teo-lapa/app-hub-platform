@@ -46,7 +46,7 @@ interface DailyPlanResponse {
 }
 
 interface CustomerCardData {
-  id: number;
+  id: string; // UUID from customer_avatars.id
   odoo_partner_id: number;
   name: string;
   city: string;
