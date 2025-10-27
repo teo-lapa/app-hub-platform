@@ -166,9 +166,23 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   }, [customer]);
 
   // Handler per chiusura modal con refresh
-  const handleCloseInteractionModal = () => {
+  const handleCloseInteractionModal = async () => {
+    console.log('🔄 [CUSTOMER-PAGE] handleCloseInteractionModal called');
     setShowInteractionModal(false);
-    queryClient.invalidateQueries({ queryKey: ['customer-detail', params.id] });
+
+    // Invalida E forza il refetch
+    console.log('🔄 [CUSTOMER-PAGE] Invalidating and refetching query...');
+    await queryClient.invalidateQueries({
+      queryKey: ['customer-detail', params.id],
+      refetchType: 'active' // Forza il refetch immediato
+    });
+
+    // Forza anche un refetch esplicito per sicurezza
+    await queryClient.refetchQueries({
+      queryKey: ['customer-detail', params.id]
+    });
+
+    console.log('✅ [CUSTOMER-PAGE] Query invalidated and refetched!');
   };
 
   const tabs = [

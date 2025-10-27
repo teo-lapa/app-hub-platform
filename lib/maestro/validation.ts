@@ -34,7 +34,7 @@ export const updateRecommendationSchema = z.object({
 
 // Schema per POST /api/maestro/interactions
 export const createInteractionSchema = z.object({
-  customer_avatar_id: z.number().int().positive(), // SERIAL PRIMARY KEY (integer, non UUID)
+  customer_avatar_id: z.string().uuid(), // UUID string - matches database schema (customer_avatars.id)
   interaction_type: z.enum(['visit', 'call', 'email', 'whatsapp', 'other']),
   outcome: z.enum(['successful', 'unsuccessful', 'neutral', 'follow_up_needed']),
   notes: z.string().max(2000).optional(),
