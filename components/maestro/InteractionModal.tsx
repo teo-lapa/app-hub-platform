@@ -184,7 +184,7 @@ export function InteractionModal({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', duration: 0.3 }}
-              className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto pointer-events-auto"
+              className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] md:max-h-[85vh] overflow-y-auto pointer-events-auto modal-landscape"
             >
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-slate-700">

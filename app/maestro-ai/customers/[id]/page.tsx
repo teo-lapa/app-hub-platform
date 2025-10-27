@@ -94,7 +94,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-96">
             <div className="text-center">
@@ -110,7 +110,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   // Error state
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
         <div className="max-w-7xl mx-auto">
           <Link
             href="/maestro-ai/daily-plan"
@@ -145,7 +145,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Back Button */}
         <Link
@@ -345,7 +345,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                 </div>
                 {revenue_trend && revenue_trend.length > 0 ? (
                   <>
-                    <ResponsiveContainer width="100%" height={250}>
+                    <ResponsiveContainer width="100%" className="h-[200px] sm:h-[250px] md:h-[280px] lg:h-[300px]">
                       <LineChart data={revenue_trend}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                         <XAxis dataKey="month" stroke="#94a3b8" />
@@ -383,7 +383,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
               <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Spesa per Categoria</h3>
                 {categorySpend.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
+                  <ResponsiveContainer width="100%" className="h-[200px] sm:h-[250px] md:h-[280px] lg:h-[300px]">
                     <PieChart>
                       <Pie
                         data={categorySpend}

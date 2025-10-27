@@ -147,7 +147,7 @@ export default function MaestroAIDashboard() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 text-blue-500 animate-spin mx-auto mb-4" />
           <p className="text-slate-400 text-lg">Caricamento dati dashboard...</p>
@@ -159,7 +159,7 @@ export default function MaestroAIDashboard() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 flex items-center justify-center">
         <div className="text-center bg-red-500/10 border border-red-500/20 rounded-lg p-8 max-w-md">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">Errore nel caricamento</h2>
@@ -180,7 +180,7 @@ export default function MaestroAIDashboard() {
       <OfflineIndicator />
       <ChatWidget />
       <PullToRefresh onRefresh={handleRefresh}>
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-6">
+        <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-6">
           <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
         <motion.div
@@ -282,7 +282,7 @@ export default function MaestroAIDashboard() {
         </motion.div>
 
         {/* KPI Cards - REAL DATA - Mobile: 2 cols, Desktop: 4 cols */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           <KPICard
             title="Revenue Totale"
             value={formatCurrency(kpis.totalRevenue)}
@@ -313,7 +313,7 @@ export default function MaestroAIDashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Revenue Chart - REAL DATA */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -337,7 +337,7 @@ export default function MaestroAIDashboard() {
               return null;
             })()}
             {analytics?.revenueByMonth && analytics.revenueByMonth.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
+              <ResponsiveContainer width="100%" className="h-[200px] sm:h-[250px] md:h-[280px] lg:h-[300px]">
                 <LineChart data={analytics.revenueByMonth}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                   <XAxis dataKey="month" stroke="#94a3b8" />
@@ -475,7 +475,7 @@ export default function MaestroAIDashboard() {
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Top Products - REAL DATA */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

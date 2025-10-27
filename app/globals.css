@@ -326,3 +326,62 @@ button, a, [role="button"] {
 * {
   -webkit-overflow-scrolling: touch;
 }
+/* === OTTIMIZZAZIONI TABLET E LANDSCAPE === */
+
+/* Tablet - Touch targets aumentati */
+@media (min-width: 768px) and (max-width: 1024px) {
+  button, a, [role="button"] {
+    min-height: 48px !important;
+    min-width: 48px !important;
+  }
+
+  .btn-mobile {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 14px 20px;
+  }
+}
+
+/* Landscape orientation - Compatta UI per schermi orizzontali bassi */
+@media (orientation: landscape) and (max-height: 600px) {
+  .container-mobile,
+  .p-4, .py-4 {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  h1 {
+    font-size: 1.25rem !important;
+    line-height: 1.75rem !important;
+  }
+
+  h2 {
+    font-size: 1.125rem !important;
+    line-height: 1.5rem !important;
+  }
+
+  .space-y-4 > * + * {
+    margin-top: 0.75rem;
+  }
+
+  .space-y-6 > * + * {
+    margin-top: 1rem;
+  }
+
+  [role="dialog"],
+  .modal {
+    max-height: calc(100vh - 1rem) !important;
+    padding: 1rem !important;
+  }
+}
+
+/* Tablet landscape - Layout ottimizzato */
+@media (min-width: 768px) and (orientation: landscape) {
+  .grid-cols-2 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .recharts-responsive-container {
+    height: 280px !important;
+  }
+}
