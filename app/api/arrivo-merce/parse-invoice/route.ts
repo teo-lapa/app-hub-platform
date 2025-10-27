@@ -83,12 +83,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('🤖 Invio a Claude per analisi...', 'Format:', mediaType);
-
-    // 🆕 USA LO SKILL PER INVOICE PARSING
-    const skill = loadSkill('document-processing/invoice-parsing');
-    logSkillInfo('document-processing/invoice-parsing'); // Log per debugging
-    console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version}`);
+    console.log('🤖 Sistema 3-Agenti UNIVERSALE attivato...');
 
     // Determine content type based on file format (PDF uses 'document', images use 'image')
     const isPDF = mediaType === 'application/pdf';
@@ -108,109 +103,85 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    // Call Claude API with vision/document - RETRY LOGIC
-    let message;
-    let attempt = 0;
-    const maxAttempts = 2;
+    // Helper function to call Claude and parse JSON
+    const callAgent = async (skillPath: string, agentName: string) => {
+      console.log(`🤖 ${agentName}...`);
+      const skill = loadSkill(skillPath);
 
-    while (attempt < maxAttempts) {
-      attempt++;
-      console.log(`🤖 Tentativo ${attempt}/${maxAttempts} - Invio a Claude...`);
+      const message = await anthropic.messages.create({
+        model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
+        max_tokens: 8192,
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              contentBlock,
+              { type: 'text', text: skill.content },
+            ],
+          },
+        ],
+      });
 
+      const responseText = message.content[0]?.type === 'text' ? message.content[0].text : '';
+
+      // Parse JSON
+      let json;
       try {
-        message = await anthropic.messages.create({
-          model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
-          max_tokens: 8192,
-          temperature: 0,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                contentBlock,
-                {
-                  type: 'text',
-                  text: `${skill.content}\n\n---\n\nAnalizza questo documento e estrai i dati secondo le regole sopra.`,
-                },
-              ],
-            },
-          ],
-        });
-
-        // If successful, break the loop
-        break;
-      } catch (apiError: any) {
-        console.error(`❌ Tentativo ${attempt} fallito:`, apiError.message);
-
-        if (attempt === maxAttempts) {
-          throw new Error(`Parsing fallito dopo ${maxAttempts} tentativi. Il file potrebbe essere troppo complesso o danneggiato.`);
-        }
-
-        // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-
-    if (!message) {
-      throw new Error('Impossibile processare il documento dopo tutti i tentativi');
-    }
-
-    // Extract JSON from response
-    const firstContent = message.content[0];
-    const responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
-    console.log('📥 Risposta Claude (primi 300 char):', responseText.substring(0, 300));
-
-    // Parse JSON response - ROBUST PARSING
-    let parsedData;
-    try {
-      // Method 1: Try direct JSON parse
-      try {
-        parsedData = JSON.parse(responseText);
-        console.log('✅ Metodo 1: JSON diretto - successo');
+        json = JSON.parse(responseText);
       } catch {
-        // Method 2: Extract JSON from markdown code blocks
-        const codeBlockMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-        if (codeBlockMatch) {
-          parsedData = JSON.parse(codeBlockMatch[1]);
-          console.log('✅ Metodo 2: JSON da code block - successo');
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          json = JSON.parse(jsonMatch[0]);
         } else {
-          // Method 3: Find first { to last }
-          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            parsedData = JSON.parse(jsonMatch[0]);
-            console.log('✅ Metodo 3: Estrazione { } - successo');
-          } else {
-            throw new Error('Nessun JSON valido trovato nella risposta');
-          }
+          throw new Error(`${agentName}: Nessun JSON valido nella risposta`);
         }
       }
 
-      // Validate parsed data structure
-      if (!parsedData || typeof parsedData !== 'object') {
-        throw new Error('Risposta non è un oggetto JSON valido');
-      }
+      console.log(`✅ ${agentName}: completato`);
+      return json;
+    };
 
-      if (!parsedData.supplier_name || !parsedData.document_number || !parsedData.products) {
-        throw new Error('JSON mancante di campi obbligatori (supplier_name, document_number, products)');
-      }
+    // 🤖 AGENT 1: Extract Products (quantities + descriptions)
+    const productsData = await callAgent('document-processing/extract-products', 'AGENT 1 - Estrazione Prodotti');
 
-      if (!Array.isArray(parsedData.products)) {
-        throw new Error('Il campo products deve essere un array');
-      }
+    // 🤖 AGENT 2: Extract Lots and Expiry Dates
+    const lotsData = await callAgent('document-processing/extract-lots', 'AGENT 2 - Estrazione Lotti');
 
-      console.log('✅ Validazione JSON completata');
+    // 🤖 AGENT 3: Extract Supplier Info
+    const supplierData = await callAgent('document-processing/extract-supplier', 'AGENT 3 - Estrazione Fornitore');
 
-    } catch (parseError: any) {
-      console.error('❌ Errore parsing JSON:', parseError.message);
-      console.error('❌ Response text completo:', responseText);
-
-      return NextResponse.json({
-        error: 'Errore nel parsing della risposta AI. Il documento potrebbe essere troppo complesso o in un formato non supportato.',
-        details: parseError.message,
-        hint: 'Prova a convertire il PDF in un formato più semplice o a ridurre il numero di pagine.'
-      }, { status: 500 });
+    // 🔗 MERGE: Combine products with lots by article_code
+    console.log('🔗 Unione dati prodotti + lotti...');
+    const lotsMap = new Map();
+    for (const lot of (lotsData.lots || [])) {
+      lotsMap.set(lot.article_code, {
+        lot_number: lot.lot_number,
+        expiry_date: lot.expiry_date,
+      });
     }
 
-    console.log('✅ Dati estratti:', {
+    const products = (productsData.products || []).map((product: any) => {
+      const lotInfo = lotsMap.get(product.article_code) || {};
+      return {
+        article_code: product.article_code,
+        description: product.description,
+        quantity: product.quantity,
+        unit: product.unit,
+        lot_number: lotInfo.lot_number || undefined,
+        expiry_date: lotInfo.expiry_date || undefined,
+      };
+    });
+
+    const parsedData = {
+      supplier_name: supplierData.supplier_name,
+      supplier_vat: supplierData.supplier_vat || '',
+      document_number: supplierData.document_number,
+      document_date: supplierData.document_date,
+      products: products,
+    };
+
+    console.log('✅ Sistema 3-Agenti completato:', {
       supplier: parsedData.supplier_name,
       products: parsedData.products?.length || 0
     });
@@ -218,7 +189,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: parsedData,
-      tokens_used: message?.usage
+      tokens_used: undefined
     });
 
   } catch (error: any) {
