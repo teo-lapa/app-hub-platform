@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
@@ -18,7 +18,10 @@ import {
   ArrowLeft,
   ExternalLink,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Filter,
+  Search,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { HealthScoreBadge } from '@/components/maestro/HealthScoreBadge';
@@ -54,6 +57,12 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showInteractionModal, setShowInteractionModal] = useState(false);
   const queryClient = useQueryClient();
+
+  // Filtri per interazioni
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterOutcome, setFilterOutcome] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Fetch real data using React Query
   const { data, isLoading, error } = useQuery({
@@ -156,6 +165,75 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   }
 
   const { customer, recommendations, interactions, orders, revenue_trend, metadata } = data;
+
+  // Filtro e raggruppamento interazioni
+  const filteredInteractions = useMemo(() => {
+    if (!interactions) return [];
+
+    return interactions.filter((interaction: any) => {
+      // Filtro per tipo
+      if (filterType !== 'all' && interaction.interaction_type !== filterType) {
+        return false;
+      }
+
+      // Filtro per outcome
+      if (filterOutcome !== 'all' && interaction.outcome !== filterOutcome) {
+        return false;
+      }
+
+      // Filtro per ricerca nelle note
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesNotes = interaction.notes?.toLowerCase().includes(query);
+        const matchesType = interaction.interaction_type.toLowerCase().includes(query);
+        const matchesSalesperson = interaction.salesperson_name?.toLowerCase().includes(query);
+
+        if (!matchesNotes && !matchesType && !matchesSalesperson) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [interactions, filterType, filterOutcome, searchQuery]);
+
+  // Raggruppa interazioni per giorno
+  const interactionsByDay = useMemo(() => {
+    if (!filteredInteractions || filteredInteractions.length === 0) return {};
+
+    return filteredInteractions.reduce((acc: any, interaction: any) => {
+      const date = new Date(interaction.interaction_date).toLocaleDateString('it-IT', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(interaction);
+      return acc;
+    }, {});
+  }, [filteredInteractions]);
+
+  // Statistiche filtrate
+  const filteredStats = useMemo(() => {
+    if (!filteredInteractions || filteredInteractions.length === 0) {
+      return { total: 0, successful: 0, neutral: 0, unsuccessful: 0, visits: 0, calls: 0, emails: 0, other: 0 };
+    }
+
+    return {
+      total: filteredInteractions.length,
+      successful: filteredInteractions.filter((i: any) => i.outcome === 'successful').length,
+      neutral: filteredInteractions.filter((i: any) => i.outcome === 'neutral').length,
+      unsuccessful: filteredInteractions.filter((i: any) => i.outcome === 'unsuccessful').length,
+      visits: filteredInteractions.filter((i: any) => i.interaction_type === 'visit').length,
+      calls: filteredInteractions.filter((i: any) => i.interaction_type === 'call').length,
+      emails: filteredInteractions.filter((i: any) => i.interaction_type === 'email').length,
+      other: filteredInteractions.filter((i: any) => i.interaction_type === 'other').length,
+    };
+  }, [filteredInteractions]);
 
   // Calculate category spend for pie chart
   const categorySpend = Object.entries(customer.product_categories || {}).map(([name, stats]: [string, any], idx) => ({
@@ -630,67 +708,228 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-slate-800 border border-slate-700 rounded-lg p-6"
+              className="space-y-6"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white">
-                  Timeline Interazioni ({interactions?.length || 0})
-                </h3>
-                <button
-                  onClick={() => setShowInteractionModal(true)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
-                >
-                  + Nuova Interazione
-                </button>
-              </div>
-              {interactions.length > 0 ? (
-                <div className="space-y-4">
-                  {interactions.map((interaction: any) => (
-                    <div key={interaction.id} className="flex gap-4">
-                      <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${
-                        interaction.interaction_type === 'call' ? 'bg-blue-500/10 border border-blue-500/20' :
-                        interaction.interaction_type === 'visit' ? 'bg-green-500/10 border border-green-500/20' :
-                        interaction.interaction_type === 'email' ? 'bg-purple-500/10 border border-purple-500/20' :
-                        'bg-slate-500/10 border border-slate-500/20'
-                      }`}>
-                        {interaction.interaction_type === 'call' && <Phone className="h-5 w-5 text-blue-400" />}
-                        {interaction.interaction_type === 'visit' && <Building2 className="h-5 w-5 text-green-400" />}
-                        {interaction.interaction_type === 'email' && <Mail className="h-5 w-5 text-purple-400" />}
+              {/* Header con statistiche */}
+              <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-1">
+                      Timeline Interazioni
+                    </h3>
+                    <p className="text-sm text-slate-400">
+                      {filteredStats.total} di {interactions?.length || 0} interazioni
+                      {(filterType !== 'all' || filterOutcome !== 'all' || searchQuery) && ' (filtrate)'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowInteractionModal(true)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Nuova Interazione
+                  </button>
+                </div>
+
+                {/* Statistiche rapide */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                    <p className="text-xs text-green-400 mb-1">Successful</p>
+                    <p className="text-2xl font-bold text-white">{filteredStats.successful}</p>
+                  </div>
+                  <div className="bg-slate-500/10 border border-slate-500/20 rounded-lg p-3">
+                    <p className="text-xs text-slate-400 mb-1">Neutral</p>
+                    <p className="text-2xl font-bold text-white">{filteredStats.neutral}</p>
+                  </div>
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                    <p className="text-xs text-red-400 mb-1">Unsuccessful</p>
+                    <p className="text-2xl font-bold text-white">{filteredStats.unsuccessful}</p>
+                  </div>
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                    <p className="text-xs text-blue-400 mb-1">Totale</p>
+                    <p className="text-2xl font-bold text-white">{filteredStats.total}</p>
+                  </div>
+                </div>
+
+                {/* Filtri e ricerca */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowFilters(!showFilters)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                        showFilters
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      <Filter className="h-4 w-4" />
+                      Filtri
+                      {(filterType !== 'all' || filterOutcome !== 'all') && (
+                        <span className="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                          {[filterType !== 'all', filterOutcome !== 'all'].filter(Boolean).length}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Ricerca */}
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Cerca nelle note, tipo, venditore..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-10 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Pannello filtri */}
+                  {showFilters && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-700/50 rounded-lg border border-slate-600"
+                    >
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-2">Tipo</label>
+                        <select
+                          value={filterType}
+                          onChange={(e) => setFilterType(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="all">Tutti ({interactions?.length || 0})</option>
+                          <option value="visit">Visite ({filteredStats.visits})</option>
+                          <option value="call">Chiamate ({filteredStats.calls})</option>
+                          <option value="email">Email ({filteredStats.emails})</option>
+                          {filteredStats.other > 0 && <option value="other">Altre ({filteredStats.other})</option>}
+                        </select>
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-white capitalize">{interaction.interaction_type}</span>
-                          <span className="text-xs text-slate-500">•</span>
-                          <span className="text-sm text-slate-400">
-                            {new Date(interaction.interaction_date).toLocaleDateString('it-IT')}
-                          </span>
-                          <span className="text-xs text-slate-500">•</span>
-                          <span className="text-sm text-slate-400">{interaction.salesperson_name}</span>
-                          <span className={`ml-auto px-2 py-0.5 rounded text-xs ${
-                            interaction.outcome === 'successful' ? 'bg-green-500/10 text-green-400' :
-                            interaction.outcome === 'unsuccessful' ? 'bg-red-500/10 text-red-400' :
-                            'bg-slate-500/10 text-slate-400'
-                          }`}>
-                            {interaction.outcome}
-                          </span>
+
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-2">Outcome</label>
+                        <select
+                          value={filterOutcome}
+                          onChange={(e) => setFilterOutcome(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="all">Tutti</option>
+                          <option value="successful">Successful ({filteredStats.successful})</option>
+                          <option value="neutral">Neutral ({filteredStats.neutral})</option>
+                          <option value="unsuccessful">Unsuccessful ({filteredStats.unsuccessful})</option>
+                        </select>
+                      </div>
+
+                      {(filterType !== 'all' || filterOutcome !== 'all' || searchQuery) && (
+                        <div className="col-span-full">
+                          <button
+                            onClick={() => {
+                              setFilterType('all');
+                              setFilterOutcome('all');
+                              setSearchQuery('');
+                            }}
+                            className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                          >
+                            <X className="h-4 w-4" />
+                            Reset filtri
+                          </button>
                         </div>
-                        {interaction.notes && (
-                          <p className="text-sm text-slate-300 mb-2">{interaction.notes}</p>
-                        )}
-                        {interaction.order_placed && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="px-2 py-1 bg-green-500/10 border border-green-500/20 rounded text-xs text-green-400">
-                              Ordine generato: {formatCurrency(interaction.order_value || 0)}
-                            </span>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+
+              {/* Interazioni raggruppate per giorno */}
+              {filteredInteractions.length > 0 ? (
+                <div className="space-y-6">
+                  {Object.entries(interactionsByDay).map(([day, dayInteractions]: [string, any]) => (
+                    <div key={day} className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+                      <h4 className="text-sm font-semibold text-blue-400 mb-4 capitalize">
+                        {day} ({dayInteractions.length} interazioni)
+                      </h4>
+                      <div className="space-y-4">
+                        {dayInteractions.map((interaction: any) => (
+                          <div key={interaction.id} className="flex gap-4 pb-4 border-b border-slate-700/50 last:border-0 last:pb-0">
+                            <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${
+                              interaction.interaction_type === 'call' ? 'bg-blue-500/10 border border-blue-500/20' :
+                              interaction.interaction_type === 'visit' ? 'bg-green-500/10 border border-green-500/20' :
+                              interaction.interaction_type === 'email' ? 'bg-purple-500/10 border border-purple-500/20' :
+                              'bg-slate-500/10 border border-slate-500/20'
+                            }`}>
+                              {interaction.interaction_type === 'call' && <Phone className="h-5 w-5 text-blue-400" />}
+                              {interaction.interaction_type === 'visit' && <Building2 className="h-5 w-5 text-green-400" />}
+                              {interaction.interaction_type === 'email' && <Mail className="h-5 w-5 text-purple-400" />}
+                              {interaction.interaction_type === 'other' && <MessageSquare className="h-5 w-5 text-slate-400" />}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="font-medium text-white capitalize">{interaction.interaction_type}</span>
+                                <span className="text-xs text-slate-500">•</span>
+                                <span className="text-sm text-slate-400">
+                                  {new Date(interaction.interaction_date).toLocaleTimeString('it-IT', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                                <span className="text-xs text-slate-500">•</span>
+                                <span className="text-sm text-slate-400">{interaction.salesperson_name}</span>
+                                <span className={`ml-auto px-2 py-0.5 rounded text-xs font-medium ${
+                                  interaction.outcome === 'successful' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                                  interaction.outcome === 'unsuccessful' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                  'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                                }`}>
+                                  {interaction.outcome}
+                                </span>
+                              </div>
+                              {interaction.notes && (
+                                <p className="text-sm text-slate-300 mb-2 whitespace-pre-wrap">{interaction.notes}</p>
+                              )}
+                              {interaction.order_placed && (
+                                <div className="flex items-center gap-2 text-sm mt-2">
+                                  <span className="px-2 py-1 bg-green-500/10 border border-green-500/20 rounded text-xs text-green-400 font-medium">
+                                    ✓ Ordine generato: {formatCurrency(interaction.order_value || 0)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
+                        ))}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 text-slate-500">
-                  Nessuna interazione registrata per questo cliente
+                <div className="bg-slate-800 border border-slate-700 rounded-lg p-12">
+                  <div className="text-center">
+                    <MessageSquare className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+                    <p className="text-slate-500">
+                      {searchQuery || filterType !== 'all' || filterOutcome !== 'all'
+                        ? 'Nessuna interazione trovata con questi filtri'
+                        : 'Nessuna interazione registrata per questo cliente'}
+                    </p>
+                    {(searchQuery || filterType !== 'all' || filterOutcome !== 'all') && (
+                      <button
+                        onClick={() => {
+                          setFilterType('all');
+                          setFilterOutcome('all');
+                          setSearchQuery('');
+                        }}
+                        className="mt-3 text-sm text-blue-400 hover:text-blue-300"
+                      >
+                        Reset filtri
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </motion.div>
