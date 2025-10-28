@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, memo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -41,6 +41,59 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
+
+// 🚀 Memoized Revenue Chart Component (optimized for mobile performance)
+const MemoizedRevenueChart = memo(({ data }: { data: any[] }) => {
+  console.log('📊 [CHART] Rendering MemoizedRevenueChart with', data?.length || 0, 'data points');
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-[200px] sm:h-[250px] md:h-[280px] lg:h-[300px] flex items-center justify-center text-slate-500">
+        <div className="text-center">
+          <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
+          <p className="text-sm sm:text-base">Nessun dato disponibile</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ResponsiveContainer width="100%" className="h-[200px] sm:h-[250px] md:h-[280px] lg:h-[300px]">
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+        <XAxis dataKey="month" stroke="#94a3b8" />
+        <YAxis yAxisId="left" stroke="#10b981" label={{ value: 'CHF', angle: -90, position: 'insideLeft', fill: '#10b981' }} />
+        <YAxis yAxisId="right" orientation="right" stroke="#3b82f6" label={{ value: 'Ordini', angle: 90, position: 'insideRight', fill: '#3b82f6' }} />
+        <Tooltip
+          contentStyle={{
+            backgroundColor: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '8px',
+            color: '#fff'
+          }}
+        />
+        <Legend />
+        <Line
+          yAxisId="left"
+          type="monotone"
+          dataKey="revenue"
+          stroke="#10b981"
+          strokeWidth={3}
+          name="Revenue (CHF)"
+        />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="orders"
+          stroke="#3b82f6"
+          strokeWidth={3}
+          name="Ordini"
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+});
+MemoizedRevenueChart.displayName = 'MemoizedRevenueChart';
 
 export default function MaestroAIDashboard() {
   // 🔐 Check user permissions
@@ -95,10 +148,10 @@ export default function MaestroAIDashboard() {
     }
   };
 
-  // Carica contatore all'avvio e ogni 30 secondi
+  // Carica contatore all'avvio e ogni 3 minuti (ottimizzato per Android)
   useEffect(() => {
     loadUrgentProductsCount();
-    const interval = setInterval(loadUrgentProductsCount, 30000);
+    const interval = setInterval(loadUrgentProductsCount, 3 * 60 * 1000); // 3 minuti invece di 30s
     return () => clearInterval(interval);
   }, []);
 
@@ -385,48 +438,7 @@ export default function MaestroAIDashboard() {
               });
               return null;
             })()}
-            {analytics?.revenueByMonth && analytics.revenueByMonth.length > 0 ? (
-              <ResponsiveContainer width="100%" className="h-[200px] sm:h-[250px] md:h-[280px] lg:h-[300px]">
-                <LineChart data={analytics.revenueByMonth}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="month" stroke="#94a3b8" />
-                  <YAxis yAxisId="left" stroke="#10b981" label={{ value: 'CHF', angle: -90, position: 'insideLeft', fill: '#10b981' }} />
-                  <YAxis yAxisId="right" orientation="right" stroke="#3b82f6" label={{ value: 'Ordini', angle: 90, position: 'insideRight', fill: '#3b82f6' }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: '#fff'
-                    }}
-                  />
-                  <Legend />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#10b981"
-                    strokeWidth={3}
-                    name="Revenue (CHF)"
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="orders"
-                    stroke="#3b82f6"
-                    strokeWidth={3}
-                    name="Ordini"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[250px] sm:h-[300px] flex items-center justify-center text-slate-500">
-                <div className="text-center">
-                  <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm sm:text-base">Nessun dato disponibile</p>
-                </div>
-              </div>
-            )}
+            <MemoizedRevenueChart data={analytics?.revenueByMonth || []} />
           </motion.div>
 
           {/* 🔐 SECTION: Venditori (conditional based on permissions) */}
