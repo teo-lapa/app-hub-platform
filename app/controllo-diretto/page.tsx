@@ -106,8 +106,7 @@ export default function ControlloDirettoPage() {
     const key = getStorageKey();
     if (!key) return;
 
-    const data = Array.from(controls.entries()).map(([productId, control]) => ({
-      productId,
+    const data = Array.from(controls.entries()).map(([, control]) => ({
       ...control,
       controlledAt: control.controlledAt?.toISOString()
     }));
