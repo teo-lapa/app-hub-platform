@@ -83,24 +83,35 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
     }
   }
 
-  function handleLocationScanned(code: string) {
-    // Parse location from QR code
-    // Expected format: LOC_<location_id> or JSON
+  async function handleLocationScanned(code: string) {
+    if (!code) return;
+
+    setLoading(true);
+    setShowLocationScanner(false);
+
     try {
-      if (code.startsWith('LOC_')) {
-        const locationId = parseInt(code.replace('LOC_', ''));
-        // In real scenario, fetch location details
-        setSelectedLocation({ id: locationId, name: `Ubicazione ${locationId}` });
+      // Usa la stessa API della pagina ubicazioni
+      const response = await fetch('/api/inventory/location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ locationCode: code })
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.location) {
+        setSelectedLocation(data.location);
+        toast.success(`Ubicazione: ${data.location.complete_name || data.location.name}`);
+        setStep('products');
       } else {
-        const parsed = JSON.parse(code);
-        if (parsed.location_id) {
-          setSelectedLocation({ id: parsed.location_id, name: parsed.location_name || `Ubicazione ${parsed.location_id}` });
-        }
+        toast.error('Ubicazione non trovata');
       }
-      setShowLocationScanner(false);
-      setStep('products');
-    } catch (error) {
-      toast.error('QR code non valido');
+    } catch (error: any) {
+      console.error('Errore scansione ubicazione:', error);
+      toast.error('Errore: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   }
 
