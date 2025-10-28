@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     // Recupera session da cookie
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('odoo_session');
+    const sessionCookie = cookieStore.get('odoo_session_id');
 
     if (!sessionCookie?.value) {
       return NextResponse.json(
@@ -33,10 +33,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const sessionData = JSON.parse(sessionCookie.value);
+    const sessionId = sessionCookie.value;
 
     // Crea client RPC
-    const rpcClient = createOdooRPCClient(sessionData.sessionId);
+    const rpcClient = createOdooRPCClient(sessionId);
 
     // STEP 1: Cerca tutti i lotti con expiration_date (solo campi necessari)
     console.log('📦 Recupero lotti con scadenza...');
