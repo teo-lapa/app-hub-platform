@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -15,7 +15,8 @@ import {
   Loader2,
   UserCheck,
   UsersRound,
-  Package
+  Package,
+  Bell
 } from 'lucide-react';
 import { KPICard } from '@/components/maestro/KPICard';
 import { HealthScoreBadge } from '@/components/maestro/HealthScoreBadge';
@@ -23,6 +24,7 @@ import { OfflineIndicator } from '@/components/maestro/OfflineIndicator';
 import { PullToRefresh } from '@/components/maestro/PullToRefresh';
 import { ChatWidget } from '@/components/maestro/ChatWidget';
 import { VehicleStockButton } from '@/components/maestro/VehicleStockButton';
+import { UrgentProductsModal } from '@/components/maestro/UrgentProductsModal';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { useCustomerAvatars, useAnalytics } from '@/hooks/useMaestroAI';
 import { useOfflineCache } from '@/hooks/useOfflineCache';
@@ -39,6 +41,10 @@ import {
 } from 'recharts';
 
 export default function MaestroAIDashboard() {
+  // Stati per modal Prodotti Urgenti
+  const [showUrgentProductsModal, setShowUrgentProductsModal] = useState(false);
+  const [urgentProductsCount, setUrgentProductsCount] = useState(0);
+
   // Use global filter context (default period is now 'week')
   const { period, setPeriod, selectedVendor, setSelectedVendor, clearVendorFilter, isVendorSelected, getPeriodLabel } = useMaestroFilters();
 
@@ -68,9 +74,31 @@ export default function MaestroAIDashboard() {
   const isLoading = avatarsLoading || analyticsLoading;
   const error = avatarsError || analyticsError;
 
+  // Carica contatore prodotti urgenti
+  const loadUrgentProductsCount = async () => {
+    try {
+      const response = await fetch('/api/urgent-products', {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.success) {
+        setUrgentProductsCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error('Errore caricamento contatore prodotti urgenti:', error);
+    }
+  };
+
+  // Carica contatore all'avvio e ogni 30 secondi
+  useEffect(() => {
+    loadUrgentProductsCount();
+    const interval = setInterval(loadUrgentProductsCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Pull to refresh handler
   const handleRefresh = async () => {
-    await Promise.all([refetchAvatars(), refetchAnalytics()]);
+    await Promise.all([refetchAvatars(), refetchAnalytics(), loadUrgentProductsCount()]);
   };
 
   // Helper function to get start date based on period
@@ -197,6 +225,21 @@ export default function MaestroAIDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Pulsante Prodotti Urgenti */}
+            <button
+              onClick={() => setShowUrgentProductsModal(true)}
+              className="relative px-3 sm:px-4 py-2 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white rounded-lg transition-colors flex items-center gap-2 min-h-[44px]"
+            >
+              <Bell className="h-4 w-4" />
+              <span className="hidden sm:inline">Prodotti Urgenti</span>
+              <span className="sm:hidden">Urgenti</span>
+              {urgentProductsCount > 0 && (
+                <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                  {urgentProductsCount}
+                </span>
+              )}
+            </button>
+
             <VehicleStockButton
               vendorName={selectedVendor?.name || 'Tutti i Venditori'}
               vendorId={selectedVendor?.id}
@@ -631,6 +674,15 @@ export default function MaestroAIDashboard() {
       </div>
     </div>
       </PullToRefresh>
+
+      {/* Modal Prodotti Urgenti */}
+      <UrgentProductsModal
+        isOpen={showUrgentProductsModal}
+        onClose={() => {
+          setShowUrgentProductsModal(false);
+          loadUrgentProductsCount(); // Ricarica contatore quando chiudi modal
+        }}
+      />
     </>
   );
 }
