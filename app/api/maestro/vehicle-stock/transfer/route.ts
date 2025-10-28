@@ -307,42 +307,89 @@ export async function POST(request: NextRequest) {
 
     const batchName = `CARICO-${driverName.toUpperCase()}-${plate}-${new Date().toISOString().split('T')[0]}`;
 
-    const batchCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `session_id=${sessionId}`
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model: 'stock.picking.batch',
-          method: 'create',
-          args: [{
-            name: batchName,
-            user_id: targetSalespersonId,
-            x_studio_autista_del_giro: targetSalespersonId,
-            x_studio_auto_del_giro: plate,
-            scheduled_date: new Date().toISOString()
-            // NON impostiamo picking_ids qui - lo facciamo dopo con write()
-          }],
-          kwargs: {}
+    // Prova prima con i campi custom
+    let batchId: number | null = null;
+    let customFieldsWorked = false;
+
+    try {
+      // Tentativo 1: Con campi custom x_studio
+      console.log('📦 [Batch] Tentativo creazione con campi custom...');
+      const batchCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`
         },
-        id: 9
-      })
-    });
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'stock.picking.batch',
+            method: 'create',
+            args: [{
+              name: batchName,
+              user_id: targetSalespersonId,
+              x_studio_autista_del_giro: targetSalespersonId,
+              x_studio_auto_del_giro: plate,
+              scheduled_date: new Date().toISOString()
+            }],
+            kwargs: {}
+          },
+          id: 9
+        })
+      });
 
-    const batchCreateData = await batchCreateResponse.json();
+      const batchCreateData = await batchCreateResponse.json();
 
-    if (!batchCreateData.result) {
-      console.error('❌ Errore creazione batch:', JSON.stringify(batchCreateData, null, 2));
-      const errorMsg = batchCreateData.error?.data?.message || batchCreateData.error?.message || 'Errore nella creazione del batch';
-      throw new Error(`Batch creation failed: ${errorMsg}`);
+      if (batchCreateData.result) {
+        batchId = batchCreateData.result;
+        customFieldsWorked = true;
+        console.log(`✅ Batch creato con campi custom: ${batchId} (${batchName})`);
+      } else {
+        console.warn('⚠️ Creazione batch con campi custom fallita:', batchCreateData.error?.data?.message);
+        throw new Error('Retry without custom fields');
+      }
+    } catch (error) {
+      // Tentativo 2: SENZA campi custom (solo campi standard)
+      console.log('📦 [Batch] Tentativo creazione SENZA campi custom...');
+      const batchCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'stock.picking.batch',
+            method: 'create',
+            args: [{
+              name: batchName,
+              user_id: targetSalespersonId,
+              scheduled_date: new Date().toISOString()
+            }],
+            kwargs: {}
+          },
+          id: 9
+        })
+      });
+
+      const batchCreateData = await batchCreateResponse.json();
+
+      if (!batchCreateData.result) {
+        console.error('❌ Errore creazione batch (anche senza custom fields):', JSON.stringify(batchCreateData, null, 2));
+        const errorMsg = batchCreateData.error?.data?.message || batchCreateData.error?.message || 'Errore nella creazione del batch';
+        throw new Error(`Batch creation failed: ${errorMsg}`);
+      }
+
+      batchId = batchCreateData.result;
+      console.log(`✅ Batch creato senza campi custom: ${batchId} (${batchName})`);
     }
 
-    const batchId = batchCreateData.result;
-    console.log(`✅ Batch creato: ${batchId} (${batchName})`);
+    if (!batchId) {
+      throw new Error('Failed to create batch - no ID returned');
+    }
 
     // 14. Aggiungi il picking al batch appena creato
     console.log(`📦 [Batch] Aggiunta picking ${pickingId} al batch ${batchId}...`);
