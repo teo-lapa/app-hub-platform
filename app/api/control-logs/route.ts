@@ -104,25 +104,45 @@ export async function GET(request: NextRequest) {
     const productId = searchParams.get('product_id');
     const status = searchParams.get('status');
 
-    let query = sql`SELECT * FROM control_logs WHERE 1=1`;
+    // Costruisci query dinamica
+    let result;
 
-    // Filtri dinamici
-    if (batchId) {
-      query = sql`${query} AND batch_id = ${parseInt(batchId)}`;
+    if (batchId && zoneId) {
+      result = await sql`
+        SELECT * FROM control_logs
+        WHERE batch_id = ${parseInt(batchId)} AND zone_id = ${zoneId}
+        ORDER BY controlled_at DESC LIMIT 1000
+      `;
+    } else if (batchId) {
+      result = await sql`
+        SELECT * FROM control_logs
+        WHERE batch_id = ${parseInt(batchId)}
+        ORDER BY controlled_at DESC LIMIT 1000
+      `;
+    } else if (zoneId) {
+      result = await sql`
+        SELECT * FROM control_logs
+        WHERE zone_id = ${zoneId}
+        ORDER BY controlled_at DESC LIMIT 1000
+      `;
+    } else if (productId) {
+      result = await sql`
+        SELECT * FROM control_logs
+        WHERE product_id = ${parseInt(productId)}
+        ORDER BY controlled_at DESC LIMIT 1000
+      `;
+    } else if (status) {
+      result = await sql`
+        SELECT * FROM control_logs
+        WHERE status = ${status}
+        ORDER BY controlled_at DESC LIMIT 1000
+      `;
+    } else {
+      result = await sql`
+        SELECT * FROM control_logs
+        ORDER BY controlled_at DESC LIMIT 1000
+      `;
     }
-    if (zoneId) {
-      query = sql`${query} AND zone_id = ${zoneId}`;
-    }
-    if (productId) {
-      query = sql`${query} AND product_id = ${parseInt(productId)}`;
-    }
-    if (status) {
-      query = sql`${query} AND status = ${status}`;
-    }
-
-    query = sql`${query} ORDER BY controlled_at DESC LIMIT 1000`;
-
-    const result = await query;
 
     return NextResponse.json({
       success: true,
