@@ -1605,7 +1605,7 @@ export default function DeliveryPage() {
 
   // ==================== RENDER ====================
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-[100dvh] bg-gray-50">
       {/* HEADER */}
       <header className="fixed top-0 left-0 right-0 h-[60px] bg-white border-b border-gray-200 flex items-center px-4 z-50 shadow-sm">
         <button
@@ -1687,7 +1687,7 @@ export default function DeliveryPage() {
                 <div className="text-gray-600">Tutte le consegne completate!</div>
                 <button
                   onClick={() => setShowCompleted(true)}
-                  className="mt-4 px-6 py-2 bg-green-500 text-white rounded-lg font-semibold"
+                  className="mt-4 px-6 py-3 min-h-[48px] bg-green-500 text-white rounded-lg font-semibold"
                 >
                   Mostra completate
                 </button>
@@ -1791,7 +1791,7 @@ export default function DeliveryPage() {
                         e.stopPropagation();
                         navigateTo(delivery.latitude, delivery.longitude);
                       }}
-                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold text-sm hover:bg-blue-700 transition-colors"
+                      className="flex-1 bg-blue-600 text-white py-3 min-h-[48px] rounded-lg font-semibold text-sm hover:bg-blue-700 transition-colors"
                     >
                       🗺️ NAVIGA
                     </button>
@@ -1800,7 +1800,7 @@ export default function DeliveryPage() {
                         e.stopPropagation();
                         openScaricoView(delivery);
                       }}
-                      className="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold text-sm hover:bg-green-700 transition-colors relative"
+                      className="flex-1 bg-green-600 text-white py-3 min-h-[48px] rounded-lg font-semibold text-sm hover:bg-green-700 transition-colors relative"
                     >
                       📦 SCARICO
                       {(delivery.products?.length || 0) > 0 && (
@@ -1818,7 +1818,7 @@ export default function DeliveryPage() {
 
         {/* VISTA MAPPA */}
         {view === 'map' && (
-          <div className="h-[calc(100vh-130px)]">
+          <div className="h-[calc(100dvh-130px)]">
             <DeliveryMap
               deliveries={deliveries}
               currentPosition={currentPosition}
@@ -1976,7 +1976,7 @@ export default function DeliveryPage() {
 
         <button
           onClick={loadDeliveries}
-          className="flex flex-col items-center gap-1 px-4 py-2 text-gray-400 hover:text-indigo-600"
+          className="flex flex-col items-center gap-1 px-4 py-3 min-h-[56px] text-gray-400 hover:text-indigo-600"
         >
           <span className="text-2xl">🔄</span>
           <span className="text-xs font-semibold">Ricarica</span>
