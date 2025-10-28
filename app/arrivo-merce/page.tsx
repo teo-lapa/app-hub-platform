@@ -615,6 +615,17 @@ export default function ArrivoMercePage() {
                     const data = await response.json();
 
                     if (!response.ok) {
+                      // Log debug info if available
+                      if (data.debug) {
+                        console.error('🔍 Debug info:', data.debug);
+                        if (data.debug.first_page_response) {
+                          console.error('📄 AI Response (first 2000 chars):', data.debug.first_page_response);
+                        }
+                        if (data.debug.errors) {
+                          console.error('📋 Errori dettagliati:', data.debug.errors);
+                        }
+                      }
+
                       throw new Error(data.error || 'Errore durante il parsing');
                     }
 

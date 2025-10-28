@@ -57,7 +57,8 @@ async function parsePage(
   pageNumber: number,
   totalPages: number,
   mediaType: string,
-  skill: any
+  skill: any,
+  errorCollector?: Array<{page: number, error: string, response?: string}>
 ): Promise<any | null> {
   const isPDF = mediaType === 'application/pdf';
 
@@ -163,6 +164,16 @@ async function parsePage(
       if (attempt === maxAttempts) {
         console.error(`⚠️ Pagina ${pageNumber} saltata dopo ${maxAttempts} tentativi`);
         console.error(`📄 Ultima response salvata per debug`);
+
+        // Save error details to collector
+        if (errorCollector) {
+          const existingError = errorCollector.find(e => e.page === pageNumber);
+          if (existingError) {
+            existingError.error = error.message;
+            existingError.response = responseText.substring(0, 2000); // First 2000 chars
+          }
+        }
+
         return null;
       }
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -338,22 +349,31 @@ export async function POST(request: NextRequest) {
     const pageResults: any[] = [];
     let totalTokensUsed = { input_tokens: 0, output_tokens: 0 };
 
-    const parseErrors: string[] = [];
+    const parseErrors: Array<{page: number, error: string, response?: string}> = [];
     for (let i = 0; i < pagesToProcess.length; i++) {
+      // Pre-populate error entry
+      const errorEntry = {
+        page: i + 1,
+        error: `Pagina ${i + 1} non parsata`,
+        response: undefined
+      };
+      parseErrors.push(errorEntry);
+
       const result = await parsePage(
         pagesToProcess[i],
         i + 1,
         pagesToProcess.length,
         mediaType,
-        skill
+        skill,
+        parseErrors
       );
 
       if (result) {
         pageResults.push(result.data);
         totalTokensUsed.input_tokens += result.tokens.input_tokens;
         totalTokensUsed.output_tokens += result.tokens.output_tokens;
-      } else {
-        parseErrors.push(`Pagina ${i + 1} non parsata`);
+        // Remove error entry if successful
+        parseErrors.pop();
       }
     }
 
@@ -370,7 +390,9 @@ export async function POST(request: NextRequest) {
           attachment_name: attachment.name,
           pages_total: pagesToProcess.length,
           pages_failed: parseErrors.length,
-          errors: parseErrors
+          errors: parseErrors,
+          // Add first page response for debugging
+          first_page_response: parseErrors[0]?.response || 'No response captured'
         }
       }, { status: 500 });
     }
