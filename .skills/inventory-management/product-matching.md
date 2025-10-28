@@ -1,12 +1,13 @@
 ---
 name: product-matching
-version: 1.0.0
-description: Match intelligente tra prodotti fattura e righe inventario Odoo
+version: 1.1.0
+description: Match intelligente tra prodotti fattura e righe inventario Odoo con conversione UoM automatica
 category: inventory-management
-tags: [matching, inventory, fuzzy-match, odoo]
-model: claude-3-5-sonnet-20241022
+tags: [matching, inventory, fuzzy-match, odoo, uom, conversion]
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-15
+updated: 2025-01-28
 ---
 
 # 🔗 Product Matching Skill
@@ -58,10 +59,34 @@ Il tuo compito è **matchare** ogni prodotto della fattura con la corrispondente
     "lot_id": false,
     "lot_name": false,
     "expiry_date": false,
-    "variant_ids": [501, 502]
+    "variant_ids": [501, 502],
+    "uom_info": {
+      "id": 1,
+      "name": "kg",
+      "category_id": [1, "Weight"],
+      "factor": 1.0,
+      "factor_inv": 1.0,
+      "uom_type": "reference",
+      "rounding": 0.01
+    },
+    "uom_po_info": {
+      "id": 5,
+      "name": "Carton",
+      "category_id": [1, "Weight"],
+      "factor": 0.1,
+      "factor_inv": 10.0,
+      "uom_type": "bigger",
+      "rounding": 1.0
+    }
   }
 ]
 ```
+
+**NOTA IMPORTANTE SU UoM**:
+- `uom_info`: Unità di misura base del prodotto (es: KG, L, PZ)
+- `uom_po_info`: Unità di misura acquisto (es: Carton, Pallet, Box)
+- `factor`: Fattore di conversione dall'unità base (es: 0.1 = 1 unità = 10 base)
+- `factor_inv`: Fattore inverso (es: 10.0 = 10 base = 1 unità)
 
 ---
 
@@ -131,6 +156,114 @@ Odoo:    "ROSSO POMODORO G.500"
 - "250g" = "250gr" = "GR.250" = "gr 250"
 - "1L" = "1 Litro" = "1000ml"
 - "Rosso" = "RED" = "ROSSO"
+
+---
+
+## 🔢 Conversione Quantità con UoM (CRITICISSIMO!)
+
+### ⚠️ REGOLA PRIORITARIA #0 - CONVERSIONE QUANTITÀ
+
+**ATTENZIONE**: Questa è la regola PIÙ IMPORTANTE di tutto lo skill!
+
+Quando la fattura indica una quantità con moltiplicatore (es: "3 x 10ST", "5 x 12PZ"), DEVI:
+1. **Verificare l'UoM configurata in Odoo** (`uom_info` e `uom_po_info`)
+2. **Calcolare la quantità finale** usando i fattori di conversione
+3. **Registrare nell'unità di misura base** (quella di `uom_info`)
+
+### Esempio Reale: Burro "3 x 10ST"
+
+**Fattura dice**:
+```
+3 x 10ST Vorzugsbutter Züger 1kg
+```
+
+**Odoo dice**:
+```json
+{
+  "product_name": "BURRO VORZUGSBUTTER ZUEGER 1KG 10KG CRT AL",
+  "uom_info": {
+    "name": "kg",
+    "factor": 1.0
+  },
+  "uom_po_info": {
+    "name": "Carton",
+    "factor": 0.1,
+    "factor_inv": 10.0
+  }
+}
+```
+
+**Interpretazione**:
+- "3 x 10ST" = 3 cartoni da 10 kg ciascuno
+- UoM base in Odoo = KG
+- UoM acquisto in Odoo = Carton (1 Carton = 10 KG, factor_inv = 10.0)
+- **Quantità finale = 3 × 10 = 30.0 KG**
+
+### ✅ Output Corretto
+```json
+{
+  "quantity": 30.0,
+  "match_reason": "3 cartoni × 10 kg/cartone = 30.0 kg (converted from 3 x 10ST using uom_po_info)"
+}
+```
+
+### ❌ Output SBAGLIATO
+```json
+{
+  "quantity": 3.0,  // ❌ SBAGLIATO! Questo registra solo 3 kg invece di 30 kg
+  "match_reason": "Quantity from invoice"
+}
+```
+
+### Regole di Conversione
+
+1. **Se la fattura ha moltiplicatore (es: "3 x 10ST")**:
+   - Estrai: quantità_cartoni = 3, pezzi_per_cartone = 10
+   - Se `uom_po_info` esiste e ha `factor_inv`:
+     - Verifica: `factor_inv` ≈ pezzi_per_cartone
+     - Calcola: `quantity = quantità_cartoni × factor_inv`
+   - Altrimenti: `quantity = quantità_cartoni × pezzi_per_cartone`
+
+2. **Se la fattura ha solo numero (es: "5.0")**:
+   - Se unità fattura ≈ `uom_info.name` (es: "KG" ≈ "kg"): usa direttamente
+   - Se unità fattura ≈ `uom_po_info.name` (es: "CRT" ≈ "Carton"): converti con `factor_inv`
+
+3. **Unità comuni**:
+   - `ST`, `PZ`, `PCE` = Pieces (pezzi)
+   - `CRT`, `CTN`, `CARTON` = Cartons (cartoni)
+   - `KG` = Kilograms
+   - `L`, `LT` = Liters
+   - `BTL`, `FL`, `GLS` = Bottles/Flask/Glass
+   - `PAK`, `PKG` = Package
+
+### Esempi Pratici
+
+#### Esempio 1: Olio "4 x 5L"
+```
+Fattura: "4 x 5L OLIO EXTRAVERGINE"
+Odoo uom_info: { "name": "L", "factor": 1.0 }
+Odoo uom_po_info: { "name": "Box", "factor_inv": 5.0 }
+
+→ quantity: 20.0 (4 boxes × 5 L/box = 20 L)
+```
+
+#### Esempio 2: Pasta "10 x 500G"
+```
+Fattura: "10 x 500G PASTA PENNE"
+Odoo uom_info: { "name": "kg", "factor": 1.0 }
+Odoo uom_po_info: { "name": "Pack", "factor_inv": 0.5 }
+
+→ quantity: 5.0 (10 packs × 0.5 kg/pack = 5.0 kg)
+```
+
+#### Esempio 3: Acqua "3 x 6BTL"
+```
+Fattura: "3 x 6BTL ACQUA NATURALE 1.5L"
+Odoo uom_info: { "name": "Unit", "factor": 1.0 }
+Odoo uom_po_info: { "name": "Pack", "factor_inv": 6.0 }
+
+→ quantity: 18.0 (3 packs × 6 bottles/pack = 18 bottles)
+```
 
 ---
 
@@ -255,15 +388,19 @@ if (olio_products.length > 1) {
 
 Prima di generare l'output finale, verifica:
 
+- [ ] Ho controllato le UoM in Odoo (`uom_info` e `uom_po_info`)?
+- [ ] Se la fattura ha moltiplicatore (es: "3 x 10ST"), ho fatto la conversione corretta?
+- [ ] La quantità è espressa nell'unità di misura base (`uom_info.name`)?
 - [ ] Ho controllato se ci sono prodotti duplicati nella fattura?
 - [ ] Se ci sono duplicati, ho usato `action: "update"` per il PRIMO?
 - [ ] Se ci sono duplicati, ho usato `action: "create_new_line"` per il SECONDO e successivi?
 - [ ] Ho usato lo STESSO `move_line_id` per tutte le occorrenze dello stesso prodotto?
 - [ ] Ho impostato `invoice_product_index` diversi per ogni occorrenza?
 
-**Regola d'oro**:
-- **Primo** dello stesso prodotto → `action: "update"` (aggiorna riga esistente)
-- **Secondo+** dello stesso prodotto → `action: "create_new_line"` (crea nuova riga)
+**Regole d'oro**:
+1. **SEMPRE** fare conversione UoM guardando `uom_po_info.factor_inv`
+2. **Primo** dello stesso prodotto → `action: "update"` (aggiorna riga esistente)
+3. **Secondo+** dello stesso prodotto → `action: "create_new_line"` (crea nuova riga)
 
 ---
 
@@ -580,6 +717,13 @@ action: "create_new_line" con move_line_id della riga originale dello STESSO pro
 ---
 
 ## 📝 Changelog
+
+### v1.1.0 (2025-01-28)
+- ✅ Conversione automatica quantità con UoM
+- ✅ Lettura `uom_info` e `uom_po_info` da Odoo
+- ✅ Gestione moltiplicatori fattura (es: "3 x 10ST")
+- ✅ Calcolo automatico con `factor_inv`
+- ✅ Upgrade a Claude Sonnet 4.5
 
 ### v1.0.0 (2025-01-15)
 - ✅ Prima versione stabile

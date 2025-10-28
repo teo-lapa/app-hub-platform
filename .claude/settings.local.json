@@ -43,7 +43,8 @@
       "Bash(node:*)",
       "Bash(vercel ls:*)",
       "Bash(npx vercel:*)",
-      "Bash(git rebase:*)"
+      "Bash(git rebase:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []
