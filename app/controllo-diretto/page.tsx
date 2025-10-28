@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, CheckCircle2, ChevronDown, ChevronUp, Edit2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -38,7 +37,7 @@ interface ProductLine {
   moveLines: MoveLine[];
 }
 
-type ControlStatus = 'ok' | 'error_qty' | 'missing' | 'damaged' | 'lot_error' | 'location_error' | 'note';
+type ControlStatus = 'ok' | 'error_qty' | 'missing' | 'damaged' | 'lot_error' | 'location_error' | 'note' | null;
 
 interface ProductControl {
   productId: number;
@@ -76,11 +75,11 @@ export default function ControlloDirettoPage() {
   const [editingLine, setEditingLine] = useState<number | null>(null);
   const [editValue, setEditValue] = useState<string>('');
 
-  // Modal states
+  // Dropdown e Modal states
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
-  const [showErrorTypeModal, setShowErrorTypeModal] = useState(false);
   const [currentErrorProduct, setCurrentErrorProduct] = useState<ProductGroup | null>(null);
-  const [errorType, setErrorType] = useState<ControlStatus | null>(null);
+  const [errorType, setErrorType] = useState<ControlStatus>(null);
   const [errorNote, setErrorNote] = useState<string>('');
 
   // Client Odoo
@@ -90,62 +89,6 @@ export default function ControlloDirettoPage() {
   useEffect(() => {
     loadBatches();
   }, []);
-
-  // Carica controlli da localStorage quando cambia batch/zona
-  useEffect(() => {
-    if (currentBatch && currentZone) {
-      loadFromLocalStorage();
-    }
-  }, [currentBatch, currentZone]);
-
-  
-
-  function getStorageKey() {
-    if (!currentBatch || !currentZone) return null;
-    return `control_${currentBatch.id}_${currentZone.id}`;
-  }
-
-  function saveToLocalStorage(controls: Map<number, ProductControl>) {
-    const key = getStorageKey();
-    if (!key) return;
-
-    const data = Array.from(controls.entries()).map(([, control]) => ({
-      ...control,
-      controlledAt: control.controlledAt?.toISOString()
-    }));
-    localStorage.setItem(key, JSON.stringify(data));
-  }
-
-  function loadFromLocalStorage() {
-    const key = getStorageKey();
-    if (!key) return;
-
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved) {
-        const data = JSON.parse(saved) as ProductControl[];
-        const controls = new Map<number, ProductControl>(
-          data.map((item) => [
-            item.productId,
-            {
-              ...item,
-              controlledAt: item.controlledAt ? new Date(item.controlledAt) : undefined
-            }
-          ])
-        );
-        setProductControls(controls);
-      }
-    } catch (error) {
-      console.error('Errore caricamento localStorage:', error);
-    }
-  }
-
-  function clearLocalStorage() {
-    const key = getStorageKey();
-    if (key) {
-      localStorage.removeItem(key);
-    }
-  }
 
   async function loadBatches() {
     setIsLoading(true);
@@ -217,44 +160,64 @@ export default function ControlloDirettoPage() {
     setExpandedProducts(newExpanded);
   }
 
-  function markProductOK(product: ProductGroup) {
+  async function markProductOK(product: ProductGroup) {
     if (!currentBatch || !currentZone || !user) return;
 
-    const newControls = new Map(productControls);
-    const existingControl = newControls.get(product.productId);
+    try {
+      setIsLoading(true);
 
-    // Se già OK, rimuovi il controllo (deseleziona)
-    if (existingControl?.status === 'ok') {
-      newControls.delete(product.productId);
+      // Salva su database
+      const response = await fetch('/api/control-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          batch_id: currentBatch.id,
+          batch_name: currentBatch.name,
+          zone_id: currentZone.id,
+          zone_name: currentZone.name,
+          product_id: product.productId,
+          product_name: product.productName,
+          qty_requested: product.totalQtyRequested,
+          qty_picked: product.totalQtyPicked,
+          status: 'ok',
+          controlled_by_user_id: user.id,
+          controlled_by_name: user.name,
+          driver_name: currentBatch.x_studio_autista_del_giro?.[1],
+          vehicle_name: currentBatch.x_studio_auto_del_giro?.[1]
+        })
+      });
+
+      if (!response.ok) throw new Error('Errore salvataggio');
+
+      const data = await response.json();
+
+      // Aggiorna stato locale
+      const newControls = new Map(productControls);
+      newControls.set(product.productId, {
+        productId: product.productId,
+        status: 'ok',
+        controlledAt: new Date(data.controlled_at),
+        controlId: data.control_id
+      });
       setProductControls(newControls);
-      saveToLocalStorage(newControls);
-      toast.success('↩️ Controllo rimosso');
-      return;
+
+      toast.success('✅ Prodotto OK');
+    } catch (error) {
+      console.error('❌ Errore salvataggio controllo:', error);
+      toast.error('Errore salvataggio');
+    } finally {
+      setIsLoading(false);
     }
-
-    // Altrimenti, marca come OK
-    newControls.set(product.productId, {
-      productId: product.productId,
-      status: 'ok',
-      controlledAt: new Date()
-    });
-    setProductControls(newControls);
-    saveToLocalStorage(newControls);
-
-    toast.success('✅ Prodotto OK');
   }
 
   function openErrorDropdown(productId: number) {
-    const product = productGroups.find(p => p.productId === productId);
-    if (product) {
-      setCurrentErrorProduct(product);
-      setShowErrorTypeModal(true);
-    }
+    setOpenDropdown(openDropdown === productId ? null : productId);
   }
 
   function selectErrorType(product: ProductGroup, status: ControlStatus) {
     setCurrentErrorProduct(product);
     setErrorType(status);
+    setOpenDropdown(null);
 
     // Se è una nota generica, apri il modal
     if (status === 'note' || status === 'error_qty' || status === 'damaged' || status === 'lot_error' || status === 'location_error') {
@@ -265,101 +228,74 @@ export default function ControlloDirettoPage() {
     }
   }
 
-  function saveProductControl(product: ProductGroup, status: ControlStatus, note?: string) {
+  async function saveProductControl(product: ProductGroup, status: ControlStatus, note?: string) {
     if (!currentBatch || !currentZone || !user || !status) return;
 
-    // Salva solo in locale
-    const newControls = new Map(productControls);
-    newControls.set(product.productId, {
-      productId: product.productId,
-      status,
-      note,
-      controlledAt: new Date()
-    });
-    setProductControls(newControls);
-    saveToLocalStorage(newControls);
+    try {
+      setIsLoading(true);
 
-    // Chiudi modal
-    setShowErrorModal(false);
-    setErrorNote('');
-    setCurrentErrorProduct(null);
+      const response = await fetch('/api/control-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          batch_id: currentBatch.id,
+          batch_name: currentBatch.name,
+          zone_id: currentZone.id,
+          zone_name: currentZone.name,
+          product_id: product.productId,
+          product_name: product.productName,
+          qty_requested: product.totalQtyRequested,
+          qty_picked: product.totalQtyPicked,
+          status,
+          note,
+          controlled_by_user_id: user.id,
+          controlled_by_name: user.name,
+          driver_name: currentBatch.x_studio_autista_del_giro?.[1],
+          vehicle_name: currentBatch.x_studio_auto_del_giro?.[1]
+        })
+      });
 
-    const statusLabels: Record<string, string> = {
-      'error_qty': '⚠️ Errore Quantità',
-      'missing': '❌ Mancante',
-      'damaged': '🔧 Danneggiato',
-      'lot_error': '📅 Lotto Errato',
-      'location_error': '📍 Ubicazione Errata',
-      'note': '📝 Nota'
-    };
+      if (!response.ok) throw new Error('Errore salvataggio');
 
-    toast.success(`${statusLabels[status]} salvato`);
+      const data = await response.json();
+
+      // Aggiorna stato locale
+      const newControls = new Map(productControls);
+      newControls.set(product.productId, {
+        productId: product.productId,
+        status,
+        note,
+        controlledAt: new Date(data.controlled_at),
+        controlId: data.control_id
+      });
+      setProductControls(newControls);
+
+      // Chiudi modal
+      setShowErrorModal(false);
+      setErrorNote('');
+      setCurrentErrorProduct(null);
+
+      const statusLabels: Record<string, string> = {
+        'error_qty': '⚠️ Errore Quantità',
+        'missing': '❌ Mancante',
+        'damaged': '🔧 Danneggiato',
+        'lot_error': '📅 Lotto Errato',
+        'location_error': '📍 Ubicazione Errata',
+        'note': '📝 Nota'
+      };
+
+      toast.success(`${statusLabels[status]} salvato`);
+    } catch (error) {
+      console.error('❌ Errore salvataggio controllo:', error);
+      toast.error('Errore salvataggio');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   function confirmError() {
     if (currentErrorProduct && errorType) {
       saveProductControl(currentErrorProduct, errorType, errorNote);
-    }
-  }
-
-  async function finishControlAndSaveToOdoo() {
-    if (!currentBatch || !currentZone || !user || productControls.size === 0) {
-      toast.error('Nessun controllo da salvare');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Prepara riepilogo
-      const controls = Array.from(productControls.values());
-      const okCount = controls.filter(c => c.status === 'ok').length;
-      const errorCount = controls.filter(c => c.status !== 'ok').length;
-
-      const errors = controls.filter(c => c.status !== 'ok');
-
-      let message = `📋 CONTROLLO COMPLETATO - ${currentZone.name}\n`;
-      message += `Controllato da: ${user.name}\n`;
-      message += `Data: ${new Date().toLocaleString('it-IT')}\n\n`;
-      message += `✅ OK: ${okCount} prodotti\n`;
-      if (errorCount > 0) {
-        message += `⚠️ ERRORI: ${errorCount} prodotti\n\n`;
-        message += `DETTAGLIO ERRORI:\n`;
-        errors.forEach(ctrl => {
-          const product = productGroups.find(p => p.productId === ctrl.productId);
-          const statusLabel: Record<ControlStatus, string> = {
-            'ok': '✅ OK',
-            'error_qty': '⚠️ Errore Quantità',
-            'missing': '❌ Mancante',
-            'damaged': '🔧 Danneggiato',
-            'lot_error': '📅 Lotto Errato',
-            'location_error': '📍 Ubicazione Errata',
-            'note': '📝 Nota'
-          };
-          const label = statusLabel[ctrl.status] || ctrl.status;
-
-          message += `• ${product?.productName || 'Prodotto'} - ${label}`;
-          if (ctrl.note) message += `: ${ctrl.note}`;
-          message += `\n`;
-        });
-      }
-
-      // Salva nel Chatter Odoo usando pickingClient (come prelievo-zone)
-      const saved = await pickingClient.postBatchChatterMessage(currentBatch.id, message);
-
-      if (!saved) {
-        throw new Error('Errore salvataggio Odoo');
-      }
-
-      // Pulisci localStorage
-      clearLocalStorage();
-      setProductControls(new Map());
-
-      toast.success('✅ Controllo salvato nel chatter del batch!');
-    } catch (error) {
-      console.error('❌ Errore salvataggio Odoo:', error);
-      toast.error('Errore salvataggio su Odoo');
-    } finally {
-      setIsLoading(false);
     }
   }
 
@@ -586,24 +522,11 @@ export default function ControlloDirettoPage() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-4"
             >
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-2xl font-bold text-gray-900">Prodotti da Controllare</h2>
-                  <div className="text-sm text-gray-600">
-                    {productGroups.length} prodotti • {productGroups.reduce((sum, p) => sum + p.clientCount, 0)} righe
-                  </div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">Prodotti da Controllare</h2>
+                <div className="text-sm text-gray-600">
+                  {productGroups.length} prodotti • {productGroups.reduce((sum, p) => sum + p.clientCount, 0)} righe
                 </div>
-
-                {/* Pulsante Termina Controllo */}
-                {productControls.size > 0 && (
-                  <button
-                    onClick={finishControlAndSaveToOdoo}
-                    disabled={isLoading}
-                    className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    📋 Termina Controllo e Salva su Odoo ({productControls.size} controllati)
-                  </button>
-                )}
               </div>
 
               {isLoading ? (
@@ -621,6 +544,7 @@ export default function ControlloDirettoPage() {
                     const isExpanded = expandedProducts.has(product.productId);
                     const isComplete = product.totalQtyPicked >= product.totalQtyRequested;
                     const control = productControls.get(product.productId);
+                    const isDropdownOpen = openDropdown === product.productId;
 
                     // Colori in base allo stato
                     let bgColor = 'bg-white';
@@ -628,7 +552,7 @@ export default function ControlloDirettoPage() {
                     if (control?.status === 'ok') {
                       bgColor = 'bg-green-50';
                       borderColor = 'border-2 border-green-500';
-                    } else if (control?.status) {
+                    } else if (control?.status && control.status !== 'ok') {
                       bgColor = 'bg-red-50';
                       borderColor = 'border-2 border-red-500';
                     }
@@ -676,27 +600,25 @@ export default function ControlloDirettoPage() {
 
                           {/* Stato controllo (se presente) */}
                           {control && (
-                            <div className={`mb-3 p-3 rounded-lg ${
-                              control.status === 'ok' ? 'bg-green-100 border border-green-300' : 'bg-red-100 border border-red-300'
+                            <div className={`mb-3 p-2 rounded-lg ${
+                              control.status === 'ok' ? 'bg-green-100' : 'bg-red-100'
                             }`}>
                               <div className="flex items-center justify-between">
-                                <div className={`text-sm font-semibold flex items-center gap-2 ${
-                                  control.status === 'ok' ? 'text-green-800' : 'text-red-800'
-                                }`}>
-                                  {control.status === 'ok' && <><span className="text-base">✅</span> Tutto OK</>}
-                                  {control.status === 'error_qty' && <><span className="text-base">⚠️</span> Errore Quantità</>}
-                                  {control.status === 'missing' && <><span className="text-base">❌</span> Mancante</>}
-                                  {control.status === 'damaged' && <><span className="text-base">🔧</span> Danneggiato</>}
-                                  {control.status === 'lot_error' && <><span className="text-base">📅</span> Lotto Errato</>}
-                                  {control.status === 'location_error' && <><span className="text-base">📍</span> Ubicazione Errata</>}
-                                  {control.status === 'note' && <><span className="text-base">📝</span> Nota</>}
+                                <div className="text-sm">
+                                  {control.status === 'ok' && '✅ Tutto OK'}
+                                  {control.status === 'error_qty' && '⚠️ Errore Quantità'}
+                                  {control.status === 'missing' && '❌ Prodotto Mancante'}
+                                  {control.status === 'damaged' && '🔧 Prodotto Danneggiato'}
+                                  {control.status === 'lot_error' && '📅 Lotto/Scadenza Errata'}
+                                  {control.status === 'location_error' && '📍 Ubicazione Errata'}
+                                  {control.status === 'note' && '📝 Nota'}
                                 </div>
                                 <div className="text-xs text-gray-600">
                                   {control.controlledAt && new Date(control.controlledAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
                                 </div>
                               </div>
                               {control.note && (
-                                <div className="text-xs text-gray-700 mt-2 italic">"{control.note}"</div>
+                                <div className="text-xs text-gray-700 mt-1">"{control.note}"</div>
                               )}
                             </div>
                           )}
@@ -706,26 +628,76 @@ export default function ControlloDirettoPage() {
                             {/* Pulsante OK */}
                             <button
                               onClick={() => markProductOK(product)}
-                              disabled={(control && control.status !== 'ok') || isLoading}
+                              disabled={!!control || isLoading}
                               className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
                                 control?.status === 'ok'
-                                  ? 'bg-green-600 text-white hover:bg-green-700'
+                                  ? 'bg-green-600 text-white'
                                   : control
                                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                  : 'bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50'
+                                  : 'bg-green-500 text-white hover:bg-green-600'
                               }`}
                             >
-                              {control?.status === 'ok' ? '✅ OK (clicca per rimuovere)' : control ? '🔄 Cambia' : 'OK'}
+                              {control?.status === 'ok' ? '✅ OK' : control ? '🔄 Cambia' : '✅ OK'}
                             </button>
 
                             {/* Pulsante Dropdown Errori */}
-                            <button
-                              onClick={() => openErrorDropdown(product.productId)}
-                              disabled={isLoading}
-                              className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 font-semibold"
-                            >
-                              ❌ Errore
-                            </button>
+                            <div className="relative">
+                              <button
+                                onClick={() => openErrorDropdown(product.productId)}
+                                disabled={isLoading}
+                                className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
+                              >
+                                {isDropdownOpen ? '▲' : '▼'}
+                              </button>
+
+                              {/* Dropdown Menu */}
+                              {isDropdownOpen && (
+                                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border-2 border-gray-200 z-50">
+                                  <button
+                                    onClick={() => selectErrorType(product, 'error_qty')}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                  >
+                                    <span>⚠️</span>
+                                    <span>Errore Quantità</span>
+                                  </button>
+                                  <button
+                                    onClick={() => selectErrorType(product, 'missing')}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                  >
+                                    <span>❌</span>
+                                    <span>Prodotto Mancante</span>
+                                  </button>
+                                  <button
+                                    onClick={() => selectErrorType(product, 'damaged')}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                  >
+                                    <span>🔧</span>
+                                    <span>Prodotto Danneggiato</span>
+                                  </button>
+                                  <button
+                                    onClick={() => selectErrorType(product, 'lot_error')}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                  >
+                                    <span>📅</span>
+                                    <span>Lotto/Scadenza Errata</span>
+                                  </button>
+                                  <button
+                                    onClick={() => selectErrorType(product, 'location_error')}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                  >
+                                    <span>📍</span>
+                                    <span>Ubicazione Errata</span>
+                                  </button>
+                                  <button
+                                    onClick={() => selectErrorType(product, 'note')}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                  >
+                                    <span>📝</span>
+                                    <span>Aggiungi Nota</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
 
                             {/* Pulsante Dettagli */}
                             <button
@@ -833,107 +805,7 @@ export default function ControlloDirettoPage() {
         </AnimatePresence>
       </div>
 
-      
-      {/* Modal Selezione Tipo Errore */}
-      <AnimatePresence>
-        {showErrorTypeModal && currentErrorProduct && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowErrorTypeModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
-            >
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Seleziona Tipo Errore</h3>
-              <p className="text-sm text-gray-600 mb-4">{currentErrorProduct.productName}</p>
-
-              <div className="space-y-2">
-                <button
-                  onClick={() => {
-                    selectErrorType(currentErrorProduct, 'error_qty');
-                    setShowErrorTypeModal(false);
-                  }}
-                  className="w-full px-4 py-3 text-left hover:bg-orange-50 transition-colors border-2 border-gray-200 rounded-lg flex items-center gap-3 text-base font-semibold text-gray-800"
-                >
-                  <span className="text-2xl">⚠️</span>
-                  <span>Errore Quantità</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    selectErrorType(currentErrorProduct, 'missing');
-                    setShowErrorTypeModal(false);
-                  }}
-                  className="w-full px-4 py-3 text-left hover:bg-red-50 transition-colors border-2 border-gray-200 rounded-lg flex items-center gap-3 text-base font-semibold text-gray-800"
-                >
-                  <span className="text-2xl">❌</span>
-                  <span>Prodotto Mancante</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    selectErrorType(currentErrorProduct, 'damaged');
-                    setShowErrorTypeModal(false);
-                  }}
-                  className="w-full px-4 py-3 text-left hover:bg-yellow-50 transition-colors border-2 border-gray-200 rounded-lg flex items-center gap-3 text-base font-semibold text-gray-800"
-                >
-                  <span className="text-2xl">🔧</span>
-                  <span>Danneggiato</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    selectErrorType(currentErrorProduct, 'lot_error');
-                    setShowErrorTypeModal(false);
-                  }}
-                  className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors border-2 border-gray-200 rounded-lg flex items-center gap-3 text-base font-semibold text-gray-800"
-                >
-                  <span className="text-2xl">📅</span>
-                  <span>Lotto Errato</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    selectErrorType(currentErrorProduct, 'location_error');
-                    setShowErrorTypeModal(false);
-                  }}
-                  className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors border-2 border-gray-200 rounded-lg flex items-center gap-3 text-base font-semibold text-gray-800"
-                >
-                  <span className="text-2xl">📍</span>
-                  <span>Ubicazione Errata</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    selectErrorType(currentErrorProduct, 'note');
-                    setShowErrorTypeModal(false);
-                  }}
-                  className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-2 border-gray-200 rounded-lg flex items-center gap-3 text-base font-semibold text-gray-800"
-                >
-                  <span className="text-2xl">📝</span>
-                  <span>Aggiungi Nota</span>
-                </button>
-              </div>
-
-              <button
-                onClick={() => setShowErrorTypeModal(false)}
-                className="mt-4 w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
-              >
-                ✕ Annulla
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-{/* Modal Errore */}
+      {/* Modal Errore */}
       <AnimatePresence>
         {showErrorModal && currentErrorProduct && (
           <motion.div
@@ -1002,8 +874,6 @@ export default function ControlloDirettoPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      
 
       <MobileHomeButton />
     </div>
