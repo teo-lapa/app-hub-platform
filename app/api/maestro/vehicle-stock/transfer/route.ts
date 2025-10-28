@@ -249,64 +249,14 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Picking assigned - prodotti riservati automaticamente');
 
-    // 12. Recupera nome autista per il batch
-    console.log('📦 [Batch] Recupero dati autista...');
-
-    const userResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `session_id=${sessionId}`
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model: 'res.users',
-          method: 'read',
-          args: [[targetSalespersonId], ['name']],
-          kwargs: {}
-        },
-        id: 7
-      })
-    });
-
-    const userData = await userResponse.json();
-    const driverName = userData.result?.[0]?.name || `User${targetSalespersonId}`;
-    console.log(`  ✓ Autista: ${driverName}`);
-
-    // 13. Recupera targa dal nome dell'ubicazione veicolo
-    const vehicleLocationResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `session_id=${sessionId}`
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model: 'stock.location',
-          method: 'read',
-          args: [[vehicleLocationId], ['name']],
-          kwargs: {}
-        },
-        id: 8
-      })
-    });
-
-    const vehicleData = await vehicleLocationResponse.json();
-    const vehicleLocationName = vehicleData.result?.[0]?.name || '';
-
-    // Estrai targa dal nome (es: "BMW ZH969307 M" → "ZH969307")
-    const plateMatch = vehicleLocationName.match(/[A-Z]{2}\s?\d{4,6}/);
-    const plate = plateMatch ? plateMatch[0].replace(/\s/g, '') : 'NOTARGA';
-    console.log(`  ✓ Targa: ${plate}`);
-
-    // 14. Crea batch con nome formattato
+    // 12. Crea batch MINIMALE e assegna picking
     console.log('📦 [Batch] Creazione batch per caricamento macchina...');
 
-    const batchName = `CARICO-${driverName.toUpperCase()}-${plate}`;
+    // Formato nome: CARICO-USER{id}-YYYYMMDD-HHmm
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0,10).replace(/-/g,'');
+    const timeStr = `${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}`;
+    const batchName = `CARICO-USER${targetSalespersonId}-${dateStr}-${timeStr}`;
 
     const batchCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
@@ -322,13 +272,11 @@ export async function POST(request: NextRequest) {
           method: 'create',
           args: [{
             name: batchName,
-            user_id: targetSalespersonId,
-            x_studio_autista_del_giro: targetSalespersonId,
-            x_studio_auto_del_giro: plate
+            user_id: targetSalespersonId
           }],
           kwargs: {}
         },
-        id: 9
+        id: 7
       })
     });
 
@@ -343,7 +291,7 @@ export async function POST(request: NextRequest) {
     const batchId = batchCreateData.result;
     console.log(`✅ Batch creato: ${batchId} (${batchName})`);
 
-    // 15. Assegna picking al batch
+    // 13. Assegna picking al batch
     console.log(`📦 [Batch] Assegnazione picking ${pickingId} al batch ${batchId}...`);
 
     await fetch(`${odooUrl}/web/dataset/call_kw`, {
@@ -361,13 +309,13 @@ export async function POST(request: NextRequest) {
           args: [[pickingId], { batch_id: batchId }],
           kwargs: {}
         },
-        id: 10
+        id: 8
       })
     });
 
     console.log(`✅ Picking assegnato al batch`);
 
-    // 16. Conferma batch
+    // 14. Conferma batch
     await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
@@ -383,11 +331,11 @@ export async function POST(request: NextRequest) {
           args: [[batchId]],
           kwargs: {}
         },
-        id: 11
+        id: 9
       })
     });
 
-    console.log('✅ Batch confermato - pronto per prelievo');
+    console.log('✅ Batch confermato');
 
     return NextResponse.json({
       success: true,
@@ -395,11 +343,9 @@ export async function POST(request: NextRequest) {
         picking_id: pickingId,
         batch_id: batchId,
         batch_name: batchName,
-        driver_name: driverName,
-        vehicle_plate: plate,
         move_ids: moveIds,
         state: 'assigned',
-        message: `Batch ${batchName} creato con successo`
+        message: 'Trasferimento e Batch creati con successo'
       },
       timestamp: new Date().toISOString()
     }, { status: 201 });
