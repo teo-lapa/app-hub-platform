@@ -552,7 +552,7 @@ export default function ControlloDirettoPage() {
                     if (control?.status === 'ok') {
                       bgColor = 'bg-green-50';
                       borderColor = 'border-2 border-green-500';
-                    } else if (control?.status && control.status !== 'ok') {
+                    } else if (control?.status) {
                       bgColor = 'bg-red-50';
                       borderColor = 'border-2 border-red-500';
                     }
