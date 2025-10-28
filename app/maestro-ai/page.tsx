@@ -134,7 +134,7 @@ export default function MaestroAIDashboard() {
       .sort((a, b) => b.churn_risk_score - a.churn_risk_score)
       .slice(0, 5)
       .map(avatar => ({
-        id: avatar.odoo_partner_id,
+        id: avatar.id, // FIX: Use customer_avatar.id instead of odoo_partner_id
         name: avatar.name,
         city: avatar.city || 'N/D',
         churnRisk: Math.round(avatar.churn_risk_score),
