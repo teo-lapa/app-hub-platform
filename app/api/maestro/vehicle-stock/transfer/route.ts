@@ -249,14 +249,40 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Picking assigned - prodotti riservati automaticamente');
 
-    // 12. Crea batch MINIMALE e assegna picking
+    // 12. Recupera NOME dell'autista da Odoo
+    console.log('📦 [Batch] Recupero nome autista...');
+
+    const userResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'res.users',
+          method: 'read',
+          args: [[targetSalespersonId], ['name']],
+          kwargs: {}
+        },
+        id: 7
+      })
+    });
+
+    const userData = await userResponse.json();
+    const driverName = userData.result?.[0]?.name || `User${targetSalespersonId}`;
+    console.log(`  ✓ Autista: ${driverName}`);
+
+    // 13. Crea batch con NOME VERO dell'autista
     console.log('📦 [Batch] Creazione batch per caricamento macchina...');
 
-    // Formato nome: CARICO-USER{id}-YYYYMMDD-HHmm
+    // Formato nome: CARICO-{NOME_AUTISTA}-YYYYMMDD-HHmm
     const now = new Date();
     const dateStr = now.toISOString().slice(0,10).replace(/-/g,'');
     const timeStr = `${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}`;
-    const batchName = `CARICO-USER${targetSalespersonId}-${dateStr}-${timeStr}`;
+    const batchName = `CARICO-${driverName.toUpperCase().replace(/\s+/g,'-')}-${dateStr}-${timeStr}`;
 
     const batchCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
@@ -276,7 +302,7 @@ export async function POST(request: NextRequest) {
           }],
           kwargs: {}
         },
-        id: 7
+        id: 8
       })
     });
 
@@ -291,7 +317,7 @@ export async function POST(request: NextRequest) {
     const batchId = batchCreateData.result;
     console.log(`✅ Batch creato: ${batchId} (${batchName})`);
 
-    // 13. Assegna picking al batch
+    // 14. Assegna picking al batch
     console.log(`📦 [Batch] Assegnazione picking ${pickingId} al batch ${batchId}...`);
 
     await fetch(`${odooUrl}/web/dataset/call_kw`, {
@@ -309,13 +335,13 @@ export async function POST(request: NextRequest) {
           args: [[pickingId], { batch_id: batchId }],
           kwargs: {}
         },
-        id: 8
+        id: 9
       })
     });
 
     console.log(`✅ Picking assegnato al batch`);
 
-    // 14. Conferma batch
+    // 15. Conferma batch
     await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
@@ -331,7 +357,7 @@ export async function POST(request: NextRequest) {
           args: [[batchId]],
           kwargs: {}
         },
-        id: 9
+        id: 10
       })
     });
 
