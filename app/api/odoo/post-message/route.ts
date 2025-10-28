@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { odooCall } from '@/lib/odoo/client';
+import { callKw } from '@/lib/odoo/rpc';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Posta messaggio nel Chatter
-    await odooCall('mail.message', 'create', [{
+    await callKw('mail.message', 'create', [{
       model: model,
       res_id: res_id,
       body: message.replace(/\n/g, '<br/>'),
