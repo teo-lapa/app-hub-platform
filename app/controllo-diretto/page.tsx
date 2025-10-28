@@ -699,10 +699,10 @@ export default function ControlloDirettoPage() {
                                   ? 'bg-green-600 text-white'
                                   : control
                                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                  : 'bg-green-500 text-white hover:bg-green-600'
+                                  : 'bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50'
                               }`}
                             >
-                              {control?.status === 'ok' ? '✅ OK' : control ? '🔄 Cambia' : '✅ OK'}
+                              {control?.status === 'ok' ? '✅ OK' : control ? '🔄 Cambia' : 'OK'}
                             </button>
 
                             {/* Pulsante Dropdown Errori */}
