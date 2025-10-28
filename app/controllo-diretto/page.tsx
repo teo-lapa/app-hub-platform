@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, CheckCircle2, ChevronDown, ChevronUp, Edit2 } from 'lucide-react';
@@ -76,11 +76,9 @@ export default function ControlloDirettoPage() {
   const [editingLine, setEditingLine] = useState<number | null>(null);
   const [editValue, setEditValue] = useState<string>('');
 
-  // Dropdown e Modal states
-  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
-  const dropdownButtonRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+  // Modal states
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showErrorTypeModal, setShowErrorTypeModal] = useState(false);
   const [currentErrorProduct, setCurrentErrorProduct] = useState<ProductGroup | null>(null);
   const [errorType, setErrorType] = useState<ControlStatus | null>(null);
   const [errorNote, setErrorNote] = useState<string>('');
@@ -100,26 +98,7 @@ export default function ControlloDirettoPage() {
     }
   }, [currentBatch, currentZone]);
 
-  // Chiudi dropdown quando si clicca fuori
-  useEffect(() => {
-    if (openDropdown === null) return;
-
-    function handleClickOutside(event: MouseEvent) {
-      if (openDropdown === null) return;
-
-      const target = event.target as HTMLElement;
-      // Controlla se il click è sul pulsante dropdown o dentro il dropdown stesso
-      const clickedButton = dropdownButtonRefs.current.get(openDropdown);
-      if (clickedButton?.contains(target)) return;
-
-      // Chiudi dropdown
-      setOpenDropdown(null);
-      setDropdownPosition(null);
-    }
-
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [openDropdown]);
+  
 
   function getStorageKey() {
     if (!currentBatch || !currentZone) return null;
@@ -266,26 +245,16 @@ export default function ControlloDirettoPage() {
   }
 
   function openErrorDropdown(productId: number) {
-    if (openDropdown === productId) {
-      setOpenDropdown(null);
-      setDropdownPosition(null);
-    } else {
-      const button = dropdownButtonRefs.current.get(productId);
-      if (button) {
-        const rect = button.getBoundingClientRect();
-        setDropdownPosition({
-          top: rect.bottom + window.scrollY + 8,
-          left: rect.right + window.scrollX - 256 // 256px = w-64
-        });
-      }
-      setOpenDropdown(productId);
+    const product = productGroups.find(p => p.productId === productId);
+    if (product) {
+      setCurrentErrorProduct(product);
+      setShowErrorTypeModal(true);
     }
   }
 
   function selectErrorType(product: ProductGroup, status: ControlStatus) {
     setCurrentErrorProduct(product);
     setErrorType(status);
-    setOpenDropdown(null);
 
     // Se è una nota generica, apri il modal
     if (status === 'note' || status === 'error_qty' || status === 'damaged' || status === 'lot_error' || status === 'location_error') {
@@ -652,7 +621,6 @@ export default function ControlloDirettoPage() {
                     const isExpanded = expandedProducts.has(product.productId);
                     const isComplete = product.totalQtyPicked >= product.totalQtyRequested;
                     const control = productControls.get(product.productId);
-                    const isDropdownOpen = openDropdown === product.productId;
 
                     // Colori in base allo stato
                     let bgColor = 'bg-white';
@@ -752,14 +720,11 @@ export default function ControlloDirettoPage() {
 
                             {/* Pulsante Dropdown Errori */}
                             <button
-                              ref={(el) => {
-                                if (el) dropdownButtonRefs.current.set(product.productId, el);
-                              }}
                               onClick={() => openErrorDropdown(product.productId)}
                               disabled={isLoading}
-                              className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
+                              className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 font-semibold"
                             >
-                              {isDropdownOpen ? '▲' : '▼'}
+                              ❌ Errore
                             </button>
 
                             {/* Pulsante Dettagli */}
@@ -868,7 +833,107 @@ export default function ControlloDirettoPage() {
         </AnimatePresence>
       </div>
 
-      {/* Modal Errore */}
+      
+      {/* Modal Selezione Tipo Errore */}
+      <AnimatePresence>
+        {showErrorTypeModal && currentErrorProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowErrorTypeModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+            >
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Seleziona Tipo Errore</h3>
+              <p className="text-sm text-gray-600 mb-4">{currentErrorProduct.productName}</p>
+
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    selectErrorType(currentErrorProduct, 'error_qty');
+                    setShowErrorTypeModal(false);
+                  }}
+                  className="w-full px-4 py-3 text-left hover:bg-orange-50 transition-colors border-2 border-gray-200 rounded-lg flex items-center gap-3 text-base font-semibold text-gray-800"
+                >
+                  <span className="text-2xl">⚠️</span>
+                  <span>Errore Quantità</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    selectErrorType(currentErrorProduct, 'missing');
+                    setShowErrorTypeModal(false);
+                  }}
+                  className="w-full px-4 py-3 text-left hover:bg-red-50 transition-colors border-2 border-gray-200 rounded-lg flex items-center gap-3 text-base font-semibold text-gray-800"
+                >
+                  <span className="text-2xl">❌</span>
+                  <span>Prodotto Mancante</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    selectErrorType(currentErrorProduct, 'damaged');
+                    setShowErrorTypeModal(false);
+                  }}
+                  className="w-full px-4 py-3 text-left hover:bg-yellow-50 transition-colors border-2 border-gray-200 rounded-lg flex items-center gap-3 text-base font-semibold text-gray-800"
+                >
+                  <span className="text-2xl">🔧</span>
+                  <span>Danneggiato</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    selectErrorType(currentErrorProduct, 'lot_error');
+                    setShowErrorTypeModal(false);
+                  }}
+                  className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors border-2 border-gray-200 rounded-lg flex items-center gap-3 text-base font-semibold text-gray-800"
+                >
+                  <span className="text-2xl">📅</span>
+                  <span>Lotto Errato</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    selectErrorType(currentErrorProduct, 'location_error');
+                    setShowErrorTypeModal(false);
+                  }}
+                  className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors border-2 border-gray-200 rounded-lg flex items-center gap-3 text-base font-semibold text-gray-800"
+                >
+                  <span className="text-2xl">📍</span>
+                  <span>Ubicazione Errata</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    selectErrorType(currentErrorProduct, 'note');
+                    setShowErrorTypeModal(false);
+                  }}
+                  className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-2 border-gray-200 rounded-lg flex items-center gap-3 text-base font-semibold text-gray-800"
+                >
+                  <span className="text-2xl">📝</span>
+                  <span>Aggiungi Nota</span>
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowErrorTypeModal(false)}
+                className="mt-4 w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+              >
+                ✕ Annulla
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+{/* Modal Errore */}
       <AnimatePresence>
         {showErrorModal && currentErrorProduct && (
           <motion.div
@@ -938,71 +1003,7 @@ export default function ControlloDirettoPage() {
         )}
       </AnimatePresence>
 
-      {/* Dropdown Errori Portal - renderizzato fuori dal contenitore */}
-      {openDropdown !== null && dropdownPosition && typeof window !== 'undefined' && createPortal(
-        <div
-          className="fixed w-64 bg-white rounded-lg shadow-2xl border-2 border-gray-300"
-          style={{
-            top: `${dropdownPosition.top}px`,
-            left: `${dropdownPosition.left}px`,
-            zIndex: 99999
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {productGroups.map(product => {
-            if (product.productId === openDropdown) {
-              return (
-                <div key={product.productId}>
-                  <button
-                    onClick={() => selectErrorType(product, 'error_qty')}
-                    className="w-full px-4 py-3 text-left hover:bg-orange-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-base font-semibold text-gray-800"
-                  >
-                    <span className="text-2xl">⚠️</span>
-                    <span>Errore Quantità</span>
-                  </button>
-                  <button
-                    onClick={() => selectErrorType(product, 'missing')}
-                    className="w-full px-4 py-3 text-left hover:bg-red-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-base font-semibold text-gray-800"
-                  >
-                    <span className="text-2xl">❌</span>
-                    <span>Prodotto Mancante</span>
-                  </button>
-                  <button
-                    onClick={() => selectErrorType(product, 'damaged')}
-                    className="w-full px-4 py-3 text-left hover:bg-yellow-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-base font-semibold text-gray-800"
-                  >
-                    <span className="text-2xl">🔧</span>
-                    <span>Danneggiato</span>
-                  </button>
-                  <button
-                    onClick={() => selectErrorType(product, 'lot_error')}
-                    className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-base font-semibold text-gray-800"
-                  >
-                    <span className="text-2xl">📅</span>
-                    <span>Lotto Errato</span>
-                  </button>
-                  <button
-                    onClick={() => selectErrorType(product, 'location_error')}
-                    className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-base font-semibold text-gray-800"
-                  >
-                    <span className="text-2xl">📍</span>
-                    <span>Ubicazione Errata</span>
-                  </button>
-                  <button
-                    onClick={() => selectErrorType(product, 'note')}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 text-base font-semibold text-gray-800 rounded-b-lg"
-                  >
-                    <span className="text-2xl">📝</span>
-                    <span>Aggiungi Nota</span>
-                  </button>
-                </div>
-              );
-            }
-            return null;
-          })}
-        </div>,
-        document.body
-      )}
+      
 
       <MobileHomeButton />
     </div>
