@@ -7,7 +7,6 @@ import { QRScanner } from './QRScanner';
 import { Calculator } from './Calculator';
 import { PhotoCapture } from './PhotoCapture';
 import toast from 'react-hot-toast';
-import Image from 'next/image';
 import type { WasteLocationProduct } from '@/lib/types';
 
 interface WasteTransferModalProps {
@@ -333,49 +332,49 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
                       <p className="text-gray-600">Nessun prodotto disponibile in questa ubicazione</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
                       {products.map((product) => (
-                        <motion.button
-                          key={product.id}
+                        <div
+                          key={`${product.id}-${product.lot_name}`}
+                          className="glass p-3 rounded-xl cursor-pointer active:scale-95 hover:scale-105 transition-transform touch-manipulation"
                           onClick={() => handleProductSelect(product)}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-red-400 hover:shadow-lg transition-all text-left"
                         >
-                          {/* Product Image */}
-                          <div className="relative w-full aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden">
-                            {product.image ? (
-                              <Image
-                                src={product.image}
-                                alt={product.name}
-                                fill
-                                className="object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Package className="w-12 h-12 text-gray-300" />
-                              </div>
-                            )}
+                          {product.image ? (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-16 h-16 object-cover rounded-lg mb-2 mx-auto"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 bg-gray-700 rounded-lg mb-2 flex items-center justify-center mx-auto">
+                              <Package className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+
+                          <div className="text-sm font-semibold line-clamp-2 mb-1">
+                            {product.name}
                           </div>
 
-                          {/* Product Info */}
-                          <h4 className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">
-                            {product.name}
-                          </h4>
-                          <p className="text-xs text-gray-500 mb-2">
-                            Cod: {product.code || product.id}
-                          </p>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-medium text-gray-700">
-                              {product.quantity} {product.uom || 'pz'}
-                            </span>
-                            {product.expiration_date && (
-                              <span className="text-orange-600">
-                                Scad: {new Date(product.expiration_date).toLocaleDateString('it-IT')}
-                              </span>
-                            )}
+                          <div className="text-xs text-muted-foreground mb-1">
+                            {product.code}
                           </div>
-                        </motion.button>
+
+                          <div className="text-sm font-bold text-green-400">
+                            {product.quantity} {product.uom}
+                          </div>
+
+                          {product.expiration_date && (
+                            <div className="text-xs text-orange-400 mt-1">
+                              Scad: {new Date(product.expiration_date).toLocaleDateString('it-IT')}
+                            </div>
+                          )}
+
+                          {product.lot_name && (
+                            <div className="text-xs text-blue-400 mt-1">
+                              Lotto: {product.lot_name}
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
                   )}
