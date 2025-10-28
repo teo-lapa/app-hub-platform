@@ -374,24 +374,18 @@ export default function ControlloDirettoPage() {
         });
       }
 
-      // Salva nel Chatter Odoo
-      const response = await fetch('/api/odoo/post-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'stock.picking.batch',
-          res_id: currentBatch.id,
-          message: message
-        })
-      });
+      // Salva nel Chatter Odoo usando pickingClient (come prelievo-zone)
+      const saved = await pickingClient.postBatchChatterMessage(currentBatch.id, message);
 
-      if (!response.ok) throw new Error('Errore salvataggio Odoo');
+      if (!saved) {
+        throw new Error('Errore salvataggio Odoo');
+      }
 
       // Pulisci localStorage
       clearLocalStorage();
       setProductControls(new Map());
 
-      toast.success('✅ Controllo salvato su Odoo!');
+      toast.success('✅ Controllo salvato nel chatter del batch!');
     } catch (error) {
       console.error('❌ Errore salvataggio Odoo:', error);
       toast.error('Errore salvataggio su Odoo');
