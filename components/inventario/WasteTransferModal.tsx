@@ -8,6 +8,7 @@ import { Calculator } from './Calculator';
 import { PhotoCapture } from './PhotoCapture';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import type { WasteLocationProduct } from '@/lib/types';
 
 interface WasteTransferModalProps {
   isOpen: boolean;
@@ -34,8 +35,8 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
   // States
   const [step, setStep] = useState<'location' | 'products' | 'form'>('location');
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
-  const [products, setProducts] = useState<any[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [products, setProducts] = useState<WasteLocationProduct[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<WasteLocationProduct | null>(null);
   const [quantity, setQuantity] = useState('1');
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
@@ -166,10 +167,12 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          source_location_id: selectedLocation.id,
-          destination_location_id: WASTE_LOCATION.id,
-          product_id: selectedProduct.id,
+          productId: selectedProduct.id,
+          sourceLocationId: selectedLocation.id,
           quantity: parseFloat(quantity),
+          lotName: selectedProduct.lot_name,
+          lotId: selectedProduct.lot_id,
+          expiryDate: selectedProduct.expiration_date,
           reason,
           notes,
           photos
@@ -336,9 +339,9 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
                         >
                           {/* Product Image */}
                           <div className="relative w-full aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden">
-                            {product.image_url ? (
+                            {product.image ? (
                               <Image
-                                src={product.image_url}
+                                src={product.image}
                                 alt={product.name}
                                 fill
                                 className="object-cover"
@@ -355,15 +358,15 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
                             {product.name}
                           </h4>
                           <p className="text-xs text-gray-500 mb-2">
-                            Cod: {product.commodity_code || product.id}
+                            Cod: {product.code || product.id}
                           </p>
                           <div className="flex items-center justify-between text-xs">
                             <span className="font-medium text-gray-700">
-                              {product.quantity} {product.unit_of_measure || 'pz'}
+                              {product.quantity} {product.uom || 'pz'}
                             </span>
-                            {product.expiry_date && (
+                            {product.expiration_date && (
                               <span className="text-orange-600">
-                                Scad: {new Date(product.expiry_date).toLocaleDateString('it-IT')}
+                                Scad: {new Date(product.expiration_date).toLocaleDateString('it-IT')}
                               </span>
                             )}
                           </div>
@@ -389,9 +392,9 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
                   <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-4">
                     <div className="flex gap-4">
                       <div className="relative w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
-                        {selectedProduct.image_url ? (
+                        {selectedProduct.image ? (
                           <Image
-                            src={selectedProduct.image_url}
+                            src={selectedProduct.image}
                             alt={selectedProduct.name}
                             fill
                             className="object-cover"
@@ -404,8 +407,8 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
                       </div>
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-900 mb-1">{selectedProduct.name}</h3>
-                        <p className="text-sm text-gray-600">Cod: {selectedProduct.commodity_code || selectedProduct.id}</p>
-                        <p className="text-sm text-gray-600">Disponibile: {selectedProduct.quantity} {selectedProduct.unit_of_measure || 'pz'}</p>
+                        <p className="text-sm text-gray-600">Cod: {selectedProduct.code || selectedProduct.id}</p>
+                        <p className="text-sm text-gray-600">Disponibile: {selectedProduct.quantity} {selectedProduct.uom || 'pz'}</p>
                       </div>
                     </div>
                   </div>
@@ -433,7 +436,7 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
                       </button>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      UdM: {selectedProduct.unit_of_measure || 'pz'}
+                      UdM: {selectedProduct.uom || 'pz'}
                     </p>
                   </div>
 
