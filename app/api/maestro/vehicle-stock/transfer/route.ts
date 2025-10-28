@@ -249,13 +249,12 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Picking assigned - prodotti riservati automaticamente');
 
-    // TODO: TEMPORANEAMENTE DISABILITATO per debug
-    // Creazione batch commentata per testare se il problema è qui
-    /*
-    // 12. Recupera dati autista (nome) e veicolo (targa) per il batch
-    console.log('🚚 [Batch] Recupero dati autista e veicolo...');
+    // 12. Crea batch MINIMALE e assegna picking
+    console.log('📦 [Batch] Creazione batch per caricamento macchina...');
 
-    const userResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+    const batchName = `CARICO-${targetSalespersonId}-${Date.now()}`;
+
+    const batchCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -265,137 +264,31 @@ export async function POST(request: NextRequest) {
         jsonrpc: '2.0',
         method: 'call',
         params: {
-          model: 'res.users',
-          method: 'read',
-          args: [[targetSalespersonId], ['name']],
+          model: 'stock.picking.batch',
+          method: 'create',
+          args: [{
+            name: batchName,
+            user_id: targetSalespersonId
+          }],
           kwargs: {}
         },
         id: 7
       })
     });
 
-    const userData = await userResponse.json();
-    const driverName = userData.result?.[0]?.name || 'Autista Sconosciuto';
-    console.log(`  ✓ Autista: ${driverName} (ID: ${targetSalespersonId})`);
+    const batchCreateData = await batchCreateResponse.json();
 
-    // Recupera ubicazione veicolo per ottenere targa dal nome
-    const vehicleLocationResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `session_id=${sessionId}`
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model: 'stock.location',
-          method: 'read',
-          args: [[vehicleLocationId], ['name', 'complete_name']],
-          kwargs: {}
-        },
-        id: 8
-      })
-    });
-
-    const vehicleData = await vehicleLocationResponse.json();
-    const vehicleLocationName = vehicleData.result?.[0]?.name || 'Veicolo Sconosciuto';
-    // Estrai targa dal nome (es: "BMW ZH542378 A" → "ZH542378")
-    const plateMatch = vehicleLocationName.match(/[A-Z]{2}\s?\d{4,6}/);
-    const plate = plateMatch ? plateMatch[0].replace(/\s/g, '') : vehicleLocationName;
-    console.log(`  ✓ Targa: ${plate} (Location: ${vehicleLocationName})`);
-
-    // 13. Crea stock.picking.batch (SENZA picking, lo aggiungiamo dopo)
-    console.log('📦 [Batch] Creazione batch per caricamento macchina...');
-
-    const batchName = `CARICO-${driverName.toUpperCase()}-${plate}-${new Date().toISOString().split('T')[0]}`;
-
-    // Prova prima con i campi custom
-    let batchId: number | null = null;
-    let customFieldsWorked = false;
-
-    try {
-      // Tentativo 1: Con campi custom x_studio
-      console.log('📦 [Batch] Tentativo creazione con campi custom...');
-      const batchCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': `session_id=${sessionId}`
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {
-            model: 'stock.picking.batch',
-            method: 'create',
-            args: [{
-              name: batchName,
-              user_id: targetSalespersonId,
-              x_studio_autista_del_giro: targetSalespersonId,
-              x_studio_auto_del_giro: plate,
-              scheduled_date: new Date().toISOString()
-            }],
-            kwargs: {}
-          },
-          id: 9
-        })
-      });
-
-      const batchCreateData = await batchCreateResponse.json();
-
-      if (batchCreateData.result) {
-        batchId = batchCreateData.result;
-        customFieldsWorked = true;
-        console.log(`✅ Batch creato con campi custom: ${batchId} (${batchName})`);
-      } else {
-        console.warn('⚠️ Creazione batch con campi custom fallita:', batchCreateData.error?.data?.message);
-        throw new Error('Retry without custom fields');
-      }
-    } catch (error) {
-      // Tentativo 2: SENZA campi custom (solo campi standard)
-      console.log('📦 [Batch] Tentativo creazione SENZA campi custom...');
-      const batchCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': `session_id=${sessionId}`
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {
-            model: 'stock.picking.batch',
-            method: 'create',
-            args: [{
-              name: batchName,
-              user_id: targetSalespersonId,
-              scheduled_date: new Date().toISOString()
-            }],
-            kwargs: {}
-          },
-          id: 9
-        })
-      });
-
-      const batchCreateData = await batchCreateResponse.json();
-
-      if (!batchCreateData.result) {
-        console.error('❌ Errore creazione batch (anche senza custom fields):', JSON.stringify(batchCreateData, null, 2));
-        const errorMsg = batchCreateData.error?.data?.message || batchCreateData.error?.message || 'Errore nella creazione del batch';
-        throw new Error(`Batch creation failed: ${errorMsg}`);
-      }
-
-      batchId = batchCreateData.result;
-      console.log(`✅ Batch creato senza campi custom: ${batchId} (${batchName})`);
+    if (!batchCreateData.result) {
+      console.error('❌ Errore creazione batch:', JSON.stringify(batchCreateData, null, 2));
+      const errorMsg = batchCreateData.error?.data?.message || batchCreateData.error?.message || 'Errore nella creazione del batch';
+      throw new Error(`Batch creation failed: ${errorMsg}`);
     }
 
-    if (!batchId) {
-      throw new Error('Failed to create batch - no ID returned');
-    }
+    const batchId = batchCreateData.result;
+    console.log(`✅ Batch creato: ${batchId} (${batchName})`);
 
-    // 14. Aggiungi il picking al batch appena creato
-    console.log(`📦 [Batch] Aggiunta picking ${pickingId} al batch ${batchId}...`);
+    // 13. Assegna picking al batch
+    console.log(`📦 [Batch] Assegnazione picking ${pickingId} al batch ${batchId}...`);
 
     await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
@@ -412,14 +305,14 @@ export async function POST(request: NextRequest) {
           args: [[pickingId], { batch_id: batchId }],
           kwargs: {}
         },
-        id: 10
+        id: 8
       })
     });
 
-    console.log(`✅ Picking ${pickingId} aggiunto al batch ${batchId}`);
+    console.log(`✅ Picking assegnato al batch`);
 
-    // 15. Conferma il batch (stato → in_progress)
-    const batchConfirmResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+    // 14. Conferma batch
+    await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -434,12 +327,11 @@ export async function POST(request: NextRequest) {
           args: [[batchId]],
           kwargs: {}
         },
-        id: 11
+        id: 9
       })
     });
 
-    console.log('✅ Batch confermato - stato pronto per prelievo');
-    console.log('⏳ Picking e Batch pronti per validazione su Odoo');
+    console.log('✅ Batch confermato');
 
     return NextResponse.json({
       success: true,
@@ -447,26 +339,9 @@ export async function POST(request: NextRequest) {
         picking_id: pickingId,
         batch_id: batchId,
         batch_name: batchName,
-        driver_name: driverName,
-        vehicle_plate: plate,
         move_ids: moveIds,
         state: 'assigned',
         message: 'Trasferimento e Batch creati con successo'
-      },
-      timestamp: new Date().toISOString()
-    }, { status: 201 });
-    */
-
-    // TEMPORARY: Return without batch creation for debugging
-    console.log('⚠️ Batch creation temporarily disabled for debugging');
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        picking_id: pickingId,
-        move_ids: moveIds,
-        state: 'assigned',
-        message: 'Trasferimento creato (batch temporaneamente disabilitato per debug)'
       },
       timestamp: new Date().toISOString()
     }, { status: 201 });
