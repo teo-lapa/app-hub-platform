@@ -85,7 +85,7 @@ function mapToCardData(customer: CustomerWithRecommendations, priority: 'urgent'
     recommendation: topRec?.description || 'Contattare cliente per follow-up di routine',
     suggested_products: topRec?.suggested_products?.map(id => `Prodotto ID ${id}`) || [],
     priority,
-    assigned_salesperson_id: avatar.assigned_salesperson_id // FIX: Include salesperson ID
+    assigned_salesperson_id: avatar.assigned_salesperson_id ?? undefined // FIX: Include salesperson ID (convert null to undefined)
   };
 }
 
