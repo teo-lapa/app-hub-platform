@@ -27,6 +27,7 @@ import Link from 'next/link';
 import { HealthScoreBadge } from '@/components/maestro/HealthScoreBadge';
 import { InteractionModal } from '@/components/maestro/InteractionModal';
 import { formatCurrency, formatNumber, getChurnRiskColor } from '@/lib/utils';
+import { useMaestroFilters } from '@/contexts/MaestroFiltersContext';
 import {
   LineChart,
   Line,
@@ -57,6 +58,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showInteractionModal, setShowInteractionModal] = useState(false);
   const queryClient = useQueryClient();
+  const { selectedVendor } = useMaestroFilters(); // Get selected vendor as fallback
 
   // Filtri per interazioni
   const [searchQuery, setSearchQuery] = useState('');
@@ -1046,7 +1048,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
         customerId={customer.id}
         customerName={customer.name}
         odooPartnerId={customer.odoo_partner_id}
-        salesPersonId={customer.assigned_salesperson_id}
+        salesPersonId={customer.assigned_salesperson_id || selectedVendor?.id} // FIX: Fallback to selectedVendor when customer has no assigned salesperson
       />
     </div>
   );

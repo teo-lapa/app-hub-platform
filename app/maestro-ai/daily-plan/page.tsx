@@ -670,7 +670,7 @@ export default function DailyPlanPage() {
           customerId={selectedCustomer.id}
           customerName={selectedCustomer.name}
           odooPartnerId={selectedCustomer.odoo_partner_id}
-          salesPersonId={selectedCustomer.assigned_salesperson_id} // FIX: Use customer's assigned salesperson, not filter
+          salesPersonId={selectedCustomer.assigned_salesperson_id || selectedVendor?.id} // FIX: Fallback to selectedVendor when customer has no assigned salesperson
         />
       )}
     </div>
