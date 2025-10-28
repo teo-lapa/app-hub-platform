@@ -1,0 +1,139 @@
+INDICE ANALISI ENDPOINT API - INTERAZIONI
+==========================================
+
+QUESTA ANALISI HA IDENTIFICATO:
+
+1. ENDPOINT API: 6 totali
+   - 4 endpoint di produzione
+   - 2 endpoint di debug
+
+2. PROBLEMI: 10 totali
+   - 3 CRITICO (UUID type, query cast, hardcoded fix)
+   - 4 ALTO (hardcoded values, error handling, timezone, type mismatch)
+   - 2 MEDIO (JSON parsing, JOIN type)
+   - 1 SECURITY (error exposure)
+
+3. FILE ANALIZZATI: 11 file
+   - app/api/maestro/interactions/route.ts (principale)
+   - app/api/stella/save-conversation/route.ts
+   - app/api/maestro/customers/[id]/route.ts
+   - app/api/maestro/avatars/[id]/route.ts
+   - app/api/maestro/daily-plan/route.ts
+   - app/api/debug/check-interactions/route.ts
+   - app/api/debug/fix-laura-interactions/route.ts
+   - lib/maestro/validation.ts
+   - lib/maestro/types.ts
+   - script di debug (3 file)
+
+
+PERCORSI FILE REPORT:
+=====================
+
+1. SUMMARY-ENDPOINT-INTERAZIONI.txt
+   - Riepilogo esecutivo
+   - Lista rapida di problemi e soluzioni
+   - Leggere PRIMA per overview
+
+2. ANALISI-COMPLETA-INTERAZIONI.txt
+   - Analisi dettagliata per ogni endpoint
+   - Codice con linee specifiche
+   - Problemi con spiegazione completa
+
+3. ANALISI-ENDPOINT-INTERAZIONI.txt
+   - Analisi strutturata per componenti
+   - Query analysis
+   - Pattern confronti (corretto vs sbagliato)
+
+4. PROBLEMI-DETTAGLIATI-INTERAZIONI.txt
+   - Elenco compatto di tutti i 10 problemi
+   - Linea di codice specifica per ognuno
+   - Impatto immediato indicato
+
+
+COME USARE QUESTI REPORT:
+==========================
+
+Step 1: Leggi SUMMARY-ENDPOINT-INTERAZIONI.txt (5 min)
+        - Capire i 3 problemi CRITICO
+        - Identificare soluzioni prioritarie
+
+Step 2: Riferisciti a PROBLEMI-DETTAGLIATI-INTERAZIONI.txt
+        - Per trovare rapidamente linea esatta
+        - Codice da correggere
+
+Step 3: Consulta ANALISI-COMPLETA-INTERAZIONI.txt
+        - Per contesto completo
+        - Impatto sui dati
+        - Pattern corretti vs sbagliati
+
+Step 4: Per deep dive, vai al file sorgente
+        - ANALISI-ENDPOINT-INTERAZIONI.txt ha tutti i percorsi
+
+
+PRIORITA' FIX IMMEDIATE:
+=======================
+
+CRITICO (FIX OGGI - 1 ora totale):
+
+1. lib/maestro/validation.ts:37
+   Cambia: customer_avatar_id: z.number()
+   In: customer_avatar_id: z.string().uuid()
+   Test: POST /api/maestro/interactions con UUID
+
+2. app/api/maestro/daily-plan/route.ts:105
+   Cambia: WHERE customer_avatar_id = ANY($1::int[])
+   In: WHERE customer_avatar_id = ANY($1::text[])
+   Test: GET /api/maestro/daily-plan
+
+3. Audit Database
+   Query: SELECT customer_avatar_id FROM maestro_interactions
+          WHERE customer_avatar_id NOT IN (SELECT id FROM customer_avatars)
+   Documenta: Quante interazioni orfane
+   Fix: Generalizza script da fix-laura-interactions
+
+
+ALTO (FIX QUESTA SETTIMANA - 30 min totale):
+
+1. app/api/stella/save-conversation/route.ts:386
+   - Rethrow error da DB
+   - Non silenzioso catch
+
+2. Remove hardcoded salesperson_id (line 364)
+   - Usa env var con fallback
+   - Verifica FK constraint
+
+3. Remove hardcoded timezone (line 326)
+   - Usa env var o UTC
+   - Test con diverse timezone
+
+4. app/api/maestro/interactions/route.ts:202
+   - Cambia avatarId: number a avatarId: string
+   - Aggiorna tipo function
+
+
+MEDIO/SECURITY (FIX PROSSIMA SETTIMANA):
+
+1. JSON.parse fix (line 72) - add typeof check
+2. JOIN -> LEFT JOIN (line 59) - for orphan detection
+3. Remove error.message exposure - log interno
+
+
+STATISTICS:
+===========
+- Linee di codice analizzate: ~2000
+- File esaminati: 11
+- Endpoint trovati: 6
+- Problemi scoperti: 10
+- Severity distribution: 3-4-2-1 (critical-high-medium-security)
+- Orphaned interactions: ~6 (Laura case)
+- Database tables: 2 (maestro_interactions, customer_avatars)
+
+
+RECOMMENDATION:
+================
+Fix tutti i 3 problemi CRITICO OGGI.
+La causa root è il type mismatch UUID che crea orphaned interactions.
+Una volta fixato, il daily-plan e il fix-laura script potranno funzionare correttamente.
+
+ANALYSIS LEVEL: VERY THOROUGH
+Generated: 2024-10-27

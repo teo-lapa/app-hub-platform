@@ -1,0 +1,123 @@
+ANALISI ENDPOINT INTERAZIONI - RIEPILOGO ESECUTIVO
+===================================================
+
+ENDPOINT TROVATI (6)
+====================
+
+1. POST/GET /api/maestro/interactions
+   File: app/api/maestro/interactions/route.ts
+   - POST (linee 97-196): Crea interazione
+   - GET (linee 20-91): Legge con filtri
+
+2. POST /api/stella/save-conversation
+   File: app/api/stella/save-conversation/route.ts
+   - Salva conversazioni Stella AI (linee 294-389)
+
+3. GET /api/maestro/customers/[id]
+   File: app/api/maestro/customers/[id]/route.ts
+   - Interazioni per cliente (linee 97-130)
+
+4. GET /api/maestro/avatars/[id]
+   File: app/api/maestro/avatars/[id]/route.ts
+   - Ultime 5 interazioni per avatar (linee 62-81)
+
+5. GET /api/maestro/daily-plan
+   File: app/api/maestro/daily-plan/route.ts
+   - Fetch interazioni per piano (linee 96-115)
+
+6. DEBUG: GET/POST /api/debug/*
+   - check-interactions (read)
+   - fix-laura-interactions (write)
+
+
+PROBLEMI TROVATI (10)
+=====================
+
+CRITICO (3):
+-----------
+1. validation.ts:37
+   - customer_avatar_id: z.number() vs string UUID in DB
+   - CAUSA: Orphaned interactions
+
+2. daily-plan/route.ts:105
+   - WHERE customer_avatar_id = ANY($1::int[])
+   - CAUSA: Query fallisce completamente
+
+3. debug/fix-laura-interactions/route.ts:23
+   - Hardcoded customer_avatar_id = '297'
+   - CAUSA: Fix non generalizzabile
+
+ALTO (4):
+---------
+1. stella/save-conversation/route.ts:364
+   - salesperson_id = 1 hardcoded
+   
+2. stella/save-conversation/route.ts:386
+   - Silent catch, Odoo OK ma DB no
+
+3. stella/save-conversation/route.ts:326
+   - Timezone 'Europe/Rome' hardcoded
+
+4. maestro/interactions/route.ts:202
+   - updateAvatarAfterInteraction(avatarId: number)
+   - Riceve string UUID
+
+MEDIO (2):
+----------
+1. maestro/interactions/route.ts:72
+   - JSON.parse senza typeof check
+
+2. maestro/interactions/route.ts:59
+   - INNER JOIN (dovrebbe LEFT JOIN)
+
+SECURITY (1):
+-----------
+1. Multiple endpoints
+   - Espone error.message al client
+
+
+SOLUZIONE PRIORITARIA
+====================
+
+FIX TODAY (30 min):
+1. lib/maestro/validation.ts:37
+   customer_avatar_id: z.string().uuid()
+
+2. app/api/maestro/daily-plan/route.ts:105
+   WHERE customer_avatar_id = ANY($1::text[])
+
+3. Audit orphaned interactions in DB
+
+
+CAMPI SALVATI
+=============
+
+customer_avatar_id (STRING UUID) - tipo sbagliato dalla API
+salesperson_id (INT) - default 0
+salesperson_name (VARCHAR) - default "Non assegnato"
+interaction_type (ENUM) - visit|call|email|whatsapp|other
+interaction_date (TIMESTAMP) - NOW()
+outcome (ENUM) - successful|unsuccessful|neutral|follow_up_needed
+notes (TEXT) - optional
+order_placed (BOOLEAN) - false
+order_value (NUMERIC) - optional
+samples_given (JSONB) - array
+next_follow_up_date (TIMESTAMP) - optional
+created_at, updated_at (TIMESTAMP)
+
+
+LIMITI QUERY
+============
+
+Default: 50
+Max observed: 100 (customers/[id])
+Min observed: 1 (stella today's interaction)
+No max limit enforced
+
+
+REPORT COMPLETI
+===============
+
+- ANALISI-COMPLETA-INTERAZIONI.txt (7.1 KB)
+- PROBLEMI-DETTAGLIATI-INTERAZIONI.txt (2.2 KB)
+
