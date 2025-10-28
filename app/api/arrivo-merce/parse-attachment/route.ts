@@ -335,9 +335,23 @@ export async function POST(request: NextRequest) {
 
     if (isPDF) {
       try {
-        pagesToProcess = await splitPDFPages(base64);
+        const pdfBytes = Buffer.from(base64, 'base64');
+        const pdfDoc = await (await import('pdf-lib')).PDFDocument.load(pdfBytes);
+        const pageCount = pdfDoc.getPageCount();
+
+        console.log(`📄 PDF ha ${pageCount} pagine`);
+
+        // Per PDF con 1-2 pagine, invia intero (migliore qualità)
+        // Per PDF con 3+ pagine, splitta (evita timeout)
+        if (pageCount <= 2) {
+          console.log(`📦 PDF con ${pageCount} pagina/e - invio INTERO per qualità ottimale`);
+          pagesToProcess = [base64];
+        } else {
+          console.log(`📄 PDF con ${pageCount} pagine - splitting per evitare timeout`);
+          pagesToProcess = await splitPDFPages(base64);
+        }
       } catch (splitError: any) {
-        console.error('⚠️ Impossibile splittare PDF, uso PDF intero:', splitError.message);
+        console.error('⚠️ Errore analisi PDF, uso PDF intero:', splitError.message);
         pagesToProcess = [base64]; // Fallback
       }
     } else {
