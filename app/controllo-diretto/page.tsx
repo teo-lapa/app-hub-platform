@@ -90,6 +90,61 @@ export default function ControlloDirettoPage() {
     loadBatches();
   }, []);
 
+  // Carica controlli da localStorage quando cambia batch/zona
+  useEffect(() => {
+    if (currentBatch && currentZone) {
+      loadFromLocalStorage();
+    }
+  }, [currentBatch, currentZone]);
+
+  function getStorageKey() {
+    if (!currentBatch || !currentZone) return null;
+    return `control_${currentBatch.id}_${currentZone.id}`;
+  }
+
+  function saveToLocalStorage(controls: Map<number, ProductControl>) {
+    const key = getStorageKey();
+    if (!key) return;
+
+    const data = Array.from(controls.entries()).map(([productId, control]) => ({
+      productId,
+      ...control,
+      controlledAt: control.controlledAt?.toISOString()
+    }));
+    localStorage.setItem(key, JSON.stringify(data));
+  }
+
+  function loadFromLocalStorage() {
+    const key = getStorageKey();
+    if (!key) return;
+
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const data = JSON.parse(saved);
+        const controls = new Map(
+          data.map((item: any) => [
+            item.productId,
+            {
+              ...item,
+              controlledAt: item.controlledAt ? new Date(item.controlledAt) : undefined
+            }
+          ])
+        );
+        setProductControls(controls);
+      }
+    } catch (error) {
+      console.error('Errore caricamento localStorage:', error);
+    }
+  }
+
+  function clearLocalStorage() {
+    const key = getStorageKey();
+    if (key) {
+      localStorage.removeItem(key);
+    }
+  }
+
   async function loadBatches() {
     setIsLoading(true);
     try {
@@ -160,54 +215,20 @@ export default function ControlloDirettoPage() {
     setExpandedProducts(newExpanded);
   }
 
-  async function markProductOK(product: ProductGroup) {
+  function markProductOK(product: ProductGroup) {
     if (!currentBatch || !currentZone || !user) return;
 
-    try {
-      setIsLoading(true);
+    // Salva solo in locale
+    const newControls = new Map(productControls);
+    newControls.set(product.productId, {
+      productId: product.productId,
+      status: 'ok',
+      controlledAt: new Date()
+    });
+    setProductControls(newControls);
+    saveToLocalStorage(newControls);
 
-      // Salva su database
-      const response = await fetch('/api/control-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          batch_id: currentBatch.id,
-          batch_name: currentBatch.name,
-          zone_id: currentZone.id,
-          zone_name: currentZone.name,
-          product_id: product.productId,
-          product_name: product.productName,
-          qty_requested: product.totalQtyRequested,
-          qty_picked: product.totalQtyPicked,
-          status: 'ok',
-          controlled_by_user_id: user.id,
-          controlled_by_name: user.name,
-          driver_name: currentBatch.x_studio_autista_del_giro?.[1],
-          vehicle_name: currentBatch.x_studio_auto_del_giro?.[1]
-        })
-      });
-
-      if (!response.ok) throw new Error('Errore salvataggio');
-
-      const data = await response.json();
-
-      // Aggiorna stato locale
-      const newControls = new Map(productControls);
-      newControls.set(product.productId, {
-        productId: product.productId,
-        status: 'ok',
-        controlledAt: new Date(data.controlled_at),
-        controlId: data.control_id
-      });
-      setProductControls(newControls);
-
-      toast.success('✅ Prodotto OK');
-    } catch (error) {
-      console.error('❌ Errore salvataggio controllo:', error);
-      toast.error('Errore salvataggio');
-    } finally {
-      setIsLoading(false);
-    }
+    toast.success('✅ Prodotto OK');
   }
 
   function openErrorDropdown(productId: number) {
@@ -228,74 +249,105 @@ export default function ControlloDirettoPage() {
     }
   }
 
-  async function saveProductControl(product: ProductGroup, status: ControlStatus, note?: string) {
+  function saveProductControl(product: ProductGroup, status: ControlStatus, note?: string) {
     if (!currentBatch || !currentZone || !user || !status) return;
 
-    try {
-      setIsLoading(true);
+    // Salva solo in locale
+    const newControls = new Map(productControls);
+    newControls.set(product.productId, {
+      productId: product.productId,
+      status,
+      note,
+      controlledAt: new Date()
+    });
+    setProductControls(newControls);
+    saveToLocalStorage(newControls);
 
-      const response = await fetch('/api/control-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          batch_id: currentBatch.id,
-          batch_name: currentBatch.name,
-          zone_id: currentZone.id,
-          zone_name: currentZone.name,
-          product_id: product.productId,
-          product_name: product.productName,
-          qty_requested: product.totalQtyRequested,
-          qty_picked: product.totalQtyPicked,
-          status,
-          note,
-          controlled_by_user_id: user.id,
-          controlled_by_name: user.name,
-          driver_name: currentBatch.x_studio_autista_del_giro?.[1],
-          vehicle_name: currentBatch.x_studio_auto_del_giro?.[1]
-        })
-      });
+    // Chiudi modal
+    setShowErrorModal(false);
+    setErrorNote('');
+    setCurrentErrorProduct(null);
 
-      if (!response.ok) throw new Error('Errore salvataggio');
+    const statusLabels: Record<string, string> = {
+      'error_qty': '⚠️ Errore Quantità',
+      'missing': '❌ Mancante',
+      'damaged': '🔧 Danneggiato',
+      'lot_error': '📅 Lotto Errato',
+      'location_error': '📍 Ubicazione Errata',
+      'note': '📝 Nota'
+    };
 
-      const data = await response.json();
-
-      // Aggiorna stato locale
-      const newControls = new Map(productControls);
-      newControls.set(product.productId, {
-        productId: product.productId,
-        status,
-        note,
-        controlledAt: new Date(data.controlled_at),
-        controlId: data.control_id
-      });
-      setProductControls(newControls);
-
-      // Chiudi modal
-      setShowErrorModal(false);
-      setErrorNote('');
-      setCurrentErrorProduct(null);
-
-      const statusLabels: Record<string, string> = {
-        'error_qty': '⚠️ Errore Quantità',
-        'missing': '❌ Mancante',
-        'damaged': '🔧 Danneggiato',
-        'lot_error': '📅 Lotto Errato',
-        'location_error': '📍 Ubicazione Errata',
-        'note': '📝 Nota'
-      };
-
-      toast.success(`${statusLabels[status]} salvato`);
-    } catch (error) {
-      console.error('❌ Errore salvataggio controllo:', error);
-      toast.error('Errore salvataggio');
-    } finally {
-      setIsLoading(false);
-    }
+    toast.success(`${statusLabels[status]} salvato`);
   }
 
   function confirmError() {
     if (currentErrorProduct && errorType) {
       saveProductControl(currentErrorProduct, errorType, errorNote);
+    }
+  }
+
+  async function finishControlAndSaveToOdoo() {
+    if (!currentBatch || !currentZone || !user || productControls.size === 0) {
+      toast.error('Nessun controllo da salvare');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Prepara riepilogo
+      const controls = Array.from(productControls.values());
+      const okCount = controls.filter(c => c.status === 'ok').length;
+      const errorCount = controls.filter(c => c.status !== 'ok').length;
+
+      const errors = controls.filter(c => c.status !== 'ok');
+
+      let message = `📋 CONTROLLO COMPLETATO - ${currentZone.name}\n`;
+      message += `Controllato da: ${user.name}\n`;
+      message += `Data: ${new Date().toLocaleString('it-IT')}\n\n`;
+      message += `✅ OK: ${okCount} prodotti\n`;
+      if (errorCount > 0) {
+        message += `⚠️ ERRORI: ${errorCount} prodotti\n\n`;
+        message += `DETTAGLIO ERRORI:\n`;
+        errors.forEach(ctrl => {
+          const product = productGroups.find(p => p.productId === ctrl.productId);
+          const statusLabel = {
+            'error_qty': '⚠️ Errore Quantità',
+            'missing': '❌ Mancante',
+            'damaged': '🔧 Danneggiato',
+            'lot_error': '📅 Lotto Errato',
+            'location_error': '📍 Ubicazione Errata',
+            'note': '📝 Nota'
+          }[ctrl.status] || ctrl.status;
+
+          message += `• ${product?.productName || 'Prodotto'} - ${statusLabel}`;
+          if (ctrl.note) message += `: ${ctrl.note}`;
+          message += `\n`;
+        });
+      }
+
+      // Salva nel Chatter Odoo
+      const response = await fetch('/api/odoo/post-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'stock.picking.batch',
+          res_id: currentBatch.id,
+          message: message
+        })
+      });
+
+      if (!response.ok) throw new Error('Errore salvataggio Odoo');
+
+      // Pulisci localStorage
+      clearLocalStorage();
+      setProductControls(new Map());
+
+      toast.success('✅ Controllo salvato su Odoo!');
+    } catch (error) {
+      console.error('❌ Errore salvataggio Odoo:', error);
+      toast.error('Errore salvataggio su Odoo');
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -522,11 +574,24 @@ export default function ControlloDirettoPage() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-4"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-gray-900">Prodotti da Controllare</h2>
-                <div className="text-sm text-gray-600">
-                  {productGroups.length} prodotti • {productGroups.reduce((sum, p) => sum + p.clientCount, 0)} righe
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-2xl font-bold text-gray-900">Prodotti da Controllare</h2>
+                  <div className="text-sm text-gray-600">
+                    {productGroups.length} prodotti • {productGroups.reduce((sum, p) => sum + p.clientCount, 0)} righe
+                  </div>
                 </div>
+
+                {/* Pulsante Termina Controllo */}
+                {productControls.size > 0 && (
+                  <button
+                    onClick={finishControlAndSaveToOdoo}
+                    disabled={isLoading}
+                    className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    📋 Termina Controllo e Salva su Odoo ({productControls.size} controllati)
+                  </button>
+                )}
               </div>
 
               {isLoading ? (
