@@ -167,11 +167,20 @@ export async function GET(request: NextRequest) {
 
     const apps = allApps.map(app => {
       const appSettings = visibilitySettings[app.id];
-      const defaultSettings: AppVisibilitySettings = { visible: true, visibilityGroup: 'all' };
+
+      // ✅ DEFAULT: Se l'APP non ha impostazioni in KV, è VISIBILE a tutti
+      const defaultSettings: AppVisibilitySettings = {
+        visible: true,
+        visibilityGroup: 'all',
+        developmentStatus: 'pronta'
+      };
       const settings = appSettings || defaultSettings;
 
       // Se c'è un ruolo specificato, filtra le app in base alla visibilità
-      const isVisible = userRole ? isAppVisibleForRole(settings, userRole, userId) : settings.visible;
+      // ✅ Se non ci sono impostazioni (appSettings === undefined), considera l'APP visibile di default
+      const isVisible = userRole
+        ? (appSettings ? isAppVisibleForRole(settings, userRole, userId) : true)  // Se no settings → visible
+        : settings.visible;
 
       // Converti excludedUsers/excludedCustomers in formato groups per la pagina gestione
       // E converti visibilityGroup in enabled flags
