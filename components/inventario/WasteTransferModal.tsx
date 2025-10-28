@@ -494,11 +494,10 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
                       <div className="grid grid-cols-3 gap-3 mb-3">
                         {photos.map((photo, index) => (
                           <div key={index} className="relative aspect-square rounded-lg overflow-hidden group">
-                            <Image
+                            <img
                               src={photo}
                               alt={`Foto scarto ${index + 1}`}
-                              fill
-                              className="object-cover"
+                              className="w-full h-full object-cover"
                             />
                             <button
                               onClick={() => handleRemovePhoto(index)}

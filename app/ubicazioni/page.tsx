@@ -472,6 +472,13 @@ export default function UbicazioniPage() {
               </button>
 
               <button
+                onClick={() => router.push('/scarti')}
+                className="glass-strong px-6 py-3 rounded-xl hover:bg-orange-500/20 transition-colors flex items-center gap-2 bg-gradient-to-r from-orange-600/20 to-red-600/20 border border-orange-500/30"
+              >
+                📊 Dashboard Scarti
+              </button>
+
+              <button
                 onClick={() => setShowWasteTransferModal(true)}
                 className="glass-strong px-6 py-3 rounded-xl hover:bg-red-500/20 transition-colors flex items-center gap-2 bg-gradient-to-r from-red-600/20 to-orange-600/20 border border-red-500/30"
               >
