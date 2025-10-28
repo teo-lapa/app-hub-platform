@@ -249,6 +249,9 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Picking assigned - prodotti riservati automaticamente');
 
+    // TODO: TEMPORANEAMENTE DISABILITATO per debug
+    // Creazione batch commentata per testare se il problema è qui
+    /*
     // 12. Recupera dati autista (nome) e veicolo (targa) per il batch
     console.log('🚚 [Batch] Recupero dati autista e veicolo...');
 
@@ -449,6 +452,21 @@ export async function POST(request: NextRequest) {
         move_ids: moveIds,
         state: 'assigned',
         message: 'Trasferimento e Batch creati con successo'
+      },
+      timestamp: new Date().toISOString()
+    }, { status: 201 });
+    */
+
+    // TEMPORARY: Return without batch creation for debugging
+    console.log('⚠️ Batch creation temporarily disabled for debugging');
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        picking_id: pickingId,
+        move_ids: moveIds,
+        state: 'assigned',
+        message: 'Trasferimento creato (batch temporaneamente disabilitato per debug)'
       },
       timestamp: new Date().toISOString()
     }, { status: 201 });
