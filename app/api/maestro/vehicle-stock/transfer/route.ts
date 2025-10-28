@@ -249,17 +249,99 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Picking assigned - prodotti riservati automaticamente');
 
-    // NON VALIDARE AUTOMATICAMENTE!
-    // L'utente può andare su Odoo e validare manualmente dopo aver verificato le ubicazioni
-    console.log('⏳ Picking pronto per validazione manuale su Odoo');
+    // 12. Crea batch MINIMALE e assegna picking
+    console.log('📦 [Batch] Creazione batch per caricamento macchina...');
+
+    const batchName = `CARICO-${targetSalespersonId}-${Date.now()}`;
+
+    const batchCreateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking.batch',
+          method: 'create',
+          args: [{
+            name: batchName,
+            user_id: targetSalespersonId
+          }],
+          kwargs: {}
+        },
+        id: 7
+      })
+    });
+
+    const batchCreateData = await batchCreateResponse.json();
+
+    if (!batchCreateData.result) {
+      console.error('❌ Errore creazione batch:', JSON.stringify(batchCreateData, null, 2));
+      const errorMsg = batchCreateData.error?.data?.message || batchCreateData.error?.message || 'Errore nella creazione del batch';
+      throw new Error(`Batch creation failed: ${errorMsg}`);
+    }
+
+    const batchId = batchCreateData.result;
+    console.log(`✅ Batch creato: ${batchId} (${batchName})`);
+
+    // 13. Assegna picking al batch
+    console.log(`📦 [Batch] Assegnazione picking ${pickingId} al batch ${batchId}...`);
+
+    await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking',
+          method: 'write',
+          args: [[pickingId], { batch_id: batchId }],
+          kwargs: {}
+        },
+        id: 8
+      })
+    });
+
+    console.log(`✅ Picking assegnato al batch`);
+
+    // 14. Conferma batch
+    await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking.batch',
+          method: 'action_confirm',
+          args: [[batchId]],
+          kwargs: {}
+        },
+        id: 9
+      })
+    });
+
+    console.log('✅ Batch confermato');
 
     return NextResponse.json({
       success: true,
       data: {
         picking_id: pickingId,
+        batch_id: batchId,
+        batch_name: batchName,
         move_ids: moveIds,
-        state: 'assigned', // Non più 'done', ora è 'assigned' (pronto per validazione)
-        message: 'Trasferimento creato - validare su Odoo'
+        state: 'assigned',
+        message: 'Trasferimento e Batch creati con successo'
       },
       timestamp: new Date().toISOString()
     }, { status: 201 });
