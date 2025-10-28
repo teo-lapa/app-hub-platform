@@ -72,11 +72,38 @@ INDUSTRIESTRASSE 18
 
 **REGOLA D'ORO**: Se vedi una FATTURA, IGNORA completamente DDT e PACKING LIST! Sono duplicati!
 
-## ⚠️ Regole Speciali Quantità
+## ⚠️ Regole Speciali per Fornitore
 
-**AURICCHIO**: Se vedi due colonne di quantità (CONTENUTA e FATTURATA), usa SEMPRE **FATTURATA** (quella vicina al PREZZO)
+### AURICCHIO
+Se vedi due colonne di quantità (CONTENUTA e FATTURATA), usa SEMPRE **FATTURATA** (quella vicina al PREZZO)
 
-**ALTRI FORNITORI**: Usa la quantità principale/fatturata del documento
+### ALIGRO (Scontrini Cash & Carry)
+Se vedi "ALIGRO", "Demaurex & Cie SA", o "Rechnung Nr.":
+- **Quantità**: Estrai da "Anz." (es: "2 x" → quantity: 2.0)
+- **Descrizione**: Rimuovi il tipo confezione (FL, GLS, ST, BTL, PAK) - es: "FL Marsala Miranda" → "Marsala Miranda"
+- **Codice articolo**: Imposta `null` (Aligro non fornisce codici negli scontrini)
+- **Unità**: Usa sempre `"NR"` (numero pezzi)
+
+**Esempio scontrino Aligro:**
+```
+2 x FL Marsala Miranda DOP 17% 1 l     8.52
+1 x GLS Thomy Tartaraise Sauce 880 g   7.12
+3 x ST Sardellenfilets Marinierte 1kg  16.52
+```
+
+**Output corretto:**
+```json
+{
+  "products": [
+    {"article_code": null, "description": "Marsala Miranda DOP 17% 1 l", "quantity": 2.0, "unit": "NR"},
+    {"article_code": null, "description": "Thomy Tartaraise Sauce 880 g", "quantity": 1.0, "unit": "NR"},
+    {"article_code": null, "description": "Sardellenfilets Marinierte 1kg", "quantity": 3.0, "unit": "NR"}
+  ]
+}
+```
+
+### ALTRI FORNITORI
+Usa la quantità principale/fatturata del documento
 
 ## ✅ Output Richiesto
 
