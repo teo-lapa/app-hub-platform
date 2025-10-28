@@ -5,8 +5,8 @@ import type { WasteLocationProduct, WasteLocationProductsResponse } from '@/lib/
 /**
  * API Endpoint: Get products in a specific waste location
  *
- * @route POST /api/waste/location-products
- * @param {number} locationId - ID of the stock location
+ * @route GET/POST /api/waste/location-products
+ * @param {number} locationId - ID of the stock location (body for POST, query for GET)
  * @returns Array of products with quantities, lots, and expiration dates
  *
  * Features:
@@ -16,9 +16,10 @@ import type { WasteLocationProduct, WasteLocationProductsResponse } from '@/lib/
  * - Groups by product_id + lot_id
  * - Returns formatted data ready for waste management UI
  */
-export async function POST(request: NextRequest) {
+
+// GET handler (query params)
+export async function GET(request: NextRequest) {
   try {
-    // 1. Validate session
     const sessionId = await getOdooSessionId();
     if (!sessionId) {
       return NextResponse.json(
@@ -27,17 +28,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Parse and validate input
-    const { locationId } = await request.json();
+    const { searchParams } = new URL(request.url);
+    const locationId = parseInt(searchParams.get('locationId') || '0');
 
     if (!locationId) {
-      return NextResponse.json({
-        success: false,
-        error: 'locationId richiesto'
-      }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: 'locationId è obbligatorio' },
+        { status: 400 }
+      );
     }
 
-    const odooUrl = process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL;
+    return await fetchLocationProducts(sessionId, locationId);
+  } catch (error: any) {
+    console.error('❌ Errore API waste location-products (GET):', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Errore caricamento prodotti' },
+      { status: 500 }
+    );
+  }
+}
+
+// Shared logic for fetching location products
+async function fetchLocationProducts(sessionId: string, locationId: number) {
+  const odooUrl = process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL;
 
     console.log('🗑️  Caricamento prodotti waste location:', locationId);
 
@@ -272,15 +285,34 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(response);
+}
 
+// POST handler (body)
+export async function POST(request: NextRequest) {
+  try {
+    const sessionId = await getOdooSessionId();
+    if (!sessionId) {
+      return NextResponse.json(
+        { success: false, error: 'Sessione non valida. Effettua il login.' },
+        { status: 401 }
+      );
+    }
+
+    const { locationId } = await request.json();
+
+    if (!locationId) {
+      return NextResponse.json({
+        success: false,
+        error: 'locationId richiesto'
+      }, { status: 400 });
+    }
+
+    return await fetchLocationProducts(sessionId, locationId);
   } catch (error: any) {
-    console.error('❌ Errore caricamento prodotti waste location:', error);
-
-    // Structured error response
+    console.error('❌ Errore API waste location-products (POST):', error);
     return NextResponse.json({
       success: false,
-      error: error.message || 'Errore nel caricamento prodotti',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: error.message || 'Errore caricamento prodotti'
     }, { status: 500 });
   }
 }
