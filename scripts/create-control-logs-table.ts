@@ -1,4 +1,8 @@
 import { sql } from '@vercel/postgres';
+import * as dotenv from 'dotenv';
+
+// Carica variabili d'ambiente
+dotenv.config({ path: '.env.local' });
 
 async function createControlLogsTable() {
   try {
