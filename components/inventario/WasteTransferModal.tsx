@@ -163,20 +163,25 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
 
     setLoading(true);
     try {
+      const payload = {
+        productId: selectedProduct.id,
+        sourceLocationId: selectedLocation.id,
+        quantity: parseFloat(quantity),
+        lotName: selectedProduct.lot_name,
+        lotId: selectedProduct.lot_id,
+        expiryDate: selectedProduct.expiration_date,
+        reason,
+        notes,
+        photos
+      };
+
+      console.log('🗑️ Payload waste transfer:', payload);
+
       const response = await fetch('/api/waste/transfer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productId: selectedProduct.id,
-          sourceLocationId: selectedLocation.id,
-          quantity: parseFloat(quantity),
-          lotName: selectedProduct.lot_name,
-          lotId: selectedProduct.lot_id,
-          expiryDate: selectedProduct.expiration_date,
-          reason,
-          notes,
-          photos
-        })
+        credentials: 'include',
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
