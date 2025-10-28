@@ -12,6 +12,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import type { CustomerAvatar, Recommendation, Interaction } from '@/lib/maestro/types';
+import { getUserFromRequest } from '@/lib/auth-helpers';
+import { canAccessCustomer } from '@/lib/maestro/permissions';
 
 interface OrderFromOdoo {
   id: number;
@@ -27,6 +29,16 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // 🔐 STEP 0: Autenticazione
+    const user = await getUserFromRequest(request);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Login required' },
+        { status: 401 }
+      );
+    }
+
     const customerAvatarId = parseInt(params.id, 10);
     console.log(`📊 [MAESTRO-API] Fetching customer detail for Customer Avatar ID: ${customerAvatarId}`);
 
@@ -44,6 +56,19 @@ export async function GET(
     }
 
     const avatarData = avatarResult.rows[0];
+
+    // 🔐 STEP 1: Controllo Permessi
+    const hasAccess = canAccessCustomer(user, avatarData.assigned_salesperson_id);
+
+    if (!hasAccess) {
+      console.log(`❌ [MAESTRO-API] User ${user.email} denied access to customer ${avatarData.name} (salesperson: ${avatarData.assigned_salesperson_id})`);
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have permission to view this customer' },
+        { status: 403 }
+      );
+    }
+
+    console.log(`✅ [MAESTRO-API] User ${user.email} granted access to customer ${avatarData.name}`);
 
     // Parse JSON fields
     const avatar: CustomerAvatar = {

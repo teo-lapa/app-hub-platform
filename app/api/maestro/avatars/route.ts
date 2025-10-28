@@ -9,11 +9,41 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { getAvatarsQuerySchema, validateRequest } from '@/lib/maestro/validation';
 import type { CustomerAvatar } from '@/lib/maestro/types';
+import { getUserFromRequest } from '@/lib/auth-helpers';
+import { getVisibleSalespersonIds } from '@/lib/maestro/permissions';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    // 🔐 STEP 0: Autenticazione e Permessi
+    const user = await getUserFromRequest(request);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Login required' },
+        { status: 401 }
+      );
+    }
+
+    // Ottieni gli ID dei venditori che l'utente può vedere
+    const visibleSalespersonIds = getVisibleSalespersonIds(user);
+
+    if (visibleSalespersonIds.length === 0) {
+      // Utente senza permessi = nessun dato
+      return NextResponse.json({
+        avatars: [],
+        pagination: {
+          total: 0,
+          limit: 50,
+          offset: 0,
+          has_more: false,
+        }
+      });
+    }
+
+    console.log(`🔐 [MAESTRO-API] User ${user.email} can view salesperson IDs:`, visibleSalespersonIds);
+
     // 1. Parse e valida query params
     const searchParams = request.nextUrl.searchParams;
     const queryData = {
@@ -41,6 +71,14 @@ export async function GET(request: NextRequest) {
     let whereConditions: string[] = ['is_active = true'];
     let queryParams: any[] = [];
     let paramIndex = 1;
+
+    // 🔐 FILTRO PERMESSI: Limita ai venditori visibili
+    if (visibleSalespersonIds !== 'all') {
+      // Utente può vedere solo specifici venditori
+      whereConditions.push(`assigned_salesperson_id = ANY($${paramIndex})`);
+      queryParams.push(visibleSalespersonIds);
+      paramIndex++;
+    }
 
     if (params.salesperson_id !== undefined) {
       whereConditions.push(`assigned_salesperson_id = $${paramIndex}`);

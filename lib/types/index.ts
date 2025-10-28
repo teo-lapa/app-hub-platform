@@ -20,6 +20,7 @@ export interface User {
   note?: string;
   abilitato: boolean;
   appPermessi: string[]; // Array di ID delle app accessibili
+  odoo_employee_id?: number; // ID employee Odoo per permessi Maestro AI
   createdAt: Date;
   lastLogin?: Date;
   updatedAt: Date;
