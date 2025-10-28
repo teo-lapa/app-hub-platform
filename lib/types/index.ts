@@ -118,3 +118,31 @@ export interface ApiResponse<T = any> {
   message?: string;
   error?: string;
 }
+
+// Waste Management Types
+export interface WasteLocationProduct {
+  id: number;              // Product ID
+  name: string;            // Product name
+  code: string;            // Product code (default_code)
+  barcode: string;         // Product barcode/EAN
+  image: string | null;    // Base64 image (data:image/png;base64,...)
+  quantity: number;        // Available quantity
+  uom: string;             // Unit of measure (e.g., "PZ", "KG")
+  lot_id?: number;         // Lot ID (optional)
+  lot_name?: string;       // Lot name/number (optional)
+  expiration_date?: string;// Expiration date ISO format (optional)
+  quant_id: number;        // Stock quant ID for reference
+}
+
+export interface WasteLocationProductsResponse {
+  success: boolean;
+  products: WasteLocationProduct[];
+  metadata: {
+    locationId: number;      // Requested location ID
+    totalProducts: number;   // Total number of products
+    totalQuants: number;     // Original number of quants
+    withLots: number;        // Products with lot tracking
+    withExpiration: number;  // Products with expiration date
+  };
+  error?: string;
+}

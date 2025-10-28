@@ -9,6 +9,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { QRScanner } from '@/components/inventario/QRScanner';
 import { ProductSearch } from '@/components/inventario/ProductSearch';
 import { Calculator } from '@/components/inventario/Calculator';
+import { WasteTransferModal } from '@/components/inventario/WasteTransferModal';
 import toast from 'react-hot-toast';
 
 // Configurazione zone magazzino
@@ -93,6 +94,7 @@ export default function UbicazioniPage() {
   const [loading, setLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const [showLocationScanner, setShowLocationScanner] = useState(false);
+  const [showWasteTransferModal, setShowWasteTransferModal] = useState(false);
 
   const locationInputRef = useRef<HTMLInputElement>(null);
 
@@ -461,12 +463,21 @@ export default function UbicazioniPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            <button
-              onClick={backToZoneSelection}
-              className="mb-6 glass-strong px-6 py-3 rounded-xl hover:bg-white/20 transition-colors"
-            >
-              ← Torna alla selezione zona
-            </button>
+            <div className="mb-6 flex gap-3 flex-wrap">
+              <button
+                onClick={backToZoneSelection}
+                className="glass-strong px-6 py-3 rounded-xl hover:bg-white/20 transition-colors"
+              >
+                ← Torna alla selezione zona
+              </button>
+
+              <button
+                onClick={() => setShowWasteTransferModal(true)}
+                className="glass-strong px-6 py-3 rounded-xl hover:bg-red-500/20 transition-colors flex items-center gap-2 bg-gradient-to-r from-red-600/20 to-orange-600/20 border border-red-500/30"
+              >
+                🗑️ Gestione Scarti
+              </button>
+            </div>
 
             {/* Griglia prodotti buffer */}
             {bufferProducts.length > 0 && (
@@ -770,6 +781,18 @@ export default function UbicazioniPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Modal Gestione Scarti */}
+      <WasteTransferModal
+        isOpen={showWasteTransferModal}
+        onClose={() => setShowWasteTransferModal(false)}
+        onSuccess={() => {
+          toast.success('✅ Scarto registrato con successo!');
+          setShowWasteTransferModal(false);
+          // Ricarica counts se necessario
+          loadBufferCounts();
+        }}
+      />
     </div>
   );
 }

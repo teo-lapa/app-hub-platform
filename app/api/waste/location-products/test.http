@@ -1,0 +1,48 @@
+### Waste Location Products API Tests
+### Use with REST Client extension in VS Code
+
+### 1. Basic request - Get products from location
+POST http://localhost:3000/api/waste/location-products
+Content-Type: application/json
+
+{
+  "locationId": 123
+}
+
+### 2. Test with different location ID
+POST http://localhost:3000/api/waste/location-products
+Content-Type: application/json
+
+{
+  "locationId": 456
+}
+
+### 3. Test missing locationId (should return 400)
+POST http://localhost:3000/api/waste/location-products
+Content-Type: application/json
+
+{}
+
+### 4. Test invalid locationId type (should handle gracefully)
+POST http://localhost:3000/api/waste/location-products
+Content-Type: application/json
+
+{
+  "locationId": "invalid"
+}
+
+### 5. Test with zero locationId
+POST http://localhost:3000/api/waste/location-products
+Content-Type: application/json
+
+{
+  "locationId": 0
+}
+
+### 6. Production endpoint (change URL as needed)
+POST https://your-production-domain.com/api/waste/location-products
+Content-Type: application/json
+
+{
+  "locationId": 123
+}

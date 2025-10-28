@@ -1,0 +1,341 @@
+/**
+ * Example TypeScript Client for Waste Location Products API
+ *
+ * This file demonstrates how to use the waste location products API
+ * in your React components with full type safety.
+ */
+
+import type { WasteLocationProduct, WasteLocationProductsResponse } from '@/lib/types';
+
+/**
+ * Fetch all products in a waste location
+ *
+ * @param locationId - ID of the waste location in Odoo
+ * @returns Array of products with quantities, lots, and expiration dates
+ * @throws Error if request fails
+ */
+export async function fetchWasteLocationProducts(
+  locationId: number
+): Promise<WasteLocationProduct[]> {
+  const response = await fetch('/api/waste/location-products', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ locationId }),
+  });
+
+  const data: WasteLocationProductsResponse = await response.json();
+
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to fetch waste location products');
+  }
+
+  return data.products;
+}
+
+/**
+ * Fetch waste location products with full response including metadata
+ */
+export async function fetchWasteLocationProductsWithMetadata(
+  locationId: number
+): Promise<WasteLocationProductsResponse> {
+  const response = await fetch('/api/waste/location-products', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ locationId }),
+  });
+
+  const data: WasteLocationProductsResponse = await response.json();
+
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to fetch waste location products');
+  }
+
+  return data;
+}
+
+// ============================================================================
+// REACT COMPONENT EXAMPLES
+// ============================================================================
+
+/**
+ * Example 1: Simple product list component
+ */
+export function WasteProductListExample() {
+  const [products, setProducts] = React.useState<WasteLocationProduct[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const loadProducts = async (locationId: number) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await fetchWasteLocationProducts(locationId);
+      setProducts(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <button onClick={() => loadProducts(123)}>
+        Load Waste Products
+      </button>
+
+      {loading && <p>Loading...</p>}
+      {error && <p className="error">{error}</p>}
+
+      <div className="product-grid">
+        {products.map(product => (
+          <div key={`${product.id}-${product.lot_id || 'no-lot'}`} className="product-card">
+            {product.image && (
+              <img src={product.image} alt={product.name} />
+            )}
+            <h3>{product.name}</h3>
+            <p>Code: {product.code}</p>
+            <p>Quantity: {product.quantity} {product.uom}</p>
+
+            {product.lot_name && (
+              <p>Lot: {product.lot_name}</p>
+            )}
+
+            {product.expiration_date && (
+              <p className="expiration">
+                Expires: {new Date(product.expiration_date).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Example 2: Component with metadata display
+ */
+export function WasteLocationDashboardExample() {
+  const [data, setData] = React.useState<WasteLocationProductsResponse | null>(null);
+  const [loading, setLoading] = React.useState(false);
+
+  const loadData = async (locationId: number) => {
+    setLoading(true);
+    try {
+      const result = await fetchWasteLocationProductsWithMetadata(locationId);
+      setData(result);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!data) {
+    return <button onClick={() => loadData(123)}>Load Dashboard</button>;
+  }
+
+  return (
+    <div className="dashboard">
+      <div className="stats">
+        <div className="stat-card">
+          <h4>Total Products</h4>
+          <p>{data.metadata.totalProducts}</p>
+        </div>
+        <div className="stat-card">
+          <h4>Total Stock Entries</h4>
+          <p>{data.metadata.totalQuants}</p>
+        </div>
+        <div className="stat-card">
+          <h4>With Lot Tracking</h4>
+          <p>{data.metadata.withLots}</p>
+        </div>
+        <div className="stat-card">
+          <h4>With Expiration</h4>
+          <p>{data.metadata.withExpiration}</p>
+        </div>
+      </div>
+
+      <div className="products">
+        {data.products.map(product => (
+          <ProductCard key={`${product.id}-${product.lot_id}`} product={product} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Example 3: Filter expired products
+ */
+export function useExpiredProducts(locationId: number) {
+  const [expiredProducts, setExpiredProducts] = React.useState<WasteLocationProduct[]>([]);
+
+  React.useEffect(() => {
+    const loadExpired = async () => {
+      const products = await fetchWasteLocationProducts(locationId);
+
+      const now = new Date();
+      const expired = products.filter(product => {
+        if (!product.expiration_date) return false;
+        return new Date(product.expiration_date) < now;
+      });
+
+      setExpiredProducts(expired);
+    };
+
+    loadExpired();
+  }, [locationId]);
+
+  return expiredProducts;
+}
+
+/**
+ * Example 4: Group products by expiration status
+ */
+export function groupByExpirationStatus(products: WasteLocationProduct[]) {
+  const now = new Date();
+  const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  return {
+    expired: products.filter(p =>
+      p.expiration_date && new Date(p.expiration_date) < now
+    ),
+    expiringSoon: products.filter(p =>
+      p.expiration_date &&
+      new Date(p.expiration_date) >= now &&
+      new Date(p.expiration_date) <= sevenDaysFromNow
+    ),
+    valid: products.filter(p =>
+      !p.expiration_date || new Date(p.expiration_date) > sevenDaysFromNow
+    ),
+  };
+}
+
+/**
+ * Example 5: Calculate total value (requires price data)
+ */
+export function calculateWasteValue(
+  products: WasteLocationProduct[],
+  priceMap: Map<number, number> // product_id -> unit_price
+): number {
+  return products.reduce((total, product) => {
+    const unitPrice = priceMap.get(product.id) || 0;
+    return total + (product.quantity * unitPrice);
+  }, 0);
+}
+
+/**
+ * Example 6: SWR Hook for automatic revalidation
+ */
+export function useWasteLocationProducts(locationId: number | null) {
+  return useSWR(
+    locationId ? `/api/waste/location-products/${locationId}` : null,
+    () => locationId ? fetchWasteLocationProducts(locationId) : null,
+    {
+      refreshInterval: 30000, // Refresh every 30 seconds
+      revalidateOnFocus: true,
+    }
+  );
+}
+
+/**
+ * Example 7: Batch processing for multiple locations
+ */
+export async function fetchMultipleWasteLocations(
+  locationIds: number[]
+): Promise<Map<number, WasteLocationProduct[]>> {
+  const results = await Promise.all(
+    locationIds.map(async (locationId) => {
+      try {
+        const products = await fetchWasteLocationProducts(locationId);
+        return [locationId, products] as const;
+      } catch (err) {
+        console.error(`Failed to load location ${locationId}:`, err);
+        return [locationId, []] as const;
+      }
+    })
+  );
+
+  return new Map(results);
+}
+
+/**
+ * Example 8: Search/filter products
+ */
+export function filterProducts(
+  products: WasteLocationProduct[],
+  searchTerm: string
+): WasteLocationProduct[] {
+  const term = searchTerm.toLowerCase();
+
+  return products.filter(product =>
+    product.name.toLowerCase().includes(term) ||
+    product.code.toLowerCase().includes(term) ||
+    product.barcode.toLowerCase().includes(term) ||
+    product.lot_name?.toLowerCase().includes(term)
+  );
+}
+
+/**
+ * Example 9: Sort products by various criteria
+ */
+export function sortProducts(
+  products: WasteLocationProduct[],
+  sortBy: 'name' | 'quantity' | 'expiration'
+): WasteLocationProduct[] {
+  const sorted = [...products];
+
+  switch (sortBy) {
+    case 'name':
+      return sorted.sort((a, b) => a.name.localeCompare(b.name));
+
+    case 'quantity':
+      return sorted.sort((a, b) => b.quantity - a.quantity);
+
+    case 'expiration':
+      return sorted.sort((a, b) => {
+        if (!a.expiration_date) return 1;
+        if (!b.expiration_date) return -1;
+        return new Date(a.expiration_date).getTime() - new Date(b.expiration_date).getTime();
+      });
+
+    default:
+      return sorted;
+  }
+}
+
+/**
+ * Example 10: Export to CSV
+ */
+export function exportToCSV(products: WasteLocationProduct[]): string {
+  const headers = ['ID', 'Name', 'Code', 'Barcode', 'Quantity', 'UoM', 'Lot', 'Expiration'];
+
+  const rows = products.map(p => [
+    p.id,
+    p.name,
+    p.code,
+    p.barcode,
+    p.quantity,
+    p.uom,
+    p.lot_name || '',
+    p.expiration_date || ''
+  ]);
+
+  const csv = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+  ].join('\n');
+
+  return csv;
+}
+
+// Add React import at the top of actual usage
+// import React from 'react';
+// import useSWR from 'swr'; // For example 6
