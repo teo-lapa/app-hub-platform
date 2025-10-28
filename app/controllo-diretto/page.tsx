@@ -120,9 +120,9 @@ export default function ControlloDirettoPage() {
     try {
       const saved = localStorage.getItem(key);
       if (saved) {
-        const data = JSON.parse(saved);
-        const controls = new Map(
-          data.map((item: any) => [
+        const data = JSON.parse(saved) as ProductControl[];
+        const controls = new Map<number, ProductControl>(
+          data.map((item) => [
             item.productId,
             {
               ...item,
@@ -309,16 +309,18 @@ export default function ControlloDirettoPage() {
         message += `DETTAGLIO ERRORI:\n`;
         errors.forEach(ctrl => {
           const product = productGroups.find(p => p.productId === ctrl.productId);
-          const statusLabel = {
+          const statusLabel: Record<ControlStatus, string> = {
+            'ok': '✅ OK',
             'error_qty': '⚠️ Errore Quantità',
             'missing': '❌ Mancante',
             'damaged': '🔧 Danneggiato',
             'lot_error': '📅 Lotto Errato',
             'location_error': '📍 Ubicazione Errata',
             'note': '📝 Nota'
-          }[ctrl.status] || ctrl.status;
+          };
+          const label = statusLabel[ctrl.status] || ctrl.status;
 
-          message += `• ${product?.productName || 'Prodotto'} - ${statusLabel}`;
+          message += `• ${product?.productName || 'Prodotto'} - ${label}`;
           if (ctrl.note) message += `: ${ctrl.note}`;
           message += `\n`;
         });
