@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, ArrowLeft, AlertTriangle, MapPin, Package, Clock, CheckCircle, Trash2 } from 'lucide-react';
+import { Calendar, ArrowLeft, AlertTriangle, MapPin, Package, Clock, CheckCircle, Trash2, Bell } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -69,6 +69,8 @@ export default function ScadenzePage() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [showWasteTransferModal, setShowWasteTransferModal] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
+  const [urgentNoteInput, setUrgentNoteInput] = useState('');
+  const [showUrgentNoteModal, setShowUrgentNoteModal] = useState(false);
 
   // Carica conteggi all'avvio
   useEffect(() => {
@@ -201,6 +203,60 @@ export default function ScadenzePage() {
 
     // Ricarica conteggi
     loadCounts();
+  };
+
+  // Vendi Urgentemente - Mostra modal per nota
+  const handleSellUrgently = () => {
+    setShowProductModal(false);
+    setUrgentNoteInput('');
+    setShowUrgentNoteModal(true);
+  };
+
+  // Conferma aggiunta prodotto urgente
+  const handleConfirmUrgent = async () => {
+    if (!selectedProduct || !urgentNoteInput.trim()) {
+      toast.error('La nota è obbligatoria');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/urgent-products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          productId: selectedProduct.id,
+          productName: selectedProduct.name,
+          productCode: selectedProduct.code,
+          productBarcode: selectedProduct.barcode,
+          image: selectedProduct.image,
+          lotId: selectedProduct.lotId,
+          lotName: selectedProduct.lotName,
+          quantity: selectedProduct.quantity,
+          uom: selectedProduct.uom,
+          expirationDate: selectedProduct.expirationDate,
+          daysUntilExpiry: selectedProduct.daysUntilExpiry,
+          urgencyLevel: selectedProduct.urgencyLevel,
+          locationId: selectedProduct.locationId,
+          locationName: selectedProduct.locationName,
+          zoneId: selectedProduct.zoneId,
+          note: urgentNoteInput.trim(),
+          addedBy: user?.email || 'unknown',
+          estimatedValue: selectedProduct.estimatedValue
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('🔔 Prodotto aggiunto ai prodotti urgenti per i venditori!');
+        setShowUrgentNoteModal(false);
+        setUrgentNoteInput('');
+      } else {
+        toast.error(data.error || 'Errore durante aggiunta');
+      }
+    } catch (error: any) {
+      toast.error('Errore: ' + error.message);
+    }
   };
 
   // Torna indietro
@@ -481,6 +537,24 @@ export default function ScadenzePage() {
                   </div>
                   <ArrowLeft className="w-5 h-5 rotate-180 text-slate-400 group-hover:translate-x-1 transition-transform" />
                 </button>
+
+                {/* Vendi Urgentemente */}
+                <button
+                  onClick={handleSellUrgently}
+                  className="w-full glass-strong p-4 rounded-lg hover:bg-orange-500/20 transition-all
+                           flex items-center justify-between group border-2 border-orange-500/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
+                      <Bell className="w-5 h-5 text-orange-400" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-orange-400">Vendi Urgentemente</div>
+                      <div className="text-xs text-slate-400">Notifica ai venditori per vendita rapida</div>
+                    </div>
+                  </div>
+                  <ArrowLeft className="w-5 h-5 rotate-180 text-orange-400 group-hover:translate-x-1 transition-transform" />
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -495,6 +569,96 @@ export default function ScadenzePage() {
           onSuccess={handleWasteTransferComplete}
         />
       )}
+
+      {/* Modal Nota Prodotto Urgente */}
+      <AnimatePresence>
+        {showUrgentNoteModal && selectedProduct && (
+          <motion.div
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowUrgentNoteModal(false)}
+          >
+            <motion.div
+              className="glass-strong rounded-2xl p-6 max-w-lg w-full"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Bell className="w-8 h-8 text-orange-400" />
+                </div>
+                <h2 className="text-2xl font-bold mb-2">Vendi Urgentemente</h2>
+                <p className="text-slate-400 text-sm">
+                  Aggiungi una nota per i venditori su questo prodotto
+                </p>
+              </div>
+
+              {/* Prodotto info */}
+              <div className="glass p-4 rounded-lg mb-4">
+                <div className="flex items-center gap-3">
+                  {selectedProduct.image ? (
+                    <img
+                      src={`data:image/png;base64,${selectedProduct.image}`}
+                      alt={selectedProduct.name}
+                      className="w-12 h-12 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-2xl">
+                      📦
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold truncate">{selectedProduct.name}</h3>
+                    <p className="text-xs text-slate-400">
+                      {selectedProduct.quantity} {selectedProduct.uom} • Scade tra {selectedProduct.daysUntilExpiry}gg
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Textarea nota */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold mb-2">
+                  Nota per i venditori *
+                </label>
+                <textarea
+                  value={urgentNoteInput}
+                  onChange={(e) => setUrgentNoteInput(e.target.value)}
+                  placeholder="Es: Scade tra 3 giorni, vendere con sconto 20%"
+                  className="w-full glass p-3 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  rows={4}
+                  maxLength={200}
+                />
+                <div className="text-xs text-slate-500 mt-1 text-right">
+                  {urgentNoteInput.length}/200
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUrgentNoteModal(false)}
+                  className="flex-1 glass-strong p-3 rounded-lg hover:bg-white/5 transition-all"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleConfirmUrgent}
+                  disabled={!urgentNoteInput.trim()}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-700 disabled:text-slate-500 p-3 rounded-lg font-semibold transition-all"
+                >
+                  Conferma
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

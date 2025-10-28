@@ -133,3 +133,71 @@ export interface MarkAsReviewedResponse {
   reviewId?: number;
   error?: string;
 }
+
+// ========== URGENT PRODUCTS SYSTEM ==========
+
+export interface UrgentProduct {
+  id: string; // Unique ID: {productId}:{lotId}:{timestamp}
+  productId: number;
+  productName: string;
+  productCode?: string;
+  productBarcode?: string;
+  image?: string; // base64 image
+  lotId: number;
+  lotName: string;
+  quantity: number;
+  uom: string;
+  expirationDate: string; // YYYY-MM-DD
+  daysUntilExpiry: number;
+  urgencyLevel: 'expired' | 'expiring';
+  locationId: number;
+  locationName: string;
+  zoneId?: string;
+  note: string; // Nota dell'operatore magazzino
+  addedBy: string; // Email operatore
+  addedAt: string; // ISO timestamp
+  estimatedValue?: number;
+}
+
+export interface AddUrgentProductRequest {
+  productId: number;
+  productName: string;
+  productCode?: string;
+  productBarcode?: string;
+  image?: string;
+  lotId: number;
+  lotName: string;
+  quantity: number;
+  uom: string;
+  expirationDate: string;
+  daysUntilExpiry: number;
+  urgencyLevel: 'expired' | 'expiring';
+  locationId: number;
+  locationName: string;
+  zoneId?: string;
+  note: string;
+  addedBy: string;
+  estimatedValue?: number;
+}
+
+export interface AddUrgentProductResponse {
+  success: boolean;
+  urgentProduct?: UrgentProduct;
+  error?: string;
+}
+
+export interface GetUrgentProductsResponse {
+  success: boolean;
+  products: UrgentProduct[];
+  count: number;
+  error?: string;
+}
+
+export interface RemoveUrgentProductRequest {
+  id: string; // ID del prodotto urgente
+}
+
+export interface RemoveUrgentProductResponse {
+  success: boolean;
+  error?: string;
+}
