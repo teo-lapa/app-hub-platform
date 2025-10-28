@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, ArrowLeft, AlertTriangle, MapPin, Package, Clock, CheckCircle, Trash2, Bell } from 'lucide-react';
+import { Calendar, ArrowLeft, AlertTriangle, MapPin, Package, Clock, CheckCircle, Trash2, Bell, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -71,6 +71,8 @@ export default function ScadenzePage() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const [urgentNoteInput, setUrgentNoteInput] = useState('');
   const [showUrgentNoteModal, setShowUrgentNoteModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [urgentPriceInput, setUrgentPriceInput] = useState('');
 
   // Carica conteggi all'avvio
   useEffect(() => {
@@ -141,10 +143,19 @@ export default function ScadenzePage() {
     setSelectedZone(zoneId);
   };
 
-  // Prodotti filtrati per zona
-  const filteredProducts = selectedZone
-    ? products.filter(p => p.zoneId === selectedZone)
-    : products;
+  // Prodotti filtrati per zona e ricerca
+  const filteredProducts = products
+    .filter(p => !selectedZone || p.zoneId === selectedZone)
+    .filter(p => {
+      if (!searchQuery || searchQuery.length < 3) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(query) ||
+        p.code?.toLowerCase().includes(query) ||
+        p.barcode?.toLowerCase().includes(query) ||
+        p.lotName?.toLowerCase().includes(query)
+      );
+    });
 
   // Click su card prodotto
   const handleProductClick = (product: ExpiryProduct) => {
@@ -242,7 +253,8 @@ export default function ScadenzePage() {
           zoneId: selectedProduct.zoneId,
           note: urgentNoteInput.trim(),
           addedBy: user?.email || 'unknown',
-          estimatedValue: selectedProduct.estimatedValue
+          estimatedValue: selectedProduct.estimatedValue,
+          suggestedPrice: urgentPriceInput ? parseFloat(urgentPriceInput) : undefined
         }),
       });
 
@@ -251,6 +263,7 @@ export default function ScadenzePage() {
         toast.success('🔔 Prodotto aggiunto ai prodotti urgenti per i venditori!');
         setShowUrgentNoteModal(false);
         setUrgentNoteInput('');
+        setUrgentPriceInput('');
       } else {
         toast.error(data.error || 'Errore durante aggiunta');
       }
@@ -330,6 +343,7 @@ export default function ScadenzePage() {
                   <p className="text-sm text-slate-400">
                     {filteredProducts.length} prodotti
                     {selectedZone && ` in ${ZONES.find(z => z.id === selectedZone)?.name}`}
+                    {searchQuery.length >= 3 && ` • Ricerca: "${searchQuery}"`}
                   </p>
                 </div>
 
@@ -337,6 +351,33 @@ export default function ScadenzePage() {
                 <div className="px-4 py-2 bg-blue-500/20 rounded-full border border-blue-500">
                   <span className="font-bold text-blue-400">{filteredProducts.length}</span>
                 </div>
+              </div>
+
+              {/* Barra di ricerca veloce */}
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cerca prodotto (min 3 caratteri)..."
+                    className="w-full pl-10 pr-10 py-3 glass rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                {searchQuery.length > 0 && searchQuery.length < 3 && (
+                  <p className="text-xs text-orange-400 mt-1 ml-1">
+                    ⚠️ Inserisci almeno 3 caratteri per cercare
+                  </p>
+                )}
               </div>
 
               {/* Filtro zone */}
@@ -487,6 +528,16 @@ export default function ScadenzePage() {
                     </span>
                   </div>
 
+                  {selectedProduct.estimatedValue && selectedProduct.estimatedValue > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4 text-yellow-400" />
+                      <span className="text-slate-400">Valore Stimato:</span>
+                      <span className="font-semibold text-yellow-400">
+                        CHF {selectedProduct.estimatedValue.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex items-start gap-2">
                     <MapPin className="w-4 h-4 text-blue-400 mt-0.5" />
                     <div>
@@ -622,7 +673,7 @@ export default function ScadenzePage() {
               </div>
 
               {/* Textarea nota */}
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-sm font-semibold mb-2">
                   Nota per i venditori *
                 </label>
@@ -636,6 +687,30 @@ export default function ScadenzePage() {
                 />
                 <div className="text-xs text-slate-500 mt-1 text-right">
                   {urgentNoteInput.length}/200
+                </div>
+              </div>
+
+              {/* Prezzo suggerito vendita */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold mb-2">
+                  Prezzo Suggerito Vendita (CHF)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400">CHF</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={urgentPriceInput}
+                    onChange={(e) => setUrgentPriceInput(e.target.value)}
+                    placeholder="Es: 15.90"
+                    className="w-full pl-14 pr-3 py-3 glass rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {selectedProduct.estimatedValue && selectedProduct.estimatedValue > 0 && (
+                    <span>Valore stimato: CHF {selectedProduct.estimatedValue.toFixed(2)}</span>
+                  )}
                 </div>
               </div>
 
