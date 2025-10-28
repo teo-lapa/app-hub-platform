@@ -638,9 +638,6 @@ export default function ArrivoMercePage() {
                       prodotti: data.data.products
                     });
 
-                    // Alert per vedere subito
-                    alert(`ESTRATTI ${data.data.products?.length || 0} PRODOTTI\n\nVedi console per dettagli`);
-
                     setParsedInvoice(data.data);
                     setStep(3); // Vai a Step 3: Verifica Dati
 

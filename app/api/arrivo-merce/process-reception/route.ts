@@ -88,7 +88,7 @@ Esegui il matching seguendo le regole sopra.
     console.log('🤖 Invio a Claude per matching intelligente...');
 
     const message = await anthropic.messages.create({
-      model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 8000,
       temperature: 0,
       messages: [
