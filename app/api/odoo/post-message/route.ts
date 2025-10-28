@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooClient } from '@/lib/odoo/odooClient';
+import { odooCall } from '@/lib/odoo/client';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,20 +15,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const odoo = await getOdooClient();
-
     // Posta messaggio nel Chatter
-    await odoo.execute(
-      'mail.message',
-      'create',
-      [{
-        model: model,
-        res_id: res_id,
-        body: message.replace(/\n/g, '<br/>'),
-        message_type: 'comment',
-        subtype_id: 1 // mt_note (nota interna)
-      }]
-    );
+    await odooCall('mail.message', 'create', [{
+      model: model,
+      res_id: res_id,
+      body: message.replace(/\n/g, '<br/>'),
+      message_type: 'comment',
+      subtype_id: 1 // mt_note (nota interna)
+    }]);
 
     console.log(`✅ Messaggio postato su ${model} ID ${res_id}`);
 

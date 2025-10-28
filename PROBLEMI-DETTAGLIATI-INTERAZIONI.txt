@@ -1,0 +1,64 @@
+PROBLEMI DETTAGLIATI - FORMATO CORTO
+
+CRITICO 1: Type Mismatch UUID
+File: lib/maestro/validation.ts:37
+Code: customer_avatar_id: z.number().int().positive()
+Problem: Accepts number but DB expects string UUID
+Fix: z.string().uuid()
+Impact: Orphaned interactions in DB
+
+CRITICO 2: Daily Plan Query Type Error  
+File: app/api/maestro/daily-plan/route.ts:105
+Code: WHERE customer_avatar_id = ANY($1::int[])
+Problem: Int cast for string UUID array
+Fix: ::text[] instead of ::int[]
+Impact: Query fails, daily plan broken
+
+CRITICO 3: Hardcoded Laura Fix
+File: app/api/debug/fix-laura-interactions/route.ts:23
+Code: WHERE customer_avatar_id = '297'
+Problem: One-time fix, not generalizable
+Impact: Other orphaned interactions not fixed
+
+ALTO 1: Hardcoded Stella salesperson_id
+File: app/api/stella/save-conversation/route.ts:364
+Code: salesperson_id = 1
+Problem: ID 1 not verified to exist
+Impact: FK constraint violation possible
+
+ALTO 2: Silent Error Catch
+File: app/api/stella/save-conversation/route.ts:386-389
+Code: catch with console.error only
+Problem: Odoo task saved but DB fails silently
+Impact: Data inconsistency, lost interactions
+
+ALTO 3: Hardcoded Timezone
+File: app/api/stella/save-conversation/route.ts:326
+Code: AT TIME ZONE 'Europe/Rome'
+Problem: Not configurable, wrong if server in different TZ
+Impact: Date filtering fails for today's interactions
+
+MEDIO 1: JSON.parse No typeof Check
+File: app/api/maestro/interactions/route.ts:72
+Code: JSON.parse(row.samples_given) without typeof
+Problem: If already object, JSON.parse throws
+Impact: GET interactions fails
+
+MEDIO 2: INNER JOIN Excludes Orphans
+File: app/api/maestro/interactions/route.ts:59
+Code: JOIN (not LEFT JOIN) customer_avatars
+Problem: Can't find orphaned interactions
+Impact: Impossible to audit data quality
+
+SECURITY: Error Message Exposure
+Files: Multiple endpoints
+Code: details: error.message in response
+Problem: Exposes internal error details
+Impact: Information leakage to client
+
+ALTO 4: updateAvatarAfterInteraction Type Error
+File: app/api/maestro/interactions/route.ts:202
+Code: avatarId: number (but receives string UUID)
+Problem: Type mismatch, avatar not updated correctly
+Impact: Customer scores not updated for right customer
+

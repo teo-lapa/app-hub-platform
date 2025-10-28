@@ -1,0 +1,224 @@
+ANALISI COMPLETA ENDPOINT API RELATIVE ALLE INTERAZIONI
+============================================================
+
+RIEPILOGO: 4 endpoint API principali + 2 debug endpoint
+
+ENDPOINT 1: POST/GET /api/maestro/interactions
+File: app/api/maestro/interactions/route.ts
+
+POST - CREAZIONE INTERAZIONI (Linee 97-196)
+============================================
+
+1. VALIDAZIONE (Linea 104):
+   Schema: createInteractionSchema da lib/maestro/validation.ts
+   
+2. VALIDATION SCHEMA PROBLEMA CRITICO (linea 37 in validation.ts):
+   customer_avatar_id: z.number().int().positive()
+   ❌ SBAGLIATO: Schema dice "integer, non UUID" nel commento
+   ✓ REALTÀ: Database id è UUID (string)
+   ❌ CONSEGUENZA: Type mismatch number → string UUID
+
+3. LOOKUP CUSTOMER_AVATAR_ID (Linee 119-130):
+   WHERE id = ${data.customer_avatar_id}
+   ❌ PROBLEMA: data.customer_avatar_id è number, id è UUID
+   ❌ PostgreSQL converte number a string - SALVA UUID SBAGLIATO
+
+4. DEFAULT SALESPERSON_ID = 0 (Linea 133):
+   const salespersonId = avatar.assigned_salesperson_id || 0;
+   ⚠️ Se not assigned, usa 0 - non verificato se esiste
+
+5. CAMPI SALVATI:
+   - customer_avatar_id (STRING UUID) - ❌ riceve number
+   - salesperson_id (INT) - default 0
+   - salesperson_name (VARCHAR) - default "Non assegnato"
+   - interaction_type (ENUM: visit, call, email, whatsapp, other)
+   - interaction_date (TIMESTAMP) - NOW()
+   - outcome (ENUM: successful, unsuccessful, neutral, follow_up_needed)
+   - notes (TEXT) - optional
+   - order_placed (BOOLEAN) - default false
+   - order_value (NUMERIC) - optional
+   - samples_given (JSONB) - array
+   - next_follow_up_date (TIMESTAMP) - optional
+   - created_at, updated_at (TIMESTAMP) - NOW()
+
+6. FUNZIONE UPDATE AVATAR (Linee 201-243):
+   ❌ PROBLEMA: parametro avatarId definito come number (linea 202)
+   ❌ Dovrebbe essere string (UUID)
+
+7. LIMITI QUERY:
+   ⚠️ Default LIMIT 50 - nessun massimo verificato
+
+8. GESTIONE ERRORI:
+   ✓ 400 se validazione fallisce
+   ✓ 404 se avatar non trovato
+   ⚠️ 500 con error.message esposto (security risk)
+
+GET - LETTURA INTERAZIONI (Linee 20-91)
+=========================================
+
+1. PARAMETRI:
+   customer_avatar_id (string) ✓
+   salesperson_id (string → parseInt) ✓
+   interaction_type (string) ✓
+   limit (int, default 50) ✓
+   offset (int, default 0) ✓
+
+2. QUERY SQL (Linee 54-63):
+   SELECT i.*, ca.name FROM maestro_interactions i
+   JOIN customer_avatars ca ON i.customer_avatar_id = ca.id
+   ⚠️ INNER JOIN - esclude interazioni orfane
+   Dovrebbe essere LEFT JOIN per completeness
+
+3. JSON PARSING (Linee 70-73):
+   ❌ PROBLEMA: JSON.parse senza typeof check
+   Se samples_given è già object, fallisce
+
+4. ERRORI: ⚠️ Exposes error.message
+
+
+ENDPOINT 2: POST /api/stella/save-conversation
+File: app/api/stella/save-conversation/route.ts
+Linee: 294-389
+
+1. LOOKUP CUSTOMER (Linee 305-309):
+   SELECT id FROM customer_avatars
+   WHERE odoo_partner_id = ${partnerId}
+   ✓ CORRETTO: Usa odoo_partner_id (number) per lookup
+   ✓ Restituisce id (UUID string)
+
+2. SALVATAGGIO INTERAZIONI:
+   INSERT (Linee 350-374):
+   ✓ Usa customerAvatarId da SELECT (string UUID)
+   
+   UPDATE (Linee 336-341):
+   ✓ Append notes, update updated_at
+
+3. ❌ HARDCODED SALESPERSON:
+   salesperson_id = 1 (Linea 364)
+   salesperson_name = 'Stella AI Assistant' (Linea 365)
+   ⚠️ ID 1 non verificato se esiste
+   ⚠️ Nome non corrisponde a Odoo
+
+4. ❌ TIMEZONE HARDCODED (Linea 326):
+   AT TIME ZONE 'Europe/Rome'
+   Se server è in UTC, date filters sbagliano
+
+5. ❌ SILENT ERROR CATCH (Linee 386-389):
+   Odoo task salvato, DB no → DATA INCONSISTENCY
+   ⚠️ Nessun retry
+
+
+ENDPOINT 3: GET /api/maestro/customers/[id]
+File: app/api/maestro/customers/[id]/route.ts
+Linee: 97-130
+
+1. LOOKUP (Linee 34-37):
+   WHERE odoo_partner_id = ${odooPartnerId}
+   ✓ CORRETTO
+
+2. FETCH INTERAZIONI (Linee 102-107):
+   WHERE customer_avatar_id = ${avatarData.id}
+   ✓ CORRETTO: Usa avatarData.id (string UUID)
+   ✓ LIMIT 100
+
+3. JSON PARSING (Linee 109-114):
+   ✓ CORRETTO: Usa typeof check prima di parse
+
+4. DEBUG LOGGING (Linee 100-125):
+   ✓ POSITIVO: Logging dettagliato
+
+
+ENDPOINT 4: GET /api/maestro/avatars/[id]
+File: app/api/maestro/avatars/[id]/route.ts
+Linee: 62-81
+
+1. FETCH INTERAZIONI (Linee 65-70):
+   WHERE customer_avatar_id = ${avatarId}
+   ✓ CORRETTO: Usa avatarId (string UUID)
+   ✓ LIMIT 5 per ultime 5
+
+2. ERROR HANDLING (Linee 78-81):
+   ✓ Permette table non esistente
+
+
+ENDPOINT 5: GET /api/maestro/daily-plan
+File: app/api/maestro/daily-plan/route.ts
+Linee: 96-115
+
+1. ❌ CRITICO TYPE ERROR (Linea 105):
+   WHERE customer_avatar_id = ANY($1::int[])
+   ❌ SBAGLIATO: Int per UUID (string)
+   ✓ CORREGGI: ::text[]
+   ❌ QUERY FALLISCE COMPLETAMENTE
+
+
+DEBUG ENDPOINTS
+===============
+
+1. GET /api/debug/check-interactions
+   Linea 37: Usa lauraUUID (string) ✓
+   Linea 39: LIMIT 20 (non configurabile)
+
+2. POST /api/debug/fix-laura-interactions
+   Linea 23: WHERE customer_avatar_id = '297' 
+   ❌ Hardcoded fix una-tantum per Laura
+   ⚠️ Non generalizzabile
+
+
+PROBLEMI CRITICI SUMMARY
+=========================
+
+🔴 CRITICO #1: customer_avatar_id type mismatch
+   Location: lib/maestro/validation.ts:37
+   Problem: z.number() vs string UUID in database
+   Impact: Interazioni orfane nel database
+   Fix: Cambia a z.string().uuid()
+
+🔴 CRITICO #2: daily-plan query type error
+   Location: app/api/maestro/daily-plan/route.ts:105
+   Problem: ANY($1::int[]) vs UUID string array
+   Impact: Query fallisce, daily plan non funziona
+   Fix: Cambia ::int[] a ::text[]
+
+🔴 CRITICO #3: Hardcoded Laura fix
+   Location: app/api/debug/fix-laura-interactions/route.ts:23
+   Problem: Una-tantum per customer_avatar_id='297'
+   Impact: Se altri clienti hanno stesso problema, nessun fix
+
+🟡 ALTO #1: Hardcoded salesperson_id=1
+   Location: app/api/stella/save-conversation/route.ts:364
+   Problem: ID 1 non verificato, nome non corrisponde Odoo
+   
+🟡 ALTO #2: Silent error in Stella save
+   Location: app/api/stella/save-conversation/route.ts:386-389
+   Problem: Odoo task salvato, DB no → data inconsistency
+
+🟡 ALTO #3: Timezone hardcoded
+   Location: app/api/stella/save-conversation/route.ts:326
+   Problem: 'Europe/Rome' hardcoded, non configurabile
+
+🟡 MEDIO #1: JSON.parse senza typeof check
+   Location: app/api/maestro/interactions/route.ts:72
+   Problem: Se DB restituisce object, JSON.parse fallisce
+
+🟡 MEDIO #2: INNER JOIN esclude orfane
+   Location: app/api/maestro/interactions/route.ts:59
+   Problem: Dovrebbe LEFT JOIN per completeness
+
+⚠️ SECURITY: Error message exposure
+   Multiple locations: Espone error.message al client
+
+
+PATTERN QUERY CORRETTO VS SBAGLIATO
+===================================
+
+❌ SBAGLIATO:
+   1. POST /interactions: customer_avatar_id come number
+   2. GET /daily-plan: ANY($1::int[]) per UUID
+   3. POST /interactions: updateAvatarAfterInteraction con avatarId number
+
+✓ CORRETTO:
+   1. /stella/save-conversation: odoo_partner_id (number) → avatar.id (string)
+   2. /customers/[id]: odoo_partner_id → avatarData.id
+   3. /avatars/[id]: Usa avatarId (string UUID) direttamente
+

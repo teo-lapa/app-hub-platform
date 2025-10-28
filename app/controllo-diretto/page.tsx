@@ -665,25 +665,25 @@ export default function ControlloDirettoPage() {
 
                           {/* Stato controllo (se presente) */}
                           {control && (
-                            <div className={`mb-3 p-2 rounded-lg ${
-                              control.status === 'ok' ? 'bg-green-100' : 'bg-red-100'
+                            <div className={`mb-3 p-3 rounded-lg ${
+                              control.status === 'ok' ? 'bg-green-100 border border-green-300' : 'bg-red-100 border border-red-300'
                             }`}>
                               <div className="flex items-center justify-between">
-                                <div className="text-sm">
-                                  {control.status === 'ok' && '✅ Tutto OK'}
-                                  {control.status === 'error_qty' && '⚠️ Errore Quantità'}
-                                  {control.status === 'missing' && '❌ Prodotto Mancante'}
-                                  {control.status === 'damaged' && '🔧 Prodotto Danneggiato'}
-                                  {control.status === 'lot_error' && '📅 Lotto/Scadenza Errata'}
-                                  {control.status === 'location_error' && '📍 Ubicazione Errata'}
-                                  {control.status === 'note' && '📝 Nota'}
+                                <div className="text-sm font-semibold flex items-center gap-2">
+                                  {control.status === 'ok' && <><span className="text-base">✅</span> Tutto OK</>}
+                                  {control.status === 'error_qty' && <><span className="text-base">⚠️</span> Errore Quantità</>}
+                                  {control.status === 'missing' && <><span className="text-base">❌</span> Mancante</>}
+                                  {control.status === 'damaged' && <><span className="text-base">🔧</span> Danneggiato</>}
+                                  {control.status === 'lot_error' && <><span className="text-base">📅</span> Lotto Errato</>}
+                                  {control.status === 'location_error' && <><span className="text-base">📍</span> Ubicazione Errata</>}
+                                  {control.status === 'note' && <><span className="text-base">📝</span> Nota</>}
                                 </div>
                                 <div className="text-xs text-gray-600">
                                   {control.controlledAt && new Date(control.controlledAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
                                 </div>
                               </div>
                               {control.note && (
-                                <div className="text-xs text-gray-700 mt-1">"{control.note}"</div>
+                                <div className="text-xs text-gray-700 mt-2 italic">"{control.note}"</div>
                               )}
                             </div>
                           )}
@@ -717,47 +717,47 @@ export default function ControlloDirettoPage() {
 
                               {/* Dropdown Menu */}
                               {isDropdownOpen && (
-                                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border-2 border-gray-200 z-50">
+                                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border-2 border-gray-300" style={{ zIndex: 9999 }}>
                                   <button
                                     onClick={() => selectErrorType(product, 'error_qty')}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                    className="w-full px-4 py-3 text-left hover:bg-orange-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-sm font-medium"
                                   >
-                                    <span>⚠️</span>
+                                    <span className="text-lg">⚠️</span>
                                     <span>Errore Quantità</span>
                                   </button>
                                   <button
                                     onClick={() => selectErrorType(product, 'missing')}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                    className="w-full px-4 py-3 text-left hover:bg-red-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-sm font-medium"
                                   >
-                                    <span>❌</span>
+                                    <span className="text-lg">❌</span>
                                     <span>Prodotto Mancante</span>
                                   </button>
                                   <button
                                     onClick={() => selectErrorType(product, 'damaged')}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                    className="w-full px-4 py-3 text-left hover:bg-yellow-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-sm font-medium"
                                   >
-                                    <span>🔧</span>
-                                    <span>Prodotto Danneggiato</span>
+                                    <span className="text-lg">🔧</span>
+                                    <span>Danneggiato</span>
                                   </button>
                                   <button
                                     onClick={() => selectErrorType(product, 'lot_error')}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                    className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-sm font-medium"
                                   >
-                                    <span>📅</span>
-                                    <span>Lotto/Scadenza Errata</span>
+                                    <span className="text-lg">📅</span>
+                                    <span>Lotto Errato</span>
                                   </button>
                                   <button
                                     onClick={() => selectErrorType(product, 'location_error')}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                    className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-sm font-medium"
                                   >
-                                    <span>📍</span>
+                                    <span className="text-lg">📍</span>
                                     <span>Ubicazione Errata</span>
                                   </button>
                                   <button
                                     onClick={() => selectErrorType(product, 'note')}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 text-sm font-medium"
                                   >
-                                    <span>📝</span>
+                                    <span className="text-lg">📝</span>
                                     <span>Aggiungi Nota</span>
                                   </button>
                                 </div>
