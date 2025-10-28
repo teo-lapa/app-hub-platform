@@ -106,7 +106,9 @@ async function parsePage(
       responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
 
       // Log response for debugging
-      console.log(`📄 Response pagina ${pageNumber} (primi 800 chars):`, responseText.substring(0, 800));
+      console.log(`📄 Response pagina ${pageNumber} (primi 1500 chars):`, responseText.substring(0, 1500));
+      console.log(`📊 Response type:`, firstContent?.type);
+      console.log(`📏 Response length:`, responseText.length, 'chars');
 
       // Try to parse JSON
       let parsedData;
@@ -140,11 +142,27 @@ async function parsePage(
 
     } catch (error: any) {
       console.error(`❌ Errore pagina ${pageNumber}, tentativo ${attempt}:`, error.message);
+      console.error(`🔍 Error stack:`, error.stack);
+
       if (error.message.includes('Nessun JSON valido trovato') && responseText) {
-        console.error(`📄 Response text preview:`, responseText.substring(0, 500));
+        console.error(`📄 Full response text (for debugging):`, responseText);
+        console.error(`📄 Response text length:`, responseText.length);
+
+        // Try to find any JSON-like structure
+        const possibleJson = responseText.match(/\{[\s\S]*\}/g);
+        if (possibleJson) {
+          console.error(`🔍 Found ${possibleJson.length} potential JSON structures:`);
+          possibleJson.forEach((json, idx) => {
+            console.error(`  ${idx + 1}. First 200 chars:`, json.substring(0, 200));
+          });
+        } else {
+          console.error(`❌ No JSON-like structures found in response`);
+        }
       }
+
       if (attempt === maxAttempts) {
         console.error(`⚠️ Pagina ${pageNumber} saltata dopo ${maxAttempts} tentativi`);
+        console.error(`📄 Ultima response salvata per debug`);
         return null;
       }
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -239,6 +257,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('📥 [PARSE-ATTACHMENT] Scarico allegato ID:', attachment_id);
+    console.log('🔐 Session UID:', uid);
 
     // Scarica allegato da Odoo
     const attachments = await callOdoo(cookies, 'ir.attachment', 'read', [
@@ -253,7 +272,7 @@ export async function POST(request: NextRequest) {
     }
 
     const attachment = attachments[0];
-    console.log('📄 Allegato:', attachment.name, `(${attachment.mimetype}, ${attachment.file_size} bytes)`);
+    console.log('📄 Allegato:', attachment.name, `(${attachment.mimetype}, ${(attachment.file_size / 1024).toFixed(2)} KB)`);
 
     // Valida dimensione file
     const maxSize = 10 * 1024 * 1024; // 10 MB
