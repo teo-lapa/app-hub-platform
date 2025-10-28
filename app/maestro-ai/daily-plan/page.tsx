@@ -57,6 +57,7 @@ interface CustomerCardData {
   recommendation: string;
   suggested_products: string[];
   priority: 'urgent' | 'high' | 'medium' | 'low';
+  assigned_salesperson_id?: number; // FIX: Added to show vehicle products correctly
 }
 
 // ============================================================================
@@ -83,7 +84,8 @@ function mapToCardData(customer: CustomerWithRecommendations, priority: 'urgent'
     last_order_days: avatar.days_since_last_order,
     recommendation: topRec?.description || 'Contattare cliente per follow-up di routine',
     suggested_products: topRec?.suggested_products?.map(id => `Prodotto ID ${id}`) || [],
-    priority
+    priority,
+    assigned_salesperson_id: avatar.assigned_salesperson_id // FIX: Include salesperson ID
   };
 }
 
@@ -138,7 +140,7 @@ export default function DailyPlanPage() {
 
   const [loading, setLoading] = useState(false);
 
-  const [selectedCustomer, setSelectedCustomer] = useState<{id: string, name: string, odoo_partner_id: number} | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<{id: string, name: string, odoo_partner_id: number, assigned_salesperson_id?: number} | null>(null);
   const [filterPriority, setFilterPriority] = useState<'all' | 'urgent' | 'high' | 'medium'>('all');
   const [filterCity, setFilterCity] = useState<string>('all');
 
@@ -225,7 +227,8 @@ export default function DailyPlanPage() {
       setSelectedCustomer({
         id: customer.id,
         name: customer.name,
-        odoo_partner_id: customer.odoo_partner_id
+        odoo_partner_id: customer.odoo_partner_id,
+        assigned_salesperson_id: customer.assigned_salesperson_id // FIX: Pass salesperson ID
       });
     }
   };
@@ -667,7 +670,7 @@ export default function DailyPlanPage() {
           customerId={selectedCustomer.id}
           customerName={selectedCustomer.name}
           odooPartnerId={selectedCustomer.odoo_partner_id}
-          salesPersonId={selectedVendor?.id}
+          salesPersonId={selectedCustomer.assigned_salesperson_id} // FIX: Use customer's assigned salesperson, not filter
         />
       )}
     </div>
