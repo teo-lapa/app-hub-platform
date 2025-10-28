@@ -14,30 +14,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Posta messaggio nel Chatter tramite RPC
+    // Posta messaggio nel Chatter usando message_post sul record
     const rpcResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/odoo/rpc`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'mail.message',
-        method: 'create',
-        args: [[{
-          model: model,
-          res_id: res_id,
+        model: model,
+        method: 'message_post',
+        args: [[res_id]],
+        kwargs: {
           body: message.replace(/\n/g, '<br/>'),
           message_type: 'comment',
-          subtype_id: 1
-        }]],
-        kwargs: {}
+          subtype_xmlid: 'mail.mt_comment'
+        }
       })
     });
 
     if (!rpcResponse.ok) {
-      throw new Error('Errore chiamata RPC');
+      const errorText = await rpcResponse.text();
+      console.error('❌ RPC Response error:', errorText);
+      throw new Error(`Errore chiamata RPC: ${errorText}`);
     }
 
     const rpcData = await rpcResponse.json();
     if (!rpcData.success) {
+      console.error('❌ RPC Data error:', rpcData);
       throw new Error(rpcData.error || 'Errore RPC');
     }
 
