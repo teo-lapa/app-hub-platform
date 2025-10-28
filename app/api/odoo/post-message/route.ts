@@ -24,8 +24,7 @@ export async function POST(request: NextRequest) {
         args: [[res_id]],
         kwargs: {
           body: message.replace(/\n/g, '<br/>'),
-          message_type: 'comment',
-          subtype_xmlid: 'mail.mt_comment'
+          message_type: 'comment'
         }
       })
     });
