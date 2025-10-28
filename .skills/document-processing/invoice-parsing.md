@@ -1,10 +1,10 @@
 ---
 name: invoice-parsing
-version: 1.5.0
+version: 1.6.0
 description: Estrae dati strutturati da fatture fornitori per arrivi merce
 category: document-processing
 tags: [parsing, invoice, pdf, vision, ocr]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-15
 updated: 2025-10-28
