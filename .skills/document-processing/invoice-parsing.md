@@ -1,13 +1,13 @@
 ---
 name: invoice-parsing
-version: 1.4.0
+version: 1.5.0
 description: Estrae dati strutturati da fatture fornitori per arrivi merce
 category: document-processing
 tags: [parsing, invoice, pdf, vision, ocr]
 model: claude-3-5-sonnet-20241022
 author: Lapa Team
 created: 2025-01-15
-updated: 2025-01-27
+updated: 2025-10-28
 ---
 
 # 📄 Invoice Parsing Skill
@@ -100,6 +100,201 @@ Input: "2025-12-31"      → Output: "2025-12-31" (già corretto)
 **Casi speciali**:
 - Se solo mese/anno: usa ultimo giorno del mese
 - Se formato ambiguo (es: 01/02/2025): assumi formato europeo (GG/MM/YYYY)
+
+---
+
+### 🛒 REGOLA #3B: Aligro - Scontrini Cash & Carry (FORMATO RETAIL)
+
+**Fornitore specifico**: ALIGRO Demaurex & Cie SA
+
+#### 🚨 CARATTERISTICHE FORMATO
+
+Aligro è un **cash & carry** che emette **scontrini fiscali** anziché fatture B2B tradizionali.
+
+**Differenze chiave rispetto alle fatture normali**:
+- Formato scontrino POS (non fattura)
+- Prodotti raggruppati per categoria (Spirituosen, Lebensmittel, Fisch, ecc.)
+- Quantità espresse come "NR" (numero pezzi) non KG
+- Prezzi in CHF (franchi svizzeri)
+- Struttura tabellare compatta
+
+**Layout tipico scontrino Aligro**:
+```
+Anz.  Verp.  Artikelbezeichnung                    Rabatt  Exkl.MwSt  MwSt   Total
+2 x   FL     Marsala Miranda DOP 17% 1 l           2.0%    8.52       8.1%   18.42
+1 x   GLS    Thomy Tartaraise Sauce 880 g          33.6%   7.12       2.6%   7.30
+3 x   ST     Sardellenfilets Marinierte 1kg        2.0%    16.52      2.6%   50.85
+```
+
+**Campi nella tabella**:
+- **Anz.** = Anzahl (quantità) - ES: "2 x", "3 x", "5 x"
+- **Verp.** = Verpackung (tipo confezione) - ES: "FL" (Flasche/bottiglia), "GLS" (Glas/barattolo), "ST" (Stück/pezzo)
+- **Artikelbezeichnung** = Descrizione prodotto (in tedesco/italiano)
+- **Rabatt** = Sconto percentuale
+- **Exkl.MwSt** = Prezzo unitario senza IVA
+- **MwSt** = Aliquota IVA
+- **Total** = Totale riga
+
+#### 🎯 Regole di Estrazione
+
+**1. QUANTITÀ**:
+```
+Input: "2 x FL Marsala Miranda DOP..."
+→ quantity: 2.0
+→ unit: "NR" (numero pezzi)
+
+Input: "5 x BTL Chicken-Nuggets..."
+→ quantity: 5.0
+→ unit: "NR"
+```
+
+**2. DESCRIZIONE PRODOTTO**:
+- Rimuovi il tipo confezione (FL, GLS, ST, BTL, PAK, ecc.)
+- Mantieni il nome completo del prodotto
+- Esempi:
+  - "FL Marsala Miranda DOP 17% 1 l" → "Marsala Miranda DOP 17% 1 l"
+  - "GLS Thomy Tartaraise Sauce 880 g" → "Thomy Tartaraise Sauce 880 g"
+
+**3. CODICE ARTICOLO**:
+- Aligro **NON fornisce codici articolo** negli scontrini
+- Imposta `article_code: null` per tutti i prodotti
+
+**4. LOTTO E SCADENZA**:
+- Gli scontrini Aligro **NON contengono lotti e scadenze**
+- Imposta `lot_number: null` e `expiry_date: null`
+
+**5. UNITÀ DI MISURA**:
+- Usa sempre `unit: "NR"` (numero pezzi)
+- Anche se il prodotto è in KG o litri, la quantità fatturata è in pezzi
+
+**6. FORNITORE**:
+```json
+{
+  "supplier_name": "ALIGRO Demaurex & Cie SA",
+  "supplier_vat": "10596820"
+}
+```
+- P.IVA Aligro: CHE-105.968.205 TVA → Estrai solo numeri: "10596820"
+
+**7. NUMERO DOCUMENTO**:
+- Cerca "Rechnung Nr." (numero scontrino)
+- Esempio: "Rechnung Nr. 5-1-1299" → document_number: "5-1-1299"
+
+**8. DATA DOCUMENTO**:
+- Cerca la data in formato "DD.MM.YYYY HH:MM:SS"
+- Esempio: "28.10.2025 17:41:51" → document_date: "2025-10-28"
+
+#### 📊 Esempio Completo
+
+**Input scontrino Aligro**:
+```
+Rechnung Nr. 5-1-1299
+28.10.2025 17:41:51
+
+2 x FL Marsala Miranda DOP 17% 1 l             2.0%  8.52   8.1%  18.42
+1 x GLS Thomy Tartaraise Sauce 880 g          33.6%  7.12   2.6%   7.30
+1 x KAR Thomy Ketchup 72x20 g                  2.0% 21.40   2.6%  21.95
+3 x ST Sardellenfilets Marinierte 1kg          2.0% 16.52   2.6%  50.85
+```
+
+**Output JSON corretto**:
+```json
+{
+  "parsing_summary": {
+    "total_lines_in_invoice": 4,
+    "unique_products_after_consolidation": 4,
+    "duplicates_found": 0
+  },
+  "supplier_name": "ALIGRO Demaurex & Cie SA",
+  "supplier_vat": "10596820",
+  "document_number": "5-1-1299",
+  "document_date": "2025-10-28",
+  "products": [
+    {
+      "article_code": null,
+      "description": "Marsala Miranda DOP 17% 1 l",
+      "quantity": 2.0,
+      "unit": "NR",
+      "lot_number": null,
+      "expiry_date": null,
+      "variant": "1 l"
+    },
+    {
+      "article_code": null,
+      "description": "Thomy Tartaraise Sauce",
+      "quantity": 1.0,
+      "unit": "NR",
+      "lot_number": null,
+      "expiry_date": null,
+      "variant": "880 g"
+    },
+    {
+      "article_code": null,
+      "description": "Thomy Ketchup",
+      "quantity": 1.0,
+      "unit": "NR",
+      "lot_number": null,
+      "expiry_date": null,
+      "variant": "72x20 g"
+    },
+    {
+      "article_code": null,
+      "description": "Sardellenfilets Marinierte",
+      "quantity": 3.0,
+      "unit": "NR",
+      "lot_number": null,
+      "expiry_date": null,
+      "variant": "1kg"
+    }
+  ]
+}
+```
+
+#### 🔍 Come Riconoscere uno Scontrino Aligro
+
+**Keyword nel documento**:
+- "ALIGRO" nel header
+- "Demaurex & Cie SA"
+- "Rechnung Nr." (numero scontrino)
+- "Anz." e "Verp." nelle colonne
+- Categorie prodotti: "Spirituosen", "Lebensmittel", "Fisch", "Milchprodukte", "Tiefkühlprodukte", "Waschpulver"
+- Footer: "Danke für Ihren Besuch !"
+- Indirizzo: "Bernerstrasse 335, 8952 Schlieren"
+
+**Quando applicare questa regola**:
+```
+SE fornitore == "ALIGRO" O documento contiene "Demaurex & Cie SA":
+  → Usa regole Aligro (REGOLA #3B)
+  → article_code = null
+  → lot_number = null
+  → expiry_date = null
+  → unit = "NR"
+  → Estrai quantità da "Anz." (es: "2 x" → 2.0)
+```
+
+#### ⚠️ Limitazioni
+
+Gli scontrini Aligro **NON forniscono**:
+- ❌ Codici articolo
+- ❌ Numeri di lotto
+- ❌ Date di scadenza
+
+**Implicazioni per il magazzino**:
+- Il matching prodotti dovrà essere fatto manualmente o per descrizione
+- La tracciabilità lotti non è disponibile per questi acquisti
+- L'utente dovrà inserire manualmente lotti e scadenze dopo l'import
+
+#### ✅ Checklist Validazione Aligro
+
+- [ ] Ho riconosciuto che è uno scontrino Aligro?
+- [ ] Ho impostato supplier_name = "ALIGRO Demaurex & Cie SA"?
+- [ ] Ho estratto il numero scontrino da "Rechnung Nr."?
+- [ ] Ho impostato article_code = null per tutti i prodotti?
+- [ ] Ho impostato lot_number = null per tutti i prodotti?
+- [ ] Ho impostato expiry_date = null per tutti i prodotti?
+- [ ] Ho estratto la quantità corretta da "Anz." (es: "2 x" → 2.0)?
+- [ ] Ho impostato unit = "NR" per tutti i prodotti?
+- [ ] Ho rimosso il tipo confezione dalla descrizione (FL, GLS, ST, ecc.)?
 
 ---
 
@@ -1025,6 +1220,15 @@ Rispondi SOLO con JSON valido. NESSUN testo aggiuntivo prima o dopo.
 ---
 
 ## 📝 Changelog
+
+### v1.5.0 (2025-10-28)
+- ✅ **REGOLA #3B**: Aligro - Supporto scontrini cash & carry
+- ✅ Gestione formato retail/scontrino POS (non solo fatture B2B)
+- ✅ Parsing scontrini Aligro Demaurex & Cie SA
+- ✅ Estrazione corretta quantità da "Anz." (es: "2 x" → 2.0)
+- ✅ Gestione assenza codici articolo, lotti e scadenze negli scontrini
+- ✅ Supporto descrizioni prodotti in tedesco/italiano
+- ✅ Conversione P.IVA svizzera (CHE-XXX.XXX.XXX → solo numeri)
 
 ### v1.4.0 (2025-01-27)
 - ✅ **REGOLA #8 EXTENDED**: Auricchio - Linking lotti/scadenze da tabella dettaglio
