@@ -1,0 +1,69 @@
+### Test Transfer to Waste from Scadenze
+### Questo endpoint trasferisce prodotti scaduti/in scadenza alla location "MERCE DETERIORATA" (Scarti)
+
+### 1. Transfer prodotto scaduto a scarti - TEST
+POST http://localhost:3000/api/scadenze/transfer
+Content-Type: application/json
+
+{
+  "productId": 123,
+  "lotId": 456,
+  "sourceLocationId": 789,
+  "quantity": 5,
+  "reason": "Prodotto scaduto"
+}
+
+### 2. Transfer prodotto con motivo "Danneggiato"
+POST http://localhost:3000/api/scadenze/transfer
+Content-Type: application/json
+
+{
+  "productId": 234,
+  "lotId": 567,
+  "sourceLocationId": 890,
+  "quantity": 2,
+  "reason": "Confezione danneggiata"
+}
+
+### 3. Transfer prodotto con motivo "Scadenza imminente"
+POST http://localhost:3000/api/scadenze/transfer
+Content-Type: application/json
+
+{
+  "productId": 345,
+  "lotId": 678,
+  "sourceLocationId": 901,
+  "quantity": 10,
+  "reason": "Scadenza tra 2 giorni - rimozione preventiva"
+}
+
+### 4. Test parametri mancanti - dovrebbe fallire
+POST http://localhost:3000/api/scadenze/transfer
+Content-Type: application/json
+
+{
+  "productId": 123,
+  "sourceLocationId": 789
+}
+
+### 5. Test senza lotto - dovrebbe fallire
+POST http://localhost:3000/api/scadenze/transfer
+Content-Type: application/json
+
+{
+  "productId": 123,
+  "sourceLocationId": 789,
+  "quantity": 5,
+  "reason": "Test senza lotto"
+}
+
+### Note:
+### - La destination location è hardcoded: WASTE_LOCATION_ID = 648 (MERCE DETERIORATA)
+### - Il lotto (lotId) è OBBLIGATORIO per questo endpoint
+### - L'endpoint crea automaticamente:
+###   1. Stock Picking (tipo: internal)
+###   2. Stock Move
+###   3. Stock Move Line (con lot_id)
+###   4. Conferma il picking (action_confirm)
+###   5. Valida il picking (button_validate)
+### - Response include pickingId e moveId per tracciabilità

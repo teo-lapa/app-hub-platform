@@ -1,0 +1,176 @@
+### API Tests - Mark as Reviewed Endpoint
+### Usa REST Client extension di VS Code
+
+@baseUrl = http://localhost:3000
+@apiPath = /api/scadenze/mark-reviewed
+
+### ============================================
+### POST: Salva una review
+### ============================================
+
+POST {{baseUrl}}{{apiPath}}
+Content-Type: application/json
+
+{
+  "productId": 12345,
+  "lotId": 67890,
+  "locationId": 28,
+  "reviewedBy": "test.user@example.com",
+  "note": "Verificato fisicamente - prodotto in buone condizioni"
+}
+
+### ============================================
+### POST: Review senza note (opzionale)
+### ============================================
+
+POST {{baseUrl}}{{apiPath}}
+Content-Type: application/json
+
+{
+  "productId": 54321,
+  "lotId": 98765,
+  "locationId": 29,
+  "reviewedBy": "mario.rossi@example.com"
+}
+
+### ============================================
+### POST: Review con nota estesa
+### ============================================
+
+POST {{baseUrl}}{{apiPath}}
+Content-Type: application/json
+
+{
+  "productId": 11111,
+  "lotId": 22222,
+  "locationId": 30,
+  "reviewedBy": "supervisor@example.com",
+  "note": "Controllo approfondito eseguito. Prodotto conforme. Nessuna anomalia riscontrata. Temperatura di conservazione corretta."
+}
+
+### ============================================
+### POST: Errore - Campi mancanti
+### ============================================
+
+POST {{baseUrl}}{{apiPath}}
+Content-Type: application/json
+
+{
+  "productId": 12345,
+  "reviewedBy": "test@example.com"
+}
+
+### ============================================
+### POST: Errore - Body vuoto
+### ============================================
+
+POST {{baseUrl}}{{apiPath}}
+Content-Type: application/json
+
+{}
+
+### ============================================
+### GET: Tutte le reviews
+### ============================================
+
+GET {{baseUrl}}{{apiPath}}
+
+### ============================================
+### GET: Reviews per prodotto specifico
+### ============================================
+
+GET {{baseUrl}}{{apiPath}}?product_id=12345
+
+### ============================================
+### GET: Reviews per lotto specifico
+### ============================================
+
+GET {{baseUrl}}{{apiPath}}?lot_id=67890
+
+### ============================================
+### GET: Reviews per ubicazione specifica
+### ============================================
+
+GET {{baseUrl}}{{apiPath}}?location_id=28
+
+### ============================================
+### GET: Reviews combinate (prodotto + lotto)
+### ============================================
+
+GET {{baseUrl}}{{apiPath}}?product_id=12345&lot_id=67890
+
+### ============================================
+### GET: Reviews con limite risultati
+### ============================================
+
+GET {{baseUrl}}{{apiPath}}?limit=5
+
+### ============================================
+### GET: Reviews recenti (ultime 10)
+### ============================================
+
+GET {{baseUrl}}{{apiPath}}?limit=10
+
+### ============================================
+### SCENARIO TEST: Ciclo completo
+### ============================================
+
+### 1. Salva review per prodotto frigo
+POST {{baseUrl}}{{apiPath}}
+Content-Type: application/json
+
+{
+  "productId": 100,
+  "lotId": 200,
+  "locationId": 28,
+  "reviewedBy": "frigo.operator@example.com",
+  "note": "FRIGO - Verificato alle 08:30"
+}
+
+###
+
+### 2. Salva review per prodotto secco
+POST {{baseUrl}}{{apiPath}}
+Content-Type: application/json
+
+{
+  "productId": 101,
+  "lotId": 201,
+  "locationId": 29,
+  "reviewedBy": "secco.operator@example.com",
+  "note": "SECCO - Verificato alle 09:15"
+}
+
+###
+
+### 3. Salva review per prodotto pingu
+POST {{baseUrl}}{{apiPath}}
+Content-Type: application/json
+
+{
+  "productId": 102,
+  "lotId": 202,
+  "locationId": 31,
+  "reviewedBy": "pingu.operator@example.com",
+  "note": "PINGU - Verificato alle 10:00"
+}
+
+###
+
+### 4. Recupera tutte le reviews appena create
+GET {{baseUrl}}{{apiPath}}?limit=100
+
+###
+
+### 5. Filtra per zona FRIGO (location_id = 28)
+GET {{baseUrl}}{{apiPath}}?location_id=28
+
+###
+
+### 6. Filtra per zona SECCO (location_id = 29)
+GET {{baseUrl}}{{apiPath}}?location_id=29
+
+###
+
+### 7. Filtra per zona PINGU (location_id = 31)
+GET {{baseUrl}}{{apiPath}}?location_id=31
