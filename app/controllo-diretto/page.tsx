@@ -241,8 +241,19 @@ export default function ControlloDirettoPage() {
   function markProductOK(product: ProductGroup) {
     if (!currentBatch || !currentZone || !user) return;
 
-    // Salva solo in locale
     const newControls = new Map(productControls);
+    const existingControl = newControls.get(product.productId);
+
+    // Se già OK, rimuovi il controllo (deseleziona)
+    if (existingControl?.status === 'ok') {
+      newControls.delete(product.productId);
+      setProductControls(newControls);
+      saveToLocalStorage(newControls);
+      toast.success('↩️ Controllo rimosso');
+      return;
+    }
+
+    // Altrimenti, marca come OK
     newControls.set(product.productId, {
       productId: product.productId,
       status: 'ok',
@@ -733,16 +744,16 @@ export default function ControlloDirettoPage() {
                             {/* Pulsante OK */}
                             <button
                               onClick={() => markProductOK(product)}
-                              disabled={!!control || isLoading}
+                              disabled={(control && control.status !== 'ok') || isLoading}
                               className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
                                 control?.status === 'ok'
-                                  ? 'bg-green-600 text-white'
+                                  ? 'bg-green-600 text-white hover:bg-green-700'
                                   : control
                                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                   : 'bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50'
                               }`}
                             >
-                              {control?.status === 'ok' ? '✅ OK' : control ? '🔄 Cambia' : 'OK'}
+                              {control?.status === 'ok' ? '✅ OK (clicca per rimuovere)' : control ? '🔄 Cambia' : 'OK'}
                             </button>
 
                             {/* Pulsante Dropdown Errori */}
