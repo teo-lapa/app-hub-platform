@@ -157,6 +157,7 @@ export interface UrgentProduct {
   addedBy: string; // Email operatore
   addedAt: string; // ISO timestamp
   estimatedValue?: number;
+  suggestedPrice?: number; // Prezzo suggerito vendita
 }
 
 export interface AddUrgentProductRequest {
@@ -178,6 +179,7 @@ export interface AddUrgentProductRequest {
   note: string;
   addedBy: string;
   estimatedValue?: number;
+  suggestedPrice?: number;
 }
 
 export interface AddUrgentProductResponse {
