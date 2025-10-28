@@ -324,9 +324,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 🆕 CARICA LO SKILL PER INVOICE PARSING
-    const skill = loadSkill('document-processing/invoice-parsing');
+    // Skip cache to always get the latest version
+    const skill = loadSkill('document-processing/invoice-parsing', { skipCache: true });
     logSkillInfo('document-processing/invoice-parsing');
-    console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version}`);
+    console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version} (model: ${skill.metadata.model})`);
 
     // 🆕 SPLIT STRATEGY FOR MULTI-PAGE PDFs
     let pagesToProcess: string[] = [];
