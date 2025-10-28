@@ -57,7 +57,7 @@ async function parsePage(
   pageNumber: number,
   totalPages: number,
   mediaType: string,
-  skill: any,
+  directPrompt: string,
   errorCollector?: Array<{page: number, error: string, response?: string}>
 ): Promise<any | null> {
   const isPDF = mediaType === 'application/pdf';
@@ -85,8 +85,8 @@ async function parsePage(
       console.log(`🤖 Tentativo ${attempt}/${maxAttempts} per pagina ${pageNumber}/${totalPages}...`);
 
       const message = await anthropic.messages.create({
-        model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
-        max_tokens: 8192, // Originale - ogni pagina ha meno prodotti
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 16384,
         temperature: 0,
         messages: [
           {
@@ -95,7 +95,7 @@ async function parsePage(
               contentBlock,
               {
                 type: 'text',
-                text: `${skill.content}\n\n---\n\nAnalizza questa pagina di fattura ed estrai i prodotti. Questa è la pagina ${pageNumber} di ${totalPages}.`,
+                text: directPrompt,
               },
             ],
           },
@@ -323,11 +323,34 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 🆕 CARICA LO SKILL PER INVOICE PARSING
-    // Skip cache to always get the latest version
-    const skill = loadSkill('document-processing/invoice-parsing', { skipCache: true });
-    logSkillInfo('document-processing/invoice-parsing');
-    console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version} (model: ${skill.metadata.model})`);
+    // PROMPT DIRETTO - NO SKILLS
+    const directPrompt = `Analizza questa fattura ed estrai TUTTI i prodotti in formato JSON.
+
+**IMPORTANTE PER ALIGRO (scontrini in tedesco)**:
+- Estrai SOLO le righe con "x" (es: "2 x FL", "3 x ST", "5 x BTL")
+- IGNORA le righe senza "x" (es: "2 Spirituosen", "3 Lebensmittel" - sono totali)
+- Quantità: prendi il numero prima di "x" (es: "2 x" → 2.0, "3 x 10ST" → 3.0)
+
+Formato JSON richiesto:
+{
+  "supplier_name": "...",
+  "supplier_vat": "...",
+  "document_number": "...",
+  "document_date": "YYYY-MM-DD",
+  "products": [
+    {
+      "article_code": "..." o null,
+      "description": "...",
+      "quantity": 0.0,
+      "unit": "NR" o "KG",
+      "lot_number": "..." o null,
+      "expiry_date": "YYYY-MM-DD" o null,
+      "variant": "..." o null
+    }
+  ]
+}
+
+Estrai TUTTI i prodotti che vedi. Non saltare nessuna riga di prodotto.`;
 
     // 🆕 SPLIT STRATEGY FOR MULTI-PAGE PDFs
     let pagesToProcess: string[] = [];
@@ -379,7 +402,7 @@ export async function POST(request: NextRequest) {
         i + 1,
         pagesToProcess.length,
         mediaType,
-        skill,
+        directPrompt,
         parseErrors
       );
 
