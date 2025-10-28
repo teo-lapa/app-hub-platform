@@ -37,7 +37,7 @@ interface ProductLine {
   moveLines: MoveLine[];
 }
 
-type ControlStatus = 'ok' | 'error_qty' | 'missing' | 'damaged' | 'lot_error' | 'location_error' | 'note' | null;
+type ControlStatus = 'ok' | 'error_qty' | 'missing' | 'damaged' | 'lot_error' | 'location_error' | 'note';
 
 interface ProductControl {
   productId: number;
@@ -79,7 +79,7 @@ export default function ControlloDirettoPage() {
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [currentErrorProduct, setCurrentErrorProduct] = useState<ProductGroup | null>(null);
-  const [errorType, setErrorType] = useState<ControlStatus>(null);
+  const [errorType, setErrorType] = useState<ControlStatus | null>(null);
   const [errorNote, setErrorNote] = useState<string>('');
 
   // Client Odoo
