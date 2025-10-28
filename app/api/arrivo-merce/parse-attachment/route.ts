@@ -52,39 +52,6 @@ async function splitPDFPages(base64PDF: string): Promise<string[]> {
 /**
  * Parse a single page with Claude + Skill
  */
-async function convertPDFToImage(pdfBase64: string): Promise<string> {
-  try {
-    const pdfBuffer = Buffer.from(pdfBase64, 'base64');
-    const { pdfToPng } = await import('pdf-to-png-converter');
-
-    // Converti PDF in PNG ad alta risoluzione
-    const pngPages = await pdfToPng(pdfBuffer, {
-      outputFolder: '/tmp',
-      outputFileMask: 'page',
-      viewportScale: 2.0, // Alta risoluzione
-      pagesToProcess: [1], // Solo prima pagina
-    });
-
-    if (pngPages.length === 0) {
-      throw new Error('Nessuna immagine generata dal PDF');
-    }
-
-    // Leggi l'immagine e converti in base64
-    const fs = await import('fs');
-    const imageBuffer = fs.readFileSync(pngPages[0].path);
-    const imageBase64 = imageBuffer.toString('base64');
-
-    // Pulisci file temporaneo
-    fs.unlinkSync(pngPages[0].path);
-
-    console.log(`✅ PDF convertito in PNG (${(imageBuffer.length / 1024).toFixed(1)} KB)`);
-    return imageBase64;
-  } catch (error: any) {
-    console.error('❌ Errore conversione PDF->PNG:', error.message);
-    throw error;
-  }
-}
-
 async function parsePage(
   pageBase64: string,
   pageNumber: number,
@@ -95,34 +62,19 @@ async function parsePage(
 ): Promise<any | null> {
   const isPDF = mediaType === 'application/pdf';
 
-  // Se è PDF, converti in PNG per migliore lettura
-  let finalBase64 = pageBase64;
-  let finalMediaType = mediaType;
-
-  if (isPDF) {
-    console.log('🔄 Conversione PDF → PNG per migliorare qualità lettura...');
-    try {
-      finalBase64 = await convertPDFToImage(pageBase64);
-      finalMediaType = 'image/png';
-    } catch (convError: any) {
-      console.error('⚠️ Conversione fallita, uso PDF originale:', convError.message);
-      // Fallback: usa PDF originale
-    }
-  }
-
-  const contentBlock: any = finalMediaType === 'application/pdf' ? {
+  const contentBlock: any = isPDF ? {
     type: 'document',
     source: {
       type: 'base64',
       media_type: 'application/pdf',
-      data: finalBase64,
+      data: pageBase64,
     },
   } : {
     type: 'image',
     source: {
       type: 'base64',
-      media_type: finalMediaType,
-      data: finalBase64,
+      media_type: mediaType,
+      data: pageBase64,
     },
   };
 
@@ -372,14 +324,22 @@ export async function POST(request: NextRequest) {
     }
 
     // PROMPT DIRETTO - NO SKILLS
-    const directPrompt = `Analizza questa fattura ed estrai TUTTI i prodotti in formato JSON.
+    const directPrompt = `Leggi ATTENTAMENTE tutto il documento e estrai OGNI SINGOLO prodotto.
 
-**IMPORTANTE PER ALIGRO (scontrini in tedesco)**:
-- Estrai SOLO le righe con "x" (es: "2 x FL", "3 x ST", "5 x BTL")
-- IGNORA le righe senza "x" (es: "2 Spirituosen", "3 Lebensmittel" - sono totali)
-- Quantità: prendi il numero prima di "x" (es: "2 x" → 2.0, "3 x 10ST" → 3.0)
+ISTRUZIONI CRITICHE:
+1. Scorri il documento dall'INIZIO alla FINE
+2. Trova TUTTE le righe di prodotto (cerca pattern "numero x CODICE descrizione")
+3. NON fermarti al primo prodotto
+4. NON saltare righe
+5. Conta quanti prodotti hai estratto e verifica che corrispondano al totale nel documento
 
-Formato JSON richiesto:
+PER SCONTRINI ALIGRO (in tedesco):
+- Pattern da cercare: "numero x CODICE descrizione" (es: "2 x FL Marsala", "3 x ST Sardelle", "5 x BTL Chicken")
+- IGNORA righe senza "x" (es: "2 Spirituosen", "3 Lebensmittel" = sono TOTALI, non prodotti!)
+- Cerca fino alla fine della tabella
+- Codici confezione: FL, GLS, ST, BTL, PAK, KAR, 12ST, 10ST
+
+Restituisci JSON con TUTTI i prodotti trovati:
 {
   "supplier_name": "...",
   "supplier_vat": "...",
@@ -387,18 +347,18 @@ Formato JSON richiesto:
   "document_date": "YYYY-MM-DD",
   "products": [
     {
-      "article_code": "..." o null,
-      "description": "...",
+      "description": "nome prodotto",
       "quantity": 0.0,
-      "unit": "NR" o "KG",
-      "lot_number": "..." o null,
-      "expiry_date": "YYYY-MM-DD" o null,
-      "variant": "..." o null
+      "unit": "NR",
+      "article_code": null,
+      "lot_number": null,
+      "expiry_date": null,
+      "variant": null
     }
   ]
 }
 
-Estrai TUTTI i prodotti che vedi. Non saltare nessuna riga di prodotto.`;
+VERIFICA FINALE: Se nel documento vedi scritto "19 Verkaufseinheit(en)" o simile, devi aver estratto 19 prodotti!`;
 
     // 🆕 SPLIT STRATEGY FOR MULTI-PAGE PDFs
     let pagesToProcess: string[] = [];
