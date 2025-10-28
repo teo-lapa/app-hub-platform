@@ -34,7 +34,7 @@ export const updateRecommendationSchema = z.object({
 
 // Schema per POST /api/maestro/interactions
 export const createInteractionSchema = z.object({
-  customer_avatar_id: z.string().uuid(), // UUID string dal database
+  customer_avatar_id: z.string().regex(/^\d+$/, 'customer_avatar_id must be a numeric string'), // ID numerico come stringa
   interaction_type: z.enum(['visit', 'call', 'email', 'whatsapp', 'other']),
   outcome: z.enum(['successful', 'unsuccessful', 'neutral', 'follow_up_needed']),
   notes: z.string().max(2000).optional(),
