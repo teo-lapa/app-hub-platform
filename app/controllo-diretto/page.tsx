@@ -37,6 +37,16 @@ interface ProductLine {
   moveLines: MoveLine[];
 }
 
+type ControlStatus = 'ok' | 'error_qty' | 'missing' | 'damaged' | 'lot_error' | 'location_error' | 'note' | null;
+
+interface ProductControl {
+  productId: number;
+  status: ControlStatus;
+  note?: string;
+  controlledAt?: Date;
+  controlId?: string;
+}
+
 export default function ControlloDirettoPage() {
   const router = useRouter();
   const { user } = useAuthStore();
@@ -61,9 +71,16 @@ export default function ControlloDirettoPage() {
   const [showZoneSelector, setShowZoneSelector] = useState(false);
   const [showProductList, setShowProductList] = useState(false);
   const [expandedProducts, setExpandedProducts] = useState<Set<number>>(new Set());
-  const [checkedProducts, setCheckedProducts] = useState<Set<number>>(new Set());
+  const [productControls, setProductControls] = useState<Map<number, ProductControl>>(new Map());
   const [editingLine, setEditingLine] = useState<number | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+
+  // Dropdown e Modal states
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [currentErrorProduct, setCurrentErrorProduct] = useState<ProductGroup | null>(null);
+  const [errorType, setErrorType] = useState<ControlStatus>(null);
+  const [errorNote, setErrorNote] = useState<string>('');
 
   // Client Odoo
   const pickingClient = getPickingClient();
@@ -93,7 +110,7 @@ export default function ControlloDirettoPage() {
     setIsLoading(true);
 
     // Reset dello stato dei prodotti controllati quando cambi batch
-    setCheckedProducts(new Set());
+    setProductControls(new Map());
     setExpandedProducts(new Set());
 
     try {
@@ -117,7 +134,7 @@ export default function ControlloDirettoPage() {
     setIsLoading(true);
 
     // Reset dello stato dei prodotti controllati quando cambi zona
-    setCheckedProducts(new Set());
+    setProductControls(new Map());
     setExpandedProducts(new Set());
 
     try {
@@ -143,16 +160,143 @@ export default function ControlloDirettoPage() {
     setExpandedProducts(newExpanded);
   }
 
-  function toggleProductCheck(productId: number) {
-    const newChecked = new Set(checkedProducts);
-    if (newChecked.has(productId)) {
-      newChecked.delete(productId);
-      toast.success('Prodotto non controllato');
-    } else {
-      newChecked.add(productId);
-      toast.success('✓ Prodotto controllato');
+  async function markProductOK(product: ProductGroup) {
+    if (!currentBatch || !currentZone || !user) return;
+
+    try {
+      setIsLoading(true);
+
+      // Salva su database
+      const response = await fetch('/api/control-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          batch_id: currentBatch.id,
+          batch_name: currentBatch.name,
+          zone_id: currentZone.id,
+          zone_name: currentZone.name,
+          product_id: product.productId,
+          product_name: product.productName,
+          qty_requested: product.totalQtyRequested,
+          qty_picked: product.totalQtyPicked,
+          status: 'ok',
+          controlled_by_user_id: user.id,
+          controlled_by_name: user.name,
+          driver_name: currentBatch.x_studio_autista_del_giro?.[1],
+          vehicle_name: currentBatch.x_studio_auto_del_giro?.[1]
+        })
+      });
+
+      if (!response.ok) throw new Error('Errore salvataggio');
+
+      const data = await response.json();
+
+      // Aggiorna stato locale
+      const newControls = new Map(productControls);
+      newControls.set(product.productId, {
+        productId: product.productId,
+        status: 'ok',
+        controlledAt: new Date(data.controlled_at),
+        controlId: data.control_id
+      });
+      setProductControls(newControls);
+
+      toast.success('✅ Prodotto OK');
+    } catch (error) {
+      console.error('❌ Errore salvataggio controllo:', error);
+      toast.error('Errore salvataggio');
+    } finally {
+      setIsLoading(false);
     }
-    setCheckedProducts(newChecked);
+  }
+
+  function openErrorDropdown(productId: number) {
+    setOpenDropdown(openDropdown === productId ? null : productId);
+  }
+
+  function selectErrorType(product: ProductGroup, status: ControlStatus) {
+    setCurrentErrorProduct(product);
+    setErrorType(status);
+    setOpenDropdown(null);
+
+    // Se è una nota generica, apri il modal
+    if (status === 'note' || status === 'error_qty' || status === 'damaged' || status === 'lot_error' || status === 'location_error') {
+      setShowErrorModal(true);
+    } else if (status === 'missing') {
+      // Per "mancante" salva direttamente senza modal
+      saveProductControl(product, status, 'Prodotto non trovato');
+    }
+  }
+
+  async function saveProductControl(product: ProductGroup, status: ControlStatus, note?: string) {
+    if (!currentBatch || !currentZone || !user || !status) return;
+
+    try {
+      setIsLoading(true);
+
+      const response = await fetch('/api/control-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          batch_id: currentBatch.id,
+          batch_name: currentBatch.name,
+          zone_id: currentZone.id,
+          zone_name: currentZone.name,
+          product_id: product.productId,
+          product_name: product.productName,
+          qty_requested: product.totalQtyRequested,
+          qty_picked: product.totalQtyPicked,
+          status,
+          note,
+          controlled_by_user_id: user.id,
+          controlled_by_name: user.name,
+          driver_name: currentBatch.x_studio_autista_del_giro?.[1],
+          vehicle_name: currentBatch.x_studio_auto_del_giro?.[1]
+        })
+      });
+
+      if (!response.ok) throw new Error('Errore salvataggio');
+
+      const data = await response.json();
+
+      // Aggiorna stato locale
+      const newControls = new Map(productControls);
+      newControls.set(product.productId, {
+        productId: product.productId,
+        status,
+        note,
+        controlledAt: new Date(data.controlled_at),
+        controlId: data.control_id
+      });
+      setProductControls(newControls);
+
+      // Chiudi modal
+      setShowErrorModal(false);
+      setErrorNote('');
+      setCurrentErrorProduct(null);
+
+      const statusLabels: Record<string, string> = {
+        'error_qty': '⚠️ Errore Quantità',
+        'missing': '❌ Mancante',
+        'damaged': '🔧 Danneggiato',
+        'lot_error': '📅 Lotto Errato',
+        'location_error': '📍 Ubicazione Errata',
+        'note': '📝 Nota'
+      };
+
+      toast.success(`${statusLabels[status]} salvato`);
+    } catch (error) {
+      console.error('❌ Errore salvataggio controllo:', error);
+      toast.error('Errore salvataggio');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  function confirmError() {
+    if (currentErrorProduct && errorType) {
+      saveProductControl(currentErrorProduct, errorType, errorNote);
+    }
   }
 
   function startEditLine(moveLineId: number) {
@@ -399,12 +543,22 @@ export default function ControlloDirettoPage() {
                   {productGroups.map(product => {
                     const isExpanded = expandedProducts.has(product.productId);
                     const isComplete = product.totalQtyPicked >= product.totalQtyRequested;
-                    const isChecked = checkedProducts.has(product.productId);
+                    const control = productControls.get(product.productId);
+                    const isDropdownOpen = openDropdown === product.productId;
+
+                    // Colori in base allo stato
+                    let bgColor = 'bg-white';
+                    let borderColor = '';
+                    if (control?.status === 'ok') {
+                      bgColor = 'bg-green-50';
+                      borderColor = 'border-2 border-green-500';
+                    } else if (control?.status && control.status !== 'ok') {
+                      bgColor = 'bg-red-50';
+                      borderColor = 'border-2 border-red-500';
+                    }
 
                     return (
-                      <div key={product.productId} className={`rounded-xl shadow-sm overflow-hidden transition-all ${
-                        isChecked ? 'bg-green-50 border-2 border-green-500' : 'bg-white'
-                      }`}>
+                      <div key={product.productId} className={`rounded-xl shadow-sm overflow-hidden transition-all ${bgColor} ${borderColor}`}>
                         {/* Header Prodotto */}
                         <div className="p-4">
                           {/* Riga principale con immagine e info */}
@@ -444,18 +598,108 @@ export default function ControlloDirettoPage() {
                             </div>
                           </div>
 
+                          {/* Stato controllo (se presente) */}
+                          {control && (
+                            <div className={`mb-3 p-2 rounded-lg ${
+                              control.status === 'ok' ? 'bg-green-100' : 'bg-red-100'
+                            }`}>
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm">
+                                  {control.status === 'ok' && '✅ Tutto OK'}
+                                  {control.status === 'error_qty' && '⚠️ Errore Quantità'}
+                                  {control.status === 'missing' && '❌ Prodotto Mancante'}
+                                  {control.status === 'damaged' && '🔧 Prodotto Danneggiato'}
+                                  {control.status === 'lot_error' && '📅 Lotto/Scadenza Errata'}
+                                  {control.status === 'location_error' && '📍 Ubicazione Errata'}
+                                  {control.status === 'note' && '📝 Nota'}
+                                </div>
+                                <div className="text-xs text-gray-600">
+                                  {control.controlledAt && new Date(control.controlledAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                              {control.note && (
+                                <div className="text-xs text-gray-700 mt-1">"{control.note}"</div>
+                              )}
+                            </div>
+                          )}
+
                           {/* Riga pulsanti */}
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 relative">
+                            {/* Pulsante OK */}
                             <button
-                              onClick={() => toggleProductCheck(product.productId)}
+                              onClick={() => markProductOK(product)}
+                              disabled={!!control || isLoading}
                               className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
-                                isChecked
-                                  ? 'bg-green-600 text-white hover:bg-green-700'
-                                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                control?.status === 'ok'
+                                  ? 'bg-green-600 text-white'
+                                  : control
+                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  : 'bg-green-500 text-white hover:bg-green-600'
                               }`}
                             >
-                              {isChecked ? '✓ Controllato' : 'Controlla'}
+                              {control?.status === 'ok' ? '✅ OK' : control ? '🔄 Cambia' : '✅ OK'}
                             </button>
+
+                            {/* Pulsante Dropdown Errori */}
+                            <div className="relative">
+                              <button
+                                onClick={() => openErrorDropdown(product.productId)}
+                                disabled={isLoading}
+                                className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
+                              >
+                                {isDropdownOpen ? '▲' : '▼'}
+                              </button>
+
+                              {/* Dropdown Menu */}
+                              {isDropdownOpen && (
+                                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border-2 border-gray-200 z-50">
+                                  <button
+                                    onClick={() => selectErrorType(product, 'error_qty')}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                  >
+                                    <span>⚠️</span>
+                                    <span>Errore Quantità</span>
+                                  </button>
+                                  <button
+                                    onClick={() => selectErrorType(product, 'missing')}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                  >
+                                    <span>❌</span>
+                                    <span>Prodotto Mancante</span>
+                                  </button>
+                                  <button
+                                    onClick={() => selectErrorType(product, 'damaged')}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                  >
+                                    <span>🔧</span>
+                                    <span>Prodotto Danneggiato</span>
+                                  </button>
+                                  <button
+                                    onClick={() => selectErrorType(product, 'lot_error')}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                  >
+                                    <span>📅</span>
+                                    <span>Lotto/Scadenza Errata</span>
+                                  </button>
+                                  <button
+                                    onClick={() => selectErrorType(product, 'location_error')}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                                  >
+                                    <span>📍</span>
+                                    <span>Ubicazione Errata</span>
+                                  </button>
+                                  <button
+                                    onClick={() => selectErrorType(product, 'note')}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                  >
+                                    <span>📝</span>
+                                    <span>Aggiungi Nota</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Pulsante Dettagli */}
                             <button
                               onClick={() => toggleProductExpand(product.productId)}
                               className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2"
@@ -560,6 +804,76 @@ export default function ControlloDirettoPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Modal Errore */}
+      <AnimatePresence>
+        {showErrorModal && currentErrorProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowErrorModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6"
+            >
+              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                {errorType === 'error_qty' && '⚠️ Errore Quantità'}
+                {errorType === 'damaged' && '🔧 Prodotto Danneggiato'}
+                {errorType === 'lot_error' && '📅 Lotto/Scadenza Errata'}
+                {errorType === 'location_error' && '📍 Ubicazione Errata'}
+                {errorType === 'note' && '📝 Aggiungi Nota'}
+              </h3>
+
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="font-semibold text-gray-900">{currentErrorProduct.productName}</div>
+                <div className="text-sm text-gray-600 mt-1">
+                  Richiesto: {currentErrorProduct.totalQtyRequested} | Prelevato: {currentErrorProduct.totalQtyPicked}
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Aggiungi dettagli (opzionale):
+                </label>
+                <textarea
+                  value={errorNote}
+                  onChange={(e) => setErrorNote(e.target.value)}
+                  placeholder="Es: Prelevati 4.5kg invece di 5kg"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows={3}
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowErrorModal(false);
+                    setErrorNote('');
+                    setCurrentErrorProduct(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+                >
+                  ✕ Annulla
+                </button>
+                <button
+                  onClick={confirmError}
+                  disabled={isLoading}
+                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold disabled:opacity-50"
+                >
+                  ✓ Conferma
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <MobileHomeButton />
     </div>
