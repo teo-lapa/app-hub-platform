@@ -29,6 +29,8 @@ import { formatCurrency, formatNumber } from '@/lib/utils';
 import { useCustomerAvatars, useAnalytics } from '@/hooks/useMaestroAI';
 import { useOfflineCache } from '@/hooks/useOfflineCache';
 import { useMaestroFilters } from '@/contexts/MaestroFiltersContext';
+import { useAuthStore } from '@/lib/store/authStore';
+import { canViewAllVendors } from '@/lib/maestro/permissions';
 import {
   LineChart,
   Line,
@@ -41,6 +43,10 @@ import {
 } from 'recharts';
 
 export default function MaestroAIDashboard() {
+  // 🔐 Check user permissions
+  const { user } = useAuthStore();
+  const canViewAll = canViewAllVendors(user);
+
   // Stati per modal Prodotti Urgenti
   const [showUrgentProductsModal, setShowUrgentProductsModal] = useState(false);
   const [urgentProductsCount, setUrgentProductsCount] = useState(0);
@@ -423,24 +429,26 @@ export default function MaestroAIDashboard() {
             )}
           </motion.div>
 
-          {/* Top Performers - REAL DATA - SCROLLABLE & CLICKABLE */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6 flex flex-col"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
-              <h3 className="text-base sm:text-lg font-semibold text-white">Venditori</h3>
-              {selectedVendor && (
-                <span className="ml-auto text-xs text-blue-400 font-medium px-2 py-1 bg-blue-500/10 rounded border border-blue-500/20">
-                  Filtrato: {selectedVendor.name}
-                </span>
-              )}
-            </div>
+          {/* 🔐 SECTION: Venditori (conditional based on permissions) */}
+          {canViewAll ? (
+            /* Top Performers - REAL DATA - SCROLLABLE & CLICKABLE (Only for super users) */
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6 flex flex-col"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
+                <h3 className="text-base sm:text-lg font-semibold text-white">Venditori</h3>
+                {selectedVendor && (
+                  <span className="ml-auto text-xs text-blue-400 font-medium px-2 py-1 bg-blue-500/10 rounded border border-blue-500/20">
+                    Filtrato: {selectedVendor.name}
+                  </span>
+                )}
+              </div>
 
-            {/* "Tutti" Button */}
+              {/* "Tutti" Button */}
             <button
               onClick={clearVendorFilter}
               className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all mb-3 ${
@@ -515,7 +523,37 @@ export default function MaestroAIDashboard() {
                 <p>Nessun venditore con dati disponibili</p>
               </div>
             )}
-          </motion.div>
+            </motion.div>
+          ) : (
+            /* Current User Info (for normal users - no vendor selection) */
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6 flex flex-col"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+                <h3 className="text-base sm:text-lg font-semibold text-white">Il Mio Account</h3>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-900 border border-slate-700">
+                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-medium text-white">
+                    {user?.name || 'Utente'}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {user?.email || ''}
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-3 text-center">
+                Stai visualizzando solo i tuoi clienti
+              </p>
+            </motion.div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
