@@ -79,6 +79,7 @@ async function parsePage(
 
   const maxAttempts = 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let responseText = '';
     try {
       console.log(`🤖 Tentativo ${attempt}/${maxAttempts} per pagina ${pageNumber}/${totalPages}...`);
 
@@ -102,7 +103,7 @@ async function parsePage(
 
       // Extract JSON from response
       const firstContent = message.content[0];
-      const responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
+      responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
 
       // Try to parse JSON
       let parsedData;
@@ -136,6 +137,9 @@ async function parsePage(
 
     } catch (error: any) {
       console.error(`❌ Errore pagina ${pageNumber}, tentativo ${attempt}:`, error.message);
+      if (error.message.includes('Nessun JSON valido trovato') && responseText) {
+        console.error(`📄 Response text preview:`, responseText.substring(0, 500));
+      }
       if (attempt === maxAttempts) {
         console.error(`⚠️ Pagina ${pageNumber} saltata dopo ${maxAttempts} tentativi`);
         return null;
@@ -312,6 +316,7 @@ export async function POST(request: NextRequest) {
     const pageResults: any[] = [];
     let totalTokensUsed = { input_tokens: 0, output_tokens: 0 };
 
+    const parseErrors: string[] = [];
     for (let i = 0; i < pagesToProcess.length; i++) {
       const result = await parsePage(
         pagesToProcess[i],
@@ -325,13 +330,26 @@ export async function POST(request: NextRequest) {
         pageResults.push(result.data);
         totalTokensUsed.input_tokens += result.tokens.input_tokens;
         totalTokensUsed.output_tokens += result.tokens.output_tokens;
+      } else {
+        parseErrors.push(`Pagina ${i + 1} non parsata`);
       }
     }
 
     if (pageResults.length === 0) {
+      console.error('❌ Nessuna pagina processata con successo');
+      console.error('📋 Errori:', parseErrors);
+      console.error('📄 Allegato:', attachment.name, attachment.mimetype);
+      console.error('📏 Dimensione:', (attachment.file_size / 1024).toFixed(2), 'KB');
+
       return NextResponse.json({
         error: 'Nessuna pagina processata con successo. Il PDF potrebbe essere danneggiato o troppo complesso.',
-        hint: 'Prova a ricaricarlo o convertirlo in un formato più semplice.'
+        hint: 'Prova a ricaricarlo o convertirlo in un formato più semplice.',
+        debug: {
+          attachment_name: attachment.name,
+          pages_total: pagesToProcess.length,
+          pages_failed: parseErrors.length,
+          errors: parseErrors
+        }
       }, { status: 500 });
     }
 
