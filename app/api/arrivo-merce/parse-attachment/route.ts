@@ -52,6 +52,39 @@ async function splitPDFPages(base64PDF: string): Promise<string[]> {
 /**
  * Parse a single page with Claude + Skill
  */
+async function convertPDFToImage(pdfBase64: string): Promise<string> {
+  try {
+    const pdfBuffer = Buffer.from(pdfBase64, 'base64');
+    const { pdfToPng } = await import('pdf-to-png-converter');
+
+    // Converti PDF in PNG ad alta risoluzione
+    const pngPages = await pdfToPng(pdfBuffer, {
+      outputFolder: '/tmp',
+      outputFileMask: 'page',
+      viewportScale: 2.0, // Alta risoluzione
+      pagesToProcess: [1], // Solo prima pagina
+    });
+
+    if (pngPages.length === 0) {
+      throw new Error('Nessuna immagine generata dal PDF');
+    }
+
+    // Leggi l'immagine e converti in base64
+    const fs = await import('fs');
+    const imageBuffer = fs.readFileSync(pngPages[0].path);
+    const imageBase64 = imageBuffer.toString('base64');
+
+    // Pulisci file temporaneo
+    fs.unlinkSync(pngPages[0].path);
+
+    console.log(`✅ PDF convertito in PNG (${(imageBuffer.length / 1024).toFixed(1)} KB)`);
+    return imageBase64;
+  } catch (error: any) {
+    console.error('❌ Errore conversione PDF->PNG:', error.message);
+    throw error;
+  }
+}
+
 async function parsePage(
   pageBase64: string,
   pageNumber: number,
@@ -62,19 +95,34 @@ async function parsePage(
 ): Promise<any | null> {
   const isPDF = mediaType === 'application/pdf';
 
-  const contentBlock: any = isPDF ? {
+  // Se è PDF, converti in PNG per migliore lettura
+  let finalBase64 = pageBase64;
+  let finalMediaType = mediaType;
+
+  if (isPDF) {
+    console.log('🔄 Conversione PDF → PNG per migliorare qualità lettura...');
+    try {
+      finalBase64 = await convertPDFToImage(pageBase64);
+      finalMediaType = 'image/png';
+    } catch (convError: any) {
+      console.error('⚠️ Conversione fallita, uso PDF originale:', convError.message);
+      // Fallback: usa PDF originale
+    }
+  }
+
+  const contentBlock: any = finalMediaType === 'application/pdf' ? {
     type: 'document',
     source: {
       type: 'base64',
       media_type: 'application/pdf',
-      data: pageBase64,
+      data: finalBase64,
     },
   } : {
     type: 'image',
     source: {
       type: 'base64',
-      media_type: mediaType,
-      data: pageBase64,
+      media_type: finalMediaType,
+      data: finalBase64,
     },
   };
 
