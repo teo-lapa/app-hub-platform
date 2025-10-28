@@ -1045,7 +1045,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
       <InteractionModal
         isOpen={showInteractionModal}
         onClose={handleCloseInteractionModal}
-        customerId={customer.id}
+        customerId={String(customer.id)} // FIX: Convert to string for API compatibility
         customerName={customer.name}
         odooPartnerId={customer.odoo_partner_id}
         salesPersonId={customer.assigned_salesperson_id || selectedVendor?.id} // FIX: Fallback to selectedVendor when customer has no assigned salesperson

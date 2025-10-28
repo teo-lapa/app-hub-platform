@@ -667,7 +667,7 @@ export default function DailyPlanPage() {
         <InteractionModal
           isOpen={!!selectedCustomer}
           onClose={() => setSelectedCustomer(null)}
-          customerId={selectedCustomer.id}
+          customerId={String(selectedCustomer.id)} // FIX: Convert to string for API compatibility
           customerName={selectedCustomer.name}
           odooPartnerId={selectedCustomer.odoo_partner_id}
           salesPersonId={selectedCustomer.assigned_salesperson_id || selectedVendor?.id} // FIX: Fallback to selectedVendor when customer has no assigned salesperson
