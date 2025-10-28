@@ -27,13 +27,13 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const odooPartnerId = parseInt(params.id, 10);
-    console.log(`📊 [MAESTRO-API] Fetching customer detail for Odoo Partner ID: ${odooPartnerId}`);
+    const customerAvatarId = parseInt(params.id, 10);
+    console.log(`📊 [MAESTRO-API] Fetching customer detail for Customer Avatar ID: ${customerAvatarId}`);
 
-    // 1. Fetch customer avatar from DB
+    // 1. Fetch customer avatar from DB (using internal ID, not odoo_partner_id)
     const avatarResult = await sql`
       SELECT * FROM customer_avatars
-      WHERE odoo_partner_id = ${odooPartnerId}
+      WHERE id = ${customerAvatarId}
     `;
 
     if (avatarResult.rows.length === 0) {
