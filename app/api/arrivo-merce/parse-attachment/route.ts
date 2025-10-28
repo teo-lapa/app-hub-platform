@@ -105,6 +105,9 @@ async function parsePage(
       const firstContent = message.content[0];
       responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
 
+      // Log response for debugging
+      console.log(`📄 Response pagina ${pageNumber} (primi 800 chars):`, responseText.substring(0, 800));
+
       // Try to parse JSON
       let parsedData;
       try {
