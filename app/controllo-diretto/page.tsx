@@ -709,7 +709,7 @@ export default function ControlloDirettoPage() {
                             </button>
 
                             {/* Pulsante Dropdown Errori */}
-                            <div className="relative">
+                            <div className="relative" style={{ zIndex: 99999 }}>
                               <button
                                 onClick={() => openErrorDropdown(product.productId)}
                                 disabled={isLoading}
@@ -720,47 +720,47 @@ export default function ControlloDirettoPage() {
 
                               {/* Dropdown Menu */}
                               {isDropdownOpen && (
-                                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border-2 border-gray-300" style={{ zIndex: 99999 }}>
+                                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border-2 border-gray-300">
                                   <button
                                     onClick={() => selectErrorType(product, 'error_qty')}
-                                    className="w-full px-4 py-3 text-left hover:bg-orange-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-sm font-medium"
+                                    className="w-full px-4 py-3 text-left hover:bg-orange-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-base font-semibold text-gray-800"
                                   >
-                                    <span className="text-lg">⚠️</span>
+                                    <span className="text-2xl">⚠️</span>
                                     <span>Errore Quantità</span>
                                   </button>
                                   <button
                                     onClick={() => selectErrorType(product, 'missing')}
-                                    className="w-full px-4 py-3 text-left hover:bg-red-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-sm font-medium"
+                                    className="w-full px-4 py-3 text-left hover:bg-red-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-base font-semibold text-gray-800"
                                   >
-                                    <span className="text-lg">❌</span>
+                                    <span className="text-2xl">❌</span>
                                     <span>Prodotto Mancante</span>
                                   </button>
                                   <button
                                     onClick={() => selectErrorType(product, 'damaged')}
-                                    className="w-full px-4 py-3 text-left hover:bg-yellow-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-sm font-medium"
+                                    className="w-full px-4 py-3 text-left hover:bg-yellow-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-base font-semibold text-gray-800"
                                   >
-                                    <span className="text-lg">🔧</span>
+                                    <span className="text-2xl">🔧</span>
                                     <span>Danneggiato</span>
                                   </button>
                                   <button
                                     onClick={() => selectErrorType(product, 'lot_error')}
-                                    className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-sm font-medium"
+                                    className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-base font-semibold text-gray-800"
                                   >
-                                    <span className="text-lg">📅</span>
+                                    <span className="text-2xl">📅</span>
                                     <span>Lotto Errato</span>
                                   </button>
                                   <button
                                     onClick={() => selectErrorType(product, 'location_error')}
-                                    className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-sm font-medium"
+                                    className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-base font-semibold text-gray-800"
                                   >
-                                    <span className="text-lg">📍</span>
+                                    <span className="text-2xl">📍</span>
                                     <span>Ubicazione Errata</span>
                                   </button>
                                   <button
                                     onClick={() => selectErrorType(product, 'note')}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 text-sm font-medium"
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 text-base font-semibold text-gray-800"
                                   >
-                                    <span className="text-lg">📝</span>
+                                    <span className="text-2xl">📝</span>
                                     <span>Aggiungi Nota</span>
                                   </button>
                                 </div>
