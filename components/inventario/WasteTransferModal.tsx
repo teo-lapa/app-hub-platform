@@ -395,20 +395,17 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
                   {/* Selected Product Card */}
                   <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-4">
                     <div className="flex gap-4">
-                      <div className="relative w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
-                        {selectedProduct.image ? (
-                          <Image
-                            src={selectedProduct.image}
-                            alt={selectedProduct.name}
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="w-8 h-8 text-gray-300" />
-                          </div>
-                        )}
-                      </div>
+                      {selectedProduct.image ? (
+                        <img
+                          src={selectedProduct.image}
+                          alt={selectedProduct.name}
+                          className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Package className="w-8 h-8 text-gray-400" />
+                        </div>
+                      )}
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-900 mb-1">{selectedProduct.name}</h3>
                         <p className="text-sm text-gray-600">Cod: {selectedProduct.code || selectedProduct.id}</p>
