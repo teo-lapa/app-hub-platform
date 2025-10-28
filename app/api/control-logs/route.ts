@@ -104,25 +104,44 @@ export async function GET(request: NextRequest) {
     const productId = searchParams.get('product_id');
     const status = searchParams.get('status');
 
-    let query = sql`SELECT * FROM control_logs WHERE 1=1`;
+    // Build dynamic query based on filters
+    let result;
 
-    // Filtri dinamici
-    if (batchId) {
-      query = sql`${query} AND batch_id = ${parseInt(batchId)}`;
-    }
-    if (zoneId) {
-      query = sql`${query} AND zone_id = ${zoneId}`;
-    }
-    if (productId) {
-      query = sql`${query} AND product_id = ${parseInt(productId)}`;
-    }
-    if (status) {
-      query = sql`${query} AND status = ${status}`;
-    }
+    if (!batchId && !zoneId && !productId && !status) {
+      // No filters - get all
+      result = await sql`
+        SELECT * FROM control_logs
+        ORDER BY controlled_at DESC
+        LIMIT 1000
+      `;
+    } else {
+      // Build query with filters
+      const whereParts: string[] = [];
+      const params: any[] = [];
 
-    query = sql`${query} ORDER BY controlled_at DESC LIMIT 1000`;
+      if (batchId) {
+        params.push(parseInt(batchId));
+        whereParts.push(`batch_id = $${params.length}`);
+      }
+      if (zoneId) {
+        params.push(zoneId);
+        whereParts.push(`zone_id = $${params.length}`);
+      }
+      if (productId) {
+        params.push(parseInt(productId));
+        whereParts.push(`product_id = $${params.length}`);
+      }
+      if (status) {
+        params.push(status);
+        whereParts.push(`status = $${params.length}`);
+      }
 
-    const result = await query;
+      const whereClause = whereParts.join(' AND ');
+      const queryText = `SELECT * FROM control_logs WHERE ${whereClause} ORDER BY controlled_at DESC LIMIT 1000`;
+
+      const { rows } = await sql.query(queryText, params);
+      result = { rows };
+    }
 
     return NextResponse.json({
       success: true,
