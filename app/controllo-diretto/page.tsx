@@ -670,7 +670,9 @@ export default function ControlloDirettoPage() {
                               control.status === 'ok' ? 'bg-green-100 border border-green-300' : 'bg-red-100 border border-red-300'
                             }`}>
                               <div className="flex items-center justify-between">
-                                <div className="text-sm font-semibold flex items-center gap-2">
+                                <div className={`text-sm font-semibold flex items-center gap-2 ${
+                                  control.status === 'ok' ? 'text-green-800' : 'text-red-800'
+                                }`}>
                                   {control.status === 'ok' && <><span className="text-base">✅</span> Tutto OK</>}
                                   {control.status === 'error_qty' && <><span className="text-base">⚠️</span> Errore Quantità</>}
                                   {control.status === 'missing' && <><span className="text-base">❌</span> Mancante</>}
@@ -718,7 +720,7 @@ export default function ControlloDirettoPage() {
 
                               {/* Dropdown Menu */}
                               {isDropdownOpen && (
-                                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border-2 border-gray-300" style={{ zIndex: 9999 }}>
+                                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border-2 border-gray-300" style={{ zIndex: 99999 }}>
                                   <button
                                     onClick={() => selectErrorType(product, 'error_qty')}
                                     className="w-full px-4 py-3 text-left hover:bg-orange-50 transition-colors border-b border-gray-100 flex items-center gap-3 text-sm font-medium"
