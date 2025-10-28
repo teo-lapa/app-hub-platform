@@ -135,6 +135,38 @@ Anz.  Verp.  Artikelbezeichnung                    Rabatt  Exkl.MwSt  MwSt   Tot
 - **MwSt** = Aliquota IVA
 - **Total** = Totale riga
 
+#### 🚨 ATTENZIONE: Righe di Categoria vs Prodotti
+
+**CRITICO**: Gli scontrini Aligro hanno **righe verdi di TOTALE CATEGORIA** che NON sono prodotti!
+
+**Esempi di righe da IGNORARE** (sono totali, non prodotti):
+```
+2 Spirituosen                    -0.35   17.04    1.38   18.42
+3 Lebensmittel                   -4.72   61.56    1.60   63.16
+3 Fisch (frisch)                 -1.02   49.56    1.29   50.85
+4 Milchprodukte                  -9.75  477.58   12.42  490.00
+5 Tiefkühlprodukte              -12.18   38.50    1.00   39.50
+2 Waschpulver - Putzmittel      -2.20   25.37    2.05   27.42
+```
+
+**Come riconoscerle**:
+- Iniziano con un NUMERO seguito da una CATEGORIA (es: "2 Spirituosen", "3 Lebensmittel")
+- NON hanno "x" dopo il numero (es: "2 Spirituosen" vs "2 x FL Marsala")
+- NON hanno codice Verpackung (FL, GLS, ST, BTL, PAK, KAR)
+- Sono le righe verdi di RIEPILOGO categoria
+
+**Prodotti REALI** (da estrarre):
+```
+2 x FL   Marsala Miranda DOP 17% 1 l     2.0%    8.52   8.1%   18.42
+1 x GLS  Thomy Tartaraise Sauce 880 g   33.6%    7.12   2.6%    7.30
+3 x ST   Sardellenfilets Marinierte    2.0%   16.52   2.6%   50.85
+```
+
+**Come riconoscerli**:
+- Hanno sempre "x" dopo il numero (es: "2 x", "3 x", "5 x")
+- Hanno un codice Verpackung (FL, GLS, ST, BTL, PAK, KAR, 12ST, 10ST)
+- Hanno un nome prodotto dettagliato
+
 #### 🎯 Regole di Estrazione
 
 **1. QUANTITÀ**:
@@ -146,7 +178,24 @@ Input: "2 x FL Marsala Miranda DOP..."
 Input: "5 x BTL Chicken-Nuggets..."
 → quantity: 5.0
 → unit: "NR"
+
+Input: "1 x 12ST Eiweiss Flüssig Eifix 1 lt"
+→ quantity: 1.0
+→ unit: "NR"
+→ NOTA: "12ST" è il Verpackung (confezione da 12), NON moltiplicare!
+
+Input: "3 x 10ST Vorzugsbutter Züger 1kg"
+→ quantity: 3.0
+→ unit: "NR"
+→ NOTA: "10ST" è il Verpackung (confezione da 10), NON moltiplicare!
 ```
+
+**ATTENZIONE QUANTITÀ**:
+- Usa SOLO il numero prima di "x" (es: "3 x" → 3.0)
+- Il codice Verpackung può contenere numeri (es: "12ST", "10ST") ma NON va moltiplicato
+- Esempi:
+  - "1 x 12ST Eiweiss" → quantity: **1.0** (NON 12!)
+  - "3 x 10ST Butter" → quantity: **3.0** (NON 30!)
 
 **2. DESCRIZIONE PRODOTTO**:
 - Rimuovi il tipo confezione (FL, GLS, ST, BTL, PAK, ecc.)
@@ -184,25 +233,38 @@ Input: "5 x BTL Chicken-Nuggets..."
 - Cerca la data in formato "DD.MM.YYYY HH:MM:SS"
 - Esempio: "28.10.2025 17:41:51" → document_date: "2025-10-28"
 
-#### 📊 Esempio Completo
+#### 📊 Esempio Completo (19 prodotti)
 
-**Input scontrino Aligro**:
+**Input scontrino Aligro** (scontrino reale 5-1-1299):
 ```
 Rechnung Nr. 5-1-1299
 28.10.2025 17:41:51
 
-2 x FL Marsala Miranda DOP 17% 1 l             2.0%  8.52   8.1%  18.42
-1 x GLS Thomy Tartaraise Sauce 880 g          33.6%  7.12   2.6%   7.30
-1 x KAR Thomy Ketchup 72x20 g                  2.0% 21.40   2.6%  21.95
-3 x ST Sardellenfilets Marinierte 1kg          2.0% 16.52   2.6%  50.85
+2 x FL    Marsala Miranda DOP 17% 1 l           2.0%   8.52   8.1%   18.42
+2 Spirituosen  <-- IGNORARE (totale categoria, NON prodotto)
+1 x GLS   Thomy Tartaraise Sauce 880 g         33.6%   7.12   2.6%    7.30
+1 x KAR   Thomy Ketchup 72x20 g                 2.0%  21.40   2.6%   21.95
+1 x KAR   Hellmann's Real Mayonnaise 120x20 ml  2.0%  33.05   2.6%   33.91
+3 Lebensmittel  <-- IGNORARE (totale categoria, NON prodotto)
+3 x ST    Sardellenfilets Marinierte Renna 1kg  2.0%  16.52   2.6%   50.85
+3 Fisch (frisch)  <-- IGNORARE (totale categoria, NON prodotto)
+1 x 12ST  Eiweiss Flüssig Eifix 1 lt            2.0%   5.89   2.6%   72.52
+3 x 10ST  Vorzugsbutter Züger 1kg               2.0%  13.56   2.6%  417.48
+4 Milchprodukte  <-- IGNORARE (totale categoria, NON prodotto)
+5 x BTL   Chicken-Nuggets im Teig Import tk 1kg 24.0%   7.70   2.6%   39.50
+5 Tiefkühlprodukte  <-- IGNORARE (totale categoria, NON prodotto)
+2 x PAK   Sun All-in-1 Regular 35 Tabs           8.0%  12.68   8.1%   27.42
+2 Waschpulver  <-- IGNORARE (totale categoria, NON prodotto)
+
+19 Verkaufseinheit(en)  <-- Conferma: 19 prodotti totali
 ```
 
-**Output JSON corretto**:
+**Output JSON corretto** (tutti i 9 prodotti):
 ```json
 {
   "parsing_summary": {
-    "total_lines_in_invoice": 4,
-    "unique_products_after_consolidation": 4,
+    "total_lines_in_invoice": 9,
+    "unique_products_after_consolidation": 9,
     "duplicates_found": 0
   },
   "supplier_name": "ALIGRO Demaurex & Cie SA",
@@ -212,12 +274,12 @@ Rechnung Nr. 5-1-1299
   "products": [
     {
       "article_code": null,
-      "description": "Marsala Miranda DOP 17% 1 l",
+      "description": "Marsala Miranda DOP",
       "quantity": 2.0,
       "unit": "NR",
       "lot_number": null,
       "expiry_date": null,
-      "variant": "1 l"
+      "variant": "17% 1 l"
     },
     {
       "article_code": null,
@@ -239,12 +301,57 @@ Rechnung Nr. 5-1-1299
     },
     {
       "article_code": null,
-      "description": "Sardellenfilets Marinierte",
+      "description": "Hellmann's Real Mayonnaise",
+      "quantity": 1.0,
+      "unit": "NR",
+      "lot_number": null,
+      "expiry_date": null,
+      "variant": "120x20 ml"
+    },
+    {
+      "article_code": null,
+      "description": "Sardellenfilets Marinierte Renna",
       "quantity": 3.0,
       "unit": "NR",
       "lot_number": null,
       "expiry_date": null,
       "variant": "1kg"
+    },
+    {
+      "article_code": null,
+      "description": "Eiweiss Flüssig Eifix",
+      "quantity": 1.0,
+      "unit": "NR",
+      "lot_number": null,
+      "expiry_date": null,
+      "variant": "1 lt"
+    },
+    {
+      "article_code": null,
+      "description": "Vorzugsbutter Züger",
+      "quantity": 3.0,
+      "unit": "NR",
+      "lot_number": null,
+      "expiry_date": null,
+      "variant": "1kg"
+    },
+    {
+      "article_code": null,
+      "description": "Chicken-Nuggets im Teig Import tk",
+      "quantity": 5.0,
+      "unit": "NR",
+      "lot_number": null,
+      "expiry_date": null,
+      "variant": "1 kg"
+    },
+    {
+      "article_code": null,
+      "description": "Sun All-in-1 Regular",
+      "quantity": 2.0,
+      "unit": "NR",
+      "lot_number": null,
+      "expiry_date": null,
+      "variant": "35 Tabs"
     }
   ]
 }
@@ -286,15 +393,18 @@ Gli scontrini Aligro **NON forniscono**:
 
 #### ✅ Checklist Validazione Aligro
 
-- [ ] Ho riconosciuto che è uno scontrino Aligro?
+- [ ] Ho riconosciuto che è uno scontrino Aligro (lingua TEDESCA)?
 - [ ] Ho impostato supplier_name = "ALIGRO Demaurex & Cie SA"?
 - [ ] Ho estratto il numero scontrino da "Rechnung Nr."?
+- [ ] Ho **IGNORATO** le righe di categoria (es: "2 Spirituosen", "3 Lebensmittel")?
+- [ ] Ho estratto **SOLO** le righe con "x" (es: "2 x FL", "3 x ST")?
 - [ ] Ho impostato article_code = null per tutti i prodotti?
 - [ ] Ho impostato lot_number = null per tutti i prodotti?
 - [ ] Ho impostato expiry_date = null per tutti i prodotti?
-- [ ] Ho estratto la quantità corretta da "Anz." (es: "2 x" → 2.0)?
+- [ ] Ho estratto la quantità corretta da "Anz." (es: "2 x" → 2.0, "3 x 10ST" → 3.0)?
 - [ ] Ho impostato unit = "NR" per tutti i prodotti?
-- [ ] Ho rimosso il tipo confezione dalla descrizione (FL, GLS, ST, ecc.)?
+- [ ] Ho rimosso il tipo confezione dalla descrizione (FL, GLS, ST, BTL, PAK, KAR, 12ST, 10ST)?
+- [ ] Ho contato correttamente tutti i prodotti (devono essere 19 nell'esempio)?
 
 ---
 
