@@ -520,7 +520,7 @@ export const standaloneApps: App[] = [
     updatedAt: new Date('2025-10-24'),
   },
   {
-    id: 's18',
+    id: 's31',
     name: 'Controllo Scadenze',
     description: 'Monitora prodotti con scadenza nel magazzino. Visualizza per urgenza (scaduti/in scadenza/ok), filtra per zona (Frigo, Secco, Pingu). Trasferisci a scarti o marca come verificato. Cards con foto, ubicazione e giorni rimanenti.',
     icon: '📅',
