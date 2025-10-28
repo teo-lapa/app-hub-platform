@@ -345,7 +345,7 @@ export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 
           salesperson: avatar.assigned_salesperson_name || 'Non assegnato',
           churnRisk: Math.round(avatar.churn_risk_score),
           priority: avatar.churn_risk_score > 85 ? 'urgent' as const : 'high' as const,
-          customerId: avatar.odoo_partner_id
+          customerId: avatar.id // FIX: Use customer_avatar.id instead of odoo_partner_id
         }));
 
       // Aggregate Top Products across all customers
