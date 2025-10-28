@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callKw } from '@/lib/odoo/rpc';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,14 +14,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Posta messaggio nel Chatter
-    await callKw('mail.message', 'create', [{
-      model: model,
-      res_id: res_id,
-      body: message.replace(/\n/g, '<br/>'),
-      message_type: 'comment',
-      subtype_id: 1 // mt_note (nota interna)
-    }]);
+    // Posta messaggio nel Chatter tramite RPC
+    const rpcResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/odoo/rpc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'mail.message',
+        method: 'create',
+        args: [[{
+          model: model,
+          res_id: res_id,
+          body: message.replace(/\n/g, '<br/>'),
+          message_type: 'comment',
+          subtype_id: 1
+        }]],
+        kwargs: {}
+      })
+    });
+
+    if (!rpcResponse.ok) {
+      throw new Error('Errore chiamata RPC');
+    }
+
+    const rpcData = await rpcResponse.json();
+    if (!rpcData.success) {
+      throw new Error(rpcData.error || 'Errore RPC');
+    }
 
     console.log(`✅ Messaggio postato su ${model} ID ${res_id}`);
 
