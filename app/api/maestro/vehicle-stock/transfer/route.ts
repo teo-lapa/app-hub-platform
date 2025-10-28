@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
     const plate = plateMatch ? plateMatch[0].replace(/\s/g, '') : vehicleLocationName;
     console.log(`  ✓ Targa: ${plate} (Location: ${vehicleLocationName})`);
 
-    // 13. Crea stock.picking.batch
+    // 13. Crea stock.picking.batch (SENZA picking, lo aggiungiamo dopo)
     console.log('📦 [Batch] Creazione batch per caricamento macchina...');
 
     const batchName = `CARICO-${driverName.toUpperCase()}-${plate}-${new Date().toISOString().split('T')[0]}`;
@@ -324,9 +324,8 @@ export async function POST(request: NextRequest) {
             user_id: targetSalespersonId,
             x_studio_autista_del_giro: targetSalespersonId,
             x_studio_auto_del_giro: plate,
-            picking_ids: [[6, 0, [pickingId]]], // Relazione many2many: aggiungi pickingId al batch
-            scheduled_date: new Date().toISOString(),
-            state: 'draft' // Inizia come draft, poi confermiamo subito
+            scheduled_date: new Date().toISOString()
+            // NON impostiamo picking_ids qui - lo facciamo dopo con write()
           }],
           kwargs: {}
         },
@@ -337,14 +336,39 @@ export async function POST(request: NextRequest) {
     const batchCreateData = await batchCreateResponse.json();
 
     if (!batchCreateData.result) {
-      console.error('❌ Errore creazione batch:', batchCreateData);
-      throw new Error('Errore nella creazione del batch');
+      console.error('❌ Errore creazione batch:', JSON.stringify(batchCreateData, null, 2));
+      const errorMsg = batchCreateData.error?.data?.message || batchCreateData.error?.message || 'Errore nella creazione del batch';
+      throw new Error(`Batch creation failed: ${errorMsg}`);
     }
 
     const batchId = batchCreateData.result;
     console.log(`✅ Batch creato: ${batchId} (${batchName})`);
 
-    // 14. Conferma il batch (stato → in_progress)
+    // 14. Aggiungi il picking al batch appena creato
+    console.log(`📦 [Batch] Aggiunta picking ${pickingId} al batch ${batchId}...`);
+
+    await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking',
+          method: 'write',
+          args: [[pickingId], { batch_id: batchId }],
+          kwargs: {}
+        },
+        id: 10
+      })
+    });
+
+    console.log(`✅ Picking ${pickingId} aggiunto al batch ${batchId}`);
+
+    // 15. Conferma il batch (stato → in_progress)
     const batchConfirmResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
@@ -360,7 +384,7 @@ export async function POST(request: NextRequest) {
           args: [[batchId]],
           kwargs: {}
         },
-        id: 10
+        id: 11
       })
     });
 
