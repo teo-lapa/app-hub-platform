@@ -6,15 +6,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getUpcomingOrders,
-  enrichCadenceWithMetadata,
-} from '@/lib/mock-data/supplier-cadence-mock';
-import {
-  upcomingOrdersQuerySchema,
-  validateRequestBody,
-} from '@/lib/validation/supplier-cadence-schemas';
-import type { CadenceWithMetadata } from '@/lib/types/supplier-cadence';
+import { getUpcomingSuppliers } from '@/lib/suppliers/db-queries';
+
+export const dynamic = 'force-dynamic';
 
 // ============================================================================
 // GET /api/supplier-cadence/upcoming
@@ -42,56 +36,28 @@ import type { CadenceWithMetadata } from '@/lib/types/supplier-cadence';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Parse query params
     const searchParams = request.nextUrl.searchParams;
-    const queryObj = {
-      days: searchParams.get('days') || undefined,
-    };
+    const daysParam = searchParams.get('days');
+    const days = daysParam ? parseInt(daysParam, 10) : 7;
 
-    // Validate query params
-    const validation = upcomingOrdersQuerySchema.safeParse(queryObj);
-    if (!validation.success) {
+    // Validate days parameter
+    if (isNaN(days) || days < 1 || days > 365) {
       return NextResponse.json(
         {
-          error: 'Parametri query non validi',
-          details: validation.error.issues,
+          error: 'Parametro days non valido',
+          details: 'days deve essere un numero tra 1 e 365',
         },
         { status: 400 }
       );
     }
 
-    const { days } = validation.data;
-
-    // Fetch upcoming orders
-    let suppliers = getUpcomingOrders(days);
-
-    // Enrich with metadata
-    const suppliersWithMetadata: CadenceWithMetadata[] = suppliers.map(enrichCadenceWithMetadata);
-
-    // Sort by next_order_date ASC (più urgenti prima)
-    const sorted = suppliersWithMetadata.sort((a, b) => {
-      if (!a.next_order_date) return 1;
-      if (!b.next_order_date) return -1;
-      return a.next_order_date.localeCompare(b.next_order_date);
-    });
-
-    // Calculate date range for response
-    const today = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + days);
-
-    const dateFrom = today.toISOString().split('T')[0];
-    const dateTo = endDate.toISOString().split('T')[0];
+    const suppliers = await getUpcomingSuppliers(days);
 
     return NextResponse.json(
       {
-        suppliers: sorted,
-        count: sorted.length,
-        filters: {
-          days,
-          date_from: dateFrom,
-          date_to: dateTo,
-        },
+        suppliers,
+        count: suppliers.length,
+        days,
       },
       { status: 200 }
     );
@@ -99,7 +65,7 @@ export async function GET(request: NextRequest) {
     console.error('GET /api/supplier-cadence/upcoming error:', error);
     return NextResponse.json(
       {
-        error: 'Errore server durante recupero ordini pianificati',
+        error: 'Errore server durante recupero fornitori prossimi',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }

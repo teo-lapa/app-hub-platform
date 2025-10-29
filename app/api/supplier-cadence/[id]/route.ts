@@ -2,41 +2,81 @@
  * API Route: /api/supplier-cadence/[id]
  *
  * Endpoints:
- * - PUT: Aggiorna cadenza esistente
- * - DELETE: Elimina cadenza
+ * - PATCH: Aggiorna cadenza esistente
+ * - DELETE: Elimina cadenza (soft delete)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getSupplierById,
-  updateSupplierCadence,
-  deleteSupplierCadence,
-  enrichCadenceWithMetadata,
-  calculateNextOrderDate,
-} from '@/lib/mock-data/supplier-cadence-mock';
+  updateSupplier,
+  deleteSupplier,
+} from '@/lib/suppliers/db-queries';
 import {
   updateCadenceSchema,
   validateRequestBody,
 } from '@/lib/validation/supplier-cadence-schemas';
 
+// Import enrichment function from main route
+function enrichSupplierWithMetadata(supplier: any): any {
+  const daysUntil = supplier.days_until_next_order;
+
+  let status: 'on_time' | 'due_soon' | 'overdue' | 'inactive' = 'on_time';
+  if (!supplier.is_active) {
+    status = 'inactive';
+  } else if (daysUntil !== null) {
+    if (daysUntil < 0) status = 'overdue';
+    else if (daysUntil <= 3) status = 'due_soon';
+    else status = 'on_time';
+  }
+
+  let urgency: 'low' | 'medium' | 'high' | 'critical' = 'low';
+  if (daysUntil !== null) {
+    if (daysUntil < 0) urgency = 'critical';
+    else if (daysUntil === 0) urgency = 'critical';
+    else if (daysUntil === 1) urgency = 'high';
+    else if (daysUntil <= 3) urgency = 'medium';
+    else urgency = 'low';
+  }
+
+  return {
+    id: supplier.id,
+    supplier_id: supplier.odoo_supplier_id,
+    supplier_name: supplier.name,
+    cadence_type: supplier.cadence_type,
+    cadence_value: supplier.cadence_value,
+    weekdays: null,
+    is_active: supplier.is_active,
+    next_order_date: supplier.next_order_date ? new Date(supplier.next_order_date).toISOString().split('T')[0] : null,
+    last_order_date: supplier.last_order_date ? new Date(supplier.last_order_date).toISOString().split('T')[0] : null,
+    average_lead_time_days: supplier.average_lead_time_days,
+    total_orders_last_6m: supplier.total_orders,
+    calculated_cadence_days: supplier.cadence_value,
+    notes: supplier.notes,
+    created_at: supplier.created_at,
+    updated_at: supplier.updated_at,
+    updated_by: null,
+    days_until_next_order: daysUntil,
+    status,
+    urgency,
+    is_overdue: daysUntil !== null && daysUntil < 0,
+    critical_products_count: supplier.critical_products_count || 0,
+  };
+}
+
 // ============================================================================
-// PUT /api/supplier-cadence/[id]
+// PATCH /api/supplier-cadence/[id]
 // ============================================================================
 
 /**
- * PUT: Aggiorna cadenza esistente
+ * PATCH: Aggiorna cadenza esistente
  *
  * Body (tutti i campi opzionali, ma almeno uno richiesto):
  * {
  *   cadence_type?: CadenceType,
- *   cadence_value?: number | null,
- *   weekdays?: Weekday[] | null,
+ *   cadence_value?: number,
  *   is_active?: boolean,
- *   next_order_date?: string | null,
- *   last_order_date?: string | null,
- *   average_lead_time_days?: number,
- *   notes?: string | null,
- *   updated_by?: string
+ *   notes?: string | null
  * }
  *
  * Response:
@@ -45,31 +85,20 @@ import {
  *   supplier: CadenceWithMetadata
  * }
  */
-export async function PUT(
+export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id, 10);
+    const id = params.id;
 
-    // Validate ID
-    if (isNaN(id) || id < 1) {
+    // Check if supplier exists
+    const existingSupplier = await getSupplierById(id);
+    if (!existingSupplier) {
       return NextResponse.json(
         {
-          error: 'ID non valido',
-          details: 'L\'ID deve essere un numero positivo',
-        },
-        { status: 400 }
-      );
-    }
-
-    // Check if cadence exists
-    const existingCadence = getSupplierById(id);
-    if (!existingCadence) {
-      return NextResponse.json(
-        {
-          error: 'Cadenza non trovata',
-          details: `Nessuna cadenza trovata con ID ${id}`,
+          error: 'Fornitore non trovato',
+          details: `Nessun fornitore trovato con ID ${id}`,
         },
         { status: 404 }
       );
@@ -92,56 +121,27 @@ export async function PUT(
 
     const updates = validation.data;
 
-    // Se viene aggiornata la cadenza ma non next_order_date, ricalcolalo
-    if (
-      (updates.cadence_type || updates.cadence_value || updates.weekdays) &&
-      !updates.next_order_date
-    ) {
-      const cadenceType = updates.cadence_type || existingCadence.cadence_type;
-      const cadenceValue = updates.cadence_value !== undefined
-        ? updates.cadence_value
-        : existingCadence.cadence_value;
-      const weekdays = updates.weekdays !== undefined
-        ? updates.weekdays
-        : existingCadence.weekdays;
-      const lastOrderDate = updates.last_order_date || existingCadence.last_order_date;
-
-      if (lastOrderDate) {
-        updates.next_order_date = calculateNextOrderDate(
-          lastOrderDate,
-          cadenceType,
-          cadenceValue,
-          weekdays
-        );
-      }
-    }
-
-    // Update cadence
-    const updatedCadence = updateSupplierCadence(id, updates);
-
-    if (!updatedCadence) {
-      // Should not happen (already checked above), but safety check
-      return NextResponse.json(
-        {
-          error: 'Errore aggiornamento cadenza',
-          details: 'Cadenza non trovata durante aggiornamento',
-        },
-        { status: 404 }
-      );
-    }
+    // Update supplier in database
+    const updatedSupplier = await updateSupplier(id, {
+      cadence_type: updates.cadence_type,
+      cadence_value: updates.cadence_value !== undefined ? (updates.cadence_value ?? undefined) : undefined,
+      last_cadence_order_date: updates.last_order_date ?? undefined,
+      is_active: updates.is_active,
+      notes: updates.notes ?? undefined,
+    });
 
     // Enrich with metadata
-    const enrichedCadence = enrichCadenceWithMetadata(updatedCadence);
+    const enrichedSupplier = enrichSupplierWithMetadata(updatedSupplier);
 
     return NextResponse.json(
       {
         success: true,
-        supplier: enrichedCadence,
+        supplier: enrichedSupplier,
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error(`PUT /api/supplier-cadence/${params.id} error:`, error);
+  } catch (error: any) {
+    console.error(`PATCH /api/supplier-cadence/${params.id} error:`, error);
 
     // Check if it's a JSON parse error
     if (error instanceof SyntaxError) {
@@ -151,6 +151,17 @@ export async function PUT(
           details: error.message,
         },
         { status: 400 }
+      );
+    }
+
+    // Check for not found error
+    if (error.message && error.message.includes('not found')) {
+      return NextResponse.json(
+        {
+          error: 'Fornitore non trovato',
+          details: error.message,
+        },
+        { status: 404 }
       );
     }
 
@@ -169,7 +180,7 @@ export async function PUT(
 // ============================================================================
 
 /**
- * DELETE: Elimina cadenza
+ * DELETE: Elimina cadenza (soft delete)
  *
  * Response:
  * {
@@ -182,54 +193,43 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id, 10);
+    const id = params.id;
 
-    // Validate ID
-    if (isNaN(id) || id < 1) {
+    // Check if supplier exists
+    const existingSupplier = await getSupplierById(id);
+    if (!existingSupplier) {
       return NextResponse.json(
         {
-          error: 'ID non valido',
-          details: 'L\'ID deve essere un numero positivo',
-        },
-        { status: 400 }
-      );
-    }
-
-    // Check if cadence exists
-    const existingCadence = getSupplierById(id);
-    if (!existingCadence) {
-      return NextResponse.json(
-        {
-          error: 'Cadenza non trovata',
-          details: `Nessuna cadenza trovata con ID ${id}`,
+          error: 'Fornitore non trovato',
+          details: `Nessun fornitore trovato con ID ${id}`,
         },
         { status: 404 }
       );
     }
 
-    // Delete cadence
-    const deleted = deleteSupplierCadence(id);
-
-    if (!deleted) {
-      // Should not happen (already checked above), but safety check
-      return NextResponse.json(
-        {
-          error: 'Errore eliminazione cadenza',
-          details: 'Impossibile eliminare la cadenza',
-        },
-        { status: 500 }
-      );
-    }
+    // Soft delete supplier
+    await deleteSupplier(id);
 
     return NextResponse.json(
       {
         success: true,
-        message: `Cadenza per ${existingCadence.supplier_name} eliminata con successo`,
+        message: `Cadenza per ${existingSupplier.name} disattivata con successo`,
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error(`DELETE /api/supplier-cadence/${params.id} error:`, error);
+
+    // Check for not found error
+    if (error.message && error.message.includes('not found')) {
+      return NextResponse.json(
+        {
+          error: 'Fornitore non trovato',
+          details: error.message,
+        },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(
       {

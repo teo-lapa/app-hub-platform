@@ -57,6 +57,11 @@ export const WEEKDAY_SHORT_NAMES: Record<Weekday, string> = {
   [Weekday.SATURDAY]: 'Sab',
 };
 
+/**
+ * Status della cadenza
+ */
+export type CadenceStatus = 'on_time' | 'due_soon' | 'overdue' | 'inactive';
+
 // ============================================================================
 // DATABASE MODELS
 // ============================================================================
@@ -163,6 +168,9 @@ export interface CadenceWithMetadata extends SupplierOrderCadence {
   days_until_next_order: number | null;
   days_overdue: number; // 0 se in tempo, >0 se in ritardo
   status: 'on_time' | 'due_soon' | 'overdue' | 'inactive';
+  urgency: 'low' | 'medium' | 'high' | 'critical';
+  is_overdue: boolean;
+  critical_products_count: number;
 }
 
 /**
