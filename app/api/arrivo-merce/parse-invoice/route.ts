@@ -197,16 +197,21 @@ ATTENZIONE COLONNA QUANTITA':
 
 Esempio riga:
 A0334SG | 25233 | ARAN DI RISO SUGO 25 g | CT | 18 | KG 5 | 29,51 | 25,0 10,0 | 358,55 | 12/02/27 | 69
-→ codice = "A0334SG", unita_misura = "CT", quantita = 18 (NON 5!)
+→ quantita = 18 (NON 5!)
 
 Output JSON:
 {
+  "fornitore": "nome fornitore",
+  "numero_fattura": "numero",
+  "data_fattura": "YYYY-MM-DD",
   "products": [
     {
       "article_code": "A0334SG",
       "description": "ARAN DI RISO SUGO 25 g",
       "quantity": 18,
-      "unit": "CT"
+      "unit": "CT",
+      "lot_number": "25233",
+      "expiry_date": "2027-02-12"
     }
   ]
 }`;
