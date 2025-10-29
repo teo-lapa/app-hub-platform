@@ -26,6 +26,11 @@ export default function CatalogoProdotti() {
   const [filterMode, setFilterMode] = useState<'all' | 'supplier'>('all');
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
 
+  // Get unique suppliers for dropdown
+  const suppliers = Array.from(
+    new Map(products.map(p => [p.supplier_id, { id: p.supplier_id, name: p.supplier_name }])).values()
+  ).filter(s => s.id > 0).sort((a, b) => a.name.localeCompare(b.name));
+
   useEffect(() => {
     loadProducts();
   }, []);
@@ -107,7 +112,10 @@ export default function CatalogoProdotti() {
               <label className="block text-sm text-white/60 mb-2">Modalità visualizzazione</label>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setFilterMode('all')}
+                  onClick={() => {
+                    setFilterMode('all');
+                    setSelectedSupplierId(null);
+                  }}
                   className={`flex-1 px-4 py-2 rounded-lg transition-all font-semibold ${
                     filterMode === 'all'
                       ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
@@ -130,8 +138,32 @@ export default function CatalogoProdotti() {
             </div>
           </div>
 
+          {/* Supplier Dropdown - show only when filterMode is 'supplier' */}
+          {filterMode === 'supplier' && (
+            <div className="mt-4">
+              <label className="block text-sm text-white/60 mb-2">Seleziona fornitore</label>
+              <select
+                value={selectedSupplierId || ''}
+                onChange={(e) => setSelectedSupplierId(Number(e.target.value))}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-slate-800 [&>option]:text-white"
+              >
+                <option value="">-- Scegli un fornitore --</option>
+                {suppliers.map(supplier => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="mt-4 text-sm text-white/60">
             Visualizzati: <span className="font-bold text-white">{filteredProducts.length}</span> prodotti
+            {filterMode === 'supplier' && selectedSupplierId && (
+              <span className="ml-2">
+                • <span className="text-blue-300">{suppliers.find(s => s.id === selectedSupplierId)?.name}</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -147,7 +179,7 @@ export default function CatalogoProdotti() {
               {/* Product Image */}
               <div className="relative h-48 bg-white/10">
                 <img
-                  src={`https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com/web/image/product.product/${product.id}/image_256`}
+                  src={`https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com/web/image/product.product/${product.id}/image_256`}
                   alt={product.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
