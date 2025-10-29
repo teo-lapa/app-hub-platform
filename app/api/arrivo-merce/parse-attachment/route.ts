@@ -337,14 +337,10 @@ Parte DESTRA (separata): | QUANTITA |
 📋 ESEMPIO CONCRETO dalla fattura San Giorgio:
 
 Tabella principale:
-```
 ARAN DI RISO SUGO 25 g Kg 5 FR MIO | CT | 18KG | 5 | 29,51 | 358,55
-```
 
 **Colonna QUANTITA sulla DESTRA (separata):**
-```
 18K  ← QUESTA È LA VERA QUANTITÀ DA ESTRARRE!
-```
 
 ⚠️ COSA ESTRARRE:
 - **quantity**: 18 (dal numero nella colonna DESTRA separata)

@@ -149,14 +149,13 @@ export async function POST(request: NextRequest) {
 ⚠️ IMPORTANTE: Nelle fatture italiane tipo San Giorgio c'è una COLONNA SEPARATA sulla DESTRA con le quantità reali!
 
 **Colonna QUANTITA sulla DESTRA (separata):**
-```
+
 18K  ← QUESTA È LA VERA QUANTITÀ DA ESTRARRE!
 54P
 8K
 8P
 1K
 2P
-```
 
 ⚠️ COSA ESTRARRE:
 - **quantity**: 18 (dal numero nella colonna DESTRA separata)
