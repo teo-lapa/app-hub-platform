@@ -81,11 +81,11 @@ async function fetchSuppliersFromOdoo(uid: number): Promise<OdooSupplier[]> {
           ODOO_PASSWORD,
           'res.partner',
           'search_read',
-          [
-            [['is_company', '=', true], ['supplier', '=', true]], // Solo fornitori
-            ['id', 'name', 'email', 'phone', 'city', 'country_id']
-          ],
-          { limit: 200 } // Top 200 fornitori
+          [[['supplier_rank', '>', 0]]], // Solo fornitori attivi
+          {
+            fields: ['id', 'name', 'email', 'phone', 'city', 'country_id'],
+            limit: 200 // Top 200 fornitori
+          }
         ]
       },
       id: Math.floor(Math.random() * 1000000)
