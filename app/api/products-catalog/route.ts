@@ -24,7 +24,22 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ [PRODUCTS-CATALOG] Using user session_id');
 
-    // Fetch all products with stock
+    // Get supplier_id from query params
+    const { searchParams } = new URL(request.url);
+    const supplierIdParam = searchParams.get('supplier_id');
+
+    // Build domain filter
+    let domain: any[] = [['sale_ok', '=', true], ['active', '=', true]];
+
+    // Add supplier filter if provided
+    if (supplierIdParam) {
+      const supplierId = parseInt(supplierIdParam);
+      console.log(`🔍 [PRODUCTS-CATALOG] Filtering by supplier_id: ${supplierId}`);
+      // Use Odoo domain filter: seller_ids contains supplier
+      domain.push(['seller_ids.partner_id', '=', supplierId]);
+    }
+
+    // Fetch products with domain filter
     const productsResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
@@ -37,7 +52,7 @@ export async function GET(request: NextRequest) {
         params: {
           model: 'product.product',
           method: 'search_read',
-          args: [[['sale_ok', '=', true], ['active', '=', true]]],
+          args: [domain],
           kwargs: {
             fields: ['id', 'name', 'image_256', 'qty_available', 'uom_id', 'seller_ids', 'list_price'],
             limit: 2000,  // Increased to show all products

@@ -50,7 +50,14 @@ export default function CatalogoProdotti() {
   async function loadProducts() {
     try {
       setLoading(true);
-      const response = await fetch('/api/products-catalog');
+
+      // Build API URL with supplier filter if present
+      const supplierIdParam = searchParams.get('supplier_id');
+      const apiUrl = supplierIdParam
+        ? `/api/products-catalog?supplier_id=${supplierIdParam}`
+        : '/api/products-catalog';
+
+      const response = await fetch(apiUrl);
       const data = await response.json();
 
       if (data.success) {
@@ -63,11 +70,10 @@ export default function CatalogoProdotti() {
     }
   }
 
-  const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSupplier = filterMode === 'all' || p.supplier_id === selectedSupplierId;
-    return matchesSearch && matchesSupplier;
-  });
+  // Simple search filter (supplier filter already applied by API)
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) {
     return (
