@@ -70,7 +70,7 @@ export type CadenceStatus = 'on_time' | 'due_soon' | 'overdue' | 'inactive';
  * Configurazione cadenza ordine fornitore (row database)
  */
 export interface SupplierOrderCadence {
-  id: number;
+  id: string; // UUID primary key
   supplier_id: number; // Odoo res.partner ID
   supplier_name: string;
 
@@ -102,8 +102,8 @@ export interface SupplierOrderCadence {
  * Storico modifiche cadenza
  */
 export interface SupplierOrderCadenceHistory {
-  id: number;
-  cadence_id: number;
+  id: string; // UUID primary key
+  cadence_id: string; // UUID reference to SupplierOrderCadence
 
   // Configurazione precedente
   previous_cadence_type: CadenceType | null;
@@ -177,7 +177,7 @@ export interface CadenceWithMetadata extends SupplierOrderCadence {
  * Fornitore da ordinare oggi (view: suppliers_to_order_today)
  */
 export interface SupplierToOrderToday {
-  id: number;
+  id: string; // UUID from SupplierOrderCadence
   supplier_id: number;
   supplier_name: string;
   cadence_type: CadenceType;
@@ -192,7 +192,7 @@ export interface SupplierToOrderToday {
  * Prossimo ordine pianificato (view: upcoming_supplier_orders)
  */
 export interface UpcomingSupplierOrder {
-  id: number;
+  id: string; // UUID from SupplierOrderCadence
   supplier_id: number;
   supplier_name: string;
   cadence_type: CadenceType;

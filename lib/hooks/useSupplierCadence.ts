@@ -61,7 +61,7 @@ async function fetchCadences(filters?: CadenceFilters): Promise<CadenceWithMetad
 /**
  * Fetch single cadence by ID
  */
-async function fetchCadenceById(id: number): Promise<CadenceWithMetadata> {
+async function fetchCadenceById(id: string): Promise<CadenceWithMetadata> {
   const response = await fetch(`/api/supplier-cadence/${id}`);
 
   if (!response.ok) {
@@ -96,11 +96,11 @@ async function createCadence(data: CreateCadenceRequest): Promise<CadenceWithMet
  * Update existing cadence
  */
 async function updateCadence(
-  id: number,
+  id: string,
   data: UpdateCadenceRequest
 ): Promise<CadenceWithMetadata> {
   const response = await fetch(`/api/supplier-cadence/${id}`, {
-    method: 'PUT',
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -118,7 +118,7 @@ async function updateCadence(
 /**
  * Delete cadence (soft delete)
  */
-async function deleteCadence(id: number): Promise<DeleteResponse> {
+async function deleteCadence(id: string): Promise<DeleteResponse> {
   const response = await fetch(`/api/supplier-cadence/${id}`, {
     method: 'DELETE',
   });
@@ -145,7 +145,7 @@ export function useSupplierCadences(filters?: CadenceFilters) {
 /**
  * Hook to fetch single cadence by ID
  */
-export function useSupplierCadence(id: number) {
+export function useSupplierCadence(id: string) {
   return useQuery({
     queryKey: ['supplier-cadence', id],
     queryFn: () => fetchCadenceById(id),
@@ -175,7 +175,7 @@ export function useUpdateCadence() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateCadenceRequest }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateCadenceRequest }) =>
       updateCadence(id, data),
     onMutate: async ({ id, data }) => {
       // Cancel outgoing refetches
