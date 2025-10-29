@@ -83,12 +83,32 @@ function enrichCadenceWithMetadata(cadence: SupplierOrderCadence): CadenceWithMe
   // Calcola status
   const status = calculateCadenceStatus(cadence.next_order_date, cadence.is_active);
 
+  // Calcola urgency basato su days_overdue e status
+  let urgency: 'low' | 'medium' | 'high' | 'critical' = 'low';
+  if (status === 'overdue' && daysOverdue > 7) {
+    urgency = 'critical';
+  } else if (status === 'overdue') {
+    urgency = 'high';
+  } else if (status === 'due_soon') {
+    urgency = 'medium';
+  }
+
+  // Calcola is_overdue
+  const is_overdue = daysOverdue > 0;
+
+  // TODO: critical_products_count dovrebbe venire da una query al DB
+  // Per ora usiamo 0 come placeholder
+  const critical_products_count = 0;
+
   return {
     ...cadence,
     days_since_last_order: daysSinceLastOrder,
     days_until_next_order: daysUntilNextOrder,
     days_overdue: daysOverdue,
     status,
+    urgency,
+    is_overdue,
+    critical_products_count,
   };
 }
 

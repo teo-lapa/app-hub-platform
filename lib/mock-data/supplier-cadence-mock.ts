@@ -492,12 +492,31 @@ export function enrichCadenceWithMetadata(
 
   const status = calculateCadenceStatus(cadence.next_order_date, cadence.is_active);
 
+  // Calcola urgency basato su days_overdue e status
+  let urgency: 'low' | 'medium' | 'high' | 'critical' = 'low';
+  if (status === 'overdue' && days_overdue > 7) {
+    urgency = 'critical';
+  } else if (status === 'overdue') {
+    urgency = 'high';
+  } else if (status === 'due_soon') {
+    urgency = 'medium';
+  }
+
+  // Calcola is_overdue
+  const is_overdue = days_overdue > 0;
+
+  // Mock: critical_products_count
+  const critical_products_count = 0;
+
   return {
     ...cadence,
     days_since_last_order,
     days_until_next_order,
     days_overdue,
     status,
+    urgency,
+    is_overdue,
+    critical_products_count,
   };
 }
 
