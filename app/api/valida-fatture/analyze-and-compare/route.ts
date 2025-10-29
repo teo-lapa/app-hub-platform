@@ -144,28 +144,44 @@ export async function POST(request: NextRequest) {
               type: 'text',
               text: `Sei un esperto contabile che deve analizzare una fattura italiana in formato PDF.
 
-🎯 METODO DI LETTURA CRITICO - LEGGI AL CONTRARIO (DA DESTRA A SINISTRA):
+🎯 ATTENZIONE ALLE COLONNE - NON CONFONDERE U/M CON QUANTITÀ!
 
-Per ogni riga prodotto, segui ESATTAMENTE questo ordine:
-1. TROVA IL TOTALE RIGA (colonna destra, es: "IMP.NET.€" o "TOTALE")
-2. POI TROVA IL PREZZO UNITARIO (colonna centrale, es: "PR.UNI.€" o "PREZZO")
-3. INFINE CALCOLA LA QUANTITÀ: Quantità = Totale Riga ÷ Prezzo Unitario
+⚠️ IMPORTANTE: Molte fatture hanno una struttura a CARTONI con 2 colonne separate:
+
+**Esempio tabella:**
+| ARTICOLO | LOTTO | DESCRIZIONE | U/M | QUANTITA | Q.TA/CARTONE | PREZZO | IMPORTO |
+
+- **U/M**: "CT 18KG", "CT 18PZ" → È solo DESCRITTIVO (dice cosa c'è nel cartone)
+- **Q.TA/CARTONE**: 5, 50, 3, ecc. → È la QUANTITÀ VERA da estrarre!
+
+📋 ESEMPIO CONCRETO:
+Riga fattura: "ARAN DI RISO | 25233 | ... | CT 18KG | 5 | 29,51 | 358,55"
+
+Colonne:
+- U/M: "CT 18KG" (descrizione)
+- Q.TA/CARTONE: **5** ← QUESTA è la quantità!
+- PREZZO: 29,51€
+- IMPORTO: 358,55€
+
+⚠️ COSA ESTRARRE:
+- **quantity**: 5 (dalla colonna Q.TA/CARTONE, NON dalla U/M!)
+- **unit**: "CT" (cartone)
+- **unit_price**: 29.51
+- **subtotal**: 358.55
+
+📋 ALTRI ESEMPI:
+1. "CORNETTO | CT 18PZ | 50 | 24,74 | 1.166,29"
+   → quantity: **50**, unit: "CT"
+
+2. "SFOGLIATELLE | CT 1KG | 3 | 30,60 | 20,66"
+   → quantity: **3**, unit: "CT"
 
 ⚠️ REGOLE CRITICHE:
-- NON fidarti della colonna "Q.TA" se i numeri non tornano!
-- Il TOTALE RIGA è la verità assoluta
-- Se Totale = 46.86€ e Prezzo = 4.70€, allora Q.tà = 46.86 ÷ 4.70 = 9.97 kg (NON 3kg!)
-- Molti fornitori scrivono "3 KG" nell'unità di misura ma vendono in quantità diverse
-- Le fatture italiane usano virgola (123,45) → converti in punto (123.45)
-
-📋 ESEMPIO CONCRETO DALLA FATTURA:
-Se vedi:
-"MORTADELLA C/P 3.5KG | 3 KG | 9,970 | 4,700 | 46,86"
-Leggi così:
-- Totale riga = 46.86€ (VERITÀ)
-- Prezzo unitario = 4.70€/kg
-- Quantità reale = 46.86 ÷ 4.70 = 9.97 kg ✅
-- "3 KG" è solo l'unità di vendita (vaschetta da 3kg), ma ne hanno ordinati 9.97kg!
+1. NON confondere la colonna U/M con la colonna QUANTITA!
+2. La QUANTITÀ è il numero nella colonna centrale (5, 50, 3, ecc.)
+3. L'UNITÀ DI MISURA è "CT" se vedi "CT" nella colonna U/M
+4. Se NON c'è "CT" nella U/M, usa l'unità scritta (KG, PZ, LT)
+5. Le fatture italiane usano virgola (123,45) → converti in punto (123.45)
 
 🔍 COSA ESTRARRE:
 
@@ -198,10 +214,16 @@ Leggi così:
       - Cerca in colonna "Importo", "Totale", o ultima colonna numeri
    d) Prezzo unitario
       - Per spese forfettarie (es: trasporto €40), prezzo = subtotal
-   e) Quantità
-      - Per spese forfettarie, quantità = 1
+   e) Quantità - ⚠️ LEGGI LA COLONNA GIUSTA!
+      - Cerca colonna "Q.TA", "QUANTITA", "Q.TA/CARTONE"
+      - USA IL NUMERO IN QUELLA COLONNA (es: 5, 50, 3)
+      - NON prendere il numero dalla colonna U/M (es: "18KG")
+      - Per spese forfettarie: quantità = 1
    f) Aliquota IVA (22%, 10%, 4%, 0%, ecc.)
-   g) Unità di misura (KG, PZ, LT, PZ* per spese)
+   g) Unità di misura
+      - Se U/M contiene "CT": unit = "CT"
+      - Se U/M è "KG", "PZ", "LT": usa quella
+      - Per spese: "PZ"
 
 4. TOTALI FATTURA:
    - Imponibile totale
@@ -230,32 +252,41 @@ DEVI includerle come righe separate nel JSON, anche se non sono nella tabella pr
 
 Rispondi SOLO con JSON valido:
 {
-  "supplier_name": "SALUMIFICIO F.LLI COATI S.P.A.",
-  "supplier_vat": "02451960237",
-  "invoice_number": "42",
-  "invoice_date": "2025-10-15",
-  "subtotal_amount": 1685.04,
+  "supplier_name": "SAN GIORGIO S.p.A.",
+  "supplier_vat": "IT00000000000",
+  "invoice_number": "0043086/A",
+  "invoice_date": "2025-10-23",
+  "subtotal_amount": 2603.11,
   "tax_amount": 0.00,
-  "total_amount": 1725.04,
+  "total_amount": 2603.11,
   "currency": "EUR",
   "lines": [
     {
-      "description": "MORTADELLA C/P 3.5KG 1/2 SV RIF.VS ORD.N°9871",
-      "product_code": "AZCOM051",
-      "quantity": 9.97,
-      "unit_price": 4.70,
-      "subtotal": 46.86,
-      "tax_rate": 0,
-      "unit": "KG"
+      "description": "ARAN DI RISO SUGO 25 g Kg 5 FR MIO",
+      "product_code": "A0334SG",
+      "quantity": 5,
+      "unit_price": 29.51,
+      "subtotal": 358.55,
+      "tax_rate": 10,
+      "unit": "CT"
     },
     {
-      "description": "Spese trasporto",
-      "product_code": null,
-      "quantity": 1,
-      "unit_price": 40.00,
-      "subtotal": 40.00,
-      "tax_rate": 0,
-      "unit": "PZ"
+      "description": "CORNETTO 1980 VUOTO 85 g. PF",
+      "product_code": "C0544SG",
+      "quantity": 50,
+      "unit_price": 24.74,
+      "subtotal": 1166.29,
+      "tax_rate": 10,
+      "unit": "CT"
+    },
+    {
+      "description": "SFOGLIATELLE MIGNON APERITIVO 35 g",
+      "product_code": "S0425SG",
+      "quantity": 3,
+      "unit_price": 30.60,
+      "subtotal": 20.66,
+      "tax_rate": 10,
+      "unit": "CT"
     }
   ]
 }
