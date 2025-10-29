@@ -200,6 +200,7 @@ export async function POST(request: NextRequest) {
           }
 
           // STEP 4: Generate and upload product image with Gemini 2.5 Flash Image
+          let imageGenerated = false;
           if (product.nome_completo) {
             try {
               console.log(`🎨 Generating image for product ${productId}`);
@@ -239,6 +240,7 @@ export async function POST(request: NextRequest) {
 
               if (imageData.success) {
                 console.log('✅ Product image generated and uploaded with Gemini 2.5 Flash Image');
+                imageGenerated = true;
               } else {
                 console.error('⚠️ Image generation failed:', imageData.error);
               }
@@ -256,7 +258,7 @@ export async function POST(request: NextRequest) {
             odoo_id: productId,
             success: true,
             supplier_price_created: !!product.fornitore_odoo_id,
-            image_generated: !!product.immagine_search_query
+            image_generated: imageGenerated
           });
         }
 
