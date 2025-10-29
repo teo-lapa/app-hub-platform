@@ -341,7 +341,7 @@ export async function syncSuppliersFromOdoo(options: SyncOptions = {}): Promise<
             email: supplier.email || null,
             phone: supplier.phone || null,
             city: supplier.city || null,
-            cadence_type: 'fixed_days',
+            cadence_type: 'fixed_days' as CadenceType,
             cadence_value: stats.averageCadenceDays,
             average_lead_time_days: stats.averageLeadTime,
             last_cadence_order_date: stats.lastOrderDate,
@@ -359,7 +359,7 @@ export async function syncSuppliersFromOdoo(options: SyncOptions = {}): Promise<
             email: supplier.email || null,
             phone: supplier.phone || null,
             city: supplier.city || null,
-            cadence_type: 'fixed_days',
+            cadence_type: 'fixed_days' as CadenceType,
             cadence_value: 7, // Default placeholder
             average_lead_time_days: 3,
             last_cadence_order_date: null,
