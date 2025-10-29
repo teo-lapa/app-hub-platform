@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { loadSkill, logSkillInfo } from '@/lib/ai/skills-loader';
 import { PDFDocument } from 'pdf-lib';
 
@@ -9,6 +10,8 @@ export const maxDuration = 300; // 5 minutes for large PDFs
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // Helper function to extract specific pages from PDF
 async function extractPDFPages(buffer: Buffer, pages: number[]): Promise<Buffer> {
@@ -170,6 +173,62 @@ export async function POST(request: NextRequest) {
       return json;
     };
 
+    // Helper function to call Gemini for product extraction
+    const callGeminiAgent = async (pdfBase64: string, agentName: string) => {
+      console.log(`🤖 ${agentName} (Gemini 2.5 Flash)...`);
+
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: {
+          temperature: 0,
+          responseMimeType: 'application/json'
+        }
+      });
+
+      const prompt = `Estrai i dati dalla fattura.
+
+La tabella prodotti ha queste colonne IN ORDINE (da sinistra a destra):
+ARTICOLO | LOTTO | DESCRIZIONE | UM | QUANTITA' | QTA' x CARTONE | PREZZO UNITARIO | % SCONTI | IMPORTO | DT. SCAD. | IVA
+
+ATTENZIONE COLONNA QUANTITA':
+- Colonna QUANTITA': contiene SOLO NUMERI (es: 18, 54, 8, 5, 1, 2)
+- Colonna QTA' x CARTONE: contiene TESTO (es: KG 5, PZ 50, CT 30)
+- USA la colonna QUANTITA' (solo numeri)!
+
+Esempio riga:
+A0334SG | 25233 | ARAN DI RISO SUGO 25 g | CT | 18 | KG 5 | 29,51 | 25,0 10,0 | 358,55 | 12/02/27 | 69
+→ codice = "A0334SG", unita_misura = "CT", quantita = 18 (NON 5!)
+
+Output JSON:
+{
+  "products": [
+    {
+      "article_code": "A0334SG",
+      "description": "ARAN DI RISO SUGO 25 g",
+      "quantity": 18,
+      "unit": "CT"
+    }
+  ]
+}`;
+
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            mimeType: 'application/pdf',
+            data: pdfBase64
+          }
+        },
+        prompt
+      ]);
+
+      const text = result.response.text();
+      const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const json = JSON.parse(cleaned);
+
+      console.log(`✅ ${agentName}: completato - ${json.products?.length || 0} prodotti estratti`);
+      return json;
+    };
+
     // 🤖 AGENT 0: Identify Documents (usa PDF completo)
     const docInfo = await callAgent('document-processing/identify-documents', 'AGENT 0 - Identificazione Documenti');
     console.log('📄 Documento principale identificato:', docInfo.primary_document.type, '- Pagine:', docInfo.primary_document.pages);
@@ -237,7 +296,8 @@ export async function POST(request: NextRequest) {
       return json;
     };
 
-    const productsData = await callAgentWithPDF('document-processing/extract-products', 'AGENT 1 - Estrazione Prodotti (PDF filtrato)', filteredContentBlock, pagesContext);
+    // 🤖 AGENT 1: Extract Products con GEMINI 2.5 Flash (invece di Claude)
+    const productsData = await callGeminiAgent(filteredBase64, 'AGENT 1 - Estrazione Prodotti (PDF filtrato)');
 
     // 🤖 AGENT 2: Extract Lots and Expiry Dates + VALIDATE PRODUCTS (usa PDF filtrato)
     const productsListContext = `
