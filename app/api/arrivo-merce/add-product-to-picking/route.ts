@@ -7,8 +7,8 @@ export const maxDuration = 30;
 /**
  * ADD PRODUCT TO PICKING
  *
- * Aggiunge un prodotto a un picking esistente
- * Crea stock.move e stock.move.line
+ * Aggiunge un prodotto al Purchase Order collegato al picking
+ * Questo crea automaticamente i movimenti nel picking
  *
  * INPUT:
  * - picking_id: ID del picking (ricezione)
@@ -18,8 +18,8 @@ export const maxDuration = 30;
  * - expiry_date: data scadenza (opzionale)
  *
  * OUTPUT:
- * - move_id: ID del stock.move creato
- * - move_line_id: ID della stock.move.line creata
+ * - po_line_id: ID della purchase.order.line creata
+ * - purchase_order_id: ID del PO aggiornato
  */
 export async function POST(request: NextRequest) {
   try {
@@ -47,10 +47,10 @@ export async function POST(request: NextRequest) {
       expiry_date
     });
 
-    // Step 1: Recupera informazioni sul picking
+    // Step 1: Trova il Purchase Order collegato al picking
     const picking = await callOdoo(cookies, 'stock.picking', 'read', [
       [picking_id],
-      ['partner_id', 'location_id', 'location_dest_id', 'picking_type_id']
+      ['partner_id', 'origin', 'purchase_id']
     ]);
 
     if (!picking || picking.length === 0) {
@@ -60,10 +60,48 @@ export async function POST(request: NextRequest) {
     const pickingData = picking[0];
     console.log('📋 Picking trovato:', pickingData);
 
-    // Step 2: Recupera informazioni sul prodotto
+    // Trova il Purchase Order
+    let purchaseOrderId = null;
+
+    if (pickingData.purchase_id) {
+      // Modo diretto: campo purchase_id
+      purchaseOrderId = pickingData.purchase_id[0];
+      console.log('✅ PO trovato da campo purchase_id:', purchaseOrderId);
+    } else if (pickingData.origin) {
+      // Modo alternativo: cerca PO dal campo origin (es: "P00123")
+      const poSearch = await callOdoo(cookies, 'purchase.order', 'search', [
+        [['name', '=', pickingData.origin]]
+      ]);
+
+      if (poSearch && poSearch.length > 0) {
+        purchaseOrderId = poSearch[0];
+        console.log('✅ PO trovato da origin:', purchaseOrderId);
+      }
+    }
+
+    if (!purchaseOrderId) {
+      return NextResponse.json({
+        error: 'Purchase Order non trovato. Il picking potrebbe non essere collegato a un ordine di acquisto.'
+      }, { status: 404 });
+    }
+
+    // Step 2: Recupera informazioni sul PO
+    const purchaseOrder = await callOdoo(cookies, 'purchase.order', 'read', [
+      [purchaseOrderId],
+      ['id', 'name', 'partner_id', 'state', 'currency_id']
+    ]);
+
+    if (!purchaseOrder || purchaseOrder.length === 0) {
+      return NextResponse.json({ error: 'Purchase Order non trovato' }, { status: 404 });
+    }
+
+    const poData = purchaseOrder[0];
+    console.log('📝 Purchase Order trovato:', poData.name, '- Stato:', poData.state);
+
+    // Step 3: Recupera informazioni sul prodotto
     const product = await callOdoo(cookies, 'product.product', 'read', [
       [product_id],
-      ['name', 'uom_id', 'tracking']
+      ['name', 'uom_po_id', 'seller_ids']
     ]);
 
     if (!product || product.length === 0) {
@@ -73,120 +111,70 @@ export async function POST(request: NextRequest) {
     const productData = product[0];
     console.log('📦 Prodotto trovato:', productData.name);
 
-    // Step 3: Crea stock.move
-    const moveData = {
-      name: productData.name,
+    // Step 4: Cerca il prezzo dal fornitore
+    let productPrice = 0;
+    if (productData.seller_ids && productData.seller_ids.length > 0) {
+      // Cerca il prezzo per questo fornitore
+      const supplierInfo = await callOdoo(cookies, 'product.supplierinfo', 'search_read', [
+        [
+          ['id', 'in', productData.seller_ids],
+          ['partner_id', '=', poData.partner_id[0]]
+        ],
+        ['price', 'min_qty']
+      ]);
+
+      if (supplierInfo && supplierInfo.length > 0) {
+        productPrice = supplierInfo[0].price;
+        console.log('💰 Prezzo fornitore trovato:', productPrice);
+      }
+    }
+
+    // Step 5: Crea purchase.order.line
+    const poLineData: any = {
+      order_id: purchaseOrderId,
       product_id: product_id,
-      product_uom_qty: quantity || 1,
-      product_uom: productData.uom_id[0],
-      picking_id: picking_id,
-      location_id: pickingData.location_id[0],
-      location_dest_id: pickingData.location_dest_id[0],
-      picking_type_id: pickingData.picking_type_id[0],
-      state: 'draft'
+      name: productData.name,
+      product_qty: quantity || 1,
+      product_uom: productData.uom_po_id[0],
+      price_unit: productPrice,
+      date_planned: new Date().toISOString().split('T')[0] // Data di oggi
     };
 
-    console.log('🔨 Creazione stock.move...');
-    const moveId = await callOdoo(cookies, 'stock.move', 'create', [moveData]);
-    console.log('✅ Stock.move creato:', moveId);
+    console.log('🔨 Creazione purchase.order.line...');
+    const poLineId = await callOdoo(cookies, 'purchase.order.line', 'create', [poLineData]);
+    console.log('✅ Purchase.order.line creata:', poLineId);
 
-    // Step 4: Conferma il move per creare automaticamente le move_lines
-    await callOdoo(cookies, 'stock.move', '_action_confirm', [[moveId]]);
-    console.log('✅ Stock.move confermato');
-
-    // Step 5: Recupera le move_line create automaticamente
-    const moveLines = await callOdoo(cookies, 'stock.move.line', 'search_read', [
-      [['move_id', '=', moveId]],
-      ['id', 'product_id', 'product_uom_id', 'location_id', 'location_dest_id']
-    ]);
-
-    let moveLineId = null;
-
-    if (moveLines.length > 0) {
-      moveLineId = moveLines[0].id;
-      console.log('✅ Stock.move.line esistente trovata:', moveLineId);
-    } else {
-      // Se non è stata creata automaticamente, la creiamo manualmente
-      console.log('🔨 Creazione stock.move.line manuale...');
-
-      const moveLineData: any = {
-        move_id: moveId,
-        product_id: product_id,
-        product_uom_id: productData.uom_id[0],
-        location_id: pickingData.location_id[0],
-        location_dest_id: pickingData.location_dest_id[0],
-        picking_id: picking_id,
-        quantity: quantity || 1,
-        qty_done: 0
-      };
-
-      moveLineId = await callOdoo(cookies, 'stock.move.line', 'create', [moveLineData]);
-      console.log('✅ Stock.move.line creata:', moveLineId);
+    // Step 6: Se il PO è in stato 'draft', confermalo per generare i movimenti
+    if (poData.state === 'draft') {
+      console.log('🔄 Confermo Purchase Order...');
+      await callOdoo(cookies, 'purchase.order', 'button_confirm', [[purchaseOrderId]]);
+      console.log('✅ Purchase Order confermato');
     }
 
-    // Step 6: Se c'è un lotto, gestiscilo
-    let lotId = null;
-    if (lot_number) {
-      console.log('🏷️ Gestione lotto:', lot_number);
-
-      // Cerca se il lotto esiste già
-      const existingLots = await callOdoo(cookies, 'stock.lot', 'search_read', [
-        [['name', '=', lot_number], ['product_id', '=', product_id]],
-        ['id', 'name']
-      ]);
-
-      if (existingLots.length > 0) {
-        lotId = existingLots[0].id;
-        console.log('✅ Lotto esistente trovato:', lotId);
-      } else {
-        // Crea nuovo lotto
-        const lotData: any = {
-          name: lot_number,
-          product_id: product_id,
-          company_id: 1 // TODO: recuperare company_id dal picking
-        };
-
-        if (expiry_date) {
-          lotData.expiration_date = expiry_date;
-        }
-
-        lotId = await callOdoo(cookies, 'stock.lot', 'create', [lotData]);
-        console.log('✅ Nuovo lotto creato:', lotId);
-      }
-
-      // Aggiorna la move_line con il lotto
-      await callOdoo(cookies, 'stock.move.line', 'write', [
-        [moveLineId],
-        { lot_id: lotId, lot_name: lot_number }
-      ]);
-      console.log('✅ Lotto assegnato alla move_line');
-    }
-
-    // Step 7: Recupera i dati completi della move_line creata
-    const finalMoveLine = await callOdoo(cookies, 'stock.move.line', 'read', [
-      [moveLineId],
+    // Step 7: Recupera i dati della riga creata
+    const finalPoLine = await callOdoo(cookies, 'purchase.order.line', 'read', [
+      [poLineId],
       [
         'id',
-        'move_id',
+        'order_id',
         'product_id',
-        'product_uom_id',
-        'lot_id',
-        'lot_name',
-        'qty_done',
-        'quantity',
-        'location_id',
-        'location_dest_id'
+        'product_qty',
+        'product_uom',
+        'price_unit',
+        'price_subtotal',
+        'date_planned'
       ]
     ]);
 
-    console.log('✅ [ADD-PRODUCT] Prodotto aggiunto con successo al picking!');
+    console.log('✅ [ADD-PRODUCT] Prodotto aggiunto con successo al Purchase Order!');
+    console.log('   Questo creerà automaticamente i movimenti nel picking');
 
     return NextResponse.json({
       success: true,
-      move_id: moveId,
-      move_line_id: moveLineId,
-      lot_id: lotId,
-      move_line: finalMoveLine[0]
+      po_line_id: poLineId,
+      purchase_order_id: purchaseOrderId,
+      purchase_order_name: poData.name,
+      po_line: finalPoLine[0]
     });
 
   } catch (error: any) {
