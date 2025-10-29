@@ -90,7 +90,7 @@ export const createTransferSchema = z.object({
     message: 'Maximum 100 products per transfer'
   }),
   type: z.enum(['reload', 'request_gift'], {
-    errorMap: () => ({ message: 'type must be either "reload" or "request_gift"' })
+    message: 'type must be either "reload" or "request_gift"'
   }),
   notes: z.string().max(500).optional()
 });
@@ -113,7 +113,7 @@ export function validateRequest<T>(
     return { success: true, data: parsed };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const messages = error.errors.map(e => `${e.path.join('.')}: ${e.message}`);
+      const messages = error.issues.map(e => `${e.path.join('.')}: ${e.message}`);
       return { success: false, error: messages.join(', ') };
     }
     return { success: false, error: 'Invalid request data' };
