@@ -65,14 +65,29 @@ export async function getOdooSessionId(): Promise<string | null> {
     const sessionId = cookieStore.get('odoo_session_id')?.value;
 
     if (!sessionId) {
-      console.warn('⚠️ Nessun session_id trovato - utente deve fare login');
+      console.warn('⚠️ Nessun session_id trovato nei cookie');
+      console.log('🔄 Tentativo autenticazione automatica con credenziali...');
+
+      // Fallback: autentica con credenziali
+      const newSessionId = await authenticateWithCredentials();
+
+      if (newSessionId) {
+        console.log('✅ Autenticazione automatica riuscita!');
+        return newSessionId;
+      }
+
+      console.error('❌ Autenticazione automatica fallita');
       return null;
     }
 
     return sessionId;
   } catch (error) {
     console.error('❌ Errore ottenimento session_id:', error);
-    return null;
+
+    // Fallback anche in caso di errore
+    console.log('🔄 Tentativo autenticazione automatica dopo errore...');
+    const newSessionId = await authenticateWithCredentials();
+    return newSessionId;
   }
 }
 
