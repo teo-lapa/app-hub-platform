@@ -94,31 +94,31 @@ export const mockUpsellOpportunities = [
 ];
 
 export const mockHeatmapData = [
-  { health: 25, value: 5000, name: 'Cliente A', status: 'critical' },
-  { health: 30, value: 8000, name: 'Cliente B', status: 'critical' },
-  { health: 35, value: 12000, name: 'Cliente C', status: 'warning' },
-  { health: 40, value: 35000, name: 'Da Mario', status: 'warning' },
-  { health: 42, value: 32000, name: 'Bella Napoli', status: 'warning' },
-  { health: 48, value: 28000, name: 'Splendide', status: 'warning' },
-  { health: 65, value: 8000, name: 'Cliente G', status: 'ok' },
-  { health: 70, value: 12000, name: 'Cliente H', status: 'ok' },
-  { health: 75, value: 15000, name: 'Cliente I', status: 'ok' },
-  { health: 85, value: 65000, name: 'Champion A', status: 'excellent' },
-  { health: 88, value: 58000, name: 'Champion B', status: 'excellent' },
-  { health: 92, value: 72000, name: 'Champion C', status: 'excellent' },
-  { health: 90, value: 55000, name: 'Champion D', status: 'excellent' },
+  { health: 25, value: 5000, name: 'Cliente A', status: 'critical' as const },
+  { health: 30, value: 8000, name: 'Cliente B', status: 'critical' as const },
+  { health: 35, value: 12000, name: 'Cliente C', status: 'warning' as const },
+  { health: 40, value: 35000, name: 'Da Mario', status: 'warning' as const },
+  { health: 42, value: 32000, name: 'Bella Napoli', status: 'warning' as const },
+  { health: 48, value: 28000, name: 'Splendide', status: 'warning' as const },
+  { health: 65, value: 8000, name: 'Cliente G', status: 'ok' as const },
+  { health: 70, value: 12000, name: 'Cliente H', status: 'ok' as const },
+  { health: 75, value: 15000, name: 'Cliente I', status: 'ok' as const },
+  { health: 85, value: 65000, name: 'Champion A', status: 'excellent' as const },
+  { health: 88, value: 58000, name: 'Champion B', status: 'excellent' as const },
+  { health: 92, value: 72000, name: 'Champion C', status: 'excellent' as const },
+  { health: 90, value: 55000, name: 'Champion D', status: 'excellent' as const },
 ];
 
 export const mockArriviMerce = [
-  { ora: '08:30', fornitore: 'Supplier Italy A', prodotti: 45, status: 'done', statusText: '✅ Completato' },
-  { ora: '10:00', fornitore: 'Supplier Italy B', prodotti: 32, status: 'progress', statusText: '🔄 In corso' },
-  { ora: '14:00', fornitore: 'Supplier Swiss C', prodotti: 18, status: 'waiting', statusText: '⏳ Attesa' },
+  { ora: '08:30', fornitore: 'Supplier Italy A', prodotti: 45, status: 'done' as const, statusText: '✅ Completato' },
+  { ora: '10:00', fornitore: 'Supplier Italy B', prodotti: 32, status: 'progress' as const, statusText: '🔄 In corso' },
+  { ora: '14:00', fornitore: 'Supplier Swiss C', prodotti: 18, status: 'waiting' as const, statusText: '⏳ Attesa' },
 ];
 
 export const mockStockCritico = [
-  { prodotto: 'Prosciutto Crudo 24M', stock: 15, min: 50, giorni: 3, severity: 'critical' },
-  { prodotto: 'Mozzarella di Bufala DOP', stock: 28, min: 80, giorni: 5, severity: 'high' },
-  { prodotto: 'Grana Padano 24M', stock: 42, min: 100, giorni: 7, severity: 'medium' },
+  { prodotto: 'Prosciutto Crudo 24M', stock: 15, min: 50, giorni: 3, severity: 'critical' as const },
+  { prodotto: 'Mozzarella di Bufala DOP', stock: 28, min: 80, giorni: 5, severity: 'high' as const },
+  { prodotto: 'Grana Padano 24M', stock: 42, min: 100, giorni: 7, severity: 'medium' as const },
 ];
 
 export const mockScadenzeImminenti = [
@@ -135,9 +135,9 @@ export const mockWarehouseCapacity = {
 };
 
 export const mockAutisti = [
-  { nome: 'Marco', stops: 5, totale: 12, eta: '15:30', status: 'delivery', lat: 47.3769, lng: 8.5417 },
-  { nome: 'Luca', stops: 3, totale: 8, eta: '14:45', status: 'transit', lat: 47.5596, lng: 7.5886 },
-  { nome: 'Paolo', stops: 0, totale: 15, eta: '13:00', status: 'starting', lat: 47.0502, lng: 8.3093 },
+  { nome: 'Marco', stops: 5, totale: 12, eta: '15:30', status: 'delivery' as const, lat: 47.3769, lng: 8.5417 },
+  { nome: 'Luca', stops: 3, totale: 8, eta: '14:45', status: 'transit' as const, lat: 47.5596, lng: 7.5886 },
+  { nome: 'Paolo', stops: 0, totale: 15, eta: '13:00', status: 'starting' as const, lat: 47.0502, lng: 8.3093 },
 ];
 
 export const mockKPIGiornata = [
@@ -148,8 +148,8 @@ export const mockKPIGiornata = [
 ];
 
 export const mockProblemiDelivery = [
-  { autista: 'Marco', problema: 'Prodotto mancante (Qty -5)', cliente: 'Rist. Da Mario', severity: 'high' },
-  { autista: 'Luca', problema: 'Ritardo traffico (+20min)', cliente: 'Hotel Splendide', severity: 'medium' },
+  { autista: 'Marco', problema: 'Prodotto mancante (Qty -5)', cliente: 'Rist. Da Mario', severity: 'high' as const },
+  { autista: 'Luca', problema: 'Ritardo traffico (+20min)', cliente: 'Hotel Splendide', severity: 'medium' as const },
 ];
 
 export const mockPLData = {
@@ -182,10 +182,10 @@ export const mockBreakEvenChartData = [
 ];
 
 export const mockARAging = [
-  { period: '0-30 days', amount: 450000, count: 125, percent: 65, severity: 'ok' },
-  { period: '31-60 days', amount: 180000, count: 42, percent: 26, severity: 'warning' },
-  { period: '61-90 days', amount: 45000, count: 12, percent: 6, severity: 'high' },
-  { period: '90+ OVERDUE', amount: 20000, count: 8, percent: 3, severity: 'critical' },
+  { period: '0-30 days', amount: 450000, count: 125, percent: 65, severity: 'ok' as const },
+  { period: '31-60 days', amount: 180000, count: 42, percent: 26, severity: 'warning' as const },
+  { period: '61-90 days', amount: 45000, count: 12, percent: 6, severity: 'high' as const },
+  { period: '90+ OVERDUE', amount: 20000, count: 8, percent: 3, severity: 'critical' as const },
 ];
 
 export const mockLeaderboard = [
@@ -221,9 +221,9 @@ export const mockTopProducts = [
 ];
 
 export const mockSlowMovers = [
-  { name: 'Salame Tipo X', stock: 2500, lastSale: '180 gg', days: 210, severity: 'critical' },
-  { name: 'Formaggio Rare Y', stock: 1800, lastSale: '165 gg', days: 195, severity: 'critical' },
-  { name: 'Vino Premium Z', stock: 1200, lastSale: '142 gg', days: 172, severity: 'high' },
+  { name: 'Salame Tipo X', stock: 2500, lastSale: '180 gg', days: 210, severity: 'critical' as const },
+  { name: 'Formaggio Rare Y', stock: 1800, lastSale: '165 gg', days: 195, severity: 'critical' as const },
+  { name: 'Vino Premium Z', stock: 1200, lastSale: '142 gg', days: 172, severity: 'high' as const },
 ];
 
 export const mockABCData = [
@@ -233,16 +233,16 @@ export const mockABCData = [
 ];
 
 export const mockCriticalAlerts = [
-  { priority: 'urgent', icon: '🔴', alert: '3 clienti churn risk >85%', affected: 'CHF 95K revenue', action: 'ACT NOW' },
-  { priority: 'urgent', icon: '🔴', alert: 'Stock critico: 5 prodotti <3 giorni', affected: 'Revenue impact', action: 'ORDER' },
-  { priority: 'high', icon: '🟠', alert: '2 consegne in ritardo >30min', affected: '2 clienti', action: 'NOTIFY' },
-  { priority: 'medium', icon: '🟡', alert: 'Fatture scadute >90gg: CHF 20K', affected: '8 clienti', action: 'CALL' },
+  { priority: 'urgent' as const, icon: '🔴', alert: '3 clienti churn risk >85%', affected: 'CHF 95K revenue', action: 'ACT NOW' },
+  { priority: 'urgent' as const, icon: '🔴', alert: 'Stock critico: 5 prodotti <3 giorni', affected: 'Revenue impact', action: 'ORDER' },
+  { priority: 'high' as const, icon: '🟠', alert: '2 consegne in ritardo >30min', affected: '2 clienti', action: 'NOTIFY' },
+  { priority: 'medium' as const, icon: '🟡', alert: 'Fatture scadute >90gg: CHF 20K', affected: '8 clienti', action: 'CALL' },
 ];
 
 export const mockRecommendations = [
-  { type: 'Upsell', description: 'Proponi formaggi premium', customer: 'Rist. Da Mario', confidence: 92 },
-  { type: 'Churn', description: 'Offri sconto 10% + campioni', customer: 'Hotel Splendide', confidence: 88 },
-  { type: 'Cross', description: 'Suggerisci pasta + olio combo', customer: 'Pizz. Bella Napoli', confidence: 85 },
+  { type: 'Upsell' as const, description: 'Proponi formaggi premium', customer: 'Rist. Da Mario', confidence: 92 },
+  { type: 'Churn' as const, description: 'Offri sconto 10% + campioni', customer: 'Hotel Splendide', confidence: 88 },
+  { type: 'Cross' as const, description: 'Suggerisci pasta + olio combo', customer: 'Pizz. Bella Napoli', confidence: 85 },
 ];
 
 export const mockPriorities = [
@@ -261,15 +261,15 @@ export const mockAIActivity = [
 ];
 
 export const mockAIModels = [
-  { name: 'Churn Prediction', accuracy: 89, confidence: 'High', predictions: 245, status: 'active' },
-  { name: 'Upsell Scoring', accuracy: 85, confidence: 'High', predictions: 178, status: 'active' },
-  { name: 'Demand Forecast', accuracy: 82, confidence: 'Medium', predictions: 450, status: 'active' },
-  { name: 'Price Optimizer', accuracy: 78, confidence: 'Medium', predictions: 85, status: 'training' },
+  { name: 'Churn Prediction', accuracy: 89, confidence: 'High' as const, predictions: 245, status: 'active' as const },
+  { name: 'Upsell Scoring', accuracy: 85, confidence: 'High' as const, predictions: 178, status: 'active' as const },
+  { name: 'Demand Forecast', accuracy: 82, confidence: 'Medium' as const, predictions: 450, status: 'active' as const },
+  { name: 'Price Optimizer', accuracy: 78, confidence: 'Medium' as const, predictions: 85, status: 'training' as const },
 ];
 
 export const mockSystemStatus = [
-  { service: 'Odoo Sync', status: 'connected', lastUpdate: '2 min ago' },
-  { service: 'Database', status: 'healthy', lastUpdate: 'Real-time' },
-  { service: 'AI Agents', status: 'running', lastUpdate: 'Active' },
-  { service: 'GPS Tracking', status: 'live', lastUpdate: '10 sec ago' },
+  { service: 'Odoo Sync', status: 'connected' as const, lastUpdate: '2 min ago' },
+  { service: 'Database', status: 'healthy' as const, lastUpdate: 'Real-time' },
+  { service: 'AI Agents', status: 'running' as const, lastUpdate: 'Active' },
+  { service: 'GPS Tracking', status: 'live' as const, lastUpdate: '10 sec ago' },
 ];
