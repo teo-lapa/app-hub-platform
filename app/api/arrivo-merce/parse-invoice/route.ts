@@ -187,7 +187,9 @@ export async function POST(request: NextRequest) {
 
       const prompt = `Estrai i dati dalla fattura.
 
-La tabella prodotti ha queste colonne IN ORDINE (da sinistra a destra):
+IMPORTANTE: Se il PDF contiene più documenti (fattura, packing list, DDT, ecc.), leggi SOLO la FATTURA. Ignora completamente gli altri documenti.
+
+La tabella prodotti della FATTURA ha queste colonne IN ORDINE (da sinistra a destra):
 ARTICOLO | LOTTO | DESCRIZIONE | UM | QUANTITA' | QTA' x CARTONE | PREZZO UNITARIO | % SCONTI | IMPORTO | DT. SCAD. | IVA
 
 ATTENZIONE COLONNA QUANTITA':
