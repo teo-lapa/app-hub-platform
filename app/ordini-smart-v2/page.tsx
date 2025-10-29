@@ -73,6 +73,7 @@ export default function SmartOrderingV2() {
   const [todayAnalysisData, setTodayAnalysisData] = useState<any>(null);
   const [loadingTodayAnalysis, setLoadingTodayAnalysis] = useState(false);
   const [showCustomers, setShowCustomers] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Cadence Management
   const [cadenceModal, setCadenceModal] = useState<{ supplier: Supplier | null; isOpen: boolean }>({
@@ -145,7 +146,7 @@ export default function SmartOrderingV2() {
           cadenceDays: cadence.cadence_value || undefined,
           urgency,
           daysUntilOrder: daysUntil,
-          hasCadence: cadence.is_active || false
+          hasCadence: !!cadence.cadence_value // TRUE if has cadence_value, regardless of is_active
         };
       });
     } catch (error) {
@@ -352,11 +353,16 @@ export default function SmartOrderingV2() {
     }
   }
 
+  // Filter suppliers by search term
+  const filteredSuppliers = searchTerm
+    ? suppliers.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    : suppliers;
+
   // Separate suppliers by urgency
-  const urgentSuppliers = suppliers.filter(s => s.urgency === 'today' || s.urgency === 'tomorrow');
-  const todaySuppliers = suppliers.filter(s => s.urgency === 'today');
-  const tomorrowSuppliers = suppliers.filter(s => s.urgency === 'tomorrow');
-  const regularSuppliers = suppliers.filter(s => !s.urgency || s.urgency === 'this_week' || s.urgency === 'future');
+  const urgentSuppliers = filteredSuppliers.filter(s => s.urgency === 'today' || s.urgency === 'tomorrow');
+  const todaySuppliers = filteredSuppliers.filter(s => s.urgency === 'today');
+  const tomorrowSuppliers = filteredSuppliers.filter(s => s.urgency === 'tomorrow');
+  const regularSuppliers = filteredSuppliers.filter(s => !s.urgency || s.urgency === 'this_week' || s.urgency === 'future');
 
   if (loading) {
     return (
@@ -415,6 +421,30 @@ export default function SmartOrderingV2() {
           </button>
         </div>
       </motion.div>
+
+      {/* SEARCH BAR */}
+      {!selectedSupplier && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <div className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="🔍 Cerca fornitore..."
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+            />
+            {searchTerm && (
+              <div className="mt-2 text-sm text-blue-200">
+                Trovati {filteredSuppliers.length} fornitori
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
 
       {/* URGENT ORDERS SECTION - ALWAYS VISIBLE */}
       {!selectedSupplier && (
@@ -707,6 +737,12 @@ export default function SmartOrderingV2() {
                       className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all"
                     >
                       Deseleziona Tutti
+                    </button>
+                    <button
+                      onClick={() => router.push(`/catalogo-prodotti?supplier_id=${selectedSupplier.id}&supplier_name=${encodeURIComponent(selectedSupplier.name)}`)}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition-all font-semibold"
+                    >
+                      📦 Aggiungi dal Catalogo
                     </button>
                   </div>
                 </div>
