@@ -23,38 +23,66 @@ interface Product {
 export default function CatalogoProdotti() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
+  const [allSuppliers, setAllSuppliers] = useState<{ id: number; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingSuppliers, setLoadingSuppliers] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'supplier'>('all');
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
 
-  // Get unique suppliers for dropdown
-  const suppliers = Array.from(
-    new Map(products.map(p => [p.supplier_id, { id: p.supplier_id, name: p.supplier_name }])).values()
-  ).filter(s => s.id > 0).sort((a, b) => a.name.localeCompare(b.name));
+  useEffect(() => {
+    loadAllSuppliers();
+  }, []);
 
+  // Load products when selectedSupplierId changes
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [selectedSupplierId]);
 
   // Auto-select supplier from URL params
   useEffect(() => {
     const supplierIdParam = searchParams.get('supplier_id');
-    if (supplierIdParam && products.length > 0) {
+    if (supplierIdParam) {
       const supplierId = parseInt(supplierIdParam);
       setFilterMode('supplier');
       setSelectedSupplierId(supplierId);
     }
-  }, [searchParams, products]);
+  }, [searchParams]);
+
+  async function loadAllSuppliers() {
+    try {
+      setLoadingSuppliers(true);
+      // Load all products without filter to get all suppliers
+      const response = await fetch('/api/products-catalog');
+      const data = await response.json();
+
+      if (data.success) {
+        // Extract unique suppliers
+        const suppliersMap = new Map<number, { id: number; name: string }>();
+        data.products.forEach((p: Product) => {
+          if (p.supplier_id > 0 && !suppliersMap.has(p.supplier_id)) {
+            suppliersMap.set(p.supplier_id, { id: p.supplier_id, name: p.supplier_name });
+          }
+        });
+        const sortedSuppliers = Array.from(suppliersMap.values()).sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
+        setAllSuppliers(sortedSuppliers);
+      }
+    } catch (error) {
+      console.error('Errore caricamento fornitori:', error);
+    } finally {
+      setLoadingSuppliers(false);
+    }
+  }
 
   async function loadProducts() {
     try {
       setLoading(true);
 
       // Build API URL with supplier filter if present
-      const supplierIdParam = searchParams.get('supplier_id');
-      const apiUrl = supplierIdParam
-        ? `/api/products-catalog?supplier_id=${supplierIdParam}`
+      const apiUrl = selectedSupplierId
+        ? `/api/products-catalog?supplier_id=${selectedSupplierId}`
         : '/api/products-catalog';
 
       const response = await fetch(apiUrl);
@@ -162,11 +190,14 @@ export default function CatalogoProdotti() {
               <label className="block text-sm text-white/60 mb-2">Seleziona fornitore</label>
               <select
                 value={selectedSupplierId || ''}
-                onChange={(e) => setSelectedSupplierId(Number(e.target.value))}
+                onChange={(e) => {
+                  const newSupplierId = Number(e.target.value) || null;
+                  setSelectedSupplierId(newSupplierId);
+                }}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-slate-800 [&>option]:text-white"
               >
                 <option value="">-- Scegli un fornitore --</option>
-                {suppliers.map(supplier => (
+                {allSuppliers.map(supplier => (
                   <option key={supplier.id} value={supplier.id}>
                     {supplier.name}
                   </option>
@@ -179,7 +210,7 @@ export default function CatalogoProdotti() {
             Visualizzati: <span className="font-bold text-white">{filteredProducts.length}</span> prodotti
             {filterMode === 'supplier' && selectedSupplierId && (
               <span className="ml-2">
-                • <span className="text-blue-300">{suppliers.find(s => s.id === selectedSupplierId)?.name}</span>
+                • <span className="text-blue-300">{allSuppliers.find(s => s.id === selectedSupplierId)?.name}</span>
               </span>
             )}
           </div>
