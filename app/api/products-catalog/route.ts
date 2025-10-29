@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
       });
 
       const data = await response.json();
+      console.log(`[Odoo Call] ${model}.${method}:`, data.result ? `${Array.isArray(data.result) ? data.result.length : 'OK'}` : 'FAILED');
       return data.result;
     };
 
@@ -99,6 +100,13 @@ export async function GET(request: NextRequest) {
         ['id', 'name', 'image_128', 'qty_available', 'uom_name', 'seller_ids', 'list_price']
       ]
     );
+
+    if (!products || !Array.isArray(products)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to fetch products from Odoo'
+      }, { status: 500 });
+    }
 
     // Fetch supplier info for all products
     const allSellerIds = products.flatMap(p => p.seller_ids || []);
