@@ -326,33 +326,45 @@ export async function POST(request: NextRequest) {
     // PROMPT DIRETTO - NO SKILLS
     const directPrompt = `Leggi ATTENTAMENTE tutto il documento e estrai OGNI SINGOLO prodotto.
 
-🎯 ATTENZIONE ALLE COLONNE - NON CONFONDERE U/M CON QUANTITÀ!
+🎯 ATTENZIONE - CERCA LA COLONNA "QUANTITA" SULLA DESTRA!
 
-⚠️ IMPORTANTE: Molte fatture italiane hanno una struttura a CARTONI con 2 colonne separate:
+⚠️ IMPORTANTE: Nelle fatture italiane tipo San Giorgio c'è una COLONNA SEPARATA sulla DESTRA con le quantità reali!
 
-**Esempio tabella:**
-| ARTICOLO | LOTTO | DESCRIZIONE | U/M | QUANTITA | Q.TA/CARTONE | PREZZO | IMPORTO |
+**Struttura tipica tabella:**
+Parte sinistra: | ARTICOLO | LOTTO | DESCRIZIONE | U/M QUANTITA | Q.TA/CARTONE | PREZZO | IMPORTO |
+Parte DESTRA (separata): | QUANTITA |
 
-- **U/M**: "CT 18KG", "CT 18PZ" → È solo DESCRITTIVO (dice cosa c'è nel cartone)
-- **Q.TA/CARTONE**: 5, 50, 3, ecc. → È la QUANTITÀ VERA da estrarre!
+📋 ESEMPIO CONCRETO dalla fattura San Giorgio:
 
-📋 ESEMPIO CONCRETO:
-Riga fattura: "ARAN DI RISO | 25233 | ... | CT 18KG | 5 | 29,51 | 358,55"
+Tabella principale:
+```
+ARAN DI RISO SUGO 25 g Kg 5 FR MIO | CT | 18KG | 5 | 29,51 | 358,55
+```
 
-Colonne:
-- U/M: "CT 18KG" (descrizione)
-- Q.TA/CARTONE: **5** ← QUESTA è la quantità!
-- PREZZO: 29,51€
+**Colonna QUANTITA sulla DESTRA (separata):**
+```
+18K  ← QUESTA È LA VERA QUANTITÀ DA ESTRARRE!
+```
 
 ⚠️ COSA ESTRARRE:
-- **quantity**: 5 (dalla colonna Q.TA/CARTONE, NON dalla U/M!)
-- **unit**: "CT" (cartone)
+- **quantity**: 18 (dal numero nella colonna DESTRA separata)
+- **unit**: "KG" (dalla lettera: K=KG, P=PZ)
+
+📋 DECODIFICA UNITÀ:
+- "18K" → quantity: 18, unit: "KG"
+- "54P" → quantity: 54, unit: "PZ"
+- "8K" → quantity: 8, unit: "KG"
+- "8P" → quantity: 8, unit: "PZ"
+- "1K" → quantity: 1, unit: "KG"
+- "2P" → quantity: 2, unit: "PZ"
+- "5P" → quantity: 5, unit: "PZ"
 
 ⚠️ REGOLE CRITICHE:
-1. NON confondere la colonna U/M con la colonna QUANTITA!
-2. La QUANTITÀ è il numero nella colonna Q.TA/CARTONE (5, 50, 3, ecc.)
-3. L'UNITÀ DI MISURA è "CT" se vedi "CT" nella colonna U/M
-4. Se NON c'è "CT" nella U/M, usa l'unità scritta (KG, PZ, LT, NR)
+1. Cerca SEMPRE una colonna separata sulla DESTRA della tabella principale
+2. Quella colonna contiene valori come "18K", "54P", "8K", "1P", ecc.
+3. Il NUMERO è la quantità
+4. La LETTERA è l'unità: K=KG, P=PZ, L=LT
+5. IGNORA completamente i valori "CT 18KG" - quelli sono solo descrittivi!
 
 ISTRUZIONI GENERALI:
 1. Scorri il documento dall'INIZIO alla FINE
