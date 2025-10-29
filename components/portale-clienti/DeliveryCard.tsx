@@ -170,7 +170,7 @@ export default function DeliveryCard({ delivery }: DeliveryCardProps) {
       {delivery.delivery_status === 'in_transit' && (
         <div className="mt-3 pt-3 border-t border-gray-100">
           <button
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               router.push(`/portale-clienti/consegne/${delivery.id}`);
