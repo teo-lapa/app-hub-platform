@@ -82,7 +82,7 @@ async function fetchSuppliersFromOdoo(uid: number): Promise<OdooSupplier[]> {
           'res.partner',
           'search_read',
           [
-            [['supplier_rank', '>', 0], ['active', '=', true]], // Solo fornitori attivi
+            [['is_company', '=', true], ['supplier', '=', true]], // Solo fornitori
             ['id', 'name', 'email', 'phone', 'city', 'country_id']
           ],
           { limit: 200 } // Top 200 fornitori
