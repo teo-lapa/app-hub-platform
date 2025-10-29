@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
           kwargs: {
             fields: ['id', 'name', 'image_256', 'qty_available', 'uom_id', 'seller_ids', 'list_price'],
             limit: 500,
-            order: 'name ASC'
+            order: 'name ASC',
+            context: { bin_size: false }  // Get full base64 image, not just size
           }
         },
         id: Math.random()
