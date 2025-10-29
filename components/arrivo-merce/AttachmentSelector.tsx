@@ -113,7 +113,7 @@ export default function AttachmentSelector({
               🤖 Parsing in corso...
             </h3>
             <p className="text-gray-600 text-sm mb-4">
-              Claude AI sta analizzando il documento
+              Gemini AI sta analizzando il documento
             </p>
             <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>

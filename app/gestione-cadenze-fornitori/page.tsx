@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, Clock, AlertCircle, CheckCircle, XCircle, Edit2, Save, X } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, AlertCircle, CheckCircle, XCircle, Save, X } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
@@ -34,8 +34,10 @@ export default function GestioneCadenzeFornitori() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingData, setEditingData] = useState<EditingCadence | null>(null);
+
+  // Track ALL changes in a Map: supplier_id -> changes
+  const [changes, setChanges] = useState<Map<string, Partial<EditingCadence>>>(new Map());
+
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -87,8 +89,13 @@ export default function GestioneCadenzeFornitori() {
       }
     }
 
-    // Sort by urgency
+    // Sort: ATTIVI IN CIMA, poi per urgency
     filtered.sort((a, b) => {
+      // Prima ordina per is_active (attivi prima)
+      if (a.is_active !== b.is_active) {
+        return a.is_active ? -1 : 1; // attivi (-1) vanno prima di inattivi (1)
+      }
+      // Se uguale is_active, ordina per urgency
       const urgencyOrder = { critical: 0, high: 1, medium: 2, low: 3 };
       return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
     });
@@ -96,49 +103,88 @@ export default function GestioneCadenzeFornitori() {
     setFilteredSuppliers(filtered);
   }
 
-  function startEditing(supplier: SupplierCadence) {
-    setEditingId(supplier.id);
-    setEditingData({
-      id: supplier.id,
-      cadence_value: supplier.cadence_value,
-      is_active: supplier.is_active,
-      notes: supplier.notes || ''
+  // Track change for a supplier
+  function handleChange(supplierId: string, field: keyof EditingCadence, value: any) {
+    setChanges(prev => {
+      const newChanges = new Map(prev);
+      const existing = newChanges.get(supplierId) || {};
+      newChanges.set(supplierId, { ...existing, [field]: value });
+      return newChanges;
     });
   }
 
-  function cancelEditing() {
-    setEditingId(null);
-    setEditingData(null);
+  // Get value for display (from changes or original)
+  function getValue(supplier: SupplierCadence, field: keyof EditingCadence): any {
+    const change = changes.get(supplier.id);
+    if (change && field in change) {
+      return change[field];
+    }
+    return supplier[field as keyof SupplierCadence];
   }
 
-  async function saveChanges() {
-    if (!editingData) return;
+  // Check if supplier has changes
+  function hasChanges(supplierId: string): boolean {
+    return changes.has(supplierId);
+  }
+
+  // Discard all changes
+  function discardChanges() {
+    setChanges(new Map());
+    setMessage({ type: 'success', text: 'Modifiche annullate' });
+    setTimeout(() => setMessage(null), 2000);
+  }
+
+  // Save ALL changes at once
+  async function saveAllChanges() {
+    if (changes.size === 0) {
+      setMessage({ type: 'error', text: 'Nessuna modifica da salvare' });
+      setTimeout(() => setMessage(null), 2000);
+      return;
+    }
 
     try {
       setSaving(true);
-      const response = await fetch(`/api/supplier-cadence/${editingData.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cadence_value: editingData.cadence_value,
-          cadence_type: 'fixed_days',
-          is_active: editingData.is_active,
-          notes: editingData.notes || null
-        })
-      });
+      let successCount = 0;
+      let errorCount = 0;
 
-      const data = await response.json();
+      // Save each changed supplier
+      const changesArray = Array.from(changes.entries());
+      for (const [supplierId, changeData] of changesArray) {
+        try {
+          const response = await fetch(`/api/supplier-cadence/${supplierId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              cadence_value: changeData.cadence_value,
+              cadence_type: 'fixed_days',
+              is_active: changeData.is_active,
+              notes: changeData.notes || null
+            })
+          });
 
-      if (data.success) {
-        setMessage({ type: 'success', text: 'Cadenza aggiornata con successo' });
-        await loadSuppliers();
-        cancelEditing();
-
-        // Clear message after 3 seconds
-        setTimeout(() => setMessage(null), 3000);
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Errore durante il salvataggio' });
+          const data = await response.json();
+          if (data.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch {
+          errorCount++;
+        }
       }
+
+      // Reload suppliers and clear changes
+      await loadSuppliers();
+      setChanges(new Map());
+
+      // Show result message
+      if (errorCount === 0) {
+        setMessage({ type: 'success', text: `✅ ${successCount} fornitori aggiornati con successo` });
+      } else {
+        setMessage({ type: 'error', text: `⚠️ ${successCount} aggiornati, ${errorCount} errori` });
+      }
+
+      setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error('Errore salvataggio:', error);
       setMessage({ type: 'error', text: 'Errore durante il salvataggio' });
@@ -206,6 +252,30 @@ export default function GestioneCadenzeFornitori() {
                 Visualizza e modifica le cadenze di riordino per tutti i fornitori
               </p>
             </div>
+          </div>
+
+          {/* Save Buttons */}
+          <div className="flex gap-3">
+            {changes.size > 0 && (
+              <>
+                <button
+                  onClick={discardChanges}
+                  disabled={saving}
+                  className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center gap-2 border border-white/20 disabled:opacity-50"
+                >
+                  <X className="w-5 h-5" />
+                  Annulla ({changes.size})
+                </button>
+                <button
+                  onClick={saveAllChanges}
+                  disabled={saving}
+                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-xl transition-all flex items-center gap-2 font-semibold shadow-lg disabled:opacity-50"
+                >
+                  <Save className="w-5 h-5" />
+                  {saving ? 'Salvataggio...' : `Salva Tutto (${changes.size})`}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -281,18 +351,20 @@ export default function GestioneCadenzeFornitori() {
                 <tr>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">Stato</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">Fornitore</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">Cadenza</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">Cadenza (gg)</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">Prossimo Ordine</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">Lead Time</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">Attivo</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">Azioni</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">Note</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {filteredSuppliers.map((supplier) => (
                   <tr
                     key={supplier.id}
-                    className="hover:bg-white/5 transition-colors"
+                    className={`hover:bg-white/5 transition-colors ${
+                      hasChanges(supplier.id) ? 'bg-yellow-500/10 border-l-4 border-yellow-400' : ''
+                    }`}
                   >
                     {/* Status */}
                     <td className="px-6 py-4">
@@ -324,20 +396,18 @@ export default function GestioneCadenzeFornitori() {
                       )}
                     </td>
 
-                    {/* Cadence */}
+                    {/* Cadence - Always Editable */}
                     <td className="px-6 py-4">
-                      {editingId === supplier.id ? (
-                        <input
-                          type="number"
-                          value={editingData?.cadence_value}
-                          onChange={(e) => setEditingData(prev => prev ? {...prev, cadence_value: parseInt(e.target.value)} : null)}
-                          className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-center"
-                          min="1"
-                          max="365"
-                        />
-                      ) : (
-                        <span className="text-white/80">Ogni {supplier.cadence_value} giorni</span>
-                      )}
+                      <input
+                        type="number"
+                        value={getValue(supplier, 'cadence_value')}
+                        onChange={(e) => handleChange(supplier.id, 'cadence_value', parseInt(e.target.value) || 1)}
+                        className={`w-20 px-2 py-1 bg-white/10 border rounded text-white text-center ${
+                          hasChanges(supplier.id) ? 'border-yellow-400 ring-2 ring-yellow-400/30' : 'border-white/20'
+                        }`}
+                        min="1"
+                        max="365"
+                      />
                     </td>
 
                     {/* Next Order Date */}
@@ -360,51 +430,36 @@ export default function GestioneCadenzeFornitori() {
                       <span className="text-white/80">{supplier.average_lead_time_days} giorni</span>
                     </td>
 
-                    {/* Active Status */}
+                    {/* Active Status - Always Editable */}
                     <td className="px-6 py-4">
-                      {editingId === supplier.id ? (
+                      <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
-                          checked={editingData?.is_active}
-                          onChange={(e) => setEditingData(prev => prev ? {...prev, is_active: e.target.checked} : null)}
-                          className="w-5 h-5"
+                          checked={getValue(supplier, 'is_active')}
+                          onChange={(e) => handleChange(supplier.id, 'is_active', e.target.checked)}
+                          className={`w-5 h-5 rounded cursor-pointer transition-all ${
+                            hasChanges(supplier.id) ? 'ring-2 ring-yellow-400/50' : ''
+                          }`}
                         />
-                      ) : (
-                        supplier.is_active ? (
+                        {getValue(supplier, 'is_active') ? (
                           <CheckCircle className="w-5 h-5 text-green-400" />
                         ) : (
                           <XCircle className="w-5 h-5 text-red-400" />
-                        )
-                      )}
+                        )}
+                      </div>
                     </td>
 
-                    {/* Actions */}
+                    {/* Notes - Always Editable */}
                     <td className="px-6 py-4">
-                      {editingId === supplier.id ? (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={saveChanges}
-                            disabled={saving}
-                            className="p-2 bg-green-500/20 hover:bg-green-500/30 text-green-300 rounded-lg transition-all disabled:opacity-50"
-                          >
-                            <Save className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={cancelEditing}
-                            disabled={saving}
-                            className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition-all disabled:opacity-50"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => startEditing(supplier)}
-                          className="p-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg transition-all"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                      )}
+                      <input
+                        type="text"
+                        value={getValue(supplier, 'notes') || ''}
+                        onChange={(e) => handleChange(supplier.id, 'notes', e.target.value)}
+                        placeholder="Note..."
+                        className={`w-full px-2 py-1 bg-white/10 border rounded text-white text-sm ${
+                          hasChanges(supplier.id) ? 'border-yellow-400 ring-2 ring-yellow-400/30' : 'border-white/20'
+                        }`}
+                      />
                     </td>
                   </tr>
                 ))}

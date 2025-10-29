@@ -245,10 +245,12 @@ export default function GestioneVisibilitaAppPage() {
         const customersErrors = data.sync?.customers?.errors || 0;
         const suppliersSynced = data.sync?.suppliers?.synced || 0;
         const suppliersErrors = data.sync?.suppliers?.errors || 0;
+        const withCadence = data.sync?.suppliers?.withCadence || 0;
+        const withoutCadence = data.sync?.suppliers?.withoutCadence || 0;
 
         setMessage({
           type: 'success',
-          text: `Database sincronizzato! Clienti: ${customersSynced} sincronizzati (${customersErrors} errori). Fornitori: ${suppliersSynced} sincronizzati (${suppliersErrors} errori). Totale DB: ${stats.totalCustomers || 0} clienti, ${stats.totalSuppliers || 0} fornitori, ${stats.totalRecommendations || 0} raccomandazioni.`
+          text: `Database sincronizzato! Clienti: ${customersSynced} sincronizzati (${customersErrors} errori). Fornitori: ${suppliersSynced} sincronizzati (${suppliersErrors} errori) - ${withCadence} con cadenza attiva, ${withoutCadence} inattivi. Totale DB: ${stats.totalCustomers || 0} clienti, ${stats.totalSuppliers || 0} fornitori.`
         });
       } else {
         setMessage({ type: 'error', text: data.error || 'Errore nella sincronizzazione' });

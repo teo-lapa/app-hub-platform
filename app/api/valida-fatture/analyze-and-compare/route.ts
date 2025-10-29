@@ -144,43 +144,37 @@ export async function POST(request: NextRequest) {
               type: 'text',
               text: `Sei un esperto contabile che deve analizzare una fattura italiana in formato PDF.
 
-🎯 ATTENZIONE ALLE COLONNE - NON CONFONDERE U/M CON QUANTITÀ!
+🎯 ATTENZIONE - CERCA LA COLONNA "QUANTITA" SULLA DESTRA!
 
-⚠️ IMPORTANTE: Molte fatture hanno una struttura a CARTONI con 2 colonne separate:
+⚠️ IMPORTANTE: Nelle fatture italiane tipo San Giorgio c'è una COLONNA SEPARATA sulla DESTRA con le quantità reali!
 
-**Esempio tabella:**
-| ARTICOLO | LOTTO | DESCRIZIONE | U/M | QUANTITA | Q.TA/CARTONE | PREZZO | IMPORTO |
+**Colonna QUANTITA sulla DESTRA (separata):**
 
-- **U/M**: "CT 18KG", "CT 18PZ" → È solo DESCRITTIVO (dice cosa c'è nel cartone)
-- **Q.TA/CARTONE**: 5, 50, 3, ecc. → È la QUANTITÀ VERA da estrarre!
-
-📋 ESEMPIO CONCRETO:
-Riga fattura: "ARAN DI RISO | 25233 | ... | CT 18KG | 5 | 29,51 | 358,55"
-
-Colonne:
-- U/M: "CT 18KG" (descrizione)
-- Q.TA/CARTONE: **5** ← QUESTA è la quantità!
-- PREZZO: 29,51€
-- IMPORTO: 358,55€
+18K  ← QUESTA È LA VERA QUANTITÀ DA ESTRARRE!
+54P
+8K
+8P
+1K
+2P
 
 ⚠️ COSA ESTRARRE:
-- **quantity**: 5 (dalla colonna Q.TA/CARTONE, NON dalla U/M!)
-- **unit**: "CT" (cartone)
-- **unit_price**: 29.51
-- **subtotal**: 358.55
+- **quantity**: 18 (dal numero nella colonna DESTRA separata)
+- **unit**: "KG" (dalla lettera: K=KG, P=PZ, L=LT)
 
-📋 ALTRI ESEMPI:
-1. "CORNETTO | CT 18PZ | 50 | 24,74 | 1.166,29"
-   → quantity: **50**, unit: "CT"
-
-2. "SFOGLIATELLE | CT 1KG | 3 | 30,60 | 20,66"
-   → quantity: **3**, unit: "CT"
+📋 DECODIFICA UNITÀ:
+- "18K" → quantity: 18, unit: "KG"
+- "54P" → quantity: 54, unit: "PZ"
+- "8K" → quantity: 8, unit: "KG"
+- "8P" → quantity: 8, unit: "PZ"
+- "1K" → quantity: 1, unit: "KG"
+- "2P" → quantity: 2, unit: "PZ"
+- "5L" → quantity: 5, unit: "LT"
 
 ⚠️ REGOLE CRITICHE:
-1. NON confondere la colonna U/M con la colonna QUANTITA!
-2. La QUANTITÀ è il numero nella colonna centrale (5, 50, 3, ecc.)
-3. L'UNITÀ DI MISURA è "CT" se vedi "CT" nella colonna U/M
-4. Se NON c'è "CT" nella U/M, usa l'unità scritta (KG, PZ, LT)
+1. Cerca una COLONNA SEPARATA sulla DESTRA del documento
+2. I valori sono nel formato: NUMERO + LETTERA (es: "18K", "54P")
+3. Lettera K = KG, P = PZ, L = LT
+4. IGNORA completamente le colonne "U/M" e "Q.TA/CARTONE"
 5. Le fatture italiane usano virgola (123,45) → converti in punto (123.45)
 
 🔍 COSA ESTRARRE:

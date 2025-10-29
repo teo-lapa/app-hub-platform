@@ -61,6 +61,7 @@ export interface CreateSupplierInput {
   cadence_value?: number;
   average_lead_time_days?: number;
   last_cadence_order_date?: string | null;
+  is_active?: boolean;
   critical_products_count?: number;
   notes?: string | null;
 }
