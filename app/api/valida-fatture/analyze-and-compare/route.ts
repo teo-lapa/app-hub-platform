@@ -177,28 +177,50 @@ Leggi così:
    - Numero fattura (es: "42", "V2/0003329")
    - Data fattura (IMPORTANTE: converti sempre in formato YYYY-MM-DD, es: "15/10/2025" → "2025-10-15")
 
-3. RIGHE PRODOTTI (TUTTE, anche spese trasporto):
-   Per OGNI riga:
-   a) Descrizione completa (includi codici prodotto se presenti)
-   b) Codice articolo - CRITICO PER IL MATCHING!
-      - Cerca nella PRIMA COLONNA a sinistra (es: "1TRECCE-SV", "1BRASELLO-SV")
-      - O dopo "Articolo" / "Art." / "Cod." (es: "AZCOM051", "P09956")
-      - Se manca, lascia null
+3. RIGHE PRODOTTI (TUTTE, incluse spese accessorie):
+
+   ⚠️ IMPORTANTE: Estrai TUTTE le righe che compongono il totale, incluse:
+   - Prodotti normali
+   - Spese trasporto (es: "Sp. trasp.", "Trasporto", "Spese di trasporto")
+   - Spese bancarie
+   - Sconti (come riga negativa)
+   - Maggiorazioni
+   - Qualsiasi altra voce che contribuisce al TOTALE FINALE
+
+   Per OGNI riga (prodotti E spese):
+   a) Descrizione completa
+      - Per prodotti: nome completo con codici
+      - Per spese: "Spese trasporto", "Spese bancarie", ecc.
+   b) Codice articolo
+      - Prodotti: cerca in prima colonna o dopo "Art."/"Cod."
+      - Spese accessorie: lascia null (non hanno codice)
    c) SUBTOTAL (totale riga) - PRIORITÀ MASSIMA
+      - Cerca in colonna "Importo", "Totale", o ultima colonna numeri
    d) Prezzo unitario
-   e) Quantità = subtotal ÷ unit_price
-   f) Aliquota IVA (22%, 10%, 4%, ecc.)
-   g) Unità di misura (KG, PZ, LT, ecc.)
+      - Per spese forfettarie (es: trasporto €40), prezzo = subtotal
+   e) Quantità
+      - Per spese forfettarie, quantità = 1
+   f) Aliquota IVA (22%, 10%, 4%, 0%, ecc.)
+   g) Unità di misura (KG, PZ, LT, PZ* per spese)
 
 4. TOTALI FATTURA:
    - Imponibile totale
    - IVA totale
    - TOTALE DA PAGARE (numero finale in fondo)
 
+⚠️ ATTENZIONE SPESE ACCESSORIE:
+Le spese trasporto/bancarie possono essere in diverse posizioni:
+1. Come riga nella tabella prodotti (es: "Trasporto", "Sp. trasp.")
+2. In una sezione separata sotto i prodotti (es: "Totale lordo", "Sp. trasp.", "totale merce")
+3. Nel riquadro totali in basso (es: "Sp. trasp.: 40,00")
+
+DEVI includerle come righe separate nel JSON, anche se non sono nella tabella principale!
+
 ⚠️ ATTENZIONE SPECIALE:
 - Se vedi "P.Net" o "Peso Netto" ignora, usa il SUBTOTAL
 - "TECHNICAL STOP", "LDF SRL", "ASSAGO" = destinazione merce, NON prodotti
 - Cerca sempre l'ultima pagina per il TOTALE FATTURA LORDO
+- Se "totale merce" ≠ "totale imponibile", la differenza sono SPESE (estraile!)
 
 ⚠️ ATTENZIONE DATE:
 - Cerca la data della fattura (es: "DATA DOC", "Data:", ecc.)
@@ -214,7 +236,7 @@ Rispondi SOLO con JSON valido:
   "invoice_date": "2025-10-15",
   "subtotal_amount": 1685.04,
   "tax_amount": 0.00,
-  "total_amount": 1685.04,
+  "total_amount": 1725.04,
   "currency": "EUR",
   "lines": [
     {
@@ -225,6 +247,15 @@ Rispondi SOLO con JSON valido:
       "subtotal": 46.86,
       "tax_rate": 0,
       "unit": "KG"
+    },
+    {
+      "description": "Spese trasporto",
+      "product_code": null,
+      "quantity": 1,
+      "unit_price": 40.00,
+      "subtotal": 40.00,
+      "tax_rate": 0,
+      "unit": "PZ"
     }
   ]
 }
