@@ -10,8 +10,8 @@ import type { CadenceType } from '@/lib/types/supplier-cadence';
 
 const ODOO_URL = process.env.ODOO_URL;
 const ODOO_DB = process.env.ODOO_DB;
-const ODOO_USERNAME = process.env.ODOO_USERNAME;
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD;
+const ODOO_USERNAME = process.env.ODOO_ADMIN_EMAIL;
+const ODOO_PASSWORD = process.env.ODOO_ADMIN_PASSWORD;
 
 interface OdooSupplier {
   id: number;
