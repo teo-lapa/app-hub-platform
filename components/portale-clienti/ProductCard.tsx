@@ -138,11 +138,11 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         {/* Sezione Add to Cart - MANTIENE FUNZIONALITÀ E-COMMERCE */}
         {product.available ? (
           <div className="mt-2 pt-2 border-t border-slate-600/50 space-y-2">
-            {/* Quantity Selector compatto */}
-            <div className="flex items-center gap-1">
+            {/* Quantity Selector */}
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="px-2 py-0.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-colors"
+                className="px-3 py-2 min-h-[44px] bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
                 aria-label="Diminuisci quantita"
               >
                 -
@@ -151,31 +151,31 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                 type="number"
                 value={quantity}
                 onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-10 text-center bg-slate-700 text-white text-xs py-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-14 text-center bg-slate-700 text-white text-sm py-2 min-h-[44px] rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 min="1"
                 max={product.quantity}
               />
               <button
                 onClick={() => setQuantity(Math.min(product.quantity, quantity + 1))}
-                className="px-2 py-0.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-colors"
+                className="px-3 py-2 min-h-[44px] bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
                 aria-label="Aumenta quantita"
               >
                 +
               </button>
-              <span className="text-[10px] text-slate-400 ml-1">
+              <span className="text-xs text-slate-400 ml-1">
                 {product.unit}
               </span>
             </div>
 
-            {/* Add to Cart Button compatto */}
+            {/* Add to Cart Button */}
             <button
               onClick={handleAddToCart}
               disabled={isAdding}
-              className="w-full flex items-center justify-center gap-1 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white px-2 py-1.5 rounded text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Aggiungi al carrello"
             >
-              <ShoppingCart className="h-3 w-3" />
-              {isAdding ? 'Aggiunta...' : 'Aggiungi'}
+              <ShoppingCart className="h-4 w-4" />
+              {isAdding ? 'Aggiunta...' : 'Aggiungi al Carrello'}
             </button>
           </div>
         ) : (

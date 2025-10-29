@@ -169,7 +169,7 @@ export function VehicleProductSelector({
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white"
+              className="min-w-[48px] min-h-[48px] p-3 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white"
             >
               <X className="w-5 h-5" />
             </button>
@@ -272,7 +272,7 @@ export function VehicleProductSelector({
                                   handleUpdateQuantity(product.product_id, -1);
                                 }}
                                 disabled={selectedQty <= 1}
-                                className="w-8 h-8 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg flex items-center justify-center transition-colors"
+                                className="w-12 h-12 min-w-[48px] min-h-[48px] bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg flex items-center justify-center transition-colors"
                               >
                                 <Minus className="w-4 h-4 text-white" />
                               </button>
@@ -288,7 +288,7 @@ export function VehicleProductSelector({
                                   handleUpdateQuantity(product.product_id, 1);
                                 }}
                                 disabled={selectedQty >= product.quantity}
-                                className="w-8 h-8 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg flex items-center justify-center transition-colors"
+                                className="w-12 h-12 min-w-[48px] min-h-[48px] bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg flex items-center justify-center transition-colors"
                               >
                                 <Plus className="w-4 h-4 text-white" />
                               </button>
@@ -321,14 +321,14 @@ export function VehicleProductSelector({
             <div className="flex items-center gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium"
+                className="flex-1 px-6 py-3 min-h-[48px] bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium"
               >
                 Annulla
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={selectedCount === 0}
-                className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 min-h-[48px] bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
               >
                 <CheckCircle className="w-5 h-5" />
                 Aggiungi Selezionati ({selectedCount})

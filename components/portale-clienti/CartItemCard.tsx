@@ -201,7 +201,7 @@ export function CartItemCard({
                     whileHover={{ scale: 1.1, rotate: 10 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => setShowConfirmDelete(true)}
-                    className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                    className="hidden md:flex items-center justify-center min-w-[48px] min-h-[48px] p-3 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
                     aria-label="Rimuovi prodotto"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -217,7 +217,7 @@ export function CartItemCard({
                       whileTap={{ scale: 0.9 }}
                       onClick={handleDecrement}
                       disabled={isUpdating}
-                      className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center justify-center min-w-[48px] min-h-[48px] w-12 h-12 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="Diminuisci quantità"
                     >
                       <Minus className="h-4 w-4" />
@@ -242,7 +242,7 @@ export function CartItemCard({
                       whileTap={{ scale: 0.9 }}
                       onClick={handleIncrement}
                       disabled={isUpdating || item.quantity >= item.maxQuantity}
-                      className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center justify-center min-w-[48px] min-h-[48px] w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="Aumenta quantità"
                     >
                       <Plus className="h-4 w-4" />
@@ -329,7 +329,7 @@ export function CartItemCard({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowConfirmDelete(false)}
-                className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors"
+                className="flex-1 px-4 py-4 min-h-[48px] bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors"
               >
                 Annulla
               </motion.button>
@@ -339,7 +339,7 @@ export function CartItemCard({
                 whileTap={{ scale: 0.98 }}
                 onClick={handleRemove}
                 disabled={isRemoving}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all disabled:opacity-50"
+                className="flex-1 px-4 py-4 min-h-[48px] bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all disabled:opacity-50"
               >
                 {isRemoving ? 'Rimozione...' : 'Rimuovi'}
               </motion.button>
