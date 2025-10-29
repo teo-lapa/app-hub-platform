@@ -96,11 +96,11 @@ async function createCadence(data: CreateCadenceRequest): Promise<CadenceWithMet
  * Update existing cadence
  */
 async function updateCadence(
-  id: number,
+  id: string,
   data: UpdateCadenceRequest
 ): Promise<CadenceWithMetadata> {
   const response = await fetch(`/api/supplier-cadence/${id}`, {
-    method: 'PUT',
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -175,7 +175,7 @@ export function useUpdateCadence() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateCadenceRequest }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateCadenceRequest }) =>
       updateCadence(id, data),
     onMutate: async ({ id, data }) => {
       // Cancel outgoing refetches

@@ -34,6 +34,7 @@ interface Supplier {
   estimatedValue: number;
   products: Product[];
   // Cadence fields
+  cadenceDbId?: string; // Database UUID for updating cadences
   nextOrderDate?: string;
   cadenceDays?: number;
   urgency?: 'today' | 'tomorrow' | 'this_week' | 'future';
@@ -139,6 +140,7 @@ export default function SmartOrderingV2() {
 
         return {
           ...supplier,
+          cadenceDbId: cadence.id, // Store database UUID for updates
           nextOrderDate: cadence.next_order_date || undefined,
           cadenceDays: cadence.cadence_value || undefined,
           urgency,
@@ -317,10 +319,10 @@ export default function SmartOrderingV2() {
     try {
       const supplier = cadenceModal.supplier;
 
-      if (supplier.hasCadence) {
-        // Update existing cadence
+      if (supplier.hasCadence && supplier.cadenceDbId) {
+        // Update existing cadence using database UUID
         await updateCadence.mutateAsync({
-          id: supplier.id, // This should be cadence ID, but we use supplier ID for now
+          id: supplier.cadenceDbId,
           data: {
             cadence_value: cadenceDays,
             cadence_type: CadenceType.FIXED_DAYS,
@@ -328,7 +330,7 @@ export default function SmartOrderingV2() {
           }
         });
       } else {
-        // Create new cadence
+        // Create new cadence using Odoo supplier ID
         await createCadence.mutateAsync({
           supplier_id: supplier.id,
           supplier_name: supplier.name,
@@ -387,6 +389,14 @@ export default function SmartOrderingV2() {
           >
             <span>←</span>
             <span>Home</span>
+          </button>
+          <button
+            onClick={() => router.push('/gestione-cadenze-fornitori')}
+            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg transition-all flex items-center gap-2 font-semibold"
+            title="Gestisci cadenze di tutti i fornitori"
+          >
+            <CalendarIcon className="w-5 h-5" />
+            <span>Gestione Cadenze</span>
           </button>
           <button
             onClick={() => analyzeTodaySales(true)}
