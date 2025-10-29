@@ -1,0 +1,664 @@
+{
+  "analysis_date": "2025-10-29",
+  "period": "6 months",
+  "suppliers": [
+    {
+      "id": 1593,
+      "name": "ALIGRO Demaurex & Cie SA",
+      "total_orders": 60,
+      "average_days_between_orders": 2.6,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 0.4,
+      "average_order_value": 726.3,
+      "last_order_date": "2025-10-28 13:58:21"
+    },
+    {
+      "id": 1490,
+      "name": "LATTICINI MOLISANI TAMBURRO SRL",
+      "total_orders": 53,
+      "average_days_between_orders": 3,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 3.1,
+      "average_order_value": 2448.34,
+      "last_order_date": "2025-10-27 20:30:25"
+    },
+    {
+      "id": 979,
+      "name": "Macelleria FULVI",
+      "total_orders": 48,
+      "average_days_between_orders": 3.4,
+      "most_frequent_days": [
+        "Tuesday"
+      ],
+      "average_lead_time_days": 0.9,
+      "average_order_value": 81.06,
+      "last_order_date": "2025-10-29 16:50:51"
+    },
+    {
+      "id": 1622,
+      "name": "Meyerhans Mühlen AG",
+      "total_orders": 38,
+      "average_days_between_orders": 4.4,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 2.6,
+      "average_order_value": 2570.52,
+      "last_order_date": "2025-10-27 20:30:25"
+    },
+    {
+      "id": 1526,
+      "name": "PASTIFICIO MARCELLO",
+      "total_orders": 35,
+      "average_days_between_orders": 4.8,
+      "most_frequent_days": [
+        "Tuesday"
+      ],
+      "average_lead_time_days": 2.3,
+      "average_order_value": 640.79,
+      "last_order_date": "2025-10-28 20:30:22"
+    },
+    {
+      "id": 1631,
+      "name": "PRODEGA MARKT TRANSGOURMET SCHWEIZ AG",
+      "total_orders": 30,
+      "average_days_between_orders": 5.6,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 1.5,
+      "average_order_value": 966.56,
+      "last_order_date": "2025-10-25 20:30:26"
+    },
+    {
+      "id": 2304,
+      "name": "Polo SpA",
+      "total_orders": 27,
+      "average_days_between_orders": 6.5,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 3.3,
+      "average_order_value": 1653.61,
+      "last_order_date": "2025-10-27 21:30:22"
+    },
+    {
+      "id": 1493,
+      "name": "SORI' ITALIA S.R.L.",
+      "total_orders": 24,
+      "average_days_between_orders": 6.8,
+      "most_frequent_days": [
+        "Friday"
+      ],
+      "average_lead_time_days": 3.8,
+      "average_order_value": 920.71,
+      "last_order_date": "2025-10-24 20:30:21"
+    },
+    {
+      "id": 8751,
+      "name": "jirrolle Hygieneartikel",
+      "total_orders": 24,
+      "average_days_between_orders": 7,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 3.6,
+      "average_order_value": 1171.87,
+      "last_order_date": "2025-10-15 20:30:23"
+    },
+    {
+      "id": 9509,
+      "name": "GIFFONIELLO S.R.L.",
+      "total_orders": 21,
+      "average_days_between_orders": 8.2,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 3.8,
+      "average_order_value": 719.3,
+      "last_order_date": "2025-10-24 20:30:22"
+    },
+    {
+      "id": 1522,
+      "name": "FERRAIUOLO FOODS SRL",
+      "total_orders": 20,
+      "average_days_between_orders": 3.5,
+      "most_frequent_days": [
+        "Friday"
+      ],
+      "average_lead_time_days": 4.6,
+      "average_order_value": 1624.3,
+      "last_order_date": "2025-07-15 20:30:31"
+    },
+    {
+      "id": 5725,
+      "name": "DAGO PINSA GMBH",
+      "total_orders": 19,
+      "average_days_between_orders": 9.2,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 1.8,
+      "average_order_value": 187.93,
+      "last_order_date": "2025-10-27 09:35:47"
+    },
+    {
+      "id": 6301,
+      "name": "ItaEmpire S.r.l.",
+      "total_orders": 19,
+      "average_days_between_orders": 8.4,
+      "most_frequent_days": [
+        "Thursday"
+      ],
+      "average_lead_time_days": 7,
+      "average_order_value": 2166.53,
+      "last_order_date": "2025-10-24 05:07:07"
+    },
+    {
+      "id": 9637,
+      "name": "PASTIFICIO STROPPA SRL",
+      "total_orders": 16,
+      "average_days_between_orders": 9.7,
+      "most_frequent_days": [
+        "Wednesday"
+      ],
+      "average_lead_time_days": 3.7,
+      "average_order_value": 589.2,
+      "last_order_date": "2025-10-27 12:04:48"
+    },
+    {
+      "id": 1550,
+      "name": "RISTORIS SRL",
+      "total_orders": 13,
+      "average_days_between_orders": 13,
+      "most_frequent_days": [
+        "Wednesday"
+      ],
+      "average_lead_time_days": 6,
+      "average_order_value": 4082.64,
+      "last_order_date": "2025-10-22 20:30:22"
+    },
+    {
+      "id": 1497,
+      "name": "GENNARO AURICCHIO S.P.A.",
+      "total_orders": 12,
+      "average_days_between_orders": 14.5,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 7.4,
+      "average_order_value": 1883.68,
+      "last_order_date": "2025-10-17 20:30:34"
+    },
+    {
+      "id": 7847,
+      "name": "SALUMIFICIO F.LLI COATI S.P.A.",
+      "total_orders": 12,
+      "average_days_between_orders": 14.6,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 6.3,
+      "average_order_value": 1847.47,
+      "last_order_date": "2025-10-23 20:30:22"
+    },
+    {
+      "id": 1530,
+      "name": "LATTERIA SOCIALE MANTOVA SOC. AGR. COOP.",
+      "total_orders": 11,
+      "average_days_between_orders": 16.8,
+      "most_frequent_days": [
+        "Saturday"
+      ],
+      "average_lead_time_days": 10.5,
+      "average_order_value": 5470,
+      "last_order_date": "2025-10-25 20:30:23"
+    },
+    {
+      "id": 1528,
+      "name": "TEAM TARTUFI SRLS",
+      "total_orders": 10,
+      "average_days_between_orders": 19.2,
+      "most_frequent_days": [
+        "Tuesday"
+      ],
+      "average_lead_time_days": 2.5,
+      "average_order_value": 278.51,
+      "last_order_date": "2025-10-29 20:30:22"
+    },
+    {
+      "id": 1560,
+      "name": "SAN GIORGIO SPA",
+      "total_orders": 10,
+      "average_days_between_orders": 17.4,
+      "most_frequent_days": [
+        "Tuesday"
+      ],
+      "average_lead_time_days": 11.5,
+      "average_order_value": 2952.2,
+      "last_order_date": "2025-10-20 20:30:23"
+    },
+    {
+      "id": 1494,
+      "name": "SALUMIFICIO SORRENTINO SRL",
+      "total_orders": 9,
+      "average_days_between_orders": 21.4,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 4.9,
+      "average_order_value": 1196.61,
+      "last_order_date": "2025-10-27 21:30:22"
+    },
+    {
+      "id": 1554,
+      "name": "INNOVACTION S.R.L.",
+      "total_orders": 9,
+      "average_days_between_orders": 19.9,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 14.9,
+      "average_order_value": 2476.71,
+      "last_order_date": "2025-10-14 20:30:30"
+    },
+    {
+      "id": 1576,
+      "name": "MUSATI SAGL",
+      "total_orders": 9,
+      "average_days_between_orders": 18.4,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 3,
+      "average_order_value": 2371.34,
+      "last_order_date": "2025-10-13 20:30:23"
+    },
+    {
+      "id": 1484,
+      "name": "PROSCIUTTIFICIO MONTEVECCHIO S.R.L.",
+      "total_orders": 8,
+      "average_days_between_orders": 20.6,
+      "most_frequent_days": [
+        "Friday"
+      ],
+      "average_lead_time_days": 7.9,
+      "average_order_value": 2193.46,
+      "last_order_date": "2025-09-30 20:31:01"
+    },
+    {
+      "id": 1652,
+      "name": "CAFFE BILLO",
+      "total_orders": 7,
+      "average_days_between_orders": 23.3,
+      "most_frequent_days": [
+        "Wednesday"
+      ],
+      "average_lead_time_days": 6.9,
+      "average_order_value": 307.83,
+      "last_order_date": "2025-10-21 20:30:22"
+    },
+    {
+      "id": 9887,
+      "name": "ITJUST EUROPE SRL",
+      "total_orders": 7,
+      "average_days_between_orders": 15.5,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 5.4,
+      "average_order_value": 2088.49,
+      "last_order_date": "2025-10-27 20:30:25"
+    },
+    {
+      "id": 1498,
+      "name": "OLEIFICIO ZUCCHI S.P.A. O ABBREVIATO O.Z. S.P.A. CR",
+      "total_orders": 6,
+      "average_days_between_orders": 27.8,
+      "most_frequent_days": [
+        "Friday"
+      ],
+      "average_lead_time_days": 11.3,
+      "average_order_value": 3934.03,
+      "last_order_date": "2025-10-03 07:28:06"
+    },
+    {
+      "id": 1519,
+      "name": "LINER ITALIA INTERNATIONAL SPA",
+      "total_orders": 6,
+      "average_days_between_orders": 29.4,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 16.5,
+      "average_order_value": 4784.5,
+      "last_order_date": "2025-10-27 07:10:01"
+    },
+    {
+      "id": 1534,
+      "name": "DOLCIARIA MARIGLIANO SRL",
+      "total_orders": 6,
+      "average_days_between_orders": 29.8,
+      "most_frequent_days": [
+        "Friday",
+        "Monday"
+      ],
+      "average_lead_time_days": 15.8,
+      "average_order_value": 5740.52,
+      "last_order_date": "2025-10-23 07:40:44"
+    },
+    {
+      "id": 1471,
+      "name": "VIVANDO WEINE",
+      "total_orders": 5,
+      "average_days_between_orders": 27.8,
+      "most_frequent_days": [
+        "Friday"
+      ],
+      "average_lead_time_days": 1.6,
+      "average_order_value": 757.96,
+      "last_order_date": "2025-09-19 20:30:34"
+    },
+    {
+      "id": 1488,
+      "name": "SOLUZIONI ALIMENTARI DI BONOMINI LUIGI",
+      "total_orders": 5,
+      "average_days_between_orders": 42,
+      "most_frequent_days": [
+        "Friday"
+      ],
+      "average_lead_time_days": 5,
+      "average_order_value": 599.4,
+      "last_order_date": "2025-10-20 20:30:30"
+    },
+    {
+      "id": 1650,
+      "name": "ALDI SUISSE",
+      "total_orders": 5,
+      "average_days_between_orders": 10.5,
+      "most_frequent_days": [
+        "Monday",
+        "Tuesday",
+        "Thursday",
+        "Saturday",
+        "Wednesday"
+      ],
+      "average_lead_time_days": 0.4,
+      "average_order_value": 34.14,
+      "last_order_date": "2025-10-15 20:30:23"
+    },
+    {
+      "id": 1483,
+      "name": "FIRSTPACK IT SRL",
+      "total_orders": 4,
+      "average_days_between_orders": 51,
+      "most_frequent_days": [
+        "Wednesday",
+        "Tuesday",
+        "Friday",
+        "Thursday"
+      ],
+      "average_lead_time_days": 8,
+      "average_order_value": 1116.36,
+      "last_order_date": "2025-10-23 20:30:29"
+    },
+    {
+      "id": 1501,
+      "name": "SOC. AGR. SPIRITO CONTADINO DE PALMA SAS",
+      "total_orders": 4,
+      "average_days_between_orders": 39.3,
+      "most_frequent_days": [
+        "Thursday",
+        "Tuesday",
+        "Monday",
+        "Friday"
+      ],
+      "average_lead_time_days": 17,
+      "average_order_value": 3120.25,
+      "last_order_date": "2025-09-12 20:30:32"
+    },
+    {
+      "id": 1604,
+      "name": "DENNER",
+      "total_orders": 4,
+      "average_days_between_orders": 38,
+      "most_frequent_days": [
+        "Thursday"
+      ],
+      "average_lead_time_days": 0.3,
+      "average_order_value": 15.42,
+      "last_order_date": "2025-10-18 20:30:30"
+    },
+    {
+      "id": 1639,
+      "name": "SUNN FARM AG",
+      "total_orders": 4,
+      "average_days_between_orders": 6.3,
+      "most_frequent_days": [
+        "Friday"
+      ],
+      "average_lead_time_days": 3.3,
+      "average_order_value": 1083.76,
+      "last_order_date": "2025-05-23 20:30:25"
+    },
+    {
+      "id": 1662,
+      "name": "MARINELLO & CO. AG",
+      "total_orders": 4,
+      "average_days_between_orders": 42,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 3.5,
+      "average_order_value": 2603.53,
+      "last_order_date": "2025-09-10 20:30:28"
+    },
+    {
+      "id": 2353,
+      "name": "BADALAMENTI SOCIETA' A RESPONSABILITA' LIMITATA SEMPLIFICATA",
+      "total_orders": 4,
+      "average_days_between_orders": 22.3,
+      "most_frequent_days": [
+        "Saturday",
+        "Wednesday",
+        "Thursday",
+        "Friday"
+      ],
+      "average_lead_time_days": 15.3,
+      "average_order_value": 2364.88,
+      "last_order_date": "2025-10-03 07:33:01"
+    },
+    {
+      "id": 2994,
+      "name": "SILA MARKET",
+      "total_orders": 4,
+      "average_days_between_orders": 45.7,
+      "most_frequent_days": [
+        "Saturday"
+      ],
+      "average_lead_time_days": 0.3,
+      "average_order_value": 44.54,
+      "last_order_date": "2025-10-20 20:30:23"
+    },
+    {
+      "id": 5097,
+      "name": "SIFA S.P.A.",
+      "total_orders": 4,
+      "average_days_between_orders": 48.7,
+      "most_frequent_days": [
+        "Friday"
+      ],
+      "average_lead_time_days": 13.8,
+      "average_order_value": 1713.84,
+      "last_order_date": "2025-10-24 20:30:22"
+    },
+    {
+      "id": 5099,
+      "name": "MOLINI PIZZUTI SRL",
+      "total_orders": 4,
+      "average_days_between_orders": 46.7,
+      "most_frequent_days": [
+        "Wednesday",
+        "Monday",
+        "Friday",
+        "Thursday"
+      ],
+      "average_lead_time_days": 9.8,
+      "average_order_value": 1371.74,
+      "last_order_date": "2025-10-02 09:21:02"
+    },
+    {
+      "id": 9357,
+      "name": "A.I.A. AGRICOLA ITALIANA ALIMENTARE S.P.A.",
+      "total_orders": 4,
+      "average_days_between_orders": 51,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 5.5,
+      "average_order_value": 1402.15,
+      "last_order_date": "2025-10-13 18:40:28"
+    },
+    {
+      "id": 9771,
+      "name": "EFFEPI SRL",
+      "total_orders": 4,
+      "average_days_between_orders": 39,
+      "most_frequent_days": [
+        "Tuesday",
+        "Monday"
+      ],
+      "average_lead_time_days": 12.8,
+      "average_order_value": 2230.04,
+      "last_order_date": "2025-10-06 20:30:28"
+    },
+    {
+      "id": 9889,
+      "name": "GROMAS s.r.l.",
+      "total_orders": 4,
+      "average_days_between_orders": 16.3,
+      "most_frequent_days": [
+        "Wednesday"
+      ],
+      "average_lead_time_days": 1.8,
+      "average_order_value": 537.03,
+      "last_order_date": "2025-10-29 21:30:22"
+    },
+    {
+      "id": 1087,
+      "name": "PACOVIS AG",
+      "total_orders": 3,
+      "average_days_between_orders": 28.5,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 1.7,
+      "average_order_value": 521.8,
+      "last_order_date": "2025-09-15 20:30:23"
+    },
+    {
+      "id": 1502,
+      "name": "CASANOVA TOSCANA FOOD S.R.L.",
+      "total_orders": 3,
+      "average_days_between_orders": 74,
+      "most_frequent_days": [
+        "Monday"
+      ],
+      "average_lead_time_days": 8,
+      "average_order_value": 632.33,
+      "last_order_date": "2025-10-02 20:30:30"
+    },
+    {
+      "id": 1508,
+      "name": "FREDDITALIA INTERNATIONAL SPA",
+      "total_orders": 3,
+      "average_days_between_orders": 64,
+      "most_frequent_days": [
+        "Friday"
+      ],
+      "average_lead_time_days": 22,
+      "average_order_value": 3641.62,
+      "last_order_date": "2025-10-10 20:30:28"
+    },
+    {
+      "id": 1546,
+      "name": "AGUGIARO & FIGNA MOLINI S.P.A.",
+      "total_orders": 3,
+      "average_days_between_orders": 44,
+      "most_frequent_days": [
+        "Friday"
+      ],
+      "average_lead_time_days": 8.7,
+      "average_order_value": 879.28,
+      "last_order_date": "2025-08-21 20:30:25"
+    },
+    {
+      "id": 1547,
+      "name": "BP Cartotecnica SRL",
+      "total_orders": 3,
+      "average_days_between_orders": 80.5,
+      "most_frequent_days": [
+        "Wednesday"
+      ],
+      "average_lead_time_days": 14.3,
+      "average_order_value": 1426.39,
+      "last_order_date": "2025-10-23 20:30:22"
+    },
+    {
+      "id": 1556,
+      "name": "F.LLI GARUTI - SOCIETA' A RESPONSABILITA' LIMITATA",
+      "total_orders": 3,
+      "average_days_between_orders": 53,
+      "most_frequent_days": [
+        "Monday",
+        "Thursday",
+        "Wednesday"
+      ],
+      "average_lead_time_days": 7,
+      "average_order_value": 1387.37,
+      "last_order_date": "2025-08-20 20:30:52"
+    },
+    {
+      "id": 6538,
+      "name": "AMAZON EU SARL",
+      "total_orders": 3,
+      "average_days_between_orders": 65,
+      "most_frequent_days": [
+        "Tuesday"
+      ],
+      "average_lead_time_days": 5.7,
+      "average_order_value": 48.35,
+      "last_order_date": "2025-09-27 20:30:33"
+    },
+    {
+      "id": 9857,
+      "name": "REGA FOOD SRL",
+      "total_orders": 3,
+      "average_days_between_orders": 33.5,
+      "most_frequent_days": [
+        "Tuesday",
+        "Friday",
+        "Monday"
+      ],
+      "average_lead_time_days": 3.3,
+      "average_order_value": 1380.24,
+      "last_order_date": "2025-09-15 15:08:49"
+    },
+    {
+      "id": 9941,
+      "name": "La bottega del caffè GmbH",
+      "total_orders": 3,
+      "average_days_between_orders": 28,
+      "most_frequent_days": [
+        "Wednesday"
+      ],
+      "average_lead_time_days": 0.3,
+      "average_order_value": 40.83,
+      "last_order_date": "2025-10-15 20:30:23"
+    }
+  ]
+}
