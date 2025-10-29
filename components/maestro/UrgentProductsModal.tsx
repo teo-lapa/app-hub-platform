@@ -111,7 +111,7 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
               </div>
               <button
                 onClick={onClose}
-                className="w-10 h-10 rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20 transition-all"
+                className="min-w-[48px] min-h-[48px] p-3 rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20 transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -221,13 +221,13 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
               {/* Close button */}
               <button
                 onClick={() => setSelectedProduct(null)}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20"
+                className="absolute top-4 right-4 min-w-[48px] min-h-[48px] p-3 rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20"
               >
                 ✕
               </button>
 
               {/* Immagine */}
-              <div className="w-40 h-40 mx-auto mb-4 rounded-xl overflow-hidden">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 rounded-xl overflow-hidden">
                 {selectedProduct.image ? (
                   <img
                     src={`data:image/png;base64,${selectedProduct.image}`}
@@ -242,13 +242,13 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
               </div>
 
               {/* Nome e codice */}
-              <h2 className="text-2xl font-bold text-center mb-1">{selectedProduct.productName}</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-center mb-1 line-clamp-2">{selectedProduct.productName}</h2>
               {selectedProduct.productCode && (
-                <p className="text-slate-400 text-center mb-6">COD: {selectedProduct.productCode}</p>
+                <p className="text-xs text-slate-400 text-center mb-3">COD: {selectedProduct.productCode}</p>
               )}
 
               {/* Badge urgenza */}
-              <div className={`px-4 py-3 rounded-lg text-center font-bold text-lg mb-6
+              <div className={`px-3 py-2 rounded-lg text-center font-bold text-sm sm:text-base mb-4
                 ${selectedProduct.urgencyLevel === 'expired'
                   ? 'bg-red-500/20 text-red-400 border-2 border-red-500'
                   : 'bg-orange-500/20 text-orange-400 border-2 border-orange-500'}`}>
@@ -258,7 +258,7 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
               </div>
 
               {/* Dettagli */}
-              <div className="glass p-4 rounded-lg space-y-3 mb-6">
+              <div className="glass p-3 rounded-lg space-y-2 mb-4">
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="w-4 h-4 text-blue-400" />
                   <span className="text-slate-400">Scadenza:</span>
@@ -292,7 +292,7 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
 
               {/* Nota Operatore */}
               {selectedProduct.note && (
-                <div className="glass p-4 rounded-lg mb-6">
+                <div className="glass p-3 rounded-lg mb-4">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="w-5 h-5 text-orange-400 flex-shrink-0" />
                     <div className="flex-1">
@@ -325,7 +325,7 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
               <div className="space-y-3">
                 <button
                   onClick={() => handleRemoveProduct(selectedProduct.id)}
-                  className="w-full glass-strong p-4 rounded-lg hover:bg-red-500/20 transition-all
+                  className="w-full glass-strong p-4 min-h-[56px] rounded-lg hover:bg-red-500/20 transition-all
                            flex items-center justify-center gap-2 group"
                 >
                   <Trash2 className="w-5 h-5 text-red-400" />

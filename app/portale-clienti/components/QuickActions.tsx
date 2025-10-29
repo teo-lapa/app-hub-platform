@@ -81,7 +81,7 @@ export function QuickActions() {
                 className="relative group cursor-pointer"
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300`} />
-                <div className={`relative p-2 sm:p-3 md:p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 group-hover:border-transparent group-hover:shadow-lg transition-all duration-300`}>
+                <div className={`relative p-4 min-h-[88px] rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 group-hover:border-transparent group-hover:shadow-lg transition-all duration-300 flex flex-col`}>
                   <div className={`${action.bgColor} rounded-lg p-2 sm:p-2.5 md:p-3 w-fit mx-auto mb-2 sm:mb-2.5 md:mb-3`}>
                     <Icon className={`h-5 w-5 sm:h-5 sm:w-5 md:h-6 md:w-6 ${action.iconColor}`} />
                   </div>

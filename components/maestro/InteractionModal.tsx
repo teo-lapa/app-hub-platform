@@ -201,7 +201,7 @@ export function InteractionModal({
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white"
+                  className="min-w-[48px] min-h-[48px] p-3 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -223,7 +223,7 @@ export function InteractionModal({
                       <button
                         key={value}
                         onClick={() => setInteractionType(value as InteractionType)}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                        className={`flex flex-col items-center gap-2 p-4 min-h-[48px] rounded-lg border-2 transition-all ${
                           interactionType === value
                             ? 'border-blue-500 bg-blue-500/10 text-blue-400'
                             : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600'
@@ -250,7 +250,7 @@ export function InteractionModal({
                       <button
                         key={value}
                         onClick={() => setOutcome(value as Outcome)}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                        className={`flex flex-col items-center gap-2 p-4 min-h-[48px] rounded-lg border-2 transition-all ${
                           outcome === value
                             ? `border-${color}-500 bg-${color}-500/10 text-${color}-400`
                             : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600'
@@ -305,7 +305,7 @@ export function InteractionModal({
                           {/* Remove Button */}
                           <button
                             onClick={() => setSelectedProducts(selectedProducts.filter(p => p.id !== product.id))}
-                            className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-red-400"
+                            className="min-w-[48px] min-h-[48px] p-3 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-red-400"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -375,7 +375,7 @@ export function InteractionModal({
                         <button
                           key={value}
                           onClick={() => setSampleFeedback(value as SampleFeedback)}
-                          className={`p-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                          className={`p-3 min-h-[48px] rounded-lg border-2 transition-all text-sm font-medium ${
                             sampleFeedback === value
                               ? `border-${color}-500 bg-${color}-500/10 text-${color}-400`
                               : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600'
@@ -423,14 +423,14 @@ export function InteractionModal({
                 <button
                   onClick={onClose}
                   disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                  className="px-6 py-3 min-h-[48px] bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors disabled:opacity-50"
                 >
                   Annulla
                 </button>
                 <button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                  className="px-6 py-3 min-h-[48px] bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   {isSubmitting ? (
                     <>
