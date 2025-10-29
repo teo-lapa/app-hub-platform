@@ -245,15 +245,15 @@ export default function GestioneCadenzeFornitori() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-slate-800 [&>option]:text-white"
               >
-                <option value="all">Tutti</option>
-                <option value="urgent">Urgenti</option>
-                <option value="overdue">In ritardo</option>
-                <option value="due_soon">In scadenza</option>
-                <option value="on_time">In regola</option>
-                <option value="active">Attivi</option>
-                <option value="inactive">Inattivi</option>
+                <option value="all" className="bg-slate-800 text-white">Tutti</option>
+                <option value="urgent" className="bg-slate-800 text-white">Urgenti</option>
+                <option value="overdue" className="bg-slate-800 text-white">In ritardo</option>
+                <option value="due_soon" className="bg-slate-800 text-white">In scadenza</option>
+                <option value="on_time" className="bg-slate-800 text-white">In regola</option>
+                <option value="active" className="bg-slate-800 text-white">Attivi</option>
+                <option value="inactive" className="bg-slate-800 text-white">Inattivi</option>
               </select>
             </div>
           </div>
