@@ -1,12 +1,13 @@
 ---
 name: extract-lots
-version: 1.0.0
+version: 1.1.0
 description: Valida prodotti ed estrae lotti/scadenze (SOLO prodotti VERI)
 category: document-processing
 tags: [lots, expiry, traceability, validation, universal]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-27
+updated: 2025-10-29
 ---
 
 # 🔖 Agent 2 - Validazione Prodotti + Estrazione Lotti

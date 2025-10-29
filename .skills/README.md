@@ -62,7 +62,7 @@ const skill = loadSkillByCategory('document-processing', 'invoice-parsing');
 
 // Usa nelle API call
 const message = await anthropic.messages.create({
-  model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
+  model: skill.metadata.model || 'claude-sonnet-4-5-20250929',
   messages: [
     {
       role: 'user',
@@ -109,7 +109,7 @@ version: 1.0.0
 description: Brief description
 category: category-name
 tags: [tag1, tag2]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Your Name
 created: 2025-01-24
 updated: 2025-01-24
@@ -199,6 +199,6 @@ Include:
 
 ---
 
-**Ultimo aggiornamento**: 2025-01-24
+**Ultimo aggiornamento**: 2025-10-29
 **Maintainer**: Lapa Team
-**Versione**: 2.0.0
+**Versione**: 2.1.0

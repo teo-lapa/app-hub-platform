@@ -64,7 +64,7 @@ export class AgentFactory {
       appContext,
       capabilities,
       config: {
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-5-20250929',
         maxTokens: 8000,
         temperature: 0.3,  // Lower for more deterministic code generation
         tools

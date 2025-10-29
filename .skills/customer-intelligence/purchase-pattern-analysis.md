@@ -1,11 +1,12 @@
 ---
 name: purchase-pattern-analysis
-version: 1.0.0
+version: 1.1.0
 description: Analisi dei pattern di acquisto per predire comportamenti e ottimizzare offerte
 tags: [patterns, behavior, forecasting]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-24
+updated: 2025-10-29
 category: customer-intelligence
 ---
 

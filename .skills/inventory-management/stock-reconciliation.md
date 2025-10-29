@@ -1,12 +1,13 @@
 ---
 name: stock-reconciliation
-version: 1.0.0
+version: 1.1.0
 description: Riconcilia differenze tra stock fisico e sistema per inventari accurati
 category: inventory-management
 tags: [reconciliation, inventory, stock, variance, audit]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-24
+updated: 2025-10-29
 temperature: 0
 max_tokens: 8192
 ---

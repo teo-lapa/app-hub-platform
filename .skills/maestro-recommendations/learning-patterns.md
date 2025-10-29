@@ -1,13 +1,14 @@
 ---
 name: learning-patterns
-version: 1.0.0
+version: 1.1.0
 description: Learn from customer behavior patterns to improve future recommendations and predictions
 category: maestro-recommendations
 tags: [machine-learning, patterns, analytics, continuous-improvement, behavioral-analysis]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 temperature: 0.3
 author: Lapa Team
 created: 2025-01-24
+updated: 2025-10-29
 ---
 
 # 🧠 Learning Patterns Skill

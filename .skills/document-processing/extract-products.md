@@ -1,12 +1,13 @@
 ---
 name: extract-products
-version: 1.0.0
+version: 1.1.0
 description: Estrae prodotti da qualsiasi fattura/DDT con quantità e descrizioni
 category: document-processing
 tags: [invoice, products, extraction, universal]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-27
+updated: 2025-10-29
 ---
 
 # 📦 Agent 1 - Estrazione Prodotti

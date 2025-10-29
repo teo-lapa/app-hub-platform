@@ -1,11 +1,12 @@
 ---
 name: churn-prediction
-version: 1.0.0
+version: 1.1.0
 description: Predizione del rischio di abbandono clienti con scoring e early warning
 tags: [churn, retention, prediction]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-24
+updated: 2025-10-29
 category: customer-intelligence
 ---
 

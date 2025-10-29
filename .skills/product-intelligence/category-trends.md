@@ -1,13 +1,14 @@
 ---
 name: category-trends
-version: 1.0.0
+version: 1.1.0
 description: Identifica trend emergenti e opportunità in categorie di prodotti
 category: product-intelligence
 tags: [trends, analytics, forecasting, market-intelligence, opportunities]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 temperature: 0
 author: Lapa Team
 created: 2025-10-24
+updated: 2025-10-29
 ---
 
 # 📈 Category Trends Skill

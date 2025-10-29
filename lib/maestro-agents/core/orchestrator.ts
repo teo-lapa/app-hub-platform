@@ -167,7 +167,7 @@ ${task.context ? JSON.stringify(task.context, null, 2) : 'No additional context'
 # Decision (JSON only):`;
 
     const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 500,
       temperature: 0.1,
       messages: [
@@ -321,7 +321,7 @@ Synthesize these agent responses into ONE coherent, well-structured response tha
 # Synthesized Response (in Italian):`;
 
     const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 2000,
       temperature: 0.3,
       messages: [

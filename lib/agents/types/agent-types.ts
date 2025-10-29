@@ -70,7 +70,7 @@ export interface AgentDefinition {
 
   // Configuration
   config: {
-    model: string;  // claude-3-5-sonnet-20241022
+    model: string;  // claude-sonnet-4-5-20250929
     maxTokens: number;
     temperature: number;
     tools: string[];  // Lista tool disponibili

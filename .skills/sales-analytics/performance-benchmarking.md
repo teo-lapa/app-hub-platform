@@ -1,12 +1,13 @@
 ---
 name: performance-benchmarking
-version: 1.0.0
+version: 1.1.0
 description: Confronta performance commerciali tra periodi, team, prodotti o competitor
 category: sales-analytics
 tags: [benchmarking, comparison, performance, competitive-analysis]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-24
+updated: 2025-10-29
 ---
 
 # 📊 Performance Benchmarking Skill
