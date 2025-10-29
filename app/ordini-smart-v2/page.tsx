@@ -596,6 +596,13 @@ export default function SmartOrderingV2() {
                     Tutto OK
                   </div>
                 )}
+                {/* Cadence Badge - Always Visible */}
+                {supplier.hasCadence && supplier.cadenceDays && (
+                  <div className="flex items-center gap-1 bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-sm font-semibold">
+                    <CalendarIcon className="w-4 h-4" />
+                    Ogni {supplier.cadenceDays} gg
+                  </div>
+                )}
               </div>
 
               {/* Stats */}
