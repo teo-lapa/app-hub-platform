@@ -302,7 +302,8 @@ Output JSON:
     };
 
     // 🤖 AGENT 1: Extract Products con GEMINI 2.5 Flash (invece di Claude)
-    const productsData = await callGeminiAgent(filteredBase64, 'AGENT 1 - Estrazione Prodotti (PDF filtrato)');
+    // IMPORTANTE: Gemini usa il PDF ORIGINALE (non filtrato) per leggere meglio le tabelle!
+    const productsData = await callGeminiAgent(base64, 'AGENT 1 - Estrazione Prodotti (PDF ORIGINALE)');
 
     // 🤖 AGENT 2: Extract Lots and Expiry Dates + VALIDATE PRODUCTS (usa PDF filtrato)
     const productsListContext = `
