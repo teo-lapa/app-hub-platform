@@ -133,7 +133,7 @@ export function OrderCard({ order }: OrderCardProps) {
           <div className="flex gap-2">
             <Link
               href={`/portale-clienti/ordini/${order.id}`}
-              className="px-2 py-1.5 sm:px-3 text-xs sm:text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors whitespace-nowrap"
+              className="px-3 py-3 min-h-[48px] text-xs sm:text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors whitespace-nowrap flex items-center"
             >
               Dettagli
             </Link>
@@ -142,7 +142,7 @@ export function OrderCard({ order }: OrderCardProps) {
                 // TODO: Implementare copia in carrello
                 alert('Funzione riordina in sviluppo');
               }}
-              className="px-2 py-1.5 sm:px-3 text-xs sm:text-sm font-medium text-green-600 bg-green-50 rounded-md hover:bg-green-100 transition-colors whitespace-nowrap"
+              className="px-3 py-3 min-h-[48px] text-xs sm:text-sm font-medium text-green-600 bg-green-50 rounded-md hover:bg-green-100 transition-colors whitespace-nowrap flex items-center"
             >
               <span className="hidden sm:inline">Riordina</span>
               <span className="sm:hidden">Riord.</span>

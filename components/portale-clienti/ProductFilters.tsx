@@ -143,7 +143,7 @@ export function ProductFilters({
           onSortChange('name');
           onPurchasedOnlyChange(false);
         }}
-        className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        className="w-full px-4 py-3 min-h-[48px] text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
       >
         Reimposta filtri
       </button>

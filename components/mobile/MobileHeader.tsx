@@ -36,7 +36,7 @@ export function MobileHeader({ title, showBackButton = false, showLogo = false, 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleBack}
-                className="p-2 rounded-xl hover:bg-white/10 dark:hover:bg-white/5 transition-colors"
+                className="p-3 min-w-[48px] min-h-[48px] rounded-xl hover:bg-white/10 dark:hover:bg-white/5 transition-colors flex items-center justify-center"
               >
                 <ArrowLeft className="w-5 h-5" />
               </motion.button>
