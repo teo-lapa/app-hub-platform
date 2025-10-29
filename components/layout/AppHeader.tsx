@@ -46,7 +46,7 @@ export function AppHeader({
                 {showHomeButton && (
                   <Link
                     href="/"
-                    className="flex items-center space-x-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg border border-slate-600 transition-colors group"
+                    className="flex items-center space-x-2 px-4 py-3 min-h-[48px] bg-slate-800/50 hover:bg-slate-700/50 rounded-lg border border-slate-600 transition-colors group"
                   >
                     <ArrowLeft className="h-5 w-5 text-slate-300 group-hover:text-white" />
                     <Home className="h-5 w-5 text-slate-300 group-hover:text-white" />
@@ -57,7 +57,7 @@ export function AppHeader({
                 {showBackButton && (
                   <button
                     onClick={handleBack}
-                    className="flex items-center space-x-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg border border-slate-600 transition-colors group"
+                    className="flex items-center space-x-2 px-4 py-3 min-h-[48px] bg-slate-800/50 hover:bg-slate-700/50 rounded-lg border border-slate-600 transition-colors group"
                   >
                     <ArrowLeft className="h-5 w-5 text-slate-300 group-hover:text-white" />
                     <span className="text-slate-300 group-hover:text-white font-medium">Indietro</span>

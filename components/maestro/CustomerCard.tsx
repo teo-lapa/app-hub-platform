@@ -45,7 +45,7 @@ export function CustomerCard({ customer, variant = 'default', onComplete, onRemo
       {onRemove && (
         <button
           onClick={onRemove}
-          className="absolute top-3 right-3 p-1.5 bg-slate-700/50 hover:bg-red-600 text-slate-400 hover:text-white rounded-md transition-colors z-10"
+          className="absolute top-3 right-3 min-w-[48px] min-h-[48px] p-3 bg-slate-700/50 hover:bg-red-600 text-slate-400 hover:text-white rounded-md transition-colors z-10"
           title="Rimuovi dalla lista"
         >
           <X className="h-4 w-4" />
@@ -134,15 +134,15 @@ export function CustomerCard({ customer, variant = 'default', onComplete, onRemo
         <div className="flex flex-col gap-2">
           <button
             onClick={() => onComplete?.(customer.id)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-3 min-h-[48px] bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
           >
             Completa visita
           </button>
           <div className="flex gap-2">
-            <button className="p-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors">
+            <button className="min-w-[48px] min-h-[48px] p-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors">
               <Phone className="h-4 w-4" />
             </button>
-            <button className="p-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors">
+            <button className="min-w-[48px] min-h-[48px] p-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors">
               <Mail className="h-4 w-4" />
             </button>
           </div>

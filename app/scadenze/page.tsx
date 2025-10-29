@@ -367,7 +367,7 @@ export default function ScadenzePage() {
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 min-w-[48px] min-h-[48px] p-3 rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -384,7 +384,7 @@ export default function ScadenzePage() {
               <div className="flex gap-2 overflow-x-auto pb-2">
                 <button
                   onClick={() => handleFilterByZone(null)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all
+                  className={`px-4 py-3 min-h-[48px] rounded-lg text-sm font-semibold whitespace-nowrap transition-all
                     ${!selectedZone
                       ? 'bg-blue-500 text-white'
                       : 'glass-strong text-slate-300 hover:bg-white/10'}`}
@@ -400,7 +400,7 @@ export default function ScadenzePage() {
                     <button
                       key={zone.id}
                       onClick={() => handleFilterByZone(zone.id)}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all
+                      className={`px-4 py-3 min-h-[48px] rounded-lg text-sm font-semibold whitespace-nowrap transition-all
                         ${selectedZone === zone.id
                           ? `bg-gradient-to-br ${zone.gradient} text-white`
                           : 'glass-strong text-slate-300 hover:bg-white/10'}`}
@@ -462,7 +462,7 @@ export default function ScadenzePage() {
               {/* Close button */}
               <button
                 onClick={() => setShowProductModal(false)}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20"
+                className="absolute top-4 right-4 min-w-[48px] min-h-[48px] rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20"
               >
                 ✕
               </button>
@@ -718,14 +718,14 @@ export default function ScadenzePage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowUrgentNoteModal(false)}
-                  className="flex-1 glass-strong p-3 rounded-lg hover:bg-white/5 transition-all"
+                  className="flex-1 glass-strong p-3 min-h-[48px] rounded-lg hover:bg-white/5 transition-all"
                 >
                   Annulla
                 </button>
                 <button
                   onClick={handleConfirmUrgent}
                   disabled={!urgentNoteInput.trim()}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-700 disabled:text-slate-500 p-3 rounded-lg font-semibold transition-all"
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-700 disabled:text-slate-500 p-3 min-h-[48px] rounded-lg font-semibold transition-all"
                 >
                   Conferma
                 </button>
