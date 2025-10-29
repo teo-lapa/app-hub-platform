@@ -69,26 +69,86 @@ export async function POST(request: NextRequest) {
       console.log('🏢 Fornitore ID:', supplierId);
     }
 
+    // 🆕 ARRICCHISCI LE RIGHE ODOO CON INFORMAZIONI UoM PER CONVERSIONE AUTOMATICA
+    console.log('📏 Carico informazioni UoM per conversione quantità...');
+    const enrichedMoveLines = await Promise.all(
+      move_lines.map(async (line: OdooMoveLine) => {
+        try {
+          // Leggi il prodotto per ottenere le UoM configurate
+          const productData = await callOdoo(cookies, 'product.product', 'read', [
+            [line.product_id[0]],
+            ['uom_id', 'uom_po_id', 'product_tmpl_id']
+          ]);
+
+          if (!productData || productData.length === 0) {
+            return line;
+          }
+
+          const product = productData[0];
+          const uomId = product.uom_id?.[0];
+          const uomPoId = product.uom_po_id?.[0];
+
+          // Se non c'è UoM, ritorna la riga invariata
+          if (!uomId) {
+            return line;
+          }
+
+          // Leggi le informazioni dettagliate dell'UoM
+          const uomData = await callOdoo(cookies, 'uom.uom', 'read', [
+            [uomId],
+            ['name', 'category_id', 'factor', 'factor_inv', 'uom_type', 'rounding']
+          ]);
+
+          const uomInfo = uomData?.[0];
+
+          // Se esiste UoM acquisto diversa, leggi anche quella
+          let uomPoInfo = null;
+          if (uomPoId && uomPoId !== uomId) {
+            const uomPoData = await callOdoo(cookies, 'uom.uom', 'read', [
+              [uomPoId],
+              ['name', 'category_id', 'factor', 'factor_inv', 'uom_type', 'rounding']
+            ]);
+            uomPoInfo = uomPoData?.[0];
+          }
+
+          return {
+            ...line,
+            uom_info: uomInfo,
+            uom_po_info: uomPoInfo
+          };
+        } catch (error: any) {
+          console.error(`⚠️ Errore caricamento UoM per prodotto ${line.product_id[0]}:`, error.message);
+          return line;
+        }
+      })
+    );
+
+    console.log(`✅ UoM caricate per ${enrichedMoveLines.length} righe`);
+
     // 🆕 USA LO SKILL PER PRODUCT MATCHING
     const skill = loadSkill('inventory-management/product-matching');
     logSkillInfo('inventory-management/product-matching'); // Log per debugging
     console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version}`);
 
-    // Prepara i dati per il matching
+    // Prepara i dati per il matching (usa enrichedMoveLines con UoM)
     const matchingData = `
 PRODOTTI DALLA FATTURA:
 ${JSON.stringify(parsed_products, null, 2)}
 
-RIGHE DEL SISTEMA ODOO:
-${JSON.stringify(move_lines, null, 2)}
+RIGHE DEL SISTEMA ODOO (CON UoM):
+${JSON.stringify(enrichedMoveLines, null, 2)}
 
 Esegui il matching seguendo le regole sopra.
+
+IMPORTANTE: Quando calcoli la quantità, DEVI fare la conversione usando le UoM di Odoo.
+Esempio: se la fattura dice "3 x 10ST" e l'UoM di Odoo è KG con factor 0.1 (1 unità = 10 KG),
+allora la quantità finale deve essere 30.0 KG (non 3.0).
 `;
 
     console.log('🤖 Invio a Claude per matching intelligente...');
 
     const message = await anthropic.messages.create({
-      model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 8000,
       temperature: 0,
       messages: [
@@ -227,7 +287,7 @@ Esegui il matching seguendo le regole sopra.
           ]);
 
           // Trova il prodotto per aggiungere il nome nei dettagli
-          const moveLine = move_lines.find((ml: OdooMoveLine) => ml.id === match.move_line_id);
+          const moveLine = enrichedMoveLines.find((ml: any) => ml.id === match.move_line_id);
           const productName = moveLine ? moveLine.product_name : `Riga ${match.move_line_id}`;
 
           results.updated++;
@@ -270,7 +330,7 @@ Esegui il matching seguendo le regole sopra.
           }
 
           // Crea una nuova riga per lo stesso prodotto ma con lotto diverso
-          const originalLine = move_lines.find((ml: OdooMoveLine) => ml.id === match.move_line_id);
+          const originalLine = enrichedMoveLines.find((ml: any) => ml.id === match.move_line_id);
 
           if (!originalLine) {
             results.errors.push(`Riga originale ${match.move_line_id} non trovata`);
@@ -340,7 +400,7 @@ Esegui il matching seguendo le regole sopra.
 
     // ✨ NUOVA LOGICA: Metti a ZERO tutte le righe Odoo che NON sono state usate
     console.log('🔍 Verifico righe Odoo non utilizzate...');
-    for (const moveLine of move_lines) {
+    for (const moveLine of enrichedMoveLines) {
       if (!usedMoveLineIds.has(moveLine.id)) {
         try {
           // Questa riga non è stata usata, metti quantità a 0

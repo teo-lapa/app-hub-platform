@@ -49,4 +49,13 @@ Rispondi SOLO con JSON valido:
 3. ✅ `document_number`: Numero fattura/DDT
 4. ✅ `document_date`: Formato YYYY-MM-DD
 
+## ⚠️ Regole Speciali per Fornitore
+
+### ALIGRO (Scontrini Cash & Carry)
+Se vedi "ALIGRO" o "Demaurex & Cie SA":
+- **supplier_name**: "ALIGRO Demaurex & Cie SA"
+- **supplier_vat**: Estrai da "CHE-105.968.205 TVA" → solo numeri: "10596820"
+- **document_number**: Estrai da "Rechnung Nr. 5-1-1299" → "5-1-1299"
+- **document_date**: Converti "28.10.2025" → "2025-10-28"
+
 **IMPORTANTE**: Rispondi SOLO con il JSON. NESSUN altro testo!

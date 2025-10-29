@@ -615,10 +615,29 @@ export default function ArrivoMercePage() {
                     const data = await response.json();
 
                     if (!response.ok) {
+                      // Log debug info if available
+                      if (data.debug) {
+                        console.error('🔍 Debug info:', data.debug);
+                        if (data.debug.first_page_response) {
+                          console.error('📄 AI Response (first 2000 chars):', data.debug.first_page_response);
+                        }
+                        if (data.debug.errors) {
+                          console.error('📋 Errori dettagliati:', data.debug.errors);
+                        }
+                      }
+
                       throw new Error(data.error || 'Errore durante il parsing');
                     }
 
                     console.log('✅ Allegato parsato:', data.data);
+                    console.log('📊 DETTAGLIO COMPLETO:', {
+                      fornitore: data.data.supplier_name,
+                      documento: data.data.document_number,
+                      data: data.data.document_date,
+                      numero_prodotti: data.data.products?.length || 0,
+                      prodotti: data.data.products
+                    });
+
                     setParsedInvoice(data.data);
                     setStep(3); // Vai a Step 3: Verifica Dati
 

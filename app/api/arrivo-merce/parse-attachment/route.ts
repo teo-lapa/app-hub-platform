@@ -57,7 +57,8 @@ async function parsePage(
   pageNumber: number,
   totalPages: number,
   mediaType: string,
-  skill: any
+  directPrompt: string,
+  errorCollector?: Array<{page: number, error: string, response?: string}>
 ): Promise<any | null> {
   const isPDF = mediaType === 'application/pdf';
 
@@ -84,8 +85,8 @@ async function parsePage(
       console.log(`🤖 Tentativo ${attempt}/${maxAttempts} per pagina ${pageNumber}/${totalPages}...`);
 
       const message = await anthropic.messages.create({
-        model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
-        max_tokens: 8192, // Originale - ogni pagina ha meno prodotti
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 16384,
         temperature: 0,
         messages: [
           {
@@ -94,7 +95,7 @@ async function parsePage(
               contentBlock,
               {
                 type: 'text',
-                text: `${skill.content}\n\n---\n\nAnalizza questa pagina di fattura ed estrai i prodotti. Questa è la pagina ${pageNumber} di ${totalPages}.`,
+                text: directPrompt,
               },
             ],
           },
@@ -104,6 +105,11 @@ async function parsePage(
       // Extract JSON from response
       const firstContent = message.content[0];
       responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
+
+      // Log response for debugging
+      console.log(`📄 Response pagina ${pageNumber} (primi 1500 chars):`, responseText.substring(0, 1500));
+      console.log(`📊 Response type:`, firstContent?.type);
+      console.log(`📏 Response length:`, responseText.length, 'chars');
 
       // Try to parse JSON
       let parsedData;
@@ -137,11 +143,37 @@ async function parsePage(
 
     } catch (error: any) {
       console.error(`❌ Errore pagina ${pageNumber}, tentativo ${attempt}:`, error.message);
+      console.error(`🔍 Error stack:`, error.stack);
+
       if (error.message.includes('Nessun JSON valido trovato') && responseText) {
-        console.error(`📄 Response text preview:`, responseText.substring(0, 500));
+        console.error(`📄 Full response text (for debugging):`, responseText);
+        console.error(`📄 Response text length:`, responseText.length);
+
+        // Try to find any JSON-like structure
+        const possibleJson = responseText.match(/\{[\s\S]*\}/g);
+        if (possibleJson) {
+          console.error(`🔍 Found ${possibleJson.length} potential JSON structures:`);
+          possibleJson.forEach((json, idx) => {
+            console.error(`  ${idx + 1}. First 200 chars:`, json.substring(0, 200));
+          });
+        } else {
+          console.error(`❌ No JSON-like structures found in response`);
+        }
       }
+
       if (attempt === maxAttempts) {
         console.error(`⚠️ Pagina ${pageNumber} saltata dopo ${maxAttempts} tentativi`);
+        console.error(`📄 Ultima response salvata per debug`);
+
+        // Save error details to collector
+        if (errorCollector) {
+          const existingError = errorCollector.find(e => e.page === pageNumber);
+          if (existingError) {
+            existingError.error = error.message;
+            existingError.response = responseText.substring(0, 2000); // First 2000 chars
+          }
+        }
+
         return null;
       }
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -236,6 +268,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('📥 [PARSE-ATTACHMENT] Scarico allegato ID:', attachment_id);
+    console.log('🔐 Session UID:', uid);
 
     // Scarica allegato da Odoo
     const attachments = await callOdoo(cookies, 'ir.attachment', 'read', [
@@ -250,7 +283,7 @@ export async function POST(request: NextRequest) {
     }
 
     const attachment = attachments[0];
-    console.log('📄 Allegato:', attachment.name, `(${attachment.mimetype}, ${attachment.file_size} bytes)`);
+    console.log('📄 Allegato:', attachment.name, `(${attachment.mimetype}, ${(attachment.file_size / 1024).toFixed(2)} KB)`);
 
     // Valida dimensione file
     const maxSize = 10 * 1024 * 1024; // 10 MB
@@ -290,10 +323,42 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 🆕 CARICA LO SKILL PER INVOICE PARSING
-    const skill = loadSkill('document-processing/invoice-parsing');
-    logSkillInfo('document-processing/invoice-parsing');
-    console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version}`);
+    // PROMPT DIRETTO - NO SKILLS
+    const directPrompt = `Leggi ATTENTAMENTE tutto il documento e estrai OGNI SINGOLO prodotto.
+
+ISTRUZIONI CRITICHE:
+1. Scorri il documento dall'INIZIO alla FINE
+2. Trova TUTTE le righe di prodotto (cerca pattern "numero x CODICE descrizione")
+3. NON fermarti al primo prodotto
+4. NON saltare righe
+5. Conta quanti prodotti hai estratto e verifica che corrispondano al totale nel documento
+
+PER SCONTRINI ALIGRO (in tedesco):
+- Pattern da cercare: "numero x CODICE descrizione" (es: "2 x FL Marsala", "3 x ST Sardelle", "5 x BTL Chicken")
+- IGNORA righe senza "x" (es: "2 Spirituosen", "3 Lebensmittel" = sono TOTALI, non prodotti!)
+- Cerca fino alla fine della tabella
+- Codici confezione: FL, GLS, ST, BTL, PAK, KAR, 12ST, 10ST
+
+Restituisci JSON con TUTTI i prodotti trovati:
+{
+  "supplier_name": "...",
+  "supplier_vat": "...",
+  "document_number": "...",
+  "document_date": "YYYY-MM-DD",
+  "products": [
+    {
+      "description": "nome prodotto",
+      "quantity": 0.0,
+      "unit": "NR",
+      "article_code": null,
+      "lot_number": null,
+      "expiry_date": null,
+      "variant": null
+    }
+  ]
+}
+
+VERIFICA FINALE: Se nel documento vedi scritto "19 Verkaufseinheit(en)" o simile, devi aver estratto 19 prodotti!`;
 
     // 🆕 SPLIT STRATEGY FOR MULTI-PAGE PDFs
     let pagesToProcess: string[] = [];
@@ -301,9 +366,23 @@ export async function POST(request: NextRequest) {
 
     if (isPDF) {
       try {
-        pagesToProcess = await splitPDFPages(base64);
+        const pdfBytes = Buffer.from(base64, 'base64');
+        const pdfDoc = await (await import('pdf-lib')).PDFDocument.load(pdfBytes);
+        const pageCount = pdfDoc.getPageCount();
+
+        console.log(`📄 PDF ha ${pageCount} pagine`);
+
+        // Per PDF con 1-2 pagine, invia intero (migliore qualità)
+        // Per PDF con 3+ pagine, splitta (evita timeout)
+        if (pageCount <= 2) {
+          console.log(`📦 PDF con ${pageCount} pagina/e - invio INTERO per qualità ottimale`);
+          pagesToProcess = [base64];
+        } else {
+          console.log(`📄 PDF con ${pageCount} pagine - splitting per evitare timeout`);
+          pagesToProcess = await splitPDFPages(base64);
+        }
       } catch (splitError: any) {
-        console.error('⚠️ Impossibile splittare PDF, uso PDF intero:', splitError.message);
+        console.error('⚠️ Errore analisi PDF, uso PDF intero:', splitError.message);
         pagesToProcess = [base64]; // Fallback
       }
     } else {
@@ -316,22 +395,31 @@ export async function POST(request: NextRequest) {
     const pageResults: any[] = [];
     let totalTokensUsed = { input_tokens: 0, output_tokens: 0 };
 
-    const parseErrors: string[] = [];
+    const parseErrors: Array<{page: number, error: string, response?: string}> = [];
     for (let i = 0; i < pagesToProcess.length; i++) {
+      // Pre-populate error entry
+      const errorEntry = {
+        page: i + 1,
+        error: `Pagina ${i + 1} non parsata`,
+        response: undefined
+      };
+      parseErrors.push(errorEntry);
+
       const result = await parsePage(
         pagesToProcess[i],
         i + 1,
         pagesToProcess.length,
         mediaType,
-        skill
+        directPrompt,
+        parseErrors
       );
 
       if (result) {
         pageResults.push(result.data);
         totalTokensUsed.input_tokens += result.tokens.input_tokens;
         totalTokensUsed.output_tokens += result.tokens.output_tokens;
-      } else {
-        parseErrors.push(`Pagina ${i + 1} non parsata`);
+        // Remove error entry if successful
+        parseErrors.pop();
       }
     }
 
@@ -348,7 +436,9 @@ export async function POST(request: NextRequest) {
           attachment_name: attachment.name,
           pages_total: pagesToProcess.length,
           pages_failed: parseErrors.length,
-          errors: parseErrors
+          errors: parseErrors,
+          // Add first page response for debugging
+          first_page_response: parseErrors[0]?.response || 'No response captured'
         }
       }, { status: 500 });
     }
