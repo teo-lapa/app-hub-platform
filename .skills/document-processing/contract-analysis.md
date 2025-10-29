@@ -1,12 +1,13 @@
 ---
 name: contract-analysis
-version: 1.0.0
+version: 1.1.0
 description: Analizza contratti fornitori per clausole critiche e condizioni commerciali
 category: document-processing
 tags: [contract, legal, supplier, terms, vision]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-24
+updated: 2025-10-29
 temperature: 0
 max_tokens: 8192
 ---

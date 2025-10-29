@@ -375,22 +375,56 @@ export async function GET(request: NextRequest) {
         console.log('[SCARICO PARZIALE DEBUG] Message date:', scaricoParzialMessage.date);
         console.log('[SCARICO PARZIALE DEBUG] Total attachments for this picking:', pickingAttachments.length);
 
-        const scaricoParzialAttachment = pickingAttachments.find((att: any) => {
+        // Trova TUTTI gli allegati nel timeframe (non solo il primo!)
+        const allMatchingAttachments = pickingAttachments.filter((att: any) => {
           if (!att.create_date) return false;
           const attDate = new Date(att.create_date);
           const timeDiff = Math.abs(attDate.getTime() - messageDate.getTime());
-          // Cerca immagini/documenti/audio creati entro 2 minuti dal messaggio
-          return timeDiff < 120000 && att.mimetype && (
+          // Cerca immagini/documenti/audio creati entro 24 ore dal messaggio (86400000 ms)
+          return timeDiff < 86400000 && att.mimetype && (
             att.mimetype.startsWith('image/') ||
             att.mimetype === 'application/pdf' ||
             att.mimetype.startsWith('audio/')
           );
         });
 
-        console.log('[SCARICO PARZIALE DEBUG] Found partial delivery attachment:', scaricoParzialAttachment ? 'YES' : 'NO');
+        console.log('[SCARICO PARZIALE DEBUG] Found', allMatchingAttachments.length, 'matching attachments');
+
+        // PRIORITÀ: Audio > PDF > Immagini
+        // Cerca prima l'audio (che è la giustificazione vocale)
+        let scaricoParzialAttachment = allMatchingAttachments.find((att: any) =>
+          att.mimetype?.startsWith('audio/')
+        );
+
+        // Se non c'è audio, cerca PDF
+        if (!scaricoParzialAttachment) {
+          scaricoParzialAttachment = allMatchingAttachments.find((att: any) =>
+            att.mimetype === 'application/pdf'
+          );
+        }
+
+        // Se non c'è né audio né PDF, prendi la prima immagine
+        if (!scaricoParzialAttachment) {
+          scaricoParzialAttachment = allMatchingAttachments.find((att: any) =>
+            att.mimetype?.startsWith('image/')
+          );
+        }
+
+        console.log('[SCARICO PARZIALE DEBUG] Selected attachment:', scaricoParzialAttachment ? 'YES' : 'NO');
         if (scaricoParzialAttachment) {
           console.log('[SCARICO PARZIALE DEBUG] Attachment ID:', scaricoParzialAttachment.id, 'mimetype:', scaricoParzialAttachment.mimetype);
           console.log('[SCARICO PARZIALE DEBUG] Has data:', !!scaricoParzialAttachment.datas, 'data length:', scaricoParzialAttachment.datas?.length || 0);
+
+          // Validazione dati audio
+          if (scaricoParzialAttachment.mimetype?.startsWith('audio/')) {
+            if (!scaricoParzialAttachment.datas || scaricoParzialAttachment.datas.length === 0) {
+              console.error('[SCARICO PARZIALE ERROR] Audio attachment found but datas field is empty!');
+            } else if (scaricoParzialAttachment.datas.length < 100) {
+              console.warn('[SCARICO PARZIALE WARNING] Audio datas seems too short (< 100 chars), might be corrupted');
+            } else {
+              console.log('[SCARICO PARZIALE SUCCESS] Audio datas looks valid');
+            }
+          }
         }
 
         const body = scaricoParzialMessage.body || '';

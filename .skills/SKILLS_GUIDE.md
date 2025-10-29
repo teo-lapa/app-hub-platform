@@ -154,7 +154,7 @@ export async function POST(req: Request) {
   });
 
   const message = await anthropic.messages.create({
-    model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
+    model: skill.metadata.model || 'claude-sonnet-4-5-20250929',
     max_tokens: 8192,
     messages: [
       {
@@ -181,7 +181,7 @@ version: 1.0.0
 description: Brief description of what this skill does (1-2 sentences)
 category: category-name
 tags: [tag1, tag2, tag3]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Your Name or Team
 created: 2025-01-24
 updated: 2025-01-24
@@ -314,7 +314,7 @@ Continue with more examples...
 | Field | Type | Description | Example |
 |-------|------|-------------|---------|
 | `category` | string | Skill category | `document-processing` |
-| `model` | string | Preferred Claude model | `claude-3-5-sonnet-20241022` |
+| `model` | string | Preferred Claude model | `claude-sonnet-4-5-20250929` |
 | `author` | string | Creator name or team | `Lapa Team` |
 | `created` | string | Creation date (YYYY-MM-DD) | `2025-01-24` |
 | `updated` | string | Last update date (YYYY-MM-DD) | `2025-01-24` |
@@ -323,7 +323,7 @@ Continue with more examples...
 
 | Model ID | Best For | Token Limit |
 |----------|----------|-------------|
-| `claude-3-5-sonnet-20241022` | General tasks, vision | 8192 |
+| `claude-sonnet-4-5-20250929` | General tasks, vision | 8192 |
 | `claude-3-5-haiku-20241022` | Fast, simple tasks | 8192 |
 | `claude-3-opus-20240229` | Complex reasoning | 4096 |
 
@@ -345,7 +345,7 @@ When your skill needs to analyze visual documents:
 
 ```typescript
 const message = await anthropic.messages.create({
-  model: 'claude-3-5-sonnet-20241022',
+  model: 'claude-sonnet-4-5-20250929',
   max_tokens: 8192,
   messages: [
     {
@@ -377,7 +377,7 @@ For multi-page PDFs:
 import { Anthropic } from '@anthropic-ai/sdk';
 
 const message = await anthropic.messages.create({
-  model: 'claude-3-5-sonnet-20241022',
+  model: 'claude-sonnet-4-5-20250929',
   max_tokens: 8192,
   messages: [
     {
@@ -407,7 +407,7 @@ For long-running tasks:
 
 ```typescript
 const stream = await anthropic.messages.stream({
-  model: skill.metadata.model || 'claude-3-5-sonnet-20241022',
+  model: skill.metadata.model || 'claude-sonnet-4-5-20250929',
   max_tokens: 8192,
   messages: [
     {
@@ -430,7 +430,7 @@ Enable Claude to use external tools:
 
 ```typescript
 const message = await anthropic.messages.create({
-  model: 'claude-3-5-sonnet-20241022',
+  model: 'claude-sonnet-4-5-20250929',
   max_tokens: 8192,
   tools: [
     {
@@ -706,7 +706,7 @@ const skill = loadSkill('document-processing/invoice-parsing');
 
 // Override model for simple invoices
 const modelToUse = invoicePages > 10
-  ? 'claude-3-5-sonnet-20241022'  // Complex: use Sonnet
+  ? 'claude-sonnet-4-5-20250929'  // Complex: use Sonnet
   : 'claude-3-5-haiku-20241022';   // Simple: use Haiku (faster/cheaper)
 
 const message = await anthropic.messages.create({

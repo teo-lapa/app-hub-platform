@@ -1,13 +1,13 @@
 ---
 name: invoice-comparison
-version: 2.0.0
+version: 2.1.0
 description: Confronto fattura PDF vs bozza Odoo - Logica semplice basata su SUBTOTAL
 category: document-processing
 tags: [invoice, comparison, accounting, simple]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-10-24
-updated: 2025-10-25
+updated: 2025-10-29
 ---
 
 # 📊 Invoice Comparison Skill v2.0 - LOGICA SEMPLICE

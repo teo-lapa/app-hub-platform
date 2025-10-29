@@ -1,12 +1,13 @@
 ---
 name: auricchio-extract-lots
-version: 1.0.0
+version: 1.1.0
 description: Estrae tabella lotti e scadenze da documento trasporto Auricchio (pagina 1)
 category: document-processing
 tags: [auricchio, lots, expiry, table-extraction]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-27
+updated: 2025-10-29
 ---
 
 # 📦 Auricchio - Estrazione Tabella Lotti

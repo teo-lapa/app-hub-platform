@@ -13,9 +13,14 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   XMarkIcon,
-  StarIcon
+  StarIcon,
+  CalendarIcon,
+  BellAlertIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
+import { useOrderTimeline } from '@/lib/hooks/useOrderTimeline';
+import { useCreateCadence, useUpdateCadence } from '@/lib/hooks/useSupplierCadence';
+import { CadenceType } from '@/lib/types/supplier-cadence';
 
 interface Supplier {
   id: number;
@@ -28,6 +33,13 @@ interface Supplier {
   totalPz: number;
   estimatedValue: number;
   products: Product[];
+  // Cadence fields
+  cadenceDbId?: string; // Database UUID for updating cadences
+  nextOrderDate?: string;
+  cadenceDays?: number;
+  urgency?: 'today' | 'tomorrow' | 'this_week' | 'future';
+  daysUntilOrder?: number;
+  hasCadence?: boolean;
 }
 
 interface Product {
@@ -62,6 +74,18 @@ export default function SmartOrderingV2() {
   const [loadingTodayAnalysis, setLoadingTodayAnalysis] = useState(false);
   const [showCustomers, setShowCustomers] = useState(false);
 
+  // Cadence Management
+  const [cadenceModal, setCadenceModal] = useState<{ supplier: Supplier | null; isOpen: boolean }>({
+    supplier: null,
+    isOpen: false
+  });
+  const [cadenceDays, setCadenceDays] = useState<number>(7);
+
+  // Fetch cadence timeline
+  const { data: timelineData, isLoading: timelineLoading, refetch: refetchTimeline } = useOrderTimeline();
+  const createCadence = useCreateCadence();
+  const updateCadence = useUpdateCadence();
+
   useEffect(() => {
     loadData();
     // Load favorites from localStorage
@@ -78,12 +102,55 @@ export default function SmartOrderingV2() {
       const data = await response.json();
 
       if (data.success) {
-        setSuppliers(data.suppliers);
+        // Merge cadence data with suppliers
+        const suppliersWithCadence = await enrichSuppliersWithCadence(data.suppliers);
+        setSuppliers(suppliersWithCadence);
       }
     } catch (error) {
       console.error('Errore caricamento:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Enrich suppliers with cadence data from timeline
+  async function enrichSuppliersWithCadence(suppliers: Supplier[]): Promise<Supplier[]> {
+    try {
+      // Fetch cadence data
+      const cadenceResponse = await fetch('/api/supplier-cadence');
+      if (!cadenceResponse.ok) {
+        return suppliers; // Return original if cadence fetch fails
+      }
+
+      const cadenceData: any = await cadenceResponse.json();
+      const cadenceMap = new Map(
+        (cadenceData.suppliers || []).map((c: any) => [c.supplier_id, c])
+      );
+
+      return suppliers.map(supplier => {
+        const cadence: any = cadenceMap.get(supplier.id);
+        if (!cadence) return supplier;
+
+        // Calculate urgency
+        let urgency: 'today' | 'tomorrow' | 'this_week' | 'future' = 'future';
+        const daysUntil = cadence.days_until_next_order ?? null;
+        if (daysUntil === 0) urgency = 'today';
+        else if (daysUntil === 1) urgency = 'tomorrow';
+        else if (daysUntil !== null && daysUntil <= 7) urgency = 'this_week';
+
+        return {
+          ...supplier,
+          cadenceDbId: cadence.id, // Store database UUID for updates
+          nextOrderDate: cadence.next_order_date || undefined,
+          cadenceDays: cadence.cadence_value || undefined,
+          urgency,
+          daysUntilOrder: daysUntil,
+          hasCadence: cadence.is_active || false
+        };
+      });
+    } catch (error) {
+      console.error('Error enriching suppliers with cadence:', error);
+      return suppliers;
     }
   }
 
@@ -239,6 +306,58 @@ export default function SmartOrderingV2() {
     }
   }
 
+  // Handle cadence modal
+  function openCadenceModal(supplier: Supplier, e: React.MouseEvent) {
+    e.stopPropagation();
+    setCadenceDays(supplier.cadenceDays || 7);
+    setCadenceModal({ supplier, isOpen: true });
+  }
+
+  async function saveCadence() {
+    if (!cadenceModal.supplier) return;
+
+    try {
+      const supplier = cadenceModal.supplier;
+
+      if (supplier.hasCadence && supplier.cadenceDbId) {
+        // Update existing cadence using database UUID
+        await updateCadence.mutateAsync({
+          id: supplier.cadenceDbId,
+          data: {
+            cadence_value: cadenceDays,
+            cadence_type: CadenceType.FIXED_DAYS,
+            is_active: true
+          }
+        });
+      } else {
+        // Create new cadence using Odoo supplier ID
+        await createCadence.mutateAsync({
+          supplier_id: supplier.id,
+          supplier_name: supplier.name,
+          cadence_type: CadenceType.FIXED_DAYS,
+          cadence_value: cadenceDays,
+          average_lead_time_days: supplier.leadTime
+        });
+      }
+
+      alert(`✅ Cadenza impostata: ordine ogni ${cadenceDays} giorni`);
+      setCadenceModal({ supplier: null, isOpen: false });
+
+      // Reload data
+      await loadData();
+      refetchTimeline();
+    } catch (error) {
+      console.error('Errore salvataggio cadenza:', error);
+      alert('❌ Errore durante il salvataggio');
+    }
+  }
+
+  // Separate suppliers by urgency
+  const urgentSuppliers = suppliers.filter(s => s.urgency === 'today' || s.urgency === 'tomorrow');
+  const todaySuppliers = suppliers.filter(s => s.urgency === 'today');
+  const tomorrowSuppliers = suppliers.filter(s => s.urgency === 'tomorrow');
+  const regularSuppliers = suppliers.filter(s => !s.urgency || s.urgency === 'this_week' || s.urgency === 'future');
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
@@ -272,6 +391,14 @@ export default function SmartOrderingV2() {
             <span>Home</span>
           </button>
           <button
+            onClick={() => router.push('/gestione-cadenze-fornitori')}
+            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg transition-all flex items-center gap-2 font-semibold"
+            title="Gestisci cadenze di tutti i fornitori"
+          >
+            <CalendarIcon className="w-5 h-5" />
+            <span>Gestione Cadenze</span>
+          </button>
+          <button
             onClick={() => analyzeTodaySales(true)}
             className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all flex items-center gap-2 font-semibold"
             title="Analizza prodotti venduti oggi con Claude AI"
@@ -288,6 +415,113 @@ export default function SmartOrderingV2() {
           </button>
         </div>
       </motion.div>
+
+      {/* URGENT ORDERS SECTION - ALWAYS VISIBLE */}
+      {!selectedSupplier && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="bg-gradient-to-r from-red-500/20 to-orange-500/20 backdrop-blur-lg rounded-2xl p-6 border border-red-400/30">
+            <div className="flex items-center gap-3 mb-4">
+              <BellAlertIcon className="w-8 h-8 text-red-400" />
+              <h2 className="text-2xl font-bold text-white">
+                ORDINI PROGRAMMATI OGGI
+              </h2>
+              {urgentSuppliers.length > 0 && (
+                <div className="bg-red-500 text-white px-4 py-1 rounded-full font-bold">
+                  {urgentSuppliers.length}
+                </div>
+              )}
+            </div>
+
+            {/* Empty State */}
+            {urgentSuppliers.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-white/60 text-lg mb-2">
+                  ✅ Nessun ordine urgente oggi
+                </p>
+                <p className="text-white/40 text-sm">
+                  Tutti i fornitori sono in regola con le cadenze
+                </p>
+              </div>
+            )}
+
+            {/* Today Suppliers */}
+            {todaySuppliers.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-red-300 font-semibold mb-3 flex items-center gap-2">
+                  <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                  DA ORDINARE OGGI ({todaySuppliers.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {todaySuppliers.map(supplier => (
+                    <div
+                      key={supplier.id}
+                      onClick={() => setSelectedSupplier(supplier)}
+                      className="bg-red-500/10 hover:bg-red-500/20 backdrop-blur-sm rounded-xl p-4 cursor-pointer transition-all border border-red-400/30 hover:scale-105"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="text-white font-bold mb-1">{supplier.name}</div>
+                          <div className="text-red-300 text-sm">
+                            Cadenza: ogni {supplier.cadenceDays} giorni
+                          </div>
+                        </div>
+                        <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                          OGGI
+                        </div>
+                      </div>
+                      {supplier.criticalCount > 0 && (
+                        <div className="text-red-200 text-xs mt-2">
+                          {supplier.criticalCount} prodotti critici
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tomorrow Suppliers */}
+            {tomorrowSuppliers.length > 0 && (
+              <div>
+                <h3 className="text-orange-300 font-semibold mb-3 flex items-center gap-2">
+                  <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
+                  DA ORDINARE DOMANI ({tomorrowSuppliers.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {tomorrowSuppliers.map(supplier => (
+                    <div
+                      key={supplier.id}
+                      onClick={() => setSelectedSupplier(supplier)}
+                      className="bg-orange-500/10 hover:bg-orange-500/20 backdrop-blur-sm rounded-xl p-4 cursor-pointer transition-all border border-orange-400/30 hover:scale-105"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="text-white font-bold mb-1">{supplier.name}</div>
+                          <div className="text-orange-300 text-sm">
+                            Cadenza: ogni {supplier.cadenceDays} giorni
+                          </div>
+                        </div>
+                        <div className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                          DOMANI
+                        </div>
+                      </div>
+                      {supplier.criticalCount > 0 && (
+                        <div className="text-orange-200 text-xs mt-2">
+                          {supplier.criticalCount} prodotti critici
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
 
       {/* Supplier Cards */}
       {!selectedSupplier && (
@@ -332,6 +566,18 @@ export default function SmartOrderingV2() {
 
               {/* Status Badges */}
               <div className="flex flex-wrap gap-2 mb-4">
+                {supplier.urgency === 'today' && (
+                  <div className="flex items-center gap-1 bg-red-500/30 text-red-200 px-3 py-1 rounded-full text-sm font-bold border border-red-400">
+                    <BellAlertIcon className="w-4 h-4" />
+                    OGGI
+                  </div>
+                )}
+                {supplier.urgency === 'tomorrow' && (
+                  <div className="flex items-center gap-1 bg-orange-500/30 text-orange-200 px-3 py-1 rounded-full text-sm font-bold border border-orange-400">
+                    <CalendarIcon className="w-4 h-4" />
+                    DOMANI
+                  </div>
+                )}
                 {supplier.criticalCount > 0 && (
                   <div className="flex items-center gap-1 bg-red-500/20 text-red-300 px-3 py-1 rounded-full text-sm font-semibold">
                     <ExclamationTriangleIcon className="w-4 h-4" />
@@ -344,10 +590,17 @@ export default function SmartOrderingV2() {
                     {supplier.highCount} Alti
                   </div>
                 )}
-                {supplier.criticalCount === 0 && supplier.highCount === 0 && (
+                {supplier.criticalCount === 0 && supplier.highCount === 0 && !supplier.urgency && (
                   <div className="flex items-center gap-1 bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-sm font-semibold">
                     <CheckCircleIcon className="w-4 h-4" />
                     Tutto OK
+                  </div>
+                )}
+                {/* Cadence Badge - Always Visible */}
+                {supplier.hasCadence && supplier.cadenceDays && (
+                  <div className="flex items-center gap-1 bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-sm font-semibold">
+                    <CalendarIcon className="w-4 h-4" />
+                    Ogni {supplier.cadenceDays} gg
                   </div>
                 )}
               </div>
@@ -367,7 +620,7 @@ export default function SmartOrderingV2() {
               </div>
 
               {/* Totali */}
-              <div className="mt-4 pt-4 border-t border-white/10">
+              <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
                 <div className="flex justify-between text-sm text-blue-200">
                   <span>📦 Totale da ordinare:</span>
                   <span className="font-semibold">
@@ -376,6 +629,24 @@ export default function SmartOrderingV2() {
                     {supplier.totalPz > 0 && `${supplier.totalPz} PZ`}
                   </span>
                 </div>
+
+                {/* Cadence Info */}
+                <button
+                  onClick={(e) => openCadenceModal(supplier, e)}
+                  className="w-full flex items-center justify-between bg-white/5 hover:bg-white/10 rounded-lg p-2 transition-all group"
+                >
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="w-4 h-4 text-blue-300" />
+                    <span className="text-sm text-blue-200">
+                      {supplier.hasCadence ? (
+                        <>Cadenza: ogni {supplier.cadenceDays} gg</>
+                      ) : (
+                        <>Imposta cadenza</>
+                      )}
+                    </span>
+                  </div>
+                  <ChevronRightIcon className="w-4 h-4 text-blue-300 group-hover:translate-x-1 transition-transform" />
+                </button>
               </div>
             </motion.div>
           ))}
@@ -1015,6 +1286,122 @@ export default function SmartOrderingV2() {
                 )}
               </motion.div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cadence Management Modal */}
+      <AnimatePresence>
+        {cadenceModal.isOpen && cadenceModal.supplier && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[80] flex items-center justify-center p-6"
+            onClick={() => setCadenceModal({ supplier: null, isOpen: false })}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl shadow-2xl max-w-md w-full border border-white/20"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-white/10">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <CalendarIcon className="w-6 h-6 text-blue-400" />
+                      <h2 className="text-2xl font-bold text-white">
+                        Gestisci Cadenza
+                      </h2>
+                    </div>
+                    <p className="text-blue-200">{cadenceModal.supplier.name}</p>
+                  </div>
+                  <button
+                    onClick={() => setCadenceModal({ supplier: null, isOpen: false })}
+                    className="text-white/60 hover:text-white transition-colors"
+                  >
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-6">
+                <div>
+                  <label className="block text-blue-200 text-sm font-semibold mb-3">
+                    Ordina ogni quanti giorni?
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={cadenceDays}
+                      onChange={(e) => setCadenceDays(parseInt(e.target.value) || 7)}
+                      className="bg-white/10 text-white text-2xl font-bold px-6 py-4 rounded-xl border border-white/20 focus:border-blue-400 focus:outline-none w-32 text-center"
+                    />
+                    <span className="text-white text-xl">giorni</span>
+                  </div>
+                  <div className="mt-4 text-sm text-blue-300">
+                    Il prossimo ordine sara pianificato automaticamente ogni {cadenceDays} giorni.
+                  </div>
+                </div>
+
+                {/* Quick presets */}
+                <div>
+                  <label className="block text-blue-200 text-sm font-semibold mb-2">
+                    Preset veloci:
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[3, 7, 14, 30].map(days => (
+                      <button
+                        key={days}
+                        onClick={() => setCadenceDays(days)}
+                        className={`px-3 py-2 rounded-lg font-semibold transition-all ${
+                          cadenceDays === days
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-white/10 text-blue-200 hover:bg-white/20'
+                        }`}
+                      >
+                        {days}gg
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="bg-blue-500/10 border border-blue-400/30 rounded-xl p-4">
+                  <div className="text-blue-300 text-sm space-y-1">
+                    <div className="flex items-center gap-2">
+                      <ClockIcon className="w-4 h-4" />
+                      <span>Lead time fornitore: {cadenceModal.supplier.leadTime} giorni</span>
+                    </div>
+                    <div className="text-xs text-blue-400 mt-2">
+                      Riceverai notifiche quando e il momento di ordinare
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-white/10 flex gap-3">
+                <button
+                  onClick={() => setCadenceModal({ supplier: null, isOpen: false })}
+                  className="flex-1 px-6 py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={saveCadence}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all font-semibold"
+                >
+                  Salva Cadenza
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

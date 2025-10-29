@@ -12,7 +12,8 @@ import { ProductIntelligenceSection } from '@/components/super-dashboard/Product
 import { AlertsSection } from '@/components/super-dashboard/AlertsSection';
 import { AIInsightsSection } from '@/components/super-dashboard/AIInsightsSection';
 import { QuickActionsSection } from '@/components/super-dashboard/QuickActionsSection';
-import { RefreshCw, Settings, Download, Calendar } from 'lucide-react';
+import { RefreshCw, Settings, Download, Calendar, Home } from 'lucide-react';
+import Link from 'next/link';
 
 export default function SuperDashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -67,15 +68,29 @@ export default function SuperDashboardPage() {
       >
         <div className="max-w-[1800px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                <span className="text-4xl">⚡</span>
-                Super Dashboard
-              </h1>
-              <p className="text-slate-300 text-sm mt-1">
-                Controllo totale della tua azienda •
-                <span className="text-green-400 ml-2">● Live</span>
-              </p>
+            <div className="flex items-center gap-4">
+              {/* Pulsante Home */}
+              <Link href="/">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-lg font-semibold shadow-lg transition-all"
+                >
+                  <Home className="w-5 h-5" />
+                  <span>Home</span>
+                </motion.button>
+              </Link>
+
+              <div>
+                <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                  <span className="text-4xl">⚡</span>
+                  Super Dashboard
+                </h1>
+                <p className="text-slate-300 text-sm mt-1">
+                  Controllo totale della tua azienda •
+                  <span className="text-green-400 ml-2">● Live</span>
+                </p>
+              </div>
             </div>
 
             <div className="flex items-center gap-4">

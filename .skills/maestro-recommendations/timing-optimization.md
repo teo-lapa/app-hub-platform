@@ -1,13 +1,14 @@
 ---
 name: timing-optimization
-version: 1.0.0
+version: 1.1.0
 description: Optimize contact timing for maximum customer engagement and conversion
 category: maestro-recommendations
 tags: [timing, optimization, engagement, conversion, behavioral-analytics]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 temperature: 0.3
 author: Lapa Team
 created: 2025-01-24
+updated: 2025-10-29
 ---
 
 # ⏰ Timing Optimization Skill

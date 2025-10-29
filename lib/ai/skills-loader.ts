@@ -484,7 +484,7 @@ export function getSkillsInfo(): SkillMetadata[] {
  * @example
  * const prompt = createPromptWithSkill('invoice-parsing', 'Analizza questo PDF...');
  * const response = await anthropic.messages.create({
- *   model: 'claude-3-5-sonnet-20241022',
+ *   model: 'claude-sonnet-4-5-20250929',
  *   messages: [{ role: 'user', content: prompt }]
  * });
  */

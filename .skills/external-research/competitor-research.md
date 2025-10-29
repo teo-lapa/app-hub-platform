@@ -1,13 +1,13 @@
 ---
 name: competitor-research
-version: 1.0.0
+version: 1.1.0
 description: Ricerca e analizza competitor per identificare strategie, prezzi, prodotti e posizionamento di mercato
 category: external-research
 tags: [competitor, research, market, strategy, pricing, analysis]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-24
-updated: 2025-01-24
+updated: 2025-10-29
 ---
 
 # Competitor Research Skill

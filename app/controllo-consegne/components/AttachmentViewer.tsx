@@ -11,10 +11,11 @@ interface AttachmentViewerProps {
 
 export default function AttachmentViewer({ attachment, onClose }: AttachmentViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [audioError, setAudioError] = useState(false);
 
   // Determine file type
   const isPDF = attachment.type === 'signature';
-  const mimetype = (attachment as any).mimetype || '';
+  const mimetype = attachment.mimetype || '';
   const isAudio = mimetype.startsWith('audio/');
 
   // Convert base64 to appropriate data URL
@@ -27,6 +28,16 @@ export default function AttachmentViewer({ attachment, onClose }: AttachmentView
           ? `data:${mimetype};base64,${attachment.data}`
           : `data:image/png;base64,${attachment.data}`
       : '';
+
+  // Log for debugging
+  if (isAudio) {
+    console.log('🎤 Audio attachment:', {
+      hasData: !!attachment.data,
+      dataLength: attachment.data?.length,
+      mimetype,
+      fileUrlPreview: fileUrl.substring(0, 50) + '...'
+    });
+  }
 
   const typeLabels = {
     signature: 'Firma Cliente',
@@ -75,20 +86,85 @@ export default function AttachmentViewer({ attachment, onClose }: AttachmentView
             <div style={{ padding: '40px', textAlign: 'center' }}>
               <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🎤</div>
               <h3 style={{ color: '#000', marginBottom: '20px' }}>Audio Registrato</h3>
-              <audio
-                controls
-                style={{
-                  width: '100%',
-                  maxWidth: '500px',
-                  marginBottom: '20px',
-                }}
-              >
-                <source src={fileUrl} type={mimetype} />
-                Il tuo browser non supporta l'audio player.
-              </audio>
-              <p style={{ marginTop: '20px', color: '#666', fontSize: '0.9rem' }}>
-                Clicca play per ascoltare la registrazione
-              </p>
+
+              {!fileUrl || !attachment.data ? (
+                <div style={{
+                  padding: '20px',
+                  background: '#fee',
+                  borderRadius: '8px',
+                  color: '#c33',
+                  marginBottom: '20px'
+                }}>
+                  ⚠️ File audio non disponibile. Dati mancanti dal server.
+                </div>
+              ) : audioError ? (
+                <div style={{
+                  padding: '20px',
+                  background: '#fee',
+                  borderRadius: '8px',
+                  color: '#c33',
+                  marginBottom: '20px'
+                }}>
+                  ⚠️ Errore nel caricamento del file audio. Il file potrebbe essere corrotto.
+                </div>
+              ) : (
+                <>
+                  {isLoading && (
+                    <div className={styles.loader} style={{ marginBottom: '20px' }}>
+                      Caricamento audio...
+                    </div>
+                  )}
+                  <audio
+                    controls
+                    style={{
+                      width: '100%',
+                      maxWidth: '500px',
+                      marginBottom: '20px',
+                      display: isLoading ? 'none' : 'block'
+                    }}
+                    onLoadedMetadata={() => {
+                      console.log('✅ Audio loaded successfully');
+                      setIsLoading(false);
+                    }}
+                    onError={(e) => {
+                      console.error('❌ Audio loading error:', e);
+                      setAudioError(true);
+                      setIsLoading(false);
+                    }}
+                    onCanPlay={() => {
+                      console.log('✅ Audio can play');
+                      setIsLoading(false);
+                    }}
+                  >
+                    <source src={fileUrl} type={mimetype} />
+                    Il tuo browser non supporta l'audio player.
+                  </audio>
+                </>
+              )}
+
+              {!audioError && fileUrl && (
+                <>
+                  <p style={{ marginTop: '20px', color: '#666', fontSize: '0.9rem' }}>
+                    Clicca play per ascoltare la registrazione
+                  </p>
+                  <a
+                    href={fileUrl}
+                    download={`giustificazione_${attachment.timestamp}.webm`}
+                    style={{
+                      display: 'inline-block',
+                      marginTop: '15px',
+                      padding: '8px 16px',
+                      background: '#667eea',
+                      color: '#fff',
+                      borderRadius: '6px',
+                      textDecoration: 'none',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    📥 Scarica Audio
+                  </a>
+                </>
+              )}
             </div>
           ) : (
             <>

@@ -1,13 +1,13 @@
 ---
 name: menu-analysis
-version: 1.0.0
+version: 1.1.0
 description: Analizza menu ristoranti da PDF o immagini per estrarre piatti, prezzi e ingredienti
 category: external-research
 tags: [menu, restaurant, vision, pdf, pricing, ingredients]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-24
-updated: 2025-01-24
+updated: 2025-10-29
 ---
 
 # Menu Analysis Skill

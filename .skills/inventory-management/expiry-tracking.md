@@ -1,12 +1,13 @@
 ---
 name: expiry-tracking
-version: 1.0.0
+version: 1.1.0
 description: Traccia prodotti in scadenza e prioritizza rotazione stock FIFO/FEFO
 category: inventory-management
 tags: [expiry, fefo, fifo, food-safety, haccp, rotation]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-24
+updated: 2025-10-29
 temperature: 0
 max_tokens: 8192
 ---

@@ -1,13 +1,14 @@
 ---
 name: product-analysis
-version: 1.0.0
+version: 1.1.0
 description: Analizza performance vendite e metriche chiave per prodotti specifici
 category: product-intelligence
 tags: [analytics, sales, performance, metrics, insights]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 temperature: 0
 author: Lapa Team
 created: 2025-10-24
+updated: 2025-10-29
 ---
 
 # 📊 Product Analysis Skill

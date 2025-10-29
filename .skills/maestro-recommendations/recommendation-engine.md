@@ -1,13 +1,14 @@
 ---
 name: recommendation-engine
-version: 1.0.0
+version: 1.1.0
 description: Generate AI-powered product recommendations for customers based on purchase history and behavior
 category: maestro-recommendations
 tags: [ai, recommendations, personalization, machine-learning, customer-intelligence]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 temperature: 0.3
 author: Lapa Team
 created: 2025-01-24
+updated: 2025-10-29
 ---
 
 # 🎯 Recommendation Engine Skill

@@ -44,7 +44,8 @@
       "Bash(vercel ls:*)",
       "Bash(npx vercel:*)",
       "Bash(git rebase:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(vercel login)"
     ],
     "deny": [],
     "ask": []

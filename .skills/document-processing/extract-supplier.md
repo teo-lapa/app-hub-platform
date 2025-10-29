@@ -1,12 +1,13 @@
 ---
 name: extract-supplier
-version: 1.0.0
+version: 1.1.0
 description: Estrae informazioni fornitore e documento da qualsiasi fattura/DDT
 category: document-processing
 tags: [supplier, invoice, metadata, universal]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-27
+updated: 2025-10-29
 ---
 
 # 🏢 Agent 3 - Estrazione Info Fornitore e Documento

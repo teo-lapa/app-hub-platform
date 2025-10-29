@@ -1,12 +1,13 @@
 ---
 name: opportunity-detection
-version: 1.0.0
+version: 1.1.0
 description: Identifica opportunità commerciali e rischi attraverso analisi dati vendita
 category: sales-analytics
 tags: [opportunities, anomalies, upsell, cross-sell, risk-detection]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-24
+updated: 2025-10-29
 ---
 
 # 🎯 Opportunity Detection Skill

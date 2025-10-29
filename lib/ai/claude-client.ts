@@ -12,7 +12,7 @@ import { MAESTRO_TOOLS, executeToolCall } from './tools';
 // CONSTANTS
 // ============================================================================
 
-const CLAUDE_MODEL = 'claude-3-5-sonnet-20241022';
+const CLAUDE_MODEL = 'claude-sonnet-4-5-20250929';
 const MAX_TOKENS = 1024;
 const MAX_TOOL_ITERATIONS = 5; // Previeni loop infiniti
 

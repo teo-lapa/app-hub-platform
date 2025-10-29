@@ -1,13 +1,14 @@
 ---
 name: cross-sell-suggestions
-version: 1.0.0
+version: 1.1.0
 description: Genera raccomandazioni cross-sell e up-sell basate su pattern di acquisto
 category: product-intelligence
 tags: [cross-sell, recommendations, basket-analysis, personalization, revenue-optimization]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 temperature: 0
 author: Lapa Team
 created: 2025-10-24
+updated: 2025-10-29
 ---
 
 # 🔗 Cross-Sell Suggestions Skill

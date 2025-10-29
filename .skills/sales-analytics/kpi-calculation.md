@@ -1,12 +1,13 @@
 ---
 name: kpi-calculation
-version: 1.0.0
+version: 1.1.0
 description: Calcola KPI di vendita per analisi performance commerciale
 category: sales-analytics
 tags: [kpi, sales, analytics, metrics, performance]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 author: Lapa Team
 created: 2025-01-24
+updated: 2025-10-29
 ---
 
 # 📊 KPI Calculation Skill

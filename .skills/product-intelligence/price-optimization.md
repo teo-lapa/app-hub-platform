@@ -1,13 +1,14 @@
 ---
 name: price-optimization
-version: 1.0.0
+version: 1.1.0
 description: Ottimizza pricing strategy basandosi su elasticità domanda e margini
 category: product-intelligence
 tags: [pricing, optimization, elasticity, margin, revenue]
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-5-20250929
 temperature: 0
 author: Lapa Team
 created: 2025-10-24
+updated: 2025-10-29
 ---
 
 # 💰 Price Optimization Skill
