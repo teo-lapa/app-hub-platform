@@ -1,253 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import Anthropic from '@anthropic-ai/sdk';
-import { loadSkill, logSkillInfo } from '@/lib/ai/skills-loader';
-import { PDFDocument } from 'pdf-lib';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes for large PDFs
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 /**
- * Split PDF into individual pages
- * Returns array of base64-encoded single-page PDFs
- */
-async function splitPDFPages(base64PDF: string): Promise<string[]> {
-  try {
-    // Decode base64 to buffer
-    const pdfBytes = Buffer.from(base64PDF, 'base64');
-
-    // Load PDF
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-    const pageCount = pdfDoc.getPageCount();
-
-    console.log(`📄 PDF ha ${pageCount} pagine, splitting...`);
-
-    const pages: string[] = [];
-
-    // Create a separate PDF for each page
-    for (let i = 0; i < pageCount; i++) {
-      const newPdf = await PDFDocument.create();
-      const [copiedPage] = await newPdf.copyPages(pdfDoc, [i]);
-      newPdf.addPage(copiedPage);
-
-      // Save as base64
-      const pdfBytesPage = await newPdf.save();
-      const base64Page = Buffer.from(pdfBytesPage).toString('base64');
-      pages.push(base64Page);
-
-      console.log(`  ✅ Pagina ${i + 1}/${pageCount} estratta (${(pdfBytesPage.length / 1024).toFixed(1)} KB)`);
-    }
-
-    return pages;
-  } catch (error: any) {
-    console.error('❌ Errore split PDF:', error.message);
-    throw new Error(`Impossibile splittare PDF: ${error.message}`);
-  }
-}
-
-/**
- * Parse a single page with Claude + Skill
- */
-async function parsePage(
-  pageBase64: string,
-  pageNumber: number,
-  totalPages: number,
-  mediaType: string,
-  directPrompt: string,
-  errorCollector?: Array<{page: number, error: string, response?: string}>
-): Promise<any | null> {
-  const isPDF = mediaType === 'application/pdf';
-
-  const contentBlock: any = isPDF ? {
-    type: 'document',
-    source: {
-      type: 'base64',
-      media_type: 'application/pdf',
-      data: pageBase64,
-    },
-  } : {
-    type: 'image',
-    source: {
-      type: 'base64',
-      media_type: mediaType,
-      data: pageBase64,
-    },
-  };
-
-  const maxAttempts = 2;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    let responseText = '';
-    try {
-      console.log(`🤖 Tentativo ${attempt}/${maxAttempts} per pagina ${pageNumber}/${totalPages}...`);
-
-      const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 16384,
-        temperature: 0,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              contentBlock,
-              {
-                type: 'text',
-                text: directPrompt,
-              },
-            ],
-          },
-        ],
-      });
-
-      // Extract JSON from response
-      const firstContent = message.content[0];
-      responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
-
-      // Log response for debugging
-      console.log(`📄 Response pagina ${pageNumber} (primi 1500 chars):`, responseText.substring(0, 1500));
-      console.log(`📊 Response type:`, firstContent?.type);
-      console.log(`📏 Response length:`, responseText.length, 'chars');
-
-      // Try to parse JSON
-      let parsedData;
-      try {
-        parsedData = JSON.parse(responseText);
-      } catch {
-        const codeBlockMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-        if (codeBlockMatch) {
-          parsedData = JSON.parse(codeBlockMatch[1]);
-        } else {
-          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            parsedData = JSON.parse(jsonMatch[0]);
-          } else {
-            throw new Error('Nessun JSON valido trovato');
-          }
-        }
-      }
-
-      // Validate basic structure
-      if (!parsedData || typeof parsedData !== 'object') {
-        throw new Error('JSON non valido');
-      }
-
-      console.log(`✅ Pagina ${pageNumber} parsata: ${parsedData.products?.length || 0} prodotti trovati`);
-
-      return {
-        data: parsedData,
-        tokens: message.usage,
-      };
-
-    } catch (error: any) {
-      console.error(`❌ Errore pagina ${pageNumber}, tentativo ${attempt}:`, error.message);
-      console.error(`🔍 Error stack:`, error.stack);
-
-      if (error.message.includes('Nessun JSON valido trovato') && responseText) {
-        console.error(`📄 Full response text (for debugging):`, responseText);
-        console.error(`📄 Response text length:`, responseText.length);
-
-        // Try to find any JSON-like structure
-        const possibleJson = responseText.match(/\{[\s\S]*\}/g);
-        if (possibleJson) {
-          console.error(`🔍 Found ${possibleJson.length} potential JSON structures:`);
-          possibleJson.forEach((json, idx) => {
-            console.error(`  ${idx + 1}. First 200 chars:`, json.substring(0, 200));
-          });
-        } else {
-          console.error(`❌ No JSON-like structures found in response`);
-        }
-      }
-
-      if (attempt === maxAttempts) {
-        console.error(`⚠️ Pagina ${pageNumber} saltata dopo ${maxAttempts} tentativi`);
-        console.error(`📄 Ultima response salvata per debug`);
-
-        // Save error details to collector
-        if (errorCollector) {
-          const existingError = errorCollector.find(e => e.page === pageNumber);
-          if (existingError) {
-            existingError.error = error.message;
-            existingError.response = responseText.substring(0, 2000); // First 2000 chars
-          }
-        }
-
-        return null;
-      }
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-  }
-
-  return null;
-}
-
-/**
- * Merge results from multiple pages
- * Consolidates duplicate products
- */
-function mergePages(pageResults: any[]): any {
-  if (pageResults.length === 0) {
-    throw new Error('Nessuna pagina processata con successo');
-  }
-
-  // Take supplier info from first page
-  const mergedData: any = {
-    supplier_name: pageResults[0].supplier_name,
-    supplier_vat: pageResults[0].supplier_vat,
-    document_number: pageResults[0].document_number,
-    document_date: pageResults[0].document_date,
-    products: [],
-  };
-
-  // Collect all products
-  const allProducts: any[] = [];
-  for (const page of pageResults) {
-    if (page.products && Array.isArray(page.products)) {
-      allProducts.push(...page.products);
-    }
-  }
-
-  console.log(`📦 Totale prodotti da tutte le pagine: ${allProducts.length}`);
-
-  // Consolidate duplicates (same code + lot + expiry + unit)
-  const productMap = new Map<string, any>();
-
-  for (const product of allProducts) {
-    const key = `${product.article_code || 'NO_CODE'}_${product.lot_number || 'NO_LOT'}_${product.expiry_date || 'NO_EXP'}_${product.unit}`;
-
-    if (productMap.has(key)) {
-      // Duplicate found - sum quantities
-      const existing = productMap.get(key);
-      existing.quantity += product.quantity;
-      console.log(`🔄 Consolidato: ${product.article_code} (${existing.quantity})`);
-    } else {
-      // New product
-      productMap.set(key, { ...product });
-    }
-  }
-
-  mergedData.products = Array.from(productMap.values());
-
-  // Add parsing summary
-  mergedData.parsing_summary = {
-    total_lines_in_invoice: allProducts.length,
-    unique_products_after_consolidation: mergedData.products.length,
-    duplicates_found: allProducts.length - mergedData.products.length,
-  };
-
-  console.log(`✅ Dopo consolidamento: ${mergedData.products.length} prodotti unici`);
-  console.log(`📊 Parsing summary:`, mergedData.parsing_summary);
-
-  return mergedData;
-}
-
-/**
- * PARSE ATTACHMENT FROM ODOO
+ * PARSE ATTACHMENT FROM ODOO - VERSIONE SEMPLICE
  *
- * Scarica un allegato da Odoo e lo parsea con AI
- * Per PDF multi-pagina, splitta e processa ogni pagina separatamente
+ * Scarica un allegato da Odoo e lo parsea con SOLO Gemini 2.5 Flash
+ * (identico al test locale funzionante)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -267,7 +31,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('📥 [PARSE-ATTACHMENT] Scarico allegato ID:', attachment_id);
+    console.log('📥 [PARSE-ATTACHMENT-SIMPLE] Scarico allegato ID:', attachment_id);
     console.log('🔐 Session UID:', uid);
 
     // Scarica allegato da Odoo
@@ -323,191 +87,77 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // PROMPT DIRETTO - NO SKILLS
-    const directPrompt = `Leggi ATTENTAMENTE tutto il documento e estrai OGNI SINGOLO prodotto.
+    console.log('🤖 Chiamata Gemini 2.5 Flash (SEMPLICE - come test locale)...');
 
-🎯 ATTENZIONE - CERCA LA COLONNA "QUANTITA" SULLA DESTRA!
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: 'application/json'
+      }
+    });
 
-⚠️ IMPORTANTE: Nelle fatture italiane tipo San Giorgio c'è una COLONNA SEPARATA sulla DESTRA con le quantità reali!
+    const prompt = `Estrai i dati dalla fattura.
 
-**Struttura tipica tabella:**
-Parte sinistra: | ARTICOLO | LOTTO | DESCRIZIONE | U/M QUANTITA | Q.TA/CARTONE | PREZZO | IMPORTO |
-Parte DESTRA (separata): | QUANTITA |
+La tabella prodotti ha queste colonne IN ORDINE (da sinistra a destra):
+ARTICOLO | LOTTO | DESCRIZIONE | UM | QUANTITA' | QTA' x CARTONE | PREZZO UNITARIO | % SCONTI | IMPORTO | DT. SCAD. | IVA
 
-📋 ESEMPIO CONCRETO dalla fattura San Giorgio:
+ATTENZIONE COLONNA QUANTITA':
+- Colonna QUANTITA': contiene SOLO NUMERI (es: 18, 54, 8, 5, 1, 2)
+- Colonna QTA' x CARTONE: contiene TESTO (es: KG 5, PZ 50, CT 30)
+- USA la colonna QUANTITA' (solo numeri)!
 
-Tabella principale:
-ARAN DI RISO SUGO 25 g Kg 5 FR MIO | CT | 18KG | 5 | 29,51 | 358,55
+Esempio riga:
+A0334SG | 25233 | ARAN DI RISO SUGO 25 g | CT | 18 | KG 5 | 29,51 | 25,0 10,0 | 358,55 | 12/02/27 | 69
+→ quantita = 18 (NON 5!)
 
-**Colonna QUANTITA sulla DESTRA (separata):**
-18K  ← QUESTA È LA VERA QUANTITÀ DA ESTRARRE!
-
-⚠️ COSA ESTRARRE:
-- **quantity**: 18 (dal numero nella colonna DESTRA separata)
-- **unit**: "KG" (dalla lettera: K=KG, P=PZ)
-
-📋 DECODIFICA UNITÀ:
-- "18K" → quantity: 18, unit: "KG"
-- "54P" → quantity: 54, unit: "PZ"
-- "8K" → quantity: 8, unit: "KG"
-- "8P" → quantity: 8, unit: "PZ"
-- "1K" → quantity: 1, unit: "KG"
-- "2P" → quantity: 2, unit: "PZ"
-- "5P" → quantity: 5, unit: "PZ"
-
-⚠️ REGOLE CRITICHE:
-1. Cerca SEMPRE una colonna separata sulla DESTRA della tabella principale
-2. Quella colonna contiene valori come "18K", "54P", "8K", "1P", ecc.
-3. Il NUMERO è la quantità
-4. La LETTERA è l'unità: K=KG, P=PZ, L=LT
-5. IGNORA completamente i valori "CT 18KG" - quelli sono solo descrittivi!
-
-ISTRUZIONI GENERALI:
-1. Scorri il documento dall'INIZIO alla FINE
-2. Trova TUTTE le righe di prodotto
-3. NON fermarti al primo prodotto
-4. NON saltare righe
-5. Conta quanti prodotti hai estratto
-
-PER SCONTRINI ALIGRO (in tedesco):
-- Pattern da cercare: "numero x CODICE descrizione" (es: "2 x FL Marsala")
-- IGNORA righe senza "x" (es: "2 Spirituosen" = TOTALI!)
-- Codici confezione: FL, GLS, ST, BTL, PAK, KAR, 12ST, 10ST
-
-Restituisci JSON con TUTTI i prodotti trovati:
+Output JSON:
 {
-  "supplier_name": "...",
-  "supplier_vat": "...",
-  "document_number": "...",
+  "supplier_name": "nome fornitore",
+  "document_number": "numero",
   "document_date": "YYYY-MM-DD",
   "products": [
     {
-      "description": "nome prodotto",
-      "quantity": 0.0,
-      "unit": "CT o KG o PZ o LT o NR",
-      "article_code": null,
-      "lot_number": null,
-      "expiry_date": null,
-      "variant": null
+      "article_code": "A0334SG",
+      "description": "ARAN DI RISO SUGO 25 g",
+      "quantity": 18,
+      "unit": "CT",
+      "lot_number": "25233",
+      "expiry_date": "2027-02-12"
     }
   ]
-}
+}`;
 
-VERIFICA FINALE: Controlla che il numero di prodotti estratti corrisponda!`;
-
-    // 🆕 SPLIT STRATEGY FOR MULTI-PAGE PDFs
-    let pagesToProcess: string[] = [];
-    const isPDF = mediaType === 'application/pdf';
-
-    if (isPDF) {
-      try {
-        const pdfBytes = Buffer.from(base64, 'base64');
-        const pdfDoc = await (await import('pdf-lib')).PDFDocument.load(pdfBytes);
-        const pageCount = pdfDoc.getPageCount();
-
-        console.log(`📄 PDF ha ${pageCount} pagine`);
-
-        // Per PDF con 1-2 pagine, invia intero (migliore qualità)
-        // Per PDF con 3+ pagine, splitta (evita timeout)
-        if (pageCount <= 2) {
-          console.log(`📦 PDF con ${pageCount} pagina/e - invio INTERO per qualità ottimale`);
-          pagesToProcess = [base64];
-        } else {
-          console.log(`📄 PDF con ${pageCount} pagine - splitting per evitare timeout`);
-          pagesToProcess = await splitPDFPages(base64);
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          mimeType: mediaType,
+          data: base64
         }
-      } catch (splitError: any) {
-        console.error('⚠️ Errore analisi PDF, uso PDF intero:', splitError.message);
-        pagesToProcess = [base64]; // Fallback
-      }
-    } else {
-      pagesToProcess = [base64]; // Images: no split
-    }
+      },
+      prompt
+    ]);
 
-    console.log(`\n🚀 Inizio processamento di ${pagesToProcess.length} pagina/e...\n`);
+    const text = result.response.text();
+    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const json = JSON.parse(cleaned);
 
-    // Process each page
-    const pageResults: any[] = [];
-    let totalTokensUsed = { input_tokens: 0, output_tokens: 0 };
-
-    const parseErrors: Array<{page: number, error: string, response?: string}> = [];
-    for (let i = 0; i < pagesToProcess.length; i++) {
-      // Pre-populate error entry
-      const errorEntry = {
-        page: i + 1,
-        error: `Pagina ${i + 1} non parsata`,
-        response: undefined
-      };
-      parseErrors.push(errorEntry);
-
-      const result = await parsePage(
-        pagesToProcess[i],
-        i + 1,
-        pagesToProcess.length,
-        mediaType,
-        directPrompt,
-        parseErrors
-      );
-
-      if (result) {
-        pageResults.push(result.data);
-        totalTokensUsed.input_tokens += result.tokens.input_tokens;
-        totalTokensUsed.output_tokens += result.tokens.output_tokens;
-        // Remove error entry if successful
-        parseErrors.pop();
-      }
-    }
-
-    if (pageResults.length === 0) {
-      console.error('❌ Nessuna pagina processata con successo');
-      console.error('📋 Errori:', parseErrors);
-      console.error('📄 Allegato:', attachment.name, attachment.mimetype);
-      console.error('📏 Dimensione:', (attachment.file_size / 1024).toFixed(2), 'KB');
-
-      return NextResponse.json({
-        error: 'Nessuna pagina processata con successo. Il PDF potrebbe essere danneggiato o troppo complesso.',
-        hint: 'Prova a ricaricarlo o convertirlo in un formato più semplice.',
-        debug: {
-          attachment_name: attachment.name,
-          pages_total: pagesToProcess.length,
-          pages_failed: parseErrors.length,
-          errors: parseErrors,
-          // Add first page response for debugging
-          first_page_response: parseErrors[0]?.response || 'No response captured'
-        }
-      }, { status: 500 });
-    }
-
-    console.log(`\n✅ ${pageResults.length}/${pagesToProcess.length} pagine processate con successo`);
-
-    // Merge all pages
-    const mergedData = mergePages(pageResults);
-
-    console.log('\n✅ COMPLETATO:', {
-      supplier: mergedData.supplier_name,
-      products: mergedData.products.length,
-      parsing_summary: mergedData.parsing_summary,
-    });
+    console.log(`✅ Gemini: completato - ${json.products?.length || 0} prodotti estratti`);
 
     return NextResponse.json({
       success: true,
-      data: mergedData,
-      source: {
-        type: 'odoo_attachment',
-        attachment_id: attachment.id,
-        attachment_name: attachment.name,
-        mimetype: attachment.mimetype,
-        pages_processed: pageResults.length,
-        pages_total: pagesToProcess.length,
-      },
-      tokens_used: totalTokensUsed
+      data: json
     });
 
   } catch (error: any) {
-    console.error('❌ [PARSE-ATTACHMENT] Error:', error);
+    console.error('❌ Errore parsing allegato:', error);
     return NextResponse.json({
       error: error.message || 'Errore durante il parsing dell\'allegato',
-      details: error.toString()
+      debug: {
+        error_type: error.constructor.name,
+        error_message: error.message,
+        error_stack: error.stack?.substring(0, 500)
+      }
     }, { status: 500 });
   }
 }
