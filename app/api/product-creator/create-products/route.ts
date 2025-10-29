@@ -146,10 +146,17 @@ export async function POST(request: NextRequest) {
         const createData = await createResponse.json();
 
         if (createData.error) {
-          console.error('❌ Error creating product:', product.nome_completo, createData.error);
+          console.error('❌ Error creating product:', product.nome_completo);
+          console.error('Full Odoo error:', JSON.stringify(createData.error, null, 2));
+
+          // Extract detailed error message
+          const errorMsg = createData.error.data?.message ||
+                          createData.error.message ||
+                          JSON.stringify(createData.error);
+
           errors.push({
             product: product.nome_completo,
-            error: createData.error.message || 'Errore sconosciuto'
+            error: errorMsg
           });
         } else {
           const productId = createData.result;
