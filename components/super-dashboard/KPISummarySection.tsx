@@ -1,8 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck } from 'lucide-react';
-import { mockKPIData } from '@/lib/super-dashboard/mockData';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle } from 'lucide-react';
 
 interface KPICardProps {
   title: string;
@@ -79,66 +79,188 @@ function KPICard({ title, value, change, changeType, icon, gradient, subtitle, i
   );
 }
 
+interface KPIData {
+  revenue: {
+    value: number;
+    change: number;
+    changeType: 'up' | 'down';
+    subtitle: string;
+  };
+  orders: {
+    value: number;
+    change: number;
+    changeType: 'up' | 'down';
+    subtitle: string;
+  };
+  customers: {
+    value: number;
+    change: number;
+    changeType: 'up' | 'down';
+    subtitle: string;
+  };
+  healthScore: {
+    value: number;
+    change: number;
+    changeType: 'up' | 'down';
+    subtitle: string;
+  };
+  stockValue: {
+    value: number;
+    change: number;
+    changeType: 'up' | 'down';
+    subtitle: string;
+  };
+  deliveries: {
+    value: number;
+    change: number;
+    changeType: 'up' | 'down';
+    subtitle: string;
+  };
+}
+
 interface KPISummarySectionProps {
   period: string;
 }
 
 export function KPISummarySection({ period }: KPISummarySectionProps) {
-  // Build KPI display data from mockKPIData
+  const [kpiData, setKpiData] = useState<KPIData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchKPIs() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(`/api/super-dashboard/kpi?period=${period}`);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch KPIs: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          setKpiData(result.data);
+        } else {
+          throw new Error(result.error || 'Failed to load KPI data');
+        }
+      } catch (err: any) {
+        console.error('Error fetching KPIs:', err);
+        setError(err.message || 'Failed to load KPI data');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchKPIs();
+  }, [period]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <section>
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <span className="text-2xl">📊</span>
+            KPI Overview
+            <span className="text-sm font-normal text-slate-400 ml-2">
+              • Caricamento...
+            </span>
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-slate-800/50 rounded-xl p-6 animate-pulse">
+              <div className="h-8 bg-slate-700 rounded mb-3 w-1/2" />
+              <div className="h-10 bg-slate-700 rounded mb-2" />
+              <div className="h-4 bg-slate-700 rounded w-3/4" />
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  // Show error state
+  if (error || !kpiData) {
+    return (
+      <section>
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <span className="text-2xl">📊</span>
+            KPI Overview
+          </h2>
+        </div>
+        <div className="bg-red-900/20 border border-red-500/50 rounded-xl p-6">
+          <div className="flex items-center gap-3 text-red-400">
+            <AlertCircle className="w-6 h-6" />
+            <div>
+              <h3 className="font-semibold">Errore nel caricamento dei KPI</h3>
+              <p className="text-sm text-red-300 mt-1">{error || 'Dati non disponibili'}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Build KPI display data from API response
   const kpis = [
     {
       title: 'Revenue',
-      value: `CHF ${(mockKPIData.revenue.value / 1000000).toFixed(1)}M`,
-      change: `${mockKPIData.revenue.change > 0 ? '+' : ''}${mockKPIData.revenue.change}%`,
-      changeType: mockKPIData.revenue.changeType,
+      value: `CHF ${(kpiData.revenue.value / 1000000).toFixed(1)}M`,
+      change: `${kpiData.revenue.change > 0 ? '+' : ''}${kpiData.revenue.change}%`,
+      changeType: kpiData.revenue.changeType,
       icon: <DollarSign className="w-6 h-6 text-white" />,
       gradient: 'from-emerald-500 to-teal-600',
-      subtitle: mockKPIData.revenue.subtitle,
+      subtitle: kpiData.revenue.subtitle,
     },
     {
       title: 'Orders',
-      value: mockKPIData.orders.value.toLocaleString(),
-      change: `${mockKPIData.orders.change > 0 ? '+' : ''}${mockKPIData.orders.change}%`,
-      changeType: mockKPIData.orders.changeType,
+      value: kpiData.orders.value.toLocaleString(),
+      change: `${kpiData.orders.change > 0 ? '+' : ''}${kpiData.orders.change}%`,
+      changeType: kpiData.orders.changeType,
       icon: <ShoppingCart className="w-6 h-6 text-white" />,
       gradient: 'from-blue-500 to-cyan-600',
-      subtitle: mockKPIData.orders.subtitle,
+      subtitle: kpiData.orders.subtitle,
     },
     {
       title: 'Customers',
-      value: mockKPIData.customers.value.toString(),
-      change: `${mockKPIData.customers.change > 0 ? '+' : ''}${mockKPIData.customers.change}`,
-      changeType: mockKPIData.customers.changeType,
+      value: kpiData.customers.value.toString(),
+      change: `${kpiData.customers.change > 0 ? '+' : ''}${kpiData.customers.change}`,
+      changeType: kpiData.customers.changeType,
       icon: <Users className="w-6 h-6 text-white" />,
       gradient: 'from-purple-500 to-pink-600',
-      subtitle: mockKPIData.customers.subtitle,
+      subtitle: kpiData.customers.subtitle,
     },
     {
       title: 'Health Score',
-      value: `${mockKPIData.healthScore.value}/100`,
-      change: `${mockKPIData.healthScore.change}pts`,
-      changeType: mockKPIData.healthScore.changeType,
+      value: `${kpiData.healthScore.value}/100`,
+      change: `${kpiData.healthScore.change}pts`,
+      changeType: kpiData.healthScore.changeType,
       icon: <Heart className="w-6 h-6 text-white" />,
       gradient: 'from-orange-500 to-red-600',
-      subtitle: mockKPIData.healthScore.subtitle,
+      subtitle: kpiData.healthScore.subtitle,
     },
     {
       title: 'Stock Value',
-      value: `CHF ${(mockKPIData.stockValue.value / 1000).toFixed(0)}K`,
-      change: `${mockKPIData.stockValue.change}%`,
-      changeType: mockKPIData.stockValue.changeType,
+      value: `CHF ${(kpiData.stockValue.value / 1000).toFixed(0)}K`,
+      change: `${kpiData.stockValue.change}%`,
+      changeType: kpiData.stockValue.changeType,
       icon: <Package className="w-6 h-6 text-white" />,
       gradient: 'from-violet-500 to-purple-600',
-      subtitle: mockKPIData.stockValue.subtitle,
+      subtitle: kpiData.stockValue.subtitle,
     },
     {
       title: 'Deliveries',
-      value: mockKPIData.deliveries.value.toString(),
-      change: `${mockKPIData.deliveries.change > 0 ? '+' : ''}${mockKPIData.deliveries.change}`,
-      changeType: mockKPIData.deliveries.changeType,
+      value: kpiData.deliveries.value.toString(),
+      change: `${kpiData.deliveries.change > 0 ? '+' : ''}${kpiData.deliveries.change}`,
+      changeType: kpiData.deliveries.changeType,
       icon: <Truck className="w-6 h-6 text-white" />,
       gradient: 'from-amber-500 to-orange-600',
-      subtitle: mockKPIData.deliveries.subtitle,
+      subtitle: kpiData.deliveries.subtitle,
     },
   ];
 
