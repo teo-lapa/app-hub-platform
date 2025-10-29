@@ -1,3 +1,5 @@
+import { QueryProvider } from '@/components/providers/QueryProvider';
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -6,5 +8,5 @@ export default function OrdiniSmartLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return <QueryProvider>{children}</QueryProvider>;
 }
