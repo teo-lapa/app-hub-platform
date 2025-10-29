@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
           args: [[['sale_ok', '=', true], ['active', '=', true]]],
           kwargs: {
             fields: ['id', 'name', 'image_256', 'qty_available', 'uom_id', 'seller_ids', 'list_price'],
-            limit: 500,
+            limit: 2000,  // Increased to show all products
             order: 'name ASC',
             context: { bin_size: false }  // Get full base64 image, not just size
           }

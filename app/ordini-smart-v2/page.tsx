@@ -739,7 +739,7 @@ export default function SmartOrderingV2() {
                       Deseleziona Tutti
                     </button>
                     <button
-                      onClick={() => router.push('/catalogo-prodotti')}
+                      onClick={() => router.push(`/catalogo-prodotti?supplier_id=${selectedSupplier.id}&supplier_name=${encodeURIComponent(selectedSupplier.name)}`)}
                       className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition-all font-semibold"
                     >
                       📦 Aggiungi dal Catalogo

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Search, Package, TrendingUp, TrendingDown } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 
 interface Product {
@@ -20,6 +21,7 @@ interface Product {
 }
 
 export default function CatalogoProdotti() {
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,6 +36,16 @@ export default function CatalogoProdotti() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  // Auto-select supplier from URL params
+  useEffect(() => {
+    const supplierIdParam = searchParams.get('supplier_id');
+    if (supplierIdParam && products.length > 0) {
+      const supplierId = parseInt(supplierIdParam);
+      setFilterMode('supplier');
+      setSelectedSupplierId(supplierId);
+    }
+  }, [searchParams, products]);
 
   async function loadProducts() {
     try {
