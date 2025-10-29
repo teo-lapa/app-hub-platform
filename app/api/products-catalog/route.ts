@@ -1,74 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-interface OdooProduct {
-  id: number;
-  name: string;
-  image_128?: string;
-  qty_available: number;
-  uom_name: string;
-  seller_ids: number[];
-  list_price: number;
-}
-
-interface OdooSupplierInfo {
-  id: number;
-  partner_id: [number, string];
-  product_tmpl_id: [number, string];
-}
-
-interface OdooSaleOrderLine {
-  product_id: [number, string];
-  product_uom_qty: number;
-  order_id: [number, string];
-}
-
-interface OdooSaleOrder {
-  id: number;
-  date_order: string;
-  state: string;
-}
+const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
 
 export async function GET(request: NextRequest) {
   try {
-    const ODOO_URL = process.env.ODOO_URL;
-    const ODOO_DB = process.env.ODOO_DB;
-    const ODOO_USERNAME = process.env.ODOO_ADMIN_EMAIL;
-    const ODOO_PASSWORD = process.env.ODOO_ADMIN_PASSWORD;
+    console.log('📦 [PRODUCTS-CATALOG] API chiamata...');
 
-    if (!ODOO_URL || !ODOO_DB || !ODOO_USERNAME || !ODOO_PASSWORD) {
+    // Get session_id from cookies (user must be logged in)
+    const cookieStore = cookies();
+    const sessionId = cookieStore.get('odoo_session_id')?.value;
+
+    if (!sessionId) {
+      console.error('❌ [PRODUCTS-CATALOG] User not logged in');
       return NextResponse.json(
-        { success: false, error: 'Odoo configuration missing' },
-        { status: 500 }
-      );
-    }
-
-    // Authenticate
-    const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        params: { db: ODOO_DB, login: ODOO_USERNAME, password: ODOO_PASSWORD }
-      })
-    });
-
-    const authData = await authResponse.json();
-    if (!authData.result || !authData.result.uid) {
-      return NextResponse.json(
-        { success: false, error: 'Odoo authentication failed' },
+        { success: false, error: 'You must be logged in to access the catalog' },
         { status: 401 }
       );
     }
 
-    const uid = authData.result.uid;
-    const sessionId = authData.result.session_id;
+    console.log('✅ [PRODUCTS-CATALOG] Using user session_id');
 
-    // Helper for Odoo calls
-    const odooCall = async (model: string, method: string, args: any[], kwargs: any = {}) => {
-      const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+    // Fetch all products with stock
+    const productsResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'product.product',
+          method: 'search_read',
+          args: [[['sale_ok', '=', true], ['active', '=', true]]],
+          kwargs: {
+            fields: ['id', 'name', 'image_256', 'qty_available', 'uom_id', 'seller_ids', 'list_price'],
+            limit: 500,
+            order: 'name ASC'
+          }
+        },
+        id: Math.random()
+      })
+    });
+
+    const productsData = await productsResponse.json();
+
+    if (productsData.error) {
+      console.error('❌ [PRODUCTS-CATALOG] Error fetching products:', productsData.error);
+      return NextResponse.json({
+        success: false,
+        error: productsData.error.message || 'Error loading products'
+      }, { status: 500 });
+    }
+
+    const products = productsData.result || [];
+    console.log(`✅ [PRODUCTS-CATALOG] Loaded ${products.length} products`);
+
+    // Get supplier info for products
+    const allSellerIds = products.flatMap((p: any) => p.seller_ids || []);
+    let supplierInfos: any[] = [];
+
+    if (allSellerIds.length > 0) {
+      const supplierResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,48 +76,24 @@ export async function GET(request: NextRequest) {
           jsonrpc: '2.0',
           method: 'call',
           params: {
-            model,
-            method,
-            args,
-            kwargs
-          }
+            model: 'product.supplierinfo',
+            method: 'search_read',
+            args: [[['id', 'in', allSellerIds]]],
+            kwargs: {
+              fields: ['id', 'partner_id', 'product_tmpl_id']
+            }
+          },
+          id: Math.random()
         })
       });
 
-      const data = await response.json();
-      console.log(`[Odoo Call] ${model}.${method}:`, data.result ? `${Array.isArray(data.result) ? data.result.length : 'OK'}` : 'FAILED');
-      return data.result;
-    };
-
-    // Fetch all products with stock
-    const products: OdooProduct[] = await odooCall(
-      'product.product',
-      'search_read',
-      [
-        [['sale_ok', '=', true], ['active', '=', true]],
-        ['id', 'name', 'image_128', 'qty_available', 'uom_name', 'seller_ids', 'list_price']
-      ]
-    );
-
-    if (!products || !Array.isArray(products)) {
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to fetch products from Odoo'
-      }, { status: 500 });
+      const supplierData = await supplierResponse.json();
+      supplierInfos = supplierData.result || [];
     }
 
-    // Fetch supplier info for all products
-    const allSellerIds = products.flatMap(p => p.seller_ids || []);
-    const supplierInfos: OdooSupplierInfo[] = allSellerIds.length > 0
-      ? await odooCall('product.supplierinfo', 'search_read', [
-          [['id', 'in', allSellerIds]],
-          ['id', 'partner_id', 'product_tmpl_id']
-        ])
-      : [];
-
-    // Create map: product_id -> supplier info
+    // Create supplier map
     const supplierMap = new Map<number, { supplier_id: number; supplier_name: string }>();
-    supplierInfos.forEach(si => {
+    supplierInfos.forEach((si: any) => {
       if (si.product_tmpl_id && si.partner_id) {
         supplierMap.set(si.product_tmpl_id[0], {
           supplier_id: si.partner_id[0],
@@ -133,31 +107,71 @@ export async function GET(request: NextRequest) {
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
     const fourteenDaysAgoStr = fourteenDaysAgo.toISOString().split('T')[0];
 
-    const saleOrders: OdooSaleOrder[] = await odooCall('sale.order', 'search_read', [
-      [
-        ['date_order', '>=', fourteenDaysAgoStr],
-        ['state', 'in', ['sale', 'done']]
-      ],
-      ['id', 'date_order', 'state']
-    ]);
+    // Fetch sale orders
+    const ordersResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'sale.order',
+          method: 'search_read',
+          args: [[
+            ['date_order', '>=', fourteenDaysAgoStr],
+            ['state', 'in', ['sale', 'done']]
+          ]],
+          kwargs: {
+            fields: ['id', 'date_order', 'state']
+          }
+        },
+        id: Math.random()
+      })
+    });
 
-    const saleOrderIds = saleOrders.map(so => so.id);
+    const ordersData = await ordersResponse.json();
+    const saleOrders = ordersData.result || [];
+    const saleOrderIds = saleOrders.map((so: any) => so.id);
 
-    const saleLines: OdooSaleOrderLine[] = saleOrderIds.length > 0
-      ? await odooCall('sale.order.line', 'search_read', [
-          [['order_id', 'in', saleOrderIds]],
-          ['product_id', 'product_uom_qty', 'order_id']
-        ])
-      : [];
+    // Fetch sale order lines
+    let saleLines: any[] = [];
+    if (saleOrderIds.length > 0) {
+      const linesResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'sale.order.line',
+            method: 'search_read',
+            args: [[['order_id', 'in', saleOrderIds]]],
+            kwargs: {
+              fields: ['product_id', 'product_uom_qty', 'order_id']
+            }
+          },
+          id: Math.random()
+        })
+      });
 
-    // Create sales map by product and time period
+      const linesData = await linesResponse.json();
+      saleLines = linesData.result || [];
+    }
+
+    // Calculate sales by product and time period
     const salesMap = new Map<number, { sales_5: number; sales_10: number; sales_14: number }>();
 
-    saleLines.forEach(line => {
+    saleLines.forEach((line: any) => {
       if (!line.product_id) return;
       const productId = line.product_id[0];
       const orderId = line.order_id[0];
-      const order = saleOrders.find(so => so.id === orderId);
+      const order = saleOrders.find((so: any) => so.id === orderId);
       if (!order) return;
 
       const orderDate = new Date(order.date_order);
@@ -174,16 +188,17 @@ export async function GET(request: NextRequest) {
     });
 
     // Build final product list
-    const catalogProducts = products.map(p => {
+    const catalogProducts = products.map((p: any) => {
       const sales = salesMap.get(p.id) || { sales_5: 0, sales_10: 0, sales_14: 0 };
       const supplierInfo = supplierMap.get(p.id);
+      const uom = p.uom_id ? p.uom_id[1] : 'Units';
 
       return {
         id: p.id,
         name: p.name,
-        image_url: p.image_128 || '',
+        image_url: p.image_256 || '',
         current_stock: p.qty_available || 0,
-        uom: p.uom_name || 'Units',
+        uom,
         sales_5_days: sales.sales_5,
         sales_10_days: sales.sales_10,
         sales_14_days: sales.sales_14,
@@ -193,6 +208,8 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    console.log(`✅ [PRODUCTS-CATALOG] Returning ${catalogProducts.length} products with sales data`);
+
     return NextResponse.json({
       success: true,
       products: catalogProducts,
@@ -200,9 +217,9 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Error fetching product catalog:', error);
+    console.error('💥 [PRODUCTS-CATALOG] Error:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
