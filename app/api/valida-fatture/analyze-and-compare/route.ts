@@ -565,6 +565,57 @@ ${JSON.stringify(enrichedLines.map((line: any) => ({
       });
     }
 
+    // 🎯 CRITICAL FIX: Verifica TOTALE FINALE anche se tutte le righe matchano
+    // Bug: se le righe matchano ma c'è differenza nel totale (es: spese trasporto, IVA, sconti),
+    // il sistema non se ne accorge. Forziamo un controllo sul totale finale.
+    const pdfTotal = parseFloat(parsedInvoice.total_amount);
+    const draftTotal = parseFloat(draft_invoice.amount_total);
+    const totalDiff = Math.abs(pdfTotal - draftTotal);
+
+    console.log('🔍 [FINAL-TOTAL-CHECK] Verifying total amounts:');
+    console.log(`   PDF Total: €${pdfTotal.toFixed(2)}`);
+    console.log(`   Draft Total: €${draftTotal.toFixed(2)}`);
+    console.log(`   Difference: €${totalDiff.toFixed(2)}`);
+
+    // Se c'è una differenza > €0.10 sul totale finale, forza errore anche se righe OK
+    if (totalDiff > 0.10) {
+      console.error(`⚠️ [CRITICAL] TOTAL MISMATCH: PDF total (€${pdfTotal}) != Draft total (€${draftTotal})`);
+      console.error(`   This might indicate missing charges (shipping, discounts, etc.)`);
+
+      // Override risultato Claude
+      comparisonResult.is_valid = false;
+      comparisonResult.total_difference = totalDiff;
+
+      // Aggiungi difference se non già presente
+      if (!comparisonResult.differences) {
+        comparisonResult.differences = [];
+      }
+
+      // Controlla se Claude ha già segnalato questa differenza
+      const hasTotalDiff = comparisonResult.differences.some((d: any) =>
+        d.type === 'total_mismatch' || d.description?.includes('totale')
+      );
+
+      if (!hasTotalDiff) {
+        comparisonResult.differences.push({
+          type: 'total_mismatch',
+          severity: 'error',
+          draft_line_id: null,
+          description: `TOTALE FATTURA NON CORRISPONDE: PDF €${pdfTotal.toFixed(2)} vs Bozza €${draftTotal.toFixed(2)}. Possibile mancanza di spese trasporto, sconti o altri addebiti.`,
+          expected_value: pdfTotal,
+          actual_value: draftTotal,
+          amount_difference: totalDiff
+        });
+
+        console.log('✅ [FINAL-TOTAL-CHECK] Added total_mismatch difference to result');
+      }
+
+      // Disabilita auto-fix perché serve intervento manuale
+      comparisonResult.can_auto_fix = false;
+    } else {
+      console.log('✅ [FINAL-TOTAL-CHECK] Total amounts match (within €0.10 tolerance)');
+    }
+
     // OVERRIDE: Usa risultato Claude invece di server-side per debug
     console.log('🔄 [DEBUG] Using Claude result instead of server-side matching');
 
