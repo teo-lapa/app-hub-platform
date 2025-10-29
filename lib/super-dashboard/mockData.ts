@@ -93,20 +93,25 @@ export const mockUpsellOpportunities = [
   },
 ];
 
-export const mockHeatmapData = [
-  { health: 25, value: 5000, name: 'Cliente A', status: 'critical' as const },
-  { health: 30, value: 8000, name: 'Cliente B', status: 'critical' as const },
-  { health: 35, value: 12000, name: 'Cliente C', status: 'warning' as const },
-  { health: 40, value: 35000, name: 'Da Mario', status: 'warning' as const },
-  { health: 42, value: 32000, name: 'Bella Napoli', status: 'warning' as const },
-  { health: 48, value: 28000, name: 'Splendide', status: 'warning' as const },
-  { health: 65, value: 8000, name: 'Cliente G', status: 'ok' as const },
-  { health: 70, value: 12000, name: 'Cliente H', status: 'ok' as const },
-  { health: 75, value: 15000, name: 'Cliente I', status: 'ok' as const },
-  { health: 85, value: 65000, name: 'Champion A', status: 'excellent' as const },
-  { health: 88, value: 58000, name: 'Champion B', status: 'excellent' as const },
-  { health: 92, value: 72000, name: 'Champion C', status: 'excellent' as const },
-  { health: 90, value: 55000, name: 'Champion D', status: 'excellent' as const },
+export const mockHeatmapData: Array<{
+  health: number;
+  value: number;
+  name: string;
+  status: 'critical' | 'warning' | 'ok' | 'excellent';
+}> = [
+  { health: 25, value: 5000, name: 'Cliente A', status: 'critical' },
+  { health: 30, value: 8000, name: 'Cliente B', status: 'critical' },
+  { health: 35, value: 12000, name: 'Cliente C', status: 'warning' },
+  { health: 40, value: 35000, name: 'Da Mario', status: 'warning' },
+  { health: 42, value: 32000, name: 'Bella Napoli', status: 'warning' },
+  { health: 48, value: 28000, name: 'Splendide', status: 'warning' },
+  { health: 65, value: 8000, name: 'Cliente G', status: 'ok' },
+  { health: 70, value: 12000, name: 'Cliente H', status: 'ok' },
+  { health: 75, value: 15000, name: 'Cliente I', status: 'ok' },
+  { health: 85, value: 65000, name: 'Champion A', status: 'excellent' },
+  { health: 88, value: 58000, name: 'Champion B', status: 'excellent' },
+  { health: 92, value: 72000, name: 'Champion C', status: 'excellent' },
+  { health: 90, value: 55000, name: 'Champion D', status: 'excellent' },
 ];
 
 export const mockArriviMerce = [
