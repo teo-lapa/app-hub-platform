@@ -17,7 +17,7 @@ async function testRealProduct() {
   };
 
   // ULTIMO DEPLOYMENT
-  const url = 'https://app-hub-platform-2np2bpnwt-teo-lapas-projects.vercel.app/api/product-creator/create-products';
+  const url = 'https://app-hub-platform-7041sy5lw-teo-lapas-projects.vercel.app/api/product-creator/create-products';
 
   console.log(`📡 Testing: ${url}\n`);
   console.log('📦 Product:', realProduct.nome_completo);
