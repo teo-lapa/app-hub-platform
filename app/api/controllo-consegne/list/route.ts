@@ -379,8 +379,8 @@ export async function GET(request: NextRequest) {
           if (!att.create_date) return false;
           const attDate = new Date(att.create_date);
           const timeDiff = Math.abs(attDate.getTime() - messageDate.getTime());
-          // Cerca immagini/documenti/audio creati entro 2 minuti dal messaggio
-          return timeDiff < 120000 && att.mimetype && (
+          // Cerca immagini/documenti/audio creati entro 24 ore dal messaggio (86400000 ms)
+          return timeDiff < 86400000 && att.mimetype && (
             att.mimetype.startsWith('image/') ||
             att.mimetype === 'application/pdf' ||
             att.mimetype.startsWith('audio/')
@@ -391,6 +391,17 @@ export async function GET(request: NextRequest) {
         if (scaricoParzialAttachment) {
           console.log('[SCARICO PARZIALE DEBUG] Attachment ID:', scaricoParzialAttachment.id, 'mimetype:', scaricoParzialAttachment.mimetype);
           console.log('[SCARICO PARZIALE DEBUG] Has data:', !!scaricoParzialAttachment.datas, 'data length:', scaricoParzialAttachment.datas?.length || 0);
+
+          // Validazione dati audio
+          if (scaricoParzialAttachment.mimetype?.startsWith('audio/')) {
+            if (!scaricoParzialAttachment.datas || scaricoParzialAttachment.datas.length === 0) {
+              console.error('[SCARICO PARZIALE ERROR] Audio attachment found but datas field is empty!');
+            } else if (scaricoParzialAttachment.datas.length < 100) {
+              console.warn('[SCARICO PARZIALE WARNING] Audio datas seems too short (< 100 chars), might be corrupted');
+            } else {
+              console.log('[SCARICO PARZIALE SUCCESS] Audio datas looks valid');
+            }
+          }
         }
 
         const body = scaricoParzialMessage.body || '';

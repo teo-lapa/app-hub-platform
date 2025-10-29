@@ -39,6 +39,7 @@ export interface DocumentAttachment {
   timestamp: string;
   note?: string;
   odoo_attachment_id?: number;
+  mimetype?: string; // MIME type of the attachment (e.g., 'audio/webm', 'image/png', 'application/pdf')
 }
 
 export interface FilterState {
