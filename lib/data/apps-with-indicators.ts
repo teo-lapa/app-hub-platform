@@ -534,6 +534,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-10-28'),
     updatedAt: new Date('2025-10-28'),
   },
+  {
+    id: 's32',
+    name: 'Super Dashboard',
+    description: '⚡ Dashboard Amministratore Completa: KPI real-time, Customer Health, Operations, Delivery Tracking, Finanza P&L & Break-Even, Team Performance, Product Intelligence, AI Insights. Controllo totale della tua azienda in un\'unica vista.',
+    icon: '⚡',
+    badge: 'AZIENDALE',
+    category: 'Analytics',
+    url: '/super-dashboard',
+    requiredRole: 'admin',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-10-29'),
+    updatedAt: new Date('2025-10-29'),
+  },
 ];
 
 // Combina tutte le app
