@@ -204,18 +204,36 @@ export async function POST(request: NextRequest) {
             try {
               console.log(`🎨 Generating image for product ${productId}`);
 
-              // Call internal Gemini image generation API
-              const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3003';
+              // Call internal Gemini image generation API with timeout
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 70000); // 70 seconds timeout
+
+              const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+                             (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3003');
+
+              console.log(`📡 Calling image API at: ${baseUrl}/api/product-creator/generate-image-gemini`);
 
               const imageResponse = await fetch(`${baseUrl}/api/product-creator/generate-image-gemini`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({
                   productName: product.nome_completo,
                   productDescription: product.descrizione_breve || '',
                   productId: productId
-                })
+                }),
+                signal: controller.signal
               });
+
+              clearTimeout(timeoutId);
+
+              if (!imageResponse.ok) {
+                console.error(`⚠️ Image API returned status ${imageResponse.status}`);
+                const errorText = await imageResponse.text();
+                console.error('⚠️ Error response:', errorText);
+                throw new Error(`Image API failed with status ${imageResponse.status}`);
+              }
 
               const imageData = await imageResponse.json();
 
@@ -224,8 +242,12 @@ export async function POST(request: NextRequest) {
               } else {
                 console.error('⚠️ Image generation failed:', imageData.error);
               }
-            } catch (imageError) {
-              console.error('⚠️ Exception generating image:', imageError);
+            } catch (imageError: any) {
+              if (imageError.name === 'AbortError') {
+                console.error('⚠️ Image generation timeout after 70 seconds');
+              } else {
+                console.error('⚠️ Exception generating image:', imageError.message || imageError);
+              }
             }
           }
 
