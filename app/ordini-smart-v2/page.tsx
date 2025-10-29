@@ -406,8 +406,8 @@ export default function SmartOrderingV2() {
         </div>
       </motion.div>
 
-      {/* URGENT ORDERS SECTION */}
-      {!selectedSupplier && urgentSuppliers.length > 0 && (
+      {/* URGENT ORDERS SECTION - ALWAYS VISIBLE */}
+      {!selectedSupplier && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -419,10 +419,24 @@ export default function SmartOrderingV2() {
               <h2 className="text-2xl font-bold text-white">
                 ORDINI PROGRAMMATI OGGI
               </h2>
-              <div className="bg-red-500 text-white px-4 py-1 rounded-full font-bold">
-                {urgentSuppliers.length}
-              </div>
+              {urgentSuppliers.length > 0 && (
+                <div className="bg-red-500 text-white px-4 py-1 rounded-full font-bold">
+                  {urgentSuppliers.length}
+                </div>
+              )}
             </div>
+
+            {/* Empty State */}
+            {urgentSuppliers.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-white/60 text-lg mb-2">
+                  ✅ Nessun ordine urgente oggi
+                </p>
+                <p className="text-white/40 text-sm">
+                  Tutti i fornitori sono in regola con le cadenze
+                </p>
+              </div>
+            )}
 
             {/* Today Suppliers */}
             {todaySuppliers.length > 0 && (
