@@ -79,28 +79,37 @@ export async function POST(request: NextRequest) {
     const prompt = `Estrai i dati dalla fattura o packing list.
 
 IMPORTANTE: Questo documento può essere una FATTURA o una PACKING LIST.
-- Se è una FATTURA: cerca la tabella con prodotti, quantità, lotti, scadenze
-- Se è una PACKING LIST: cerca la tabella con Nr., Descrizione, UM, Qty, Net Weight, Lot, Best before date
+
+🔴 PRIORITÀ DATI:
+- Se è una FATTURA: usa quantità dalla colonna "Qty" o "QUANTITA'" (unità di vendita: CT, PZ, etc.)
+- Se è un PACKING LIST SOLO: usa "Net Weight" (KG) solo se non c'è colonna Qty
+- Le quantità della FATTURA hanno SEMPRE priorità sulle Net Weight del packing list
 
 UNITÀ DI MISURA SUPPORTATE:
-- CT = Cartoni
+- CT = Cartoni (unità di vendita principale)
 - KG = Chilogrammi
 - PZ = Pezzi
 - LT = Litri
 - NR = Numero
 - GR = Grammi
 
+STRUTTURA FATTURA:
 La tabella prodotti ha queste colonne IN ORDINE (da sinistra a destra):
 ARTICOLO | LOTTO | DESCRIZIONE | UM | QUANTITA' | QTA' x CARTONE | PREZZO UNITARIO | % SCONTI | IMPORTO | DT. SCAD. | IVA
 
 ATTENZIONE COLONNA QUANTITA':
-- Colonna QUANTITA': contiene SOLO NUMERI (es: 18, 54, 8, 5, 1, 2)
-- Colonna QTA' x CARTONE: contiene TESTO (es: KG 5, PZ 50, CT 30)
-- USA la colonna QUANTITA' (solo numeri)!
+- Colonna QUANTITA': contiene SOLO NUMERI (es: 18, 54, 8, 5, 1, 2) ← USA QUESTA!
+- Colonna QTA' x CARTONE: contiene TESTO (es: KG 5, PZ 50, CT 30) ← NON questa
+- Colonna UM: unità di misura (CT, PZ, KG)
 
-Esempio riga:
+Esempio riga FATTURA:
 A0334SG | 25233 | ARAN DI RISO SUGO 25 g | CT | 18 | KG 5 | 29,51 | 25,0 10,0 | 358,55 | 12/02/27 | 69
-→ quantita = 18 (NON 5!)
+→ ✅ CORRETTO: quantity: 18, unit: "CT"
+→ ❌ SBAGLIATO: quantity: 5, unit: "KG"
+
+Esempio PACKING LIST:
+A01498 | ASIAGO DOP | Net Weight: 50,37 KG | Lotto: L68S25T1
+→ quantity: 50.37, unit: "KG" (solo se NON c'è fattura)
 
 Output JSON:
 {

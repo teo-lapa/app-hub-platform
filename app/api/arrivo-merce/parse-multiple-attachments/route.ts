@@ -118,13 +118,20 @@ export async function POST(request: NextRequest) {
 
     const prompt = `Estrai i dati dalla fattura o packing list.
 
-IMPORTANTE: Ti ho inviato ${parts.length} documento/i. Analizzali TUTTI insieme come se fossero un'unica fattura/packing list.
-- Se ci sono più pagine PDF, leggile tutte
-- Se ci sono più immagini, analizzale tutte
-- Combina i prodotti da tutti i documenti in un'unica lista
+IMPORTANTE: Ti ho inviato ${parts.length} documento/i. Analizzali TUTTI insieme.
+
+🔴 PRIORITÀ DATI (FONDAMENTALE):
+1. **QUANTITÀ e DESCRIZIONE**: Prendi SEMPRE dalla FATTURA (documento principale con prezzi)
+2. **LOTTO e SCADENZA**: Se NON presenti nella FATTURA, cercali nel Packing List
+
+REGOLE:
+- Se vedi una FATTURA + Packing List: usa quantità/descrizione dalla FATTURA
+- Se il Packing List ha lotti/scadenze che mancano nella FATTURA, integra solo quelli
+- NON sostituire le quantità della fattura con quelle del packing list
+- Le quantità del packing list (Net Weight KG) sono solo di trasporto, NON di vendita
 
 UNITÀ DI MISURA SUPPORTATE:
-- CT = Cartoni
+- CT = Cartoni (unità di vendita principale)
 - KG = Chilogrammi
 - PZ = Pezzi
 - LT = Litri
@@ -132,23 +139,28 @@ UNITÀ DI MISURA SUPPORTATE:
 - GR = Grammi
 
 ESTRAZIONE QUANTITÀ:
-1. Cerca colonna "Quantity" o "Qty" o "Piece Qty"
-2. Cerca colonna "Net Weight" (peso netto in KG)
-3. Usa il valore numerico che trovi
-4. Se trovi sia Piece Qty che Net Weight, usa Net Weight per prodotti venduti a peso (KG)
+1. PRIORITÀ ASSOLUTA: Colonna "Quantity" o "Qty" dalla FATTURA
+2. Se è l'unico documento e hai solo Packing List: usa "Net Weight" (KG)
+3. NON mescolare quantità fattura con pesi packing list
 
 ESEMPI:
 
-Esempio FATTURA:
-A0334SG | 25233 | ARAN DI RISO SUGO 25 g | CT | 18 | KG 5 | 29,51 | 25,0 10,0 | 358,55 | 12/02/27 | 69
-→ quantity: 18, unit: "CT"
+Esempio 1 - SOLO FATTURA:
+FATTURA: A0334SG | ARAN DI RISO | Qty: 18 CT | Lotto: 25233 | Scad: 12/02/27
+→ quantity: 18, unit: "CT", lot: "25233", expiry: "2027-02-12"
 
-Esempio PACKING LIST:
-A01498 | ASIAGO DOP FRESCO/MASO CARTONE | CT | 4,0 | 50,37 | L68S25T1 | 24/02/26
-→ quantity: 50.37, unit: "KG" (usa Net Weight per formaggi)
+Esempio 2 - SOLO PACKING LIST:
+PACKING LIST: A01498 | ASIAGO DOP | Qty: 4 CT | Net Weight: 50,37 KG | Lotto: L68S25T1
+→ quantity: 50.37, unit: "KG", lot: "L68S25T1"
+(Se è l'unico documento, usa Net Weight)
 
-A04359 | DELIZIA GR 150 PF | CT | 1,0 | 2,25 | 1.55E25 | 26/12/25
-→ quantity: 2.25, unit: "KG"
+Esempio 3 - FATTURA + PACKING LIST (CASO CRITICO):
+FATTURA: A01498 | ASIAGO DOP FRESCO | Qty: 4 CT | Prezzo: €120
+PACKING LIST: A01498 | ASIAGO DOP | Net Weight: 50,37 KG | Lotto: L68S25T1 | Scad: 24/02/26
+→ ✅ CORRETTO: quantity: 4, unit: "CT", lot: "L68S25T1", expiry: "2026-02-24"
+   (Quantità dalla FATTURA, lotto/scadenza dal Packing List)
+→ ❌ SBAGLIATO: quantity: 50.37, unit: "KG"
+   (NON usare i KG del packing list se c'è la fattura!)
 
 Output JSON:
 {

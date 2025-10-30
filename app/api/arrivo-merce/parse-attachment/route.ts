@@ -100,11 +100,14 @@ export async function POST(request: NextRequest) {
     const prompt = `Estrai i dati dalla fattura o packing list.
 
 IMPORTANTE: Questo documento può essere una FATTURA o una PACKING LIST.
-- Se è una FATTURA: cerca la tabella con prodotti, quantità, lotti, scadenze
-- Se è una PACKING LIST: cerca la tabella con Nr., Descrizione, UM, Qty, Net Weight, Lot, Best before date
+
+🔴 PRIORITÀ DATI:
+- Se è una FATTURA: usa quantità dalla colonna "Qty" o "Quantity" (unità di vendita: CT, PZ, etc.)
+- Se è un PACKING LIST SOLO: usa "Net Weight" (KG) solo se non c'è colonna Qty
+- Le quantità della FATTURA hanno SEMPRE priorità sulle Net Weight del packing list
 
 UNITÀ DI MISURA SUPPORTATE:
-- CT = Cartoni
+- CT = Cartoni (unità di vendita principale)
 - KG = Chilogrammi
 - PZ = Pezzi
 - LT = Litri
@@ -112,23 +115,24 @@ UNITÀ DI MISURA SUPPORTATE:
 - GR = Grammi
 
 ESTRAZIONE QUANTITÀ:
-1. Cerca colonna "Quantity" o "Qty" o "Piece Qty"
-2. Cerca colonna "Net Weight" (peso netto in KG)
-3. Usa il valore numerico che trovi
-4. Se trovi sia Piece Qty che Net Weight, usa Net Weight per prodotti venduti a peso (KG)
+1. PRIORITÀ: Colonna "Quantity" o "Qty" dalla FATTURA (es: 18 CT)
+2. ALTERNATIVA: Se NON c'è Qty e hai solo Packing List, usa "Net Weight" (es: 50.37 KG)
+3. NON mescolare: se vedi Qty in CT, NON sostituirla con Net Weight in KG
 
 ESEMPI:
 
-Esempio FATTURA:
-A0334SG | 25233 | ARAN DI RISO SUGO 25 g | CT | 18 | KG 5 | 29,51 | 25,0 10,0 | 358,55 | 12/02/27 | 69
-→ quantity: 18, unit: "CT"
+Esempio 1 - FATTURA (con Qty):
+A0334SG | ARAN DI RISO | Qty: 18 CT | Lotto: 25233 | Scad: 12/02/27
+→ quantity: 18, unit: "CT", lot: "25233", expiry: "2027-02-12"
 
-Esempio PACKING LIST:
-A01498 | ASIAGO DOP FRESCO/MASO CARTONE | CT | 4,0 | 50,37 | L68S25T1 | 24/02/26
-→ quantity: 50.37, unit: "KG" (usa Net Weight per formaggi)
+Esempio 2 - PACKING LIST (solo Net Weight):
+A01498 | ASIAGO DOP | Net Weight: 50,37 KG | Lotto: L68S25T1 | Scad: 24/02/26
+→ quantity: 50.37, unit: "KG", lot: "L68S25T1", expiry: "2026-02-24"
 
-A04359 | DELIZIA GR 150 PF | CT | 1,0 | 2,25 | 1.55E25 | 26/12/25
-→ quantity: 2.25, unit: "KG"
+Esempio 3 - FATTURA con Qty e Net Weight (CASO CRITICO):
+A01498 | ASIAGO DOP | Qty: 4 CT | Net Weight: 50,37 KG
+→ ✅ CORRETTO: quantity: 4, unit: "CT"
+→ ❌ SBAGLIATO: quantity: 50.37, unit: "KG"
 
 Output JSON:
 {
