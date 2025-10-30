@@ -76,7 +76,19 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    const prompt = `Estrai i dati dalla fattura.
+    const prompt = `Estrai i dati dalla fattura o packing list.
+
+IMPORTANTE: Questo documento può essere una FATTURA o una PACKING LIST.
+- Se è una FATTURA: cerca la tabella con prodotti, quantità, lotti, scadenze
+- Se è una PACKING LIST: cerca la tabella con Nr., Descrizione, UM, Qty, Net Weight, Lot, Best before date
+
+UNITÀ DI MISURA SUPPORTATE:
+- CT = Cartoni
+- KG = Chilogrammi
+- PZ = Pezzi
+- LT = Litri
+- NR = Numero
+- GR = Grammi
 
 La tabella prodotti ha queste colonne IN ORDINE (da sinistra a destra):
 ARTICOLO | LOTTO | DESCRIZIONE | UM | QUANTITA' | QTA' x CARTONE | PREZZO UNITARIO | % SCONTI | IMPORTO | DT. SCAD. | IVA

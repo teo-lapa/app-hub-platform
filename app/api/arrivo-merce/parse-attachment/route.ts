@@ -97,19 +97,38 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    const prompt = `Estrai i dati dalla fattura.
+    const prompt = `Estrai i dati dalla fattura o packing list.
 
-La tabella prodotti ha queste colonne IN ORDINE (da sinistra a destra):
-ARTICOLO | LOTTO | DESCRIZIONE | UM | QUANTITA' | QTA' x CARTONE | PREZZO UNITARIO | % SCONTI | IMPORTO | DT. SCAD. | IVA
+IMPORTANTE: Questo documento può essere una FATTURA o una PACKING LIST.
+- Se è una FATTURA: cerca la tabella con prodotti, quantità, lotti, scadenze
+- Se è una PACKING LIST: cerca la tabella con Nr., Descrizione, UM, Qty, Net Weight, Lot, Best before date
 
-ATTENZIONE COLONNA QUANTITA':
-- Colonna QUANTITA': contiene SOLO NUMERI (es: 18, 54, 8, 5, 1, 2)
-- Colonna QTA' x CARTONE: contiene TESTO (es: KG 5, PZ 50, CT 30)
-- USA la colonna QUANTITA' (solo numeri)!
+UNITÀ DI MISURA SUPPORTATE:
+- CT = Cartoni
+- KG = Chilogrammi
+- PZ = Pezzi
+- LT = Litri
+- NR = Numero
+- GR = Grammi
 
-Esempio riga:
+ESTRAZIONE QUANTITÀ:
+1. Cerca colonna "Quantity" o "Qty" o "Piece Qty"
+2. Cerca colonna "Net Weight" (peso netto in KG)
+3. Usa il valore numerico che trovi
+4. Se trovi sia Piece Qty che Net Weight, usa Net Weight per prodotti venduti a peso (KG)
+
+ESEMPI:
+
+Esempio FATTURA:
 A0334SG | 25233 | ARAN DI RISO SUGO 25 g | CT | 18 | KG 5 | 29,51 | 25,0 10,0 | 358,55 | 12/02/27 | 69
-→ quantita = 18 (NON 5!)
+→ quantity: 18, unit: "CT"
+
+Esempio PACKING LIST:
+A01498 | ASIAGO DOP FRESCO/MASO CARTONE | CT | 4,0 | 50,37 | L68S25T1 | 24/02/26
+→ quantity: 50.37, unit: "KG" (usa Net Weight per formaggi)
+
+A04359 | DELIZIA GR 150 PF | CT | 1,0 | 2,25 | 1.55E25 | 26/12/25
+→ quantity: 2.25, unit: "KG"
 
 Output JSON:
 {
