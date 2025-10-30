@@ -20,7 +20,8 @@ interface ProductItem {
     expiration_date?: string;
   };
   write_date?: string; // Data ultima modifica
-  inventory_date?: string; // Data inventario
+  inventory_date?: string; // Data inventario da Odoo (conteggi precedenti)
+  isCountedNow?: boolean; // Flag per conteggio fatto ADESSO in questa sessione
   isSelected?: boolean;
 }
 
@@ -116,8 +117,8 @@ export function ProductList({ products, onSelectProduct, onUpdateQuantity }: Pro
                       </>
                     )}
 
-                    {/* Badge CONTATO - visibile se inventory_date esiste */}
-                    {product.inventory_date && (
+                    {/* Badge CONTATO - visibile SOLO se contato ADESSO in questa sessione */}
+                    {product.isCountedNow && (
                       <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded font-semibold flex items-center gap-1">
                         <Check className="w-3 h-3" />
                         CONTATO

@@ -176,6 +176,7 @@ export default function InventarioPage() {
           stockQuantity: p.totalQty || 0,
           countedQuantity: p.totalQty || 0,
           difference: 0,
+          isCountedNow: false, // Prodotti da Odoo NON mostrano badge "CONTATO"
           // Aggiungi dati lotto in formato corretto per ProductEditModal
           lot: p.lot_id ? {
             id: p.lot_id,
@@ -849,7 +850,8 @@ export default function InventarioPage() {
                 ...selectedProductForEdit,
                 countedQuantity: data.quantity,
                 difference: data.quantity,
-                inventory_date: new Date().toISOString(), // Imposta data conteggio per badge "CONTATO"
+                inventory_date: new Date().toISOString(), // Data conteggio per Odoo
+                isCountedNow: true, // Flag per mostrare badge "CONTATO" nel front-end
                 lot: data.lotName ? {
                   id: 0,
                   name: data.lotName,
@@ -872,7 +874,8 @@ export default function InventarioPage() {
                     ...p,
                     countedQuantity: data.quantity,
                     difference: data.quantity - p.stockQuantity,
-                    inventory_date: new Date().toISOString(), // Imposta data conteggio per badge "CONTATO"
+                    inventory_date: new Date().toISOString(), // Data conteggio per Odoo
+                    isCountedNow: true, // Flag per mostrare badge "CONTATO" nel front-end
                     lot: data.lotName ? {
                       id: p.lot?.id || 0,
                       name: data.lotName,
