@@ -857,21 +857,30 @@ export default function InventarioPage() {
               };
               setLocationProducts(prev => [...prev, newProduct]);
             } else {
-              // Aggiorna prodotto esistente
-              setLocationProducts(prev => prev.map(p =>
-                p.id === selectedProductForEdit.id
-                  ? {
-                      ...p,
-                      countedQuantity: data.quantity,
-                      difference: data.quantity - p.stockQuantity,
-                      lot: data.lotName ? {
-                        id: p.lot?.id || 0,
-                        name: data.lotName,
-                        expiration_date: data.expiryDate
-                      } : p.lot
-                    }
-                  : p
-              ));
+              // Aggiorna prodotto esistente - USA quant_id per identificare univocamente ogni lotto!
+              console.log('🔄 [onConfirm] Aggiornamento prodotto con quant_id:', selectedProductForEdit.quant_id);
+              setLocationProducts(prev => prev.map(p => {
+                // IMPORTANTE: Confronta quant_id per distinguere tra lotti diversi dello stesso prodotto
+                const shouldUpdate = selectedProductForEdit.quant_id
+                  ? p.quant_id === selectedProductForEdit.quant_id
+                  : (p.id === selectedProductForEdit.id && p.lot?.id === selectedProductForEdit.lot?.id);
+
+                if (shouldUpdate) {
+                  console.log('✅ [onConfirm] Aggiornando prodotto:', p.name, 'quant_id:', p.quant_id);
+                  return {
+                    ...p,
+                    countedQuantity: data.quantity,
+                    difference: data.quantity - p.stockQuantity,
+                    lot: data.lotName ? {
+                      id: p.lot?.id || 0,
+                      name: data.lotName,
+                      expiration_date: data.expiryDate
+                    } : p.lot
+                  };
+                }
+
+                return p;
+              }));
             }
 
             toast.success(`✅ ${selectedProductForEdit.name} ${selectedProductForEdit.stockQuantity === 0 ? 'aggiunto' : 'aggiornato'}!`);
