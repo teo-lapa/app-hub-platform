@@ -849,6 +849,7 @@ export default function InventarioPage() {
                 ...selectedProductForEdit,
                 countedQuantity: data.quantity,
                 difference: data.quantity,
+                inventory_date: new Date().toISOString(), // Imposta data conteggio per badge "CONTATO"
                 lot: data.lotName ? {
                   id: 0,
                   name: data.lotName,
@@ -871,6 +872,7 @@ export default function InventarioPage() {
                     ...p,
                     countedQuantity: data.quantity,
                     difference: data.quantity - p.stockQuantity,
+                    inventory_date: new Date().toISOString(), // Imposta data conteggio per badge "CONTATO"
                     lot: data.lotName ? {
                       id: p.lot?.id || 0,
                       name: data.lotName,
