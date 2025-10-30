@@ -68,9 +68,9 @@ export function ProductList({ products, onSelectProduct, onUpdateQuantity }: Pro
   return (
     <div className="space-y-3">
       <AnimatePresence>
-        {localProducts.map((product) => (
+        {localProducts.map((product, index) => (
           <motion.div
-            key={product.quant_id || `${product.id}-${product.lot?.id || 'no-lot'}`}
+            key={product.quant_id ? `quant-${product.quant_id}` : `product-${product.id}-${product.lot?.id || 'no-lot'}-${index}`}
             layout
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

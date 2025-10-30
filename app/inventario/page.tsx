@@ -123,32 +123,39 @@ export default function InventarioPage() {
 
       // L'API ora restituisce righe separate per ogni lotto (quant)
       // Ogni item è già un prodotto+lotto specifico
-      const products: Product[] = inventory.map((item: any) => ({
-        id: item.product_id,
-        quant_id: item.quant_id,
-        name: item.product_name,
-        code: item.default_code || '',
-        barcode: item.barcode || '',
-        default_code: item.default_code || '',
-        image: item.image_128 ? `data:image/png;base64,${item.image_128}` : null,
-        quantity: item.quantity || 0,
-        reserved: item.reserved_quantity || 0,
-        uom: item.uom_id ? item.uom_id[1] : 'PZ',
-        totalQty: item.quantity || 0,
+      const products: Product[] = inventory.map((item: any) => {
+        const product = {
+          id: item.product_id,
+          quant_id: item.quant_id,
+          name: item.product_name,
+          code: item.default_code || '',
+          barcode: item.barcode || '',
+          default_code: item.default_code || '',
+          image: item.image_128 ? `data:image/png;base64,${item.image_128}` : null,
+          quantity: item.quantity || 0,
+          reserved: item.reserved_quantity || 0,
+          uom: item.uom_id ? item.uom_id[1] : 'PZ',
+          totalQty: item.quantity || 0,
 
-        // Dati lotto
-        lot_id: item.lot_id,
-        lot_name: item.lot_name,
-        lot_expiration_date: item.lot_expiration_date,
+          // Dati lotto
+          lot_id: item.lot_id,
+          lot_name: item.lot_name,
+          lot_expiration_date: item.lot_expiration_date,
 
-        // Stato conteggio
-        inventory_quantity: item.inventory_quantity,
-        inventory_diff_quantity: item.inventory_diff_quantity,
-        inventory_date: item.inventory_date,
-        write_date: item.write_date,
-        isCounted: item.inventory_quantity !== null && item.inventory_quantity !== undefined,
-        isCountedRecent: false
-      }))
+          // Stato conteggio
+          inventory_quantity: item.inventory_quantity,
+          inventory_diff_quantity: item.inventory_diff_quantity,
+          inventory_date: item.inventory_date,
+          write_date: item.write_date,
+          isCounted: item.inventory_quantity !== null && item.inventory_quantity !== undefined,
+          isCountedRecent: false
+        };
+
+        // Log di debug per verificare quant_id
+        console.log(`🔑 [scanLocation] Prodotto: ${product.name}, quant_id: ${product.quant_id}, lot: ${product.lot_name}`);
+
+        return product;
+      })
       // Ordina alfabeticamente per nome prodotto
       .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
 
@@ -161,19 +168,26 @@ export default function InventarioPage() {
       }));
 
       // IMPORTANTE: Popola anche locationProducts per il componente ProductList
-      const locationProductsData = products.map(p => ({
-        ...p,
-        image: p.image,
-        stockQuantity: p.totalQty || 0,
-        countedQuantity: p.totalQty || 0,
-        difference: 0,
-        // Aggiungi dati lotto in formato corretto per ProductEditModal
-        lot: p.lot_id ? {
-          id: p.lot_id,
-          name: p.lot_name || '',
-          expiration_date: p.lot_expiration_date || undefined
-        } : undefined
-      }))
+      const locationProductsData = products.map(p => {
+        const locationProduct = {
+          ...p,
+          quant_id: p.quant_id, // IMPORTANTE: Mantieni quant_id per chiave univoca
+          image: p.image,
+          stockQuantity: p.totalQty || 0,
+          countedQuantity: p.totalQty || 0,
+          difference: 0,
+          // Aggiungi dati lotto in formato corretto per ProductEditModal
+          lot: p.lot_id ? {
+            id: p.lot_id,
+            name: p.lot_name || '',
+            expiration_date: p.lot_expiration_date || undefined
+          } : undefined
+        };
+
+        console.log(`📍 [locationProducts] Prodotto: ${locationProduct.name}, quant_id: ${locationProduct.quant_id}`);
+
+        return locationProduct;
+      })
       // Ordina alfabeticamente per nome prodotto (già ordinato in products, ma per sicurezza)
       .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
 
