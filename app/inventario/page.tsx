@@ -123,32 +123,39 @@ export default function InventarioPage() {
 
       // L'API ora restituisce righe separate per ogni lotto (quant)
       // Ogni item è già un prodotto+lotto specifico
-      const products: Product[] = inventory.map((item: any) => ({
-        id: item.product_id,
-        quant_id: item.quant_id,
-        name: item.product_name,
-        code: item.default_code || '',
-        barcode: item.barcode || '',
-        default_code: item.default_code || '',
-        image: item.image_128 ? `data:image/png;base64,${item.image_128}` : null,
-        quantity: item.quantity || 0,
-        reserved: item.reserved_quantity || 0,
-        uom: item.uom_id ? item.uom_id[1] : 'PZ',
-        totalQty: item.quantity || 0,
+      const products: Product[] = inventory.map((item: any) => {
+        const product = {
+          id: item.product_id,
+          quant_id: item.quant_id,
+          name: item.product_name,
+          code: item.default_code || '',
+          barcode: item.barcode || '',
+          default_code: item.default_code || '',
+          image: item.image_128 ? `data:image/png;base64,${item.image_128}` : null,
+          quantity: item.quantity || 0,
+          reserved: item.reserved_quantity || 0,
+          uom: item.uom_id ? item.uom_id[1] : 'PZ',
+          totalQty: item.quantity || 0,
 
-        // Dati lotto
-        lot_id: item.lot_id,
-        lot_name: item.lot_name,
-        lot_expiration_date: item.lot_expiration_date,
+          // Dati lotto
+          lot_id: item.lot_id,
+          lot_name: item.lot_name,
+          lot_expiration_date: item.lot_expiration_date,
 
-        // Stato conteggio
-        inventory_quantity: item.inventory_quantity,
-        inventory_diff_quantity: item.inventory_diff_quantity,
-        inventory_date: item.inventory_date,
-        write_date: item.write_date,
-        isCounted: item.inventory_quantity !== null && item.inventory_quantity !== undefined,
-        isCountedRecent: false
-      }))
+          // Stato conteggio
+          inventory_quantity: item.inventory_quantity,
+          inventory_diff_quantity: item.inventory_diff_quantity,
+          inventory_date: item.inventory_date,
+          write_date: item.write_date,
+          isCounted: item.inventory_quantity !== null && item.inventory_quantity !== undefined,
+          isCountedRecent: false
+        };
+
+        // Log di debug per verificare quant_id
+        console.log(`🔑 [scanLocation] Prodotto: ${product.name}, quant_id: ${product.quant_id}, lot: ${product.lot_name}`);
+
+        return product;
+      })
       // Ordina alfabeticamente per nome prodotto
       .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
 
@@ -161,19 +168,27 @@ export default function InventarioPage() {
       }));
 
       // IMPORTANTE: Popola anche locationProducts per il componente ProductList
-      const locationProductsData = products.map(p => ({
-        ...p,
-        image: p.image,
-        stockQuantity: p.totalQty || 0,
-        countedQuantity: p.totalQty || 0,
-        difference: 0,
-        // Aggiungi dati lotto in formato corretto per ProductEditModal
-        lot: p.lot_id ? {
-          id: p.lot_id,
-          name: p.lot_name || '',
-          expiration_date: p.lot_expiration_date || undefined
-        } : undefined
-      }))
+      const locationProductsData = products.map(p => {
+        const locationProduct = {
+          ...p,
+          quant_id: p.quant_id, // IMPORTANTE: Mantieni quant_id per chiave univoca
+          image: p.image,
+          stockQuantity: p.totalQty || 0,
+          countedQuantity: p.totalQty || 0,
+          difference: 0,
+          isCountedNow: false, // Prodotti da Odoo NON mostrano badge "CONTATO"
+          // Aggiungi dati lotto in formato corretto per ProductEditModal
+          lot: p.lot_id ? {
+            id: p.lot_id,
+            name: p.lot_name || '',
+            expiration_date: p.lot_expiration_date || undefined
+          } : undefined
+        };
+
+        console.log(`📍 [locationProducts] Prodotto: ${locationProduct.name}, quant_id: ${locationProduct.quant_id}`);
+
+        return locationProduct;
+      })
       // Ordina alfabeticamente per nome prodotto (già ordinato in products, ma per sicurezza)
       .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
 
@@ -835,6 +850,8 @@ export default function InventarioPage() {
                 ...selectedProductForEdit,
                 countedQuantity: data.quantity,
                 difference: data.quantity,
+                inventory_date: new Date().toISOString(), // Data conteggio per Odoo
+                isCountedNow: true, // Flag per mostrare badge "CONTATO" nel front-end
                 lot: data.lotName ? {
                   id: 0,
                   name: data.lotName,
@@ -843,21 +860,32 @@ export default function InventarioPage() {
               };
               setLocationProducts(prev => [...prev, newProduct]);
             } else {
-              // Aggiorna prodotto esistente
-              setLocationProducts(prev => prev.map(p =>
-                p.id === selectedProductForEdit.id
-                  ? {
-                      ...p,
-                      countedQuantity: data.quantity,
-                      difference: data.quantity - p.stockQuantity,
-                      lot: data.lotName ? {
-                        id: p.lot?.id || 0,
-                        name: data.lotName,
-                        expiration_date: data.expiryDate
-                      } : p.lot
-                    }
-                  : p
-              ));
+              // Aggiorna prodotto esistente - USA quant_id per identificare univocamente ogni lotto!
+              console.log('🔄 [onConfirm] Aggiornamento prodotto con quant_id:', selectedProductForEdit.quant_id);
+              setLocationProducts(prev => prev.map(p => {
+                // IMPORTANTE: Confronta quant_id per distinguere tra lotti diversi dello stesso prodotto
+                const shouldUpdate = selectedProductForEdit.quant_id
+                  ? p.quant_id === selectedProductForEdit.quant_id
+                  : (p.id === selectedProductForEdit.id && p.lot?.id === selectedProductForEdit.lot?.id);
+
+                if (shouldUpdate) {
+                  console.log('✅ [onConfirm] Aggiornando prodotto:', p.name, 'quant_id:', p.quant_id);
+                  return {
+                    ...p,
+                    countedQuantity: data.quantity,
+                    difference: data.quantity - p.stockQuantity,
+                    inventory_date: new Date().toISOString(), // Data conteggio per Odoo
+                    isCountedNow: true, // Flag per mostrare badge "CONTATO" nel front-end
+                    lot: data.lotName ? {
+                      id: p.lot?.id || 0,
+                      name: data.lotName,
+                      expiration_date: data.expiryDate
+                    } : p.lot
+                  };
+                }
+
+                return p;
+              }));
             }
 
             toast.success(`✅ ${selectedProductForEdit.name} ${selectedProductForEdit.stockQuantity === 0 ? 'aggiunto' : 'aggiornato'}!`);

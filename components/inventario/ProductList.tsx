@@ -20,7 +20,8 @@ interface ProductItem {
     expiration_date?: string;
   };
   write_date?: string; // Data ultima modifica
-  inventory_date?: string; // Data inventario
+  inventory_date?: string; // Data inventario da Odoo (conteggi precedenti)
+  isCountedNow?: boolean; // Flag per conteggio fatto ADESSO in questa sessione
   isSelected?: boolean;
 }
 
@@ -68,9 +69,9 @@ export function ProductList({ products, onSelectProduct, onUpdateQuantity }: Pro
   return (
     <div className="space-y-3">
       <AnimatePresence>
-        {localProducts.map((product) => (
+        {localProducts.map((product, index) => (
           <motion.div
-            key={product.quant_id || `${product.id}-${product.lot?.id || 'no-lot'}`}
+            key={product.quant_id ? `quant-${product.quant_id}` : `product-${product.id}-${product.lot?.id || 'no-lot'}-${index}`}
             layout
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -102,18 +103,28 @@ export function ProductList({ products, onSelectProduct, onUpdateQuantity }: Pro
                   )}
 
                   {/* Info lotto e scadenza */}
-                  {product.lot && (
-                    <div className="mt-1 flex flex-wrap gap-2 items-center">
-                      <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
-                        Lotto: {product.lot.name}
-                      </span>
-                      {product.lot.expiration_date && (
-                        <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded">
-                          Scad: {new Date(product.lot.expiration_date).toLocaleDateString('it-IT')}
+                  <div className="mt-1 flex flex-wrap gap-2 items-center">
+                    {product.lot && (
+                      <>
+                        <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
+                          Lotto: {product.lot.name}
                         </span>
-                      )}
-                    </div>
-                  )}
+                        {product.lot.expiration_date && (
+                          <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded">
+                            Scad: {new Date(product.lot.expiration_date).toLocaleDateString('it-IT')}
+                          </span>
+                        )}
+                      </>
+                    )}
+
+                    {/* Badge CONTATO - visibile SOLO se contato ADESSO in questa sessione */}
+                    {product.isCountedNow && (
+                      <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded font-semibold flex items-center gap-1">
+                        <Check className="w-3 h-3" />
+                        CONTATO
+                      </span>
+                    )}
+                  </div>
 
                   {/* Data ultima modifica/conteggio */}
                   {(product.inventory_date || product.write_date) && (
