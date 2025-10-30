@@ -127,7 +127,7 @@ export default function SearchProductModal({
                 value={searchQuery}
                 onChange={handleInputChange}
                 placeholder="Cerca per nome, codice, EAN..."
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 autoFocus
               />
             </div>

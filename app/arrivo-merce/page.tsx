@@ -648,6 +648,50 @@ export default function ArrivoMercePage() {
                     setLoading(false);
                   }
                 }}
+                onSelectMultiple={async (attachments) => {
+                  console.log(`✅ ${attachments.length} allegati selezionati:`, attachments.map(a => a.name));
+                  setLoading(true);
+                  setError(null);
+
+                  try {
+                    // Chiama API con array di attachment IDs
+                    const response = await fetch('/api/arrivo-merce/parse-multiple-attachments', {
+                      method: 'POST',
+                      credentials: 'include',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        attachment_ids: attachments.map(a => a.id)
+                      })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                      if (data.debug) {
+                        console.error('🔍 Debug info:', data.debug);
+                      }
+                      throw new Error(data.error || 'Errore durante il parsing multiplo');
+                    }
+
+                    console.log('✅ Allegati parsati:', data.data);
+                    console.log('📊 DETTAGLIO COMPLETO:', {
+                      fornitore: data.data.supplier_name,
+                      documento: data.data.document_number,
+                      data: data.data.document_date,
+                      numero_prodotti: data.data.products?.length || 0,
+                      prodotti: data.data.products
+                    });
+
+                    setParsedInvoice(data.data);
+                    setStep(3); // Vai a Step 3: Verifica Dati
+
+                  } catch (err: any) {
+                    console.error('❌ Errore parsing multiplo:', err);
+                    setError(err.message || 'Errore durante il parsing degli allegati');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
                 onManualUpload={() => {
                   console.log('🔄 Passaggio a upload manuale');
                   setStep(2);

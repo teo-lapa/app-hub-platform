@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Image as ImageIcon, CheckCircle, Star, Loader, Eye, X, ZoomIn } from 'lucide-react';
+import { FileText, Image as ImageIcon, CheckCircle, Star, Loader, Eye, X, ZoomIn, Check } from 'lucide-react';
 
 interface Attachment {
   id: number;
@@ -22,6 +22,7 @@ interface AttachmentSelectorProps {
   loading: boolean;
   processing?: boolean; // 🆕 Sta processando/parsando l'allegato
   onSelect: (attachment: Attachment) => void;
+  onSelectMultiple?: (attachments: Attachment[]) => void; // 🆕 Multi-selezione
   onManualUpload: () => void;
 }
 
@@ -31,11 +32,30 @@ export default function AttachmentSelector({
   loading,
   processing = false, // 🆕 Default false
   onSelect,
+  onSelectMultiple, // 🆕 Multi-selezione
   onManualUpload
 }: AttachmentSelectorProps) {
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]); // 🆕 IDs allegati selezionati
+
+  // 🆕 Toggle selezione allegato
+  const toggleSelection = (attachmentId: number) => {
+    setSelectedIds(prev =>
+      prev.includes(attachmentId)
+        ? prev.filter(id => id !== attachmentId)
+        : [...prev, attachmentId]
+    );
+  };
+
+  // 🆕 Processa allegati selezionati
+  const handleProcessSelected = () => {
+    const selected = attachments.filter(att => selectedIds.includes(att.id));
+    if (onSelectMultiple && selected.length > 0) {
+      onSelectMultiple(selected);
+    }
+  };
 
   if (loading) {
     return (
@@ -127,43 +147,74 @@ export default function AttachmentSelector({
       <div className="space-y-4">
         <div className="text-center mb-6">
           <h3 className="text-xl font-bold text-gray-900 mb-2">
-            📎 Seleziona Allegato da Processare
+            📎 {onSelectMultiple ? 'Seleziona Allegati da Processare' : 'Seleziona Allegato da Processare'}
           </h3>
           <p className="text-gray-600 text-sm">
             {attachments.length} allegato{attachments.length !== 1 ? 'i' : ''} trovato{attachments.length !== 1 ? 'i' : ''} nell'ordine
+            {onSelectMultiple && selectedIds.length > 0 && (
+              <span className="ml-2 text-blue-600 font-bold">
+                • {selectedIds.length} selezionato{selectedIds.length !== 1 ? 'i' : ''}
+              </span>
+            )}
           </p>
         </div>
 
-        {attachments.map((attachment, index) => (
-          <motion.div
-            key={attachment.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className={`
-              relative bg-white rounded-xl border-2 p-4 transition-all
-              ${attachment.is_recommended
-                ? 'border-green-500 bg-green-50'
-                : 'border-gray-200'
-              }
-            `}
-          >
-            {/* Badge "RACCOMANDATO" */}
-            {attachment.is_recommended && (
-              <div className="absolute -top-3 left-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
-                <Star size={12} fill="white" />
-                RACCOMANDATO
-              </div>
-            )}
+        {attachments.map((attachment, index) => {
+          const isSelected = selectedIds.includes(attachment.id);
 
-            <div className="flex items-start gap-4">
-              {/* Icon */}
-              <div className={`
-                w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0
-                ${attachment.is_recommended ? 'bg-green-100' : 'bg-gray-100'}
-              `}>
-                {getFileIcon(attachment.mimetype)}
-              </div>
+          return (
+            <motion.div
+              key={attachment.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className={`
+                relative bg-white rounded-xl border-2 p-4 transition-all
+                ${isSelected
+                  ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                  : attachment.is_recommended
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-gray-200'
+                }
+              `}
+            >
+              {/* Badge "RACCOMANDATO" */}
+              {attachment.is_recommended && (
+                <div className="absolute -top-3 left-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+                  <Star size={12} fill="white" />
+                  RACCOMANDATO
+                </div>
+              )}
+
+              <div className="flex items-start gap-4">
+                {/* 🆕 Checkbox (solo se multi-selezione abilitata) */}
+                {onSelectMultiple && (
+                  <div
+                    onClick={() => toggleSelection(attachment.id)}
+                    className={`
+                      w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-all mt-4
+                      ${isSelected
+                        ? 'bg-blue-600 border-blue-600'
+                        : 'bg-white border-gray-300 hover:border-blue-400'
+                      }
+                    `}
+                  >
+                    {isSelected && <Check size={16} className="text-white" strokeWidth={3} />}
+                  </div>
+                )}
+
+                {/* Icon */}
+                <div className={`
+                  w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0
+                  ${isSelected
+                    ? 'bg-blue-100'
+                    : attachment.is_recommended
+                      ? 'bg-green-100'
+                      : 'bg-gray-100'
+                  }
+                `}>
+                  {getFileIcon(attachment.mimetype)}
+                </div>
 
               {/* Info */}
               <div className="flex-1 min-w-0">
@@ -201,20 +252,22 @@ export default function AttachmentSelector({
                     Anteprima
                   </button>
 
-                  {/* Button Usa Questo */}
-                  <button
-                    onClick={() => onSelect(attachment)}
-                    className={`
-                      flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium
-                      ${attachment.is_recommended
-                        ? 'bg-green-600 hover:bg-green-700 text-white'
-                        : 'bg-gray-800 hover:bg-gray-900 text-white'
-                      }
-                    `}
-                  >
-                    <CheckCircle size={16} />
-                    Usa Questo
-                  </button>
+                  {/* Button Usa Questo (solo se NON multi-selezione) */}
+                  {!onSelectMultiple && (
+                    <button
+                      onClick={() => onSelect(attachment)}
+                      className={`
+                        flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium
+                        ${attachment.is_recommended
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-gray-800 hover:bg-gray-900 text-white'
+                        }
+                      `}
+                    >
+                      <CheckCircle size={16} />
+                      Usa Questo
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -228,7 +281,8 @@ export default function AttachmentSelector({
               </div>
             )}
           </motion.div>
-        ))}
+          );
+        })}
 
         {/* Opzione upload manuale */}
         <div className="pt-4 border-t border-gray-200">
@@ -239,6 +293,50 @@ export default function AttachmentSelector({
             Oppure carica un file manualmente
           </button>
         </div>
+
+        {/* 🆕 Bottom Action Bar - Multi-selezione */}
+        <AnimatePresence>
+          {onSelectMultiple && selectedIds.length > 0 && (
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-2xl border-t-4 border-blue-400 z-40"
+            >
+              <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white text-blue-600 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">
+                    {selectedIds.length}
+                  </div>
+                  <div>
+                    <div className="font-bold text-lg">
+                      {selectedIds.length} Allegato{selectedIds.length !== 1 ? 'i' : ''} Selezionato{selectedIds.length !== 1 ? 'i' : ''}
+                    </div>
+                    <div className="text-blue-100 text-sm">
+                      Verranno processati insieme con Gemini AI
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedIds([])}
+                    className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors font-medium"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    onClick={handleProcessSelected}
+                    className="px-6 py-3 bg-white text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-bold flex items-center gap-2 shadow-lg"
+                  >
+                    <CheckCircle size={20} />
+                    Processa {selectedIds.length} Allegato{selectedIds.length !== 1 ? 'i' : ''}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Modal Anteprima */}
