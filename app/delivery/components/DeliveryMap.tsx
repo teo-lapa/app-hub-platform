@@ -267,21 +267,14 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
   return (
     <div className="h-full w-full relative">
       <style dangerouslySetInnerHTML={{__html: `
-        /* Forza il colore del pulsante di chiusura InfoWindow a nero */
+        /* Forza il colore del pulsante di chiusura InfoWindow a nero - SOLO pulsante Close */
         .gm-ui-hover-effect {
           opacity: 1 !important;
         }
         .gm-ui-hover-effect > img {
           filter: brightness(0) !important;
         }
-        /* Stile alternativo per pulsante chiusura */
-        .gm-style-iw-c button {
-          background-color: rgba(0, 0, 0, 0.1) !important;
-        }
-        .gm-style-iw-c button img {
-          filter: brightness(0) invert(0) !important;
-        }
-        /* Assicura che il pulsante sia visibile */
+        /* Assicura che il pulsante Close sia visibile - target specifico */
         .gm-style-iw button[title="Close"] {
           opacity: 1 !important;
           background: rgba(255, 255, 255, 0.9) !important;
