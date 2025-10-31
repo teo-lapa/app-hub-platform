@@ -99,6 +99,7 @@ export default function DeliveryPage() {
   const [isRecordingPartial, setIsRecordingPartial] = useState(false);
   const [audioRecorder, setAudioRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [partialProductsList, setPartialProductsList] = useState<string[]>([]);
   const [recordingTime, setRecordingTime] = useState(0);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -920,24 +921,34 @@ export default function DeliveryPage() {
 
   // Controlla se ci sono prodotti non scaricati completamente
   function handleCheckPartialDelivery() {
-    const hasPartialProducts = scaricoProducts.some(p => {
+    // Trova tutti i prodotti con problemi
+    const problemProducts: string[] = [];
+
+    scaricoProducts.forEach(p => {
       const delivered = p.delivered || 0;
       const requested = p.qty || 0;
-      return delivered > 0 && delivered < requested;
+
+      // Prodotto NON scaricato per niente
+      if (delivered === 0 && requested > 0) {
+        problemProducts.push(`${p.name} - NON SCARICATO (richiesto: ${requested})`);
+      }
+      // Prodotto scaricato PARZIALMENTE (meno del richiesto)
+      else if (delivered > 0 && delivered < requested) {
+        problemProducts.push(`${p.name} - PARZIALE (scaricato: ${delivered}, richiesto: ${requested})`);
+      }
+      // Prodotto scaricato IN PIÙ (più del richiesto)
+      else if (delivered > requested) {
+        problemProducts.push(`${p.name} - IN PIÙ (scaricato: ${delivered}, richiesto: ${requested})`);
+      }
     });
 
-    const hasUndeliveredProducts = scaricoProducts.some(p => {
-      const delivered = p.delivered || 0;
-      const requested = p.qty || 0;
-      return delivered === 0 && requested > 0;
-    });
-
-    // Se ci sono prodotti non completamente scaricati, chiedi giustificazione
-    if (hasPartialProducts || hasUndeliveredProducts) {
-      console.log('⚠️ [PARTIAL DELIVERY] Rilevati prodotti non completamente scaricati');
+    // Se ci sono prodotti con problemi, chiedi giustificazione
+    if (problemProducts.length > 0) {
+      console.log('⚠️ [PARTIAL DELIVERY] Rilevati prodotti con problemi:', problemProducts);
+      setPartialProductsList(problemProducts);
       setShowPartialJustificationModal(true);
     } else {
-      // Tutto scaricato, procedi normale
+      // Tutto perfetto, procedi normale
       setShowCompletionOptionsModal(true);
     }
   }
@@ -2282,10 +2293,22 @@ export default function DeliveryPage() {
                 </div>
               </div>
 
-              <p className="text-sm text-gray-700 mb-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
-                <strong>Attenzione:</strong> Non hai scaricato tutti i prodotti.
-                Devi fornire un motivo (audio O testo) per procedere.
-              </p>
+              <div className="text-sm text-gray-700 mb-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                <p className="mb-2">
+                  <strong>Attenzione:</strong> Non hai scaricato correttamente tutti i prodotti.
+                  Devi fornire un motivo (audio O testo) per procedere.
+                </p>
+                {partialProductsList.length > 0 && (
+                  <div className="mt-3 bg-white p-2 rounded border border-orange-300">
+                    <p className="font-semibold text-orange-700 mb-1">Prodotti con problemi:</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs">
+                      {partialProductsList.map((product, idx) => (
+                        <li key={idx} className="text-gray-800">{product}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
 
               {/* Opzione 1: Registrazione Audio */}
               <div className="mb-6">
