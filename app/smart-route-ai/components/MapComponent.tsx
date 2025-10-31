@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-polylinedecorator';
+import '../leaflet-extensions';
 
 // Config deposito LAPA
 const DEPOT = {

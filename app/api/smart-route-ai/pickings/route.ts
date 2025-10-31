@@ -1,108 +1,115 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { callOdoo } from '@/lib/odoo';
 
+const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+
+export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
-const DEPOT = {
-  lat: 47.5168872,
-  lng: 8.5971149
-};
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const { dateFrom, dateTo } = await request.json();
 
-    if (!dateFrom || !dateTo) {
+    const cookieStore = cookies();
+    const sessionId = cookieStore.get('odoo_session_id')?.value;
+
+    if (!sessionId) {
       return NextResponse.json({
-        error: 'dateFrom and dateTo are required'
-      }, { status: 400 });
+        success: false,
+        error: 'Non autenticato'
+      }, { status: 401 });
     }
 
-    const cookieStore = cookies();
+    // Search for stock.picking (WH/PICK)
+    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw/stock.picking/search_read`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'stock.picking',
+          method: 'search_read',
+          args: [[
+            ['picking_type_code', '=', 'outgoing'],
+            ['state', 'in', ['confirmed', 'assigned', 'waiting']],
+            ['scheduled_date', '>=', dateFrom + ' 00:00:00'],
+            ['scheduled_date', '<=', dateTo + ' 23:59:59']
+          ]],
+          kwargs: {
+            fields: [
+              'id', 'name', 'partner_id', 'partner_latitude', 'partner_longitude',
+              'scheduled_date', 'state', 'move_ids_without_package'
+            ],
+            limit: 500
+          }
+        },
+        id: Date.now(),
+      }),
+    });
 
-    // Build domain for WH/PICK filtering
-    const domain = [
-      ['name', 'like', 'WH/PICK'],
-      ['scheduled_date', '>=', `${dateFrom} 00:00:00`],
-      ['scheduled_date', '<=', `${dateTo} 23:59:59`],
-      ['state', 'in', ['assigned', 'confirmed', 'waiting']]
-    ];
+    if (!response.ok) {
+      throw new Error(`Errore HTTP: ${response.status}`);
+    }
 
-    const fields = [
-      'id',
-      'name',
-      'partner_id',
-      'scheduled_date',
-      'weight',
-      'picking_type_id',
-      'state',
-      'move_ids',
-      'user_id',
-      'driver_id',
-      'vehicle_id'
-    ];
+    const data = await response.json();
 
-    // Load pickings from Odoo
-    const pickings = await callOdoo(
-      cookieStore,
-      'stock.picking',
-      'search_read',
-      [],
-      {
-        domain,
-        fields,
-        limit: 2000
-      }
-    );
+    if (data.error) {
+      throw new Error(data.error.data?.message || 'Errore Odoo');
+    }
 
-    // Process pickings and get coordinates
-    const processedPickings: any[] = [];
+    const pickings = [];
     let withCoordinates = 0;
 
-    for (const picking of pickings) {
-      const partnerId = picking.partner_id ? picking.partner_id[0] : null;
+    for (const picking of (data.result || [])) {
+      // Calculate total weight from moves
+      let totalWeight = 0;
+      if (picking.move_ids_without_package && picking.move_ids_without_package.length > 0) {
+        // Fetch move lines to get weight
+        const movesResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw/stock.move/read`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': `session_id=${sessionId}`,
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {
+              model: 'stock.move',
+              method: 'read',
+              args: [picking.move_ids_without_package, ['product_uom_qty', 'product_id']],
+              kwargs: {}
+            },
+            id: Date.now(),
+          }),
+        });
 
-      if (!partnerId) continue;
-
-      // Get partner details with coordinates
-      const partners = await callOdoo(
-        cookieStore,
-        'res.partner',
-        'search_read',
-        [],
-        {
-          domain: [['id', '=', partnerId]],
-          fields: ['id', 'name', 'street', 'city', 'partner_latitude', 'partner_longitude'],
-          limit: 1
+        if (movesResponse.ok) {
+          const movesData = await movesResponse.json();
+          if (movesData.result) {
+            totalWeight = movesData.result.reduce((sum: number, move: any) => {
+              return sum + (move.product_uom_qty || 0);
+            }, 0);
+          }
         }
-      );
+      }
 
-      if (partners && partners.length > 0) {
-        const partner = partners[0];
-        let lat = partner.partner_latitude || null;
-        let lng = partner.partner_longitude || null;
-
-        // If no coordinates, generate random nearby for testing
-        if (!lat || !lng) {
-          lat = DEPOT.lat + (Math.random() - 0.5) * 0.3;
-          lng = DEPOT.lng + (Math.random() - 0.5) * 0.3;
-        } else {
-          withCoordinates++;
-        }
-
-        // Calculate weight from picking or randomize for testing
-        const weight = picking.weight || Math.floor(Math.random() * 200) + 50;
-
-        processedPickings.push({
+      // Only include pickings with coordinates
+      if (picking.partner_latitude && picking.partner_longitude) {
+        withCoordinates++;
+        pickings.push({
           id: picking.id,
           name: picking.name,
-          partnerId: partnerId,
-          partnerName: partner.name,
-          address: `${partner.street || ''} ${partner.city || ''}`.trim() || 'Indirizzo non disponibile',
-          lat: lat,
-          lng: lng,
-          weight: weight,
+          partnerId: picking.partner_id ? picking.partner_id[0] : 0,
+          partnerName: picking.partner_id ? picking.partner_id[1] : 'Sconosciuto',
+          address: picking.partner_id ? picking.partner_id[1] : '',
+          lat: picking.partner_latitude,
+          lng: picking.partner_longitude,
+          weight: totalWeight,
           scheduledDate: picking.scheduled_date,
           state: picking.state
         });
@@ -110,16 +117,18 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      pickings: processedPickings,
-      withCoordinates: withCoordinates,
-      total: processedPickings.length
+      success: true,
+      pickings,
+      withCoordinates
     });
 
   } catch (error: any) {
-    console.error('Error loading pickings:', error);
+    console.error('Error fetching pickings:', error);
     return NextResponse.json({
-      error: error.message,
-      pickings: []
+      success: false,
+      error: error.message || 'Errore caricamento picking',
+      pickings: [],
+      withCoordinates: 0
     }, { status: 500 });
   }
 }

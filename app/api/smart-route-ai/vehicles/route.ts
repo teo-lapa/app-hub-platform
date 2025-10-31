@@ -1,161 +1,78 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { callOdoo } from '@/lib/odoo';
 
+const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+
+export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
-const VEHICLE_CATEGORY = "Mezzi di trasporto refrigerati";
-const DEFAULT_CAPACITY = 1500;
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const cookieStore = cookies();
-    let vehicles: any[] = [];
+    const sessionId = cookieStore.get('odoo_session_id')?.value;
 
-    // Step 1: Try to find vehicles by category
-    try {
-      const categories = await callOdoo(
-        cookieStore,
-        'fleet.vehicle.model.category',
-        'search_read',
-        [],
-        {
-          domain: [['name', 'ilike', VEHICLE_CATEGORY]],
-          fields: ['id', 'name'],
-          limit: 10
-        }
-      );
+    if (!sessionId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Non autenticato'
+      }, { status: 401 });
+    }
 
-      if (categories && categories.length > 0) {
-        // Search vehicles by category
-        vehicles = await callOdoo(
-          cookieStore,
-          'fleet.vehicle',
-          'search_read',
-          [],
-          {
-            domain: [['model_id.category_id', '=', categories[0].id]],
-            fields: ['id', 'name', 'license_plate', 'model_id', 'driver_id', 'tag_ids'],
+    // Fetch vehicles from Odoo (fleet.vehicle model)
+    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw/fleet.vehicle/search_read`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'fleet.vehicle',
+          method: 'search_read',
+          args: [[]],
+          kwargs: {
+            fields: ['id', 'name', 'license_plate', 'driver_id', 'driver_employee_id'],
             limit: 100
           }
-        );
-      }
-    } catch (err) {
-      console.log('Category search failed, trying tags...');
+        },
+        id: Date.now(),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Errore HTTP: ${response.status}`);
     }
 
-    // Step 2: If no vehicles found, try tags
-    if (vehicles.length === 0) {
-      try {
-        const tags = await callOdoo(
-          cookieStore,
-          'fleet.vehicle.tag',
-          'search_read',
-          [],
-          {
-            domain: [['name', 'ilike', VEHICLE_CATEGORY]],
-            fields: ['id', 'name'],
-            limit: 10
-          }
-        );
+    const data = await response.json();
 
-        if (tags && tags.length > 0) {
-          vehicles = await callOdoo(
-            cookieStore,
-            'fleet.vehicle',
-            'search_read',
-            [],
-            {
-              domain: [['tag_ids', 'in', [tags[0].id]]],
-              fields: ['id', 'name', 'license_plate', 'model_id', 'driver_id'],
-              limit: 100
-            }
-          );
-        }
-      } catch (err) {
-        console.log('Tag search failed, loading all vehicles with drivers...');
-      }
+    if (data.error) {
+      throw new Error(data.error.data?.message || 'Errore Odoo');
     }
 
-    // Step 3: If still no vehicles, load all vehicles WITH drivers
-    if (vehicles.length === 0) {
-      vehicles = await callOdoo(
-        cookieStore,
-        'fleet.vehicle',
-        'search_read',
-        [],
-        {
-          domain: [['driver_id', '!=', false]], // Only vehicles with driver
-          fields: ['id', 'name', 'license_plate', 'model_id', 'driver_id'],
-          limit: 30
-        }
-      );
-    }
-
-    // Step 4: Process vehicles and find hr.employee
-    const processedVehicles: any[] = [];
-
-    for (const v of vehicles.filter((v: any) => v.driver_id && v.driver_id[0])) {
-      let employeeId = null;
-
-      // Search hr.employee linked to res.partner driver
-      try {
-        const employees = await callOdoo(
-          cookieStore,
-          'hr.employee',
-          'search_read',
-          [],
-          {
-            domain: [['work_contact_id', '=', v.driver_id[0]]],
-            fields: ['id', 'name'],
-            limit: 1
-          }
-        );
-
-        if (employees && employees.length > 0) {
-          employeeId = employees[0].id;
-        } else {
-          // Skip vehicle if no employee found
-          continue;
-        }
-      } catch (err) {
-        console.error(`Error finding employee for driver ${v.driver_id[1]}:`, err);
-        continue;
-      }
-
-      // Extract short vehicle name (first word only, max 10 chars)
-      let shortName = v.name.split(' ')[0];
-      if (shortName.length > 10) shortName = shortName.substring(0, 10);
-
-      // Extract driver name (remove company prefix if present)
-      let driverName = v.driver_id[1];
-      if (driverName.includes(',')) {
-        const parts = driverName.split(',');
-        driverName = parts[1] ? parts[1].trim() : parts[0].trim();
-      }
-
-      processedVehicles.push({
-        id: v.id,
-        name: `${shortName} ${v.license_plate || ''}`.trim(),
-        fullName: v.name,
-        plate: v.license_plate || 'N/D',
-        driver: driverName,
-        driverId: v.driver_id[0],
-        employeeId: employeeId,
-        capacity: DEFAULT_CAPACITY,
-        selected: false
-      });
-    }
+    // Transform vehicles data
+    const vehicles = (data.result || []).map((vehicle: any) => ({
+      id: vehicle.id,
+      name: vehicle.name || 'Veicolo senza nome',
+      plate: vehicle.license_plate || 'N/A',
+      driver: vehicle.driver_id ? vehicle.driver_id[1] : 'Nessun autista',
+      driverId: vehicle.driver_id ? vehicle.driver_id[0] : null,
+      employeeId: vehicle.driver_employee_id ? vehicle.driver_employee_id[0] : null,
+      capacity: 1500, // Default capacity
+      selected: true // Default selected
+    }));
 
     return NextResponse.json({
-      vehicles: processedVehicles,
-      count: processedVehicles.length
+      success: true,
+      vehicles
     });
 
   } catch (error: any) {
-    console.error('Error loading vehicles:', error);
+    console.error('Error fetching vehicles:', error);
     return NextResponse.json({
-      error: error.message,
+      success: false,
+      error: error.message || 'Errore caricamento veicoli',
       vehicles: []
     }, { status: 500 });
   }

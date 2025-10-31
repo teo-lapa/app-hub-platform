@@ -1,81 +1,38 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
 
-export const dynamic = 'force-dynamic';
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = cookies();
-
-    // Check if user is authenticated by looking for session cookie
-    const sessionCookie = cookieStore.get('session_id');
-
-    if (!sessionCookie) {
+    const token = request.cookies.get('token')?.value;
+    
+    if (!token) {
       return NextResponse.json({
         connected: false,
-        userId: null,
-        message: 'No session found'
-      });
+        userId: null
+      }, { status: 200 });
     }
 
-    // Try to get user info from Odoo
-    try {
-      const odooUrl = process.env.ODOO_URL || 'https://lapa.odoo.com';
-      const response = await fetch(`${odooUrl}/web/session/get_session_info`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': `session_id=${sessionCookie.value}`
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {},
-          id: Math.floor(Math.random() * 1e9)
-        })
-      });
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    const decoded = jwt.verify(token, jwtSecret) as any;
 
-      if (!response.ok) {
-        return NextResponse.json({
-          connected: false,
-          userId: null,
-          message: 'Failed to get session info'
-        });
-      }
-
-      const data = await response.json();
-
-      if (data.result && data.result.uid) {
-        return NextResponse.json({
-          connected: true,
-          userId: data.result.uid,
-          sessionId: data.result.session_id,
-          username: data.result.username || null,
-          companyId: data.result.company_id || null
-        });
-      }
-
+    if (decoded && decoded.id) {
       return NextResponse.json({
-        connected: false,
-        userId: null,
-        message: 'No user ID in session'
-      });
-
-    } catch (error: any) {
-      console.error('Error checking Odoo session:', error);
-      return NextResponse.json({
-        connected: false,
-        userId: null,
-        message: 'Error checking session'
-      });
+        connected: true,
+        userId: decoded.id,
+        userName: decoded.name || decoded.email || 'User'
+      }, { status: 200 });
     }
 
+    return NextResponse.json({
+      connected: false,
+      userId: null
+    }, { status: 200 });
   } catch (error: any) {
-    console.error('Error in session API:', error);
+    console.error('Session check error:', error);
     return NextResponse.json({
       connected: false,
       userId: null,
       error: error.message
-    });
+    }, { status: 200 });
   }
 }

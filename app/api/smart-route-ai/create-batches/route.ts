@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { callOdoo } from '@/lib/odoo';
 
+const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+
+export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
 interface Picking {
@@ -36,139 +38,80 @@ interface Route {
   geoName?: string;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const { routes } = await request.json();
 
-    if (!routes || !Array.isArray(routes) || routes.length === 0) {
+    const cookieStore = cookies();
+    const sessionId = cookieStore.get('odoo_session_id')?.value;
+
+    if (!sessionId) {
       return NextResponse.json({
-        error: 'No routes provided'
-      }, { status: 400 });
+        success: false,
+        error: 'Non autenticato'
+      }, { status: 401 });
     }
 
-    const cookieStore = cookies();
-    const createdBatches: any[] = [];
+    let created = 0;
 
-    // Get current user ID for batch assignment
-    let userId: number | null = null;
-    try {
-      const odooUrl = process.env.ODOO_URL || 'https://lapa.odoo.com';
-      const sessionCookie = cookieStore.get('session_id');
-
-      if (sessionCookie) {
-        const sessionResponse = await fetch(`${odooUrl}/web/session/get_session_info`, {
+    for (const route of routes as Route[]) {
+      try {
+        // Create batch in Odoo
+        const batchResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw/stock.picking.batch/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Cookie': `session_id=${sessionCookie.value}`
+            'Cookie': `session_id=${sessionId}`,
           },
           body: JSON.stringify({
             jsonrpc: '2.0',
             method: 'call',
-            params: {},
-            id: Math.floor(Math.random() * 1e9)
-          })
+            params: {
+              model: 'stock.picking.batch',
+              method: 'create',
+              args: [{
+                name: route.geoName || `Batch ${route.vehicle.name}`,
+                user_id: route.vehicle.employeeId || false,
+                picking_ids: [[6, 0, route.pickings.map(p => p.id)]]
+              }],
+              kwargs: {}
+            },
+            id: Date.now(),
+          }),
         });
 
-        if (sessionResponse.ok) {
-          const sessionData = await sessionResponse.json();
-          if (sessionData.result && sessionData.result.uid) {
-            userId = sessionData.result.uid;
-          }
-        }
-      }
-    } catch (err) {
-      console.log('Could not get user ID, proceeding without it');
-    }
-
-    // Create batches for each route
-    for (let i = 0; i < routes.length; i++) {
-      const route: Route = routes[i];
-      const pickingIds = route.pickings.map((p: Picking) => p.id);
-
-      // Generate batch name with geographic zone
-      const batchName = `${route.geoName || `Percorso ${i + 1}`} - ${new Date().toLocaleDateString('it-IT')}`;
-
-      // Prepare batch data
-      const batchData: any = {
-        name: batchName,
-        picking_ids: [[6, 0, pickingIds]], // Odoo many2many syntax: [(6, 0, [ids])]
-      };
-
-      // Add custom fields for driver and vehicle if employee ID exists
-      if (route.vehicle.employeeId) {
-        batchData.x_studio_autista_del_giro = route.vehicle.employeeId; // hr.employee ID
-      }
-
-      if (route.vehicle.id) {
-        batchData.x_studio_auto_del_giro = route.vehicle.id; // fleet.vehicle ID
-      }
-
-      // Add user ID if available
-      if (userId) {
-        batchData.user_id = userId;
-      }
-
-      try {
-        // Create batch in Odoo
-        const batchId = await callOdoo(
-          cookieStore,
-          'stock.picking.batch',
-          'create',
-          [[batchData]],
-          {}
-        );
-
-        console.log(`✅ Created batch "${batchName}" with ${pickingIds.length} pickings`);
-
-        createdBatches.push({
-          id: batchId,
-          name: batchName,
-          vehicle: route.vehicle.name,
-          pickings: pickingIds.length
-        });
-
-        // Assign driver and vehicle to individual pickings
-        if (route.vehicle.employeeId && route.vehicle.id) {
-          for (const pickingId of pickingIds) {
-            try {
-              await callOdoo(
-                cookieStore,
-                'stock.picking',
-                'write',
-                [[pickingId], {
-                  driver_id: route.vehicle.employeeId,  // hr.employee ID
-                  vehicle_id: route.vehicle.id         // fleet.vehicle ID
-                }],
-                {}
-              );
-
-              console.log(`✅ Updated picking ${pickingId} with driver and vehicle`);
-            } catch (err: any) {
-              console.error(`❌ Error updating picking ${pickingId}:`, err.message);
-            }
-          }
+        if (!batchResponse.ok) {
+          console.error(`Failed to create batch for ${route.vehicle.name}`);
+          continue;
         }
 
-      } catch (err: any) {
-        console.error(`❌ Error creating batch "${batchName}":`, err.message);
-        return NextResponse.json({
-          error: `Error creating batch: ${err.message}`,
-          created: createdBatches.length
-        }, { status: 500 });
+        const batchData = await batchResponse.json();
+
+        if (batchData.error) {
+          console.error(`Odoo error creating batch: ${batchData.error.data?.message}`);
+          continue;
+        }
+
+        if (batchData.result) {
+          created++;
+          console.log(`Created batch ${batchData.result} for ${route.vehicle.name}`);
+        }
+
+      } catch (error: any) {
+        console.error(`Error creating batch for ${route.vehicle.name}:`, error);
       }
     }
 
     return NextResponse.json({
-      created: createdBatches.length,
-      batches: createdBatches,
-      success: true
+      success: true,
+      created
     });
 
   } catch (error: any) {
     console.error('Error creating batches:', error);
     return NextResponse.json({
-      error: error.message,
+      success: false,
+      error: error.message || 'Errore creazione batch',
       created: 0
     }, { status: 500 });
   }
