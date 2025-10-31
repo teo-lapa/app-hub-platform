@@ -186,7 +186,7 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
 
       const infoWindow = new google.maps.InfoWindow({
         content: `
-          <div style="padding: 8px; min-width: 180px; max-width: 240px;">
+          <div style="padding: 8px; min-width: 200px; max-width: 280px;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
               <span style="font-size: 11px; font-weight: 600; color: #666;">#${index + 1}</span>
               ${statusBadge}
@@ -194,15 +194,38 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
             <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px; color: #1f2937;">${delivery.customerName}</div>
             ${(delivery as any).address ? `<div style="font-size: 11px; color: #6b7280; margin-bottom: 6px;">📍 ${(delivery as any).address}</div>` : ''}
             ${(delivery as any).note ? `<div style="font-size: 11px; color: #f59e0b; background: #fffbeb; padding: 4px 6px; border-radius: 4px; margin-top: 4px; border-left: 2px solid #f59e0b;"><strong>Nota:</strong> ${(delivery as any).note}</div>` : ''}
+
+            <div style="display: flex; gap: 6px; margin-top: 12px;">
+              <button
+                onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${delivery.lat},${delivery.lng}', '_blank')"
+                style="flex: 1; background: #3b82f6; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;"
+              >
+                🧭 Naviga
+              </button>
+              <button
+                id="scarico-btn-${delivery.id}"
+                style="flex: 1; background: #10b981; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;"
+              >
+                📦 Scarico
+              </button>
+            </div>
           </div>
         `
       });
 
       marker.addListener('click', () => {
         infoWindow.open(googleMapRef.current!, marker);
-        if (onMarkerClick) {
-          onMarkerClick(delivery);
-        }
+
+        // Dopo che l'InfoWindow è aperta, aggiungi listener al pulsante scarico
+        google.maps.event.addListenerOnce(infoWindow, 'domready', () => {
+          const scaricoBtn = document.getElementById(`scarico-btn-${delivery.id}`);
+          if (scaricoBtn && onMarkerClick) {
+            scaricoBtn.addEventListener('click', () => {
+              onMarkerClick(delivery);
+              infoWindow.close();
+            });
+          }
+        });
       });
 
       markersRef.current.push(marker);
