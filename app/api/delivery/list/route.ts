@@ -302,7 +302,7 @@ export async function GET(request: NextRequest) {
 
       // Recupera il responsabile vendite dal sale order
       const saleOrderId = picking.sale_id?.[0];
-      const saleOrder = saleOrderId ? saleOrderMap.get(saleOrderId) : null;
+      const saleOrder: any = saleOrderId ? saleOrderMap.get(saleOrderId) : null;
       const salesperson = saleOrder?.user_id?.[1] || null;
 
       deliveries.push({
