@@ -266,25 +266,6 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
 
   return (
     <div className="h-full w-full relative">
-      <style dangerouslySetInnerHTML={{__html: `
-        /* Forza il colore del pulsante di chiusura InfoWindow a nero - SOLO pulsante Close */
-        .gm-ui-hover-effect {
-          opacity: 1 !important;
-        }
-        .gm-ui-hover-effect > img {
-          filter: brightness(0) !important;
-        }
-        /* Assicura che il pulsante Close sia visibile - target specifico */
-        .gm-style-iw button[title="Close"] {
-          opacity: 1 !important;
-          background: rgba(255, 255, 255, 0.9) !important;
-          border-radius: 2px !important;
-          padding: 4px !important;
-        }
-        .gm-style-iw button[title="Close"] img {
-          filter: brightness(0) saturate(100%) invert(0%) !important;
-        }
-      `}} />
       <div ref={mapRef} className="h-full w-full" />
       {!mapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
