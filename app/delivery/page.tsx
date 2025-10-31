@@ -2570,7 +2570,12 @@ export default function DeliveryPage() {
                 </button>
                 <button
                   onClick={calcConfirm}
-                  className="h-16 bg-green-600 text-white rounded-lg font-bold text-lg hover:bg-green-700"
+                  disabled={calcValue === '0' || parseFloat(calcValue) === 0}
+                  className={`h-16 rounded-lg font-bold text-lg transition-all ${
+                    calcValue === '0' || parseFloat(calcValue) === 0
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700 cursor-pointer'
+                  }`}
                 >
                   ✓ OK
                 </button>
