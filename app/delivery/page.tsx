@@ -2519,30 +2519,39 @@ export default function DeliveryPage() {
                 {calcValue}
               </div>
 
-              <div className="grid grid-cols-4 gap-3">
-                {['7','8','9','←','4','5','6','C','1','2','3','.','0','00'].map(btn => (
+              <div className="grid grid-cols-3 gap-3">
+                {['1','2','3','4','5','6','7','8','9','.','0','←'].map(btn => (
                   <button
                     key={btn}
                     onClick={() => {
-                      if (btn === 'C') calcClear();
-                      else if (btn === '←') calcBackspace();
+                      if (btn === '←') calcBackspace();
                       else if (btn === '.') calcPressDecimal();
                       else calcPress(btn);
                     }}
-                    className="h-14 bg-gray-200 hover:bg-gray-300 rounded-lg font-bold text-lg text-gray-900"
+                    className="h-16 bg-gray-200 hover:bg-gray-300 rounded-lg font-bold text-xl text-gray-900"
                   >
                     {btn}
                   </button>
                 ))}
                 <button
                   onClick={calcCancel}
-                  className="col-span-2 h-14 bg-red-500 text-white rounded-lg font-bold text-lg hover:bg-red-600"
+                  className="h-16 bg-red-500 text-white rounded-lg font-bold text-lg hover:bg-red-600"
                 >
                   ✕ Annulla
                 </button>
                 <button
+                  onClick={() => {
+                    setCalcValue('0');
+                    setCalcProductId(null);
+                    setCalcProductName('');
+                  }}
+                  className="h-16 bg-gray-400 text-white rounded-lg font-bold text-lg hover:bg-gray-500"
+                >
+                  C
+                </button>
+                <button
                   onClick={calcConfirm}
-                  className="col-span-2 h-14 bg-green-600 text-white rounded-lg font-bold text-lg hover:bg-green-700"
+                  className="h-16 bg-green-600 text-white rounded-lg font-bold text-lg hover:bg-green-700"
                 >
                   ✓ OK
                 </button>
