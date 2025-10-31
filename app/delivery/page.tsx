@@ -1824,7 +1824,7 @@ export default function DeliveryPage() {
             <DeliveryMap
               deliveries={deliveries}
               currentPosition={currentPosition}
-              onMarkerClick={openDelivery}
+              onMarkerClick={openScaricoView}
             />
           </div>
         )}
