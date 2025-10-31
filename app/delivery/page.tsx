@@ -2540,11 +2540,7 @@ export default function DeliveryPage() {
                   ✕ Annulla
                 </button>
                 <button
-                  onClick={() => {
-                    setCalcValue('0');
-                    setCalcProductId(null);
-                    setCalcProductName('');
-                  }}
+                  onClick={calcClear}
                   className="h-16 bg-gray-400 text-white rounded-lg font-bold text-lg hover:bg-gray-500"
                 >
                   C
