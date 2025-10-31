@@ -69,6 +69,7 @@ export default function DeliveryPage() {
   // Estados calcolatrice
   const [calcValue, setCalcValue] = useState('0');
   const [calcProductId, setCalcProductId] = useState<number | null>(null);
+  const [calcProductName, setCalcProductName] = useState<string>('');
   const [calcMaxQty, setCalcMaxQty] = useState(0);
 
   // Estados allegati
@@ -459,8 +460,9 @@ export default function DeliveryPage() {
   }, [scaricoProducts]);
 
   // ==================== CALCULATOR ====================
-  function openCalculator(productId: number, maxQty: number) {
+  function openCalculator(productId: number, maxQty: number, productName: string) {
     setCalcProductId(productId);
+    setCalcProductName(productName);
     setCalcMaxQty(maxQty);
     setCalcValue('0');
     setShowCalculatorModal(true);
@@ -1917,7 +1919,7 @@ export default function DeliveryPage() {
                               <span className="font-bold text-base">{product.delivered}</span>
                             </div>
                             <button
-                              onClick={(e) => {e.stopPropagation(); !isCompleted && openCalculator(product.id, product.qty);}}
+                              onClick={(e) => {e.stopPropagation(); !isCompleted && openCalculator(product.id, product.qty, product.name);}}
                               disabled={isCompleted}
                               className="w-full py-1 text-xs rounded font-semibold"
                               style={{
@@ -2509,6 +2511,10 @@ export default function DeliveryPage() {
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-xl p-6 max-w-md w-full"
             >
+              <div className="mb-4 text-center">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Quantità Prelevata</h3>
+                <p className="text-sm text-gray-600 break-words">{calcProductName}</p>
+              </div>
               <div className="text-3xl font-bold text-right mb-6 p-4 bg-gray-100 rounded-lg text-gray-900">
                 {calcValue}
               </div>
