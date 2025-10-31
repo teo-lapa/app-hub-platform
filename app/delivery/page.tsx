@@ -1755,6 +1755,14 @@ export default function DeliveryPage() {
                   </a>
                 )}
 
+                {/* Salesperson */}
+                {delivery.salesperson && (
+                  <div className="text-sm text-gray-600 mb-2 bg-blue-50 p-2 rounded-lg border border-blue-200">
+                    <span className="font-semibold text-blue-700">👤 Responsabile Vendite:</span> {delivery.salesperson}
+                    <div className="text-xs text-gray-500 mt-1">Per problemi chiamare il responsabile di questo cliente</div>
+                  </div>
+                )}
+
                 {/* Order info */}
                 <div className="text-sm text-gray-500 mb-2">
                   Ordine: <span className="font-medium">{delivery.origin || delivery.name}</span>

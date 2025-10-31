@@ -23,6 +23,7 @@ export interface Delivery {
   amount_total?: number;
   payment_status?: 'paid' | 'to_pay' | 'partial';
   sale_id?: [number, string];
+  salesperson?: string | null;
   partner_street?: string;
   partner_city?: string;
   partner_zip?: string;

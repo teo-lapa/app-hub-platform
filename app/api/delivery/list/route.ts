@@ -179,6 +179,20 @@ export async function GET(request: NextRequest) {
       }
     );
 
+    // Carica sale orders per recuperare il responsabile vendite
+    const saleIdsSet = new Set(pickings.map((p: any) => p.sale_id?.[0]).filter(Boolean));
+    const saleIds = Array.from(saleIdsSet);
+    const saleOrders = saleIds.length > 0 ? await callOdoo(
+      cookies,
+      'sale.order',
+      'read',
+      [saleIds],
+      {
+        fields: ['id', 'user_id']
+      }
+    ) : [];
+    const saleOrderMap = new Map(saleOrders.map((so: any) => [so.id, so]));
+
     // IMPORTANTE: Carica stock.move.line (operazioni dettagliate) invece di stock.move
     // Questo permette di modificare le quantità effettive (qty_done)
     const allMoveLines = allPickingIds.length > 0 ? await callOdoo(
@@ -286,6 +300,11 @@ export async function GET(request: NextRequest) {
         };
       });
 
+      // Recupera il responsabile vendite dal sale order
+      const saleOrderId = picking.sale_id?.[0];
+      const saleOrder = saleOrderId ? saleOrderMap.get(saleOrderId) : null;
+      const salesperson = saleOrder?.user_id?.[1] || null;
+
       deliveries.push({
         id: picking.id,
         name: picking.name,
@@ -312,6 +331,7 @@ export async function GET(request: NextRequest) {
         isBackorder: picking.backorder_id ? true : false,
         completed: picking.state === 'done',
         sale_id: picking.sale_id || null,
+        salesperson: salesperson,
         amount_total: null, // Verrà calcolato dopo la validazione
         payment_status: null // Verrà impostato dopo la validazione
       });
