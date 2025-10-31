@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Reader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .upload-box {
+            background: white;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .upload-box:hover {
+            border-color: #666;
+        }
+
+        .upload-box.drag-over {
+            border-color: #000;
+            background: #f9f9f9;
+        }
+
+        button {
+            background: #000;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .info-card {
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .info-card label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .info-card .value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #000;
+        }
+
+        table, .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 13px;
+        }
+
+        th {
+            background: #000;
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        .error {
+            background: #ffebee;
+            border: 2px solid #ef5350;
+            color: #c62828;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 PDF Reader</h1>
+
+        <div class="upload-box" id="dropZone">
+            <div style="font-size: 48px; margin-bottom: 10px;">📤</div>
+            <div id="uploadText">Clicca o trascina qui il PDF</div>
+        </div>
+        <input type="file" id="fileInput" accept=".pdf">
+        <div style="text-align: center;">
+            <button id="analyzeBtn" disabled>Analizza Fattura</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analisi in corso...</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="results" id="results">
+            <div class="info" id="info"></div>
+            <h3>Prodotti</h3>
+            <div id="productsContainer"></div>
+            <h3 style="margin-top: 30px;">JSON Raw:</h3>
+            <pre id="jsonRaw" style="background:#f5f5f5;padding:20px;border-radius:8px;overflow:auto;font-size:12px;"></pre>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const error = document.getElementById('error');
+        let selectedFile = null;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            selectedFile = file;
+            document.getElementById('uploadText').textContent = `✅ ${file.name}`;
+            analyzeBtn.disabled = false;
+        }
+
+        analyzeBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            results.classList.remove('active');
+            error.classList.remove('active');
+            loading.classList.add('active');
+            analyzeBtn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('pdf', selectedFile);
+
+                const response = await fetch('/analyze-pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Errore');
+                }
+
+                displayResults(result.data);
+
+            } catch (err) {
+                error.textContent = '❌ ' + err.message;
+                error.classList.add('active');
+            } finally {
+                loading.classList.remove('active');
+                analyzeBtn.disabled = false;
+            }
+        });
+
+        function displayResults(data) {
+            results.classList.add('active');
+
+            // Mostra JSON raw
+            document.getElementById('jsonRaw').textContent = JSON.stringify(data, null, 2);
+
+            const info = document.getElementById('info');
+            info.innerHTML = `
+                <div class="info-card">
+                    <label>Fornitore</label>
+                    <div class="value">${data.fornitore || 'N/A'}</div>
+                </div>
+                <div class="info-card">
+                    <label>Numero Fattura</label>
+                    <div class="value">${data.numero_fattura || 'N/A'}</div>
+                </div>
+                <div class="info-card">
+                    <label>Data</label>
+                    <div class="value">${data.data_fattura || 'N/A'}</div>
+                </div>
+            `;
+
+            const container = document.getElementById('productsContainer');
+            container.innerHTML = '';
+
+            if (data.prodotti && data.prodotti.length > 0) {
+                // Tabella semplice
+                let tableHTML = '<table class="products-table"><thead><tr>';
+                tableHTML += '<th>Codice</th><th>Nome</th><th>Lotto</th><th>Scadenza</th><th>UM</th><th>Quantità</th>';
+                tableHTML += '</tr></thead><tbody>';
+
+                data.prodotti.forEach(p => {
+                    tableHTML += '<tr>';
+                    tableHTML += `<td><strong>${p.codice || 'N/A'}</strong></td>`;
+                    tableHTML += `<td>${p.nome || 'N/A'}</td>`;
+                    tableHTML += `<td>${p.lotto || '-'}</td>`;
+                    tableHTML += `<td>${p.scadenza || '-'}</td>`;
+                    tableHTML += `<td>${p.unita_misura || '-'}</td>`;
+                    tableHTML += `<td><strong>${p.quantita || 0}</strong></td>`;
+                    tableHTML += '</tr>';
+                });
+
+                tableHTML += '</tbody></table>';
+                container.innerHTML = tableHTML;
+            } else {
+                container.innerHTML = '<p style="color:#999;">Nessun prodotto trovato</p>';
+            }
+        }
+    </script>
+</body>
+</html>
