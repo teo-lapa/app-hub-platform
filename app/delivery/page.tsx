@@ -1609,24 +1609,24 @@ export default function DeliveryPage() {
   return (
     <div className="min-h-[100dvh] bg-gray-50">
       {/* HEADER */}
-      <header className="fixed top-0 left-0 right-0 h-[60px] bg-white border-b border-gray-200 flex items-center px-4 z-50 shadow-sm">
+      <header className="fixed top-0 left-0 right-0 h-[60px] bg-red-600 border-b border-red-700 flex items-center px-4 z-50 shadow-sm">
         <button
           onClick={() => window.location.href = '/'}
-          className="mr-3 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="mr-3 p-2 hover:bg-red-700 rounded-lg transition-colors"
           title="Torna alla Dashboard"
         >
-          <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
         </button>
         <div className="flex-1">
-          <h1 className="text-lg font-semibold text-gray-900">🚚 LAPA Delivery</h1>
+          <h1 className="text-lg font-semibold text-white">🚚 LAPA Delivery</h1>
         </div>
-        <div className="flex items-center gap-3 text-sm text-gray-600">
-          <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+        <div className="flex items-center gap-3 text-sm text-white">
+          <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-yellow-400'}`} />
           <span className="font-medium">{session?.name || 'Driver'}</span>
           {session?.vehicle_name && (
-            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+            <span className="px-3 py-1 bg-white/20 text-white rounded-full text-xs font-semibold">
               {session.vehicle_name}
             </span>
           )}
