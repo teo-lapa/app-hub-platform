@@ -110,10 +110,10 @@ export async function POST(request: NextRequest) {
 
     const products = productsData.result;
 
-    // Recupera ubicazioni per ogni prodotto tramite stock.quant
+    // Recupera ubicazioni INTERNE per ogni prodotto tramite stock.quant
     const productIds = products.map((p: any) => p.id);
 
-    let productLocations: Record<number, string[]> = {};
+    let productLocations: Record<number, Array<{ name: string; qty: number }>> = {};
 
     if (productIds.length > 0) {
       const quantsResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
@@ -146,18 +146,33 @@ export async function POST(request: NextRequest) {
       if (!quantsData.error && quantsData.result) {
         const quants = quantsData.result;
 
-        // Raggruppa ubicazioni per prodotto
+        // Raggruppa ubicazioni INTERNE per prodotto con quantità
         quants.forEach((quant: any) => {
           const productId = quant.product_id[0];
           const locationName = quant.location_id[1];
+          const quantity = quant.quantity;
 
-          if (!productLocations[productId]) {
-            productLocations[productId] = [];
-          }
+          // FILTRO: Solo ubicazioni INTERNE (no WH/Stock, Virtual, Partners, Vendors, etc.)
+          const isInternal = !locationName.includes('WH/') &&
+                           !locationName.includes('Virtual') &&
+                           !locationName.includes('Partners') &&
+                           !locationName.includes('Vendors') &&
+                           !locationName.includes('Customers') &&
+                           !locationName.includes('Inventory adjustment') &&
+                           !locationName.includes('Physical Locations');
 
-          // Aggiungi solo se non è già presente
-          if (!productLocations[productId].includes(locationName)) {
-            productLocations[productId].push(locationName);
+          if (isInternal) {
+            if (!productLocations[productId]) {
+              productLocations[productId] = [];
+            }
+
+            // Cerca se ubicazione già esiste (somma quantità)
+            const existing = productLocations[productId].find(loc => loc.name === locationName);
+            if (existing) {
+              existing.qty += quantity;
+            } else {
+              productLocations[productId].push({ name: locationName, qty: quantity });
+            }
           }
         });
       }

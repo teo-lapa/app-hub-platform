@@ -16,7 +16,7 @@ interface Product {
   description_sale?: string;
   qty_available?: number;
   uom_id?: [number, string];
-  locations?: string[]; // Ubicazioni prodotto dal magazzino
+  locations?: Array<{ name: string; qty: number }>; // Ubicazioni INTERNE con quantità
 }
 
 interface OdooResponse {
@@ -253,8 +253,8 @@ export default function CatalogoLapaPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Pulsanti categorie - SOPRA LA RICERCA */}
-        <div className="mb-4">
+        {/* Pulsanti categorie - LAYOUT FINALE */}
+        <div className="mb-8">
           <div className="max-w-3xl mx-auto">
             <div className="grid grid-cols-5 gap-2">
               <button
@@ -307,29 +307,6 @@ export default function CatalogoLapaPage() {
               >
                 NON FOOD
               </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Barra di ricerca - SOTTO LE CATEGORIE */}
-        <div className="mb-8">
-          <div className="max-w-xl mx-auto">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-slate-400" />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cerca..."
-                className="block w-full pl-10 pr-10 py-3 text-sm bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-              />
-              {isAutoSearching && (
-                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500"></div>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -450,7 +427,7 @@ export default function CatalogoLapaPage() {
                         )}
                       </div>
 
-                      {/* Ubicazioni */}
+                      {/* Ubicazioni INTERNE con quantità */}
                       {product.locations && product.locations.length > 0 && (
                         <div className="text-[9px] mt-1">
                           <div className="text-slate-400 mb-0.5">Ubicazioni:</div>
@@ -458,9 +435,10 @@ export default function CatalogoLapaPage() {
                             {product.locations.map((loc, idx) => (
                               <span
                                 key={idx}
-                                className="inline-block px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-medium border border-blue-500/30"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-medium border border-blue-500/30"
                               >
-                                {loc}
+                                <span>{loc.name}</span>
+                                <span className="text-green-400 font-bold">({loc.qty})</span>
                               </span>
                             ))}
                           </div>
