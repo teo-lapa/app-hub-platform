@@ -183,6 +183,8 @@ export async function POST(request: NextRequest) {
       product.locations = productLocations[product.id] || [];
     });
 
+    console.log(`📍 [UBICAZIONI] Prodotti con ubicazioni:`, products.filter((p: any) => p.locations.length > 0).length);
+
     // Conta totale
     const countResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
       method: 'POST',

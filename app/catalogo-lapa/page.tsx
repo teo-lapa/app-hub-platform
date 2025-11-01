@@ -253,60 +253,59 @@ export default function CatalogoLapaPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Pulsanti categorie - LAYOUT FINALE */}
-        <div className="mb-8">
-          <div className="max-w-3xl mx-auto">
-            <div className="grid grid-cols-5 gap-2">
-              <button
-                onClick={() => handleCategoryClick(null)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  selectedCategory === null
-                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
-                    : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
-                }`}
-              >
-                TUTTO
-              </button>
-              <button
-                onClick={() => handleCategoryClick('SECCO')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  selectedCategory === 'SECCO'
-                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
-                    : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
-                }`}
-              >
-                SECCO
-              </button>
-              <button
-                onClick={() => handleCategoryClick('FRIGO')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  selectedCategory === 'FRIGO'
-                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
-                    : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
-                }`}
-              >
-                FRIGO
-              </button>
-              <button
-                onClick={() => handleCategoryClick('PINGU')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  selectedCategory === 'PINGU'
-                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
-                    : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
-                }`}
-              >
-                PINGU
-              </button>
-              <button
-                onClick={() => handleCategoryClick('NON FOOD')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  selectedCategory === 'NON FOOD'
-                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
-                    : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
-                }`}
-              >
-                NON FOOD
-              </button>
+        {/* Pulsanti categorie - FILA ORIZZONTALE CON SCROLL */}
+        <div className="mb-8 overflow-x-auto">
+          <div className="flex gap-2 px-4 min-w-max">
+            <button
+              onClick={() => handleCategoryClick(null)}
+              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                selectedCategory === null
+                  ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                  : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
+              }`}
+            >
+              TUTTO
+            </button>
+            <button
+              onClick={() => handleCategoryClick('SECCO')}
+              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                selectedCategory === 'SECCO'
+                  ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                  : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
+              }`}
+            >
+              SECCO
+            </button>
+            <button
+              onClick={() => handleCategoryClick('FRIGO')}
+              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                selectedCategory === 'FRIGO'
+                  ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                  : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
+              }`}
+            >
+              FRIGO
+            </button>
+            <button
+              onClick={() => handleCategoryClick('PINGU')}
+              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                selectedCategory === 'PINGU'
+                  ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                  : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
+              }`}
+            >
+              PINGU
+            </button>
+            <button
+              onClick={() => handleCategoryClick('NON FOOD')}
+              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                selectedCategory === 'NON FOOD'
+                  ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                  : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
+              }`}
+            >
+              NON FOOD
+            </button>
             </div>
           </div>
         </div>
