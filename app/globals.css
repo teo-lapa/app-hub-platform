@@ -227,6 +227,10 @@
     padding-bottom: max(env(safe-area-inset-bottom), 16px);
   }
 
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
   /* Mobile navigation */
   .mobile-nav {
     position: fixed;
