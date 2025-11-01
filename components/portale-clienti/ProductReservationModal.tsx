@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Mic, Square, Pause, Play, Trash2, Upload, Image as ImageIcon, Send } from 'lucide-react';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import toast from 'react-hot-toast';
@@ -37,8 +38,14 @@ export function ProductReservationModal({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const {
     isRecording,
@@ -123,9 +130,9 @@ export function ProductReservationModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0" style={{ zIndex: 9999 }}>
       {/* Backdrop */}
       <div
@@ -318,4 +325,6 @@ export function ProductReservationModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
