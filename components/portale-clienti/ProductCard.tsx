@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ShoppingCart, Package, AlertCircle, Tag } from 'lucide-react';
+import { ShoppingCart, Package, AlertCircle, Tag, Bell } from 'lucide-react';
+import { ProductReservationModal, ReservationData } from './ProductReservationModal';
+import toast from 'react-hot-toast';
 
 interface Product {
   id: number;
@@ -27,6 +29,7 @@ interface ProductCardProps {
 export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+  const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
   const isInCart = cartQuantity > 0;
 
   const handleAddToCart = async () => {
@@ -36,6 +39,38 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductC
       setQuantity(1); // Reset quantity after adding
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleReservation = async (data: ReservationData) => {
+    try {
+      const formData = new FormData();
+      formData.append('productId', data.productId.toString());
+      formData.append('textNote', data.textNote);
+
+      if (data.audioFile) {
+        formData.append('audioFile', data.audioFile);
+      }
+
+      if (data.imageFile) {
+        formData.append('imageFile', data.imageFile);
+      }
+
+      const response = await fetch('/api/portale-clienti/reservations', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      toast.success('Prenotazione inviata con successo!');
+    } catch (error: any) {
+      console.error('Error creating reservation:', error);
+      throw error;
     }
   };
 
@@ -196,15 +231,29 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductC
         ) : (
           <div className="mt-2 pt-2 border-t border-slate-600/50">
             <button
-              disabled
-              className="w-full flex items-center justify-center gap-1 bg-slate-700/50 text-slate-400 px-2 py-1.5 rounded text-xs cursor-not-allowed"
+              onClick={() => setIsReservationModalOpen(true)}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
             >
-              <AlertCircle className="h-3 w-3" />
-              Non disponibile
+              <Bell className="h-4 w-4" />
+              Prenota Prodotto
             </button>
           </div>
         )}
       </div>
+
+      {/* Reservation Modal */}
+      <ProductReservationModal
+        isOpen={isReservationModalOpen}
+        onClose={() => setIsReservationModalOpen(false)}
+        product={{
+          id: product.id,
+          name: product.name,
+          code: product.code,
+          image: product.image,
+          unit: product.unit,
+        }}
+        onSubmit={handleReservation}
+      />
     </article>
   );
 }

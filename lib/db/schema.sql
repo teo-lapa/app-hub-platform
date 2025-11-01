@@ -99,3 +99,33 @@ JOIN conversations c ON c.id = ci.conversation_id
 WHERE ci.next_action_date IS NOT NULL
   AND ci.next_action_date >= CURRENT_DATE
 ORDER BY ci.next_action_date ASC, ci.salesperson_id;
+
+-- ============================================
+-- PORTALE CLIENTI: Product Reservations
+-- ============================================
+
+-- Table: Product Reservations (prenotazioni prodotti non disponibili)
+CREATE TABLE IF NOT EXISTS product_reservations (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER NOT NULL, -- ID prodotto Odoo
+  customer_id INTEGER NOT NULL, -- ID cliente Odoo
+  order_id INTEGER, -- ID ordine (può essere NULL se non ancora associato)
+  text_note TEXT, -- Nota testuale
+  audio_url TEXT, -- URL audio Vercel Blob
+  image_url TEXT, -- URL immagine Vercel Blob
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'cancelled')),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Indici per performance
+CREATE INDEX IF NOT EXISTS idx_reservations_customer ON product_reservations(customer_id);
+CREATE INDEX IF NOT EXISTS idx_reservations_product ON product_reservations(product_id);
+CREATE INDEX IF NOT EXISTS idx_reservations_order ON product_reservations(order_id);
+CREATE INDEX IF NOT EXISTS idx_reservations_status ON product_reservations(status);
+CREATE INDEX IF NOT EXISTS idx_reservations_created ON product_reservations(created_at DESC);
+
+-- Trigger per auto-update updated_at
+CREATE TRIGGER update_product_reservations_updated_at
+BEFORE UPDATE ON product_reservations
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
