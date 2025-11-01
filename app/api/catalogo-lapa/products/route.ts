@@ -110,6 +110,81 @@ export async function POST(request: NextRequest) {
 
     const products = productsData.result;
 
+    // Recupera ubicazioni INTERNE per ogni prodotto tramite stock.quant
+    const productIds = products.map((p: any) => p.id);
+
+    let productLocations: Record<number, Array<{ name: string; qty: number }>> = {};
+
+    if (productIds.length > 0) {
+      const quantsResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'stock.quant',
+            method: 'search_read',
+            args: [[
+              ['product_id', 'in', productIds],
+              ['quantity', '>', 0]
+            ]],
+            kwargs: {
+              fields: ['product_id', 'location_id', 'quantity'],
+              context: { lang: 'it_IT' }
+            }
+          },
+          id: Math.random()
+        })
+      });
+
+      const quantsData = await quantsResponse.json();
+
+      if (!quantsData.error && quantsData.result) {
+        const quants = quantsData.result;
+
+        // Raggruppa ubicazioni INTERNE per prodotto con quantità
+        quants.forEach((quant: any) => {
+          const productId = quant.product_id[0];
+          const locationName = quant.location_id[1];
+          const quantity = quant.quantity;
+
+          // FILTRO: Solo ubicazioni INTERNE (no WH/Stock, Virtual, Partners, Vendors, etc.)
+          const isInternal = !locationName.includes('WH/') &&
+                           !locationName.includes('Virtual') &&
+                           !locationName.includes('Partners') &&
+                           !locationName.includes('Vendors') &&
+                           !locationName.includes('Customers') &&
+                           !locationName.includes('Inventory adjustment') &&
+                           !locationName.includes('Physical Locations');
+
+          if (isInternal) {
+            if (!productLocations[productId]) {
+              productLocations[productId] = [];
+            }
+
+            // Cerca se ubicazione già esiste (somma quantità)
+            const existing = productLocations[productId].find(loc => loc.name === locationName);
+            if (existing) {
+              existing.qty += quantity;
+            } else {
+              productLocations[productId].push({ name: locationName, qty: quantity });
+            }
+          }
+        });
+      }
+    }
+
+    // Aggiungi ubicazioni ai prodotti
+    products.forEach((product: any) => {
+      product.locations = productLocations[product.id] || [];
+    });
+
+    console.log(`📍 [UBICAZIONI] Prodotti con ubicazioni:`, products.filter((p: any) => p.locations.length > 0).length);
+
     // Conta totale
     const countResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
       method: 'POST',

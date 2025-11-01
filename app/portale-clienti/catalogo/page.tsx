@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { ProductCard } from '@/components/portale-clienti/ProductCard';
-import { SearchBar } from '@/components/portale-clienti/SearchBar';
-import { ProductFilters } from '@/components/portale-clienti/ProductFilters';
+import { CatalogSearchBar } from '@/components/portale-clienti/CatalogSearchBar';
+import { FilterModal } from '@/components/portale-clienti/FilterModal';
 import { Loader2, ShoppingCart, ChevronLeft, ChevronRight, PackageX } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/authStore';
 import toast from 'react-hot-toast';
@@ -63,10 +63,43 @@ export default function CatalogoPage() {
   // Cart state (simple local state - you can move to context/zustand later)
   const [cartItems, setCartItems] = useState<{ productId: number; quantity: number }[]>([]);
 
+  // Filter modal state
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
   // Fetch categories on mount
   useEffect(() => {
     fetchCategories();
+    // fetchCartItems(); // TEMPORANEAMENTE DISABILITATO - fix cache browser
   }, []);
+
+  // Fetch cart items
+  async function fetchCartItems() {
+    try {
+      const response = await fetch('/api/portale-clienti/cart');
+      const data = await response.json();
+
+      if (!data.error && data.items && Array.isArray(data.items)) {
+        const validItems = data.items
+          .filter((item: any) => {
+            try {
+              return item && item.product && typeof item.product.id === 'number';
+            } catch {
+              return false;
+            }
+          })
+          .map((item: any) => ({
+            productId: item.product.id,
+            quantity: item.quantity || 0
+          }));
+        setCartItems(validItems);
+      } else {
+        setCartItems([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch cart:', err);
+      setCartItems([]); // Set empty array on error
+    }
+  }
 
   // Fetch products when filters change
   useEffect(() => {
@@ -154,6 +187,9 @@ export default function CatalogoPage() {
 
       const product = products.find((p) => p.id === productId);
       toast.success(`${product?.name || 'Prodotto'} aggiunto al carrello`);
+
+      // Ricarica il carrello per aggiornare le quantità
+      fetchCartItems();
     } catch (err: any) {
       console.error('Failed to add to cart:', err);
       toast.error(err.message || 'Impossibile aggiungere al carrello');
@@ -193,7 +229,7 @@ export default function CatalogoPage() {
   const totalCartItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -222,109 +258,110 @@ export default function CatalogoPage() {
         </div>
       </div>
 
+      {/* Main Content Area - Products */}
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Search Bar */}
-        <div className="mb-6">
-          <SearchBar onSearch={handleSearch} />
-        </div>
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+            <span className="ml-2 text-gray-600">Caricamento prodotti...</span>
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Filters Sidebar */}
-          <aside className="lg:col-span-1">
-            <ProductFilters
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onCategoryChange={handleCategoryChange}
-              availability={availability}
-              onAvailabilityChange={handleAvailabilityChange}
-              sortBy={sortBy}
-              onSortChange={handleSortChange}
-              showPurchasedOnly={showPurchasedOnly}
-              onPurchasedOnlyChange={handlePurchasedOnlyChange}
-            />
-          </aside>
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-800">{error}</p>
+            <button
+              onClick={fetchProducts}
+              className="mt-2 text-red-600 hover:text-red-700 font-medium"
+            >
+              Riprova
+            </button>
+          </div>
+        )}
 
-          {/* Products Grid */}
-          <main className="lg:col-span-3">
-            {loading && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-red-600" />
-                <span className="ml-2 text-gray-600">Caricamento prodotti...</span>
-              </div>
-            )}
+        {!loading && !error && products.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <PackageX className="h-16 w-16 text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Nessun prodotto trovato
+            </h3>
+            <p className="text-gray-600">
+              Prova a modificare i filtri o la ricerca
+            </p>
+          </div>
+        )}
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-800">{error}</p>
-                <button
-                  onClick={fetchProducts}
-                  className="mt-2 text-red-600 hover:text-red-700 font-medium"
-                >
-                  Riprova
-                </button>
-              </div>
-            )}
+        {!loading && !error && products.length > 0 && (
+          <>
+            {/* Products Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              {products.map((product) => {
+                const cartItem = cartItems.find(item => item.productId === product.id);
+                return (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onAddToCart={handleAddToCart}
+                    cartQuantity={cartItem?.quantity || 0}
+                  />
+                );
+              })}
+            </div>
 
-            {!loading && !error && products.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <PackageX className="h-16 w-16 text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Nessun prodotto trovato
-                </h3>
-                <p className="text-gray-600">
-                  Prova a modificare i filtri o la ricerca
-                </p>
-              </div>
-            )}
-
-            {!loading && !error && products.length > 0 && (
-              <>
-                {/* Products Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                  {products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onAddToCart={handleAddToCart}
-                    />
-                  ))}
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6 pb-4">
+                <div className="text-sm text-gray-600">
+                  Pagina {pagination.page} di {pagination.totalPages}
+                  {' · '}
+                  {pagination.total} prodotti totali
                 </div>
 
-                {/* Pagination */}
-                {pagination.totalPages > 1 && (
-                  <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6">
-                    <div className="text-sm text-gray-600">
-                      Pagina {pagination.page} di {pagination.totalPages}
-                      {' · '}
-                      {pagination.total} prodotti totali
-                    </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page === 1}
+                    className="flex items-center gap-1 px-4 py-2 min-h-[48px] border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Precedente
+                  </button>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handlePageChange(pagination.page - 1)}
-                        disabled={pagination.page === 1}
-                        className="flex items-center gap-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        Precedente
-                      </button>
-
-                      <button
-                        onClick={() => handlePageChange(pagination.page + 1)}
-                        disabled={!pagination.hasMore}
-                        className="flex items-center gap-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Successiva
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
+                  <button
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={!pagination.hasMore}
+                    className="flex items-center gap-1 px-4 py-2 min-h-[48px] border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Successiva
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
             )}
-          </main>
-        </div>
+          </>
+        )}
       </div>
+
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategoryChange={handleCategoryChange}
+        availability={availability}
+        onAvailabilityChange={handleAvailabilityChange}
+        sortBy={sortBy}
+        onSortChange={handleSortChange}
+        showPurchasedOnly={showPurchasedOnly}
+        onPurchasedOnlyChange={handlePurchasedOnlyChange}
+      />
+
+      {/* Bottom Search Bar */}
+      <CatalogSearchBar
+        onSearch={handleSearch}
+        onOpenFilters={() => setIsFilterModalOpen(true)}
+      />
     </div>
   );
 }

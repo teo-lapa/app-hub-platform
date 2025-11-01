@@ -1,38 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { cookies } from 'next/headers';
+import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value;
-    
-    if (!token) {
+    // Check for Odoo session cookie (usa odoo_session_id dal login)
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('odoo_session_id');
+
+    if (!sessionCookie?.value) {
       return NextResponse.json({
         connected: false,
-        userId: null
+        userId: null,
+        message: 'Nessuna sessione Odoo trovata'
       }, { status: 200 });
     }
 
-    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-    const decoded = jwt.verify(token, jwtSecret) as any;
+    const odooSessionId = sessionCookie.value;
 
-    if (decoded && decoded.id) {
+    // Test Odoo connection
+    const rpcClient = createOdooRPCClient(odooSessionId);
+    const isConnected = await rpcClient.testConnection();
+
+    if (isConnected) {
+      // Try to get current user info
+      const user = await rpcClient.getCurrentUser();
+
       return NextResponse.json({
         connected: true,
-        userId: decoded.id,
-        userName: decoded.name || decoded.email || 'User'
+        userId: user?.id || null,
+        userName: user?.name || 'User',
+        sessionId: odooSessionId
       }, { status: 200 });
     }
 
-    return NextResponse.json({
-      connected: false,
-      userId: null
-    }, { status: 200 });
-  } catch (error: any) {
-    console.error('Session check error:', error);
     return NextResponse.json({
       connected: false,
       userId: null,
-      error: error.message
+      message: 'Test connessione Odoo fallito'
+    }, { status: 200 });
+
+  } catch (error: any) {
+    console.error('[Smart Route AI] Session check error:', error);
+    return NextResponse.json({
+      connected: false,
+      userId: null,
+      error: error.message || 'Errore verifica sessione'
     }, { status: 200 });
   }
 }

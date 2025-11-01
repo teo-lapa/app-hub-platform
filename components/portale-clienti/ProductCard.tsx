@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ShoppingCart, Package, AlertCircle, Tag } from 'lucide-react';
+import { ShoppingCart, Package, AlertCircle, Tag, Bell } from 'lucide-react';
+import { ProductReservationModal, ReservationData } from './ProductReservationModal';
+import toast from 'react-hot-toast';
 
 interface Product {
   id: number;
@@ -21,11 +23,14 @@ interface Product {
 interface ProductCardProps {
   product: Product;
   onAddToCart: (productId: number, quantity: number) => void;
+  cartQuantity?: number; // Quantità già nel carrello
 }
 
-export function ProductCard({ product, onAddToCart }: ProductCardProps) {
+export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+  const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
+  const isInCart = cartQuantity > 0;
 
   const handleAddToCart = async () => {
     setIsAdding(true);
@@ -34,6 +39,38 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       setQuantity(1); // Reset quantity after adding
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleReservation = async (data: ReservationData) => {
+    try {
+      const formData = new FormData();
+      formData.append('productId', data.productId.toString());
+      formData.append('textNote', data.textNote);
+
+      if (data.audioFile) {
+        formData.append('audioFile', data.audioFile);
+      }
+
+      if (data.imageFile) {
+        formData.append('imageFile', data.imageFile);
+      }
+
+      const response = await fetch('/api/portale-clienti/reservations', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      toast.success('Prenotazione inviata con successo!');
+    } catch (error: any) {
+      console.error('Error creating reservation:', error);
+      throw error;
     }
   };
 
@@ -112,26 +149,33 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         )}
 
         {/* Footer card */}
-        <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-slate-600/50">
-          {/* Prezzo in CHF */}
-          <div>
-            <span className="text-sm font-bold text-emerald-400">
-              {formatPrice(product.price)}
-            </span>
-            {product.hasCustomPrice && product.originalPrice > product.price && (
-              <span className="text-[9px] text-slate-500 line-through ml-1">
-                {formatPrice(product.originalPrice)}
+        <div className="pt-1.5 mt-1 border-t border-slate-600/50 space-y-1">
+          {/* Prezzo e Unità */}
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-bold text-emerald-400">
+                {formatPrice(product.price)}
               </span>
-            )}
+              {product.hasCustomPrice && product.originalPrice > product.price && (
+                <span className="text-[9px] text-slate-500 line-through ml-1">
+                  {formatPrice(product.originalPrice)}
+                </span>
+              )}
+            </div>
+            {/* Badge Unità di misura */}
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+              {product.unit}
+            </span>
           </div>
 
           {/* Quantità disponibile */}
-          <div className="text-right">
-            <div className={`text-[11px] font-semibold ${
+          <div className="flex items-center justify-between text-[10px]">
+            <span className="text-slate-400">Disponibili:</span>
+            <span className={`font-semibold ${
               product.available ? 'text-green-400' : 'text-red-400'
             }`}>
               {product.quantity}
-            </div>
+            </span>
           </div>
         </div>
 
@@ -151,7 +195,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                 type="number"
                 value={quantity}
                 onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-14 text-center bg-slate-700 text-white text-sm py-2 min-h-[44px] rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="flex-1 text-center bg-slate-700 text-white text-sm py-2 min-h-[44px] rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 min="1"
                 max={product.quantity}
               />
@@ -162,34 +206,54 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
               >
                 +
               </button>
-              <span className="text-xs text-slate-400 ml-1">
-                {product.unit}
-              </span>
             </div>
 
             {/* Add to Cart Button */}
             <button
               onClick={handleAddToCart}
               disabled={isAdding}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Aggiungi al carrello"
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                isInCart
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white'
+                  : 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white'
+              }`}
+              aria-label={isInCart ? 'Già nel carrello' : 'Aggiungi al carrello'}
             >
               <ShoppingCart className="h-4 w-4" />
-              {isAdding ? 'Aggiunta...' : 'Aggiungi al Carrello'}
+              {isAdding
+                ? 'Aggiunta...'
+                : isInCart
+                  ? `Nel carrello (${cartQuantity})`
+                  : 'Aggiungi al Carrello'
+              }
             </button>
           </div>
         ) : (
           <div className="mt-2 pt-2 border-t border-slate-600/50">
             <button
-              disabled
-              className="w-full flex items-center justify-center gap-1 bg-slate-700/50 text-slate-400 px-2 py-1.5 rounded text-xs cursor-not-allowed"
+              onClick={() => setIsReservationModalOpen(true)}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
             >
-              <AlertCircle className="h-3 w-3" />
-              Non disponibile
+              <Bell className="h-4 w-4" />
+              Prenota Prodotto
             </button>
           </div>
         )}
       </div>
+
+      {/* Reservation Modal */}
+      <ProductReservationModal
+        isOpen={isReservationModalOpen}
+        onClose={() => setIsReservationModalOpen(false)}
+        product={{
+          id: product.id,
+          name: product.name,
+          code: product.code,
+          image: product.image,
+          unit: product.unit,
+        }}
+        onSubmit={handleReservation}
+      />
     </article>
   );
 }
