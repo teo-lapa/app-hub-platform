@@ -24,6 +24,7 @@ export interface Batch {
   picking_count?: number;
   move_line_count?: number;
   product_count?: number;
+  customer_notes_count?: number; // Conteggio clienti con messaggi
 }
 
 export interface StockLocation {
