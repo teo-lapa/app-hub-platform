@@ -79,10 +79,14 @@ export default function CatalogoPage() {
       const data = await response.json();
 
       if (!data.error && data.items) {
-        setCartItems(data.items.map((item: any) => ({
-          productId: item.product.id,
-          quantity: item.quantity
-        })));
+        setCartItems(
+          data.items
+            .filter((item: any) => item.product && item.product.id) // Filter out invalid items
+            .map((item: any) => ({
+              productId: item.product.id,
+              quantity: item.quantity
+            }))
+        );
       }
     } catch (err) {
       console.error('Failed to fetch cart:', err);
