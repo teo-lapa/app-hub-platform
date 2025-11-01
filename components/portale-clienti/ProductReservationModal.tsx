@@ -126,15 +126,15 @@ export function ProductReservationModal({
   if (!isOpen) return null;
 
   return (
-    <>
+    <div className="fixed inset-0" style={{ zIndex: 9999 }}>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/60 z-50 transition-opacity"
+        className="fixed inset-0 bg-black/60 transition-opacity"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-lg z-50 bg-slate-800 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-lg bg-slate-800 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-slate-800 border-b border-slate-700 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
           <h2 className="text-lg font-semibold text-white">Prenota Prodotto</h2>
@@ -316,6 +316,6 @@ export function ProductReservationModal({
           </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
