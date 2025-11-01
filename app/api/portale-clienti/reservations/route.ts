@@ -1,21 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyCustomerToken } from '@/lib/auth-helpers';
-import { db } from '@/lib/db';
+import { sql } from '@vercel/postgres';
 import { put } from '@vercel/blob';
+import jwt from 'jsonwebtoken';
+
+export const dynamic = 'force-dynamic';
 
 // GET - Recupera prenotazioni del cliente
 export async function GET(request: NextRequest) {
   try {
-    const payload = await verifyCustomerToken(request);
-    if (!payload) {
+    // Verify JWT token
+    const token = request.cookies.get('token')?.value;
+    if (!token) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    const customerId = payload.customerId;
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    let decoded: any;
+
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (jwtError) {
+      return NextResponse.json({ error: 'Token non valido' }, { status: 401 });
+    }
+
+    const customerId = decoded.odoo_partner_id || decoded.id;
 
     // Recupera prenotazioni del cliente
-    const reservations = await db.query(
-      `SELECT
+    const reservations = await sql`
+      SELECT
         pr.id,
         pr.product_id,
         pr.customer_id,
@@ -24,16 +36,11 @@ export async function GET(request: NextRequest) {
         pr.image_url,
         pr.status,
         pr.created_at,
-        pr.order_id,
-        p.name as product_name,
-        p.code as product_code,
-        p.image as product_image
+        pr.order_id
       FROM product_reservations pr
-      LEFT JOIN products p ON pr.product_id = p.id
-      WHERE pr.customer_id = $1
-      ORDER BY pr.created_at DESC`,
-      [customerId]
-    );
+      WHERE pr.customer_id = ${customerId}
+      ORDER BY pr.created_at DESC
+    `;
 
     return NextResponse.json({
       reservations: reservations.rows,
@@ -50,12 +57,22 @@ export async function GET(request: NextRequest) {
 // POST - Crea nuova prenotazione
 export async function POST(request: NextRequest) {
   try {
-    const payload = await verifyCustomerToken(request);
-    if (!payload) {
+    // Verify JWT token
+    const token = request.cookies.get('token')?.value;
+    if (!token) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    const customerId = payload.customerId;
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    let decoded: any;
+
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (jwtError) {
+      return NextResponse.json({ error: 'Token non valido' }, { status: 401 });
+    }
+
+    const customerId = decoded.odoo_partner_id || decoded.id;
 
     // Parse form data
     const formData = await request.formData();
@@ -118,61 +135,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Verifica se esiste già un ordine "draft" per questo cliente
-    let orderId: number | null = null;
-
-    const existingDraftOrder = await db.query(
-      `SELECT id FROM orders
-       WHERE customer_id = $1
-       AND status = 'draft'
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [customerId]
-    );
-
-    if (existingDraftOrder.rows.length > 0) {
-      orderId = existingDraftOrder.rows[0].id;
-    } else {
-      // Crea un nuovo ordine draft se non esiste
-      const newOrder = await db.query(
-        `INSERT INTO orders (customer_id, status, notes, created_at)
-         VALUES ($1, 'draft', 'Ordine con prodotti prenotati', NOW())
-         RETURNING id`,
-        [customerId]
-      );
-      orderId = newOrder.rows[0].id;
-    }
-
-    // Salva la prenotazione nel database
-    const reservation = await db.query(
-      `INSERT INTO product_reservations
-       (product_id, customer_id, order_id, text_note, audio_url, image_url, status, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, 'pending', NOW())
-       RETURNING *`,
-      [productId, customerId, orderId, textNote || null, audioUrl, imageUrl]
-    );
-
-    // Aggiorna le note dell'ordine con la prenotazione
-    const reservationNote = `
-📦 Prodotto Prenotato - ID: ${productId}
-${textNote ? `📝 Nota: ${textNote}` : ''}
-${audioUrl ? `🎤 Audio: ${audioUrl}` : ''}
-${imageUrl ? `📷 Foto: ${imageUrl}` : ''}
----
-`;
-
-    await db.query(
-      `UPDATE orders
-       SET notes = COALESCE(notes, '') || $1,
-           updated_at = NOW()
-       WHERE id = $2`,
-      [reservationNote, orderId]
-    );
+    // Salva la prenotazione nel database (order_id NULL per ora)
+    const reservation = await sql`
+      INSERT INTO product_reservations
+      (product_id, customer_id, order_id, text_note, audio_url, image_url, status, created_at)
+      VALUES (${productId}, ${customerId}, NULL, ${textNote || null}, ${audioUrl}, ${imageUrl}, 'pending', NOW())
+      RETURNING *
+    `;
 
     return NextResponse.json({
       success: true,
       reservation: reservation.rows[0],
-      orderId,
     });
   } catch (error: any) {
     console.error('Error creating reservation:', error);
