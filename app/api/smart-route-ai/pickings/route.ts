@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         ['scheduled_date', '<=', `${dateTo} 23:59:59`]
       ],
       [
-        'id', 'name', 'partner_id', 'partner_latitude', 'partner_longitude',
+        'id', 'name', 'partner_id',
         'scheduled_date', 'state', 'move_ids_without_package'
       ],
       500,
@@ -57,6 +57,10 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Smart Route AI] Trovati ${pickings.length} picking WH/PICK`);
 
+    // Collect all partner IDs to fetch in bulk (PATTERN da delivery/list)
+    const partnerIdsSet = new Set(pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean));
+    const partnerIds = Array.from(partnerIdsSet);
+
     // Collect all move IDs to fetch in bulk
     const allMoveIds: number[] = [];
 
@@ -64,6 +68,25 @@ export async function POST(request: NextRequest) {
       if (picking.move_ids_without_package && picking.move_ids_without_package.length > 0) {
         allMoveIds.push(...picking.move_ids_without_package);
       }
+    }
+
+    // Fetch all partners with coordinates in ONE bulk request (res.partner model)
+    let partnersMap: Record<number, any> = {};
+    if (partnerIds.length > 0) {
+      console.log(`[Smart Route AI] Caricamento ${partnerIds.length} partner in bulk...`);
+
+      const partners = await rpcClient.callKw(
+        'res.partner',
+        'read',
+        [partnerIds, ['id', 'name', 'street', 'street2', 'city', 'zip', 'partner_latitude', 'partner_longitude']]
+      );
+
+      // Create map: partnerId -> partner data
+      for (const partner of partners) {
+        partnersMap[partner.id] = partner;
+      }
+
+      console.log(`[Smart Route AI] Caricati ${partners.length} partner con coordinate`);
     }
 
     // Fetch all moves in ONE bulk request using RPC client
@@ -95,19 +118,31 @@ export async function POST(request: NextRequest) {
     let withCoordinates = 0;
 
     for (const picking of pickings) {
-      // Only include pickings with coordinates
-      if (picking.partner_latitude && picking.partner_longitude) {
+      const partnerId = picking.partner_id ? picking.partner_id[0] : null;
+      const partner = partnerId ? partnersMap[partnerId] : null;
+
+      // Only include pickings with coordinates (from partner data)
+      if (partner && partner.partner_latitude && partner.partner_longitude) {
         withCoordinates++;
         const totalWeight = movesMap[picking.id] || 0;
+
+        // Build address from partner data
+        const addressParts = [
+          partner.street,
+          partner.street2,
+          partner.zip,
+          partner.city
+        ].filter(Boolean);
+        const address = addressParts.join(', ') || partner.name || 'Indirizzo sconosciuto';
 
         formattedPickings.push({
           id: picking.id,
           name: picking.name,
-          partnerId: picking.partner_id ? picking.partner_id[0] : 0,
-          partnerName: picking.partner_id ? picking.partner_id[1] : 'Sconosciuto',
-          address: picking.partner_id ? picking.partner_id[1] : '',
-          lat: picking.partner_latitude,
-          lng: picking.partner_longitude,
+          partnerId: partnerId || 0,
+          partnerName: partner.name || 'Sconosciuto',
+          address: address,
+          lat: partner.partner_latitude,
+          lng: partner.partner_longitude,
           weight: totalWeight,
           scheduledDate: picking.scheduled_date,
           state: picking.state
