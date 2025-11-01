@@ -87,10 +87,17 @@ export default function CatalogoPage() {
               return false;
             }
           })
-          .map((item: any) => ({
-            productId: item.product.id,
-            quantity: item.quantity || 0
-          }));
+          .map((item: any) => {
+            try {
+              return {
+                productId: item.product.id,
+                quantity: item.quantity || 0
+              };
+            } catch {
+              return null;
+            }
+          })
+          .filter((item: any) => item !== null);
         setCartItems(validItems);
       } else {
         setCartItems([]);
