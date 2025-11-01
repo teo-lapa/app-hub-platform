@@ -849,6 +849,20 @@ export default function PrelievoZonePage() {
   // Helper per animazioni condizionali - PERFORMANCE MODE (non più necessario senza framer-motion)
   // Funzione rimossa - animazioni ora gestite da CSS
 
+  // Helper per rimuovere tag HTML dal messaggio cliente
+  const stripHtmlTags = (html: string): string => {
+    if (!html) return '';
+    // Rimuove tutti i tag HTML e decodifica entità HTML
+    return html
+      .replace(/<[^>]*>/g, '') // Rimuove tag HTML
+      .replace(/&nbsp;/g, ' ') // Sostituisce &nbsp; con spazio
+      .replace(/&amp;/g, '&')  // Decodifica &amp;
+      .replace(/&lt;/g, '<')   // Decodifica &lt;
+      .replace(/&gt;/g, '>')   // Decodifica &gt;
+      .replace(/&quot;/g, '"') // Decodifica &quot;
+      .trim();
+  };
+
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -1849,7 +1863,7 @@ export default function PrelievoZonePage() {
             {/* Contenuto messaggio */}
             <div className="bg-yellow-500/10 border-2 border-yellow-500/30 rounded-xl p-6 mb-6">
               <p className="text-lg md:text-xl leading-relaxed whitespace-pre-wrap">
-                {customerNoteText}
+                {stripHtmlTags(customerNoteText)}
               </p>
             </div>
 
