@@ -16,6 +16,7 @@ interface Product {
   description_sale?: string;
   qty_available?: number;
   uom_id?: [number, string];
+  x_ubicazione?: string; // Ubicazione prodotto
 }
 
 interface OdooResponse {
@@ -425,26 +426,39 @@ export default function CatalogoLapaPage() {
                     )}
 
                     {/* Footer card */}
-                    <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-slate-600/50">
-                      {/* Prezzo */}
-                      {product.list_price && product.list_price > 0 ? (
-                        <div>
-                          <span className="text-sm font-bold text-emerald-400">
-                            €{product.list_price.toFixed(2)}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-slate-500 text-[10px]">N/D</span>
-                      )}
-
-                      {/* Quantità */}
-                      {typeof product.qty_available === 'number' && (
-                        <div className="text-right">
-                          <div className={`text-[11px] font-semibold ${
-                            product.qty_available > 0 ? 'text-green-400' : 'text-red-400'
-                          }`}>
-                            {product.qty_available}
+                    <div className="pt-1.5 mt-1 border-t border-slate-600/50 space-y-1">
+                      {/* Prezzo e Quantità */}
+                      <div className="flex items-center justify-between">
+                        {/* Prezzo */}
+                        {product.list_price && product.list_price > 0 ? (
+                          <div>
+                            <span className="text-sm font-bold text-emerald-400">
+                              €{product.list_price.toFixed(2)}
+                            </span>
                           </div>
+                        ) : (
+                          <span className="text-slate-500 text-[10px]">N/D</span>
+                        )}
+
+                        {/* Quantità */}
+                        {typeof product.qty_available === 'number' && (
+                          <div className="text-right">
+                            <div className={`text-[11px] font-semibold ${
+                              product.qty_available > 0 ? 'text-green-400' : 'text-red-400'
+                            }`}>
+                              {product.qty_available}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Ubicazione */}
+                      {product.x_ubicazione && (
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-slate-400">Ubicaz:</span>
+                          <span className="font-semibold text-blue-400">
+                            {product.x_ubicazione}
+                          </span>
                         </div>
                       )}
                     </div>
