@@ -772,7 +772,7 @@ export class PickingOdooClient {
           lot_name: ml.lot_name || undefined,
           expiry_date: lot?.expiration_date || undefined,
           package_id: ml.package_id || undefined,
-          note: ml.description_picking || '',
+          note: picking?.note || '', // Messaggio del CLIENTE dal picking
           customer: picking?.partner_name || '',
           image: product?.image_128 ? `data:image/png;base64,${product.image_128}` : undefined,
           isCompleted: ml.qty_done >= (ml.quantity || 0),

@@ -1512,8 +1512,19 @@ export default function PrelievoZonePage() {
 
                       {/* Cliente */}
                       {operation.customer && (
-                        <p className="text-sm md:text-base text-blue-400 mt-1">
+                        <p className="text-sm md:text-base text-blue-400 mt-1 flex items-center gap-2">
                           Cliente: {operation.customer}
+                          {operation.note && (
+                            <span
+                              className="text-xl animate-pulse cursor-pointer"
+                              title={operation.note}
+                              style={{
+                                animation: 'heartbeat 1.5s ease-in-out infinite'
+                              }}
+                            >
+                              ⚠️
+                            </span>
+                          )}
                         </p>
                       )}
                     </div>
