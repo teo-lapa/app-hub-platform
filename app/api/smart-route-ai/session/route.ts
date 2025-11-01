@@ -6,9 +6,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Check for Odoo session cookie (STESSO pattern di /api/picking/batches)
+    // Check for Odoo session cookie (usa odoo_session_id dal login)
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('odoo_session');
+    const sessionCookie = cookieStore.get('odoo_session_id');
 
     if (!sessionCookie?.value) {
       return NextResponse.json({
@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
       }, { status: 200 });
     }
 
-    const sessionData = JSON.parse(sessionCookie.value);
+    const odooSessionId = sessionCookie.value;
 
     // Test Odoo connection
-    const rpcClient = createOdooRPCClient(sessionData.sessionId);
+    const rpcClient = createOdooRPCClient(odooSessionId);
     const isConnected = await rpcClient.testConnection();
 
     if (isConnected) {
@@ -30,9 +30,9 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         connected: true,
-        userId: user?.id || sessionData.uid || null,
-        userName: user?.name || sessionData.name || 'User',
-        sessionId: sessionData.sessionId
+        userId: user?.id || null,
+        userName: user?.name || 'User',
+        sessionId: odooSessionId
       }, { status: 200 });
     }
 

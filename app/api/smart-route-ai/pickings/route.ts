@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
     console.log('[Smart Route AI] Caricamento picking WH/PICK...');
     console.log('[Smart Route AI] Date:', { dateFrom, dateTo });
 
-    // Recupera session da cookie (STESSO pattern di /api/picking/batches)
+    // Recupera session da cookie (usa odoo_session_id dal login)
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('odoo_session');
+    const sessionCookie = cookieStore.get('odoo_session_id');
 
     if (!sessionCookie?.value) {
       return NextResponse.json({
@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
-    const sessionData = JSON.parse(sessionCookie.value);
+    const odooSessionId = sessionCookie.value;
 
     // Crea client RPC con session ID
-    const rpcClient = createOdooRPCClient(sessionData.sessionId);
+    const rpcClient = createOdooRPCClient(odooSessionId);
 
     // Test connessione
     const isConnected = await rpcClient.testConnection();
