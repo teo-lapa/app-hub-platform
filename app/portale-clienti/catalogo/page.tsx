@@ -69,7 +69,7 @@ export default function CatalogoPage() {
   // Fetch categories on mount
   useEffect(() => {
     fetchCategories();
-    // fetchCartItems(); // TEMPORANEAMENTE DISABILITATO - fix cache browser
+    fetchCartItems(); // Riabilitato - cache browser risolta
   }, []);
 
   // Fetch cart items
