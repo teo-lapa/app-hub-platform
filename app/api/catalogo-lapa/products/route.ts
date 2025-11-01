@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
             fields: [
               'id', 'name', 'default_code', 'barcode', 'list_price',
               'categ_id', 'image_256', 'description', 'description_sale',
-              'qty_available', 'uom_id', 'x_ubicazione'
+              'qty_available', 'uom_id'
             ],
             offset,
             limit,
