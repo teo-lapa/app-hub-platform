@@ -306,6 +306,28 @@ export default function CatalogoLapaPage() {
             >
               NON FOOD
             </button>
+          </div>
+        </div>
+
+        {/* Barra di ricerca - SOTTO I PULSANTI CATEGORIE */}
+        <div className="mb-8">
+          <div className="max-w-xl mx-auto">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cerca..."
+                className="block w-full pl-10 pr-4 py-3 text-sm bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              />
+              {isAutoSearching && (
+                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500"></div>
+                </div>
+              )}
             </div>
           </div>
         </div>
