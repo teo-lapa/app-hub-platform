@@ -590,46 +590,11 @@ export default function CatalogoLapaPage() {
         </div>
       )}
 
-      {/* BARRA FISSA IN BASSO: RICERCA (verde) SOPRA + CATEGORIE (rosso) SOTTO */}
+      {/* BARRA FISSA IN BASSO: PULSANTI CATEGORIE (in basso) + RICERCA (sopra) */}
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-600/50 bg-slate-900/95 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
         <div className="max-w-7xl mx-auto">
-          {/* VERDE: Barra di ricerca SOPRA */}
-          <div className="px-4 pt-3 pb-2">
-            <div className="relative">
-              {/* Search Icon */}
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10">
-                <Search className="h-5 w-5" />
-              </div>
-
-              {/* Input Field */}
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cerca prodotti..."
-                className="w-full pl-10 pr-10 py-3 min-h-[48px] bg-slate-800/80 backdrop-blur-sm border border-slate-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:bg-slate-800 transition-all shadow-sm placeholder:text-slate-400 text-white"
-                aria-label="Cerca prodotti"
-              />
-
-              {/* Spinner or Clear Button */}
-              {isAutoSearching ? (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-500"></div>
-                </div>
-              ) : searchQuery ? (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded-full transition-all active:scale-90 z-10"
-                  aria-label="Cancella ricerca"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          {/* ROSSO: Pulsanti categorie SOTTO - scroll orizzontale */}
-          <div className="overflow-x-auto pb-3 pt-1 px-4">
+          {/* Pulsanti categorie PIÙ IN BASSO - scroll orizzontale */}
+          <div className="overflow-x-auto pb-3 pt-3 px-4 border-b border-slate-700/50">
             <div className="flex gap-2 min-w-max">
               <button
                 onClick={() => handleCategoryClick(null)}
@@ -681,6 +646,41 @@ export default function CatalogoLapaPage() {
               >
                 NON FOOD
               </button>
+            </div>
+          </div>
+
+          {/* Barra di ricerca SOPRA I PULSANTI */}
+          <div className="px-4 py-3">
+            <div className="relative">
+              {/* Search Icon */}
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10">
+                <Search className="h-5 w-5" />
+              </div>
+
+              {/* Input Field */}
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cerca prodotti..."
+                className="w-full pl-10 pr-10 py-3 min-h-[48px] bg-slate-800/80 backdrop-blur-sm border border-slate-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:bg-slate-800 transition-all shadow-sm placeholder:text-slate-400 text-white"
+                aria-label="Cerca prodotti"
+              />
+
+              {/* Spinner or Clear Button */}
+              {isAutoSearching ? (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-500"></div>
+                </div>
+              ) : searchQuery ? (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded-full transition-all active:scale-90 z-10"
+                  aria-label="Cancella ricerca"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
