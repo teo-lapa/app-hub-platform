@@ -93,7 +93,7 @@ export function CatalogSearchBar({
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
-                className="w-full pl-10 pr-10 py-3 min-h-[48px] bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 focus:bg-white transition-all shadow-sm placeholder:text-gray-400"
+                className="w-full pl-10 pr-10 py-3 min-h-[48px] bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 focus:bg-white transition-all shadow-sm placeholder:text-gray-400 text-gray-900"
                 aria-label="Cerca prodotti"
               />
 
