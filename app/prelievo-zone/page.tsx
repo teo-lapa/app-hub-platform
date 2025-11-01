@@ -93,6 +93,8 @@ export default function PrelievoZonePage() {
   const [selectedOperation, setSelectedOperation] = useState<Operation | null>(null);
   const [showProductSelector, setShowProductSelector] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showCustomerNoteModal, setShowCustomerNoteModal] = useState(false);
+  const [customerNoteText, setCustomerNoteText] = useState('');
 
   // Statistiche (totalTime rimosso - ora calcolato dal TimerDisplay)
   const [workStats, setWorkStats] = useState<WorkStats>({
@@ -1516,8 +1518,11 @@ export default function PrelievoZonePage() {
                           Cliente: {operation.customer}
                           {operation.note && (
                             <span
-                              className="text-xl animate-pulse cursor-pointer"
-                              title={operation.note}
+                              className="text-xl cursor-pointer hover:scale-125 transition-transform"
+                              onClick={() => {
+                                setCustomerNoteText(operation.note || '');
+                                setShowCustomerNoteModal(true);
+                              }}
                               style={{
                                 animation: 'heartbeat 1.5s ease-in-out infinite'
                               }}
@@ -1824,7 +1829,40 @@ export default function PrelievoZonePage() {
             </div>
           </div>
         )}
-      
+
+      {/* MODAL MESSAGGIO CLIENTE */}
+      {showCustomerNoteModal && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4"
+          onClick={() => setShowCustomerNoteModal(false)}
+        >
+          <div
+            className={`w-full max-w-2xl ${darkMode ? 'glass-picking-strong' : 'glass-strong'} rounded-2xl p-6 md:p-8 shadow-2xl`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6 border-b border-white/20 pb-4">
+              <span className="text-4xl animate-pulse" style={{ animation: 'heartbeat 1.5s ease-in-out infinite' }}>⚠️</span>
+              <h2 className="text-2xl md:text-3xl font-bold">Messaggio del Cliente</h2>
+            </div>
+
+            {/* Contenuto messaggio */}
+            <div className="bg-yellow-500/10 border-2 border-yellow-500/30 rounded-xl p-6 mb-6">
+              <p className="text-lg md:text-xl leading-relaxed whitespace-pre-wrap">
+                {customerNoteText}
+              </p>
+            </div>
+
+            {/* Pulsante chiudi */}
+            <button
+              onClick={() => setShowCustomerNoteModal(false)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 px-6 rounded-xl font-bold text-lg transition-colors shadow-lg"
+            >
+              OK, Ho Capito ✓
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
