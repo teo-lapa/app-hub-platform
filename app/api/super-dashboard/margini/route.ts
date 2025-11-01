@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     console.log(`   ✅ Retrieved ${lines.length} order lines with details`);
 
     // 4. Estrai product IDs unici
-    const productIds = [...new Set(lines.map((l: any) => l.product_id?.[0]).filter(Boolean))];
+    const productIds = Array.from(new Set(lines.map((l: any) => l.product_id?.[0]).filter(Boolean)));
 
     // 5. Recupera dettagli prodotti
     const products = await callOdooAsAdmin(

@@ -44,6 +44,12 @@ export const mockKPIData = {
     changeType: 'up' as const,
     subtitle: '38 completate',
   },
+  margins: {
+    value: 350000,
+    change: 6,
+    changeType: 'up' as const,
+    subtitle: 'vs periodo precedente',
+  },
 };
 
 export const mockHighRiskCustomers = [
