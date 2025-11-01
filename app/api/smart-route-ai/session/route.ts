@@ -6,11 +6,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Check for Odoo session cookie
+    // Check for Odoo session cookie (usa odoo_session_id come le altre API)
     const cookieStore = cookies();
-    const odooSessionCookie = cookieStore.get('odoo_session');
+    const sessionId = cookieStore.get('odoo_session_id')?.value;
 
-    if (!odooSessionCookie?.value) {
+    if (!sessionId) {
       return NextResponse.json({
         connected: false,
         userId: null,
@@ -18,19 +18,8 @@ export async function GET(request: NextRequest) {
       }, { status: 200 });
     }
 
-    // Parse session data
-    const sessionData = JSON.parse(odooSessionCookie.value);
-
-    if (!sessionData.sessionId) {
-      return NextResponse.json({
-        connected: false,
-        userId: null,
-        message: 'Session ID mancante'
-      }, { status: 200 });
-    }
-
     // Test Odoo connection
-    const rpcClient = createOdooRPCClient(sessionData.sessionId);
+    const rpcClient = createOdooRPCClient(sessionId);
     const isConnected = await rpcClient.testConnection();
 
     if (isConnected) {
@@ -39,9 +28,9 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         connected: true,
-        userId: user?.id || sessionData.uid || null,
-        userName: user?.name || sessionData.name || 'User',
-        sessionId: sessionData.sessionId
+        userId: user?.id || null,
+        userName: user?.name || 'User',
+        sessionId: sessionId
       }, { status: 200 });
     }
 

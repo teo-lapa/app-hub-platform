@@ -12,11 +12,11 @@ export async function POST(request: NextRequest) {
     console.log('[Smart Route AI] Caricamento picking WH/PICK...');
     console.log('[Smart Route AI] Date:', { dateFrom, dateTo });
 
-    // Get session from cookie
+    // Get session from cookie (usa odoo_session_id come le altre API)
     const cookieStore = cookies();
-    const sessionCookie = cookieStore.get('odoo_session');
+    const sessionId = cookieStore.get('odoo_session_id')?.value;
 
-    if (!sessionCookie?.value) {
+    if (!sessionId) {
       return NextResponse.json({
         success: false,
         error: 'Non autenticato - sessione Odoo mancante',
@@ -25,10 +25,8 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
-    const sessionData = JSON.parse(sessionCookie.value);
-
     // Create RPC client with session
-    const rpcClient = createOdooRPCClient(sessionData.sessionId);
+    const rpcClient = createOdooRPCClient(sessionId);
 
     // Test connection
     const isConnected = await rpcClient.testConnection();
