@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-
-const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
@@ -13,123 +12,95 @@ export async function POST(request: NextRequest) {
     console.log('[Smart Route AI] Caricamento picking WH/PICK...');
     console.log('[Smart Route AI] Date:', { dateFrom, dateTo });
 
-    const cookieStore = cookies();
-    const sessionId = cookieStore.get('odoo_session_id')?.value;
+    // Recupera session da cookie (STESSO pattern di /api/picking/batches)
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('odoo_session');
 
-    if (!sessionId) {
+    if (!sessionCookie?.value) {
       return NextResponse.json({
         success: false,
-        error: 'Non autenticato',
+        error: 'Nessuna sessione Odoo',
         pickings: [],
         withCoordinates: 0
       }, { status: 401 });
     }
 
-    // Search for stock.picking (WH/PICK only - case insensitive)
-    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw/stock.picking/search_read`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `session_id=${sessionId}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          model: 'stock.picking',
-          method: 'search_read',
-          args: [[
-            ['name', 'ilike', 'WH/PICK'],
-            ['state', 'in', ['confirmed', 'assigned', 'waiting']],
-            ['scheduled_date', '>=', `${dateFrom} 00:00:00`],
-            ['scheduled_date', '<=', `${dateTo} 23:59:59`]
-          ]],
-          kwargs: {
-            fields: [
-              'id', 'name', 'partner_id', 'partner_latitude', 'partner_longitude',
-              'scheduled_date', 'state', 'move_ids_without_package'
-            ],
-            limit: 500
-          }
-        },
-        id: Date.now(),
-      }),
-    });
+    const sessionData = JSON.parse(sessionCookie.value);
 
-    if (!response.ok) {
-      throw new Error(`Errore HTTP: ${response.status}`);
+    // Crea client RPC con session ID
+    const rpcClient = createOdooRPCClient(sessionData.sessionId);
+
+    // Test connessione
+    const isConnected = await rpcClient.testConnection();
+    if (!isConnected) {
+      throw new Error('Impossibile connettersi a Odoo');
     }
 
-    const data = await response.json();
+    console.log('[Smart Route AI] Connessione Odoo OK');
 
-    if (data.error) {
-      throw new Error(data.error.data?.message || 'Errore Odoo');
-    }
+    // Search for WH/PICK pickings using RPC client searchRead
+    const pickings = await rpcClient.searchRead(
+      'stock.picking',
+      [
+        ['name', 'ilike', 'WH/PICK'],
+        ['state', 'in', ['confirmed', 'assigned', 'waiting']],
+        ['scheduled_date', '>=', `${dateFrom} 00:00:00`],
+        ['scheduled_date', '<=', `${dateTo} 23:59:59`]
+      ],
+      [
+        'id', 'name', 'partner_id', 'partner_latitude', 'partner_longitude',
+        'scheduled_date', 'state', 'move_ids_without_package'
+      ],
+      500,
+      'scheduled_date'
+    );
 
-    console.log(`[Smart Route AI] Trovati ${data.result?.length || 0} picking WH/PICK`);
+    console.log(`[Smart Route AI] Trovati ${pickings.length} picking WH/PICK`);
 
-    // Collect all move IDs to fetch in bulk (optimization: avoid N+1 queries)
+    // Collect all move IDs to fetch in bulk
     const allMoveIds: number[] = [];
 
-    for (const picking of (data.result || [])) {
+    for (const picking of pickings) {
       if (picking.move_ids_without_package && picking.move_ids_without_package.length > 0) {
         allMoveIds.push(...picking.move_ids_without_package);
       }
     }
 
-    // Fetch all moves in ONE single request (bulk operation)
+    // Fetch all moves in ONE bulk request using RPC client
     let movesMap: Record<number, number> = {};
     if (allMoveIds.length > 0) {
       console.log(`[Smart Route AI] Caricamento ${allMoveIds.length} move in bulk...`);
 
-      const movesResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw/stock.move/read`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': `session_id=${sessionId}`,
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {
-            model: 'stock.move',
-            method: 'read',
-            args: [allMoveIds, ['id', 'product_uom_qty', 'picking_id']],
-            kwargs: {}
-          },
-          id: Date.now(),
-        }),
-      });
+      const moves = await rpcClient.callKw(
+        'stock.move',
+        'read',
+        [allMoveIds, ['id', 'product_uom_qty', 'picking_id']]
+      );
 
-      if (movesResponse.ok) {
-        const movesData = await movesResponse.json();
-        if (movesData.result) {
-          // Create map: pickingId -> total weight
-          for (const move of movesData.result) {
-            const pickingId = move.picking_id ? move.picking_id[0] : null;
-            if (pickingId) {
-              if (!movesMap[pickingId]) {
-                movesMap[pickingId] = 0;
-              }
-              movesMap[pickingId] += (move.product_uom_qty || 0);
-            }
+      // Create map: pickingId -> total weight
+      for (const move of moves) {
+        const pickingId = move.picking_id ? move.picking_id[0] : null;
+        if (pickingId) {
+          if (!movesMap[pickingId]) {
+            movesMap[pickingId] = 0;
           }
+          movesMap[pickingId] += (move.product_uom_qty || 0);
         }
       }
 
       console.log(`[Smart Route AI] Calcolati pesi per ${Object.keys(movesMap).length} picking`);
     }
 
-    const pickings = [];
+    const formattedPickings = [];
     let withCoordinates = 0;
 
-    for (const picking of (data.result || [])) {
+    for (const picking of pickings) {
       // Only include pickings with coordinates
       if (picking.partner_latitude && picking.partner_longitude) {
         withCoordinates++;
         const totalWeight = movesMap[picking.id] || 0;
 
-        pickings.push({
+        formattedPickings.push({
           id: picking.id,
           name: picking.name,
           partnerId: picking.partner_id ? picking.partner_id[0] : 0,
@@ -144,11 +115,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[Smart Route AI] Restituiti ${pickings.length} picking con coordinate`);
+    console.log(`[Smart Route AI] Restituiti ${formattedPickings.length} picking con coordinate`);
 
     return NextResponse.json({
       success: true,
-      pickings,
+      pickings: formattedPickings,
       withCoordinates
     });
 
