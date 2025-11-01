@@ -69,7 +69,25 @@ export default function CatalogoPage() {
   // Fetch categories on mount
   useEffect(() => {
     fetchCategories();
+    fetchCartItems();
   }, []);
+
+  // Fetch cart items
+  async function fetchCartItems() {
+    try {
+      const response = await fetch('/api/portale-clienti/cart');
+      const data = await response.json();
+
+      if (!data.error && data.items) {
+        setCartItems(data.items.map((item: any) => ({
+          productId: item.product.id,
+          quantity: item.quantity
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch cart:', err);
+    }
+  }
 
   // Fetch products when filters change
   useEffect(() => {
@@ -157,6 +175,9 @@ export default function CatalogoPage() {
 
       const product = products.find((p) => p.id === productId);
       toast.success(`${product?.name || 'Prodotto'} aggiunto al carrello`);
+
+      // Ricarica il carrello per aggiornare le quantità
+      fetchCartItems();
     } catch (err: any) {
       console.error('Failed to add to cart:', err);
       toast.error(err.message || 'Impossibile aggiungere al carrello');
@@ -262,13 +283,17 @@ export default function CatalogoPage() {
           <>
             {/* Products Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onAddToCart={handleAddToCart}
-                />
-              ))}
+              {products.map((product) => {
+                const cartItem = cartItems.find(item => item.productId === product.id);
+                return (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onAddToCart={handleAddToCart}
+                    cartQuantity={cartItem?.quantity || 0}
+                  />
+                );
+              })}
             </div>
 
             {/* Pagination */}
