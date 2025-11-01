@@ -78,18 +78,26 @@ export default function CatalogoPage() {
       const response = await fetch('/api/portale-clienti/cart');
       const data = await response.json();
 
-      if (!data.error && data.items) {
-        setCartItems(
-          data.items
-            .filter((item: any) => item.product && item.product.id) // Filter out invalid items
-            .map((item: any) => ({
-              productId: item.product.id,
-              quantity: item.quantity
-            }))
-        );
+      if (!data.error && data.items && Array.isArray(data.items)) {
+        const validItems = data.items
+          .filter((item: any) => {
+            try {
+              return item && item.product && typeof item.product.id === 'number';
+            } catch {
+              return false;
+            }
+          })
+          .map((item: any) => ({
+            productId: item.product.id,
+            quantity: item.quantity || 0
+          }));
+        setCartItems(validItems);
+      } else {
+        setCartItems([]);
       }
     } catch (err) {
       console.error('Failed to fetch cart:', err);
+      setCartItems([]); // Set empty array on error
     }
   }
 
