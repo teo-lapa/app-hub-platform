@@ -273,9 +273,29 @@ function getDateRange(period: string) {
 
     case 'month':
     default:
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      startDate = monthStart.toISOString().split('T')[0];
-      endDate = now.toISOString().split('T')[0] + ' 23:59:59';
+      // Se siamo nei primi 3 giorni del mese, mostra il mese scorso completo
+      // Altrimenti mostra il mese corrente fino a oggi
+      const dayOfMonth = now.getDate();
+      let targetMonth, targetYear;
+
+      if (dayOfMonth <= 3) {
+        // Primi giorni del mese → mostra mese scorso completo
+        targetMonth = now.getMonth() - 1;
+        targetYear = now.getFullYear();
+        if (targetMonth < 0) {
+          targetMonth = 11;
+          targetYear -= 1;
+        }
+        const monthStart = new Date(targetYear, targetMonth, 1);
+        const monthEnd = new Date(targetYear, targetMonth + 1, 0); // Ultimo giorno del mese
+        startDate = monthStart.toISOString().split('T')[0];
+        endDate = monthEnd.toISOString().split('T')[0] + ' 23:59:59';
+      } else {
+        // Dopo il 3 del mese → mostra mese corrente fino a oggi
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        startDate = monthStart.toISOString().split('T')[0];
+        endDate = now.toISOString().split('T')[0] + ' 23:59:59';
+      }
       break;
   }
 
