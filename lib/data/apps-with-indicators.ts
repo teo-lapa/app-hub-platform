@@ -288,7 +288,7 @@ export const standaloneApps: App[] = [
   },
   {
     id: 's13',
-    name: 'Smart Route AI',
+    name: 'Smart Route AI [P]',
     description: 'Ottimizzazione intelligente dei percorsi di consegna. 3 algoritmi avanzati (Geographic Clustering, Clarke-Wright, Nearest Neighbor). Mappa interattiva, calcolo distanze GPS reali, creazione batch automatica in Odoo con assegnazione autisti.',
     icon: '🗺️',
     badge: 'PRO',
