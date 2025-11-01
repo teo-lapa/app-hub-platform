@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent } from 'lucide-react';
+import Link from 'next/link';
 
 interface KPICardProps {
   title: string;
@@ -19,13 +20,24 @@ function KPICard({ title, value, change, changeType, icon, gradient, subtitle, i
   const changeColor = changeType === 'up' ? 'text-green-400' : changeType === 'down' ? 'text-red-400' : 'text-slate-400';
   const ChangeIcon = changeType === 'up' ? TrendingUp : changeType === 'down' ? TrendingDown : null;
 
-  return (
+  // Determina il link per ogni card
+  const getCardLink = () => {
+    switch (title) {
+      case 'Margini': return '/super-dashboard/margini';
+      case 'Revenue': return '/super-dashboard/revenue';
+      case 'Orders': return '/super-dashboard/orders';
+      case 'Customers': return '/super-dashboard/customers';
+      default: return '#';
+    }
+  };
+
+  const cardContent = (
     <motion.div
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ delay: index * 0.1, duration: 0.5 }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className="relative group"
+      className="relative group cursor-pointer"
     >
       <div className={`bg-gradient-to-br ${gradient} rounded-xl p-6 shadow-2xl border border-white/10 overflow-hidden`}>
         {/* Background Pattern */}
@@ -77,6 +89,14 @@ function KPICard({ title, value, change, changeType, icon, gradient, subtitle, i
       </div>
     </motion.div>
   );
+
+  // Wrappa con Link se il card ha una pagina dedicata
+  const cardLink = getCardLink();
+  if (cardLink !== '#') {
+    return <Link href={cardLink}>{cardContent}</Link>;
+  }
+
+  return cardContent;
 }
 
 interface KPIData {
@@ -111,6 +131,12 @@ interface KPIData {
     subtitle: string;
   };
   deliveries: {
+    value: number;
+    change: number;
+    changeType: 'up' | 'down';
+    subtitle: string;
+  };
+  margins: {
     value: number;
     change: number;
     changeType: 'up' | 'down';
@@ -262,6 +288,15 @@ export function KPISummarySection({ period }: KPISummarySectionProps) {
       gradient: 'from-amber-500 to-orange-600',
       subtitle: kpiData.deliveries.subtitle,
     },
+    {
+      title: 'Margini',
+      value: `CHF ${(kpiData.margins.value / 1000).toFixed(0)}K`,
+      change: `${kpiData.margins.change > 0 ? '+' : ''}${kpiData.margins.change}%`,
+      changeType: kpiData.margins.changeType,
+      icon: <Percent className="w-6 h-6 text-white" />,
+      gradient: 'from-rose-500 to-pink-600',
+      subtitle: kpiData.margins.subtitle,
+    },
   ];
 
   return (
@@ -281,7 +316,7 @@ export function KPISummarySection({ period }: KPISummarySectionProps) {
         </h2>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-4">
         {kpis.map((kpi, index) => (
           <KPICard key={index} {...kpi} index={index} />
         ))}

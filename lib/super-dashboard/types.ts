@@ -19,6 +19,7 @@ export interface KPIData {
   healthScore: KPIValue;
   stockValue: KPIValue;
   deliveries: KPIValue;
+  margins: KPIValue;
 }
 
 export interface HighRiskCustomer {

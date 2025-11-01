@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const { currentStart, currentEnd, previousStart, previousEnd } = getDateRanges(period);
 
     // Parallel fetch data from Odoo and Vercel Postgres
-    const [revenueData, ordersData, customersData, healthData, stockData, deliveriesData] =
+    const [revenueData, ordersData, customersData, healthData, stockData, deliveriesData, marginsData] =
       await Promise.all([
         fetchRevenue(currentStart, currentEnd, previousStart, previousEnd),
         fetchOrders(currentStart, currentEnd, previousStart, previousEnd),
@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         fetchHealthScore(),
         fetchStockValue(),
         fetchDeliveries(currentStart, currentEnd, previousStart, previousEnd),
+        fetchMargins(currentStart, currentEnd, previousStart, previousEnd),
       ]);
 
     const kpiData = {
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
       healthScore: healthData,
       stockValue: stockData,
       deliveries: deliveriesData,
+      margins: marginsData,
     };
 
     console.log(`✅ [SUPER-DASHBOARD-KPI] KPIs fetched successfully`);
@@ -412,6 +414,93 @@ async function fetchDeliveries(
 
   } catch (error) {
     console.error('Error fetching deliveries:', error);
+    return { value: 0, change: 0, changeType: 'up' as const, subtitle: 'Error' };
+  }
+}
+
+/**
+ * Fetch Margins KPI
+ */
+async function fetchMargins(
+  currentStart: Date,
+  currentEnd: Date,
+  previousStart: Date,
+  previousEnd: Date
+) {
+  try {
+    // Current period margins
+    const currentOrders = await callOdooAsAdmin(
+      'sale.order',
+      'search_read',
+      [[
+        ['date_order', '>=', currentStart.toISOString()],
+        ['date_order', '<=', currentEnd.toISOString()],
+        ['state', 'in', ['sale', 'done']]
+      ]],
+      { fields: ['order_line'] }
+    );
+
+    const currentLineIds = currentOrders.flatMap((o: any) => o.order_line || []);
+
+    let currentMargin = 0;
+    if (currentLineIds.length > 0) {
+      const currentLines = await callOdooAsAdmin(
+        'sale.order.line',
+        'search_read',
+        [[['id', 'in', currentLineIds]]],
+        { fields: ['price_subtotal', 'purchase_price', 'product_uom_qty'] }
+      );
+
+      currentLines.forEach((line: any) => {
+        const revenue = line.price_subtotal || 0;
+        const cost = (line.purchase_price || 0) * (line.product_uom_qty || 0);
+        currentMargin += (revenue - cost);
+      });
+    }
+
+    // Previous period margins
+    const previousOrders = await callOdooAsAdmin(
+      'sale.order',
+      'search_read',
+      [[
+        ['date_order', '>=', previousStart.toISOString()],
+        ['date_order', '<=', previousEnd.toISOString()],
+        ['state', 'in', ['sale', 'done']]
+      ]],
+      { fields: ['order_line'] }
+    );
+
+    const previousLineIds = previousOrders.flatMap((o: any) => o.order_line || []);
+
+    let previousMargin = 0;
+    if (previousLineIds.length > 0) {
+      const previousLines = await callOdooAsAdmin(
+        'sale.order.line',
+        'search_read',
+        [[['id', 'in', previousLineIds]]],
+        { fields: ['price_subtotal', 'purchase_price', 'product_uom_qty'] }
+      );
+
+      previousLines.forEach((line: any) => {
+        const revenue = line.price_subtotal || 0;
+        const cost = (line.purchase_price || 0) * (line.product_uom_qty || 0);
+        previousMargin += (revenue - cost);
+      });
+    }
+
+    const change = previousMargin > 0
+      ? Math.round(((currentMargin - previousMargin) / previousMargin) * 100)
+      : 0;
+
+    return {
+      value: currentMargin,
+      change: Math.abs(change),
+      changeType: change >= 0 ? 'up' as const : 'down' as const,
+      subtitle: 'vs periodo precedente'
+    };
+
+  } catch (error) {
+    console.error('Error fetching margins:', error);
     return { value: 0, change: 0, changeType: 'up' as const, subtitle: 'Error' };
   }
 }
