@@ -593,8 +593,8 @@ export default function CatalogoLapaPage() {
       {/* BARRA FISSA IN BASSO: PULSANTI CATEGORIE (in basso) + RICERCA (sopra) */}
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-600/50 bg-slate-900/95 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
         <div className="max-w-7xl mx-auto">
-          {/* Pulsanti categorie PIÙ IN BASSO - scroll orizzontale */}
-          <div className="overflow-x-auto pb-3 pt-3 px-4 border-b border-slate-700/50">
+          {/* Pulsanti categorie PIÙ IN BASSO - scroll orizzontale - NASCOSTI */}
+          <div className="hidden overflow-x-auto pb-3 pt-3 px-4 border-b border-slate-700/50">
             <div className="flex gap-2 min-w-max">
               <button
                 onClick={() => handleCategoryClick(null)}
