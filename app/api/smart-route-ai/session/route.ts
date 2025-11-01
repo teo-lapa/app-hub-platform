@@ -6,11 +6,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Check for Odoo session cookie (usa odoo_session_id come le altre API)
-    const cookieStore = cookies();
-    const sessionId = cookieStore.get('odoo_session_id')?.value;
+    // Check for Odoo session cookie (STESSO pattern di /api/picking/batches)
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('odoo_session');
 
-    if (!sessionId) {
+    if (!sessionCookie?.value) {
       return NextResponse.json({
         connected: false,
         userId: null,
@@ -18,8 +18,10 @@ export async function GET(request: NextRequest) {
       }, { status: 200 });
     }
 
+    const sessionData = JSON.parse(sessionCookie.value);
+
     // Test Odoo connection
-    const rpcClient = createOdooRPCClient(sessionId);
+    const rpcClient = createOdooRPCClient(sessionData.sessionId);
     const isConnected = await rpcClient.testConnection();
 
     if (isConnected) {
@@ -28,9 +30,9 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         connected: true,
-        userId: user?.id || null,
-        userName: user?.name || 'User',
-        sessionId: sessionId
+        userId: user?.id || sessionData.uid || null,
+        userName: user?.name || sessionData.name || 'User',
+        sessionId: sessionData.sessionId
       }, { status: 200 });
     }
 
