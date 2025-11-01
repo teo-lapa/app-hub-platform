@@ -72,39 +72,42 @@ export default function CatalogoPage() {
     fetchCartItems(); // Riabilitato - cache browser risolta
   }, []);
 
-  // Fetch cart items
+  // Fetch cart items with ultra-robust error handling
   async function fetchCartItems() {
     try {
       const response = await fetch('/api/portale-clienti/cart');
+      if (!response.ok) {
+        console.warn('Cart API returned error status:', response.status);
+        setCartItems([]);
+        return;
+      }
+
       const data = await response.json();
 
       if (!data.error && data.items && Array.isArray(data.items)) {
-        const validItems = data.items
-          .filter((item: any) => {
-            try {
-              return item && item.product && typeof item.product.id === 'number';
-            } catch {
-              return false;
-            }
-          })
-          .map((item: any) => {
-            try {
-              return {
+        const validItems: { productId: number; quantity: number }[] = [];
+
+        for (const item of data.items) {
+          try {
+            if (item && item.product && typeof item.product.id === 'number') {
+              validItems.push({
                 productId: item.product.id,
-                quantity: item.quantity || 0
-              };
-            } catch {
-              return null;
+                quantity: typeof item.quantity === 'number' ? item.quantity : 0
+              });
             }
-          })
-          .filter((item: any) => item !== null);
+          } catch (e) {
+            console.warn('Skipping invalid cart item:', e);
+            continue;
+          }
+        }
+
         setCartItems(validItems);
       } else {
         setCartItems([]);
       }
     } catch (err) {
       console.error('Failed to fetch cart:', err);
-      setCartItems([]); // Set empty array on error
+      setCartItems([]);
     }
   }
 
