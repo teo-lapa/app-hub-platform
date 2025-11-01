@@ -1175,6 +1175,21 @@ export default function PrelievoZonePage() {
                       <Package className="w-4 h-4 text-muted-foreground" />
                       <span>{batch.picking_count || 0} ordini, {batch.product_count || 0} prodotti</span>
                     </div>
+
+                    {/* Messaggi clienti */}
+                    {batch.customer_notes_count && batch.customer_notes_count > 0 && (
+                      <div className="flex items-center gap-2 bg-yellow-500/20 px-3 py-2 rounded-lg border border-yellow-500/30">
+                        <span
+                          className="text-lg"
+                          style={{ animation: 'heartbeat 1.5s ease-in-out infinite' }}
+                        >
+                          ⚠️
+                        </span>
+                        <span className="font-semibold text-yellow-400">
+                          {batch.customer_notes_count} {batch.customer_notes_count === 1 ? 'cliente con messaggio' : 'clienti con messaggi'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <ChevronRight className="w-5 h-5 mt-4 ml-auto text-muted-foreground" />

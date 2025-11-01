@@ -15,6 +15,7 @@ interface OdooPickingBatch {
   picking_count?: number;
   move_line_count?: number;
   product_count?: number;
+  customer_notes_count?: number; // Conteggio clienti con messaggi
 }
 
 interface OdooStockLocation {
@@ -152,10 +153,11 @@ export class PickingOdooClient {
 
       console.log(`✅ [Picking] Trovati ${batches.length} batch`);
 
-      // Per ogni batch, carica i dettagli dei picking per contare prodotti
+      // Per ogni batch, carica i dettagli dei picking per contare prodotti e messaggi clienti
       const batchesWithDetails = await Promise.all(batches.map(async (batch) => {
         let pickingCount = 0;
         let productCount = 0;
+        let customerNotesCount = 0; // Conteggio clienti con messaggi
 
         if (batch.picking_ids && Array.isArray(batch.picking_ids)) {
           pickingCount = batch.picking_ids.length;
@@ -175,12 +177,28 @@ export class PickingOdooClient {
           } catch (error) {
             console.warn('Errore conteggio prodotti per batch', batch.id, error);
           }
+
+          // Conta i picking con messaggi cliente (note non vuote)
+          try {
+            const pickingsWithNotes = await this.rpc(
+              'stock.picking',
+              'search_count',
+              [[
+                ['id', 'in', batch.picking_ids],
+                ['note', '!=', false]
+              ]]
+            );
+            customerNotesCount = pickingsWithNotes;
+          } catch (error) {
+            console.warn('Errore conteggio messaggi clienti per batch', batch.id, error);
+          }
         }
 
         return {
           ...batch,
           picking_count: pickingCount,
-          product_count: productCount
+          product_count: productCount,
+          customer_notes_count: customerNotesCount
         };
       }));
 
@@ -919,7 +937,8 @@ export class PickingOdooClient {
       x_studio_auto_del_giro: batch.x_studio_auto_del_giro || undefined,
       picking_count: batch.picking_count,
       move_line_count: batch.move_line_count,
-      product_count: batch.product_count
+      product_count: batch.product_count,
+      customer_notes_count: batch.customer_notes_count || 0
     };
   }
 
