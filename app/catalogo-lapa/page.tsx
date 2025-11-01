@@ -16,7 +16,7 @@ interface Product {
   description_sale?: string;
   qty_available?: number;
   uom_id?: [number, string];
-  x_ubicazione?: string; // Ubicazione prodotto
+  locations?: string[]; // Ubicazioni prodotto dal magazzino
 }
 
 interface OdooResponse {
@@ -253,37 +253,9 @@ export default function CatalogoLapaPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Barra di ricerca */}
-        <div className="mb-8">
-          <form onSubmit={handleSearch} className="max-w-xl mx-auto">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-slate-400" />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cerca..."
-                className="block w-full pl-8 pr-20 py-2 text-sm bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-              />
-              {isAutoSearching && (
-                <div className="absolute inset-y-0 right-14 flex items-center pr-2 pointer-events-none">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500"></div>
-                </div>
-              )}
-              <button
-                type="submit"
-                disabled={loading}
-                className="absolute inset-y-0 right-0 px-4 py-1 m-1 bg-gradient-to-r from-emerald-500 to-blue-500 text-white text-sm font-medium rounded-md hover:from-emerald-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-all"
-              >
-                Cerca
-              </button>
-            </div>
-          </form>
-
-          {/* Pulsanti categorie */}
-          <div className="max-w-3xl mx-auto mt-4">
+        {/* Pulsanti categorie - SOPRA LA RICERCA */}
+        <div className="mb-4">
+          <div className="max-w-3xl mx-auto">
             <div className="grid grid-cols-5 gap-2">
               <button
                 onClick={() => handleCategoryClick(null)}
@@ -335,6 +307,29 @@ export default function CatalogoLapaPage() {
               >
                 NON FOOD
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Barra di ricerca - SOTTO LE CATEGORIE */}
+        <div className="mb-8">
+          <div className="max-w-xl mx-auto">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cerca..."
+                className="block w-full pl-10 pr-10 py-3 text-sm bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              />
+              {isAutoSearching && (
+                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500"></div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -433,7 +428,10 @@ export default function CatalogoLapaPage() {
                         {product.list_price && product.list_price > 0 ? (
                           <div>
                             <span className="text-sm font-bold text-emerald-400">
-                              €{product.list_price.toFixed(2)}
+                              {new Intl.NumberFormat('it-CH', {
+                                style: 'currency',
+                                currency: 'CHF'
+                              }).format(product.list_price)}
                             </span>
                           </div>
                         ) : (
@@ -452,13 +450,20 @@ export default function CatalogoLapaPage() {
                         )}
                       </div>
 
-                      {/* Ubicazione */}
-                      {product.x_ubicazione && (
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-slate-400">Ubicaz:</span>
-                          <span className="font-semibold text-blue-400">
-                            {product.x_ubicazione}
-                          </span>
+                      {/* Ubicazioni */}
+                      {product.locations && product.locations.length > 0 && (
+                        <div className="text-[9px] mt-1">
+                          <div className="text-slate-400 mb-0.5">Ubicazioni:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {product.locations.map((loc, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-block px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-medium border border-blue-500/30"
+                              >
+                                {loc}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>

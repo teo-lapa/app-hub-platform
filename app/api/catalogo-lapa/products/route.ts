@@ -110,6 +110,64 @@ export async function POST(request: NextRequest) {
 
     const products = productsData.result;
 
+    // Recupera ubicazioni per ogni prodotto tramite stock.quant
+    const productIds = products.map((p: any) => p.id);
+
+    let productLocations: Record<number, string[]> = {};
+
+    if (productIds.length > 0) {
+      const quantsResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'stock.quant',
+            method: 'search_read',
+            args: [[
+              ['product_id', 'in', productIds],
+              ['quantity', '>', 0]
+            ]],
+            kwargs: {
+              fields: ['product_id', 'location_id', 'quantity'],
+              context: { lang: 'it_IT' }
+            }
+          },
+          id: Math.random()
+        })
+      });
+
+      const quantsData = await quantsResponse.json();
+
+      if (!quantsData.error && quantsData.result) {
+        const quants = quantsData.result;
+
+        // Raggruppa ubicazioni per prodotto
+        quants.forEach((quant: any) => {
+          const productId = quant.product_id[0];
+          const locationName = quant.location_id[1];
+
+          if (!productLocations[productId]) {
+            productLocations[productId] = [];
+          }
+
+          // Aggiungi solo se non è già presente
+          if (!productLocations[productId].includes(locationName)) {
+            productLocations[productId].push(locationName);
+          }
+        });
+      }
+    }
+
+    // Aggiungi ubicazioni ai prodotti
+    products.forEach((product: any) => {
+      product.locations = productLocations[product.id] || [];
+    });
+
     // Conta totale
     const countResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
       method: 'POST',
