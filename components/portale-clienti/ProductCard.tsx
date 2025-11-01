@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ShoppingCart, Package, AlertCircle, Tag, Bell } from 'lucide-react';
+import { ShoppingCart, Package, AlertCircle, Tag, Bell, X } from 'lucide-react';
 import { ProductReservationModal, ReservationData } from './ProductReservationModal';
 import toast from 'react-hot-toast';
 
@@ -30,6 +30,7 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductC
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const isInCart = cartQuantity > 0;
 
   const handleAddToCart = async () => {
@@ -91,7 +92,10 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductC
   return (
     <article className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 overflow-hidden hover:border-emerald-500/50 transition-all duration-300 group">
       {/* Immagine prodotto */}
-      <div className="aspect-square bg-slate-700/30 relative overflow-hidden">
+      <div
+        className="aspect-square bg-slate-700/30 relative overflow-hidden cursor-pointer hover:bg-slate-700/50 transition-colors"
+        onClick={() => setIsDetailModalOpen(true)}
+      >
         {product.image !== '/placeholder-product.png' ? (
           <img
             src={product.image}
@@ -254,6 +258,148 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductC
         }}
         onSubmit={handleReservation}
       />
+
+      {/* Product Detail Modal */}
+      {isDetailModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setIsDetailModalOpen(false)}
+        >
+          <div
+            className="bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header con immagine */}
+            <div className="relative">
+              <div className="aspect-video bg-slate-700/30 relative overflow-hidden">
+                {product.image !== '/placeholder-product.png' ? (
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Package className="h-24 w-24 text-slate-500" />
+                  </div>
+                )}
+              </div>
+
+              {/* Pulsante chiudi */}
+              <button
+                onClick={() => setIsDetailModalOpen(false)}
+                className="absolute top-4 right-4 bg-slate-900/80 hover:bg-slate-900 text-white rounded-full p-2 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Contenuto */}
+            <div className="p-6">
+              {/* Nome prodotto */}
+              <h2 className="text-2xl font-bold text-white mb-4">{product.name}</h2>
+
+              {/* Informazioni principali */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                {/* Codice prodotto */}
+                {product.code && (
+                  <div className="bg-slate-700/30 rounded-lg p-3">
+                    <div className="text-slate-400 text-sm mb-1">Codice Prodotto</div>
+                    <div className="text-white font-semibold">{product.code}</div>
+                  </div>
+                )}
+
+                {/* Prezzo */}
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
+                  <div className="text-emerald-400 text-sm mb-1">Prezzo di Listino</div>
+                  <div className="text-white font-bold text-xl">
+                    {formatPrice(product.price)}
+                    <span className="text-slate-400 text-base font-normal ml-1">
+                      / {product.unit}
+                    </span>
+                  </div>
+                  {product.hasCustomPrice && product.originalPrice > product.price && (
+                    <div className="text-slate-500 text-sm line-through mt-1">
+                      {formatPrice(product.originalPrice)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Categoria */}
+                {product.category && (
+                  <div className="bg-slate-700/30 rounded-lg p-3">
+                    <div className="text-slate-400 text-sm mb-1">Categoria</div>
+                    <div className="text-white font-semibold">{product.category.name}</div>
+                  </div>
+                )}
+
+                {/* Disponibilità */}
+                <div className={`rounded-lg p-3 ${
+                  product.available
+                    ? 'bg-green-500/10 border border-green-500/30'
+                    : 'bg-red-500/10 border border-red-500/30'
+                }`}>
+                  <div className={`text-sm mb-1 ${
+                    product.available ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    Disponibilità
+                  </div>
+                  <div className="text-white font-bold text-xl">
+                    {product.available ? (
+                      <span className="text-green-400">{product.quantity} {product.unit} disponibili</span>
+                    ) : (
+                      <span className="text-red-400">Esaurito</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Descrizione */}
+              {product.description && (
+                <div className="mb-6">
+                  <div className="text-slate-400 text-sm mb-2">Descrizione</div>
+                  <p className="text-white leading-relaxed whitespace-pre-line">
+                    {product.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Pulsanti azione */}
+              <div className="flex gap-3 pt-4 border-t border-slate-700">
+                <button
+                  onClick={() => setIsDetailModalOpen(false)}
+                  className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors"
+                >
+                  Chiudi
+                </button>
+                {product.available ? (
+                  <button
+                    onClick={() => {
+                      setIsDetailModalOpen(false);
+                      handleAddToCart();
+                    }}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    Aggiungi al Carrello
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setIsDetailModalOpen(false);
+                      setIsReservationModalOpen(true);
+                    }}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    <Bell className="h-4 w-4" />
+                    Prenota Prodotto
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
 }
