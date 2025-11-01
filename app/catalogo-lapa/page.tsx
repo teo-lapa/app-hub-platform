@@ -252,62 +252,7 @@ export default function CatalogoLapaPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Pulsanti categorie - FILA ORIZZONTALE CON SCROLL */}
-        <div className="mb-8 overflow-x-auto">
-          <div className="flex gap-2 px-4 min-w-max">
-            <button
-              onClick={() => handleCategoryClick(null)}
-              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                selectedCategory === null
-                  ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
-                  : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
-              }`}
-            >
-              TUTTO
-            </button>
-            <button
-              onClick={() => handleCategoryClick('SECCO')}
-              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                selectedCategory === 'SECCO'
-                  ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
-                  : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
-              }`}
-            >
-              SECCO
-            </button>
-            <button
-              onClick={() => handleCategoryClick('FRIGO')}
-              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                selectedCategory === 'FRIGO'
-                  ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
-                  : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
-              }`}
-            >
-              FRIGO
-            </button>
-            <button
-              onClick={() => handleCategoryClick('PINGU')}
-              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                selectedCategory === 'PINGU'
-                  ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
-                  : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
-              }`}
-            >
-              PINGU
-            </button>
-            <button
-              onClick={() => handleCategoryClick('NON FOOD')}
-              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                selectedCategory === 'NON FOOD'
-                  ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
-                  : 'bg-slate-800/50 text-slate-300 border border-slate-600 hover:border-emerald-500/50 hover:text-white'
-              }`}
-            >
-              NON FOOD
-            </button>
-          </div>
-        </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-40">{/* pb-40 per spazio barra fissa in basso */}
 
         {/* Stati di caricamento e errore */}
         {loading && (
@@ -645,50 +590,104 @@ export default function CatalogoLapaPage() {
         </div>
       )}
 
-      {/* Barra di ricerca FISSA IN BASSO - come Portale Clienti */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-600/50 bg-slate-900/90 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center gap-2 md:gap-3">
-            {/* Search Input Container */}
-            <div className="relative flex-1">
-              <div className="relative">
-                {/* Search Icon */}
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <Search className="h-5 w-5" />
-                </div>
-
-                {/* Input Field */}
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cerca prodotti per nome o codice..."
-                  className="w-full pl-10 pr-10 py-3 min-h-[48px] bg-slate-800/80 backdrop-blur-sm border border-slate-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:bg-slate-800 transition-all shadow-sm placeholder:text-slate-400 text-white"
-                  aria-label="Cerca prodotti"
-                />
-
-                {/* Spinner or Clear Button */}
-                {isAutoSearching ? (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-500"></div>
-                  </div>
-                ) : searchQuery ? (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded-full transition-all active:scale-90"
-                    aria-label="Cancella ricerca"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                ) : null}
+      {/* BARRA FISSA IN BASSO: RICERCA (verde) SOPRA + CATEGORIE (rosso) SOTTO */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-600/50 bg-slate-900/95 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+        <div className="max-w-7xl mx-auto">
+          {/* VERDE: Barra di ricerca SOPRA */}
+          <div className="px-4 pt-3 pb-2">
+            <div className="relative">
+              {/* Search Icon */}
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10">
+                <Search className="h-5 w-5" />
               </div>
+
+              {/* Input Field */}
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cerca prodotti..."
+                className="w-full pl-10 pr-10 py-3 min-h-[48px] bg-slate-800/80 backdrop-blur-sm border border-slate-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:bg-slate-800 transition-all shadow-sm placeholder:text-slate-400 text-white"
+                aria-label="Cerca prodotti"
+              />
+
+              {/* Spinner or Clear Button */}
+              {isAutoSearching ? (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-500"></div>
+                </div>
+              ) : searchQuery ? (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded-full transition-all active:scale-90 z-10"
+                  aria-label="Cancella ricerca"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          {/* ROSSO: Pulsanti categorie SOTTO - scroll orizzontale */}
+          <div className="overflow-x-auto pb-3 pt-1 px-4">
+            <div className="flex gap-2 min-w-max">
+              <button
+                onClick={() => handleCategoryClick(null)}
+                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap min-h-[48px] ${
+                  selectedCategory === null
+                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-800/70 text-slate-300 border border-slate-600/70 hover:border-emerald-500/50 hover:text-white'
+                }`}
+              >
+                TUTTO
+              </button>
+              <button
+                onClick={() => handleCategoryClick('SECCO')}
+                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap min-h-[48px] ${
+                  selectedCategory === 'SECCO'
+                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-800/70 text-slate-300 border border-slate-600/70 hover:border-emerald-500/50 hover:text-white'
+                }`}
+              >
+                SECCO
+              </button>
+              <button
+                onClick={() => handleCategoryClick('FRIGO')}
+                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap min-h-[48px] ${
+                  selectedCategory === 'FRIGO'
+                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-800/70 text-slate-300 border border-slate-600/70 hover:border-emerald-500/50 hover:text-white'
+                }`}
+              >
+                FRIGO
+              </button>
+              <button
+                onClick={() => handleCategoryClick('PINGU')}
+                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap min-h-[48px] ${
+                  selectedCategory === 'PINGU'
+                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-800/70 text-slate-300 border border-slate-600/70 hover:border-emerald-500/50 hover:text-white'
+                }`}
+              >
+                PINGU
+              </button>
+              <button
+                onClick={() => handleCategoryClick('NON FOOD')}
+                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap min-h-[48px] ${
+                  selectedCategory === 'NON FOOD'
+                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-800/70 text-slate-300 border border-slate-600/70 hover:border-emerald-500/50 hover:text-white'
+                }`}
+              >
+                NON FOOD
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Pulsante Home Mobile - sempre visibile */}
-      <div className="fixed bottom-20 right-6 md:hidden z-50">
+      {/* Pulsante Home Mobile - sopra la barra fissa */}
+      <div className="fixed bottom-[160px] right-6 md:hidden z-50">
         <Link
           href="/dashboard"
           className="flex items-center justify-center w-14 h-14 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-full shadow-lg transition-all duration-300 transform hover:scale-110"
