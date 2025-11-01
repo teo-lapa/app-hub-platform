@@ -499,10 +499,14 @@ export default function SmartRouteAIPage() {
                         className="w-4 h-4"
                       />
                       <div className="flex-1">
-                        <div className="font-semibold text-sm">{vehicle.name}</div>
-                        <div className="text-xs text-gray-600">{vehicle.driver}</div>
+                        <div className={`font-semibold text-sm ${vehicle.selected ? 'text-indigo-900' : 'text-gray-900'}`}>
+                          {vehicle.name}
+                        </div>
+                        <div className={`text-xs ${vehicle.selected ? 'text-indigo-700' : 'text-gray-600'}`}>
+                          {vehicle.driver}
+                        </div>
                       </div>
-                      <div className="text-xs bg-cyan-500 text-white px-2 py-1 rounded-full">
+                      <div className="text-xs bg-cyan-500 text-white px-2 py-1 rounded-full font-semibold">
                         {dynamicCapacity} kg
                       </div>
                     </div>
