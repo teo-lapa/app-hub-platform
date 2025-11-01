@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
-    // Search for stock.picking (WH/PICK)
+    // Search for stock.picking (WH/PICK only - more specific filter)
     const response = await fetch(`${ODOO_URL}/web/dataset/call_kw/stock.picking/search_read`, {
       method: 'POST',
       headers: {
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
           model: 'stock.picking',
           method: 'search_read',
           args: [[
-            ['picking_type_code', '=', 'outgoing'],
+            ['name', 'like', 'WH/PICK'],
             ['state', 'in', ['confirmed', 'assigned', 'waiting']],
             ['scheduled_date', '>=', dateFrom + ' 00:00:00'],
             ['scheduled_date', '<=', dateTo + ' 23:59:59']
@@ -61,46 +61,63 @@ export async function POST(request: NextRequest) {
       throw new Error(data.error.data?.message || 'Errore Odoo');
     }
 
+    // Collect all move IDs to fetch in bulk (optimization: avoid N+1 queries)
+    const allMoveIds: number[] = [];
+
+    for (const picking of (data.result || [])) {
+      if (picking.move_ids_without_package && picking.move_ids_without_package.length > 0) {
+        allMoveIds.push(...picking.move_ids_without_package);
+      }
+    }
+
+    // Fetch all moves in ONE single request (bulk operation)
+    let movesMap: Record<number, number> = {};
+    if (allMoveIds.length > 0) {
+      const movesResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw/stock.move/read`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `session_id=${sessionId}`,
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'stock.move',
+            method: 'read',
+            args: [allMoveIds, ['id', 'product_uom_qty', 'picking_id']],
+            kwargs: {}
+          },
+          id: Date.now(),
+        }),
+      });
+
+      if (movesResponse.ok) {
+        const movesData = await movesResponse.json();
+        if (movesData.result) {
+          // Create map: pickingId -> total weight
+          for (const move of movesData.result) {
+            const pickingId = move.picking_id ? move.picking_id[0] : null;
+            if (pickingId) {
+              if (!movesMap[pickingId]) {
+                movesMap[pickingId] = 0;
+              }
+              movesMap[pickingId] += (move.product_uom_qty || 0);
+            }
+          }
+        }
+      }
+    }
+
     const pickings = [];
     let withCoordinates = 0;
 
     for (const picking of (data.result || [])) {
-      // Calculate total weight from moves
-      let totalWeight = 0;
-      if (picking.move_ids_without_package && picking.move_ids_without_package.length > 0) {
-        // Fetch move lines to get weight
-        const movesResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw/stock.move/read`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cookie': `session_id=${sessionId}`,
-          },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'call',
-            params: {
-              model: 'stock.move',
-              method: 'read',
-              args: [picking.move_ids_without_package, ['product_uom_qty', 'product_id']],
-              kwargs: {}
-            },
-            id: Date.now(),
-          }),
-        });
-
-        if (movesResponse.ok) {
-          const movesData = await movesResponse.json();
-          if (movesData.result) {
-            totalWeight = movesData.result.reduce((sum: number, move: any) => {
-              return sum + (move.product_uom_qty || 0);
-            }, 0);
-          }
-        }
-      }
-
       // Only include pickings with coordinates
       if (picking.partner_latitude && picking.partner_longitude) {
         withCoordinates++;
+        const totalWeight = movesMap[picking.id] || 0;
+
         pickings.push({
           id: picking.id,
           name: picking.name,
