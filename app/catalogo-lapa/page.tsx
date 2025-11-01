@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Package, Barcode, Tag, Eye, ArrowLeft, Home } from 'lucide-react';
+import { Search, Package, Barcode, Tag, Eye, ArrowLeft, Home, X } from 'lucide-react';
 import Link from 'next/link';
 
 interface Product {
@@ -306,29 +306,6 @@ export default function CatalogoLapaPage() {
             >
               NON FOOD
             </button>
-          </div>
-        </div>
-
-        {/* Barra di ricerca - SOTTO I PULSANTI CATEGORIE */}
-        <div className="mb-8">
-          <div className="max-w-xl mx-auto">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-slate-400" />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cerca..."
-                className="block w-full pl-10 pr-4 py-3 text-sm bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-              />
-              {isAutoSearching && (
-                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500"></div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
@@ -668,8 +645,50 @@ export default function CatalogoLapaPage() {
         </div>
       )}
 
+      {/* Barra di ricerca FISSA IN BASSO - come Portale Clienti */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-600/50 bg-slate-900/90 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* Search Input Container */}
+            <div className="relative flex-1">
+              <div className="relative">
+                {/* Search Icon */}
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <Search className="h-5 w-5" />
+                </div>
+
+                {/* Input Field */}
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cerca prodotti per nome o codice..."
+                  className="w-full pl-10 pr-10 py-3 min-h-[48px] bg-slate-800/80 backdrop-blur-sm border border-slate-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:bg-slate-800 transition-all shadow-sm placeholder:text-slate-400 text-white"
+                  aria-label="Cerca prodotti"
+                />
+
+                {/* Spinner or Clear Button */}
+                {isAutoSearching ? (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-500"></div>
+                  </div>
+                ) : searchQuery ? (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded-full transition-all active:scale-90"
+                    aria-label="Cancella ricerca"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Pulsante Home Mobile - sempre visibile */}
-      <div className="fixed bottom-6 right-6 md:hidden z-50">
+      <div className="fixed bottom-20 right-6 md:hidden z-50">
         <Link
           href="/dashboard"
           className="flex items-center justify-center w-14 h-14 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-full shadow-lg transition-all duration-300 transform hover:scale-110"
