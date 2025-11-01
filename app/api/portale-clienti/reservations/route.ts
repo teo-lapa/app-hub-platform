@@ -5,8 +5,27 @@ import jwt from 'jsonwebtoken';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Helper function to extract numeric customer ID from JWT decoded token
+ * Handles both numeric IDs and string IDs like "odoo-7"
+ */
+function extractCustomerId(decoded) {
+  const rawId = decoded.odoo_partner_id || decoded.id;
+
+  if (typeof rawId === 'string') {
+    // Extract number from strings like "odoo-7" or just "7"
+    const match = rawId.match(/d+/);
+    if (!match) {
+      throw new Error('ID cliente non valido');
+    }
+    return parseInt(match[0], 10);
+  }
+
+  return rawId;
+}
+
 // GET - Recupera prenotazioni del cliente
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
     // Verify JWT token
     const token = request.cookies.get('token')?.value;
@@ -15,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-    let decoded: any;
+    let decoded;
 
     try {
       decoded = jwt.verify(token, jwtSecret);
@@ -23,7 +42,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Token non valido' }, { status: 401 });
     }
 
-    const customerId = decoded.odoo_partner_id || decoded.id;
+    let customerId;
+    try {
+      customerId = extractCustomerId(decoded);
+    } catch (err) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
 
     // Recupera prenotazioni del cliente
     const reservations = await sql`
@@ -45,7 +69,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       reservations: reservations.rows,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching reservations:', error);
     return NextResponse.json(
       { error: error.message || 'Errore nel recupero prenotazioni' },
@@ -55,7 +79,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST - Crea nuova prenotazione
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
     // Verify JWT token
     const token = request.cookies.get('token')?.value;
@@ -64,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-    let decoded: any;
+    let decoded;
 
     try {
       decoded = jwt.verify(token, jwtSecret);
@@ -72,14 +96,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token non valido' }, { status: 401 });
     }
 
-    const customerId = decoded.odoo_partner_id || decoded.id;
+    let customerId;
+    try {
+      customerId = extractCustomerId(decoded);
+    } catch (err) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
 
     // Parse form data
     const formData = await request.formData();
-    const productId = formData.get('productId') as string;
-    const textNote = formData.get('textNote') as string;
-    const audioFile = formData.get('audioFile') as File | null;
-    const imageFile = formData.get('imageFile') as File | null;
+    const productId = formData.get('productId');
+    const textNote = formData.get('textNote');
+    const audioFile = formData.get('audioFile');
+    const imageFile = formData.get('imageFile');
 
     if (!productId) {
       return NextResponse.json(
@@ -96,8 +125,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let audioUrl: string | null = null;
-    let imageUrl: string | null = null;
+    let audioUrl = null;
+    let imageUrl = null;
 
     // Upload audio su Vercel Blob se presente
     if (audioFile) {
@@ -147,7 +176,7 @@ export async function POST(request: NextRequest) {
       success: true,
       reservation: reservation.rows[0],
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating reservation:', error);
     return NextResponse.json(
       { error: error.message || 'Errore nel creare prenotazione' },
