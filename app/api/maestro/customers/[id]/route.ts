@@ -39,13 +39,13 @@ export async function GET(
       );
     }
 
-    const customerAvatarId = parseInt(params.id, 10);
-    console.log(`📊 [MAESTRO-API] Fetching customer detail for Customer Avatar ID: ${customerAvatarId}`);
+    const odooPartnerId = parseInt(params.id, 10);
+    console.log(`📊 [MAESTRO-API] Fetching customer detail for Odoo Partner ID: ${odooPartnerId}`);
 
-    // 1. Fetch customer avatar from DB (using internal ID, not odoo_partner_id)
+    // 1. Fetch customer avatar from DB by odoo_partner_id (NOT by UUID id!)
     const avatarResult = await sql`
       SELECT * FROM customer_avatars
-      WHERE id = ${customerAvatarId}
+      WHERE odoo_partner_id = ${odooPartnerId}
     `;
 
     if (avatarResult.rows.length === 0) {
