@@ -43,6 +43,10 @@ interface ActiveDelivery {
   state: string;
   state_label: string;
   location_dest: string;
+  delivery_address?: string;
+  driver_name?: string;
+  driver_phone?: string;
+  vehicle_plate?: string;
 }
 
 interface OpenInvoice {
@@ -234,7 +238,17 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
             ['state', 'in', ['assigned', 'confirmed', 'waiting']],
             ['picking_type_code', '=', 'outgoing']
           ],
-          fields: ['name', 'scheduled_date', 'origin', 'state', 'location_dest_id'],
+          fields: [
+            'name',
+            'scheduled_date',
+            'origin',
+            'state',
+            'location_dest_id',
+            'partner_id', // Partner info for address
+            'x_studio_driver', // Custom field: driver name
+            'x_studio_driver_phone', // Custom field: driver phone
+            'x_studio_vehicle_plate' // Custom field: vehicle plate
+          ],
           order: 'scheduled_date asc',
           limit: 10
         }
@@ -330,15 +344,51 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
       state_label: stateLabels[order.state] || order.state
     })) || [];
 
-    const formattedDeliveries: ActiveDelivery[] = activeDeliveries?.map((delivery: any) => ({
-      id: delivery.id,
-      name: delivery.name,
-      scheduled_date: delivery.scheduled_date,
-      origin: delivery.origin || 'N/A',
-      state: delivery.state,
-      state_label: stateLabels[delivery.state] || delivery.state,
-      location_dest: delivery.location_dest_id?.[1] || 'N/A'
-    })) || [];
+    // Format deliveries with additional tracking info
+    const formattedDeliveries: ActiveDelivery[] = await Promise.all(
+      (activeDeliveries || []).map(async (delivery: any) => {
+        // Get partner address details
+        let deliveryAddress = 'N/A';
+        if (delivery.partner_id && delivery.partner_id[0]) {
+          const partnerDetails = await callOdooAsAdmin(
+            'res.partner',
+            'search_read',
+            [],
+            {
+              domain: [['id', '=', delivery.partner_id[0]]],
+              fields: ['street', 'street2', 'zip', 'city', 'state_id', 'country_id'],
+              limit: 1
+            }
+          );
+
+          if (partnerDetails && partnerDetails.length > 0) {
+            const addr = partnerDetails[0];
+            const parts = [
+              addr.street,
+              addr.street2,
+              [addr.zip, addr.city].filter(Boolean).join(' '),
+              addr.state_id?.[1],
+              addr.country_id?.[1]
+            ].filter(Boolean);
+            deliveryAddress = parts.join(', ');
+          }
+        }
+
+        return {
+          id: delivery.id,
+          name: delivery.name,
+          scheduled_date: delivery.scheduled_date,
+          origin: delivery.origin || 'N/A',
+          state: delivery.state,
+          state_label: stateLabels[delivery.state] || delivery.state,
+          location_dest: delivery.location_dest_id?.[1] || 'N/A',
+          delivery_address: deliveryAddress,
+          driver_name: delivery.x_studio_driver || undefined,
+          driver_phone: delivery.x_studio_driver_phone || undefined,
+          vehicle_plate: delivery.x_studio_vehicle_plate || undefined
+        };
+      })
+    );
 
     const formattedInvoices: OpenInvoice[] = openInvoices?.map((invoice: any) => {
       const dueDate = invoice.invoice_date_due ? new Date(invoice.invoice_date_due) : null;

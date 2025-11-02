@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Truck, MapPin, Calendar, Package2, AlertCircle } from 'lucide-react';
+import { Truck, MapPin, Calendar, Package2, AlertCircle, User, Phone, CarFront } from 'lucide-react';
 import Link from 'next/link';
 import { DeliveryMapModal } from './DeliveryMapModal';
 
@@ -14,6 +14,10 @@ interface ActiveDelivery {
   state: string;
   state_label: string;
   location_dest: string;
+  delivery_address?: string;
+  driver_name?: string;
+  driver_phone?: string;
+  vehicle_plate?: string;
 }
 
 interface ActiveDeliveriesProps {
@@ -187,14 +191,50 @@ export function ActiveDeliveries({ deliveries, isLoading }: ActiveDeliveriesProp
                 <span>Prevista: <span className="font-medium">{formatDate(delivery.scheduled_date)}</span></span>
               </div>
 
-              {/* Destination */}
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-3">
-                <MapPin className="h-4 w-4" />
-                <span className="truncate">{delivery.location_dest}</span>
-              </div>
+              {/* Delivery Address */}
+              {delivery.delivery_address && delivery.delivery_address !== 'N/A' && (
+                <div className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span className="line-clamp-2">{delivery.delivery_address}</span>
+                </div>
+              )}
+
+              {/* Driver Info Section */}
+              {(delivery.driver_name || delivery.driver_phone || delivery.vehicle_plate) && (
+                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                  {/* Driver name */}
+                  {delivery.driver_name && (
+                    <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span className="font-medium">{delivery.driver_name}</span>
+                    </div>
+                  )}
+
+                  {/* Driver phone */}
+                  {delivery.driver_phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <Phone className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <a
+                        href={`tel:${delivery.driver_phone}`}
+                        className="hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                      >
+                        {delivery.driver_phone}
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Vehicle plate */}
+                  {delivery.vehicle_plate && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <CarFront className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                      <span className="font-mono font-medium">{delivery.vehicle_plate}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Status badge */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mt-3">
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${stateColor}`}>
                   <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
                   {delivery.state_label}
