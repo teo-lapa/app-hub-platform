@@ -3,14 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { RefreshCw, AlertCircle, ArrowLeft, Bell, Package } from 'lucide-react';
+import { RefreshCw, AlertCircle, ArrowLeft } from 'lucide-react';
 import { KPICards } from './components/KPICards';
 import { RecentOrders } from './components/RecentOrders';
 import { ActiveDeliveries } from './components/ActiveDeliveries';
 import { OpenInvoices } from './components/OpenInvoices';
 import { QuickActions } from './components/QuickActions';
 import { StellaFloatingButton } from './components/StellaFloatingButton';
-import { UrgentProductsModal } from '@/components/maestro/UrgentProductsModal';
 
 interface DashboardKPIs {
   orders_count: number;
@@ -71,11 +70,6 @@ export default function PortaleClientiPage() {
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Stati per notifiche prodotti urgenti e cosa ho in macchina
-  const [showUrgentProductsModal, setShowUrgentProductsModal] = useState(false);
-  const [urgentProductsCount, setUrgentProductsCount] = useState(0);
-  const [vehicleStockCount, setVehicleStockCount] = useState(0);
-
   const fetchDashboardData = async () => {
     try {
       setError(null);
@@ -126,45 +120,9 @@ export default function PortaleClientiPage() {
     }
   };
 
-  // Carica contatore prodotti urgenti
-  const loadUrgentProductsCount = async () => {
-    try {
-      const response = await fetch('/api/urgent-products', {
-        credentials: 'include',
-      });
-      const data = await response.json();
-      if (data.success) {
-        setUrgentProductsCount(data.count || 0);
-      }
-    } catch (error) {
-      console.error('Errore caricamento contatore prodotti urgenti:', error);
-    }
-  };
-
-  // Carica contatore cosa ho in macchina (placeholder per ora)
-  const loadVehicleStockCount = async () => {
-    try {
-      // TODO: Implementare API per conteggio stock veicolo
-      // Per ora usiamo un placeholder
-      setVehicleStockCount(0);
-    } catch (error) {
-      console.error('Errore caricamento contatore stock veicolo:', error);
-    }
-  };
-
   useEffect(() => {
     fetchDashboardData();
     fetchCustomerProfile();
-    loadUrgentProductsCount();
-    loadVehicleStockCount();
-
-    // Aggiorna contatori ogni 3 minuti
-    const interval = setInterval(() => {
-      loadUrgentProductsCount();
-      loadVehicleStockCount();
-    }, 3 * 60 * 1000);
-
-    return () => clearInterval(interval);
   }, []);
 
   const handleRefresh = () => {
@@ -270,40 +228,6 @@ export default function PortaleClientiPage() {
               </button>
             </div>
           </div>
-
-          {/* Notifiche Prodotti Urgenti e Cosa ho in macchina */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* Prodotti Urgenti - Colore Arancio */}
-            <button
-              onClick={() => setShowUrgentProductsModal(true)}
-              className="relative flex items-center gap-2 px-3 sm:px-4 py-2 bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-600 text-white rounded-lg transition-colors min-h-[44px]"
-            >
-              <Bell className="h-4 w-4" />
-              <span className="text-sm font-medium">Prodotti Urgenti</span>
-              {urgentProductsCount > 0 && (
-                <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg">
-                  {urgentProductsCount}
-                </span>
-              )}
-            </button>
-
-            {/* Cosa ho in macchina - Colore Verde Teal */}
-            <button
-              onClick={() => {
-                // TODO: Implementare modal per "Cosa ho in macchina"
-                alert('Funzionalità "Cosa ho in macchina" in arrivo!');
-              }}
-              className="relative flex items-center gap-2 px-3 sm:px-4 py-2 bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600 text-white rounded-lg transition-colors min-h-[44px]"
-            >
-              <Package className="h-4 w-4" />
-              <span className="text-sm font-medium">Cosa ho in macchina</span>
-              {vehicleStockCount > 0 && (
-                <span className="absolute -top-2 -right-2 w-6 h-6 bg-teal-400 text-teal-900 text-xs font-bold rounded-full flex items-center justify-center shadow-lg">
-                  {vehicleStockCount}
-                </span>
-              )}
-            </button>
-          </div>
         </motion.div>
 
         {/* KPI Cards */}
@@ -365,15 +289,6 @@ export default function PortaleClientiPage() {
 
       {/* Stella Floating Button */}
       <StellaFloatingButton />
-
-      {/* Modal Prodotti Urgenti */}
-      <UrgentProductsModal
-        isOpen={showUrgentProductsModal}
-        onClose={() => {
-          setShowUrgentProductsModal(false);
-          loadUrgentProductsCount(); // Ricarica contatore quando chiudi modal
-        }}
-      />
     </div>
   );
 }
