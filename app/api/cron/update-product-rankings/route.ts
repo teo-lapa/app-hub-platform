@@ -177,8 +177,8 @@ export async function GET(request: NextRequest) {
     let insertCount = 0;
     const now = new Date();
 
-    for (const [partnerId, productsMap] of customerStats.entries()) {
-      for (const [productId, stats] of productsMap.entries()) {
+    for (const [partnerId, productsMap] of Array.from(customerStats.entries())) {
+      for (const [productId, stats] of Array.from(productsMap.entries())) {
         // Calculate recency bonus (0-100 points)
         const daysSinceLastPurchase = Math.floor(
           (now.getTime() - stats.last_purchase.getTime()) / (1000 * 60 * 60 * 24)
