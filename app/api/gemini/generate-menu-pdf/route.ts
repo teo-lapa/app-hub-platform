@@ -33,7 +33,7 @@ interface MenuData {
 
 export async function POST(request: NextRequest) {
   try {
-    const { menu, style = 'classico' } = await request.json();
+    const { menu, style = 'classico', logo = null } = await request.json();
 
     if (!menu || !menu.categories) {
       return NextResponse.json(
@@ -69,6 +69,19 @@ export async function POST(request: NextRequest) {
       }
       return false;
     };
+
+    // Se c'è un logo, aggiungilo in alto
+    if (logo) {
+      try {
+        const logoSize = 25; // Dimensione del logo in mm
+        const logoX = (pageWidth - logoSize) / 2; // Centra il logo
+        doc.addImage(logo, 'PNG', logoX, yPosition, logoSize, logoSize);
+        yPosition += logoSize + 5; // Spazio dopo il logo
+      } catch (logoError) {
+        console.warn('⚠️ [MENU-PDF] Impossibile aggiungere il logo:', logoError);
+        // Continua senza logo se c'è un errore
+      }
+    }
 
     // Header - Nome Ristorante
     doc.setFontSize(28);

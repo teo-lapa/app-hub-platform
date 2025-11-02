@@ -134,6 +134,20 @@ Il tuo compito è analizzare le informazioni fornite e creare un menu strutturat
 LINGUA DEL MENU: ${languageName}
 ${languageInstructions}
 
+⚠️ REGOLA CRITICA - NOME RISTORANTE (DA NON VIOLARE MAI):
+Il campo "restaurantName" nel JSON DEVE essere ESATTAMENTE E LETTERALMENTE questo valore:
+"${restaurantName}"
+
+NON modificare questo nome in alcun modo.
+NON tradurlo in nessuna lingua.
+NON "migliorarlo" o "correggerlo".
+NON aggiungere parole come "Ristorante", "Restaurant", ecc.
+NON rimuovere nulla.
+USA ESATTAMENTE il valore fornito, carattere per carattere, spazio per spazio.
+
+Esempio: se il nome fornito è "Paul Teodorescu", il JSON deve contenere esattamente "Paul Teodorescu".
+NON scrivere "Ristorante Paul Teodorescu" o "Paul's Restaurant" o qualsiasi altra variazione.
+
 Regole IMPORTANTI:
 1. Organizza i piatti in categorie appropriate per la lingua selezionata
    Esempi per ${languageName}: ${categoryExamples}
@@ -143,7 +157,7 @@ Regole IMPORTANTI:
 4. Se vedi prezzi in Euro (€), convertili in CHF moltiplicando per ~1.05
 5. Se mancano informazioni, usa la tua conoscenza culinaria per suggerire descrizioni appetitose NELLA LINGUA SELEZIONATA
 6. Mantieni lo stile ${menuStyle} richiesto
-7. TRADUCI automaticamente tutto nella lingua ${languageName}
+7. TRADUCI automaticamente tutto nella lingua ${languageName} (TRANNE il nome del ristorante!)
 8. Rispondi SOLO con JSON valido, senza testo aggiuntivo
 
 Formato JSON richiesto:
@@ -165,8 +179,10 @@ Formato JSON richiesto:
 }
 
 IMPORTANTE:
+- Il "restaurantName" deve essere ESATTAMENTE: "${restaurantName}" (copia-incolla questo valore)
 - I prezzi nel JSON devono essere SOLO NUMERI senza simboli di valuta (es: "18.50" non "CHF 18.50")
-- TUTTO il testo (nomi piatti, descrizioni, categorie, allergeni) deve essere in ${languageName}`;
+- TUTTO il testo (nomi piatti, descrizioni, categorie, allergeni) deve essere in ${languageName}
+- SOLO il restaurantName NON deve essere tradotto`;
 
     // Prepara il contenuto per Gemini
     const contents: any[] = [];

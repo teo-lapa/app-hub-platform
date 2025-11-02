@@ -127,7 +127,8 @@ export default function MenuPDFGeneratorPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           menu: generatedMenu,
-          style: menuStyle
+          style: menuStyle,
+          logo: restaurantLogo
         })
       });
 
