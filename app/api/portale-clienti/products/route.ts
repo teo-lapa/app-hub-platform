@@ -175,7 +175,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Determine if we use intelligent sorting (default) or manual sort
-    const useIntelligentSort = sort === 'name' && partnerId !== null;
+    // IMPORTANT: Disable intelligent sorting when user is searching manually
+    const useIntelligentSort = sort === 'name' && partnerId !== null && !query && selectedCategory === 'all' && !purchased;
 
     let order = 'name ASC'; // Fallback for non-intelligent sorting
     if (sort === 'price_asc') {
