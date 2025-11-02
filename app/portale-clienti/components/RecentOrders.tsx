@@ -15,14 +15,15 @@ interface RecentOrder {
 
 interface RecentOrdersProps {
   orders: RecentOrder[];
+  currency?: string;
   isLoading?: boolean;
 }
 
-export function RecentOrders({ orders, isLoading }: RecentOrdersProps) {
+export function RecentOrders({ orders, currency = 'CHF', isLoading }: RecentOrdersProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
-      currency: 'EUR'
+      currency: currency
     }).format(amount);
   };
 

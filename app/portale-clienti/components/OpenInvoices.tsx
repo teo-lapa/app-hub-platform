@@ -18,14 +18,15 @@ interface OpenInvoice {
 
 interface OpenInvoicesProps {
   invoices: OpenInvoice[];
+  currency?: string;
   isLoading?: boolean;
 }
 
-export function OpenInvoices({ invoices, isLoading }: OpenInvoicesProps) {
+export function OpenInvoices({ invoices, currency = 'CHF', isLoading }: OpenInvoicesProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
-      currency: 'EUR'
+      currency: currency
     }).format(amount);
   };
 

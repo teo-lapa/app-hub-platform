@@ -251,6 +251,7 @@ export default function PortaleClientiPage() {
           {/* Recent Orders */}
           <RecentOrders
             orders={dashboardData?.recent_orders || []}
+            currency={currency}
             isLoading={isLoading}
           />
 
@@ -264,6 +265,7 @@ export default function PortaleClientiPage() {
         {/* Open Invoices - Full width */}
         <OpenInvoices
           invoices={dashboardData?.open_invoices || []}
+          currency={currency}
           isLoading={isLoading}
         />
 
