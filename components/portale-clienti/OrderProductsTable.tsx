@@ -30,9 +30,10 @@ export function OrderProductsTable({
   amountTotal,
 }: OrderProductsTableProps) {
   const formatCurrency = (amount: number) => {
-    return amount.toLocaleString('it-IT', {
+    return amount.toLocaleString('de-CH', {
       style: 'currency',
-      currency: 'EUR',
+      currency: 'CHF',
+      currencyDisplay: 'code',
     });
   };
 
