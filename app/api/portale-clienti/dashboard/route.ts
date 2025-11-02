@@ -245,9 +245,8 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
             'state',
             'location_dest_id',
             'partner_id', // Partner info for address
-            'x_studio_driver', // Custom field: driver name
-            'x_studio_driver_phone', // Custom field: driver phone
-            'x_studio_vehicle_plate' // Custom field: vehicle plate
+            'driver_id', // Driver (hr.employee)
+            'vehicle_id' // Vehicle (fleet.vehicle)
           ],
           order: 'scheduled_date asc',
           limit: 10
@@ -374,6 +373,46 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
           }
         }
 
+        // Get driver info from hr.employee
+        let driverName: string | undefined;
+        let driverPhone: string | undefined;
+        if (delivery.driver_id && delivery.driver_id[0]) {
+          const driverDetails = await callOdooAsAdmin(
+            'hr.employee',
+            'search_read',
+            [],
+            {
+              domain: [['id', '=', delivery.driver_id[0]]],
+              fields: ['name', 'mobile_phone', 'work_phone'],
+              limit: 1
+            }
+          );
+
+          if (driverDetails && driverDetails.length > 0) {
+            driverName = driverDetails[0].name;
+            driverPhone = driverDetails[0].mobile_phone || driverDetails[0].work_phone || undefined;
+          }
+        }
+
+        // Get vehicle info from fleet.vehicle
+        let vehiclePlate: string | undefined;
+        if (delivery.vehicle_id && delivery.vehicle_id[0]) {
+          const vehicleDetails = await callOdooAsAdmin(
+            'fleet.vehicle',
+            'search_read',
+            [],
+            {
+              domain: [['id', '=', delivery.vehicle_id[0]]],
+              fields: ['license_plate'],
+              limit: 1
+            }
+          );
+
+          if (vehicleDetails && vehicleDetails.length > 0) {
+            vehiclePlate = vehicleDetails[0].license_plate || undefined;
+          }
+        }
+
         return {
           id: delivery.id,
           name: delivery.name,
@@ -383,9 +422,9 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
           state_label: stateLabels[delivery.state] || delivery.state,
           location_dest: delivery.location_dest_id?.[1] || 'N/A',
           delivery_address: deliveryAddress,
-          driver_name: delivery.x_studio_driver || undefined,
-          driver_phone: delivery.x_studio_driver_phone || undefined,
-          vehicle_plate: delivery.x_studio_vehicle_plate || undefined
+          driver_name: driverName,
+          driver_phone: driverPhone,
+          vehicle_plate: vehiclePlate
         };
       })
     );
