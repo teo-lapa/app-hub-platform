@@ -32,7 +32,9 @@ export function KPICards({ kpis, currency = 'CHF', isLoading }: KPICardsProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('it-IT', {
+    // Use Swiss locale for CHF, Italian for EUR
+    const locale = currency === 'CHF' ? 'de-CH' : 'it-IT';
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency
     }).format(amount);

@@ -24,7 +24,9 @@ interface OpenInvoicesProps {
 
 export function OpenInvoices({ invoices, currency = 'CHF', isLoading }: OpenInvoicesProps) {
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('it-IT', {
+    // Use Swiss locale for CHF, Italian for EUR
+    const locale = currency === 'CHF' ? 'de-CH' : 'it-IT';
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency
     }).format(amount);
