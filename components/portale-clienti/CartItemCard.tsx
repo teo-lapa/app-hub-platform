@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
-import { Minus, Plus, Trash2, Package, AlertTriangle } from 'lucide-react';
+import { Minus, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface CartItem {
@@ -150,32 +150,28 @@ export function CartItemCard({
         >
           <div className="p-4">
             <div className="flex gap-4">
-              {/* Product Image */}
-              <motion.div
-                whileHover={{ scale: 1.05, rotate: 2 }}
-                className="relative w-24 h-24 rounded-lg bg-slate-700/30 flex-shrink-0 overflow-hidden"
-              >
-                {item.image !== '/placeholder-product.png' ? (
+              {/* Product Image - Show only if available */}
+              {item.image !== '/placeholder-product.png' && (
+                <motion.div
+                  whileHover={{ scale: 1.05, rotate: 2 }}
+                  className="relative w-24 h-24 rounded-lg bg-slate-700/30 flex-shrink-0 overflow-hidden"
+                >
                   <img
                     src={item.image}
                     alt={item.productName}
                     className="w-full h-full object-contain"
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Package className="h-8 w-8 text-slate-500" />
-                  </div>
-                )}
 
-                {/* Quantity Badge */}
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -top-2 -right-2 bg-gradient-to-br from-emerald-500 to-blue-500 text-white text-xs font-bold rounded-full h-7 w-7 flex items-center justify-center shadow-lg border-2 border-slate-900"
-                >
-                  {item.quantity}
+                  {/* Quantity Badge */}
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-2 -right-2 bg-gradient-to-br from-emerald-500 to-blue-500 text-white text-xs font-bold rounded-full h-7 w-7 flex items-center justify-center shadow-lg border-2 border-slate-900"
+                  >
+                    {item.quantity}
+                  </motion.div>
                 </motion.div>
-              </motion.div>
+              )}
 
               {/* Product Info */}
               <div className="flex-1 min-w-0">
