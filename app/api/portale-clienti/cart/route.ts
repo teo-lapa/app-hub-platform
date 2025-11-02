@@ -238,6 +238,34 @@ export async function POST(request: NextRequest) {
 
     const product = products[0];
 
+    // Fetch packaging info (cartoni) if available
+    let packagingQty = null;
+    let packagingName = null;
+
+    if (product.packaging_ids && product.packaging_ids.length > 0) {
+      try {
+        const packagingResult = await callOdooAsAdmin(
+          'product.packaging',
+          'search_read',
+          [],
+          {
+            domain: [['id', 'in', product.packaging_ids]],
+            fields: ['id', 'name', 'qty'],
+            limit: 1  // Prendi solo il primo packaging (cartone)
+          }
+        );
+
+        if (packagingResult && packagingResult.length > 0) {
+          packagingQty = packagingResult[0].qty;
+          packagingName = packagingResult[0].name;
+          console.log(`📦 [CART-API] Packaging found: ${packagingName} = ${packagingQty} units`);
+        }
+      } catch (pkgError) {
+        console.error('⚠️ [CART-API] Failed to fetch packaging:', pkgError);
+        // Continue anyway - packaging is optional
+      }
+    }
+
     // Check if product is available for sale
     if (!product.active || !product.sale_ok) {
       return NextResponse.json(
@@ -291,26 +319,36 @@ export async function POST(request: NextRequest) {
 
     const itemId = addResult.rows[0].item_id;
 
-    // Update image URL and stock if available (Odoo image_128 is base64)
-    if (product.image_128) {
-      try {
-        const imageUrl = `data:image/png;base64,${product.image_128}`;
-        console.log(`📷 [CART-API] Updating image for item ${itemId}, image size: ${imageUrl.length} chars`);
+    // Update image, stock, and packaging info
+    try {
+      const updateData: any = {
+        available_stock: product.qty_available
+      };
 
-        await sql`
-          UPDATE cart_items
-          SET product_image_url = ${imageUrl},
-              available_stock = ${product.qty_available}::DECIMAL
-          WHERE id = ${itemId}
-        `;
-
-        console.log('✅ [CART-API] Image updated successfully');
-      } catch (imgError: any) {
-        console.error('⚠️ [CART-API] Failed to update image:', imgError.message);
-        // Continue anyway - image is optional
+      if (product.image_128) {
+        updateData.product_image_url = `data:image/png;base64,${product.image_128}`;
+        console.log(`📷 [CART-API] Updating image for item ${itemId}`);
       }
-    } else {
-      console.log('⚠️ [CART-API] No image_128 from Odoo');
+
+      // Add packaging data if available
+      if (packagingQty !== null) {
+        console.log(`📦 [CART-API] Updating packaging: ${packagingName} = ${packagingQty} units`);
+      }
+
+      await sql`
+        UPDATE cart_items
+        SET
+          product_image_url = COALESCE(${updateData.product_image_url || null}, product_image_url),
+          available_stock = ${updateData.available_stock}::DECIMAL,
+          packaging_qty = ${packagingQty}::DECIMAL,
+          packaging_name = ${packagingName}::VARCHAR
+        WHERE id = ${itemId}
+      `;
+
+      console.log('✅ [CART-API] Cart item updated with image, stock, and packaging');
+    } catch (updateError: any) {
+      console.error('⚠️ [CART-API] Failed to update cart item:', updateError.message);
+      // Continue anyway - these fields are optional
     }
 
     // If this is a reservation, save reservation data
