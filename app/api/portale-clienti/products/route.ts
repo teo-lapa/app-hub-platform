@@ -280,7 +280,7 @@ export async function GET(request: NextRequest) {
       // Level 1: Products customer has purchased (customer_score > 0) sorted by customer_score DESC
       // Level 2: Products customer hasn't purchased but are global best sellers (global_score > 0) sorted by global_score DESC
       // Level 3: Other products sorted alphabetically by name
-      productsWithScores.sort((a, b) => {
+      productsWithScores.sort((a: any, b: any) => {
         const aHasCustomerScore = a._customerScore > 0;
         const bHasCustomerScore = b._customerScore > 0;
         const aHasGlobalScore = a._globalScore > 0;
