@@ -66,15 +66,15 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const [filterOutcome, setFilterOutcome] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Fetch real data using React Query
-  const { data, isLoading, error } = useQuery({
+  // Fetch real data using React Query - NO CACHE
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['customer-detail', params.id],
     queryFn: () => fetchCustomerDetail(params.id),
     retry: 2,
-    staleTime: 0, // Always fresh
-    gcTime: 0, // Don't cache at all (was cacheTime in v4, renamed to gcTime in v5)
-    refetchOnMount: 'always', // Always refetch on mount
-    refetchOnWindowFocus: true, // Refetch on window focus
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false, // Disabilita per evitare refetch multipli
   });
 
   // Destructuring sicuro dei dati (prima degli early returns per evitare problemi con hooks)
@@ -173,29 +173,17 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     }));
   }, [customer]);
 
-  // Handler per chiusura modal con refresh
+  // Handler per chiusura modal con refresh - USA REFETCH DIRETTO
   const handleCloseInteractionModal = async () => {
-    console.log('🔄 [CUSTOMER-PAGE] handleCloseInteractionModal called');
     setShowInteractionModal(false);
 
-    // ⏱️ Attendi 300ms per dare tempo al database di commitare la transazione
-    // Questo previene race condition su Vercel Postgres
-    console.log('⏱️ [CUSTOMER-PAGE] Waiting 300ms for database commit...');
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Aspetta 500ms per essere SICURI che il DB ha committato
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Invalida E forza il refetch
-    console.log('🔄 [CUSTOMER-PAGE] Invalidating and refetching query...');
-    await queryClient.invalidateQueries({
-      queryKey: ['customer-detail', params.id],
-      refetchType: 'active' // Forza il refetch immediato
-    });
+    // USA IL REFETCH DIRETTO - più affidabile
+    await refetch();
 
-    // Forza anche un refetch esplicito per sicurezza
-    await queryClient.refetchQueries({
-      queryKey: ['customer-detail', params.id]
-    });
-
-    console.log('✅ [CUSTOMER-PAGE] Query invalidated and refetched!');
+    console.log('✅ Interazioni ricaricate!');
   };
 
   const tabs = [
