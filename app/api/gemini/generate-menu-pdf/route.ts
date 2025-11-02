@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import PDFDocument from 'pdfkit';
+import { jsPDF } from 'jspdf';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 export const maxDuration = 30;
 
 /**
@@ -44,180 +44,130 @@ export async function POST(request: NextRequest) {
 
     console.log('📄 [MENU-PDF] Generating PDF for:', menu.restaurantName);
 
-    // Crea un nuovo documento PDF
-    const doc = new PDFDocument({
-      size: 'A4',
-      margins: {
-        top: 50,
-        bottom: 50,
-        left: 50,
-        right: 50
-      }
-    });
-
-    // Buffer per raccogliere il PDF
-    const chunks: Buffer[] = [];
-
-    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-
-    // Promise per aspettare che il PDF sia completo
-    const pdfPromise = new Promise<Buffer>((resolve, reject) => {
-      doc.on('end', () => {
-        const pdfBuffer = Buffer.concat(chunks);
-        resolve(pdfBuffer);
-      });
-      doc.on('error', reject);
+    // Crea un nuovo documento PDF con jsPDF
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
     });
 
     // Applica lo stile
     const colors = getStyleColors(style);
+    let yPosition = 20;
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    const marginLeft = 15;
+    const marginRight = 15;
+    const contentWidth = pageWidth - marginLeft - marginRight;
+
+    // Helper per aggiungere nuova pagina se necessario
+    const checkAndAddPage = (neededSpace: number) => {
+      if (yPosition + neededSpace > pageHeight - 20) {
+        doc.addPage();
+        yPosition = 20;
+        return true;
+      }
+      return false;
+    };
 
     // Header - Nome Ristorante
-    doc
-      .fillColor(colors.primary)
-      .fontSize(32)
-      .font('Helvetica-Bold')
-      .text(menu.restaurantName, {
-        align: 'center'
-      });
-
-    doc.moveDown(0.5);
+    doc.setFontSize(28);
+    doc.setTextColor(colors.primary.r, colors.primary.g, colors.primary.b);
+    doc.setFont('helvetica', 'bold');
+    doc.text(menu.restaurantName, pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 10;
 
     // Linea decorativa
-    doc
-      .strokeColor(colors.accent)
-      .lineWidth(2)
-      .moveTo(150, doc.y)
-      .lineTo(450, doc.y)
-      .stroke();
-
-    doc.moveDown(1.5);
+    doc.setDrawColor(colors.accent.r, colors.accent.g, colors.accent.b);
+    doc.setLineWidth(0.5);
+    doc.line(60, yPosition, pageWidth - 60, yPosition);
+    yPosition += 15;
 
     // Itera sulle categorie
     menu.categories.forEach((category: MenuCategory, categoryIndex: number) => {
-      // Controlla se c'è abbastanza spazio per la categoria
-      if (doc.y > 650) {
-        doc.addPage();
-      }
+      checkAndAddPage(20);
 
       // Nome categoria
-      doc
-        .fillColor(colors.secondary)
-        .fontSize(20)
-        .font('Helvetica-Bold')
-        .text(category.name.toUpperCase(), {
-          align: 'left'
-        });
-
-      doc.moveDown(0.3);
+      doc.setFontSize(16);
+      doc.setTextColor(colors.secondary.r, colors.secondary.g, colors.secondary.b);
+      doc.setFont('helvetica', 'bold');
+      doc.text(category.name.toUpperCase(), marginLeft, yPosition);
+      yPosition += 7;
 
       // Linea sotto la categoria
-      doc
-        .strokeColor(colors.accent)
-        .lineWidth(1)
-        .moveTo(50, doc.y)
-        .lineTo(545, doc.y)
-        .stroke();
-
-      doc.moveDown(0.8);
+      doc.setDrawColor(colors.accent.r, colors.accent.g, colors.accent.b);
+      doc.setLineWidth(0.3);
+      doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+      yPosition += 8;
 
       // Itera sui piatti
       category.items.forEach((item: MenuItem, itemIndex: number) => {
-        // Controlla se serve una nuova pagina
-        if (doc.y > 700) {
-          doc.addPage();
-        }
+        checkAndAddPage(30);
 
-        const startY = doc.y;
+        // Nome piatto
+        doc.setFontSize(12);
+        doc.setTextColor(colors.text.r, colors.text.g, colors.text.b);
+        doc.setFont('helvetica', 'bold');
 
-        // Nome piatto e prezzo sulla stessa riga
-        doc
-          .fillColor(colors.text)
-          .fontSize(14)
-          .font('Helvetica-Bold');
-
-        // Nome piatto a sinistra
-        const nameWidth = 400;
-        doc.text(item.name, 50, startY, {
-          width: nameWidth,
-          continued: false
-        });
+        // Nome a sinistra
+        const nameMaxWidth = contentWidth - 30;
+        doc.text(item.name, marginLeft, yPosition, { maxWidth: nameMaxWidth });
 
         // Prezzo a destra
         if (item.price) {
-          doc
-            .fillColor(colors.price)
-            .fontSize(14)
-            .font('Helvetica-Bold')
-            .text(`€ ${item.price}`, 450, startY, {
-              width: 95,
-              align: 'right'
-            });
+          doc.setTextColor(colors.price.r, colors.price.g, colors.price.b);
+          doc.text(`CHF ${item.price}`, pageWidth - marginRight, yPosition, { align: 'right' });
         }
 
-        doc.moveDown(0.3);
+        yPosition += 6;
 
         // Descrizione
         if (item.description) {
-          doc
-            .fillColor(colors.description)
-            .fontSize(11)
-            .font('Helvetica')
-            .text(item.description, {
-              width: 495,
-              align: 'left'
-            });
-
-          doc.moveDown(0.2);
+          doc.setFontSize(9);
+          doc.setTextColor(colors.description.r, colors.description.g, colors.description.b);
+          doc.setFont('helvetica', 'normal');
+          const descLines = doc.splitTextToSize(item.description, contentWidth);
+          doc.text(descLines, marginLeft, yPosition);
+          yPosition += descLines.length * 4;
         }
 
         // Allergeni
         if (item.allergens && item.allergens.length > 0) {
-          doc
-            .fillColor(colors.allergens)
-            .fontSize(9)
-            .font('Helvetica-Oblique')
-            .text(`Allergeni: ${item.allergens.join(', ')}`, {
-              width: 495,
-              align: 'left'
-            });
+          doc.setFontSize(8);
+          doc.setTextColor(colors.allergens.r, colors.allergens.g, colors.allergens.b);
+          doc.setFont('helvetica', 'italic');
+          doc.text(`Allergeni: ${item.allergens.join(', ')}`, marginLeft, yPosition);
+          yPosition += 4;
         }
 
-        doc.moveDown(0.8);
+        yPosition += 6;
       });
 
-      doc.moveDown(0.5);
+      yPosition += 5;
     });
 
-    // Footer
-    const pageCount = doc.bufferedPageRange().count;
-    for (let i = 0; i < pageCount; i++) {
-      doc.switchToPage(i);
-
-      doc
-        .fillColor(colors.footer)
-        .fontSize(10)
-        .font('Helvetica')
-        .text(
-          `${menu.restaurantName} - Pagina ${i + 1} di ${pageCount}`,
-          50,
-          doc.page.height - 50,
-          {
-            align: 'center'
-          }
-        );
+    // Footer su ogni pagina
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(colors.footer.r, colors.footer.g, colors.footer.b);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        `${menu.restaurantName} - Pagina ${i} di ${totalPages}`,
+        pageWidth / 2,
+        pageHeight - 10,
+        { align: 'center' }
+      );
     }
 
-    // Finalizza il PDF
-    doc.end();
+    console.log('✅ [MENU-PDF] PDF generated successfully');
 
-    // Aspetta che il PDF sia completo
-    const pdfBuffer = await pdfPromise;
-
-    console.log('✅ [MENU-PDF] PDF generated successfully:', pdfBuffer.length, 'bytes');
+    // Genera il PDF come ArrayBuffer
+    const pdfArrayBuffer = doc.output('arraybuffer');
 
     // Restituisci il PDF come response
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfArrayBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
@@ -239,39 +189,39 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Ritorna i colori per ogni stile
+ * Ritorna i colori RGB per ogni stile
  */
 function getStyleColors(style: string) {
   const styles: Record<string, any> = {
     classico: {
-      primary: '#8B4513', // Marrone
-      secondary: '#654321',
-      accent: '#D2691E',
-      text: '#333333',
-      description: '#666666',
-      price: '#8B4513',
-      allergens: '#999999',
-      footer: '#999999'
+      primary: { r: 139, g: 69, b: 19 }, // Marrone
+      secondary: { r: 101, g: 67, b: 33 },
+      accent: { r: 210, g: 105, b: 30 },
+      text: { r: 51, g: 51, b: 51 },
+      description: { r: 102, g: 102, b: 102 },
+      price: { r: 139, g: 69, b: 19 },
+      allergens: { r: 153, g: 153, b: 153 },
+      footer: { r: 153, g: 153, b: 153 }
     },
     moderno: {
-      primary: '#2C3E50', // Blu scuro
-      secondary: '#34495E',
-      accent: '#3498DB',
-      text: '#2C3E50',
-      description: '#7F8C8D',
-      price: '#E74C3C',
-      allergens: '#95A5A6',
-      footer: '#BDC3C7'
+      primary: { r: 44, g: 62, b: 80 }, // Blu scuro
+      secondary: { r: 52, g: 73, b: 94 },
+      accent: { r: 52, g: 152, b: 219 },
+      text: { r: 44, g: 62, b: 80 },
+      description: { r: 127, g: 140, b: 141 },
+      price: { r: 231, g: 76, b: 60 },
+      allergens: { r: 149, g: 165, b: 166 },
+      footer: { r: 189, g: 195, b: 199 }
     },
     elegante: {
-      primary: '#1C1C1C', // Nero elegante
-      secondary: '#333333',
-      accent: '#DAA520', // Oro
-      text: '#1C1C1C',
-      description: '#666666',
-      price: '#DAA520',
-      allergens: '#999999',
-      footer: '#CCCCCC'
+      primary: { r: 28, g: 28, b: 28 }, // Nero elegante
+      secondary: { r: 51, g: 51, b: 51 },
+      accent: { r: 218, g: 165, b: 32 }, // Oro
+      text: { r: 28, g: 28, b: 28 },
+      description: { r: 102, g: 102, b: 102 },
+      price: { r: 218, g: 165, b: 32 },
+      allergens: { r: 153, g: 153, b: 153 },
+      footer: { r: 204, g: 204, b: 204 }
     }
   };
 

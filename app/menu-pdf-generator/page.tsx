@@ -127,9 +127,9 @@ export default function MenuPDFGeneratorPage() {
   };
 
   const suggestedInputs = [
-    "Antipasti: Bruschetta al pomodoro €6, Caprese €8\nPrimi: Spaghetti carbonara €12, Risotto ai funghi €14\nSecondi: Tagliata di manzo €18, Orata al forno €16",
-    "Pizze: Margherita €7, Marinara €6, Diavola €9, Quattro Stagioni €10\nContorni: Patatine fritte €4, Insalata mista €5",
-    "Menu del giorno: Antipasto della casa, Pasta al pomodoro, Cotoletta con patate, Dolce, Acqua e caffè - €15"
+    "Antipasti: Bruschetta al pomodoro CHF 8, Caprese CHF 12\nPrimi: Spaghetti carbonara CHF 18, Risotto ai funghi CHF 22\nSecondi: Tagliata di manzo CHF 32, Orata al forno CHF 28",
+    "Pizze: Margherita CHF 16, Marinara CHF 14, Diavola CHF 19, Quattro Stagioni CHF 20\nContorni: Patatine fritte CHF 7, Insalata mista CHF 8",
+    "Menu del giorno: Antipasto della casa, Pasta al pomodoro, Cotoletta con patate, Dolce, Acqua e caffè - CHF 28"
   ];
 
   return (
@@ -338,7 +338,7 @@ export default function MenuPDFGeneratorPage() {
                             <div className="flex justify-between items-start">
                               <span className="text-white font-semibold">{item.name}</span>
                               {item.price && (
-                                <span className="text-orange-400 font-bold">€ {item.price}</span>
+                                <span className="text-orange-400 font-bold">CHF {item.price}</span>
                               )}
                             </div>
 

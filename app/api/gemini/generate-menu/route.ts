@@ -57,15 +57,17 @@ export async function POST(request: NextRequest) {
     const ai = new GoogleGenAI({ apiKey });
 
     // Costruisci il prompt per strutturare il menu
-    const systemPrompt = `Sei un esperto designer di menu per ristoranti.
+    const systemPrompt = `Sei un esperto designer di menu per ristoranti in Svizzera.
 Il tuo compito è analizzare le informazioni fornite e creare un menu strutturato in formato JSON.
 
-Regole:
+Regole IMPORTANTI:
 1. Organizza i piatti in categorie (Antipasti, Primi, Secondi, Contorni, Dessert, Bevande)
 2. Per ogni piatto estrai: nome, descrizione, prezzo (se presente), allergeni (se menzionati)
-3. Se mancano informazioni, usa la tua conoscenza culinaria per suggerire descrizioni appetitose
-4. Mantieni lo stile ${menuStyle} richiesto
-5. Rispondi SOLO con JSON valido, senza testo aggiuntivo
+3. I prezzi devono essere in FRANCHI SVIZZERI (CHF), non in Euro
+4. Se vedi prezzi in Euro (€), convertili in CHF moltiplicando per ~1.05
+5. Se mancano informazioni, usa la tua conoscenza culinaria per suggerire descrizioni appetitose
+6. Mantieni lo stile ${menuStyle} richiesto
+7. Rispondi SOLO con JSON valido, senza testo aggiuntivo
 
 Formato JSON richiesto:
 {
@@ -77,13 +79,15 @@ Formato JSON richiesto:
         {
           "name": "Nome Piatto",
           "description": "Descrizione appetitosa",
-          "price": "12.50",
+          "price": "18.50",
           "allergens": ["glutine", "lattosio"]
         }
       ]
     }
   ]
-}`;
+}
+
+IMPORTANTE: I prezzi nel JSON devono essere SOLO NUMERI senza simboli di valuta (es: "18.50" non "CHF 18.50")`;
 
     // Prepara il contenuto per Gemini
     const contents: any[] = [];
