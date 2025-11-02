@@ -254,7 +254,8 @@ export async function GET(request: NextRequest) {
             'default_code',
             'list_price',
             'qty_available',
-            'image_256',
+            'image_128', // Thumbnail piccola per catalogo (6 KB vs 18 KB)
+            'image_512', // Immagine media per modal dettaglio
             'categ_id',
             'uom_id',
             'description_sale',
@@ -291,7 +292,7 @@ export async function GET(request: NextRequest) {
       console.log(`📊 [PRODUCTS-API] Found scores for ${scoreMap.size} products`);
 
       // Check how many products have images
-      const productsWithImages = allProducts.filter((p: any) => p.image_256).length;
+      const productsWithImages = allProducts.filter((p: any) => p.image_128).length;
       console.log(`🖼️ [PRODUCTS-API] Products with images: ${productsWithImages}/${allProducts.length}`);
 
       // Step 3: Transform and add scores to products
@@ -307,8 +308,13 @@ export async function GET(request: NextRequest) {
           hasCustomPrice: false,
           quantity: p.qty_available || 0,
           available: (p.qty_available || 0) > 0,
-          image: p.image_256
-            ? `data:image/jpeg;base64,${p.image_256}`
+          // Use image_128 for thumbnail (catalog grid)
+          image: p.image_128
+            ? `data:image/jpeg;base64,${p.image_128}`
+            : '/placeholder-product.png',
+          // Use image_512 for detail modal
+          imageDetail: p.image_512
+            ? `data:image/jpeg;base64,${p.image_512}`
             : '/placeholder-product.png',
           category: p.categ_id
             ? { id: p.categ_id[0], name: p.categ_id[1] }
@@ -386,7 +392,8 @@ export async function GET(request: NextRequest) {
             'default_code',
             'list_price',
             'qty_available',
-            'image_256',
+            'image_128', // Thumbnail piccola per catalogo (6 KB vs 18 KB)
+            'image_512', // Immagine media per modal dettaglio
             'categ_id',
             'uom_id',
             'description_sale',
@@ -402,7 +409,7 @@ export async function GET(request: NextRequest) {
       console.log(`✅ [PRODUCTS-API] Loaded ${products.length} products in language: ${userLang}`);
 
       // Check how many products have images
-      const productsWithImages = products.filter((p: any) => p.image_256).length;
+      const productsWithImages = products.filter((p: any) => p.image_128).length;
       console.log(`🖼️ [PRODUCTS-API] Products with images: ${productsWithImages}/${products.length}`);
 
       // Transform Odoo data to frontend format
@@ -415,8 +422,13 @@ export async function GET(request: NextRequest) {
         hasCustomPrice: false,
         quantity: p.qty_available || 0,
         available: (p.qty_available || 0) > 0,
-        image: p.image_256
-          ? `data:image/jpeg;base64,${p.image_256}`
+        // Use image_128 for thumbnail (catalog grid)
+        image: p.image_128
+          ? `data:image/jpeg;base64,${p.image_128}`
+          : '/placeholder-product.png',
+        // Use image_512 for detail modal
+        imageDetail: p.image_512
+          ? `data:image/jpeg;base64,${p.image_512}`
           : '/placeholder-product.png',
         category: p.categ_id
           ? { id: p.categ_id[0], name: p.categ_id[1] }
