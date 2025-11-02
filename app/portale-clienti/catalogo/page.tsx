@@ -51,6 +51,9 @@ export default function CatalogoPage() {
   const [sortBy, setSortBy] = useState('name');
   const [showPurchasedOnly, setShowPurchasedOnly] = useState(false);
 
+  // Track if user has ever searched (to prevent intelligent sort from re-activating)
+  const [hasSearched, setHasSearched] = useState(false);
+
   // Pagination
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
@@ -158,13 +161,17 @@ export default function CatalogoPage() {
         purchased: showPurchasedOnly ? 'true' : 'false',
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
+        // CRITICAL: Block intelligent sorting if user has searched in this session
+        blockIntelligentSort: hasSearched ? 'true' : 'false',
       });
 
       console.log('🔍 [CATALOG] Fetching products with params:', {
         q: searchQuery,
         category: selectedCategory,
         sort: sortBy,
-        page: pagination.page
+        page: pagination.page,
+        hasSearched,
+        blockIntelligentSort: hasSearched
       });
 
       const response = await fetch(`/api/portale-clienti/products?${params}`, {
@@ -185,7 +192,7 @@ export default function CatalogoPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedCategory, availability, sortBy, showPurchasedOnly, pagination.page, pagination.limit]);
+  }, [searchQuery, selectedCategory, availability, sortBy, showPurchasedOnly, pagination.page, pagination.limit, hasSearched]);
 
   // Fetch products when filters change
   useEffect(() => {
@@ -233,6 +240,16 @@ export default function CatalogoPage() {
   function handleSearch(query: string) {
     setSearchQuery(query);
     setPagination((prev) => ({ ...prev, page: 1 })); // Reset to page 1 on search
+
+    // Mark that user has searched (prevents intelligent sort from re-activating)
+    if (query && query.length > 0) {
+      setHasSearched(true);
+      console.log('🔍 [CATALOG] User searched, intelligent sorting now BLOCKED');
+    } else if (query === '' && hasSearched) {
+      // User explicitly cleared search - reset hasSearched
+      setHasSearched(false);
+      console.log('🔍 [CATALOG] Search cleared, intelligent sorting can re-activate');
+    }
   }
 
   function handleCategoryChange(categoryId: string) {

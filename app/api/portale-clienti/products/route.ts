@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = (page - 1) * limit;
 
+    // CRITICAL: Frontend can force-block intelligent sorting
+    const blockIntelligentSort = searchParams.get('blockIntelligentSort') === 'true';
+
     console.log('📦 [PRODUCTS-API] Fetching products:', {
       query,
       queryLength: query.length,
@@ -184,7 +187,13 @@ export async function GET(request: NextRequest) {
 
     // Determine if we use intelligent sorting (default) or manual sort
     // IMPORTANT: Disable intelligent sorting when user is searching manually
-    const useIntelligentSort = sort === 'name' && partnerId !== null && !query && categoryId === 'all' && !purchased;
+    // CRITICAL: Also disable if frontend explicitly blocked it (hasSearched flag)
+    const useIntelligentSort = sort === 'name'
+      && partnerId !== null
+      && !query
+      && categoryId === 'all'
+      && !purchased
+      && !blockIntelligentSort; // FORCE BLOCK if frontend says so
 
     console.log('🎯 [PRODUCTS-API] Intelligent sorting decision:', {
       useIntelligentSort,
@@ -193,10 +202,15 @@ export async function GET(request: NextRequest) {
         hasPartnerId: partnerId !== null,
         noQuery: !query,
         categoryAll: categoryId === 'all',
-        noPurchased: !purchased
+        noPurchased: !purchased,
+        notBlocked: !blockIntelligentSort
       },
-      actualValues: { sort, partnerId, query, categoryId, purchased }
+      actualValues: { sort, partnerId, query, categoryId, purchased, blockIntelligentSort }
     });
+
+    if (blockIntelligentSort) {
+      console.log('🚫 [PRODUCTS-API] Intelligent sorting FORCE-BLOCKED by frontend (user has searched)');
+    }
 
     let order = 'name ASC'; // Fallback for non-intelligent sorting
     if (sort === 'price_asc') {
