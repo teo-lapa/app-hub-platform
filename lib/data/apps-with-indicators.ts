@@ -582,6 +582,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-11-02'),
     updatedAt: new Date('2025-11-02'),
   },
+  {
+    id: 's35',
+    name: 'Menu PDF Generator',
+    description: '📋 Crea menu PDF professionali con AI. Carica foto del menu o scrivi a mano, Gemini struttura i piatti e genera un PDF pronto per la stampa. 3 stili disponibili.',
+    icon: '📋',
+    badge: 'FREE',
+    category: 'Business',
+    url: '/menu-pdf-generator',
+    requiredRole: 'cliente_gratuito',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-11-02'),
+    updatedAt: new Date('2025-11-02'),
+  },
 ];
 
 // Combina tutte le app
