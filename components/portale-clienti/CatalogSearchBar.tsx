@@ -15,21 +15,26 @@ export function CatalogSearchBar({
   onSearch,
   onOpenFilters,
   placeholder = 'Cerca prodotti per nome o codice...',
-  debounceMs = 300,
+  debounceMs = 500, // Increased from 300ms to 500ms for better stability
   value = '' // Default to empty string
 }: CatalogSearchBarProps) {
   const [query, setQuery] = useState(value);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isTypingRef = useRef(false);
 
-  // Sync local state with parent value (controlled component)
+  // Sync local state with parent value ONLY when not actively typing
   useEffect(() => {
-    setQuery(value);
+    // Don't sync if user is actively typing (prevents conflicts)
+    if (!isTypingRef.current) {
+      setQuery(value);
+    }
   }, [value]);
 
   // Handle input change with debounce
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
+    isTypingRef.current = true; // Mark as actively typing
 
     // Clear previous timeout
     if (timeoutRef.current) {
@@ -38,6 +43,7 @@ export function CatalogSearchBar({
 
     // Set new timeout
     timeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false; // Typing finished
       onSearch(value);
     }, debounceMs);
   };
@@ -45,6 +51,7 @@ export function CatalogSearchBar({
   // Clear search
   const handleClear = () => {
     setQuery('');
+    isTypingRef.current = false; // Reset typing flag
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -55,6 +62,7 @@ export function CatalogSearchBar({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
+      isTypingRef.current = false; // Reset typing flag
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
