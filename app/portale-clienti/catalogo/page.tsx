@@ -87,15 +87,39 @@ export default function CatalogoPage() {
       console.log('🛒 Cart API response:', data);
 
       if (!data.error && data.items && Array.isArray(data.items)) {
+        console.log('🛒 Raw items from API:', data.items);
+        console.log('🛒 First item structure:', data.items[0]);
+
         const validItems: { productId: number; quantity: number }[] = [];
 
         for (const item of data.items) {
           try {
-            if (item && item.product && typeof item.product.id === 'number') {
-              validItems.push({
-                productId: item.product.id,
-                quantity: typeof item.quantity === 'number' ? item.quantity : 0
-              });
+            console.log('🛒 Processing item:', item);
+
+            // Try different possible structures
+            let productId: number | null = null;
+            let quantity: number = 0;
+
+            // Option 1: item.product.id
+            if (item?.product?.id) {
+              productId = item.product.id;
+              quantity = item.quantity || 0;
+            }
+            // Option 2: item.product_id or item.odoo_product_id
+            else if (item?.product_id) {
+              productId = item.product_id;
+              quantity = item.quantity || 0;
+            }
+            else if (item?.odoo_product_id) {
+              productId = item.odoo_product_id;
+              quantity = item.quantity || 0;
+            }
+
+            if (productId && typeof productId === 'number') {
+              validItems.push({ productId, quantity });
+              console.log('✅ Added item:', { productId, quantity });
+            } else {
+              console.warn('⚠️ Could not extract productId from item:', item);
             }
           } catch (e) {
             console.warn('Skipping invalid cart item:', e);
