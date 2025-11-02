@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
 
     console.log('📦 [PRODUCTS-API] Fetching products:', {
       query,
+      queryLength: query.length,
+      queryEmpty: query === '',
       categoryId,
       availability,
       sort,
@@ -40,6 +42,12 @@ export async function GET(request: NextRequest) {
       page,
       limit
     });
+
+    // CRITICAL: Log when manual search is active
+    if (query && query.length > 0) {
+      console.log('🔎 [PRODUCTS-API] ⚠️ MANUAL SEARCH ACTIVE - Intelligent sorting MUST be disabled!');
+      console.log('🔎 [PRODUCTS-API] Search query:', `"${query}"`);
+    }
 
     // Get partnerId and language from JWT (for purchased filter and translations)
     let partnerId: number | null = null;
@@ -212,6 +220,13 @@ export async function GET(request: NextRequest) {
     if (useIntelligentSort) {
       console.log('🧠 [PRODUCTS-API] Using INTELLIGENT sorting based on customer history');
 
+      // CRITICAL CHECK: This should NEVER happen with an active search
+      if (query && query.length > 0) {
+        console.error('🚨 [PRODUCTS-API] CRITICAL BUG: Intelligent sorting activated WITH ACTIVE SEARCH!');
+        console.error('🚨 [PRODUCTS-API] This is a bug! Query:', `"${query}"`);
+        console.error('🚨 [PRODUCTS-API] useIntelligentSort should be FALSE!');
+      }
+
       // Step 1: Fetch ALL products without limit (we'll paginate after sorting)
       const allProducts = await callOdooAsAdmin(
         'product.product',
@@ -334,8 +349,12 @@ export async function GET(request: NextRequest) {
       console.log(`✅ [PRODUCTS-API] Returning page ${page}: products ${startIndex + 1}-${Math.min(endIndex, productsWithScores.length)} of ${productsWithScores.length}`);
 
     } else {
-      // Standard sorting (price or alphabetical for non-authenticated users)
+      // Standard sorting (price or alphabetical for non-authenticated users OR manual search)
       console.log(`📦 [PRODUCTS-API] Using STANDARD sorting: ${order}`);
+
+      if (query && query.length > 0) {
+        console.log(`✅ [PRODUCTS-API] Correct! Manual search active, using standard Odoo search with query: "${query}"`);
+      }
 
       const products = await callOdooAsAdmin(
         'product.product',
