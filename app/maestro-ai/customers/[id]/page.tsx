@@ -87,7 +87,9 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     metadata = {}
   } = data || {};
 
-  // 🔍 DEBUG: Log interactions quando cambiano
+  // 🔍 DEBUG: Log interactions e customer ID
+  console.log(`🔍 [CUSTOMER-PAGE] Customer ID (UUID):`, customer?.id, 'Type:', typeof customer?.id);
+  console.log(`🔍 [CUSTOMER-PAGE] Params ID (URL):`, params.id);
   console.log(`🔍 [CUSTOMER-PAGE] Received ${interactions.length} interactions from API`);
   if (interactions.length > 0) {
     console.log('🔍 [CUSTOMER-PAGE] First interaction:', interactions[0]);
