@@ -122,7 +122,7 @@ export async function GET(
     // 3. Fetch interactions history
     let interactions: Interaction[] = [];
     try {
-      console.log(`🔍 [DEBUG] Fetching interactions for customer_avatar_id: ${avatarData.id}`);
+      console.log(`🔍 [DEBUG] Fetching interactions for customer_avatar_id: ${avatarData.id} (type: ${typeof avatarData.id})`);
 
       const interactionsResult = await sql`
         SELECT * FROM maestro_interactions
@@ -130,6 +130,9 @@ export async function GET(
         ORDER BY interaction_date DESC
         LIMIT 100
       `;
+
+      console.log(`📊 [DEBUG] Raw query returned ${interactionsResult.rows.length} rows`);
+      console.log(`📊 [DEBUG] First row:`, interactionsResult.rows[0]);
 
       interactions = interactionsResult.rows.map(row => ({
         ...row,
@@ -146,11 +149,23 @@ export async function GET(
         interactions.slice(0, 3).forEach((int, idx) => {
           console.log(`  ${idx + 1}. ${int.interaction_type} - ${int.outcome} - ${new Date(int.interaction_date).toISOString()}`);
           console.log(`     Created: ${new Date(int.created_at).toISOString()}`);
+          console.log(`     customer_avatar_id: ${int.customer_avatar_id} (type: ${typeof int.customer_avatar_id})`);
         });
+      } else {
+        console.warn(`⚠️ [DEBUG] NO INTERACTIONS FOUND for customer_avatar_id: ${avatarData.id}`);
+        // Fai una query di debug per vedere tutte le interazioni
+        const debugResult = await sql`
+          SELECT customer_avatar_id, COUNT(*) as count
+          FROM maestro_interactions
+          GROUP BY customer_avatar_id
+          LIMIT 10
+        `;
+        console.log('🔍 [DEBUG] Sample of customer_avatar_ids in maestro_interactions:', debugResult.rows);
       }
     } catch (error: any) {
       // Table might not exist yet
       if (error.code !== '42P01') throw error;
+      console.error('❌ [DEBUG] Error fetching interactions:', error);
       console.log('⚠️  maestro_interactions table not found, skipping');
     }
 

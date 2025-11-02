@@ -87,6 +87,12 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     metadata = {}
   } = data || {};
 
+  // 🔍 DEBUG: Log interactions quando cambiano
+  console.log(`🔍 [CUSTOMER-PAGE] Received ${interactions.length} interactions from API`);
+  if (interactions.length > 0) {
+    console.log('🔍 [CUSTOMER-PAGE] First interaction:', interactions[0]);
+  }
+
   // Filtro e raggruppamento interazioni (DEVE essere qui, prima degli early returns!)
   const filteredInteractions = useMemo(() => {
     if (!interactions || !Array.isArray(interactions) || interactions.length === 0) return [];
@@ -171,6 +177,11 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const handleCloseInteractionModal = async () => {
     console.log('🔄 [CUSTOMER-PAGE] handleCloseInteractionModal called');
     setShowInteractionModal(false);
+
+    // ⏱️ Attendi 300ms per dare tempo al database di commitare la transazione
+    // Questo previene race condition su Vercel Postgres
+    console.log('⏱️ [CUSTOMER-PAGE] Waiting 300ms for database commit...');
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     // Invalida E forza il refetch
     console.log('🔄 [CUSTOMER-PAGE] Invalidating and refetching query...');

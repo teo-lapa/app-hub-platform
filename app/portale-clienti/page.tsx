@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { RefreshCw, AlertCircle, ArrowLeft } from 'lucide-react';
+import { RefreshCw, AlertCircle, ArrowLeft, Bell, Package } from 'lucide-react';
 import { KPICards } from './components/KPICards';
 import { RecentOrders } from './components/RecentOrders';
 import { ActiveDeliveries } from './components/ActiveDeliveries';
 import { OpenInvoices } from './components/OpenInvoices';
 import { QuickActions } from './components/QuickActions';
 import { StellaFloatingButton } from './components/StellaFloatingButton';
+import { UrgentProductsModal } from '@/components/maestro/UrgentProductsModal';
 
 interface DashboardKPIs {
   orders_count: number;
@@ -70,6 +71,11 @@ export default function PortaleClientiPage() {
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Stati per notifiche prodotti urgenti e cosa ho in macchina
+  const [showUrgentProductsModal, setShowUrgentProductsModal] = useState(false);
+  const [urgentProductsCount, setUrgentProductsCount] = useState(0);
+  const [vehicleStockCount, setVehicleStockCount] = useState(0);
+
   const fetchDashboardData = async () => {
     try {
       setError(null);
@@ -120,9 +126,45 @@ export default function PortaleClientiPage() {
     }
   };
 
+  // Carica contatore prodotti urgenti
+  const loadUrgentProductsCount = async () => {
+    try {
+      const response = await fetch('/api/urgent-products', {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.success) {
+        setUrgentProductsCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error('Errore caricamento contatore prodotti urgenti:', error);
+    }
+  };
+
+  // Carica contatore cosa ho in macchina (placeholder per ora)
+  const loadVehicleStockCount = async () => {
+    try {
+      // TODO: Implementare API per conteggio stock veicolo
+      // Per ora usiamo un placeholder
+      setVehicleStockCount(0);
+    } catch (error) {
+      console.error('Errore caricamento contatore stock veicolo:', error);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
     fetchCustomerProfile();
+    loadUrgentProductsCount();
+    loadVehicleStockCount();
+
+    // Aggiorna contatori ogni 3 minuti
+    const interval = setInterval(() => {
+      loadUrgentProductsCount();
+      loadVehicleStockCount();
+    }, 3 * 60 * 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleRefresh = () => {
@@ -178,52 +220,88 @@ export default function PortaleClientiPage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4"
+          className="flex flex-col gap-3 sm:gap-4"
         >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="text-xs sm:text-sm font-medium">Dashboard</span>
-            </button>
-            <div className="hidden sm:block h-8 w-px bg-gray-300 dark:bg-gray-600" />
-            <div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                Portale Clienti
-              </h1>
-              <p className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400">
-                {customerName
-                  ? `Benvenuto ${customerName}, nel tuo portale personalizzato LAPA`
-                  : 'Benvenuto nel tuo portale personalizzato LAPA'
-                }
-              </p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-sm font-medium">Dashboard</span>
+              </button>
+              <div className="hidden sm:block h-8 w-px bg-gray-300 dark:bg-gray-600" />
+              <div>
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                  Portale Clienti
+                </h1>
+                <p className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400">
+                  {customerName
+                    ? `Benvenuto ${customerName}, nel tuo portale personalizzato LAPA`
+                    : 'Benvenuto nel tuo portale personalizzato LAPA'
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4 w-full sm:w-auto justify-between sm:justify-end">
+              {dashboardData && (
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                  <span className="hidden sm:inline">Aggiornato alle </span>
+                  <span className="sm:hidden">Agg. </span>
+                  {formatLastSync(dashboardData.last_sync)}
+                </div>
+              )}
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className={`
+                  flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm font-medium transition-all
+                  ${isRefreshing
+                    ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }
+                `}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{isRefreshing ? 'Aggiornamento...' : 'Aggiorna'}</span>
+                <span className="sm:hidden">{isRefreshing ? '...' : 'Agg.'}</span>
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 w-full sm:w-auto justify-between sm:justify-end">
-            {dashboardData && (
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                <span className="hidden sm:inline">Aggiornato alle </span>
-                <span className="sm:hidden">Agg. </span>
-                {formatLastSync(dashboardData.last_sync)}
-              </div>
-            )}
+          {/* Notifiche Prodotti Urgenti e Cosa ho in macchina */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {/* Prodotti Urgenti - Colore Arancio */}
             <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className={`
-                flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm font-medium transition-all
-                ${isRefreshing
-                  ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }
-              `}
+              onClick={() => setShowUrgentProductsModal(true)}
+              className="relative flex items-center gap-2 px-3 sm:px-4 py-2 bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-600 text-white rounded-lg transition-colors min-h-[44px]"
             >
-              <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{isRefreshing ? 'Aggiornamento...' : 'Aggiorna'}</span>
-              <span className="sm:hidden">{isRefreshing ? '...' : 'Agg.'}</span>
+              <Bell className="h-4 w-4" />
+              <span className="text-sm font-medium">Prodotti Urgenti</span>
+              {urgentProductsCount > 0 && (
+                <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg">
+                  {urgentProductsCount}
+                </span>
+              )}
+            </button>
+
+            {/* Cosa ho in macchina - Colore Verde Teal */}
+            <button
+              onClick={() => {
+                // TODO: Implementare modal per "Cosa ho in macchina"
+                alert('Funzionalità "Cosa ho in macchina" in arrivo!');
+              }}
+              className="relative flex items-center gap-2 px-3 sm:px-4 py-2 bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600 text-white rounded-lg transition-colors min-h-[44px]"
+            >
+              <Package className="h-4 w-4" />
+              <span className="text-sm font-medium">Cosa ho in macchina</span>
+              {vehicleStockCount > 0 && (
+                <span className="absolute -top-2 -right-2 w-6 h-6 bg-teal-400 text-teal-900 text-xs font-bold rounded-full flex items-center justify-center shadow-lg">
+                  {vehicleStockCount}
+                </span>
+              )}
             </button>
           </div>
         </motion.div>
@@ -287,6 +365,15 @@ export default function PortaleClientiPage() {
 
       {/* Stella Floating Button */}
       <StellaFloatingButton />
+
+      {/* Modal Prodotti Urgenti */}
+      <UrgentProductsModal
+        isOpen={showUrgentProductsModal}
+        onClose={() => {
+          setShowUrgentProductsModal(false);
+          loadUrgentProductsCount(); // Ricarica contatore quando chiudi modal
+        }}
+      />
     </div>
   );
 }

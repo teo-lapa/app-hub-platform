@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -36,6 +36,12 @@ export function CartItemCard({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [localQuantity, setLocalQuantity] = useState(item.quantity.toString());
+
+  // Sync local quantity with item.quantity when it changes from parent
+  useEffect(() => {
+    setLocalQuantity(item.quantity.toString());
+  }, [item.quantity]);
 
   // Swipe to delete mechanics
   const x = useMotionValue(0);
@@ -173,24 +179,50 @@ export function CartItemCard({
                         type="number"
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        value={item.quantity}
+                        value={localQuantity}
                         onChange={(e) => {
-                          // Allow typing but don't update yet
-                          const value = e.target.value;
-                          if (value === '') return; // Allow clearing
-                          const newQty = parseInt(value);
-                          if (!isNaN(newQty) && newQty >= 1 && newQty <= item.maxQuantity) {
-                            // Update immediately for better UX
-                            onUpdateQuantity(item.id, newQty);
+                          // Allow free typing - just update local state
+                          setLocalQuantity(e.target.value);
+                        }}
+                        onBlur={async (e) => {
+                          // On blur, validate and update
+                          const value = e.target.value.trim();
+                          let newQty = parseInt(value);
+
+                          // Handle invalid input
+                          if (isNaN(newQty) || value === '') {
+                            newQty = item.quantity;
+                          }
+
+                          // Clamp to valid range
+                          if (newQty < 1) {
+                            newQty = 1;
+                          } else if (newQty > item.maxQuantity) {
+                            newQty = item.maxQuantity;
+                            toast.error(`Massimo ${item.maxQuantity} unità disponibili`);
+                          }
+
+                          // Update local state
+                          setLocalQuantity(newQty.toString());
+
+                          // Only call API if quantity actually changed
+                          if (newQty !== item.quantity) {
+                            setIsUpdating(true);
+                            try {
+                              await onUpdateQuantity(item.id, newQty);
+                            } catch (error: any) {
+                              toast.error(error.message || 'Errore aggiornamento');
+                              // Revert to original quantity on error
+                              setLocalQuantity(item.quantity.toString());
+                            } finally {
+                              setIsUpdating(false);
+                            }
                           }
                         }}
-                        onBlur={(e) => {
-                          // On blur, ensure valid value
-                          const newQty = parseInt(e.target.value) || item.quantity;
-                          if (newQty < 1) {
-                            onUpdateQuantity(item.id, 1);
-                          } else if (newQty > item.maxQuantity) {
-                            onUpdateQuantity(item.id, item.maxQuantity);
+                        onKeyDown={(e) => {
+                          // Submit on Enter key
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur();
                           }
                         }}
                         onFocus={(e) => e.target.select()}

@@ -104,7 +104,8 @@ export function InteractionModal({
 
       // 2. Usa l'UUID che arriva dal parent (customer.id già passato come customerId)
       // NON serve fare fetch - abbiamo già l'UUID corretto!
-      console.log('✅ Customer Avatar UUID (from props):', customerId, 'type:', typeof customerId);
+      console.log('✅ [INTERACTION-MODAL] Customer Avatar UUID (from props):', customerId, 'type:', typeof customerId);
+      console.log('✅ [INTERACTION-MODAL] Odoo Partner ID:', odooPartnerId);
 
       // 3. Registra l'interazione nel sistema Maestro
       const interactionPayload: any = {

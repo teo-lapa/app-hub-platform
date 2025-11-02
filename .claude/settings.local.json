@@ -47,7 +47,8 @@
       "Bash(npm uninstall:*)",
       "Bash(vercel login)",
       "Bash(vercel inspect:*)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "ask": []
