@@ -57,6 +57,7 @@ interface DashboardData {
   recent_orders: RecentOrder[];
   active_deliveries: ActiveDelivery[];
   open_invoices: OpenInvoice[];
+  currency: string;
   last_sync: string;
 }
 
@@ -64,6 +65,7 @@ export default function PortaleClientiPage() {
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [customerName, setCustomerName] = useState<string>('');
+  const [currency, setCurrency] = useState<string>('CHF'); // Default to CHF
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -85,6 +87,7 @@ export default function PortaleClientiPage() {
       }
 
       setDashboardData(data.data);
+      setCurrency(data.data.currency || 'CHF'); // Set currency from API
     } catch (err: any) {
       console.error('Error fetching dashboard:', err);
       setError(err.message || 'Failed to load dashboard data');
@@ -236,6 +239,7 @@ export default function PortaleClientiPage() {
             overdue_invoices: 0,
             overdue_amount: 0
           }}
+          currency={currency}
           isLoading={isLoading}
         />
 

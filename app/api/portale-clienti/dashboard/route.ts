@@ -64,6 +64,7 @@ interface DashboardResponse {
     recent_orders: RecentOrder[];
     active_deliveries: ActiveDelivery[];
     open_invoices: OpenInvoice[];
+    currency: string;
     last_sync: string;
   };
   error?: string;
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
       [],
       {
         domain: [['email', '=', decoded.email]],
-        fields: ['id', 'name'],
+        fields: ['id', 'name', 'property_product_pricelist'],
         limit: 1
       }
     );
@@ -127,11 +128,36 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
 
     const partner = userPartners[0];
     const partnerId = partner.id;
+
+    // Get currency from pricelist
+    let currency = 'CHF'; // Default to CHF
+    if (partner.property_product_pricelist && partner.property_product_pricelist[0]) {
+      const pricelistId = partner.property_product_pricelist[0];
+      const pricelists = await callOdooAsAdmin(
+        'product.pricelist',
+        'search_read',
+        [],
+        {
+          domain: [['id', '=', pricelistId]],
+          fields: ['currency_id'],
+          limit: 1
+        }
+      );
+
+      if (pricelists && pricelists.length > 0 && pricelists[0].currency_id) {
+        const currencyName = pricelists[0].currency_id[1]; // [id, 'CHF'] or [id, 'EUR']
+        // Extract currency code (CHF, EUR, etc.)
+        const match = currencyName.match(/\b([A-Z]{3})\b/);
+        if (match) {
+          currency = match[1];
+        }
+      }
+    }
+
     console.log('✅ [DASHBOARD-API] Partner found:', {
       id: partnerId,
       name: partner.name,
-      credit_limit: 0, // Not accessible to portal users
-      credit: 0 // Not accessible to portal users
+      currency: currency
     });
 
     // 4. Fetch dashboard data in parallel
@@ -313,6 +339,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
         recent_orders: formattedRecentOrders,
         active_deliveries: formattedDeliveries,
         open_invoices: formattedInvoices,
+        currency: currency, // Add currency to response
         last_sync: new Date().toISOString()
       }
     });

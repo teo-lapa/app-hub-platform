@@ -23,17 +23,18 @@ interface DashboardKPIs {
 
 interface KPICardsProps {
   kpis: DashboardKPIs;
+  currency?: string;
   isLoading?: boolean;
 }
 
-export function KPICards({ kpis, isLoading }: KPICardsProps) {
+export function KPICards({ kpis, currency = 'CHF', isLoading }: KPICardsProps) {
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
-      currency: 'EUR'
+      currency: currency
     }).format(amount);
   };
 
@@ -237,6 +238,7 @@ export function KPICards({ kpis, isLoading }: KPICardsProps) {
         onClose={handleCloseModal}
         cardType={selectedCard}
         kpis={kpis}
+        currency={currency}
       />
     )}
     </>

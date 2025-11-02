@@ -33,6 +33,7 @@ interface DashboardCardModalProps {
     overdue_invoices: number;
     overdue_amount: number;
   };
+  currency?: string;
 }
 
 interface DetailedOrder {
@@ -85,7 +86,8 @@ export function DashboardCardModal({
   isOpen,
   onClose,
   cardType,
-  kpis
+  kpis,
+  currency = 'CHF'
 }: DashboardCardModalProps) {
   const [detailedData, setDetailedData] = useState<DetailedData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -126,7 +128,7 @@ export function DashboardCardModal({
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
-      currency: 'EUR'
+      currency: currency
     }).format(amount);
   };
 
