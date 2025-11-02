@@ -292,21 +292,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ [CHECKOUT-API] Created ${cartItems.length} order lines`);
 
-    // Confirm the order in Odoo (action_confirm)
-    console.log('✅ [CHECKOUT-API] Confirming order in Odoo...');
-
-    try {
-      await callOdooAsAdmin(
-        'sale.order',
-        'action_confirm',
-        [[odooOrderId]],
-        {}
-      );
-      console.log('✅ [CHECKOUT-API] Order confirmed in Odoo');
-    } catch (confirmError: any) {
-      console.warn('⚠️ [CHECKOUT-API] Order confirmation warning:', confirmError.message);
-      // Continue even if confirmation fails - order is created
-    }
+    // DO NOT auto-confirm - order remains as QUOTATION (preventivo)
+    // An operator will manually verify and confirm the order in Odoo
+    console.log('✅ [CHECKOUT-API] Order created as QUOTATION - waiting for operator confirmation');
 
     // Fetch order name from Odoo
     const createdOrder = await callOdooAsAdmin(
@@ -348,10 +336,14 @@ export async function POST(request: NextRequest) {
 
           if (item.reservation_audio_url) {
             messageBody += `<p><strong>🎤 Registrazione audio:</strong> <a href="${item.reservation_audio_url}" target="_blank">Ascolta audio</a></p>`;
+          } else {
+            messageBody += `<p><strong>🎤 Registrazione audio:</strong> <em>Cliente ha tentato di registrare audio ma upload non riuscito</em></p>`;
           }
 
           if (item.reservation_image_url) {
             messageBody += `<p><strong>📷 Foto prodotto:</strong> <a href="${item.reservation_image_url}" target="_blank">Visualizza foto</a></p>`;
+          } else {
+            messageBody += `<p><strong>📷 Foto prodotto:</strong> <em>Cliente ha tentato di caricare foto ma upload non riuscito</em></p>`;
           }
 
           messageBody += `<p><em>Richiesta inviata dal Portale Clienti</em></p>`;
