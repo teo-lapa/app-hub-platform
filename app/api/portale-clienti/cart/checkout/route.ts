@@ -205,15 +205,18 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ [CHECKOUT-API] All items validated for stock availability');
 
-    // Parse request body for delivery date
+    // Parse request body for delivery date and delivery notes
     let deliveryDate = null;
+    let deliveryNotesFromRequest = null;
     try {
       const body = await request.json();
       deliveryDate = body.deliveryDate;
+      deliveryNotesFromRequest = body.deliveryNotes;
       console.log('📅 [CHECKOUT-API] Delivery date requested:', deliveryDate);
+      console.log('📝 [CHECKOUT-API] Delivery notes from request:', deliveryNotesFromRequest);
     } catch (e) {
       // No body or invalid JSON - use default
-      console.log('⚠️ [CHECKOUT-API] No delivery date specified');
+      console.log('⚠️ [CHECKOUT-API] No delivery date/notes specified');
     }
 
     // Create sale.order in Odoo
@@ -230,12 +233,15 @@ export async function POST(request: NextRequest) {
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     };
 
+    // Use delivery notes from request body if provided, otherwise use database or default
+    const finalDeliveryNotes = deliveryNotesFromRequest || cart.delivery_notes || 'Ordine creato dal Portale Clienti';
+
     const orderData: any = {
       partner_id: partnerId,
       date_order: formatDateForOdoo(new Date()),
       state: 'draft',
       origin: `Portale Clienti - Cart #${cartId}`,
-      note: cart.delivery_notes || 'Ordine creato dal Portale Clienti',
+      note: finalDeliveryNotes,
     };
 
     // Add commitment_date (requested delivery date) if specified
@@ -318,11 +324,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Post cart delivery notes to Chatter if present
-    if (cart.delivery_notes && cart.delivery_notes.trim()) {
+    if (finalDeliveryNotes && finalDeliveryNotes.trim() && finalDeliveryNotes !== 'Ordine creato dal Portale Clienti') {
       try {
         console.log('📝 [CHECKOUT-API] Posting customer notes to Chatter...');
 
-        const notesMessage = `<p><strong>📝 Note del Cliente</strong></p><p>${cart.delivery_notes.replace(/\n/g, '<br/>')}</p><p><em>Note inserite dal cliente nel carrello</em></p>`;
+        const notesMessage = `<p><strong>📝 Note del Cliente</strong></p><p>${finalDeliveryNotes.replace(/\n/g, '<br/>')}</p><p><em>Note inserite dal cliente nel carrello</em></p>`;
 
         await callOdooAsAdmin(
           'mail.message',
