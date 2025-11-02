@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
+import { sql } from '@vercel/postgres';
 import jwt from 'jsonwebtoken';
 
 /**
@@ -171,43 +172,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Determine sort order
-    let order = 'name ASC';
+    // Determine if we use intelligent sorting (default) or manual sort
+    const useIntelligentSort = sort === 'name' && partnerId !== null;
+
+    let order = 'name ASC'; // Fallback for non-intelligent sorting
     if (sort === 'price_asc') {
       order = 'list_price ASC';
     } else if (sort === 'price_desc') {
       order = 'list_price DESC';
     }
 
-    // Fetch products from Odoo using admin session with user's language context
-    const products = await callOdooAsAdmin(
-      'product.product',
-      'search_read',
-      [],
-      {
-        domain,
-        fields: [
-          'id',
-          'name',
-          'default_code',
-          'list_price',
-          'qty_available',
-          'image_256', // FOTO PIÙ GRANDI come Catalogo LAPA!
-          'categ_id',
-          'uom_id',
-          'description_sale',
-          'barcode',
-        ],
-        limit,
-        offset,
-        order,
-        context: { lang: userLang }, // Traduzioni automatiche in base alla lingua utente!
-      }
-    );
-
-    console.log(`✅ [PRODUCTS-API] Loaded ${products.length} products in language: ${userLang}`);
-
-    // Get total count for pagination
+    // Get total count for pagination (before fetching products)
     const totalCount = await callOdooAsAdmin(
       'product.product',
       'search_count',
@@ -215,28 +190,186 @@ export async function GET(request: NextRequest) {
       { domain }
     );
 
-    console.log(`✅ [PRODUCTS-API] Fetched ${products.length} products (total: ${totalCount})`);
+    console.log(`📊 [PRODUCTS-API] Total products matching filters: ${totalCount}`);
 
-    // Transform Odoo data to frontend format
-    const transformedProducts = products.map((p: any) => ({
-      id: p.id,
-      name: p.name,
-      code: p.default_code || null,
-      price: p.list_price || 0,
-      originalPrice: p.list_price || 0,
-      hasCustomPrice: false, // TODO: implement custom pricing logic
-      quantity: p.qty_available || 0,
-      available: (p.qty_available || 0) > 0,
-      image: p.image_256
-        ? `data:image/jpeg;base64,${p.image_256}`
-        : '/placeholder-product.png',
-      category: p.categ_id
-        ? { id: p.categ_id[0], name: p.categ_id[1] }
-        : null,
-      unit: p.uom_id ? p.uom_id[1] : 'Pz',
-      description: p.description_sale || null,
-      barcode: p.barcode || null,
-    }));
+    let transformedProducts: any[] = [];
+
+    if (useIntelligentSort) {
+      console.log('🧠 [PRODUCTS-API] Using INTELLIGENT sorting based on customer history');
+
+      // Step 1: Fetch ALL products without limit (we'll paginate after sorting)
+      const allProducts = await callOdooAsAdmin(
+        'product.product',
+        'search_read',
+        [],
+        {
+          domain,
+          fields: [
+            'id',
+            'name',
+            'default_code',
+            'list_price',
+            'qty_available',
+            'image_256',
+            'categ_id',
+            'uom_id',
+            'description_sale',
+            'barcode',
+          ],
+          context: { lang: userLang },
+        }
+      );
+
+      console.log(`✅ [PRODUCTS-API] Loaded ${allProducts.length} products for intelligent sorting`);
+
+      // Step 2: Fetch ranking scores from cache for this partner
+      const productIds = allProducts.map((p: any) => p.id);
+
+      const rankingData = await sql`
+        SELECT
+          odoo_product_id,
+          customer_score,
+          global_score
+        FROM product_ranking_cache
+        WHERE odoo_partner_id = ${partnerId}
+          AND odoo_product_id = ANY(${productIds})
+      `;
+
+      // Create score map for fast lookup
+      const scoreMap = new Map<number, { customer: number; global: number }>();
+      rankingData.rows.forEach((row: any) => {
+        scoreMap.set(row.odoo_product_id, {
+          customer: parseFloat(row.customer_score) || 0,
+          global: parseFloat(row.global_score) || 0,
+        });
+      });
+
+      console.log(`📊 [PRODUCTS-API] Found scores for ${scoreMap.size} products`);
+
+      // Step 3: Transform and add scores to products
+      const productsWithScores = allProducts.map((p: any) => {
+        const scores = scoreMap.get(p.id) || { customer: 0, global: 0 };
+
+        return {
+          id: p.id,
+          name: p.name,
+          code: p.default_code || null,
+          price: p.list_price || 0,
+          originalPrice: p.list_price || 0,
+          hasCustomPrice: false,
+          quantity: p.qty_available || 0,
+          available: (p.qty_available || 0) > 0,
+          image: p.image_256
+            ? `data:image/jpeg;base64,${p.image_256}`
+            : '/placeholder-product.png',
+          category: p.categ_id
+            ? { id: p.categ_id[0], name: p.categ_id[1] }
+            : null,
+          unit: p.uom_id ? p.uom_id[1] : 'Pz',
+          description: p.description_sale || null,
+          barcode: p.barcode || null,
+          // Scores for sorting
+          _customerScore: scores.customer,
+          _globalScore: scores.global,
+        };
+      });
+
+      // Step 4: 3-LEVEL INTELLIGENT SORT
+      // Level 1: Products customer has purchased (customer_score > 0) sorted by customer_score DESC
+      // Level 2: Products customer hasn't purchased but are global best sellers (global_score > 0) sorted by global_score DESC
+      // Level 3: Other products sorted alphabetically by name
+      productsWithScores.sort((a, b) => {
+        const aHasCustomerScore = a._customerScore > 0;
+        const bHasCustomerScore = b._customerScore > 0;
+        const aHasGlobalScore = a._globalScore > 0;
+        const bHasGlobalScore = b._globalScore > 0;
+
+        // Level 1: Customer's products first
+        if (aHasCustomerScore && !bHasCustomerScore) return -1;
+        if (!aHasCustomerScore && bHasCustomerScore) return 1;
+
+        if (aHasCustomerScore && bHasCustomerScore) {
+          // Both have customer scores - sort by customer_score DESC
+          return b._customerScore - a._customerScore;
+        }
+
+        // Level 2: Global best sellers (only for products customer hasn't purchased)
+        if (aHasGlobalScore && !bHasGlobalScore) return -1;
+        if (!aHasGlobalScore && bHasGlobalScore) return 1;
+
+        if (aHasGlobalScore && bHasGlobalScore) {
+          // Both have global scores - sort by global_score DESC
+          return b._globalScore - a._globalScore;
+        }
+
+        // Level 3: Alphabetical for products with no scores
+        return a.name.localeCompare(b.name);
+      });
+
+      console.log('✅ [PRODUCTS-API] Products sorted using 3-level intelligent algorithm');
+
+      // Step 5: Paginate the sorted results
+      const startIndex = offset;
+      const endIndex = offset + limit;
+      transformedProducts = productsWithScores.slice(startIndex, endIndex);
+
+      // Remove score fields from final output
+      transformedProducts = transformedProducts.map(({ _customerScore, _globalScore, ...product }) => product);
+
+      console.log(`✅ [PRODUCTS-API] Returning page ${page}: products ${startIndex + 1}-${Math.min(endIndex, productsWithScores.length)} of ${productsWithScores.length}`);
+
+    } else {
+      // Standard sorting (price or alphabetical for non-authenticated users)
+      console.log(`📦 [PRODUCTS-API] Using STANDARD sorting: ${order}`);
+
+      const products = await callOdooAsAdmin(
+        'product.product',
+        'search_read',
+        [],
+        {
+          domain,
+          fields: [
+            'id',
+            'name',
+            'default_code',
+            'list_price',
+            'qty_available',
+            'image_256',
+            'categ_id',
+            'uom_id',
+            'description_sale',
+            'barcode',
+          ],
+          limit,
+          offset,
+          order,
+          context: { lang: userLang },
+        }
+      );
+
+      console.log(`✅ [PRODUCTS-API] Loaded ${products.length} products in language: ${userLang}`);
+
+      // Transform Odoo data to frontend format
+      transformedProducts = products.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        code: p.default_code || null,
+        price: p.list_price || 0,
+        originalPrice: p.list_price || 0,
+        hasCustomPrice: false,
+        quantity: p.qty_available || 0,
+        available: (p.qty_available || 0) > 0,
+        image: p.image_256
+          ? `data:image/jpeg;base64,${p.image_256}`
+          : '/placeholder-product.png',
+        category: p.categ_id
+          ? { id: p.categ_id[0], name: p.categ_id[1] }
+          : null,
+        unit: p.uom_id ? p.uom_id[1] : 'Pz',
+        description: p.description_sale || null,
+        barcode: p.barcode || null,
+      }));
+    }
 
     const totalPages = Math.ceil(totalCount / limit);
     const hasMore = page < totalPages;
