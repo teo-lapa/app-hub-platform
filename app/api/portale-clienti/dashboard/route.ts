@@ -278,8 +278,9 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
     // Calculate revenue YTD from INVOICES (not orders)
     const revenueYTD = allInvoicesYTD?.reduce((sum: number, invoice: any) => sum + (invoice.amount_total || 0), 0) || 0;
 
-    // Average order based on invoices
-    const avgOrder = allInvoicesYTD && allInvoicesYTD.length > 0 ? revenueYTD / allInvoicesYTD.length : 0;
+    // Average order based on ORDERS (not invoices)
+    const totalOrdersAmount = allOrders?.reduce((sum: number, order: any) => sum + (order.amount_total || 0), 0) || 0;
+    const avgOrder = allOrders && allOrders.length > 0 ? totalOrdersAmount / allOrders.length : 0;
 
     // Calculate overdue invoices
     const overdueInvoices = openInvoices?.filter((inv: any) => {
