@@ -92,12 +92,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Crea nuova prenotazione
+// POST - Crea nuova prenotazione (ora integrata con carrello)
 export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get('token')?.value;
     if (!token) return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
-    
+
     const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
     let decoded: any;
     try {
@@ -105,33 +105,36 @@ export async function POST(request: NextRequest) {
     } catch (jwtError) {
       return NextResponse.json({ error: 'Token non valido' }, { status: 401 });
     }
-    
+
     let customerId: number;
     try {
       customerId = extractCustomerId(decoded);
     } catch (err: any) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
-    
+
     const formData = await request.formData();
     const productId = formData.get('productId') as string;
     const textNote = formData.get('textNote') as string;
+    const quantity = formData.get('quantity') as string || '1'; // Default 1
     const audioFile = formData.get('audioFile') as File | null;
     const imageFile = formData.get('imageFile') as File | null;
-    
+
     if (!productId) {
       return NextResponse.json({ error: 'Product ID richiesto' }, { status: 400 });
     }
-    
+
     if (!textNote?.trim() && !audioFile && !imageFile) {
       return NextResponse.json({ error: 'Inserisci almeno una nota, un audio o una foto' }, { status: 400 });
     }
-    
+
+    console.log('📝 [RESERVATION-API] Processing reservation for product:', productId);
+
     let audioUrl: string | null = null;
     let imageUrl: string | null = null;
     let audioOdooAttachmentId: number | null = null;
     let imageOdooAttachmentId: number | null = null;
-    
+
     // Upload audio to BOTH Blob AND Odoo
     if (audioFile) {
       try {
@@ -143,7 +146,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Errore nel caricamento audio' }, { status: 500 });
       }
     }
-    
+
     // Upload image to BOTH Blob AND Odoo
     if (imageFile) {
       try {
@@ -155,16 +158,45 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Errore nel caricamento immagine' }, { status: 500 });
       }
     }
-    
-    // Save to database with BOTH URLs and Odoo attachment IDs
-    const reservation = await sql`
-      INSERT INTO product_reservations
-      (product_id, customer_id, order_id, text_note, audio_url, image_url, audio_odoo_attachment_id, image_odoo_attachment_id, status, created_at)
-      VALUES (${productId}, ${customerId}, NULL, ${textNote || null}, ${audioUrl}, ${imageUrl}, ${audioOdooAttachmentId}, ${imageOdooAttachmentId}, 'pending', NOW())
-      RETURNING *
-    `;
-    
-    return NextResponse.json({ success: true, reservation: reservation.rows[0] });
+
+    // Instead of saving to product_reservations table, add to cart with reservation data
+    console.log('🛒 [RESERVATION-API] Adding reserved product to cart...');
+
+    const cartResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/portale-clienti/cart`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `token=${token}` // Forward auth token
+      },
+      body: JSON.stringify({
+        productId: parseInt(productId),
+        quantity: parseFloat(quantity),
+        isReservation: true,
+        reservationData: {
+          textNote: textNote || null,
+          audioUrl,
+          imageUrl,
+          audioOdooAttachmentId,
+          imageOdooAttachmentId
+        }
+      })
+    });
+
+    const cartResult = await cartResponse.json();
+
+    if (!cartResult.success) {
+      console.error('❌ [RESERVATION-API] Failed to add to cart:', cartResult.error);
+      return NextResponse.json({ error: cartResult.error }, { status: 500 });
+    }
+
+    console.log('✅ [RESERVATION-API] Product reserved and added to cart successfully');
+
+    return NextResponse.json({
+      success: true,
+      message: 'Prodotto prenotato e aggiunto al carrello',
+      cart: cartResult.cart,
+      items: cartResult.items
+    });
   } catch (error: any) {
     console.error('Error creating reservation:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

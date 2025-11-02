@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       total: cart.total_amount
     });
 
-    // Get cart items
+    // Get cart items (including reservation data if present)
     const itemsResult = await sql`
       SELECT
         id,
@@ -126,7 +126,13 @@ export async function POST(request: NextRequest) {
         quantity,
         unit_price,
         subtotal,
-        uom
+        uom,
+        is_reservation,
+        reservation_text_note,
+        reservation_audio_url,
+        reservation_image_url,
+        reservation_audio_odoo_attachment_id,
+        reservation_image_odoo_attachment_id
       FROM cart_items
       WHERE cart_id = ${cartId}
       ORDER BY added_at DESC
@@ -143,8 +149,14 @@ export async function POST(request: NextRequest) {
 
     console.log(`📦 [CHECKOUT-API] Found ${cartItems.length} items to convert to order`);
 
-    // Validate stock availability for all items before creating order
+    // Validate stock availability for non-reservation items only
     for (const item of cartItems) {
+      // Skip stock validation for reservation items
+      if (item.is_reservation) {
+        console.log(`⏩ [CHECKOUT-API] Skipping stock check for reserved item: ${item.product_name}`);
+        continue;
+      }
+
       const products = await callOdooAsAdmin(
         'product.product',
         'search_read',
@@ -316,6 +328,83 @@ export async function POST(request: NextRequest) {
       total: createdOrder?.[0]?.amount_total,
       state: createdOrder?.[0]?.state
     });
+
+    // Post reservation data to Odoo Chatter for each reserved item
+    const reservedItems = cartItems.filter(item => item.is_reservation);
+
+    if (reservedItems.length > 0) {
+      console.log(`📝 [CHECKOUT-API] Processing ${reservedItems.length} reserved items for Chatter...`);
+
+      for (const item of reservedItems) {
+        try {
+          // Build Chatter message body
+          let messageBody = `<p><strong>🔔 Prenotazione Prodotto</strong></p>`;
+          messageBody += `<p><strong>Prodotto:</strong> ${item.product_name} ${item.product_code ? `(${item.product_code})` : ''}</p>`;
+          messageBody += `<p><strong>Quantità richiesta:</strong> ${item.quantity} ${item.uom}</p>`;
+
+          if (item.reservation_text_note) {
+            messageBody += `<p><strong>Note cliente:</strong><br/>${item.reservation_text_note.replace(/\n/g, '<br/>')}</p>`;
+          }
+
+          if (item.reservation_audio_url) {
+            messageBody += `<p><strong>🎤 Registrazione audio:</strong> <a href="${item.reservation_audio_url}" target="_blank">Ascolta audio</a></p>`;
+          }
+
+          if (item.reservation_image_url) {
+            messageBody += `<p><strong>📷 Foto prodotto:</strong> <a href="${item.reservation_image_url}" target="_blank">Visualizza foto</a></p>`;
+          }
+
+          messageBody += `<p><em>Richiesta inviata dal Portale Clienti</em></p>`;
+
+          // Create message in Chatter
+          const messageId = await callOdooAsAdmin(
+            'mail.message',
+            'create',
+            [{
+              model: 'sale.order',
+              res_id: odooOrderId,
+              body: messageBody,
+              message_type: 'comment',
+              subtype_id: 1, // mt_note (internal note)
+            }],
+            {}
+          );
+
+          console.log(`✅ [CHECKOUT-API] Chatter message created for ${item.product_name}, message ID: ${messageId}`);
+
+          // If there are Odoo attachments, link them to the order
+          const attachmentIds = [
+            item.reservation_audio_odoo_attachment_id,
+            item.reservation_image_odoo_attachment_id
+          ].filter(id => id !== null);
+
+          if (attachmentIds.length > 0) {
+            for (const attachmentId of attachmentIds) {
+              try {
+                // Update attachment to link to sale.order instead of product.template
+                await callOdooAsAdmin(
+                  'ir.attachment',
+                  'write',
+                  [[attachmentId], {
+                    res_model: 'sale.order',
+                    res_id: odooOrderId
+                  }],
+                  {}
+                );
+                console.log(`✅ [CHECKOUT-API] Attachment ${attachmentId} linked to order ${odooOrderId}`);
+              } catch (attachError: any) {
+                console.warn(`⚠️ [CHECKOUT-API] Failed to link attachment ${attachmentId}:`, attachError.message);
+              }
+            }
+          }
+        } catch (chatterError: any) {
+          console.error(`❌ [CHECKOUT-API] Failed to post reservation to Chatter for ${item.product_name}:`, chatterError.message);
+          // Continue processing other items even if one fails
+        }
+      }
+
+      console.log(`✅ [CHECKOUT-API] All reservation data posted to Chatter`);
+    }
 
     // Update cart status to 'converted'
     await sql`

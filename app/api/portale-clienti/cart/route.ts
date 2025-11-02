@@ -156,7 +156,12 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { productId, quantity } = body;
+    const {
+      productId,
+      quantity,
+      isReservation = false,
+      reservationData // { textNote, audioUrl, imageUrl, audioOdooAttachmentId, imageOdooAttachmentId }
+    } = body;
 
     if (!productId || !quantity) {
       return NextResponse.json(
@@ -172,7 +177,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('📦 [CART-API] Adding product:', { productId, quantity });
+    console.log('📦 [CART-API] Adding product:', {
+      productId,
+      quantity,
+      isReservation,
+      hasReservationData: !!reservationData
+    });
 
     // Get partner_id from Odoo
     const userPartners = await callOdooAsAdmin(
@@ -235,8 +245,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check stock availability
-    if (product.qty_available < quantity) {
+    // Check stock availability ONLY if NOT a reservation
+    if (!isReservation && product.qty_available < quantity) {
       return NextResponse.json(
         {
           success: false,
@@ -250,7 +260,8 @@ export async function POST(request: NextRequest) {
     console.log('✅ [CART-API] Product validated:', {
       name: product.name,
       price: product.list_price,
-      stock: product.qty_available
+      stock: product.qty_available,
+      isReservation
     });
 
     // Get or create cart
@@ -299,6 +310,31 @@ export async function POST(request: NextRequest) {
       }
     } else {
       console.log('⚠️ [CART-API] No image_128 from Odoo');
+    }
+
+    // If this is a reservation, save reservation data
+    if (isReservation && reservationData) {
+      try {
+        console.log('📝 [CART-API] Saving reservation data for item', itemId);
+
+        await sql`
+          UPDATE cart_items
+          SET
+            is_reservation = TRUE,
+            reservation_text_note = ${reservationData.textNote || null},
+            reservation_audio_url = ${reservationData.audioUrl || null},
+            reservation_image_url = ${reservationData.imageUrl || null},
+            reservation_audio_odoo_attachment_id = ${reservationData.audioOdooAttachmentId || null},
+            reservation_image_odoo_attachment_id = ${reservationData.imageOdooAttachmentId || null},
+            reservation_created_at = NOW()
+          WHERE id = ${itemId}
+        `;
+
+        console.log('✅ [CART-API] Reservation data saved successfully');
+      } catch (resError: any) {
+        console.error('⚠️ [CART-API] Failed to save reservation data:', resError.message);
+        // Continue anyway - reservation data is optional
+      }
     }
 
     console.log('✅ [CART-API] Product added to cart');
