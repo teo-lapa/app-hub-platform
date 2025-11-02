@@ -222,7 +222,8 @@ export async function POST(request: NextRequest) {
           'uom_id',
           'active',
           'sale_ok',
-          'image_128'
+          'image_128',
+          'packaging_ids'  // Per recuperare i cartoni
         ],
         limit: 1
       }

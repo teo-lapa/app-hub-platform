@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
-import { Minus, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface CartItem {
@@ -51,49 +51,6 @@ export function CartItemCard({
     } else {
       // Snap back
       x.set(0);
-    }
-  };
-
-  const handleIncrement = async () => {
-    if (item.quantity >= item.maxQuantity) {
-      toast.error(`Massimo ${item.maxQuantity} unità disponibili`, {
-        icon: '⚠️',
-      });
-      return;
-    }
-
-    setIsUpdating(true);
-    try {
-      await onUpdateQuantity(item.id, item.quantity + 1);
-      // Celebration effect for adding items
-      if (typeof window !== 'undefined' && (window as any).confetti) {
-        (window as any).confetti({
-          particleCount: 20,
-          spread: 40,
-          origin: { y: 0.6 },
-          colors: ['#10b981', '#3b82f6', '#fbbf24'],
-        });
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Errore aggiornamento quantità');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleDecrement = async () => {
-    if (item.quantity <= 1) {
-      setShowConfirmDelete(true);
-      return;
-    }
-
-    setIsUpdating(true);
-    try {
-      await onUpdateQuantity(item.id, item.quantity - 1);
-    } catch (error: any) {
-      toast.error(error.message || 'Errore aggiornamento quantità');
-    } finally {
-      setIsUpdating(false);
     }
   };
 
@@ -206,43 +163,35 @@ export function CartItemCard({
 
                 {/* Price & Controls */}
                 <div className="mt-3 flex items-end justify-between gap-4">
-                  {/* Quantity Controls */}
+                  {/* Quantity Input - Click to edit */}
                   <div className="flex items-center gap-2">
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={handleDecrement}
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={item.quantity}
+                      onChange={async (e) => {
+                        const newQty = parseInt(e.target.value) || 1;
+                        if (newQty >= 1 && newQty <= item.maxQuantity && newQty !== item.quantity) {
+                          setIsUpdating(true);
+                          try {
+                            await onUpdateQuantity(item.id, newQty);
+                          } catch (error: any) {
+                            toast.error(error.message || 'Errore aggiornamento quantità');
+                          } finally {
+                            setIsUpdating(false);
+                          }
+                        }
+                      }}
+                      onFocus={(e) => e.target.select()}
                       disabled={isUpdating}
-                      className="flex items-center justify-center min-w-[48px] min-h-[48px] w-12 h-12 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      aria-label="Diminuisci quantità"
-                    >
-                      <Minus className="h-4 w-4" />
-                    </motion.button>
-
-                    <motion.div
-                      key={item.quantity}
-                      initial={{ scale: 1.3 }}
-                      animate={{ scale: 1 }}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-slate-900/50 rounded-lg min-w-[70px] justify-center"
-                    >
-                      <span className="text-lg font-bold text-white">
-                        {item.quantity}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        {item.unit}
-                      </span>
-                    </motion.div>
-
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={handleIncrement}
-                      disabled={isUpdating || item.quantity >= item.maxQuantity}
-                      className="flex items-center justify-center min-w-[48px] min-h-[48px] w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      aria-label="Aumenta quantità"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </motion.button>
+                      min="1"
+                      max={item.maxQuantity}
+                      className="w-24 text-center text-lg font-bold text-white bg-slate-700 hover:bg-slate-600 border-2 border-slate-600 hover:border-emerald-500 rounded-lg px-3 py-3 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all disabled:opacity-50"
+                    />
+                    <span className="text-sm text-slate-400 font-medium">
+                      {item.unit}
+                    </span>
                   </div>
 
                   {/* Price */}
