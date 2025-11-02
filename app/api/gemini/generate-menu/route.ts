@@ -58,22 +58,74 @@ export async function POST(request: NextRequest) {
     // Inizializza client Gemini
     const ai = new GoogleGenAI({ apiKey });
 
-    // Map language codes to full names
-    const languageMap: Record<string, string> = {
-      'it': 'Italiano',
-      'de': 'Tedesco',
-      'fr': 'Francese',
-      'en': 'Inglese'
+    // Map language codes to full names and instructions
+    const languageMap: Record<string, { name: string; instruction: string; categories: string }> = {
+      'de': {
+        name: 'Tedesco (Deutsch)',
+        instruction: 'Tutti i nomi, descrizioni e categorie devono essere in TEDESCO (Deutsch).',
+        categories: 'Vorspeisen, Erste Gänge, Hauptgerichte, Beilagen, Desserts, Getränke'
+      },
+      'fr': {
+        name: 'Francese (Français)',
+        instruction: 'Tutti i nomi, descrizioni e categorie devono essere in FRANCESE (Français).',
+        categories: 'Entrées, Premiers Plats, Plats Principaux, Accompagnements, Desserts, Boissons'
+      },
+      'en': {
+        name: 'Inglese (English)',
+        instruction: 'Tutti i nomi, descrizioni e categorie devono essere in INGLESE (English).',
+        categories: 'Appetizers, First Courses, Main Courses, Side Dishes, Desserts, Beverages'
+      },
+      'it': {
+        name: 'Italiano',
+        instruction: 'Tutti i nomi, descrizioni e categorie devono essere in ITALIANO.',
+        categories: 'Antipasti, Primi, Secondi, Contorni, Dessert, Bevande'
+      },
+      'es': {
+        name: 'Spagnolo (Español)',
+        instruction: 'Tutti i nomi, descrizioni e categorie devono essere in SPAGNOLO (Español).',
+        categories: 'Entrantes, Primeros Platos, Platos Principales, Guarniciones, Postres, Bebidas'
+      },
+      'pt': {
+        name: 'Portoghese (Português)',
+        instruction: 'Tutti i nomi, descrizioni e categorie devono essere in PORTOGHESE (Português).',
+        categories: 'Entradas, Primeiros Pratos, Pratos Principais, Acompanhamentos, Sobremesas, Bebidas'
+      },
+      'ru': {
+        name: 'Russo (Русский)',
+        instruction: 'Tutti i nomi, descrizioni e categorie devono essere in RUSSO (Русский).',
+        categories: 'Закуски, Первые блюда, Основные блюда, Гарниры, Десерты, Напитки'
+      },
+      'ar': {
+        name: 'Arabo (العربية)',
+        instruction: 'Tutti i nomi, descrizioni e categorie devono essere in ARABO (العربية).',
+        categories: 'مقبلات، أطباق أولى، أطباق رئيسية، أطباق جانبية، حلويات، مشروبات'
+      },
+      'zh': {
+        name: 'Cinese (中文)',
+        instruction: 'Tutti i nomi, descrizioni e categorie devono essere in CINESE (中文).',
+        categories: '开胃菜, 头盘, 主菜, 配菜, 甜点, 饮料'
+      },
+      'ja': {
+        name: 'Giapponese (日本語)',
+        instruction: 'Tutti i nomi, descrizioni e categorie devono essere in GIAPPONESE (日本語).',
+        categories: '前菜, 前菜, メイン料理, 副菜, デザート, 飲み物'
+      },
+      'ko': {
+        name: 'Coreano (한국어)',
+        instruction: 'Tutti i nomi, descrizioni e categorie devono essere in COREANO (한국어).',
+        categories: '전채, 첫 번째 요리, 메인 요리, 반찬, 디저트, 음료'
+      },
+      'tr': {
+        name: 'Turco (Türkçe)',
+        instruction: 'Tutti i nomi, descrizioni e categorie devono essere in TURCO (Türkçe).',
+        categories: 'Mezeler, İlk Yemekler, Ana Yemekler, Garnitürler, Tatlılar, İçecekler'
+      }
     };
 
-    const languageName = languageMap[menuLanguage] || 'Italiano';
-    const languageInstructions = menuLanguage === 'it'
-      ? 'Tutti i nomi, descrizioni e categorie devono essere in ITALIANO.'
-      : menuLanguage === 'de'
-      ? 'Tutti i nomi, descrizioni e categorie devono essere in TEDESCO (Deutsch).'
-      : menuLanguage === 'fr'
-      ? 'Tutti i nomi, descrizioni e categorie devono essere in FRANCESE (Français).'
-      : 'Tutti i nomi, descrizioni e categorie devono essere in INGLESE (English).';
+    const languageConfig = languageMap[menuLanguage] || languageMap['it'];
+    const languageName = languageConfig.name;
+    const languageInstructions = languageConfig.instruction;
+    const categoryExamples = languageConfig.categories;
 
     // Costruisci il prompt per strutturare il menu
     const systemPrompt = `Sei un esperto designer di menu per ristoranti in Svizzera.
@@ -84,10 +136,7 @@ ${languageInstructions}
 
 Regole IMPORTANTI:
 1. Organizza i piatti in categorie appropriate per la lingua selezionata
-   - IT: Antipasti, Primi, Secondi, Contorni, Dessert, Bevande
-   - DE: Vorspeisen, Erste Gänge, Hauptgerichte, Beilagen, Desserts, Getränke
-   - FR: Entrées, Premiers Plats, Plats Principaux, Accompagnements, Desserts, Boissons
-   - EN: Appetizers, First Courses, Main Courses, Side Dishes, Desserts, Beverages
+   Esempi per ${languageName}: ${categoryExamples}
 
 2. Per ogni piatto estrai: nome, descrizione, prezzo (se presente), allergeni (se menzionati)
 3. I prezzi devono essere in FRANCHI SVIZZERI (CHF), non in Euro

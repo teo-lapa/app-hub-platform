@@ -271,26 +271,39 @@ export default function MenuPDFGeneratorPage() {
               <label className="block text-sm font-medium text-slate-300 mb-3">
                 Lingua del Menu
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {[
-                  { code: 'it', name: 'Italiano 🇮🇹' },
-                  { code: 'de', name: 'Deutsch 🇩🇪' },
-                  { code: 'fr', name: 'Français 🇫🇷' },
-                  { code: 'en', name: 'English 🇬🇧' }
+                  { code: 'de', name: 'Deutsch 🇩🇪', priority: true },
+                  { code: 'fr', name: 'Français 🇫🇷', priority: true },
+                  { code: 'en', name: 'English 🇬🇧', priority: true },
+                  { code: 'it', name: 'Italiano 🇮🇹', priority: true },
+                  { code: 'es', name: 'Español 🇪🇸' },
+                  { code: 'pt', name: 'Português 🇵🇹' },
+                  { code: 'ru', name: 'Русский 🇷🇺' },
+                  { code: 'ar', name: 'العربية 🇸🇦' },
+                  { code: 'zh', name: '中文 🇨🇳' },
+                  { code: 'ja', name: '日本語 🇯🇵' },
+                  { code: 'ko', name: '한국어 🇰🇷' },
+                  { code: 'tr', name: 'Türkçe 🇹🇷' }
                 ].map((lang) => (
                   <button
                     key={lang.code}
                     onClick={() => setMenuLanguage(lang.code)}
                     disabled={isGenerating}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                    className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                       menuLanguage === lang.code
-                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
+                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg ring-2 ring-blue-400'
+                        : lang.priority
+                        ? 'bg-slate-900/50 text-slate-200 border-2 border-blue-500/40 hover:border-blue-500'
                         : 'bg-slate-900/50 text-slate-300 border border-slate-600 hover:border-blue-500/50'
                     } disabled:opacity-50`}
                   >
                     {lang.name}
                   </button>
                 ))}
+              </div>
+              <div className="mt-2 text-xs text-slate-500 text-center">
+                Lingue nazionali CH: DE, FR, IT, EN
               </div>
             </div>
 
