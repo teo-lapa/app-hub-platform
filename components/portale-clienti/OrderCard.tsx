@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 
 interface OrderCardProps {
@@ -17,6 +17,8 @@ interface OrderCardProps {
 }
 
 export function OrderCard({ order }: OrderCardProps) {
+  const [isReordering, setIsReordering] = useState(false);
+
   // Formatta la data
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -139,14 +141,74 @@ export function OrderCard({ order }: OrderCardProps) {
               Dettagli
             </Link>
             <button
-              onClick={() => {
-                // TODO: Implementare copia in carrello
-                alert('Funzione riordina in sviluppo');
+              onClick={async () => {
+                if (isReordering) return;
+
+                setIsReordering(true);
+
+                try {
+                  // Chiamata API per ottenere i prodotti dell'ordine
+                  const response = await fetch(`/api/portale-clienti/orders/${order.id}/reorder`, {
+                    method: 'POST',
+                    credentials: 'include',
+                  });
+
+                  const data = await response.json();
+
+                  if (!response.ok || data.error) {
+                    throw new Error(data.error || 'Errore nel recupero prodotti');
+                  }
+
+                  // Aggiungi ogni prodotto al carrello
+                  let successCount = 0;
+                  let errorCount = 0;
+
+                  for (const product of data.products) {
+                    try {
+                      const cartResponse = await fetch('/api/portale-clienti/cart', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                          productId: product.productId,
+                          quantity: product.quantity,
+                        }),
+                      });
+
+                      const cartData = await cartResponse.json();
+
+                      if (cartResponse.ok && !cartData.error) {
+                        successCount++;
+                      } else {
+                        errorCount++;
+                        console.error(`Failed to add ${product.productName}:`, cartData.error);
+                      }
+                    } catch (err) {
+                      errorCount++;
+                      console.error(`Failed to add product:`, err);
+                    }
+                  }
+
+                  // Mostra risultato
+                  if (successCount > 0) {
+                    alert(`✅ ${successCount} prodotti aggiunti al carrello!${errorCount > 0 ? `\n⚠️ ${errorCount} prodotti non disponibili` : ''}`);
+                    // Opzionale: redirect al carrello
+                    window.location.href = '/portale-clienti/carrello';
+                  } else {
+                    alert('❌ Nessun prodotto disponibile da questo ordine');
+                  }
+                } catch (error: any) {
+                  console.error('Reorder error:', error);
+                  alert('Errore durante il riordino: ' + error.message);
+                } finally {
+                  setIsReordering(false);
+                }
               }}
-              className="px-3 py-3 min-h-[48px] text-xs sm:text-sm font-medium text-green-600 bg-green-50 rounded-md hover:bg-green-100 transition-colors whitespace-nowrap flex items-center"
+              disabled={isReordering}
+              className="px-3 py-3 min-h-[48px] text-xs sm:text-sm font-medium text-green-600 bg-green-50 rounded-md hover:bg-green-100 transition-colors whitespace-nowrap flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span className="hidden sm:inline">Riordina</span>
-              <span className="sm:hidden">Riord.</span>
+              <span className="hidden sm:inline">{isReordering ? 'Riordinando...' : 'Riordina'}</span>
+              <span className="sm:hidden">{isReordering ? '...' : 'Riord.'}</span>
             </button>
           </div>
         </div>
