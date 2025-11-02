@@ -133,9 +133,10 @@ export default function FatturePage() {
 
   // Formatta importo
   const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('it-IT', {
+    return new Intl.NumberFormat('de-CH', {
       style: 'currency',
-      currency: 'EUR',
+      currency: 'CHF',
+      currencyDisplay: 'code'
     }).format(amount);
   };
 

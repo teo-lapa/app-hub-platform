@@ -70,9 +70,10 @@ export default function ProfiloPage() {
   }
 
   function formatCurrency(amount: number) {
-    return new Intl.NumberFormat('it-IT', {
+    return new Intl.NumberFormat('de-CH', {
       style: 'currency',
-      currency: 'EUR',
+      currency: 'CHF',
+      currencyDisplay: 'code'
     }).format(amount);
   }
 

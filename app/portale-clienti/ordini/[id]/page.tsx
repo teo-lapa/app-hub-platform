@@ -80,10 +80,11 @@ export default function OrderDetailPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return amount.toLocaleString('it-IT', {
+    return new Intl.NumberFormat('de-CH', {
       style: 'currency',
-      currency: 'EUR',
-    });
+      currency: 'CHF',
+      currencyDisplay: 'code'
+    }).format(amount);
   };
 
   const getStateBadgeColor = (state: string) => {
