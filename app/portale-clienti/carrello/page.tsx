@@ -27,6 +27,8 @@ interface CartItem {
   image: string;
   unit: string;
   category: string | null;
+  packagingQty?: number | null;
+  packagingName?: string | null;
 }
 
 interface CartData {
@@ -76,7 +78,9 @@ export default function CarrelloPage() {
         maxQuantity: parseFloat(item.available_stock) || 999,
         image: item.product_image_url || '/placeholder-product.png',
         unit: item.uom || 'Pz',
-        category: null
+        category: null,
+        packagingQty: item.packaging_qty ? parseFloat(item.packaging_qty) : null,
+        packagingName: item.packaging_name || null
       }));
 
       setCart({

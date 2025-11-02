@@ -16,6 +16,8 @@ interface CartItem {
   image: string;
   unit: string;
   category: string | null;
+  packagingQty?: number | null;  // Quantità cartone (es. 5.40)
+  packagingName?: string | null;  // Nome packaging (es. "Cartone")
 }
 
 interface CartItemCardProps {
@@ -163,35 +165,75 @@ export function CartItemCard({
 
                 {/* Price & Controls */}
                 <div className="mt-3 flex items-end justify-between gap-4">
-                  {/* Quantity Input - Click to edit */}
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={item.quantity}
-                      onChange={async (e) => {
-                        const newQty = parseInt(e.target.value) || 1;
-                        if (newQty >= 1 && newQty <= item.maxQuantity && newQty !== item.quantity) {
-                          setIsUpdating(true);
-                          try {
-                            await onUpdateQuantity(item.id, newQty);
-                          } catch (error: any) {
-                            toast.error(error.message || 'Errore aggiornamento quantità');
-                          } finally {
-                            setIsUpdating(false);
+                  {/* Quantity Controls */}
+                  <div className="flex flex-col gap-2">
+                    {/* Quantity Input Row */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={item.quantity}
+                        onChange={(e) => {
+                          // Allow typing but don't update yet
+                          const value = e.target.value;
+                          if (value === '') return; // Allow clearing
+                          const newQty = parseInt(value);
+                          if (!isNaN(newQty) && newQty >= 1 && newQty <= item.maxQuantity) {
+                            // Update immediately for better UX
+                            onUpdateQuantity(item.id, newQty);
                           }
-                        }
-                      }}
-                      onFocus={(e) => e.target.select()}
-                      disabled={isUpdating}
-                      min="1"
-                      max={item.maxQuantity}
-                      className="w-24 text-center text-lg font-bold text-white bg-slate-700 hover:bg-slate-600 border-2 border-slate-600 hover:border-emerald-500 rounded-lg px-3 py-3 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all disabled:opacity-50"
-                    />
-                    <span className="text-sm text-slate-400 font-medium">
-                      {item.unit}
-                    </span>
+                        }}
+                        onBlur={(e) => {
+                          // On blur, ensure valid value
+                          const newQty = parseInt(e.target.value) || item.quantity;
+                          if (newQty < 1) {
+                            onUpdateQuantity(item.id, 1);
+                          } else if (newQty > item.maxQuantity) {
+                            onUpdateQuantity(item.id, item.maxQuantity);
+                          }
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        disabled={isUpdating}
+                        min="1"
+                        max={item.maxQuantity}
+                        className="w-24 text-center text-lg font-bold text-white bg-slate-700 hover:bg-slate-600 border-2 border-slate-600 hover:border-emerald-500 rounded-lg px-3 py-3 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all disabled:opacity-50"
+                      />
+                      <span className="text-sm text-slate-400 font-medium">
+                        {item.unit}
+                      </span>
+                    </div>
+
+                    {/* Cartone Button (if packaging available) */}
+                    {item.packagingQty && item.packagingQty > 0 && (
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={async () => {
+                          const cartoniQty = Math.floor(item.quantity / item.packagingQty!);
+                          const newCartoni = cartoniQty + 1;
+                          const newQty = Math.round(newCartoni * item.packagingQty! * 100) / 100;
+
+                          if (newQty <= item.maxQuantity) {
+                            setIsUpdating(true);
+                            try {
+                              await onUpdateQuantity(item.id, newQty);
+                            } catch (error: any) {
+                              toast.error(error.message || 'Errore aggiornamento');
+                            } finally {
+                              setIsUpdating(false);
+                            }
+                          } else {
+                            toast.error(`Massimo ${item.maxQuantity} unità disponibili`);
+                          }
+                        }}
+                        disabled={isUpdating}
+                        className="px-3 py-2 min-h-[44px] bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                      >
+                        <span>+ {item.packagingName || 'Cartone'}</span>
+                        <span className="text-[10px] opacity-80">({item.packagingQty} {item.unit})</span>
+                      </motion.button>
+                    )}
                   </div>
 
                   {/* Price */}
