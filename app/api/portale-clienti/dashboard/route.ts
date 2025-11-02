@@ -169,11 +169,12 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
 
     const [
       allOrders,
+      allInvoicesYTD,
       recentOrders,
       activeDeliveries,
       openInvoices
     ] = await Promise.all([
-      // All confirmed orders for YTD calculations
+      // All confirmed orders for order count
       callOdooAsAdmin(
         'sale.order',
         'search_read',
@@ -186,6 +187,23 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
           ],
           fields: ['amount_total', 'date_order'],
           order: 'date_order desc'
+        }
+      ),
+
+      // All invoices YTD for revenue calculation
+      callOdooAsAdmin(
+        'account.move',
+        'search_read',
+        [],
+        {
+          domain: [
+            ['partner_id', '=', partnerId],
+            ['move_type', '=', 'out_invoice'],
+            ['state', '=', 'posted'],
+            ['invoice_date', '>=', yearStart]
+          ],
+          fields: ['amount_total', 'invoice_date'],
+          order: 'invoice_date desc'
         }
       ),
 
@@ -243,6 +261,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
 
     console.log('✅ [DASHBOARD-API] Data fetched successfully:', {
       allOrders: allOrders?.length || 0,
+      allInvoicesYTD: allInvoicesYTD?.length || 0,
       recentOrders: recentOrders?.length || 0,
       activeDeliveries: activeDeliveries?.length || 0,
       openInvoices: openInvoices?.length || 0
@@ -256,8 +275,11 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
              orderDate.getFullYear() === now.getFullYear();
     }) || [];
 
-    const revenueYTD = allOrders?.reduce((sum: number, order: any) => sum + (order.amount_total || 0), 0) || 0;
-    const avgOrder = allOrders && allOrders.length > 0 ? revenueYTD / allOrders.length : 0;
+    // Calculate revenue YTD from INVOICES (not orders)
+    const revenueYTD = allInvoicesYTD?.reduce((sum: number, invoice: any) => sum + (invoice.amount_total || 0), 0) || 0;
+
+    // Average order based on invoices
+    const avgOrder = allInvoicesYTD && allInvoicesYTD.length > 0 ? revenueYTD / allInvoicesYTD.length : 0;
 
     // Calculate overdue invoices
     const overdueInvoices = openInvoices?.filter((inv: any) => {

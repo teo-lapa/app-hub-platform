@@ -143,7 +143,7 @@ async function fetchOrdersDetails(partnerId: number) {
 }
 
 /**
- * Fetch revenue breakdown by month (YTD)
+ * Fetch revenue breakdown by month (YTD) - FROM INVOICES
  */
 async function fetchRevenueDetails(partnerId: number) {
   const currentYear = new Date().getFullYear();
@@ -151,34 +151,36 @@ async function fetchRevenueDetails(partnerId: number) {
   const previousYearStart = `${currentYear - 1}-01-01`;
   const previousYearEnd = `${currentYear - 1}-12-31`;
 
-  const [currentYearOrders, previousYearOrders] = await Promise.all([
+  const [currentYearInvoices, previousYearInvoices] = await Promise.all([
     callOdooAsAdmin(
-      'sale.order',
+      'account.move',
       'search_read',
       [],
       {
         domain: [
           ['partner_id', '=', partnerId],
-          ['state', 'in', ['sale', 'done']],
-          ['date_order', '>=', yearStart]
+          ['move_type', '=', 'out_invoice'],
+          ['state', '=', 'posted'],
+          ['invoice_date', '>=', yearStart]
         ],
-        fields: ['date_order', 'amount_total'],
-        order: 'date_order asc'
+        fields: ['invoice_date', 'amount_total'],
+        order: 'invoice_date asc'
       }
     ),
     callOdooAsAdmin(
-      'sale.order',
+      'account.move',
       'search_read',
       [],
       {
         domain: [
           ['partner_id', '=', partnerId],
-          ['state', 'in', ['sale', 'done']],
-          ['date_order', '>=', previousYearStart],
-          ['date_order', '<=', previousYearEnd]
+          ['move_type', '=', 'out_invoice'],
+          ['state', '=', 'posted'],
+          ['invoice_date', '>=', previousYearStart],
+          ['invoice_date', '<=', previousYearEnd]
         ],
         fields: ['amount_total'],
-        order: 'date_order asc'
+        order: 'invoice_date asc'
       }
     )
   ]);
@@ -190,10 +192,10 @@ async function fetchRevenueDetails(partnerId: number) {
     'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
   ];
 
-  currentYearOrders?.forEach((order: any) => {
-    const date = new Date(order.date_order);
+  currentYearInvoices?.forEach((invoice: any) => {
+    const date = new Date(invoice.invoice_date);
     const monthKey = `${currentYear}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + order.amount_total;
+    monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + invoice.amount_total;
   });
 
   const monthly_revenue = Object.entries(monthlyRevenue).map(([month, revenue]) => {
@@ -205,7 +207,7 @@ async function fetchRevenueDetails(partnerId: number) {
     };
   });
 
-  const previous_year_total = previousYearOrders?.reduce((sum: number, order: any) => sum + order.amount_total, 0) || 0;
+  const previous_year_total = previousYearInvoices?.reduce((sum: number, invoice: any) => sum + invoice.amount_total, 0) || 0;
 
   return {
     monthly_revenue,
