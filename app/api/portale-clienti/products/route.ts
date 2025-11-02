@@ -238,13 +238,17 @@ export async function GET(request: NextRequest) {
       barcode: p.barcode || null,
     }));
 
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasMore = page < totalPages;
+
     return NextResponse.json({
       products: transformedProducts,
       pagination: {
         page,
         limit,
         total: totalCount,
-        totalPages: Math.ceil(totalCount / limit),
+        totalPages,
+        hasMore,
       },
     });
 
