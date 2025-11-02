@@ -113,7 +113,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
       [],
       {
         domain: [['email', '=', decoded.email]],
-        fields: ['id', 'name', 'property_product_pricelist'],
+        fields: ['id', 'name', 'property_product_pricelist', 'credit_limit', 'credit'],
         limit: 1
       }
     );
@@ -268,12 +268,17 @@ export async function GET(request: NextRequest): Promise<NextResponse<DashboardR
 
     const overdueAmount = overdueInvoices.reduce((sum: number, inv: any) => sum + (inv.amount_residual || 0), 0);
 
+    // Calculate credit KPIs from partner data
+    const creditLimit = partner.credit_limit || 0;
+    const creditUsed = partner.credit || 0;
+    const creditAvailable = Math.max(0, creditLimit - creditUsed);
+
     const kpis: DashboardKPIs = {
       orders_count: ordersThisMonth.length,
       revenue_ytd: revenueYTD,
       avg_order: avgOrder,
-      credit_limit: 0, // Not accessible to portal users
-      credit_available: 0, // Not accessible to portal users
+      credit_limit: creditLimit,
+      credit_available: creditAvailable,
       overdue_invoices: overdueInvoices.length,
       overdue_amount: overdueAmount
     };

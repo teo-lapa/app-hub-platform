@@ -94,6 +94,8 @@ export async function GET(request: NextRequest) {
           'comment',
           'user_id', // Agente di vendita
           'property_product_pricelist', // Listino prezzi
+          'credit_limit', // Limite di credito
+          'credit', // Credito utilizzato
         ],
         limit: 1,
       }
@@ -130,10 +132,10 @@ export async function GET(request: NextRequest) {
       // Dati fiscali
       vat: partner.vat || '',
 
-      // Info commerciali
-      creditLimit: 0, // Not accessible to portal users
-      currentCredit: 0, // Not accessible to portal users
-      availableCredit: 0, // Not accessible to portal users
+      // Info commerciali - Credit data from Odoo
+      creditLimit: partner.credit_limit || 0,
+      currentCredit: partner.credit || 0,
+      availableCredit: Math.max(0, (partner.credit_limit || 0) - (partner.credit || 0)),
 
       // Agente e termini
       salesPerson: partner.user_id?.[1] || null,
