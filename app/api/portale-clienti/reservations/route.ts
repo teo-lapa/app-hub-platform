@@ -135,27 +135,29 @@ export async function POST(request: NextRequest) {
     let audioOdooAttachmentId: number | null = null;
     let imageOdooAttachmentId: number | null = null;
 
-    // Upload audio to BOTH Blob AND Odoo
+    // Upload audio to BOTH Blob AND Odoo (OPTIONAL - non blocca se fallisce)
     if (audioFile) {
       try {
         const result = await uploadFileDual(audioFile, customerId, productId, 'audio');
         audioUrl = result.blobUrl;
         audioOdooAttachmentId = result.odooAttachmentId;
-      } catch (err) {
-        console.error('Error uploading audio:', err);
-        return NextResponse.json({ error: 'Errore nel caricamento audio' }, { status: 500 });
+        console.log('✅ [RESERVATION-API] Audio uploaded successfully');
+      } catch (err: any) {
+        console.error('⚠️ [RESERVATION-API] Audio upload failed, continuing without it:', err.message);
+        // Continue without audio - it's optional
       }
     }
 
-    // Upload image to BOTH Blob AND Odoo
+    // Upload image to BOTH Blob AND Odoo (OPTIONAL - non blocca se fallisce)
     if (imageFile) {
       try {
         const result = await uploadFileDual(imageFile, customerId, productId, 'image');
         imageUrl = result.blobUrl;
         imageOdooAttachmentId = result.odooAttachmentId;
-      } catch (err) {
-        console.error('Error uploading image:', err);
-        return NextResponse.json({ error: 'Errore nel caricamento immagine' }, { status: 500 });
+        console.log('✅ [RESERVATION-API] Image uploaded successfully');
+      } catch (err: any) {
+        console.error('⚠️ [RESERVATION-API] Image upload failed, continuing without it:', err.message);
+        // Continue without image - it's optional
       }
     }
 
