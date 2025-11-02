@@ -206,57 +206,69 @@ export default function MenuPDFGeneratorPage() {
                 )}
               </label>
 
-              {restaurantLogo && (
-                <div className="mb-3 flex justify-center relative">
-                  <img
-                    src={restaurantLogo}
-                    alt="Logo Ristorante"
-                    className="h-16 w-auto object-contain rounded-lg border border-slate-600/50 bg-white/5 p-2"
-                  />
-                  <button
-                    onClick={() => setRestaurantLogo(null)}
-                    className="absolute top-0 right-1/2 translate-x-8 -translate-y-1 p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors"
-                    title="Rimuovi logo"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
+              {/* Logo Upload - sempre presente */}
+              <div className="mb-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
 
-              {!restaurantLogo && (
-                <div className="mb-3">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
+                    if (!file.type.startsWith('image/')) {
+                      toast.error('Seleziona un file immagine valido');
+                      return;
+                    }
 
-                      if (!file.type.startsWith('image/')) {
-                        toast.error('Seleziona un file immagine valido');
-                        return;
-                      }
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      const base64 = event.target?.result as string;
+                      setRestaurantLogo(base64);
+                      toast.success('Logo caricato!');
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                  className="hidden"
+                  id="logo-upload"
+                />
 
-                      const reader = new FileReader();
-                      reader.onload = (event) => {
-                        const base64 = event.target?.result as string;
-                        setRestaurantLogo(base64);
-                        toast.success('Logo caricato!');
-                      };
-                      reader.readAsDataURL(file);
-                    }}
-                    className="hidden"
-                    id="logo-upload"
-                  />
+                {restaurantLogo ? (
+                  <div className="space-y-2">
+                    {/* Logo con X piccola in alto a destra */}
+                    <div className="relative inline-block">
+                      <img
+                        src={restaurantLogo}
+                        alt="Logo Ristorante"
+                        className="h-20 w-auto object-contain rounded-lg border border-slate-600/50 bg-white/5 p-2"
+                      />
+                      <button
+                        onClick={() => setRestaurantLogo(null)}
+                        className="absolute -top-2 -right-2 p-1 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors shadow-lg"
+                        title="Rimuovi logo"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+
+                    {/* Pulsante per cambiare logo */}
+                    <label
+                      htmlFor="logo-upload"
+                      className="flex items-center justify-center space-x-2 px-3 py-2 bg-slate-900/50 hover:bg-slate-700/50 border border-slate-600 hover:border-orange-500/50 rounded-lg text-slate-300 hover:text-white transition-all cursor-pointer text-sm"
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      <span>Cambia Logo</span>
+                    </label>
+                  </div>
+                ) : (
                   <label
                     htmlFor="logo-upload"
                     className="flex items-center justify-center space-x-2 px-4 py-3 bg-slate-900/50 hover:bg-slate-700/50 border border-slate-600 hover:border-orange-500/50 rounded-lg text-slate-300 hover:text-white transition-all cursor-pointer"
                   >
                     <Upload className="h-4 w-4" />
-                    <span className="text-sm">Carica Logo Personalizzato</span>
+                    <span className="text-sm">Carica Logo</span>
                   </label>
-                </div>
-              )}
+                )}
+              </div>
 
               <input
                 type="text"
@@ -266,12 +278,6 @@ export default function MenuPDFGeneratorPage() {
                 className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-white placeholder:text-slate-500"
                 disabled={isGenerating || isLoadingInfo}
               />
-
-              {restaurantLogo && (
-                <div className="mt-2 text-xs text-emerald-400 text-center">
-                  ✓ Logo caricato da Odoo
-                </div>
-              )}
             </div>
 
             {/* Testo Menu */}
