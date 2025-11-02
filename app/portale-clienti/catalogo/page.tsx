@@ -75,7 +75,6 @@ export default function CatalogoPage() {
   // Fetch cart items with ultra-robust error handling
   async function fetchCartItems() {
     try {
-      console.log('🛒 Fetching cart items...');
       const response = await fetch('/api/portale-clienti/cart');
       if (!response.ok) {
         console.warn('Cart API returned error status:', response.status);
@@ -84,42 +83,34 @@ export default function CatalogoPage() {
       }
 
       const data = await response.json();
-      console.log('🛒 Cart API response:', data);
 
       if (!data.error && data.items && Array.isArray(data.items)) {
-        console.log('🛒 Raw items from API:', data.items);
-        console.log('🛒 First item structure:', data.items[0]);
-
         const validItems: { productId: number; quantity: number }[] = [];
 
         for (const item of data.items) {
           try {
-            console.log('🛒 Processing item:', item);
-
             // Try different possible structures
             let productId: number | null = null;
             let quantity: number = 0;
 
-            // Option 1: item.product.id
-            if (item?.product?.id) {
-              productId = item.product.id;
-              quantity = item.quantity || 0;
-            }
-            // Option 2: item.product_id or item.odoo_product_id
-            else if (item?.product_id) {
+            // Option 1: item.product_id (campo diretto)
+            if (item?.product_id) {
               productId = item.product_id;
               quantity = item.quantity || 0;
             }
+            // Option 2: item.odoo_product_id
             else if (item?.odoo_product_id) {
               productId = item.odoo_product_id;
+              quantity = item.quantity || 0;
+            }
+            // Option 3: item.product.id (nested)
+            else if (item?.product?.id) {
+              productId = item.product.id;
               quantity = item.quantity || 0;
             }
 
             if (productId && typeof productId === 'number') {
               validItems.push({ productId, quantity });
-              console.log('✅ Added item:', { productId, quantity });
-            } else {
-              console.warn('⚠️ Could not extract productId from item:', item);
             }
           } catch (e) {
             console.warn('Skipping invalid cart item:', e);
@@ -127,10 +118,8 @@ export default function CatalogoPage() {
           }
         }
 
-        console.log('🛒 Valid cart items:', validItems);
         setCartItems(validItems);
       } else {
-        console.log('🛒 No valid cart data, resetting cart');
         setCartItems([]);
       }
     } catch (err) {
@@ -335,15 +324,6 @@ export default function CatalogoPage() {
               {products.map((product) => {
                 const cartItem = cartItems.find(item => item.productId === product.id);
                 const cartQty = cartItem?.quantity || 0;
-
-                // Debug log per i primi 3 prodotti
-                if (products.indexOf(product) < 3) {
-                  console.log(`🎯 Product ${product.id} (${product.name}):`, {
-                    cartItemFound: !!cartItem,
-                    cartQuantity: cartQty,
-                    totalCartItems: cartItems.length
-                  });
-                }
 
                 return (
                   <ProductCard
