@@ -206,12 +206,54 @@ export default function MenuPDFGeneratorPage() {
               </label>
 
               {restaurantLogo && (
-                <div className="mb-3 flex justify-center">
+                <div className="mb-3 flex justify-center relative">
                   <img
                     src={restaurantLogo}
                     alt="Logo Ristorante"
                     className="h-16 w-auto object-contain rounded-lg border border-slate-600/50 bg-white/5 p-2"
                   />
+                  <button
+                    onClick={() => setRestaurantLogo(null)}
+                    className="absolute top-0 right-1/2 translate-x-8 -translate-y-1 p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors"
+                    title="Rimuovi logo"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+
+              {!restaurantLogo && (
+                <div className="mb-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      if (!file.type.startsWith('image/')) {
+                        toast.error('Seleziona un file immagine valido');
+                        return;
+                      }
+
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const base64 = event.target?.result as string;
+                        setRestaurantLogo(base64);
+                        toast.success('Logo caricato!');
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                    className="hidden"
+                    id="logo-upload"
+                  />
+                  <label
+                    htmlFor="logo-upload"
+                    className="flex items-center justify-center space-x-2 px-4 py-3 bg-slate-900/50 hover:bg-slate-700/50 border border-slate-600 hover:border-orange-500/50 rounded-lg text-slate-300 hover:text-white transition-all cursor-pointer"
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span className="text-sm">Carica Logo Personalizzato</span>
+                  </label>
                 </div>
               )}
 
