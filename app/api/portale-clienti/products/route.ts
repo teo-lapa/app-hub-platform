@@ -178,6 +178,18 @@ export async function GET(request: NextRequest) {
     // IMPORTANT: Disable intelligent sorting when user is searching manually
     const useIntelligentSort = sort === 'name' && partnerId !== null && !query && categoryId === 'all' && !purchased;
 
+    console.log('🎯 [PRODUCTS-API] Intelligent sorting decision:', {
+      useIntelligentSort,
+      reasons: {
+        sortIsName: sort === 'name',
+        hasPartnerId: partnerId !== null,
+        noQuery: !query,
+        categoryAll: categoryId === 'all',
+        noPurchased: !purchased
+      },
+      actualValues: { sort, partnerId, query, categoryId, purchased }
+    });
+
     let order = 'name ASC'; // Fallback for non-intelligent sorting
     if (sort === 'price_asc') {
       order = 'list_price ASC';
