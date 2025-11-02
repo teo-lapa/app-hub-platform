@@ -124,11 +124,11 @@ export function AIImageModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={handleClose}
     >
       <div
-        className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl max-w-5xl w-full shadow-2xl border border-emerald-500/20 my-8"
+        className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl max-w-4xl w-full shadow-2xl border border-emerald-500/20 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -299,7 +299,7 @@ export function AIImageModal({
               </label>
 
               {/* Box anteprima */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 min-h-[400px] flex items-center justify-center">
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 min-h-[300px] flex items-center justify-center">
                 {generatedImage ? (
                   <div className="w-full space-y-3">
                     <img
