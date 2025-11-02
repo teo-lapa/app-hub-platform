@@ -3,6 +3,8 @@ import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
 import { sql } from '@vercel/postgres';
 import jwt from 'jsonwebtoken';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/portale-clienti/products
  *
