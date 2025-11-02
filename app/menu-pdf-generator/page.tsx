@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Home, FileText, Upload, Image as ImageIcon, Mic, Loader2, Download, Sparkles, X, Eye } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -30,8 +30,33 @@ export default function MenuPDFGeneratorPage() {
   const [generatedMenu, setGeneratedMenu] = useState<MenuData | null>(null);
   const [menuStyle, setMenuStyle] = useState<string>('classico');
   const [restaurantName, setRestaurantName] = useState('Il Mio Ristorante');
+  const [restaurantLogo, setRestaurantLogo] = useState<string | null>(null);
   const [menuLanguage, setMenuLanguage] = useState<string>('it');
+  const [isLoadingInfo, setIsLoadingInfo] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch restaurant info from Odoo on mount
+  useEffect(() => {
+    const fetchRestaurantInfo = async () => {
+      try {
+        const response = await fetch('/api/menu-pdf/restaurant-info');
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          setRestaurantName(data.data.restaurantName || 'Il Mio Ristorante');
+          setRestaurantLogo(data.data.logo);
+          console.log('✅ Restaurant info loaded:', data.data.restaurantName);
+        }
+      } catch (error) {
+        console.error('Error fetching restaurant info:', error);
+        // Usa valori di default in caso di errore
+      } finally {
+        setIsLoadingInfo(false);
+      }
+    };
+
+    fetchRestaurantInfo();
+  }, []);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -173,17 +198,37 @@ export default function MenuPDFGeneratorPage() {
           <div className="space-y-6">
             {/* Nome Ristorante */}
             <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 p-6">
-              <label className="block text-sm font-medium text-slate-300 mb-3">
-                Nome Ristorante
+              <label className="block text-sm font-medium text-slate-300 mb-3 flex items-center justify-between">
+                <span>Nome Ristorante</span>
+                {isLoadingInfo && (
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                )}
               </label>
+
+              {restaurantLogo && (
+                <div className="mb-3 flex justify-center">
+                  <img
+                    src={restaurantLogo}
+                    alt="Logo Ristorante"
+                    className="h-16 w-auto object-contain rounded-lg border border-slate-600/50 bg-white/5 p-2"
+                  />
+                </div>
+              )}
+
               <input
                 type="text"
                 value={restaurantName}
                 onChange={(e) => setRestaurantName(e.target.value)}
                 placeholder="Il Mio Ristorante"
                 className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-white placeholder:text-slate-500"
-                disabled={isGenerating}
+                disabled={isGenerating || isLoadingInfo}
               />
+
+              {restaurantLogo && (
+                <div className="mt-2 text-xs text-emerald-400 text-center">
+                  ✓ Logo caricato da Odoo
+                </div>
+              )}
             </div>
 
             {/* Testo Menu */}
