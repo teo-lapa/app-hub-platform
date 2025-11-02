@@ -245,11 +245,16 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductC
         className="aspect-square bg-slate-700/30 relative overflow-hidden cursor-pointer hover:bg-slate-700/50 transition-colors"
         onClick={() => setIsDetailModalOpen(true)}
       >
-        {product.image !== '/placeholder-product.png' ? (
+        {product.image && product.image !== '/placeholder-product.png' ? (
           <img
             src={product.image}
             alt={product.name}
             className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              console.error('Image load error for product:', product.name, product.id);
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+            loading="lazy"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">

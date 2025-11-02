@@ -290,6 +290,10 @@ export async function GET(request: NextRequest) {
 
       console.log(`📊 [PRODUCTS-API] Found scores for ${scoreMap.size} products`);
 
+      // Check how many products have images
+      const productsWithImages = allProducts.filter((p: any) => p.image_256).length;
+      console.log(`🖼️ [PRODUCTS-API] Products with images: ${productsWithImages}/${allProducts.length}`);
+
       // Step 3: Transform and add scores to products
       const productsWithScores = allProducts.map((p: any) => {
         const scores = scoreMap.get(p.id) || { customer: 0, global: 0 };
@@ -396,6 +400,10 @@ export async function GET(request: NextRequest) {
       );
 
       console.log(`✅ [PRODUCTS-API] Loaded ${products.length} products in language: ${userLang}`);
+
+      // Check how many products have images
+      const productsWithImages = products.filter((p: any) => p.image_256).length;
+      console.log(`🖼️ [PRODUCTS-API] Products with images: ${productsWithImages}/${products.length}`);
 
       // Transform Odoo data to frontend format
       transformedProducts = products.map((p: any) => ({
