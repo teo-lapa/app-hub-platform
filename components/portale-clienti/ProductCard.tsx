@@ -37,12 +37,7 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductC
 
   useEffect(() => {
     setMounted(true);
-    console.log('ProductCard mounted for:', product.name);
   }, []);
-
-  useEffect(() => {
-    console.log('Modal state changed:', isDetailModalOpen, 'mounted:', mounted);
-  }, [isDetailModalOpen, mounted]);
 
   const handleAddToCart = async () => {
     setIsAdding(true);
@@ -248,11 +243,7 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductC
       {/* Immagine prodotto */}
       <div
         className="aspect-square bg-slate-700/30 relative overflow-hidden cursor-pointer hover:bg-slate-700/50 transition-colors"
-        onClick={(e) => {
-          e.stopPropagation();
-          console.log('Product image clicked:', product.name);
-          setIsDetailModalOpen(true);
-        }}
+        onClick={() => setIsDetailModalOpen(true)}
       >
         {product.image !== '/placeholder-product.png' ? (
           <img

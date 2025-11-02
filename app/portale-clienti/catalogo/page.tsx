@@ -169,20 +169,7 @@ export default function CatalogoPage() {
 
   async function handleAddToCart(productId: number, quantity: number) {
     try {
-      // Add to cart via API
-      const response = await fetch('/api/portale-clienti/cart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId, quantity }),
-      });
-
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      // Update local cart state
+      // Ottimistic update - aggiorna subito lo stato locale
       setCartItems((prev) => {
         const existing = prev.find((item) => item.productId === productId);
         if (existing) {
@@ -195,11 +182,23 @@ export default function CatalogoPage() {
         return [...prev, { productId, quantity }];
       });
 
+      // Add to cart via API
+      const response = await fetch('/api/portale-clienti/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, quantity }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        // Se c'è un errore, ripristina lo stato precedente
+        await fetchCartItems();
+        throw new Error(data.error);
+      }
+
       const product = products.find((p) => p.id === productId);
       toast.success(`${product?.name || 'Prodotto'} aggiunto al carrello`);
-
-      // Ricarica il carrello per aggiornare le quantità
-      fetchCartItems();
     } catch (err: any) {
       console.error('Failed to add to cart:', err);
       toast.error(err.message || 'Impossibile aggiungere al carrello');
