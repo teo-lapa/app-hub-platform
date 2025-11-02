@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     for (const candidate of response.candidates || []) {
       for (const part of candidate.content?.parts || []) {
-        if (part.inlineData) {
+        if (part.inlineData && part.inlineData.data) {
           generatedImage = {
             data: part.inlineData.data,
             mimeType: part.inlineData.mimeType || 'image/png'
