@@ -338,30 +338,32 @@ export default function CatalogoPage() {
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-              <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6 pb-4">
-                <div className="text-sm text-gray-600">
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-200 pt-6 pb-4 px-2">
+                <div className="text-sm sm:text-base text-gray-700 font-medium">
                   Pagina {pagination.page} di {pagination.totalPages}
                   {' · '}
                   {pagination.total} prodotti totali
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                   <button
                     onClick={() => handlePageChange(pagination.page - 1)}
                     disabled={pagination.page === 1}
-                    className="flex items-center gap-1 px-4 py-2 min-h-[48px] border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-3 min-h-[52px] bg-white border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-red-50 hover:border-red-500 hover:text-red-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-300 disabled:hover:text-gray-700 transition-all shadow-sm"
                   >
-                    <ChevronLeft className="h-4 w-4" />
-                    Precedente
+                    <ChevronLeft className="h-5 w-5" />
+                    <span className="hidden sm:inline">Precedente</span>
+                    <span className="sm:hidden">Prec</span>
                   </button>
 
                   <button
                     onClick={() => handlePageChange(pagination.page + 1)}
                     disabled={!pagination.hasMore}
-                    className="flex items-center gap-1 px-4 py-2 min-h-[48px] border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-3 min-h-[52px] bg-red-600 border-2 border-red-600 rounded-lg font-semibold text-white hover:bg-red-700 hover:border-red-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-600 disabled:hover:border-red-600 transition-all shadow-sm"
                   >
-                    Successiva
-                    <ChevronRight className="h-4 w-4" />
+                    <span className="hidden sm:inline">Successiva</span>
+                    <span className="sm:hidden">Succ</span>
+                    <ChevronRight className="h-5 w-5" />
                   </button>
                 </div>
               </div>
