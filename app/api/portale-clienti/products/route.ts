@@ -38,56 +38,52 @@ export async function GET(request: NextRequest) {
       limit
     });
 
-    // Get partnerId from JWT if purchased filter is enabled
+    // Get partnerId and language from JWT (for purchased filter and translations)
     let partnerId: number | null = null;
-    if (purchased) {
-      const token = request.cookies.get('token')?.value;
+    let userLang: string = 'it_IT'; // Default to Italian
 
-      if (!token) {
-        console.warn('⚠️ [PRODUCTS-API] Purchased filter requires authentication');
-        return NextResponse.json(
-          { error: 'Il filtro "prodotti acquistati" richiede autenticazione' },
-          { status: 401 }
-        );
-      }
+    // Always try to get user language if authenticated
+    const token = request.cookies.get('token')?.value;
 
+    if (token) {
       // Decode JWT to get customer email
       const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
       let decoded: any;
 
       try {
         decoded = jwt.verify(token, jwtSecret);
-        console.log('✅ [PRODUCTS-API] JWT decoded for purchased filter:', decoded.email);
-      } catch (jwtError: any) {
-        console.error('❌ [PRODUCTS-API] JWT verification failed:', jwtError.message);
-        return NextResponse.json(
-          { error: 'Token non valido' },
-          { status: 401 }
-        );
-      }
+        console.log('✅ [PRODUCTS-API] JWT decoded:', decoded.email);
 
-      // Get partner_id from Odoo using email
-      const userPartners = await callOdooAsAdmin(
-        'res.partner',
-        'search_read',
-        [],
-        {
-          domain: [['email', '=', decoded.email]],
-          fields: ['id'],
-          limit: 1
+        // Get partner info including language
+        const userPartners = await callOdooAsAdmin(
+          'res.partner',
+          'search_read',
+          [],
+          {
+            domain: [['email', '=', decoded.email]],
+            fields: ['id', 'lang'],
+            limit: 1
+          }
+        );
+
+        if (userPartners && userPartners.length > 0) {
+          partnerId = userPartners[0].id;
+          userLang = userPartners[0].lang || 'it_IT';
+          console.log('✅ [PRODUCTS-API] Partner identified:', { partnerId, lang: userLang });
         }
-      );
-
-      if (!userPartners || userPartners.length === 0) {
-        console.error('❌ [PRODUCTS-API] No partner found for email:', decoded.email);
-        return NextResponse.json(
-          { error: 'Cliente non identificato' },
-          { status: 404 }
-        );
+      } catch (jwtError: any) {
+        console.warn('⚠️ [PRODUCTS-API] JWT verification failed, using default lang:', jwtError.message);
+        // Continue without authentication - use default language
       }
+    }
 
-      partnerId = userPartners[0].id;
-      console.log('✅ [PRODUCTS-API] Partner identified:', partnerId);
+    // Check if purchased filter requires authentication
+    if (purchased && !partnerId) {
+      console.warn('⚠️ [PRODUCTS-API] Purchased filter requires authentication');
+      return NextResponse.json(
+        { error: 'Il filtro "prodotti acquistati" richiede autenticazione' },
+        { status: 401 }
+      );
     }
 
     // Build domain for Odoo search
@@ -183,7 +179,7 @@ export async function GET(request: NextRequest) {
       order = 'list_price DESC';
     }
 
-    // Fetch products from Odoo using admin session
+    // Fetch products from Odoo using admin session with user's language context
     const products = await callOdooAsAdmin(
       'product.product',
       'search_read',
@@ -205,8 +201,11 @@ export async function GET(request: NextRequest) {
         limit,
         offset,
         order,
+        context: { lang: userLang }, // Traduzioni automatiche in base alla lingua utente!
       }
     );
+
+    console.log(`✅ [PRODUCTS-API] Loaded ${products.length} products in language: ${userLang}`);
 
     // Get total count for pagination
     const totalCount = await callOdooAsAdmin(
