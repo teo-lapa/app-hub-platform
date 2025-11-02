@@ -317,6 +317,33 @@ export async function POST(request: NextRequest) {
       state: createdOrder?.[0]?.state
     });
 
+    // Post cart delivery notes to Chatter if present
+    if (cart.delivery_notes && cart.delivery_notes.trim()) {
+      try {
+        console.log('📝 [CHECKOUT-API] Posting customer notes to Chatter...');
+
+        const notesMessage = `<p><strong>📝 Note del Cliente</strong></p><p>${cart.delivery_notes.replace(/\n/g, '<br/>')}</p><p><em>Note inserite dal cliente nel carrello</em></p>`;
+
+        await callOdooAsAdmin(
+          'mail.message',
+          'create',
+          [{
+            model: 'sale.order',
+            res_id: odooOrderId,
+            body: notesMessage,
+            message_type: 'comment',
+            subtype_id: 1, // mt_note (internal note)
+          }],
+          {}
+        );
+
+        console.log('✅ [CHECKOUT-API] Customer notes posted to Chatter');
+      } catch (notesError: any) {
+        console.error('❌ [CHECKOUT-API] Failed to post customer notes to Chatter:', notesError.message);
+        // Continue anyway - notes are also in order.note field
+      }
+    }
+
     // Post reservation data to Odoo Chatter for each reserved item
     const reservedItems = cartItems.filter(item => item.is_reservation);
 
