@@ -391,6 +391,7 @@ export default function CatalogoPage() {
       <CatalogSearchBar
         onSearch={handleSearch}
         onOpenFilters={() => setIsFilterModalOpen(true)}
+        value={searchQuery}
       />
     </div>
   );

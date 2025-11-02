@@ -8,16 +8,23 @@ interface CatalogSearchBarProps {
   onOpenFilters: () => void;
   placeholder?: string;
   debounceMs?: number;
+  value?: string; // Controlled value from parent
 }
 
 export function CatalogSearchBar({
   onSearch,
   onOpenFilters,
   placeholder = 'Cerca prodotti per nome o codice...',
-  debounceMs = 300
+  debounceMs = 300,
+  value = '' // Default to empty string
 }: CatalogSearchBarProps) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(value);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync local state with parent value (controlled component)
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
 
   // Handle input change with debounce
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
