@@ -30,6 +30,7 @@ export default function MenuPDFGeneratorPage() {
   const [generatedMenu, setGeneratedMenu] = useState<MenuData | null>(null);
   const [menuStyle, setMenuStyle] = useState<string>('classico');
   const [restaurantName, setRestaurantName] = useState('Il Mio Ristorante');
+  const [menuLanguage, setMenuLanguage] = useState<string>('it');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,7 +69,8 @@ export default function MenuPDFGeneratorPage() {
           textInput,
           imageInput,
           menuStyle,
-          restaurantName
+          restaurantName,
+          menuLanguage
         })
       });
 
@@ -262,6 +264,34 @@ export default function MenuPDFGeneratorPage() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Lingua Menu */}
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 p-6">
+              <label className="block text-sm font-medium text-slate-300 mb-3">
+                Lingua del Menu
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { code: 'it', name: 'Italiano 🇮🇹' },
+                  { code: 'de', name: 'Deutsch 🇩🇪' },
+                  { code: 'fr', name: 'Français 🇫🇷' },
+                  { code: 'en', name: 'English 🇬🇧' }
+                ].map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => setMenuLanguage(lang.code)}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      menuLanguage === lang.code
+                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-slate-300 border border-slate-600 hover:border-blue-500/50'
+                    } disabled:opacity-50`}
+                  >
+                    {lang.name}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Stile Menu */}

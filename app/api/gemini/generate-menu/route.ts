@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
       imageInput,
       audioInput,
       menuStyle = 'classico',
-      restaurantName = 'Il Mio Ristorante'
+      restaurantName = 'Il Mio Ristorante',
+      menuLanguage = 'it'
     } = await request.json();
 
     // Validazione: almeno un input deve essere presente
@@ -50,44 +51,73 @@ export async function POST(request: NextRequest) {
       hasImage: !!imageInput,
       hasAudio: !!audioInput,
       style: menuStyle,
-      restaurant: restaurantName
+      restaurant: restaurantName,
+      language: menuLanguage
     });
 
     // Inizializza client Gemini
     const ai = new GoogleGenAI({ apiKey });
 
+    // Map language codes to full names
+    const languageMap: Record<string, string> = {
+      'it': 'Italiano',
+      'de': 'Tedesco',
+      'fr': 'Francese',
+      'en': 'Inglese'
+    };
+
+    const languageName = languageMap[menuLanguage] || 'Italiano';
+    const languageInstructions = menuLanguage === 'it'
+      ? 'Tutti i nomi, descrizioni e categorie devono essere in ITALIANO.'
+      : menuLanguage === 'de'
+      ? 'Tutti i nomi, descrizioni e categorie devono essere in TEDESCO (Deutsch).'
+      : menuLanguage === 'fr'
+      ? 'Tutti i nomi, descrizioni e categorie devono essere in FRANCESE (Français).'
+      : 'Tutti i nomi, descrizioni e categorie devono essere in INGLESE (English).';
+
     // Costruisci il prompt per strutturare il menu
     const systemPrompt = `Sei un esperto designer di menu per ristoranti in Svizzera.
 Il tuo compito è analizzare le informazioni fornite e creare un menu strutturato in formato JSON.
 
+LINGUA DEL MENU: ${languageName}
+${languageInstructions}
+
 Regole IMPORTANTI:
-1. Organizza i piatti in categorie (Antipasti, Primi, Secondi, Contorni, Dessert, Bevande)
+1. Organizza i piatti in categorie appropriate per la lingua selezionata
+   - IT: Antipasti, Primi, Secondi, Contorni, Dessert, Bevande
+   - DE: Vorspeisen, Erste Gänge, Hauptgerichte, Beilagen, Desserts, Getränke
+   - FR: Entrées, Premiers Plats, Plats Principaux, Accompagnements, Desserts, Boissons
+   - EN: Appetizers, First Courses, Main Courses, Side Dishes, Desserts, Beverages
+
 2. Per ogni piatto estrai: nome, descrizione, prezzo (se presente), allergeni (se menzionati)
 3. I prezzi devono essere in FRANCHI SVIZZERI (CHF), non in Euro
 4. Se vedi prezzi in Euro (€), convertili in CHF moltiplicando per ~1.05
-5. Se mancano informazioni, usa la tua conoscenza culinaria per suggerire descrizioni appetitose
+5. Se mancano informazioni, usa la tua conoscenza culinaria per suggerire descrizioni appetitose NELLA LINGUA SELEZIONATA
 6. Mantieni lo stile ${menuStyle} richiesto
-7. Rispondi SOLO con JSON valido, senza testo aggiuntivo
+7. TRADUCI automaticamente tutto nella lingua ${languageName}
+8. Rispondi SOLO con JSON valido, senza testo aggiuntivo
 
 Formato JSON richiesto:
 {
   "restaurantName": "${restaurantName}",
   "categories": [
     {
-      "name": "Nome Categoria",
+      "name": "Nome Categoria nella lingua ${languageName}",
       "items": [
         {
-          "name": "Nome Piatto",
-          "description": "Descrizione appetitosa",
+          "name": "Nome Piatto in ${languageName}",
+          "description": "Descrizione appetitosa in ${languageName}",
           "price": "18.50",
-          "allergens": ["glutine", "lattosio"]
+          "allergens": ["allergene1", "allergene2"]
         }
       ]
     }
   ]
 }
 
-IMPORTANTE: I prezzi nel JSON devono essere SOLO NUMERI senza simboli di valuta (es: "18.50" non "CHF 18.50")`;
+IMPORTANTE:
+- I prezzi nel JSON devono essere SOLO NUMERI senza simboli di valuta (es: "18.50" non "CHF 18.50")
+- TUTTO il testo (nomi piatti, descrizioni, categorie, allergeni) deve essere in ${languageName}`;
 
     // Prepara il contenuto per Gemini
     const contents: any[] = [];
