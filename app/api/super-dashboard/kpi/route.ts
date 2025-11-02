@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/super-dashboard/kpi
  *
