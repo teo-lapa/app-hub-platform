@@ -75,6 +75,7 @@ export default function CatalogoPage() {
   // Fetch cart items with ultra-robust error handling
   async function fetchCartItems() {
     try {
+      console.log('🛒 Fetching cart items...');
       const response = await fetch('/api/portale-clienti/cart');
       if (!response.ok) {
         console.warn('Cart API returned error status:', response.status);
@@ -83,6 +84,7 @@ export default function CatalogoPage() {
       }
 
       const data = await response.json();
+      console.log('🛒 Cart API response:', data);
 
       if (!data.error && data.items && Array.isArray(data.items)) {
         const validItems: { productId: number; quantity: number }[] = [];
@@ -101,8 +103,10 @@ export default function CatalogoPage() {
           }
         }
 
+        console.log('🛒 Valid cart items:', validItems);
         setCartItems(validItems);
       } else {
+        console.log('🛒 No valid cart data, resetting cart');
         setCartItems([]);
       }
     } catch (err) {
@@ -306,12 +310,23 @@ export default function CatalogoPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
               {products.map((product) => {
                 const cartItem = cartItems.find(item => item.productId === product.id);
+                const cartQty = cartItem?.quantity || 0;
+
+                // Debug log per i primi 3 prodotti
+                if (products.indexOf(product) < 3) {
+                  console.log(`🎯 Product ${product.id} (${product.name}):`, {
+                    cartItemFound: !!cartItem,
+                    cartQuantity: cartQty,
+                    totalCartItems: cartItems.length
+                  });
+                }
+
                 return (
                   <ProductCard
                     key={product.id}
                     product={product}
                     onAddToCart={handleAddToCart}
-                    cartQuantity={cartItem?.quantity || 0}
+                    cartQuantity={cartQty}
                   />
                 );
               })}
