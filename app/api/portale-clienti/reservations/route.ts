@@ -162,40 +162,126 @@ export async function POST(request: NextRequest) {
     // Instead of saving to product_reservations table, add to cart with reservation data
     console.log('🛒 [RESERVATION-API] Adding reserved product to cart...');
 
-    const cartResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/portale-clienti/cart`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `token=${token}` // Forward auth token
-      },
-      body: JSON.stringify({
-        productId: parseInt(productId),
-        quantity: parseFloat(quantity),
-        isReservation: true,
-        reservationData: {
-          textNote: textNote || null,
-          audioUrl,
-          imageUrl,
-          audioOdooAttachmentId,
-          imageOdooAttachmentId
-        }
-      })
-    });
+    // Get partner_id from Odoo using email from JWT
+    const userPartners = await callOdooAsAdmin(
+      'res.partner',
+      'search_read',
+      [],
+      {
+        domain: [['email', '=', decoded.email]],
+        fields: ['id', 'name'],
+        limit: 1
+      }
+    );
 
-    const cartResult = await cartResponse.json();
-
-    if (!cartResult.success) {
-      console.error('❌ [RESERVATION-API] Failed to add to cart:', cartResult.error);
-      return NextResponse.json({ error: cartResult.error }, { status: 500 });
+    if (!userPartners || userPartners.length === 0) {
+      console.error('❌ [RESERVATION-API] No partner found for email:', decoded.email);
+      return NextResponse.json({ error: 'Cliente non identificato' }, { status: 401 });
     }
+
+    const partnerId = userPartners[0].id;
+
+    // Fetch product info from Odoo
+    const products = await callOdooAsAdmin(
+      'product.product',
+      'search_read',
+      [],
+      {
+        domain: [['id', '=', parseInt(productId)]],
+        fields: ['id', 'name', 'default_code', 'list_price', 'uom_id', 'active', 'sale_ok', 'image_128'],
+        limit: 1
+      }
+    );
+
+    if (!products || products.length === 0) {
+      return NextResponse.json({ error: 'Prodotto non trovato' }, { status: 404 });
+    }
+
+    const product = products[0];
+
+    if (!product.active || !product.sale_ok) {
+      return NextResponse.json({ error: 'Prodotto non disponibile per la vendita' }, { status: 400 });
+    }
+
+    // Get or create cart
+    const cartResult = await sql`
+      SELECT get_or_create_cart(
+        ${decoded.email}::VARCHAR,
+        ${partnerId}::INTEGER,
+        NULL::VARCHAR
+      ) as cart_id
+    `;
+
+    const cartId = cartResult.rows[0].cart_id;
+
+    // Add product to cart using PostgreSQL function
+    const addResult = await sql`
+      SELECT add_to_cart(
+        ${cartId}::BIGINT,
+        ${product.id}::INTEGER,
+        ${product.name}::VARCHAR,
+        ${product.default_code || null}::VARCHAR,
+        ${parseFloat(quantity)}::DECIMAL,
+        ${product.list_price}::DECIMAL,
+        ${product.uom_id ? product.uom_id[1] : 'Unità'}::VARCHAR
+      ) as item_id
+    `;
+
+    const itemId = addResult.rows[0].item_id;
+    console.log('✅ [RESERVATION-API] Product added to cart, item ID:', itemId);
+
+    // Update image URL if available
+    if (product.image_128) {
+      try {
+        const imageUrlData = `data:image/png;base64,${product.image_128}`;
+        await sql`
+          UPDATE cart_items
+          SET product_image_url = ${imageUrlData},
+              available_stock = 0
+          WHERE id = ${itemId}
+        `;
+      } catch (imgError: any) {
+        console.warn('⚠️ [RESERVATION-API] Failed to update image:', imgError.message);
+      }
+    }
+
+    // Save reservation data to cart item
+    try {
+      console.log('📝 [RESERVATION-API] Saving reservation data for item', itemId);
+
+      await sql`
+        UPDATE cart_items
+        SET
+          is_reservation = TRUE,
+          reservation_text_note = ${textNote || null},
+          reservation_audio_url = ${audioUrl},
+          reservation_image_url = ${imageUrl},
+          reservation_audio_odoo_attachment_id = ${audioOdooAttachmentId},
+          reservation_image_odoo_attachment_id = ${imageOdooAttachmentId},
+          reservation_created_at = NOW()
+        WHERE id = ${itemId}
+      `;
+
+      console.log('✅ [RESERVATION-API] Reservation data saved successfully');
+    } catch (resError: any) {
+      console.error('⚠️ [RESERVATION-API] Failed to save reservation data:', resError.message);
+      return NextResponse.json({ error: 'Errore nel salvataggio dati prenotazione' }, { status: 500 });
+    }
+
+    // Get updated cart summary
+    const summaryResult = await sql`
+      SELECT get_cart_summary(${cartId}::BIGINT) as summary
+    `;
+
+    const summary = summaryResult.rows[0].summary;
 
     console.log('✅ [RESERVATION-API] Product reserved and added to cart successfully');
 
     return NextResponse.json({
       success: true,
       message: 'Prodotto prenotato e aggiunto al carrello',
-      cart: cartResult.cart,
-      items: cartResult.items
+      cart: summary.cart,
+      items: summary.items || []
     });
   } catch (error: any) {
     console.error('Error creating reservation:', error);
