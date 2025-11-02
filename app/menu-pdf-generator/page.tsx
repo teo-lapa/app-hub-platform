@@ -119,6 +119,8 @@ export default function MenuPDFGeneratorPage() {
   const handleDownloadPDF = async () => {
     if (!generatedMenu) return;
 
+    console.log('📄 [PDF] Generazione PDF con logo:', !!restaurantLogo);
+
     const loadingToast = toast.loading('Generazione PDF in corso...');
 
     try {

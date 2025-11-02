@@ -73,14 +73,29 @@ export async function POST(request: NextRequest) {
     // Se c'è un logo, aggiungilo in alto
     if (logo) {
       try {
-        const logoSize = 25; // Dimensione del logo in mm
+        console.log('📷 [MENU-PDF] Aggiunta logo al PDF');
+
+        // Determina il formato dell'immagine dal data URL
+        let imageFormat = 'PNG';
+        if (logo.includes('data:image/jpeg') || logo.includes('data:image/jpg')) {
+          imageFormat = 'JPEG';
+        } else if (logo.includes('data:image/png')) {
+          imageFormat = 'PNG';
+        }
+
+        const logoSize = 30; // Dimensione del logo in mm (aumentata per visibilità)
         const logoX = (pageWidth - logoSize) / 2; // Centra il logo
-        doc.addImage(logo, 'PNG', logoX, yPosition, logoSize, logoSize);
-        yPosition += logoSize + 5; // Spazio dopo il logo
-      } catch (logoError) {
-        console.warn('⚠️ [MENU-PDF] Impossibile aggiungere il logo:', logoError);
+
+        doc.addImage(logo, imageFormat, logoX, yPosition, logoSize, logoSize);
+        yPosition += logoSize + 8; // Spazio dopo il logo
+
+        console.log('✅ [MENU-PDF] Logo aggiunto con successo');
+      } catch (logoError: any) {
+        console.error('❌ [MENU-PDF] Errore aggiunta logo:', logoError.message);
         // Continua senza logo se c'è un errore
       }
+    } else {
+      console.log('ℹ️ [MENU-PDF] Nessun logo fornito');
     }
 
     // Header - Nome Ristorante
