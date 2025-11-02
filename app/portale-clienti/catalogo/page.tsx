@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ProductCard } from '@/components/portale-clienti/ProductCard';
 import { CatalogSearchBar } from '@/components/portale-clienti/CatalogSearchBar';
 import { FilterModal } from '@/components/portale-clienti/FilterModal';
@@ -128,11 +128,6 @@ export default function CatalogoPage() {
     }
   }
 
-  // Fetch products when filters change
-  useEffect(() => {
-    fetchProducts();
-  }, [searchQuery, selectedCategory, availability, sortBy, showPurchasedOnly, pagination.page]);
-
   async function fetchCategories() {
     try {
       const response = await fetch('/api/portale-clienti/categories');
@@ -149,7 +144,8 @@ export default function CatalogoPage() {
     }
   }
 
-  async function fetchProducts() {
+  // useCallback to prevent stale closures and unnecessary re-renders
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -162,6 +158,13 @@ export default function CatalogoPage() {
         purchased: showPurchasedOnly ? 'true' : 'false',
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
+      });
+
+      console.log('🔍 [CATALOG] Fetching products with params:', {
+        q: searchQuery,
+        category: selectedCategory,
+        sort: sortBy,
+        page: pagination.page
       });
 
       const response = await fetch(`/api/portale-clienti/products?${params}`, {
@@ -182,7 +185,12 @@ export default function CatalogoPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [searchQuery, selectedCategory, availability, sortBy, showPurchasedOnly, pagination.page, pagination.limit]);
+
+  // Fetch products when filters change
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   async function handleAddToCart(productId: number, quantity: number) {
     try {
