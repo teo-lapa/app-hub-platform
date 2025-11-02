@@ -124,9 +124,10 @@ export function OrderCard({ order }: OrderCardProps) {
         {/* Totale e azioni */}
         <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 sm:gap-3 sm:ml-4">
           <div className="text-xl sm:text-2xl font-bold text-gray-900">
-            {order.total.toLocaleString('it-IT', {
+            {order.total.toLocaleString('de-CH', {
               style: 'currency',
-              currency: 'EUR',
+              currency: 'CHF',
+              currencyDisplay: 'code',
             })}
           </div>
 
