@@ -51,9 +51,9 @@ export default function ProductPhotoManagerPage() {
   const handleImageGenerated = async (newImageBase64: string) => {
     if (!productForAI) return;
 
-    try {
-      toast.loading('Caricamento immagine su Odoo...');
+    const loadingToast = toast.loading('Caricamento immagine su Odoo...');
 
+    try {
       const response = await fetch('/api/catalogo-lapa/update-product-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,14 +69,14 @@ export default function ProductPhotoManagerPage() {
         throw new Error(data.error || 'Errore durante l\'upload');
       }
 
-      toast.success('Immagine caricata su Odoo con successo!');
+      toast.success('Immagine caricata su Odoo con successo!', { id: loadingToast });
 
       // Ricarica i prodotti per vedere la nuova immagine
       await loadProducts(currentPage, searchQuery, selectedCategory);
 
     } catch (error: any) {
       console.error('Errore upload immagine:', error);
-      toast.error(error.message || 'Errore durante il caricamento su Odoo');
+      toast.error(error.message || 'Errore durante il caricamento su Odoo', { id: loadingToast });
     }
   };
 
