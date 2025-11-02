@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jsPDF } from 'jspdf';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const maxDuration = 30;
 
 /**
@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('📄 [MENU-PDF] Generating PDF for:', menu.restaurantName);
+    console.log('📄 [MENU-PDF] Logo ricevuto:', logo ? `Sì (${logo.substring(0, 50)}...)` : 'No');
 
     // Crea un nuovo documento PDF con jsPDF
     const doc = new jsPDF({
