@@ -216,9 +216,9 @@ export async function GET(request: NextRequest) {
 
     console.log('Product found:', product.name);
 
-    // 4. Fetch suppliers
+    // 4. Fetch suppliers (escludendo ItaEmpire)
     console.log('\nFetching suppliers...');
-    const suppliers = await callOdoo(
+    const allSuppliers = await callOdoo(
       odooCookies,
       'product.supplierinfo',
       'search_read',
@@ -228,18 +228,33 @@ export async function GET(request: NextRequest) {
       }
     ) as any[];
 
-    console.log(`Found ${suppliers.length} supplier(s)`);
+    console.log(`Found ${allSuppliers.length} total supplier(s)`);
 
-    // 5. Fetch purchase orders (within date range)
+    // Filtriamo escludendo ItaEmpire
+    const suppliers = allSuppliers.filter((supplier: any) => {
+      const partnerName = supplier.partner_id?.[1] || '';
+      const isItaEmpire = partnerName.includes('ItaEmpire');
+
+      if (isItaEmpire) {
+        console.log(`  ⏭️  Escluso fornitore interno: ${partnerName}`);
+      }
+
+      return !isItaEmpire;
+    });
+
+    console.log(`After filtering: ${suppliers.length} external supplier(s)`);
+
+    // 5. Fetch purchase orders (within date range, escludendo ItaEmpire)
     console.log('\nFetching purchase orders...');
-    const purchaseLines = await callOdoo(
+    const allPurchaseLines = await callOdoo(
       odooCookies,
       'purchase.order.line',
       'search_read',
       [[
         ['product_id', '=', productId],
         ['create_date', '>=', `${dateFrom} 00:00:00`],
-        ['create_date', '<=', `${dateTo} 23:59:59`]
+        ['create_date', '<=', `${dateTo} 23:59:59`],
+        ['state', 'in', ['purchase', 'done']]
       ]],
       {
         fields: [
@@ -250,29 +265,63 @@ export async function GET(request: NextRequest) {
       }
     ) as any[];
 
-    console.log(`Found ${purchaseLines.length} purchase order(s)`);
+    console.log(`Found ${allPurchaseLines.length} total purchase order lines`);
+
+    // Filtriamo escludendo ItaEmpire
+    const purchaseLines = allPurchaseLines.filter((line: any) => {
+      const partnerName = line.partner_id?.[1] || '';
+      const isItaEmpire = partnerName.includes('ItaEmpire');
+
+      if (isItaEmpire) {
+        console.log(`  ⏭️  Escluso acquisto da ItaEmpire: ${partnerName}`);
+      }
+
+      return !isItaEmpire;
+    });
+
+    console.log(`After filtering: ${purchaseLines.length} external purchase order(s)`);
 
     // 6. Fetch sale orders (within date range)
+    // IMPORTANTE: Filtriamo solo azienda "LAPA" e escludiamo trasferimenti interni
     console.log('\nFetching sale orders...');
-    const saleLines = await callOdoo(
+
+    // Prima prendiamo tutte le sale lines nel periodo
+    const allSaleLines = await callOdoo(
       odooCookies,
       'sale.order.line',
       'search_read',
       [[
         ['product_id', '=', productId],
         ['create_date', '>=', `${dateFrom} 00:00:00`],
-        ['create_date', '<=', `${dateTo} 23:59:59`]
+        ['create_date', '<=', `${dateTo} 23:59:59`],
+        ['state', 'in', ['sale', 'done']]
       ]],
       {
         fields: [
           'order_id', 'order_partner_id', 'product_uom_qty', 'qty_delivered',
-          'price_unit', 'price_subtotal', 'create_date', 'state'
+          'price_unit', 'price_subtotal', 'create_date', 'state', 'company_id'
         ],
         order: 'create_date desc'
       }
     ) as any[];
 
-    console.log(`Found ${saleLines.length} sale order(s)`);
+    console.log(`Found ${allSaleLines.length} total sale order lines`);
+
+    // Filtriamo escludendo partner "ItaEmpire" e "LAPA" (trasferimenti interni)
+    const saleLines = allSaleLines.filter((line: any) => {
+      const partnerName = line.order_partner_id?.[1] || '';
+      const isInternal = partnerName.includes('ItaEmpire') ||
+                         partnerName.includes('LAPA') ||
+                         partnerName.includes('finest');
+
+      if (isInternal) {
+        console.log(`  ⏭️  Escluso trasferimento interno a: ${partnerName}`);
+      }
+
+      return !isInternal;
+    });
+
+    console.log(`After filtering internal transfers: ${saleLines.length} external sale order(s)`);
 
     // 7. Fetch stock locations (ubicazioni)
     console.log('\nFetching stock locations...');
