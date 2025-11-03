@@ -77,7 +77,7 @@ export default function AnalisiProdottoPage() {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Debounced search
+  // Debounced search with Odoo API
   useEffect(() => {
     if (searchTerm.length < 3) {
       setSearchResults([]);
@@ -87,15 +87,33 @@ export default function AnalisiProdottoPage() {
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        // Simulated search - in production this would call Odoo API
-        const mockResults: ProductSearchResult[] = [
-          { id: 1, name: 'FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB', barcode: '8005149011179' },
-          { id: 2, name: 'POLPA DI POMODORO SUPER PIZZA ARDITA BAG BOX 10KG CRT POL', barcode: '8005590346677' },
-        ].filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        // Call Odoo product search API
+        const response = await fetch(
+          `/api/maestro/products/search?q=${encodeURIComponent(searchTerm)}&limit=20`
+        );
 
-        setSearchResults(mockResults);
+        if (!response.ok) {
+          throw new Error('Errore nella ricerca prodotti');
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.products) {
+          // Map Odoo products to our format
+          const products: ProductSearchResult[] = data.products.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            default_code: p.code || p.default_code,
+            barcode: p.barcode
+          }));
+          setSearchResults(products);
+        } else {
+          setSearchResults([]);
+        }
       } catch (err) {
         console.error('Search error:', err);
+        toast.error('Errore durante la ricerca prodotti');
+        setSearchResults([]);
       } finally {
         setIsSearching(false);
       }
@@ -327,6 +345,31 @@ export default function AnalisiProdottoPage() {
                 <StatRow label="In Arrivo" value={`${analysisData.product.incomingQty} ${analysisData.product.uom[1]}`} />
                 <StatRow label="Giorni Copertura" value={`${analysisData.statistics.daysOfCoverage.toFixed(1)} giorni`} />
                 <StatRow label="Media Vendita/Mese" value={`${analysisData.statistics.monthlyAvgSales.toFixed(0)} ${analysisData.product.uom[1]}`} />
+
+                {/* Stock Locations */}
+                {analysisData.product.locations && analysisData.product.locations.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    <h4 className="text-purple-200 font-semibold mb-3 flex items-center gap-2">
+                      <Package className="w-4 h-4" />
+                      Ubicazioni
+                    </h4>
+                    <div className="space-y-2">
+                      {analysisData.product.locations.map((loc: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center py-2 px-3 bg-white/5 rounded-lg">
+                          <span className="text-white font-medium text-sm">{loc.location}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-green-400 font-semibold">{loc.available.toFixed(1)}</span>
+                            {loc.reserved > 0 && (
+                              <span className="text-yellow-400 text-xs">
+                                ({loc.reserved.toFixed(1)} ris.)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </StatsCard>
 
               {/* Reorder Suggestion */}

@@ -26,6 +26,13 @@ export const maxDuration = 120;
 // TYPES
 // ========================================================================
 
+interface StockLocation {
+  location: string;
+  quantity: number;
+  reserved: number;
+  available: number;
+}
+
 interface ProductInfo {
   id: number;
   name: string;
@@ -40,6 +47,7 @@ interface ProductInfo {
   incomingQty: number;
   outgoingQty: number;
   uom: string;
+  locations?: StockLocation[];
 }
 
 interface Supplier {
@@ -266,12 +274,32 @@ export async function GET(request: NextRequest) {
 
     console.log(`Found ${saleLines.length} sale order(s)`);
 
-    // 7. Build response
+    // 7. Fetch stock locations (ubicazioni)
+    console.log('\nFetching stock locations...');
+    const stockQuants = await callOdoo(
+      odooCookies,
+      'stock.quant',
+      'search_read',
+      [[
+        ['product_id', '=', productId],
+        ['quantity', '>', 0],
+        ['location_id.usage', '=', 'internal']  // Only internal locations
+      ]],
+      {
+        fields: ['location_id', 'quantity', 'reserved_quantity'],
+        order: 'quantity desc'
+      }
+    ) as any[];
+
+    console.log(`Found ${stockQuants.length} stock location(s)`);
+
+    // 8. Build response
     const response = buildAnalysisResponse(
       product,
       suppliers,
       purchaseLines,
       saleLines,
+      stockQuants,
       dateFrom,
       dateTo
     );
@@ -318,10 +346,18 @@ function buildAnalysisResponse(
   suppliers: any[],
   purchaseLines: any[],
   saleLines: any[],
+  stockQuants: any[],
   dateFrom: string,
   dateTo: string
 ): AnalisiProdottoResponse {
-  // Product info
+  // Product info with stock locations
+  const locations = stockQuants.map(sq => ({
+    location: sq.location_id[1],
+    quantity: sq.quantity || 0,
+    reserved: sq.reserved_quantity || 0,
+    available: (sq.quantity || 0) - (sq.reserved_quantity || 0)
+  }));
+
   const productInfo: ProductInfo = {
     id: product.id,
     name: product.name,
@@ -337,7 +373,8 @@ function buildAnalysisResponse(
     virtualAvailable: product.virtual_available || 0,
     incomingQty: product.incoming_qty || 0,
     outgoingQty: product.outgoing_qty || 0,
-    uom: product.uom_id[1]
+    uom: product.uom_id[1],
+    locations: locations  // Add locations array
   };
 
   // Suppliers
