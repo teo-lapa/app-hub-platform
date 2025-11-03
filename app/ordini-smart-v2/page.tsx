@@ -357,16 +357,11 @@ export default function SmartOrderingV2() {
     }
   }
 
-  // Filter suppliers by search term
-  const filteredSuppliers = searchTerm
-    ? suppliers.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    : suppliers;
-
   // Separate suppliers by urgency (filter out inactive suppliers)
-  const urgentSuppliers = filteredSuppliers.filter(s => (s.urgency === 'today' || s.urgency === 'tomorrow') && s.isActive !== false);
-  const todaySuppliers = filteredSuppliers.filter(s => s.urgency === 'today' && s.isActive !== false);
-  const tomorrowSuppliers = filteredSuppliers.filter(s => s.urgency === 'tomorrow' && s.isActive !== false);
-  const regularSuppliers = filteredSuppliers.filter(s => (!s.urgency || s.urgency === 'this_week' || s.urgency === 'future') && s.isActive !== false);
+  // La ricerca NON influenza gli ordini urgenti, solo le schede sotto
+  const urgentSuppliers = suppliers.filter(s => (s.urgency === 'today' || s.urgency === 'tomorrow') && s.isActive !== false);
+  const todaySuppliers = suppliers.filter(s => s.urgency === 'today' && s.isActive !== false);
+  const tomorrowSuppliers = suppliers.filter(s => s.urgency === 'tomorrow' && s.isActive !== false);
 
   if (loading) {
     return (
@@ -425,30 +420,6 @@ export default function SmartOrderingV2() {
           </button>
         </div>
       </motion.div>
-
-      {/* SEARCH BAR */}
-      {!selectedSupplier && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
-        >
-          <div className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="🔍 Cerca fornitore..."
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
-            />
-            {searchTerm && (
-              <div className="mt-2 text-sm text-blue-200">
-                Trovati {filteredSuppliers.length} fornitori
-              </div>
-            )}
-          </div>
-        </motion.div>
-      )}
 
       {/* URGENT ORDERS SECTION - ALWAYS VISIBLE */}
       {!selectedSupplier && (
@@ -557,10 +528,36 @@ export default function SmartOrderingV2() {
         </motion.div>
       )}
 
+      {/* SEARCH BAR - Solo per schede sotto */}
+      {!selectedSupplier && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <div className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="🔍 Cerca fornitore nelle schede sotto..."
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+            />
+            {searchTerm && (
+              <div className="mt-2 text-sm text-blue-200">
+                Trovati {sortedSuppliers.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).length} fornitori
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
       {/* Supplier Cards */}
       {!selectedSupplier && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedSuppliers.map((supplier, index) => (
+          {sortedSuppliers
+            .filter(s => searchTerm ? s.name.toLowerCase().includes(searchTerm.toLowerCase()) : true)
+            .map((supplier, index) => (
             <motion.div
               key={supplier.id}
               initial={{ opacity: 0, y: 20 }}
