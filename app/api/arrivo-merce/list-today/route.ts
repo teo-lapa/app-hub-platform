@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 60; // Aumentato per gestire batch queries
 
 /**
  * LIST TODAY ARRIVALS
@@ -55,80 +55,93 @@ export async function GET(request: NextRequest) {
 
     console.log(`📦 Trovati ${pickings.length} arrivi per oggi`);
 
-    // Arricchisci ogni picking con info su P.O. e allegati
-    const enrichedPickings = await Promise.all(
-      pickings.map(async (picking: any) => {
-        let purchaseOrderId = null;
-        let purchaseOrderName = null;
-        let attachmentsCount = 0;
+    // OTTIMIZZAZIONE: Batch query per Purchase Orders
+    const origins = pickings.map((p: any) => p.origin).filter(Boolean);
+    let purchaseOrdersMap = new Map();
+    let attachmentsMap = new Map();
 
-        // Se c'è origin (es: "PO00123"), cerca il purchase order
-        if (picking.origin) {
-          try {
-            console.log(`🔍 Cerca P.O. per origin: ${picking.origin}`);
+    if (origins.length > 0) {
+      console.log(`🔍 Batch query per ${origins.length} P.O. origins`);
 
-            // Cerca purchase.order con nome = origin
-            const purchaseOrders = await callOdoo(cookies, 'purchase.order', 'search_read', [
-              [['name', '=', picking.origin]],
-              ['id', 'name', 'partner_id', 'date_order']
-            ]);
+      // Single batch query per tutti i P.O.
+      const purchaseOrders = await callOdoo(cookies, 'purchase.order', 'search_read', [
+        [['name', 'in', origins]],
+        ['id', 'name', 'partner_id', 'date_order']
+      ]);
 
-            if (purchaseOrders.length > 0) {
-              const po = purchaseOrders[0];
-              purchaseOrderId = po.id;
-              purchaseOrderName = po.name;
+      console.log(`✅ Trovati ${purchaseOrders.length} P.O. in batch`);
 
-              console.log(`✅ P.O. trovato: ${po.name} (ID: ${po.id})`);
+      // Crea mappa origin -> P.O.
+      purchaseOrders.forEach((po: any) => {
+        purchaseOrdersMap.set(po.name, po);
+      });
 
-              // Conta allegati del P.O.
-              const attachments = await callOdoo(cookies, 'ir.attachment', 'search_read', [
-                [
-                  ['res_model', '=', 'purchase.order'],
-                  ['res_id', '=', po.id],
-                  ['mimetype', 'in', ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']]
-                ],
-                ['id', 'name']
-              ]);
+      // Batch query per tutti gli attachments
+      if (purchaseOrders.length > 0) {
+        const poIds = purchaseOrders.map((po: any) => po.id);
+        console.log(`📎 Batch query per attachments di ${poIds.length} P.O.`);
 
-              attachmentsCount = attachments.length;
-              console.log(`📎 Allegati trovati: ${attachmentsCount}`);
-            } else {
-              console.log(`⚠️ P.O. non trovato per origin: ${picking.origin}`);
-            }
-          } catch (error: any) {
-            console.error(`❌ Errore recupero P.O. per ${picking.origin}:`, error.message);
-          }
-        }
+        const attachments = await callOdoo(cookies, 'ir.attachment', 'search_read', [
+          [
+            ['res_model', '=', 'purchase.order'],
+            ['res_id', 'in', poIds],
+            ['mimetype', 'in', ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']]
+          ],
+          ['id', 'name', 'res_id']
+        ]);
 
-        // Conta prodotti nel picking
-        const moveIds = picking.move_ids_without_package || [];
-        const productsCount = moveIds.length;
+        console.log(`✅ Trovati ${attachments.length} attachments in batch`);
 
-        return {
-          id: picking.id,
-          name: picking.name,
-          partner_id: picking.partner_id[0],
-          partner_name: picking.partner_id[1],
-          scheduled_date: picking.scheduled_date,
-          state: picking.state,
-          origin: picking.origin,
-          purchase_order_id: purchaseOrderId,
-          purchase_order_name: purchaseOrderName,
-          attachments_count: attachmentsCount,
-          products_count: productsCount,
-          // Flag per UI
-          has_purchase_order: !!purchaseOrderId,
-          has_attachments: attachmentsCount > 0,
-          is_ready: attachmentsCount > 0 && !!purchaseOrderId,
-          is_completed: picking.state === 'done' // 🆕 Completato!
-        };
-      })
-    );
+        // Crea mappa res_id -> count
+        attachments.forEach((att: any) => {
+          const count = attachmentsMap.get(att.res_id) || 0;
+          attachmentsMap.set(att.res_id, count + 1);
+        });
+      }
+    }
+
+    // Arricchisci ogni picking con info pre-caricate
+    const enrichedPickings = pickings.map((picking: any) => {
+      let purchaseOrderId = null;
+      let purchaseOrderName = null;
+      let attachmentsCount = 0;
+
+      // Lookup da mappa invece di query
+      if (picking.origin && purchaseOrdersMap.has(picking.origin)) {
+        const po = purchaseOrdersMap.get(picking.origin);
+        purchaseOrderId = po.id;
+        purchaseOrderName = po.name;
+        attachmentsCount = attachmentsMap.get(po.id) || 0;
+      }
+
+      // Conta prodotti nel picking
+      const moveIds = picking.move_ids_without_package || [];
+      const productsCount = moveIds.length;
+
+      return {
+        id: picking.id,
+        name: picking.name,
+        partner_id: picking.partner_id[0],
+        partner_name: picking.partner_id[1],
+        scheduled_date: picking.scheduled_date,
+        state: picking.state,
+        origin: picking.origin,
+        purchase_order_id: purchaseOrderId,
+        purchase_order_name: purchaseOrderName,
+        attachments_count: attachmentsCount,
+        products_count: productsCount,
+        // Flag per UI
+        has_purchase_order: !!purchaseOrderId,
+        has_attachments: attachmentsCount > 0,
+        is_ready: attachmentsCount > 0 && !!purchaseOrderId,
+        is_completed: picking.state === 'done'
+      };
+    });
 
     // Ordina per:
     // 1. Prima quelli pronti (con P.O. e allegati)
     // 2. Poi per orario scheduled_date
-    enrichedPickings.sort((a, b) => {
+    enrichedPickings.sort((a: any, b: any) => {
       // Prima i "ready"
       if (a.is_ready && !b.is_ready) return -1;
       if (!a.is_ready && b.is_ready) return 1;

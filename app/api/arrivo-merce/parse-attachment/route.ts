@@ -114,10 +114,17 @@ UNITÀ DI MISURA SUPPORTATE:
 - NR = Numero
 - GR = Grammi
 
-ESTRAZIONE QUANTITÀ:
-1. PRIORITÀ: Colonna "Quantity" o "Qty" dalla FATTURA (es: 18 CT)
-2. ALTERNATIVA: Se NON c'è Qty e hai solo Packing List, usa "Net Weight" (es: 50.37 KG)
-3. NON mescolare: se vedi Qty in CT, NON sostituirla con Net Weight in KG
+ESTRAZIONE QUANTITÀ (FONDAMENTALE):
+1. PRIORITÀ ASSOLUTA: Colonna "Quantità KG" o "Quantity" o "Qty" dalla FATTURA
+2. Se vedi colonne "Quantità KG" + "Um2" (PZ): USA SEMPRE I KG, MAI I PZ
+3. La colonna "Um2" o "Quantità PZ" contiene i colli/cartoni di trasporto, NON la quantità venduta
+4. ALTERNATIVA: Se NON c'è Qty e hai solo Packing List, usa "Net Weight" (es: 50.37 KG)
+5. NON mescolare: se vedi Qty in CT, NON sostituirla con Net Weight in KG
+
+ESEMPIO CRITICO - Fattura con doppia unità di misura:
+FATTURA: VI2500JN1MN | Julienne Taglio Napoli | Quantità KG: 250,000 | Um2: 100,000 PZ
+→ ✅ CORRETTO: quantity: 250, unit: "KG"
+→ ❌ SBAGLIATO: quantity: 100, unit: "PZ" (questa è solo il numero di colli!)
 
 ESEMPI:
 
@@ -129,7 +136,14 @@ Esempio 2 - PACKING LIST (solo Net Weight):
 A01498 | ASIAGO DOP | Net Weight: 50,37 KG | Lotto: L68S25T1 | Scad: 24/02/26
 → quantity: 50.37, unit: "KG", lot: "L68S25T1", expiry: "2026-02-24"
 
-Esempio 3 - FATTURA con Qty e Net Weight (CASO CRITICO):
+Esempio 3 - FATTURA CON DOPPIA UNITÀ (CASO TAMBURRO):
+FATTURA: VI2500JN1MN | Julienne "Taglio Napoli" | Quantità KG: 250,000 | € al Pezzo: 15,2500 | Um2: 100,000 PZ
+→ ✅ CORRETTO: quantity: 250, unit: "KG"
+   (Usa sempre i KG dalla colonna "Quantità KG", ignora la colonna Um2 con i pezzi)
+→ ❌ SBAGLIATO: quantity: 100, unit: "PZ"
+   (NON usare Um2! I PZ sono solo colli di trasporto)
+
+Esempio 4 - FATTURA con Qty e Net Weight (CASO CRITICO):
 A01498 | ASIAGO DOP | Qty: 4 CT | Net Weight: 50,37 KG
 → ✅ CORRETTO: quantity: 4, unit: "CT"
 → ❌ SBAGLIATO: quantity: 50.37, unit: "KG"
