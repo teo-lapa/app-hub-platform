@@ -131,7 +131,7 @@ export default function SmartOrderingV2() {
 
       return suppliers.map(supplier => {
         const cadence: any = cadenceMap.get(supplier.id);
-        if (!cadence) return supplier;
+        if (!cadence) return { ...supplier, isActive: true }; // Fornitori senza cadenza = attivi di default
 
         // Calculate urgency
         let urgency: 'today' | 'tomorrow' | 'this_week' | 'future' = 'future';
