@@ -40,6 +40,7 @@ interface Supplier {
   urgency?: 'today' | 'tomorrow' | 'this_week' | 'future';
   daysUntilOrder?: number;
   hasCadence?: boolean;
+  isActive?: boolean; // Fornitore attivo o disattivato
 }
 
 interface Product {
@@ -146,7 +147,8 @@ export default function SmartOrderingV2() {
           cadenceDays: cadence.cadence_value || undefined,
           urgency,
           daysUntilOrder: daysUntil,
-          hasCadence: !!cadence.cadence_value // TRUE if has cadence_value, regardless of is_active
+          hasCadence: !!cadence.cadence_value, // TRUE if has cadence_value, regardless of is_active
+          isActive: cadence.is_active ?? true // Retrieve active status from database
         };
       });
     } catch (error) {
@@ -358,11 +360,11 @@ export default function SmartOrderingV2() {
     ? suppliers.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
     : suppliers;
 
-  // Separate suppliers by urgency
-  const urgentSuppliers = filteredSuppliers.filter(s => s.urgency === 'today' || s.urgency === 'tomorrow');
-  const todaySuppliers = filteredSuppliers.filter(s => s.urgency === 'today');
-  const tomorrowSuppliers = filteredSuppliers.filter(s => s.urgency === 'tomorrow');
-  const regularSuppliers = filteredSuppliers.filter(s => !s.urgency || s.urgency === 'this_week' || s.urgency === 'future');
+  // Separate suppliers by urgency (filter out inactive suppliers)
+  const urgentSuppliers = filteredSuppliers.filter(s => (s.urgency === 'today' || s.urgency === 'tomorrow') && s.isActive !== false);
+  const todaySuppliers = filteredSuppliers.filter(s => s.urgency === 'today' && s.isActive !== false);
+  const tomorrowSuppliers = filteredSuppliers.filter(s => s.urgency === 'tomorrow' && s.isActive !== false);
+  const regularSuppliers = filteredSuppliers.filter(s => (!s.urgency || s.urgency === 'this_week' || s.urgency === 'future') && s.isActive !== false);
 
   if (loading) {
     return (
