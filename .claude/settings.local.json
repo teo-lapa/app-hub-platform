@@ -48,7 +48,10 @@
       "Bash(vercel login)",
       "Bash(vercel inspect:*)",
       "Bash(vercel:*)",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(taskkill:*)",
+      "Bash(psql:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []
