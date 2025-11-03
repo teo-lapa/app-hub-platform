@@ -155,14 +155,21 @@ export default function AnalisiProdottoPage() {
       const response = await fetch(`/api/analisi-prodotto/top-products?${params}`);
       const data = await response.json();
 
+      console.log('🔍 Top products API response:', data);
+
       if (response.ok && data.success) {
-        setTopProducts(data.products || []);
+        const products = Array.isArray(data.products) ? data.products : [];
+        console.log(`✅ Setting ${products.length} top products`);
+        setTopProducts(products);
       } else {
+        console.error('❌ API returned error:', data);
         setTopProducts([]);
+        toast.error(data.error || 'Errore caricamento prodotti');
       }
     } catch (err) {
-      console.error('Error fetching top products:', err);
+      console.error('❌ Error fetching top products:', err);
       setTopProducts([]);
+      toast.error('Errore durante il caricamento dei prodotti');
     } finally {
       setIsLoadingProducts(false);
     }
@@ -665,6 +672,20 @@ function StatRow({ label, value }: any) {
 
 // Product Card Component
 function ProductCard({ product, onClick }: { product: TopProduct; onClick: () => void }) {
+  // Validate product data
+  if (!product || typeof product !== 'object') {
+    console.error('Invalid product data:', product);
+    return null;
+  }
+
+  const margin = product.marginPercent ?? 0;
+  const revenue = product.totalRevenue ?? 0;
+  const quantity = product.totalQuantity ?? 0;
+  const orders = product.orderCount ?? 0;
+  const customers = product.customerCount ?? 0;
+  const productName = product.productName || 'Prodotto senza nome';
+  const uom = product.uom || 'Pz';
+
   const getMarginColor = (margin: number) => {
     if (margin >= 30) return 'green';
     if (margin >= 15) return 'yellow';
@@ -690,7 +711,7 @@ function ProductCard({ product, onClick }: { product: TopProduct; onClick: () =>
   };
 
   const truncateName = (name: string, maxLength: number = 50) => {
-    if (name.length <= maxLength) return name;
+    if (!name || name.length <= maxLength) return name;
     return name.substring(0, maxLength) + '...';
   };
 
@@ -701,14 +722,14 @@ function ProductCard({ product, onClick }: { product: TopProduct; onClick: () =>
       whileHover={{ scale: 1.03, y: -5 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className={`bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-xl p-6 border ${getBorderColorClasses(product.marginPercent)} cursor-pointer transition-all shadow-lg hover:shadow-2xl`}
+      className={`bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-xl p-6 border ${getBorderColorClasses(margin)} cursor-pointer transition-all shadow-lg hover:shadow-2xl`}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
-        <h3 className="text-white font-semibold text-lg leading-tight flex-1 pr-2" title={product.productName}>
-          {truncateName(product.productName)}
+        <h3 className="text-white font-semibold text-lg leading-tight flex-1 pr-2" title={productName}>
+          {truncateName(productName)}
         </h3>
-        <div className={`p-2.5 rounded-lg ${getIconColorClasses(product.marginPercent)}`}>
+        <div className={`p-2.5 rounded-lg ${getIconColorClasses(margin)}`}>
           <Package className="w-5 h-5" />
         </div>
       </div>
@@ -716,17 +737,17 @@ function ProductCard({ product, onClick }: { product: TopProduct; onClick: () =>
       {/* Revenue - Big and Green */}
       <div className="mb-4">
         <p className="text-green-400 text-3xl font-bold mb-1">
-          CHF {product.totalRevenue.toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          CHF {revenue.toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </p>
         <p className="text-purple-200 text-xs">Fatturato Totale</p>
       </div>
 
       {/* Margin Badge */}
       <div className="mb-4">
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold border ${getMarginBadgeClasses(product.marginPercent)}`}>
-          {product.marginPercent >= 30 && <TrendingUp className="w-4 h-4" />}
-          {product.marginPercent < 15 && <TrendingDown className="w-4 h-4" />}
-          Margine: {product.marginPercent.toFixed(1)}%
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold border ${getMarginBadgeClasses(margin)}`}>
+          {margin >= 30 && <TrendingUp className="w-4 h-4" />}
+          {margin < 15 && <TrendingDown className="w-4 h-4" />}
+          Margine: {margin.toFixed(1)}%
         </span>
       </div>
 
@@ -734,7 +755,7 @@ function ProductCard({ product, onClick }: { product: TopProduct; onClick: () =>
       <div className="mb-3 flex items-center gap-2">
         <Package className="w-4 h-4 text-purple-300" />
         <span className="text-white font-medium">
-          {product.totalQuantity.toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {product.uom}
+          {quantity.toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {uom}
         </span>
       </div>
 
@@ -742,11 +763,11 @@ function ProductCard({ product, onClick }: { product: TopProduct; onClick: () =>
       <div className="flex items-center justify-between pt-3 border-t border-white/10">
         <div className="flex items-center gap-1.5 text-purple-200 text-sm">
           <ShoppingCart className="w-4 h-4" />
-          <span>{product.orderCount} ordini</span>
+          <span>{orders} ordini</span>
         </div>
         <div className="flex items-center gap-1.5 text-purple-200 text-sm">
           <Users className="w-4 h-4" />
-          <span>{product.customerCount} clienti</span>
+          <span>{customers} clienti</span>
         </div>
       </div>
     </motion.div>
