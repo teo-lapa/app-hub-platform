@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
     console.log('\nFetching sale order lines...');
     console.log(`Period: ${dateFrom} to ${dateTo}`);
 
+    // IMPORTANTE: Filtriamo solo azienda "LAPA - finest italian food GmbH" (company_id = 1)
     const saleOrderLines = await callOdoo(
       odooCookies,
       'sale.order.line',
@@ -134,7 +135,8 @@ export async function GET(request: NextRequest) {
         [
           ['state', 'in', ['sale', 'done']],
           ['create_date', '>=', `${dateFrom} 00:00:00`],
-          ['create_date', '<=', `${dateTo} 23:59:59`]
+          ['create_date', '<=', `${dateTo} 23:59:59`],
+          ['company_id', '=', 1]  // LAPA - finest italian food GmbH only
         ]
       ],
       {
@@ -146,12 +148,13 @@ export async function GET(request: NextRequest) {
           'purchase_price',
           'order_id',
           'order_partner_id',
-          'state'
+          'state',
+          'company_id'
         ]
       }
     ) as OdooSaleOrderLine[];
 
-    console.log(`Found ${saleOrderLines.length} sale order lines`);
+    console.log(`Found ${saleOrderLines.length} sale order lines for LAPA company`);
 
     if (saleOrderLines.length === 0) {
       return NextResponse.json({

@@ -244,9 +244,10 @@ export async function GET(request: NextRequest) {
 
     console.log(`After filtering: ${suppliers.length} external supplier(s)`);
 
-    // 5. Fetch purchase orders (within date range, escludendo ItaEmpire)
-    console.log('\nFetching purchase orders...');
-    const allPurchaseLines = await callOdoo(
+    // 5. Fetch purchase orders (within date range)
+    // IMPORTANTE: Filtriamo solo azienda "LAPA - finest italian food GmbH" (company_id = 1)
+    console.log('\nFetching purchase orders for LAPA company (ID=1)...');
+    const purchaseLines = await callOdoo(
       odooCookies,
       'purchase.order.line',
       'search_read',
@@ -254,39 +255,25 @@ export async function GET(request: NextRequest) {
         ['product_id', '=', productId],
         ['create_date', '>=', `${dateFrom} 00:00:00`],
         ['create_date', '<=', `${dateTo} 23:59:59`],
-        ['state', 'in', ['purchase', 'done']]
+        ['state', 'in', ['purchase', 'done']],
+        ['company_id', '=', 1]  // LAPA - finest italian food GmbH
       ]],
       {
         fields: [
           'order_id', 'partner_id', 'product_qty', 'qty_received',
-          'price_unit', 'price_subtotal', 'date_order', 'state', 'create_date'
+          'price_unit', 'price_subtotal', 'date_order', 'state', 'create_date', 'company_id'
         ],
         order: 'date_order desc'
       }
     ) as any[];
 
-    console.log(`Found ${allPurchaseLines.length} total purchase order lines`);
-
-    // Filtriamo escludendo ItaEmpire
-    const purchaseLines = allPurchaseLines.filter((line: any) => {
-      const partnerName = line.partner_id?.[1] || '';
-      const isItaEmpire = partnerName.includes('ItaEmpire');
-
-      if (isItaEmpire) {
-        console.log(`  ⏭️  Escluso acquisto da ItaEmpire: ${partnerName}`);
-      }
-
-      return !isItaEmpire;
-    });
-
-    console.log(`After filtering: ${purchaseLines.length} external purchase order(s)`);
+    console.log(`Found ${purchaseLines.length} purchase orders for LAPA company`);
 
     // 6. Fetch sale orders (within date range)
-    // IMPORTANTE: Filtriamo solo azienda "LAPA" e escludiamo trasferimenti interni
-    console.log('\nFetching sale orders...');
+    // IMPORTANTE: Filtriamo solo azienda "LAPA - finest italian food GmbH" (company_id = 1)
+    console.log('\nFetching sale orders for LAPA company (ID=1)...');
 
-    // Prima prendiamo tutte le sale lines nel periodo
-    const allSaleLines = await callOdoo(
+    const saleLines = await callOdoo(
       odooCookies,
       'sale.order.line',
       'search_read',
@@ -294,7 +281,8 @@ export async function GET(request: NextRequest) {
         ['product_id', '=', productId],
         ['create_date', '>=', `${dateFrom} 00:00:00`],
         ['create_date', '<=', `${dateTo} 23:59:59`],
-        ['state', 'in', ['sale', 'done']]
+        ['state', 'in', ['sale', 'done']],
+        ['company_id', '=', 1]  // LAPA - finest italian food GmbH
       ]],
       {
         fields: [
@@ -305,23 +293,7 @@ export async function GET(request: NextRequest) {
       }
     ) as any[];
 
-    console.log(`Found ${allSaleLines.length} total sale order lines`);
-
-    // Filtriamo escludendo partner "ItaEmpire" e "LAPA" (trasferimenti interni)
-    const saleLines = allSaleLines.filter((line: any) => {
-      const partnerName = line.order_partner_id?.[1] || '';
-      const isInternal = partnerName.includes('ItaEmpire') ||
-                         partnerName.includes('LAPA') ||
-                         partnerName.includes('finest');
-
-      if (isInternal) {
-        console.log(`  ⏭️  Escluso trasferimento interno a: ${partnerName}`);
-      }
-
-      return !isInternal;
-    });
-
-    console.log(`After filtering internal transfers: ${saleLines.length} external sale order(s)`);
+    console.log(`Found ${saleLines.length} sale orders for LAPA company`);
 
     // 7. Fetch stock locations (ubicazioni)
     console.log('\nFetching stock locations...');
