@@ -748,106 +748,157 @@ export default function SmartOrderingV2() {
                   </div>
                 </div>
 
-                {/* Products List */}
-                <div className="p-6 space-y-4 max-h-[60vh] overflow-auto">
-                  {selectedSupplier.products
-                    .filter(p => ['CRITICAL', 'HIGH'].includes(p.urgencyLevel))
-                    .sort((a, b) => {
-                      const urgencyOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
-                      return urgencyOrder[a.urgencyLevel as keyof typeof urgencyOrder] -
-                             urgencyOrder[b.urgencyLevel as keyof typeof urgencyOrder];
-                    })
-                    .map((product) => (
-                      <motion.div
-                        key={product.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="bg-white/5 rounded-xl p-5 hover:bg-white/10 transition-all"
-                      >
-                        {/* Product Header */}
-                        <div className="flex items-start gap-4 mb-4">
-                          {/* Checkbox */}
+                {/* Products Table - Compact View */}
+                <div className="p-6 max-h-[70vh] overflow-auto">
+                  <table className="w-full">
+                    <thead className="sticky top-0 bg-slate-800/95 backdrop-blur-sm z-10">
+                      <tr className="border-b border-white/20">
+                        <th className="text-left p-3 text-blue-300 text-sm font-semibold w-8">
                           <input
                             type="checkbox"
-                            checked={selectedProducts.has(product.id)}
-                            onChange={() => toggleProductSelection(product)}
-                            className="w-5 h-5 mt-2 cursor-pointer"
-                          />
-
-                          {/* Product Image */}
-                          <img
-                            src={`https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com/web/image/product.product/${product.id}/image_128`}
-                            alt={product.name}
-                            className="w-16 h-16 rounded-lg object-cover bg-white/10"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white"%3E%3Cpath stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/%3E%3C/svg%3E';
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                selectAllProducts();
+                              } else {
+                                deselectAllProducts();
+                              }
                             }}
+                            className="w-4 h-4 cursor-pointer"
                           />
-
-                          <div className="flex-1">
-                            <h3 className="text-white font-semibold text-lg mb-1 line-clamp-2">
-                              {product.name}
-                            </h3>
-                            <div className="flex flex-wrap gap-3 text-sm text-blue-200">
-                              <span>Stock: {product.currentStock.toFixed(1)} {product.uom}</span>
-                              <span>•</span>
-                              <span>Media vendite: {product.avgDailySales.toFixed(1)}/giorno</span>
-                              <span>•</span>
-                              <span className="font-semibold text-orange-300">
-                                ⏰ {product.daysRemaining.toFixed(1)} giorni rimanenti
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Sales Stats */}
-                        <div className="grid grid-cols-4 gap-3 mb-4">
-                          <div className="bg-white/5 rounded-lg p-3">
-                            <div className="text-blue-300 text-xs mb-1">Venduti 3 mesi</div>
-                            <div className="text-white font-bold">{product.totalSold3Months.toFixed(0)}</div>
-                          </div>
-                          <div className="bg-white/5 rounded-lg p-3">
-                            <div className="text-blue-300 text-xs mb-1">Suggerimento AI</div>
-                            <div className="text-white font-bold">{product.suggestedQty} {product.uom}</div>
-                          </div>
-                          <div className="bg-white/5 rounded-lg p-3">
-                            <div className="text-blue-300 text-xs mb-1">Prezzo medio</div>
-                            <div className="text-white font-bold">CHF {product.avgPrice?.toFixed(2) || '0.00'}</div>
-                          </div>
-                          <button
-                            onClick={(e) => openProductAnalytics(product, e)}
-                            className="bg-white/5 rounded-lg p-3 hover:bg-white/10 cursor-pointer transition-all hover:scale-105"
-                            title="Clicca per analisi dettagliata"
+                        </th>
+                        <th className="text-left p-3 text-blue-300 text-sm font-semibold">Prodotto</th>
+                        <th className="text-center p-3 text-blue-300 text-sm font-semibold">Stock</th>
+                        <th className="text-center p-3 text-blue-300 text-sm font-semibold">Media/gg</th>
+                        <th className="text-center p-3 text-blue-300 text-sm font-semibold">Giorni Rim.</th>
+                        <th className="text-center p-3 text-blue-300 text-sm font-semibold">Urgenza</th>
+                        <th className="text-center p-3 text-blue-300 text-sm font-semibold">Sug. AI</th>
+                        <th className="text-center p-3 text-blue-300 text-sm font-semibold">Quantità</th>
+                        <th className="text-center p-3 text-blue-300 text-sm font-semibold">Azioni</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedSupplier.products
+                        .filter(p => ['CRITICAL', 'HIGH'].includes(p.urgencyLevel))
+                        .sort((a, b) => {
+                          const urgencyOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+                          return urgencyOrder[a.urgencyLevel as keyof typeof urgencyOrder] -
+                                 urgencyOrder[b.urgencyLevel as keyof typeof urgencyOrder];
+                        })
+                        .map((product) => (
+                          <tr
+                            key={product.id}
+                            className="border-b border-white/5 hover:bg-white/5 transition-colors"
                           >
-                            <div className="text-blue-300 text-xs mb-1">Urgenza</div>
-                            <div className={`font-bold text-xs ${
-                              product.urgencyLevel === 'CRITICAL' ? 'text-red-400' :
-                              product.urgencyLevel === 'HIGH' ? 'text-orange-400' :
-                              'text-yellow-400'
-                            }`}>
-                              {product.urgencyLevel === 'CRITICAL' ? '🔴 CRITICO' :
-                               product.urgencyLevel === 'HIGH' ? '🟠 ALTO' : '🟡 MEDIO'}
-                            </div>
-                          </button>
-                        </div>
+                            {/* Checkbox */}
+                            <td className="p-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedProducts.has(product.id)}
+                                onChange={() => toggleProductSelection(product)}
+                                className="w-4 h-4 cursor-pointer"
+                              />
+                            </td>
 
-                        {/* Order Input */}
-                        <div className="flex items-center gap-3">
-                          <label className="text-blue-200 text-sm font-medium">
-                            Quantità da ordinare:
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder={product.suggestedQty.toString()}
-                            defaultValue={selectedProducts.get(product.id) || product.suggestedQty}
-                            onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value) || 0)}
-                            className="bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-blue-400 focus:outline-none w-32"
-                          />
-                          <span className="text-blue-200 text-sm">{product.uom}</span>
-                        </div>
-                      </motion.div>
-                    ))}
+                            {/* Product Name */}
+                            <td className="p-3">
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={`https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com/web/image/product.product/${product.id}/image_128`}
+                                  alt={product.name}
+                                  className="w-10 h-10 rounded-lg object-cover bg-white/10"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white"%3E%3Cpath stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/%3E%3C/svg%3E';
+                                  }}
+                                />
+                                <div className="max-w-xs">
+                                  <div className="text-white text-sm font-medium line-clamp-2">
+                                    {product.name}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Stock */}
+                            <td className="p-3 text-center">
+                              <div className="text-white text-sm font-semibold">
+                                {product.currentStock.toFixed(1)}
+                              </div>
+                              <div className="text-blue-300 text-xs">
+                                {product.uom}
+                              </div>
+                            </td>
+
+                            {/* Media Vendite */}
+                            <td className="p-3 text-center">
+                              <div className="text-white text-sm">
+                                {product.avgDailySales.toFixed(1)}
+                              </div>
+                              <div className="text-blue-300 text-xs">
+                                {product.uom}/gg
+                              </div>
+                            </td>
+
+                            {/* Giorni Rimanenti */}
+                            <td className="p-3 text-center">
+                              <div className={`text-sm font-semibold ${
+                                product.daysRemaining <= 2 ? 'text-red-400' :
+                                product.daysRemaining <= 5 ? 'text-orange-400' :
+                                'text-green-400'
+                              }`}>
+                                {product.daysRemaining.toFixed(1)} gg
+                              </div>
+                            </td>
+
+                            {/* Urgenza */}
+                            <td className="p-3 text-center">
+                              <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
+                                product.urgencyLevel === 'CRITICAL'
+                                  ? 'bg-red-500/20 text-red-400 border border-red-400/30' :
+                                product.urgencyLevel === 'HIGH'
+                                  ? 'bg-orange-500/20 text-orange-400 border border-orange-400/30'
+                                  : 'bg-yellow-500/20 text-yellow-400 border border-yellow-400/30'
+                              }`}>
+                                {product.urgencyLevel === 'CRITICAL' ? '🔴' :
+                                 product.urgencyLevel === 'HIGH' ? '🟠' : '🟡'}
+                                {product.urgencyLevel}
+                              </div>
+                            </td>
+
+                            {/* Suggerimento AI */}
+                            <td className="p-3 text-center">
+                              <div className="text-white text-sm font-semibold">
+                                {product.suggestedQty}
+                              </div>
+                              <div className="text-blue-300 text-xs">
+                                {product.uom}
+                              </div>
+                            </td>
+
+                            {/* Quantità da Ordinare */}
+                            <td className="p-3 text-center">
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder={product.suggestedQty.toString()}
+                                value={selectedProducts.get(product.id) || ''}
+                                onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value) || 0)}
+                                className="bg-white/10 text-white px-2 py-1 rounded-lg border border-white/20 focus:border-blue-400 focus:outline-none w-20 text-center text-sm"
+                              />
+                            </td>
+
+                            {/* Azioni */}
+                            <td className="p-3 text-center">
+                              <button
+                                onClick={(e) => openProductAnalytics(product, e)}
+                                className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg text-xs font-semibold transition-all"
+                              >
+                                📊 Analisi
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
                 </div>
 
                 {/* Footer */}
