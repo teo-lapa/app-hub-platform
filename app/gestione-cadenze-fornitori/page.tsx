@@ -178,9 +178,11 @@ export default function GestioneCadenzeFornitori() {
           });
 
           const data = await response.json();
+          console.log('🔍 DEBUG - Response:', data);
           if (data.success) {
             successCount++;
           } else {
+            console.error('❌ Save failed for supplier:', supplierId, 'Error:', data);
             errorCount++;
           }
         } catch {
