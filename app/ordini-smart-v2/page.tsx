@@ -726,24 +726,24 @@ export default function SmartOrderingV2() {
                       <XMarkIcon className="w-8 h-8" />
                     </button>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex gap-2">
                     <button
                       onClick={selectAllProducts}
-                      className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg transition-all font-semibold"
+                      className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg transition-all text-sm font-medium"
                     >
                       ✓ Seleziona Tutti
                     </button>
                     <button
                       onClick={deselectAllProducts}
-                      className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all"
+                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all text-sm"
                     >
-                      Deseleziona Tutti
+                      Deseleziona
                     </button>
                     <button
                       onClick={() => router.push(`/catalogo-prodotti?supplier_id=${selectedSupplier.id}&supplier_name=${encodeURIComponent(selectedSupplier.name)}`)}
-                      className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition-all font-semibold"
+                      className="px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition-all text-sm font-medium"
                     >
-                      📦 Aggiungi dal Catalogo
+                      📦 Aggiungi Catalogo
                     </button>
                   </div>
                 </div>
@@ -910,20 +910,20 @@ export default function SmartOrderingV2() {
                         💰 Valore Ordine: CHF {calculateOrderValue().toFixed(2)}
                       </div>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-2">
                       <button
                         onClick={() => {
                           setSelectedSupplier(null);
                           setSelectedProducts(new Map());
                         }}
-                        className="px-6 py-3 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all"
+                        className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all text-sm"
                       >
                         Annulla
                       </button>
                       <button
                         onClick={createOrder}
                         disabled={selectedProducts.size === 0}
-                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                       >
                         🚀 Crea Ordine in Odoo
                       </button>

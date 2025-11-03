@@ -43,32 +43,101 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ ${products.length} prodotti caricati`);
 
-    // 2. Carica info fornitori
-    const sellerIds = products.flatMap((p: any) => p.seller_ids || []).filter((id: number) => id > 0);
-    let supplierMap = new Map();
-
-    if (sellerIds.length > 0) {
-      const sellers = await rpc.searchRead(
-        'product.supplierinfo',
-        [['id', 'in', sellerIds]],
-        ['partner_id', 'product_tmpl_id', 'delay', 'price'],
-        0
-      );
-
-      sellers.forEach((s: any) => {
-        supplierMap.set(s.product_tmpl_id[0], {
-          id: s.partner_id[0],
-          name: s.partner_id[1],
-          leadTime: s.delay || 7,
-          price: s.price
-        });
-      });
-    }
-
-    // 3. Carica vendite ultimi 3 mesi
+    // 2. Calcola data 3 mesi fa
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
+    // 3. Carica ultimi ordini acquisto (ultimi 3 mesi) per determinare fornitore principale
+    console.log('📋 Caricamento ordini acquisto recenti...');
+    const purchaseOrders = await rpc.searchRead(
+      'purchase.order.line',
+      [
+        ['order_id.date_order', '>=', threeMonthsAgo.toISOString().split('T')[0]],
+        ['order_id.state', 'in', ['purchase', 'done']],
+        ['product_id', 'in', products.map((p: any) => p.id)]
+      ],
+      ['product_id', 'partner_id', 'order_id', 'product_qty', 'date_order'],
+      0
+    );
+
+    console.log(`✅ ${purchaseOrders.length} righe ordini acquisto caricate`);
+
+    // 4. Calcola fornitore principale per ogni prodotto (Opzione 3: Ordini Recenti)
+    const supplierMap = new Map();
+    const productPurchases = new Map(); // product_id -> [{supplierId, qty, date, orderId}]
+
+    purchaseOrders.forEach((line: any) => {
+      const productId = line.product_id[0];
+      if (!productPurchases.has(productId)) {
+        productPurchases.set(productId, []);
+      }
+      productPurchases.get(productId).push({
+        supplierId: line.partner_id[0],
+        supplierName: line.partner_id[1],
+        qty: line.product_qty || 0,
+        date: line.date_order,
+        orderId: line.order_id[0]
+      });
+    });
+
+    // Per ogni prodotto, trova fornitore principale
+    productPurchases.forEach((purchases, productId) => {
+      // Ordina per data decrescente (più recente prima)
+      purchases.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      // LOGICA OPZIONE 3: Fornitore dell'ultimo ordine + almeno 2 ordini negli ultimi 3 mesi
+      const supplierStats = new Map(); // supplierId -> {count, totalQty, lastDate}
+
+      purchases.forEach((p: any) => {
+        if (!supplierStats.has(p.supplierId)) {
+          supplierStats.set(p.supplierId, {
+            supplierId: p.supplierId,
+            supplierName: p.supplierName,
+            count: 0,
+            totalQty: 0,
+            lastDate: null
+          });
+        }
+        const stat = supplierStats.get(p.supplierId);
+        stat.count++;
+        stat.totalQty += p.qty;
+        if (!stat.lastDate || new Date(p.date) > new Date(stat.lastDate)) {
+          stat.lastDate = p.date;
+        }
+      });
+
+      // Trova fornitore principale: ultimo ordine + almeno 2 ordini totali
+      const lastSupplier = purchases[0]; // Più recente
+      const lastSupplierStats = supplierStats.get(lastSupplier.supplierId);
+
+      let mainSupplier = null;
+
+      if (lastSupplierStats && lastSupplierStats.count >= 2) {
+        // Ultimo fornitore ha almeno 2 ordini → è il principale
+        mainSupplier = lastSupplierStats;
+      } else {
+        // Prendi chi ha fatto più ordini (frequenza)
+        const sortedByCount = Array.from(supplierStats.values()).sort((a: any, b: any) => b.count - a.count);
+        mainSupplier = sortedByCount[0];
+      }
+
+      if (mainSupplier) {
+        // Trova il prodotto per ottenere product_tmpl_id
+        const product = products.find((p: any) => p.id === productId);
+        const templateId = product?.product_tmpl_id ? product.product_tmpl_id[0] : productId;
+
+        supplierMap.set(templateId, {
+          id: mainSupplier.supplierId,
+          name: mainSupplier.supplierName,
+          leadTime: 7, // Default, verrà sovrascritto se disponibile
+          price: 0
+        });
+      }
+    });
+
+    console.log(`✅ ${supplierMap.size} prodotti con fornitore principale identificato`);
+
+    // 5. Carica vendite ultimi 3 mesi
     console.log('📊 Caricamento vendite...');
     const sales = await rpc.searchRead(
       'sale.order.line',
@@ -83,7 +152,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ ${sales.length} righe vendite caricate`);
 
-    // 4. Calcola vendite per prodotto
+    // 6. Calcola vendite per prodotto
     const salesByProduct = new Map();
     sales.forEach((line: any) => {
       const pid = line.product_id[0];
@@ -93,7 +162,7 @@ export async function GET(request: NextRequest) {
       salesByProduct.get(pid).push(line.product_uom_qty || 0);
     });
 
-    // 5. Analizza ogni prodotto
+    // 7. Analizza ogni prodotto
     const analyzedProducts = [];
 
     for (const product of products) {
@@ -154,7 +223,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ ${analyzedProducts.length} prodotti analizzati`);
 
-    // 6. Raggruppa per fornitore
+    // 8. Raggruppa per fornitore
     const supplierGroups = new Map();
 
     analyzedProducts.forEach((p: any) => {
@@ -221,7 +290,7 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // 7. Converti in array e ordina
+    // 9. Converti in array e ordina
     const suppliers = Array.from(supplierGroups.values());
     suppliers.sort((a, b) => {
       if (a.criticalCount !== b.criticalCount) return b.criticalCount - a.criticalCount;
