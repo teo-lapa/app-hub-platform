@@ -26,6 +26,16 @@ interface ProductSearchResult {
   barcode?: string;
 }
 
+interface TopProduct {
+  productName: string;
+  totalRevenue: number;
+  totalQuantity: number;
+  marginPercent: number;
+  orderCount: number;
+  customerCount: number;
+  uom: string;
+}
+
 interface AnalysisData {
   product: any;
   suppliers: any[];
@@ -76,6 +86,8 @@ export default function AnalisiProdottoPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
 
   // Debounced search with Odoo API
   useEffect(() => {
@@ -122,8 +134,44 @@ export default function AnalisiProdottoPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const handleAnalyze = async () => {
-    if (!selectedProduct) {
+  // Fetch top products when component mounts or dates change
+  useEffect(() => {
+    fetchTopProducts();
+  }, [dateFrom, dateTo]);
+
+  const fetchTopProducts = async () => {
+    if (new Date(dateTo) < new Date(dateFrom)) {
+      return;
+    }
+
+    setIsLoadingProducts(true);
+    try {
+      const params = new URLSearchParams({
+        dateFrom,
+        dateTo,
+        limit: '20',
+      });
+
+      const response = await fetch(`/api/analisi-prodotto/top-products?${params}`);
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setTopProducts(data.products || []);
+      } else {
+        setTopProducts([]);
+      }
+    } catch (err) {
+      console.error('Error fetching top products:', err);
+      setTopProducts([]);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
+
+  const handleAnalyzeInternal = async (productNameOverride?: string) => {
+    const productName = productNameOverride || selectedProduct?.name;
+
+    if (!productName) {
       toast.error('Seleziona un prodotto');
       return;
     }
@@ -138,7 +186,7 @@ export default function AnalisiProdottoPage() {
 
     try {
       const params = new URLSearchParams({
-        productName: selectedProduct.name,
+        productName,
         dateFrom,
         dateTo,
       });
@@ -160,6 +208,17 @@ export default function AnalisiProdottoPage() {
     }
   };
 
+  const handleAnalyze = () => {
+    handleAnalyzeInternal();
+  };
+
+  const handleBackToDashboard = () => {
+    setAnalysisData(null);
+    setError(null);
+    setSelectedProduct(null);
+    setSearchTerm('');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 md:p-8">
       <Toaster position="top-right" />
@@ -170,12 +229,32 @@ export default function AnalisiProdottoPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h1 className="text-4xl font-bold text-white mb-2">
-          📊 Analisi Prodotti
-        </h1>
-        <p className="text-purple-200">
-          Analisi dettagliata vendite, acquisti e margini per prodotto
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">
+              📊 Analisi Prodotti
+            </h1>
+            <p className="text-purple-200">
+              Analisi dettagliata vendite, acquisti e margini per prodotto
+            </p>
+          </div>
+
+          {/* Back Button - shown when analysis is present */}
+          <AnimatePresence>
+            {analysisData && (
+              <motion.button
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                onClick={handleBackToDashboard}
+                className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-lg rounded-lg border border-white/20 text-white font-medium transition-all"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Torna alla Dashboard
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
       </motion.div>
 
       {/* Search Form - Sticky */}
@@ -472,20 +551,71 @@ export default function AnalisiProdottoPage() {
         </motion.div>
       )}
 
-      {/* Empty State */}
+      {/* Top Products Grid */}
       {!analysisData && !error && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center py-20"
+          className="space-y-6"
         >
-          <Package className="w-20 h-20 text-purple-300/50 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-white mb-2">
-            Seleziona un prodotto per iniziare
-          </h3>
-          <p className="text-purple-200">
-            Cerca un prodotto e scegli il periodo per visualizzare l'analisi dettagliata
-          </p>
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-white">
+              Top Prodotti per Fatturato
+            </h2>
+            <p className="text-purple-200 text-sm">
+              {topProducts.length} prodotti trovati
+            </p>
+          </div>
+
+          {/* Loading Skeleton */}
+          {isLoadingProducts && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 animate-pulse">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="h-6 bg-white/20 rounded w-3/4"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-lg"></div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="h-8 bg-white/20 rounded w-1/2"></div>
+                    <div className="h-6 bg-white/20 rounded w-1/3"></div>
+                    <div className="h-4 bg-white/20 rounded w-2/3"></div>
+                    <div className="h-4 bg-white/20 rounded w-1/2"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Products Grid */}
+          {!isLoadingProducts && topProducts.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {topProducts.map((product, index) => (
+                <ProductCard
+                  key={index}
+                  product={product}
+                  onClick={() => handleAnalyzeInternal(product.productName)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Empty State - No Products Found */}
+          {!isLoadingProducts && topProducts.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-20"
+            >
+              <Package className="w-20 h-20 text-purple-300/50 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-white mb-2">
+                Nessun prodotto trovato
+              </h3>
+              <p className="text-purple-200">
+                Prova a modificare il periodo selezionato
+              </p>
+            </motion.div>
+          )}
         </motion.div>
       )}
     </div>
@@ -530,5 +660,95 @@ function StatRow({ label, value }: any) {
       <span className="text-purple-200">{label}</span>
       <span className="text-white font-semibold">{value}</span>
     </div>
+  );
+}
+
+// Product Card Component
+function ProductCard({ product, onClick }: { product: TopProduct; onClick: () => void }) {
+  const getMarginColor = (margin: number) => {
+    if (margin >= 30) return 'green';
+    if (margin >= 15) return 'yellow';
+    return 'red';
+  };
+
+  const getMarginBadgeClasses = (margin: number) => {
+    if (margin >= 30) return 'bg-green-500/20 text-green-300 border-green-500/50';
+    if (margin >= 15) return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50';
+    return 'bg-red-500/20 text-red-300 border-red-500/50';
+  };
+
+  const getIconColorClasses = (margin: number) => {
+    if (margin >= 30) return 'text-green-400 bg-green-500/20';
+    if (margin >= 15) return 'text-yellow-400 bg-yellow-500/20';
+    return 'text-red-400 bg-red-500/20';
+  };
+
+  const getBorderColorClasses = (margin: number) => {
+    if (margin >= 30) return 'border-green-500/30 hover:border-green-500/60';
+    if (margin >= 15) return 'border-yellow-500/30 hover:border-yellow-500/60';
+    return 'border-red-500/30 hover:border-red-500/60';
+  };
+
+  const truncateName = (name: string, maxLength: number = 50) => {
+    if (name.length <= maxLength) return name;
+    return name.substring(0, maxLength) + '...';
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.03, y: -5 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onClick}
+      className={`bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-xl p-6 border ${getBorderColorClasses(product.marginPercent)} cursor-pointer transition-all shadow-lg hover:shadow-2xl`}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <h3 className="text-white font-semibold text-lg leading-tight flex-1 pr-2" title={product.productName}>
+          {truncateName(product.productName)}
+        </h3>
+        <div className={`p-2.5 rounded-lg ${getIconColorClasses(product.marginPercent)}`}>
+          <Package className="w-5 h-5" />
+        </div>
+      </div>
+
+      {/* Revenue - Big and Green */}
+      <div className="mb-4">
+        <p className="text-green-400 text-3xl font-bold mb-1">
+          CHF {product.totalRevenue.toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </p>
+        <p className="text-purple-200 text-xs">Fatturato Totale</p>
+      </div>
+
+      {/* Margin Badge */}
+      <div className="mb-4">
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold border ${getMarginBadgeClasses(product.marginPercent)}`}>
+          {product.marginPercent >= 30 && <TrendingUp className="w-4 h-4" />}
+          {product.marginPercent < 15 && <TrendingDown className="w-4 h-4" />}
+          Margine: {product.marginPercent.toFixed(1)}%
+        </span>
+      </div>
+
+      {/* Quantity */}
+      <div className="mb-3 flex items-center gap-2">
+        <Package className="w-4 h-4 text-purple-300" />
+        <span className="text-white font-medium">
+          {product.totalQuantity.toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {product.uom}
+        </span>
+      </div>
+
+      {/* Orders and Customers */}
+      <div className="flex items-center justify-between pt-3 border-t border-white/10">
+        <div className="flex items-center gap-1.5 text-purple-200 text-sm">
+          <ShoppingCart className="w-4 h-4" />
+          <span>{product.orderCount} ordini</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-purple-200 text-sm">
+          <Users className="w-4 h-4" />
+          <span>{product.customerCount} clienti</span>
+        </div>
+      </div>
+    </motion.div>
   );
 }
