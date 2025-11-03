@@ -325,7 +325,7 @@ export default function AnalisiProdottoPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Purchase Stats */}
               <StatsCard title="Statistiche Acquisti" icon={<ShoppingCart className="w-5 h-5" />}>
-                <StatRow label="Totale Acquistato" value={`${analysisData.statistics.totalPurchased} ${analysisData.product.uom[1]}`} />
+                <StatRow label="Totale Acquistato" value={`${analysisData.statistics.totalPurchased.toFixed(2)} ${analysisData.product.uom}`} />
                 <StatRow label="Spesa Totale" value={`CHF ${analysisData.statistics.totalPurchaseCost.toFixed(2)}`} />
                 <StatRow label="Numero Ordini" value={analysisData.purchaseOrders.length} />
                 <StatRow label="Fornitori Unici" value={analysisData.topSuppliers.length} />
@@ -333,7 +333,7 @@ export default function AnalisiProdottoPage() {
 
               {/* Sales Stats */}
               <StatsCard title="Statistiche Vendite" icon={<Users className="w-5 h-5" />}>
-                <StatRow label="Totale Venduto" value={`${analysisData.statistics.totalSold} ${analysisData.product.uom[1]}`} />
+                <StatRow label="Totale Venduto" value={`${analysisData.statistics.totalSold.toFixed(2)} ${analysisData.product.uom}`} />
                 <StatRow label="Fatturato Totale" value={`CHF ${analysisData.statistics.totalRevenue.toFixed(2)}`} />
                 <StatRow label="Numero Ordini" value={analysisData.saleOrders.length} />
                 <StatRow label="Clienti Unici" value={analysisData.topCustomers.length} />
@@ -341,10 +341,10 @@ export default function AnalisiProdottoPage() {
 
               {/* Inventory Stats */}
               <StatsCard title="Magazzino" icon={<Warehouse className="w-5 h-5" />}>
-                <StatRow label="Giacenza Attuale" value={`${analysisData.product.qtyAvailable} ${analysisData.product.uom[1]}`} />
-                <StatRow label="In Arrivo" value={`${analysisData.product.incomingQty} ${analysisData.product.uom[1]}`} />
+                <StatRow label="Giacenza Attuale" value={`${analysisData.product.qtyAvailable.toFixed(2)} ${analysisData.product.uom}`} />
+                <StatRow label="In Arrivo" value={`${analysisData.product.incomingQty.toFixed(2)} ${analysisData.product.uom}`} />
                 <StatRow label="Giorni Copertura" value={`${analysisData.statistics.daysOfCoverage.toFixed(1)} giorni`} />
-                <StatRow label="Media Vendita/Mese" value={`${analysisData.statistics.monthlyAvgSales.toFixed(0)} ${analysisData.product.uom[1]}`} />
+                <StatRow label="Media Vendita/Mese" value={`${analysisData.statistics.monthlyAvgSales.toFixed(2)} ${analysisData.product.uom}`} />
 
                 {/* Stock Locations */}
                 {analysisData.product.locations && analysisData.product.locations.length > 0 && (
@@ -378,9 +378,9 @@ export default function AnalisiProdottoPage() {
                 icon={<AlertCircle className="w-5 h-5" />}
                 highlight={analysisData.reorderSuggestion.actionRequired}
               >
-                <StatRow label="Punto Riordino" value={`${analysisData.reorderSuggestion.reorderPoint.toFixed(0)} ${analysisData.product.uom[1]}`} />
-                <StatRow label="Scorta Sicurezza" value={`${analysisData.reorderSuggestion.safetyStock.toFixed(0)} ${analysisData.product.uom[1]}`} />
-                <StatRow label="Qtà Ottimale" value={`${analysisData.reorderSuggestion.optimalOrderQty.toFixed(0)} ${analysisData.product.uom[1]}`} />
+                <StatRow label="Punto Riordino" value={`${analysisData.reorderSuggestion.reorderPoint.toFixed(2)} ${analysisData.product.uom}`} />
+                <StatRow label="Scorta Sicurezza" value={`${analysisData.reorderSuggestion.safetyStock.toFixed(2)} ${analysisData.product.uom}`} />
+                <StatRow label="Qtà Ottimale" value={`${analysisData.reorderSuggestion.optimalOrderQty.toFixed(2)} ${analysisData.product.uom}`} />
                 {analysisData.reorderSuggestion.actionRequired && (
                   <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
                     <p className="text-red-200 text-sm font-semibold">
@@ -414,7 +414,7 @@ export default function AnalisiProdottoPage() {
                         <td className="py-3 px-4 text-purple-300">{index + 1}</td>
                         <td className="py-3 px-4 text-white font-medium">{customer.customerName}</td>
                         <td className="py-3 px-4 text-right text-purple-200">
-                          {customer.qty.toFixed(0)} {analysisData.product.uom[1]}
+                          {customer.qty.toFixed(2)} {analysisData.product.uom}
                         </td>
                         <td className="py-3 px-4 text-right text-green-400 font-semibold">
                           CHF {customer.revenue.toFixed(2)}
@@ -441,13 +441,13 @@ export default function AnalisiProdottoPage() {
                         <div>
                           <h4 className="text-white font-semibold">{supplier.supplierName}</h4>
                           <p className="text-purple-200 text-sm mt-1">
-                            {supplier.orders} ordini • {supplier.qty.toFixed(0)} {analysisData.product.uom[1]}
+                            {supplier.orders} ordini • {supplier.qty.toFixed(2)} {analysisData.product.uom}
                           </p>
                         </div>
                         <div className="text-right">
                           <p className="text-white font-semibold">CHF {supplier.cost.toFixed(2)}</p>
                           <p className="text-purple-200 text-sm">
-                            CHF {supplier.avgPrice.toFixed(2)}/{analysisData.product.uom[1]}
+                            CHF {supplier.avgPrice.toFixed(2)}/{analysisData.product.uom}
                           </p>
                         </div>
                       </div>
