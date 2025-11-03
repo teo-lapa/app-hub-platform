@@ -406,16 +406,16 @@ export default function AnalisiProdottoPage() {
               <StatsCard title="Statistiche Acquisti" icon={<ShoppingCart className="w-5 h-5" />}>
                 <StatRow label="Totale Acquistato" value={`${analysisData.statistics.totalPurchased.toFixed(2)} ${analysisData.product.uom}`} />
                 <StatRow label="Spesa Totale" value={`CHF ${analysisData.statistics.totalPurchaseCost.toFixed(2)}`} />
-                <StatRow label="Numero Ordini" value={analysisData.purchaseOrders.length} />
-                <StatRow label="Fornitori Unici" value={analysisData.topSuppliers.length} />
+                <StatRow label="Numero Ordini" value={analysisData.purchaseOrders?.length || 0} />
+                <StatRow label="Fornitori Unici" value={analysisData.topSuppliers?.length || 0} />
               </StatsCard>
 
               {/* Sales Stats */}
               <StatsCard title="Statistiche Vendite" icon={<Users className="w-5 h-5" />}>
                 <StatRow label="Totale Venduto" value={`${analysisData.statistics.totalSold.toFixed(2)} ${analysisData.product.uom}`} />
                 <StatRow label="Fatturato Totale" value={`CHF ${analysisData.statistics.totalRevenue.toFixed(2)}`} />
-                <StatRow label="Numero Ordini" value={analysisData.saleOrders.length} />
-                <StatRow label="Clienti Unici" value={analysisData.topCustomers.length} />
+                <StatRow label="Numero Ordini" value={analysisData.saleOrders?.length || 0} />
+                <StatRow label="Clienti Unici" value={analysisData.topCustomers?.length || 0} />
               </StatsCard>
 
               {/* Inventory Stats */}
@@ -507,7 +507,7 @@ export default function AnalisiProdottoPage() {
             </div>
 
             {/* Top Suppliers */}
-            {analysisData.topSuppliers.length > 0 && (
+            {analysisData.topSuppliers && analysisData.topSuppliers.length > 0 && (
               <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                   <Package className="w-6 h-6" />
