@@ -107,6 +107,7 @@ interface Statistics {
   totalReceived: number;
   totalPurchaseCost: number;
   avgPurchasePrice: number;
+  purchaseUom: string;  // UoM degli acquisti (può essere diversa da quella di vendita/magazzino)
   totalSold: number;
   totalDelivered: number;
   totalRevenue: number;
@@ -261,7 +262,8 @@ export async function GET(request: NextRequest) {
       {
         fields: [
           'order_id', 'partner_id', 'product_qty', 'qty_received',
-          'price_unit', 'price_subtotal', 'date_order', 'state', 'create_date', 'company_id'
+          'price_unit', 'price_subtotal', 'date_order', 'state', 'create_date', 'company_id',
+          'product_uom'  // UoM specifica dell'acquisto (può essere diversa da quella di vendita)
         ],
         order: 'date_order desc'
       }
@@ -443,6 +445,16 @@ function buildAnalysisResponse(
   const totalPurchaseCost = purchaseOrdersList.reduce((sum, p) => sum + p.priceSubtotal, 0);
   const avgPurchasePrice = totalPurchased > 0 ? totalPurchaseCost / totalPurchased : 0;
 
+  // Determina la UoM più usata negli acquisti
+  const purchaseUomCounts = new Map<string, number>();
+  purchaseLines.forEach((line: any) => {
+    const uom = line.product_uom?.[1] || productInfo.uom;
+    purchaseUomCounts.set(uom, (purchaseUomCounts.get(uom) || 0) + 1);
+  });
+  const purchaseUom = purchaseUomCounts.size > 0
+    ? Array.from(purchaseUomCounts.entries()).sort((a, b) => b[1] - a[1])[0][0]
+    : productInfo.uom;
+
   const totalSold = saleOrdersList.reduce((sum, s) => sum + s.productQty, 0);
   const totalDelivered = saleOrdersList.reduce((sum, s) => sum + s.qtyDelivered, 0);
   const totalRevenue = saleOrdersList.reduce((sum, s) => sum + s.priceSubtotal, 0);
@@ -465,6 +477,7 @@ function buildAnalysisResponse(
     totalReceived,
     totalPurchaseCost,
     avgPurchasePrice,
+    purchaseUom,  // UoM degli acquisti (es: kg) - può essere diversa da quella di vendita (es: SACC25)
     totalSold,
     totalDelivered,
     totalRevenue,

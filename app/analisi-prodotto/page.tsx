@@ -52,6 +52,7 @@ interface AnalysisData {
     monthlyAvgSales: number;
     weeklyAvgSales: number;
     daysOfCoverage: number;
+    purchaseUom: string; // UoM degli acquisti (può essere diversa da quella di vendita/magazzino)
   };
   topSuppliers: any[];
   topCustomers: any[];
@@ -411,7 +412,7 @@ export default function AnalisiProdottoPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Purchase Stats */}
               <StatsCard title="Statistiche Acquisti" icon={<ShoppingCart className="w-5 h-5" />}>
-                <StatRow label="Totale Acquistato" value={`${analysisData.statistics.totalPurchased.toFixed(2)} ${analysisData.product.uom}`} />
+                <StatRow label="Totale Acquistato" value={`${analysisData.statistics.totalPurchased.toFixed(2)} ${analysisData.statistics.purchaseUom}`} />
                 <StatRow label="Spesa Totale" value={`CHF ${analysisData.statistics.totalPurchaseCost.toFixed(2)}`} />
                 <StatRow label="Numero Ordini" value={analysisData.purchaseOrders?.length || 0} />
                 <StatRow label="Fornitori Unici" value={analysisData.topSuppliers?.length || 0} />
