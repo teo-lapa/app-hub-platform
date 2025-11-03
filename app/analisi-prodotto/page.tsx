@@ -542,6 +542,200 @@ export default function AnalisiProdottoPage() {
                 </div>
               </div>
             )}
+
+            {/* Analisi Intelligente */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="mt-8 bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-500/30"
+            >
+              <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                <TrendingUp className="w-7 h-7 text-purple-400" />
+                Analisi Intelligente
+              </h3>
+
+              {(() => {
+                const totalPurchased = analysisData.statistics.totalPurchased;
+                const totalSold = analysisData.statistics.totalSold;
+                const qtyAvailable = analysisData.product.qtyAvailable;
+                const purchaseCost = analysisData.statistics.totalPurchaseCost;
+                const revenue = analysisData.statistics.totalRevenue;
+
+                // Calcola metriche
+                const percentageSold = totalPurchased > 0 ? (totalSold / totalPurchased) * 100 : 0;
+                const missingQty = totalPurchased - totalSold - qtyAvailable;
+                const avgPurchasePrice = totalPurchased > 0 ? purchaseCost / totalPurchased : 0;
+                const avgSalePrice = totalSold > 0 ? revenue / totalSold : 0;
+                const theoreticalMargin = avgSalePrice > 0 ? ((avgSalePrice - avgPurchasePrice) / avgSalePrice) * 100 : 0;
+                const actualMargin = revenue > 0 ? ((revenue - purchaseCost) / revenue) * 100 : 0;
+
+                // Determina problemi
+                const hasLowSalesRate = percentageSold < 50;
+                const hasMissingStock = missingQty > (totalPurchased * 0.1); // >10% mancante
+                const hasNegativeMargin = actualMargin < 0;
+                const hasLowMargin = actualMargin < 15 && actualMargin >= 0;
+
+                return (
+                  <div className="space-y-6">
+                    {/* Metriche Chiave */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* % Venduto */}
+                      <div className={`bg-white/10 rounded-xl p-4 border-2 ${percentageSold < 30 ? 'border-red-500/50' : percentageSold < 70 ? 'border-yellow-500/50' : 'border-green-500/50'}`}>
+                        <p className="text-purple-200 text-sm mb-1">Percentuale Venduta</p>
+                        <p className={`text-3xl font-bold ${percentageSold < 30 ? 'text-red-400' : percentageSold < 70 ? 'text-yellow-400' : 'text-green-400'}`}>
+                          {percentageSold.toFixed(1)}%
+                        </p>
+                        <p className="text-purple-300 text-xs mt-1">
+                          {totalSold.toFixed(2)} / {totalPurchased.toFixed(2)} {analysisData.product.uom}
+                        </p>
+                      </div>
+
+                      {/* Giacenza */}
+                      <div className="bg-white/10 rounded-xl p-4 border-2 border-blue-500/50">
+                        <p className="text-purple-200 text-sm mb-1">In Magazzino</p>
+                        <p className="text-3xl font-bold text-blue-400">
+                          {qtyAvailable.toFixed(2)}
+                        </p>
+                        <p className="text-purple-300 text-xs mt-1">
+                          {((qtyAvailable / totalPurchased) * 100).toFixed(1)}% del totale acquistato
+                        </p>
+                      </div>
+
+                      {/* Mancante/Disperso */}
+                      <div className={`bg-white/10 rounded-xl p-4 border-2 ${missingQty > 0 ? 'border-orange-500/50' : 'border-green-500/50'}`}>
+                        <p className="text-purple-200 text-sm mb-1">Mancante/Disperso</p>
+                        <p className={`text-3xl font-bold ${missingQty > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                          {missingQty.toFixed(2)}
+                        </p>
+                        <p className="text-purple-300 text-xs mt-1">
+                          {missingQty > 0 ? `${((missingQty / totalPurchased) * 100).toFixed(1)}% perso` : 'Nessuna perdita'}
+                        </p>
+                      </div>
+
+                      {/* Margine Teorico vs Reale */}
+                      <div className={`bg-white/10 rounded-xl p-4 border-2 ${actualMargin < 0 ? 'border-red-500/50' : actualMargin < 15 ? 'border-yellow-500/50' : 'border-green-500/50'}`}>
+                        <p className="text-purple-200 text-sm mb-1">Margine Teorico</p>
+                        <p className="text-2xl font-bold text-green-400">
+                          {theoreticalMargin.toFixed(1)}%
+                        </p>
+                        <p className={`text-sm mt-1 font-semibold ${actualMargin < 0 ? 'text-red-400' : actualMargin < 15 ? 'text-yellow-400' : 'text-green-400'}`}>
+                          Reale: {actualMargin.toFixed(1)}%
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Alert e Problemi */}
+                    {(hasNegativeMargin || hasMissingStock || hasLowSalesRate || hasLowMargin) && (
+                      <div className="bg-red-500/10 border-2 border-red-500/50 rounded-xl p-6">
+                        <h4 className="text-red-400 font-bold text-lg mb-4 flex items-center gap-2">
+                          <AlertCircle className="w-6 h-6" />
+                          Problemi Identificati
+                        </h4>
+                        <div className="space-y-3">
+                          {hasNegativeMargin && (
+                            <div className="flex items-start gap-3 bg-red-500/20 p-4 rounded-lg">
+                              <TrendingDown className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="text-red-300 font-semibold">Margine Negativo ({actualMargin.toFixed(1)}%)</p>
+                                <p className="text-red-200 text-sm mt-1">
+                                  Stai perdendo CHF {Math.abs(revenue - purchaseCost).toFixed(2)}.
+                                  Il margine teorico dovrebbe essere {theoreticalMargin.toFixed(1)}% ma è negativo a causa di perdite/scarti.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {hasMissingStock && (
+                            <div className="flex items-start gap-3 bg-orange-500/20 p-4 rounded-lg">
+                              <Package className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="text-orange-300 font-semibold">Prodotto Mancante/Disperso ({missingQty.toFixed(2)} {analysisData.product.uom})</p>
+                                <p className="text-orange-200 text-sm mt-1">
+                                  Hai acquistato {totalPurchased.toFixed(2)} {analysisData.product.uom} ma ne hai venduto solo {totalSold.toFixed(2)} {analysisData.product.uom}
+                                  e hai in magazzino {qtyAvailable.toFixed(2)} {analysisData.product.uom}.
+                                  Mancano {missingQty.toFixed(2)} {analysisData.product.uom} ({((missingQty / totalPurchased) * 100).toFixed(1)}%).
+                                </p>
+                                <p className="text-orange-200 text-sm mt-2">
+                                  <strong>Possibili cause:</strong> Scarti/scadenze, prodotto regalato/omaggiato, errori di inventario, furti/perdite.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {hasLowSalesRate && !hasNegativeMargin && (
+                            <div className="flex items-start gap-3 bg-yellow-500/20 p-4 rounded-lg">
+                              <TrendingDown className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="text-yellow-300 font-semibold">Basso Tasso di Vendita ({percentageSold.toFixed(1)}%)</p>
+                                <p className="text-yellow-200 text-sm mt-1">
+                                  Hai venduto solo il {percentageSold.toFixed(1)}% di quello che hai acquistato.
+                                  Hai ancora {qtyAvailable.toFixed(2)} {analysisData.product.uom} in magazzino.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {hasLowMargin && !hasNegativeMargin && (
+                            <div className="flex items-start gap-3 bg-yellow-500/20 p-4 rounded-lg">
+                              <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="text-yellow-300 font-semibold">Margine Basso ({actualMargin.toFixed(1)}%)</p>
+                                <p className="text-yellow-200 text-sm mt-1">
+                                  Il margine reale ({actualMargin.toFixed(1)}%) è inferiore alla soglia raccomandata del 15%.
+                                  Il margine teorico su vendite dirette è {theoreticalMargin.toFixed(1)}%.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tutto OK */}
+                    {!hasNegativeMargin && !hasMissingStock && !hasLowSalesRate && !hasLowMargin && (
+                      <div className="bg-green-500/10 border-2 border-green-500/50 rounded-xl p-6">
+                        <h4 className="text-green-400 font-bold text-lg mb-2 flex items-center gap-2">
+                          <TrendingUp className="w-6 h-6" />
+                          Prodotto Performante
+                        </h4>
+                        <p className="text-green-200">
+                          Questo prodotto ha buone performance: margine positivo ({actualMargin.toFixed(1)}%),
+                          vendite regolari ({percentageSold.toFixed(1)}% venduto), e perdite minime.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Breakdown Dettagliato */}
+                    <div className="bg-white/5 rounded-xl p-5">
+                      <h4 className="text-white font-semibold mb-4">Breakdown Dettagliato</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div className="flex justify-between py-2 border-b border-white/10">
+                          <span className="text-purple-200">Prezzo Medio Acquisto</span>
+                          <span className="text-white font-semibold">CHF {avgPurchasePrice.toFixed(2)}/{analysisData.product.uom}</span>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-white/10">
+                          <span className="text-purple-200">Prezzo Medio Vendita</span>
+                          <span className="text-white font-semibold">CHF {avgSalePrice.toFixed(2)}/{analysisData.product.uom}</span>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-white/10">
+                          <span className="text-purple-200">Margine per Unità</span>
+                          <span className={`font-semibold ${(avgSalePrice - avgPurchasePrice) > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            CHF {(avgSalePrice - avgPurchasePrice).toFixed(2)}/{analysisData.product.uom}
+                          </span>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-white/10">
+                          <span className="text-purple-200">Profitto Teorico Massimo</span>
+                          <span className="text-green-400 font-semibold">
+                            CHF {((avgSalePrice - avgPurchasePrice) * totalPurchased).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
