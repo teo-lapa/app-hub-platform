@@ -167,6 +167,10 @@ export default function GestioneCadenzeFornitori() {
             body.notes = changeData.notes || null;
           }
 
+          console.log('🔍 DEBUG - Supplier:', supplierId);
+          console.log('🔍 DEBUG - changeData:', changeData);
+          console.log('🔍 DEBUG - body to send:', body);
+
           const response = await fetch(`/api/supplier-cadence/${supplierId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
