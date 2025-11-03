@@ -48,7 +48,7 @@
       "Bash(vercel login)",
       "Bash(vercel inspect:*)",
       "Bash(vercel:*)",
-      "Bash(cd:*)"
+      "Bash(lsof:*)"
     ],
     "deny": [],
     "ask": []
