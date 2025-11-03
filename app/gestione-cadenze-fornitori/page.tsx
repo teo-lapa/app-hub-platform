@@ -167,10 +167,6 @@ export default function GestioneCadenzeFornitori() {
             body.notes = changeData.notes || null;
           }
 
-          console.log('🔍 DEBUG - Supplier:', supplierId);
-          console.log('🔍 DEBUG - changeData:', changeData);
-          console.log('🔍 DEBUG - body to send:', body);
-
           const response = await fetch(`/api/supplier-cadence/${supplierId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -178,11 +174,9 @@ export default function GestioneCadenzeFornitori() {
           });
 
           const data = await response.json();
-          console.log('🔍 DEBUG - Response:', data);
           if (data.success) {
             successCount++;
           } else {
-            console.error('❌ Save failed for supplier:', supplierId, 'Error:', data);
             errorCount++;
           }
         } catch {
