@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { buildGeminiPrompt } from '@/lib/arrivo-merce/gemini-prompt';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes for large PDFs
@@ -76,69 +77,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    const prompt = `Estrai i dati dalla fattura o packing list.
-
-IMPORTANTE: Questo documento può essere una FATTURA o una PACKING LIST.
-
-🔴 PRIORITÀ DATI:
-- Se è una FATTURA: usa quantità dalla colonna "Qty" o "QUANTITA'" (unità di vendita: CT, PZ, etc.)
-- Se è un PACKING LIST SOLO: usa "Net Weight" (KG) solo se non c'è colonna Qty
-- Le quantità della FATTURA hanno SEMPRE priorità sulle Net Weight del packing list
-
-UNITÀ DI MISURA SUPPORTATE:
-- CT = Cartoni (unità di vendita principale)
-- KG = Chilogrammi
-- PZ = Pezzi
-- LT = Litri
-- NR = Numero
-- GR = Grammi
-
-STRUTTURA FATTURA:
-La tabella prodotti ha queste colonne IN ORDINE (da sinistra a destra):
-ARTICOLO | LOTTO | DESCRIZIONE | UM | QUANTITA' | QTA' x CARTONE | PREZZO UNITARIO | % SCONTI | IMPORTO | DT. SCAD. | IVA
-
-ATTENZIONE COLONNA QUANTITA' (FONDAMENTALE):
-- Colonna "Quantità KG" o "QUANTITA'": contiene la quantità venduta (es: 250,000 KG, 18 CT) ← USA QUESTA!
-- Colonna "Um2" o "Quantità PZ": contiene i colli di trasporto (es: 100,000 PZ) ← MAI questa!
-- Colonna "QTA' x CARTONE": contiene TESTO (es: KG 5, PZ 50, CT 30) ← NON questa
-- Colonna "UM": unità di misura (CT, PZ, KG)
-
-SE VEDI DUE COLONNE CON QUANTITÀ:
-- Se c'è "Quantità KG" + "Um2 PZ": USA SEMPRE I KG, ignora i PZ (sono solo colli)
-- I PZ nella colonna Um2 NON sono la quantità venduta, sono il numero di colli/scatole di trasporto
-
-Esempio 1 - FATTURA STANDARD:
-A0334SG | 25233 | ARAN DI RISO SUGO 25 g | CT | 18 | KG 5 | 29,51 | 25,0 10,0 | 358,55 | 12/02/27 | 69
-→ ✅ CORRETTO: quantity: 18, unit: "CT"
-→ ❌ SBAGLIATO: quantity: 5, unit: "KG"
-
-Esempio 2 - FATTURA TAMBURRO (doppia unità):
-VI2500JN1MN | Julienne "Taglio Napoli" | Quantità KG: 250,000 | € al Pezzo: 15,2500 | Um2: 100,000 PZ
-→ ✅ CORRETTO: quantity: 250, unit: "KG"
-   (Usa i KG dalla colonna "Quantità KG", ignora Um2 con i PZ)
-→ ❌ SBAGLIATO: quantity: 100, unit: "PZ"
-   (NON usare Um2! I PZ sono solo colli di trasporto)
-
-Esempio 3 - PACKING LIST:
-A01498 | ASIAGO DOP | Net Weight: 50,37 KG | Lotto: L68S25T1
-→ quantity: 50.37, unit: "KG" (solo se NON c'è fattura)
-
-Output JSON:
-{
-  "supplier_name": "nome fornitore",
-  "document_number": "numero",
-  "document_date": "YYYY-MM-DD",
-  "products": [
-    {
-      "article_code": "A0334SG",
-      "description": "ARAN DI RISO SUGO 25 g",
-      "quantity": 18,
-      "unit": "CT",
-      "lot_number": "25233",
-      "expiry_date": "2027-02-12"
-    }
-  ]
-}`;
+    // Usa il prompt condiviso
+    const prompt = buildGeminiPrompt(1);
 
     const result = await model.generateContent([
       {

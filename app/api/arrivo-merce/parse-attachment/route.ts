@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { buildGeminiPrompt } from '@/lib/arrivo-merce/gemini-prompt';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes for large PDFs
@@ -97,73 +98,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    const prompt = `Estrai i dati dalla fattura o packing list.
-
-IMPORTANTE: Questo documento può essere una FATTURA o una PACKING LIST.
-
-🔴 PRIORITÀ DATI:
-- Se è una FATTURA: usa quantità dalla colonna "Qty" o "Quantity" (unità di vendita: CT, PZ, etc.)
-- Se è un PACKING LIST SOLO: usa "Net Weight" (KG) solo se non c'è colonna Qty
-- Le quantità della FATTURA hanno SEMPRE priorità sulle Net Weight del packing list
-
-UNITÀ DI MISURA SUPPORTATE:
-- CT = Cartoni (unità di vendita principale)
-- KG = Chilogrammi
-- PZ = Pezzi
-- LT = Litri
-- NR = Numero
-- GR = Grammi
-
-ESTRAZIONE QUANTITÀ (FONDAMENTALE):
-1. PRIORITÀ ASSOLUTA: Colonna "Quantità KG" o "Quantity" o "Qty" dalla FATTURA
-2. Se vedi colonne "Quantità KG" + "Um2" (PZ): USA SEMPRE I KG, MAI I PZ
-3. La colonna "Um2" o "Quantità PZ" contiene i colli/cartoni di trasporto, NON la quantità venduta
-4. ALTERNATIVA: Se NON c'è Qty e hai solo Packing List, usa "Net Weight" (es: 50.37 KG)
-5. NON mescolare: se vedi Qty in CT, NON sostituirla con Net Weight in KG
-
-ESEMPIO CRITICO - Fattura con doppia unità di misura:
-FATTURA: VI2500JN1MN | Julienne Taglio Napoli | Quantità KG: 250,000 | Um2: 100,000 PZ
-→ ✅ CORRETTO: quantity: 250, unit: "KG"
-→ ❌ SBAGLIATO: quantity: 100, unit: "PZ" (questa è solo il numero di colli!)
-
-ESEMPI:
-
-Esempio 1 - FATTURA (con Qty):
-A0334SG | ARAN DI RISO | Qty: 18 CT | Lotto: 25233 | Scad: 12/02/27
-→ quantity: 18, unit: "CT", lot: "25233", expiry: "2027-02-12"
-
-Esempio 2 - PACKING LIST (solo Net Weight):
-A01498 | ASIAGO DOP | Net Weight: 50,37 KG | Lotto: L68S25T1 | Scad: 24/02/26
-→ quantity: 50.37, unit: "KG", lot: "L68S25T1", expiry: "2026-02-24"
-
-Esempio 3 - FATTURA CON DOPPIA UNITÀ (CASO TAMBURRO):
-FATTURA: VI2500JN1MN | Julienne "Taglio Napoli" | Quantità KG: 250,000 | € al Pezzo: 15,2500 | Um2: 100,000 PZ
-→ ✅ CORRETTO: quantity: 250, unit: "KG"
-   (Usa sempre i KG dalla colonna "Quantità KG", ignora la colonna Um2 con i pezzi)
-→ ❌ SBAGLIATO: quantity: 100, unit: "PZ"
-   (NON usare Um2! I PZ sono solo colli di trasporto)
-
-Esempio 4 - FATTURA con Qty e Net Weight (CASO CRITICO):
-A01498 | ASIAGO DOP | Qty: 4 CT | Net Weight: 50,37 KG
-→ ✅ CORRETTO: quantity: 4, unit: "CT"
-→ ❌ SBAGLIATO: quantity: 50.37, unit: "KG"
-
-Output JSON:
-{
-  "supplier_name": "nome fornitore",
-  "document_number": "numero",
-  "document_date": "YYYY-MM-DD",
-  "products": [
-    {
-      "article_code": "A0334SG",
-      "description": "ARAN DI RISO SUGO 25 g",
-      "quantity": 18,
-      "unit": "CT",
-      "lot_number": "25233",
-      "expiry_date": "2027-02-12"
-    }
-  ]
-}`;
+    // Usa il prompt condiviso
+    const prompt = buildGeminiPrompt(1);
 
     const result = await model.generateContent([
       {
