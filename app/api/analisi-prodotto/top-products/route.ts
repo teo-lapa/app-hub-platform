@@ -58,16 +58,13 @@ interface ProductStats {
 }
 
 interface TopProduct {
-  id: number;
-  name: string;
-  uom: string;
-  totalQty: number;
+  productName: string;
   totalRevenue: number;
-  orders: number;
-  customers: number;
+  totalQuantity: number;
   marginPercent: number;
-  avgPrice: number;
-  avgCost: number;
+  orderCount: number;
+  customerCount: number;
+  uom: string;
 }
 
 interface TopProductsResponse {
@@ -260,20 +257,13 @@ export async function GET(request: NextRequest) {
         : 0;
 
       topProducts.push({
-        id: productId,
-        name: product.name,
-        uom: product.uom_id[1],
-        totalQty: Math.round(stats.quantitySold * 100) / 100,
+        productName: product.name,
         totalRevenue: Math.round(stats.totalRevenue * 100) / 100,
-        orders: stats.orderIds.size,
-        customers: stats.customerIds.size,
+        totalQuantity: Math.round(stats.quantitySold * 100) / 100,
         marginPercent: Math.round(marginPercent * 100) / 100,
-        avgPrice: stats.quantitySold > 0
-          ? Math.round((stats.totalRevenue / stats.quantitySold) * 100) / 100
-          : 0,
-        avgCost: stats.quantitySold > 0
-          ? Math.round((finalCost / stats.quantitySold) * 100) / 100
-          : 0
+        orderCount: stats.orderIds.size,
+        customerCount: stats.customerIds.size,
+        uom: product.uom_id[1]
       });
     });
 
@@ -285,7 +275,7 @@ export async function GET(request: NextRequest) {
     const summary = {
       totalProducts: top20.length,
       totalRevenue: Math.round(top20.reduce((sum, p) => sum + p.totalRevenue, 0) * 100) / 100,
-      totalQty: Math.round(top20.reduce((sum, p) => sum + p.totalQty, 0) * 100) / 100,
+      totalQty: Math.round(top20.reduce((sum, p) => sum + p.totalQuantity, 0) * 100) / 100,
       avgMargin: top20.length > 0
         ? Math.round((top20.reduce((sum, p) => sum + p.marginPercent, 0) / top20.length) * 100) / 100
         : 0
@@ -315,8 +305,8 @@ export async function GET(request: NextRequest) {
     if (top20.length > 0) {
       console.log(`\nTop 3 Products:`);
       top20.slice(0, 3).forEach((p, i) => {
-        console.log(`${i + 1}. ${p.name}`);
-        console.log(`   Revenue: ${p.totalRevenue.toFixed(2)} | Qty: ${p.totalQty} ${p.uom} | Margin: ${p.marginPercent.toFixed(2)}%`);
+        console.log(`${i + 1}. ${p.productName}`);
+        console.log(`   Revenue: ${p.totalRevenue.toFixed(2)} | Qty: ${p.totalQuantity} ${p.uom} | Margin: ${p.marginPercent.toFixed(2)}%`);
       });
     }
     console.log('\n');
