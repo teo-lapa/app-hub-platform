@@ -226,13 +226,15 @@ export default function SmartOrderingV2() {
     setSelectedProducts(new Map());
   }
 
-  // Sort suppliers: favorites first, then by urgency
-  const sortedSuppliers = [...suppliers].sort((a, b) => {
-    const aFav = favoriteSuppliers.has(a.id) ? 1 : 0;
-    const bFav = favoriteSuppliers.has(b.id) ? 1 : 0;
-    if (aFav !== bFav) return bFav - aFav;
-    return b.criticalCount - a.criticalCount;
-  });
+  // Sort suppliers: favorites first, then by urgency (filter out inactive suppliers)
+  const sortedSuppliers = [...suppliers]
+    .filter(s => s.isActive !== false) // Filtra fornitori inattivi
+    .sort((a, b) => {
+      const aFav = favoriteSuppliers.has(a.id) ? 1 : 0;
+      const bFav = favoriteSuppliers.has(b.id) ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      return b.criticalCount - a.criticalCount;
+    });
 
   async function openProductAnalytics(product: Product, e: React.MouseEvent) {
     e.stopPropagation();
