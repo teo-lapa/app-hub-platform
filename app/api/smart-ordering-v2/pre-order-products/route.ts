@@ -38,11 +38,31 @@ export async function GET(request: NextRequest) {
 
     const preOrderTagId = tags[0].id;
 
-    // 2. Carica tutti i prodotti con questo tag
+    // 2. Prima carica i template con il tag
+    const templates = await rpc.searchRead(
+      'product.template',
+      [
+        ['product_tag_ids', 'in', [preOrderTagId]],
+        ['active', '=', true]
+      ],
+      ['id']
+    );
+
+    if (templates.length === 0) {
+      return NextResponse.json({
+        success: true,
+        products: [],
+        message: 'Nessun prodotto con tag PRE-ORDINE'
+      });
+    }
+
+    const templateIds = templates.map((t: any) => t.id);
+
+    // 3. Carica i prodotti dai template
     const products = await rpc.searchRead(
       'product.product',
       [
-        ['tag_ids', 'in', [preOrderTagId]],
+        ['product_tmpl_id', 'in', templateIds],
         ['active', '=', true]
       ],
       [
@@ -52,7 +72,7 @@ export async function GET(request: NextRequest) {
         'qty_available',
         'uom_id',
         'seller_ids',
-        'tag_ids'
+        'product_tmpl_id'
       ]
     );
 
@@ -99,7 +119,7 @@ export async function GET(request: NextRequest) {
         uom: product.uom_id ? product.uom_id[1] : 'PZ',
         supplier_name: supplier ? supplier.name : 'Nessun fornitore',
         supplier_id: supplier ? supplier.id : null,
-        hasPreOrderTag: product.tag_ids && product.tag_ids.includes(preOrderTagId),
+        hasPreOrderTag: true, // Se siamo qui, il prodotto ha il tag per definizione
         assigned_customers: assignmentsByProduct.get(product.id) || []
       };
     });
