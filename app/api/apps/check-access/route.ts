@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     // LIVELLO 1: Carica impostazioni visibilità dal sistema di gestione
     const allVisibilities = await getAllAppVisibilities();
-    const appVisibility = allVisibilities.find(v => v.appId === app.id);
+    const appVisibility = allVisibilities.find(v => v.appId === app!.id);
 
     console.log(`  📋 Visibility settings:`, appVisibility);
 
