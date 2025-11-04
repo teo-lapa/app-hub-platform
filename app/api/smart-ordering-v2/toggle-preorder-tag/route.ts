@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createOdooRPC } from '@/lib/odoo-rpc';
+import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 
 /**
  * POST /api/smart-ordering-v2/toggle-preorder-tag
@@ -17,7 +17,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rpc = await createOdooRPC();
+    // Get session
+    const sessionId = request.cookies.get('odoo_session_id')?.value;
+    if (!sessionId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Session non trovata - Rifare login'
+      }, { status: 401 });
+    }
+
+    const rpc = createOdooRPCClient(sessionId);
 
     // 1. Carica il tag "PRE-ORDINE"
     const tags = await rpc.searchRead(
