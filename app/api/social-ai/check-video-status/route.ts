@@ -38,20 +38,19 @@ export async function POST(request: NextRequest) {
     const ai = new GoogleGenAI({ apiKey });
 
     // Recupera lo stato dell'operazione
-    // IMPORTANTE: getVideosOperation vuole un oggetto operation, non una stringa!
-    // Ma possiamo ricostruirlo dal name
+    // Secondo la doc, devo passare l'operazione stessa, non solo il name
+    // Ma dato che ho solo il name, provo a passarlo direttamente come stringa
     let operation;
     try {
-      console.log('🔍 [VIDEO-POLLING] Tentativo con operation object');
+      console.log('🔍 [VIDEO-POLLING] Polling operation:', operationId);
 
-      // Ricostruisci l'oggetto operation dal name
-      // TypeScript richiede più proprietà, ma a runtime basta il name
-      const operationObject = { name: operationId } as any;
-
-      operation = await ai.operations.getVideosOperation({
-        operation: operationObject
+      // Provo a passare direttamente il name come parametro operation
+      operation = await (ai.operations as any).getVideosOperation({
+        operation: operationId
       });
-      console.log('✅ [VIDEO-POLLING] getVideosOperation riuscito!');
+
+      console.log('✅ [VIDEO-POLLING] Operation retrieved successfully!');
+      console.log('🔍 [VIDEO-POLLING] Operation status:', operation.done ? 'done' : 'in progress');
     } catch (opError: any) {
       console.error('❌ [VIDEO-POLLING] Errore getVideosOperation:', opError.message);
       console.error('❌ [VIDEO-POLLING] Error details:', JSON.stringify(opError, null, 2));
