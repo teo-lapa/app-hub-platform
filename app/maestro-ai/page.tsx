@@ -389,7 +389,7 @@ export default function MaestroAIDashboard() {
         </motion.div>
 
         {/* KPI Cards - REAL DATA - Mobile: 2 cols, Desktop: 4 cols */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           <KPICard
             title="Revenue Totale"
             value={formatCurrency(kpis.totalRevenue)}
@@ -497,7 +497,7 @@ export default function MaestroAIDashboard() {
 
             {/* Scrollable Performers List */}
             {analytics?.topPerformers && analytics.topPerformers.length > 0 ? (
-              <div className="space-y-2 overflow-y-auto max-h-[400px] pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+              <div className="space-y-2 overflow-y-auto max-h-[250px] sm:max-h-[350px] md:max-h-[400px] pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
                 {analytics.topPerformers.map((performer, idx) => (
                   <button
                     key={performer.id}
@@ -596,7 +596,7 @@ export default function MaestroAIDashboard() {
               )}
             </div>
             {analytics?.topProducts && analytics.topProducts.length > 0 ? (
-              <div className="space-y-2 overflow-y-auto max-h-[400px] pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+              <div className="space-y-2 overflow-y-auto max-h-[250px] sm:max-h-[350px] md:max-h-[400px] pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
                 {analytics.topProducts.map((product, idx) => (
                   <div
                     key={product.product_id}
@@ -650,7 +650,7 @@ export default function MaestroAIDashboard() {
               <div className="space-y-3">
                 {churnAlerts.map((alert) => (
                   <Link key={alert.id} href={`/maestro-ai/customers/${alert.id}`}>
-                    <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer">
+                    <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer min-h-[44px] flex flex-col justify-center">
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h4 className="font-medium text-white">{alert.name}</h4>

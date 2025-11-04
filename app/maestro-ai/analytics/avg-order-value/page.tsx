@@ -238,9 +238,9 @@ export default function AvgOrderValueDetailPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4"
         >
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
               <Calculator className="h-4 w-4 text-blue-500" />
               <p className="text-xs text-slate-400">Mediana</p>
@@ -249,7 +249,7 @@ export default function AvgOrderValueDetailPage() {
             <p className="text-xs text-slate-500 mt-1">valore centrale</p>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
               <BarChart3 className="h-4 w-4 text-purple-500" />
               <p className="text-xs text-slate-400">Deviazione Std</p>
@@ -258,7 +258,7 @@ export default function AvgOrderValueDetailPage() {
             <p className="text-xs text-slate-500 mt-1">variabilita</p>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="h-4 w-4 text-green-500" />
               <p className="text-xs text-slate-400">Picco Massimo</p>
@@ -267,7 +267,7 @@ export default function AvgOrderValueDetailPage() {
             <p className="text-xs text-slate-500 mt-1">{analytics.peakOrder.orderName}</p>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
               <ShoppingCart className="h-4 w-4 text-orange-500" />
               <p className="text-xs text-slate-400">Totale Ordini</p>
@@ -397,7 +397,7 @@ export default function AvgOrderValueDetailPage() {
               <Award className="h-5 w-5 text-yellow-500" />
               <h3 className="text-lg font-semibold text-white">Valore Medio per Venditore</h3>
             </div>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+            <div className="space-y-3 max-h-[350px] sm:max-h-[450px] md:max-h-[500px] overflow-y-auto pr-2">
               {analytics.bySalesperson.map((seller, idx) => (
                 <div
                   key={seller.salespersonId}
@@ -444,7 +444,7 @@ export default function AvgOrderValueDetailPage() {
               <Package className="h-5 w-5 text-purple-500" />
               <h3 className="text-lg font-semibold text-white">Prodotti che Alzano la Media</h3>
             </div>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+            <div className="space-y-3 max-h-[350px] sm:max-h-[450px] md:max-h-[500px] overflow-y-auto pr-2">
               {analytics.productImpact.map((product, idx) => (
                 <div
                   key={product.productId}
@@ -493,7 +493,7 @@ export default function AvgOrderValueDetailPage() {
             Top 10 Ordini Piu Grandi del Periodo
           </h3>
           <div className="overflow-x-auto">
-            <div className="max-h-[500px] overflow-y-auto">
+            <div className="max-h-[400px] sm:max-h-[500px] md:max-h-[600px] overflow-y-auto">
               <table className="w-full">
                 <thead className="bg-slate-900 sticky top-0">
                   <tr>

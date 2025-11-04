@@ -207,9 +207,9 @@ export default function RevenueDetailPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4"
         >
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
               <ShoppingCart className="h-4 w-4 text-blue-500" />
               <p className="text-xs text-slate-400">Ordini Totali</p>
@@ -217,7 +217,7 @@ export default function RevenueDetailPage() {
             <p className="text-2xl font-bold text-white">{formatNumber(totalOrders)}</p>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
               <Users className="h-4 w-4 text-purple-500" />
               <p className="text-xs text-slate-400">Clienti Attivi</p>
@@ -225,7 +225,7 @@ export default function RevenueDetailPage() {
             <p className="text-2xl font-bold text-white">{formatNumber(totalCustomers)}</p>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className="h-4 w-4 text-orange-500" />
               <p className="text-xs text-slate-400">Valore Medio</p>
@@ -233,7 +233,7 @@ export default function RevenueDetailPage() {
             <p className="text-xl sm:text-2xl font-bold text-white">{formatCurrency(avgOrderValue)}</p>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="h-4 w-4 text-green-500" />
               <p className="text-xs text-slate-400">Media Giornaliera</p>
@@ -309,7 +309,7 @@ export default function RevenueDetailPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
         >
           <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6">
             <div className="flex items-center gap-2 mb-2">
@@ -353,7 +353,7 @@ export default function RevenueDetailPage() {
                 <Award className="h-5 w-5 text-yellow-500" />
                 <h3 className="text-lg font-semibold text-white">Breakdown per Venditore</h3>
               </div>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+              <div className="space-y-2 max-h-[350px] sm:max-h-[450px] md:max-h-[500px] overflow-y-auto pr-2">
                 {salesBreakdown.map((sale, idx) => (
                   <div
                     key={sale.name}

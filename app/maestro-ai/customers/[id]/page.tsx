@@ -356,7 +356,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                 {customer.phone && (
                   <a
                     href={`tel:${customer.phone}`}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2 min-h-[44px] justify-center"
                   >
                     <Phone className="h-4 w-4" />
                     Chiama
@@ -364,7 +364,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                 )}
                 <button
                   onClick={() => setShowInteractionModal(true)}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2 min-h-[44px] justify-center"
                 >
                   <Calendar className="h-4 w-4" />
                   Registra visita
@@ -374,7 +374,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           </div>
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-700">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-700">
             <div>
               <p className="text-xs text-slate-400 mb-1">Churn Risk</p>
               <p className={`text-2xl font-bold ${getChurnRiskColor(customer.churn_risk_score)}`}>
@@ -730,7 +730,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                 </div>
 
                 {/* Statistiche rapide */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6">
                   <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
                     <p className="text-xs text-green-400 mb-1">Successful</p>
                     <p className="text-2xl font-bold text-white">{filteredStats.successful}</p>

@@ -231,12 +231,12 @@ export default function CustomersAnalyticsPage() {
         </motion.div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6"
+            className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 md:p-6"
           >
             <div className="flex items-center gap-3 mb-2">
               <UserPlus className="h-5 w-5 text-green-500" />
@@ -250,7 +250,7 @@ export default function CustomersAnalyticsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6"
+            className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 md:p-6"
           >
             <div className="flex items-center gap-3 mb-2">
               <UserCheck className="h-5 w-5 text-blue-500" />
@@ -264,7 +264,7 @@ export default function CustomersAnalyticsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6"
+            className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 md:p-6"
           >
             <div className="flex items-center gap-3 mb-2">
               <AlertTriangle className="h-5 w-5 text-orange-500" />
@@ -325,7 +325,7 @@ export default function CustomersAnalyticsPage() {
                 <Award className="h-5 w-5 text-yellow-500" />
                 Breakdown per Venditore
               </h3>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+              <div className="space-y-2 max-h-[350px] sm:max-h-[450px] md:max-h-[500px] overflow-y-auto pr-2">
                 {analytics.bySalesperson.map((salesperson, idx) => (
                   <div
                     key={salesperson.salespersonId}
@@ -362,7 +362,7 @@ export default function CustomersAnalyticsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6"
+            className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 md:p-6"
           >
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <MapPin className="h-5 w-5 text-green-500" />
@@ -449,7 +449,7 @@ export default function CustomersAnalyticsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <div className="max-h-[600px] overflow-y-auto">
+            <div className="max-h-[400px] sm:max-h-[500px] md:max-h-[600px] overflow-y-auto">
               <table className="w-full">
                 <thead className="bg-slate-900 sticky top-0">
                   <tr>
