@@ -33,17 +33,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Trova l'app
-    let app = appId
+    const appOrUndefined = appId
       ? allApps.find(a => a.id === appId)
       : allApps.find(a => a.url === appUrl);
 
-    if (!app) {
+    if (!appOrUndefined) {
       return NextResponse.json({
         success: false,
         hasAccess: false,
         reason: 'App non trovata'
       }, { status: 404 });
     }
+
+    // TypeScript-safe assignment after null check
+    const app = appOrUndefined;
 
     // Ottieni il token dai cookie
     const token = request.cookies.get('token')?.value;
@@ -69,14 +72,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { userId, role, odooUserId, email } = decoded;
-
-    // TypeScript safety: ensure app is defined
-    if (!app) {
-      return NextResponse.json({
-        success: false,
-        error: 'App not found'
-      }, { status: 404 });
-    }
 
     console.log(`🔐 CHECK ACCESS - App: ${app.name} (${app.id}), User: ${userId} (${role}), Odoo: ${odooUserId}, Email: ${email}`);
 
