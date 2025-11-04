@@ -20,17 +20,37 @@ export async function GET(request: NextRequest) {
     const rpc = createOdooRPCClient(sessionId);
 
     // Carica tutti i partner che sono clienti (customer = true)
+    // Include sia aziende che contatti privati
     const customers = await rpc.searchRead(
       'res.partner',
       [
         ['customer_rank', '>', 0], // È un cliente
-        ['active', '=', true],
-        ['parent_id', '=', false] // Solo aziende principali, non contatti
+        ['active', '=', true]
+        // Rimosso parent_id filter per includere anche i contatti privati
       ],
-      ['id', 'name', 'email', 'phone', 'city'],
+      ['id', 'name', 'email', 'phone', 'city', 'parent_id'],
       1000,
       'name ASC'
     );
+
+    // Se ci sono contatti con parent_id, carichiamo anche i nomi delle aziende
+    const parentIds = customers
+      .filter((c: any) => c.parent_id && c.parent_id[0])
+      .map((c: any) => c.parent_id[0]);
+
+    let parentNames: Record<number, string> = {};
+    if (parentIds.length > 0) {
+      const parents = await rpc.searchRead(
+        'res.partner',
+        [['id', 'in', parentIds]],
+        ['id', 'name'],
+        parentIds.length
+      );
+      parentNames = parents.reduce((acc: any, p: any) => {
+        acc[p.id] = p.name;
+        return acc;
+      }, {});
+    }
 
     return NextResponse.json({
       success: true,
@@ -39,7 +59,8 @@ export async function GET(request: NextRequest) {
         name: c.name,
         email: c.email || null,
         phone: c.phone || null,
-        city: c.city || null
+        city: c.city || null,
+        parentName: c.parent_id && c.parent_id[0] ? parentNames[c.parent_id[0]] : null
       })),
       totalCount: customers.length
     });

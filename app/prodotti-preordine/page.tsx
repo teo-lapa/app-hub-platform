@@ -36,6 +36,7 @@ interface Customer {
   email?: string
   phone?: string
   city?: string
+  parentName?: string | null
 }
 
 export default function ProdottiPreordinePage() {
@@ -506,9 +507,17 @@ export default function ProdottiPreordinePage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-slate-800 rounded-xl max-w-3xl w-full max-h-[80vh] overflow-hidden border border-purple-500/30">
             <div className="p-6 border-b border-white/10 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-white">Assegna Clienti</h2>
-                <p className="text-gray-400 text-sm mt-1">{selectedProduct.name}</p>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Assegna Clienti</h2>
+                  <p className="text-gray-400 text-sm mt-1">{selectedProduct.name}</p>
+                </div>
+                <button
+                  onClick={saveCustomerAssignments}
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm rounded-lg transition-all font-semibold"
+                >
+                  💾 Salva
+                </button>
               </div>
               <button
                 onClick={() => {
@@ -538,15 +547,15 @@ export default function ProdottiPreordinePage() {
 
               {/* Selected customers list */}
               {customerAssignments.length > 0 && (
-                <div className="space-y-2 border-t border-white/10 pt-4">
-                  <h3 className="text-sm font-semibold text-purple-300">Clienti Selezionati:</h3>
+                <div className="space-y-1.5 border-t border-white/10 pt-3">
+                  <h3 className="text-xs font-semibold text-purple-300 uppercase tracking-wide">Clienti Selezionati:</h3>
                   {customerAssignments.map((assignment, idx) => {
                     const customer = customers.find(c => c.id === assignment.customerId)
                     return (
-                      <div key={idx} className="flex gap-3 items-center bg-slate-700/50 rounded-lg p-3">
-                        <div className="flex-1 text-white">
+                      <div key={idx} className="flex gap-2 items-center bg-slate-700/50 rounded-lg p-2">
+                        <div className="flex-1 text-white text-sm">
                           {customer?.name || 'Cliente sconosciuto'}
-                          {customer?.city && <span className="text-gray-400 text-sm ml-2">({customer.city})</span>}
+                          {customer?.city && <span className="text-gray-400 text-xs ml-1.5">({customer.city})</span>}
                         </div>
                         <input
                           type="number"
@@ -554,11 +563,11 @@ export default function ProdottiPreordinePage() {
                           value={assignment.quantity || ''}
                           onChange={(e) => updateCustomerAssignment(idx, 'quantity', Number(e.target.value))}
                           placeholder="Qty"
-                          className="w-20 px-3 py-2 bg-slate-600 border border-white/20 rounded-lg text-white text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="w-16 px-2 py-1.5 bg-slate-600 border border-white/20 rounded text-white text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                         <button
                           onClick={() => removeCustomerAssignment(idx)}
-                          className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition-all"
+                          className="px-2 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded transition-all text-sm"
                         >
                           ✕
                         </button>
@@ -569,11 +578,11 @@ export default function ProdottiPreordinePage() {
               )}
 
               {/* Available customers list */}
-              <div className="border-t border-white/10 pt-4">
-                <h3 className="text-sm font-semibold text-purple-300 mb-2">Aggiungi Cliente:</h3>
+              <div className="border-t border-white/10 pt-3">
+                <h3 className="text-xs font-semibold text-purple-300 uppercase tracking-wide mb-2">Aggiungi Cliente:</h3>
                 <div className="max-h-64 overflow-y-auto space-y-1">
                   {filteredCustomers.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400">
+                    <div className="text-center py-6 text-gray-400 text-sm">
                       {customerSearchTerm ? 'Nessun cliente trovato' : 'Inizia a digitare per cercare...'}
                     </div>
                   ) : (
@@ -589,14 +598,17 @@ export default function ProdottiPreordinePage() {
                             }
                           }}
                           disabled={alreadyAdded}
-                          className={`w-full text-left px-4 py-3 rounded-lg transition-all ${
+                          className={`w-full text-left px-3 py-2 rounded-lg transition-all ${
                             alreadyAdded
                               ? 'bg-slate-700/30 text-gray-500 cursor-not-allowed'
                               : 'bg-slate-700 hover:bg-slate-600 text-white'
                           }`}
                         >
-                          <div className="font-medium">{customer.name}</div>
-                          <div className="text-sm text-gray-400">
+                          <div className="font-medium text-sm">
+                            {customer.name}
+                            {customer.parentName && <span className="text-xs text-purple-300 ml-2">({customer.parentName})</span>}
+                          </div>
+                          <div className="text-xs text-gray-400">
                             {[customer.city, customer.email, customer.phone].filter(Boolean).join(' • ')}
                           </div>
                         </button>

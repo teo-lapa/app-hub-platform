@@ -597,6 +597,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-11-02'),
     updatedAt: new Date('2025-11-02'),
   },
+  {
+    id: 's36',
+    name: 'Social Marketing AI Studio',
+    description: '🚀 Genera contenuti marketing completi per social media con 3 AGENTI AI IN PARALLELO! Carica foto prodotto → Ricevi Caption + Hashtags + Immagine/Video ottimizzati per Instagram, TikTok, Facebook, LinkedIn. Powered by Nano Banana 🍌 & Veo 3.1',
+    icon: '🚀',
+    badge: 'PRO',
+    category: 'AI & Tech',
+    url: '/social-ai-studio',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-11-04'),
+    updatedAt: new Date('2025-11-04'),
+  },
 ];
 
 // Combina tutte le app
