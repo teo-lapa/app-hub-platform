@@ -11,6 +11,7 @@ export async function GET() {
     const result = await sql`
       SELECT
         id,
+        odoo_supplier_id,
         name,
         is_active,
         cadence_value,
@@ -18,7 +19,7 @@ export async function GET() {
         next_order_date,
         days_until_next_order,
         last_cadence_order_date
-      FROM supplier_cadences
+      FROM supplier_avatars
       WHERE days_until_next_order IS NOT NULL
       ORDER BY days_until_next_order ASC
       LIMIT 20
@@ -32,7 +33,7 @@ export async function GET() {
         COUNT(CASE WHEN days_until_next_order = 0 THEN 1 END) as today,
         COUNT(CASE WHEN days_until_next_order = 1 THEN 1 END) as tomorrow,
         COUNT(CASE WHEN days_until_next_order <= 7 AND days_until_next_order > 1 THEN 1 END) as this_week
-      FROM supplier_cadences
+      FROM supplier_avatars
       GROUP BY is_active
     `;
 
