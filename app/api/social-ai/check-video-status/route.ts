@@ -40,11 +40,15 @@ export async function POST(request: NextRequest) {
     // Recupera lo stato dell'operazione
     let operation;
     try {
+      // Prova prima con operationId direttamente
+      console.log('🔍 [VIDEO-POLLING] Tentativo 1: con operationId stringa');
       operation = await ai.operations.getVideosOperation({
         operation: operationId
       });
+      console.log('✅ [VIDEO-POLLING] getVideosOperation riuscito!');
     } catch (opError: any) {
       console.error('❌ [VIDEO-POLLING] Errore getVideosOperation:', opError.message);
+      console.error('❌ [VIDEO-POLLING] Error details:', JSON.stringify(opError, null, 2));
 
       // Se l'operazione non esiste o c'è un errore, restituisci un messaggio chiaro
       return NextResponse.json(
