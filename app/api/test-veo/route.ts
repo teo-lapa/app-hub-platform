@@ -9,12 +9,14 @@ export const maxDuration = 60;
  */
 export async function GET(request: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
+    // Usa VEO_API_KEY dedicata se disponibile
+    const apiKey = process.env.VEO_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json({
         error: 'API key non configurata',
         env: {
+          VEO_API_KEY: !!process.env.VEO_API_KEY,
           GEMINI_API_KEY: !!process.env.GEMINI_API_KEY,
           GOOGLE_GEMINI_API_KEY: !!process.env.GOOGLE_GEMINI_API_KEY
         }
@@ -22,6 +24,12 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('🧪 [TEST-VEO] Inizializzazione client...');
+    if (process.env.VEO_API_KEY) {
+      console.log('✅ [TEST-VEO] Usando VEO_API_KEY dedicata');
+    } else {
+      console.log('⚠️ [TEST-VEO] Usando GEMINI_API_KEY fallback');
+    }
+
     const ai = new GoogleGenAI({ apiKey });
 
     console.log('🧪 [TEST-VEO] Test 1: Verifica client creato');

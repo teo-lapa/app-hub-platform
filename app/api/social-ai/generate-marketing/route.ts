@@ -404,6 +404,23 @@ async function generateMarketingVideo(
 
   console.log('🎬 [AGENT-VIDEO] Generazione video con Veo 3.1...');
 
+  // Usa API key separata per Veo se disponibile
+  const veoApiKey = process.env.VEO_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
+
+  if (!veoApiKey) {
+    console.error('❌ [AGENT-VIDEO] Nessuna API key disponibile per Veo');
+    return null;
+  }
+
+  if (process.env.VEO_API_KEY) {
+    console.log('✅ [AGENT-VIDEO] Usando VEO_API_KEY dedicata');
+  } else {
+    console.log('⚠️ [AGENT-VIDEO] Usando GEMINI_API_KEY (VEO_API_KEY non trovata)');
+  }
+
+  // Crea client dedicato per Veo con la sua API key
+  const veoAI = new GoogleGenAI({ apiKey: veoApiKey });
+
   const prompt = `Crea un video marketing dinamico e professionale per ${params.platform}.
 
 Prodotto: ${params.productName}
@@ -436,7 +453,7 @@ AUDIO: Musica di sottofondo elegante e professionale`;
       durationSeconds: 6
     });
 
-    const operation = await ai.models.generateVideos({
+    const operation = await veoAI.models.generateVideos({
       model: 'veo-3.1-generate-preview', // Latest Veo model
       prompt: prompt,
       config: {

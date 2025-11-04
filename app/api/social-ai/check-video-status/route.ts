@@ -24,13 +24,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
+    // Usa VEO_API_KEY dedicata se disponibile, altrimenti fallback a GEMINI_API_KEY
+    const apiKey = process.env.VEO_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) {
       console.error('❌ [VIDEO-POLLING] API key non configurata');
       return NextResponse.json(
         { error: 'API key non configurata' },
         { status: 500 }
       );
+    }
+
+    if (process.env.VEO_API_KEY) {
+      console.log('✅ [VIDEO-POLLING] Usando VEO_API_KEY dedicata');
+    } else {
+      console.log('⚠️ [VIDEO-POLLING] Usando GEMINI_API_KEY');
     }
 
     console.log('🔍 [VIDEO-POLLING] Controllo operazione:', operationId);
