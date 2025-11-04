@@ -212,12 +212,14 @@ export function useCreateInteraction() {
 // Advanced analytics hook - FIXED: Uses period-specific data from Odoo instead of lifetime totals
 export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 'quarter', salespersonId?: number) {
   // Fetch period-specific KPIs and trend data from Odoo (NOT lifetime totals)
+  // NOW WITH TREND CALCULATIONS (compares current vs previous period)
   const periodKPIsQuery = useQuery({
     queryKey: ['period-analytics-kpis', timeRange, salespersonId],
     queryFn: async () => {
       const params = new URLSearchParams({
         period: timeRange,
-        include_trend: 'true'
+        include_trend: 'true',
+        calculate_trends: 'true' // Enable trend calculations (current vs previous period)
       });
       if (salespersonId) {
         params.append('salesperson_id', salespersonId.toString());
@@ -230,7 +232,7 @@ export function useAnalytics(timeRange: 'week' | 'month' | 'quarter' | 'year' = 
       if (!data.success) throw new Error(data.error?.message || 'Period analytics failed');
 
       return {
-        metrics: data.metrics, // { revenue, orders, customers, avgOrderValue }
+        metrics: data.metrics, // { revenue, orders, customers, avgOrderValue, revenueTrend, ordersTrend, customersTrend, avgOrderValueTrend }
         trend: data.trend || [] // Array of { date, revenue, orders }
       };
     },

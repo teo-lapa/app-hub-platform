@@ -217,6 +217,133 @@ export function calculateDateRange(period: 'week' | 'month' | 'quarter' | 'year'
 }
 
 /**
+ * Calculate previous period date range (for trend comparison)
+ */
+export function calculatePreviousPeriodDateRange(period: 'week' | 'month' | 'quarter' | 'year'): { startDate: string; endDate: string } {
+  const now = new Date();
+
+  const endDate = new Date();
+  const startDate = new Date();
+
+  switch (period) {
+    case 'week':
+      // Previous week: from -14 days to -7 days
+      endDate.setDate(now.getDate() - 7);
+      startDate.setDate(now.getDate() - 14);
+      break;
+    case 'month':
+      // Previous month: from -2 months to -1 month
+      endDate.setMonth(now.getMonth() - 1);
+      startDate.setMonth(now.getMonth() - 2);
+      break;
+    case 'quarter':
+      // Previous quarter: from -6 months to -3 months
+      endDate.setMonth(now.getMonth() - 3);
+      startDate.setMonth(now.getMonth() - 6);
+      break;
+    case 'year':
+      // Previous year: from -2 years to -1 year
+      endDate.setFullYear(now.getFullYear() - 1);
+      startDate.setFullYear(now.getFullYear() - 2);
+      break;
+  }
+
+  return {
+    startDate: startDate.toISOString(),
+    endDate: endDate.toISOString()
+  };
+}
+
+/**
+ * Calculate trend percentage change between current and previous period
+ * Returns the percentage change: ((current - previous) / previous) * 100
+ *
+ * @param currentValue - Current period value
+ * @param previousValue - Previous period value
+ * @returns Percentage change (e.g., 15.5 for +15.5%, -10.2 for -10.2%)
+ */
+export function calculateTrendPercentage(currentValue: number, previousValue: number): number {
+  // Edge case: if previous value is 0 or null
+  if (!previousValue || previousValue === 0) {
+    // If current is also 0, no change
+    if (!currentValue || currentValue === 0) {
+      return 0;
+    }
+    // If we have current value but no previous, consider it 100% increase
+    return 100;
+  }
+
+  const percentageChange = ((currentValue - previousValue) / previousValue) * 100;
+  return parseFloat(percentageChange.toFixed(1));
+}
+
+export interface PeriodMetricsWithTrends extends PeriodMetrics {
+  revenueTrend: number;
+  ordersTrend: number;
+  customersTrend: number;
+  avgOrderValueTrend: number;
+}
+
+/**
+ * Get period metrics with trends by comparing current vs previous period
+ */
+export async function getPeriodMetricsWithTrends(
+  period: 'week' | 'month' | 'quarter' | 'year',
+  salespersonId?: number
+): Promise<PeriodMetricsWithTrends> {
+  try {
+    console.log('📊 [PERIOD-METRICS-TRENDS] Fetching current and previous period...');
+
+    // Calculate date ranges
+    const currentRange = calculateDateRange(period);
+    const previousRange = calculatePreviousPeriodDateRange(period);
+
+    console.log('📅 [PERIOD-METRICS-TRENDS] Current period:', {
+      start: new Date(currentRange.startDate).toLocaleDateString('it-IT'),
+      end: new Date(currentRange.endDate).toLocaleDateString('it-IT')
+    });
+    console.log('📅 [PERIOD-METRICS-TRENDS] Previous period:', {
+      start: new Date(previousRange.startDate).toLocaleDateString('it-IT'),
+      end: new Date(previousRange.endDate).toLocaleDateString('it-IT')
+    });
+
+    // Fetch both periods in parallel
+    const [currentMetrics, previousMetrics] = await Promise.all([
+      getPeriodMetrics(salespersonId, currentRange.startDate, currentRange.endDate),
+      getPeriodMetrics(salespersonId, previousRange.startDate, previousRange.endDate)
+    ]);
+
+    console.log('✅ [PERIOD-METRICS-TRENDS] Current metrics:', currentMetrics);
+    console.log('✅ [PERIOD-METRICS-TRENDS] Previous metrics:', previousMetrics);
+
+    // Calculate trends
+    const revenueTrend = calculateTrendPercentage(currentMetrics.revenue, previousMetrics.revenue);
+    const ordersTrend = calculateTrendPercentage(currentMetrics.orders, previousMetrics.orders);
+    const customersTrend = calculateTrendPercentage(currentMetrics.customers, previousMetrics.customers);
+    const avgOrderValueTrend = calculateTrendPercentage(currentMetrics.avgOrderValue, previousMetrics.avgOrderValue);
+
+    console.log('📈 [PERIOD-METRICS-TRENDS] Calculated trends:', {
+      revenueTrend: `${revenueTrend > 0 ? '+' : ''}${revenueTrend}%`,
+      ordersTrend: `${ordersTrend > 0 ? '+' : ''}${ordersTrend}%`,
+      customersTrend: `${customersTrend > 0 ? '+' : ''}${customersTrend}%`,
+      avgOrderValueTrend: `${avgOrderValueTrend > 0 ? '+' : ''}${avgOrderValueTrend}%`
+    });
+
+    return {
+      ...currentMetrics,
+      revenueTrend,
+      ordersTrend,
+      customersTrend,
+      avgOrderValueTrend
+    };
+
+  } catch (error) {
+    console.error('❌ [PERIOD-METRICS-TRENDS] Error:', error);
+    throw error;
+  }
+}
+
+/**
  * Get revenue trend data grouped by day/month for charts
  */
 export async function getRevenueTrend(
