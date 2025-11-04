@@ -11,6 +11,7 @@ type DevelopmentStatus = 'in_sviluppo' | 'pronta';
 interface GroupSettings {
   enabled: boolean;
   excluded: number[];
+  excludedEmails?: string[]; // NEW: email degli utenti esclusi
 }
 
 interface AppVisibility {
