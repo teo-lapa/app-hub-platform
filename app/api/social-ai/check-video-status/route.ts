@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
       console.log('🔍 [VIDEO-POLLING] Tentativo con operation object');
 
       // Ricostruisci l'oggetto operation dal name
-      const operationObject = { name: operationId };
+      // TypeScript richiede più proprietà, ma a runtime basta il name
+      const operationObject = { name: operationId } as any;
 
       operation = await ai.operations.getVideosOperation({
         operation: operationObject
