@@ -38,12 +38,17 @@ export async function POST(request: NextRequest) {
     const ai = new GoogleGenAI({ apiKey });
 
     // Recupera lo stato dell'operazione
+    // IMPORTANTE: getVideosOperation vuole un oggetto operation, non una stringa!
+    // Ma possiamo ricostruirlo dal name
     let operation;
     try {
-      // Prova prima con operationId direttamente
-      console.log('🔍 [VIDEO-POLLING] Tentativo 1: con operationId stringa');
+      console.log('🔍 [VIDEO-POLLING] Tentativo con operation object');
+
+      // Ricostruisci l'oggetto operation dal name
+      const operationObject = { name: operationId };
+
       operation = await ai.operations.getVideosOperation({
-        operation: operationId
+        operation: operationObject
       });
       console.log('✅ [VIDEO-POLLING] getVideosOperation riuscito!');
     } catch (opError: any) {
