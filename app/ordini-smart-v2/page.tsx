@@ -21,7 +21,7 @@ import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { useOrderTimeline } from '@/lib/hooks/useOrderTimeline';
 import { useCreateCadence, useUpdateCadence } from '@/lib/hooks/useSupplierCadence';
 import { CadenceType } from '@/lib/types/supplier-cadence';
-import PreOrderModal from './components/PreOrderModal';
+// PreOrderModal removed - now using dedicated page
 
 interface Supplier {
   id: number;
@@ -76,7 +76,7 @@ export default function SmartOrderingV2() {
   const [loadingTodayAnalysis, setLoadingTodayAnalysis] = useState(false);
   const [showCustomers, setShowCustomers] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showPreOrderModal, setShowPreOrderModal] = useState(false);
+  // Removed showPreOrderModal state - now using dedicated page
 
   // Cadence Management
   const [cadenceModal, setCadenceModal] = useState<{ supplier: Supplier | null; isOpen: boolean }>({
@@ -421,7 +421,7 @@ export default function SmartOrderingV2() {
             <span>Prodotti Critici</span>
           </button>
           <button
-            onClick={() => setShowPreOrderModal(true)}
+            onClick={() => router.push('/prodotti-preordine')}
             className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-lg transition-all flex items-center gap-2 font-semibold"
             title="Gestisci prodotti in pre-ordine"
           >
@@ -1505,10 +1505,7 @@ export default function SmartOrderingV2() {
       </AnimatePresence>
 
       {/* Pre-Order Modal */}
-      <PreOrderModal
-        isOpen={showPreOrderModal}
-        onClose={() => setShowPreOrderModal(false)}
-      />
+      {/* PreOrderModal removed - now using dedicated page at /prodotti-preordine */}
     </div>
   );
 }
