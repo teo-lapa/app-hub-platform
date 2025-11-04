@@ -45,19 +45,26 @@ export async function POST(request: NextRequest) {
     const ai = new GoogleGenAI({ apiKey });
 
     // Recupera lo stato dell'operazione
-    // Secondo la doc, devo passare l'operazione stessa, non solo il name
-    // Ma dato che ho solo il name, provo a passarlo direttamente come stringa
+    // L'SDK richiede che getVideosOperation riceva un oggetto operation COMPLETO
+    // Ma noi abbiamo solo il name. Ricostruiamo l'oggetto minimo necessario.
     let operation;
     try {
       console.log('🔍 [VIDEO-POLLING] Polling operation:', operationId);
 
-      // Provo a passare direttamente il name come parametro operation
+      // Secondo la doc ufficiale, l'operation passata deve avere almeno { name: '...' }
+      // Creo un oggetto operation con il name e uso as any per evitare errori TS
+      const operationStub = {
+        name: operationId,
+        done: false,
+        _fromAPIResponse: () => {} // Metodo dummy richiesto internamente dall'SDK
+      };
+
       operation = await (ai.operations as any).getVideosOperation({
-        operation: operationId
+        operation: operationStub
       });
 
       console.log('✅ [VIDEO-POLLING] Operation retrieved successfully!');
-      console.log('🔍 [VIDEO-POLLING] Operation status:', operation.done ? 'done' : 'in progress');
+      console.log('🔍 [VIDEO-POLLING] Operation done:', operation.done);
     } catch (opError: any) {
       console.error('❌ [VIDEO-POLLING] Errore getVideosOperation:', opError.message);
       console.error('❌ [VIDEO-POLLING] Error details:', JSON.stringify(opError, null, 2));
