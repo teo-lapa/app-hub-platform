@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, Package, Barcode, Tag, Eye, ArrowLeft, Home, X, Sparkles, Wand2 } from 'lucide-react';
 import Link from 'next/link';
 import { AIImageModal } from '@/components/catalogo-lapa/AIImageModal';
+import { useAppAccess } from '@/hooks/useAppAccess';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -30,6 +31,9 @@ interface OdooResponse {
 }
 
 export default function ProductPhotoManagerPage() {
+  // 🔐 CONTROLLO ACCESSO CENTRALIZZATO
+  const { hasAccess, loading: accessLoading } = useAppAccess('s34', true);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]); // Cache completa
   const [loading, setLoading] = useState(true);
@@ -46,6 +50,18 @@ export default function ProductPhotoManagerPage() {
   const [productForAI, setProductForAI] = useState<Product | null>(null); // Prodotto per AI
 
   const productsPerPage = 50;
+
+  // 🔐 Se accesso negato, mostra schermata di caricamento mentre viene reindirizzato
+  if (accessLoading || !hasAccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+          <p className="text-slate-300">Verifica accesso in corso...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Handler quando viene generata una nuova immagine
   const handleImageGenerated = async (newImageBase64: string) => {

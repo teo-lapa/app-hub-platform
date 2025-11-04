@@ -179,8 +179,14 @@ export default function GestioneVisibilitaAppPage() {
     setModalOpen(true);
   };
 
-  const handleSaveExclusions = (excludedIds: number[]) => {
+  const handleSaveExclusions = (excludedIds: number[], excludedEmails: string[]) => {
     if (!currentAppId) return;
+
+    console.log(`💾 handleSaveExclusions for app ${currentAppId}:`, {
+      type: modalType,
+      excludedIds,
+      excludedEmails
+    });
 
     setApps(apps.map(app =>
       app.id === currentAppId
@@ -190,7 +196,8 @@ export default function GestioneVisibilitaAppPage() {
               ...app.groups,
               [modalType]: {
                 ...app.groups[modalType],
-                excluded: excludedIds
+                excluded: excludedIds,
+                excludedEmails // NEW: Save emails too
               }
             }
           }

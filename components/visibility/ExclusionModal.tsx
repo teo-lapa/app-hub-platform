@@ -18,8 +18,9 @@ interface ExclusionModalProps {
   onClose: () => void;
   title: string;
   users: User[];
-  excludedIds: number[];
-  onSave: (excludedIds: number[]) => void;
+  excludedIds: number[]; // Still receive IDs for backward compatibility
+  excludedEmails?: string[]; // NEW: Also support emails
+  onSave: (excludedIds: number[], excludedEmails: string[]) => void; // Return both
   loading?: boolean;
   type: 'dipendenti' | 'clienti';
 }
@@ -30,12 +31,19 @@ export default function ExclusionModal({
   title,
   users,
   excludedIds,
+  excludedEmails = [],
   onSave,
   loading = false,
   type
 }: ExclusionModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedIds, setSelectedIds] = useState<number[]>(excludedIds);
+
+  // Initialize from emails if available, otherwise from IDs
+  const initialSelectedIds = excludedEmails.length > 0
+    ? users.filter(u => excludedEmails.includes(u.email)).map(u => u.id)
+    : excludedIds;
+
+  const [selectedIds, setSelectedIds] = useState<number[]>(initialSelectedIds);
 
   // Reset when opening
   const handleOpen = () => {
@@ -65,7 +73,17 @@ export default function ExclusionModal({
   };
 
   const handleSave = () => {
-    onSave(selectedIds);
+    // Get emails for selected IDs
+    const selectedEmails = users
+      .filter(u => selectedIds.includes(u.id))
+      .map(u => u.email);
+
+    console.log('💾 Saving exclusions:', {
+      selectedIds,
+      selectedEmails
+    });
+
+    onSave(selectedIds, selectedEmails);
     onClose();
   };
 
