@@ -100,7 +100,9 @@ export async function POST(request: NextRequest) {
     console.log('🔍 [VIDEO-POLLING] Operation response keys:', Object.keys(operation.response || {}));
     console.log('🔍 [VIDEO-POLLING] Operation response:', JSON.stringify(operation.response, null, 2));
 
-    const videoFile = operation.response?.generatedVideos?.[0]?.video;
+    // Secondo la documentazione REST ufficiale di Google:
+    // video_uri=$(echo "${status_response}" | jq -r '.response.generateVideoResponse.generatedSamples[0].video.uri')
+    const videoFile = operation.response?.generateVideoResponse?.generatedSamples?.[0]?.video;
 
     if (!videoFile) {
       console.error('❌ [VIDEO-POLLING] Video file not found in response');
@@ -113,22 +115,24 @@ export async function POST(request: NextRequest) {
 
     console.log('📹 [VIDEO-POLLING] Video file object:', JSON.stringify(videoFile, null, 2));
 
-    // Scarica il video usando Google AI Files API
-    // https://generativelanguage.googleapis.com/v1beta/files/{fileId}
+    // Scarica il video usando Google AI Files API o direttamente dall'URI
+    // Dalla documentazione REST: il video può avere un campo 'uri' diretto
     try {
-      // Estrai il fileId dall'URI (formato: "files/{fileId}")
-      const fileId = videoFile.name || videoFile.uri;
+      // Estrai l'URI del video (dalla documentazione: video.uri)
+      const videoUri = videoFile.uri || videoFile.name;
 
-      if (!fileId) {
-        throw new Error('File ID non trovato nel video object');
+      if (!videoUri) {
+        throw new Error('URI del video non trovato nel video object');
       }
 
-      console.log('📥 [VIDEO-POLLING] Scaricamento video da fileId:', fileId);
+      console.log('📥 [VIDEO-POLLING] Scaricamento video da URI:', videoUri);
 
-      // Download del file video
-      const downloadUrl = `https://generativelanguage.googleapis.com/v1beta/${fileId}`;
+      // Se l'URI è un percorso relativo (es. "files/{fileId}"), costruisci l'URL completo
+      const downloadUrl = videoUri.startsWith('http')
+        ? videoUri
+        : `https://generativelanguage.googleapis.com/v1beta/${videoUri}`;
 
-      console.log('📥 [VIDEO-POLLING] Download URL:', downloadUrl);
+      console.log('📥 [VIDEO-POLLING] Download URL completo:', downloadUrl);
 
       const downloadResponse = await fetch(downloadUrl, {
         method: 'GET',
@@ -167,7 +171,7 @@ export async function POST(request: NextRequest) {
         status: 'completed',
         done: true,
         video: {
-          fileUri: videoFile.name || videoFile.uri || '',
+          fileUri: videoFile.uri || videoFile.name || '',
           mimeType: 'video/mp4',
           message: 'Video generato ma download fallito. Usa l\'URI per accedere al file.',
           error: downloadError.message
