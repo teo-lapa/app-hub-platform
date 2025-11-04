@@ -14,7 +14,7 @@ import { User } from '@/lib/types';
 export const MAESTRO_SUPER_USERS = [
   'paul@lapa.com',
   'laura@lapa.com',
-  'gregorio@lapa.com'
+  'gregorio@lapa.ch'  // FIX: Corrected email domain from .com to .ch
 ];
 
 /**
