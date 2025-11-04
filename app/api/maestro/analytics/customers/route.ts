@@ -238,9 +238,10 @@ export async function GET(request: NextRequest) {
     const churnRate = previousActive > 0 ? (churned / previousActive) * 100 : 0;
 
     // QUERY 5: Customers list with details (reuse params from QUERY 1)
+    // IMPORTANT: Return odoo_partner_id as 'id' for compatibility with customer detail page
     const customersList = await sql.query(
       `SELECT
-         id::text,
+         odoo_partner_id::text as id,
          name,
          city,
          total_orders as "orderCount",
