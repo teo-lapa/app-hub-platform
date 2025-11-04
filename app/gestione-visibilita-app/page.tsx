@@ -535,6 +535,7 @@ export default function GestioneVisibilitaAppPage() {
           title={`${currentApp.name} - ${modalType === 'dipendenti' ? 'Dipendenti' : 'Clienti'}`}
           users={modalType === 'dipendenti' ? employees : customers}
           excludedIds={currentApp.groups[modalType].excluded}
+          excludedEmails={currentApp.groups[modalType].excludedEmails || []}
           onSave={handleSaveExclusions}
           loading={loadingUsers}
           type={modalType}
