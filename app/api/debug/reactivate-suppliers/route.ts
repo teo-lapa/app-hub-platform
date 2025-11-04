@@ -1,31 +1,25 @@
 /**
- * Debug API: Check cadences status
+ * Debug API: Reactivate all suppliers with cadences
+ *
+ * This endpoint reactivates all suppliers that have valid cadences configured.
+ * Use with caution - this will reactivate ALL suppliers in the database.
  */
 
 import { NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
-export async function GET() {
+export async function POST() {
   try {
-    // Check all suppliers with cadences
+    // Reactivate all suppliers with valid cadences
     const result = await sql`
-      SELECT
-        id,
-        odoo_supplier_id,
-        name,
-        is_active,
-        cadence_value,
-        cadence_type,
-        next_order_date,
-        days_until_next_order,
-        last_cadence_order_date
-      FROM supplier_avatars
-      WHERE days_until_next_order IS NOT NULL
-      ORDER BY days_until_next_order ASC
-      LIMIT 20
+      UPDATE supplier_avatars
+      SET is_active = true
+      WHERE cadence_value IS NOT NULL
+        AND cadence_value > 0
+      RETURNING id, odoo_supplier_id, name, cadence_value, next_order_date, days_until_next_order
     `;
 
-    // Count by status
+    // Get updated stats
     const statsResult = await sql`
       SELECT
         is_active,
@@ -39,13 +33,13 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      suppliers: result.rows,
-      stats: statsResult.rows,
-      count: result.rows.length
+      message: `Reactivated ${result.rows.length} suppliers`,
+      reactivated_suppliers: result.rows,
+      stats: statsResult.rows
     });
 
   } catch (error: any) {
-    console.error('❌ Error checking cadences:', error);
+    console.error('❌ Error reactivating suppliers:', error);
     return NextResponse.json({
       success: false,
       error: error.message

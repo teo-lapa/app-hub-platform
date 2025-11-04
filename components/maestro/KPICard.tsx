@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { LucideIcon, TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -12,6 +13,8 @@ interface KPICardProps {
   trendLabel?: string;
   subtitle?: string;
   color?: 'blue' | 'green' | 'orange' | 'red' | 'purple';
+  type?: 'revenue' | 'orders' | 'customers' | 'avg-order-value';
+  currencyLabel?: string;
 }
 
 const colorClasses = {
@@ -29,21 +32,31 @@ export function KPICard({
   trend,
   trendLabel = 'vs last month',
   subtitle,
-  color = 'blue'
+  color = 'blue',
+  type,
+  currencyLabel
 }: KPICardProps) {
   const isPositiveTrend = trend !== undefined && trend >= 0;
 
-  return (
+  const content = (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 lg:p-6 hover:border-slate-600 transition-colors"
+      className={cn(
+        "bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 lg:p-6 transition-all",
+        type && "cursor-pointer hover:border-slate-600 hover:bg-slate-750 hover:shadow-lg hover:shadow-slate-900/50 hover:scale-[1.02] active:scale-100"
+      )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="text-xs sm:text-sm font-medium text-slate-400 truncate">{title}</p>
-          <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mt-1 sm:mt-2 truncate" suppressHydrationWarning>{value}</h3>
+          <div className="mt-1 sm:mt-2">
+            <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white break-words" suppressHydrationWarning>{value}</h3>
+            {currencyLabel && (
+              <p className="text-xs text-slate-500 mt-0.5">{currencyLabel}</p>
+            )}
+          </div>
           {subtitle && (
             <p className="text-xs text-slate-500 mt-1 hidden sm:block">{subtitle}</p>
           )}
@@ -74,4 +87,14 @@ export function KPICard({
       )}
     </motion.div>
   );
+
+  if (type) {
+    return (
+      <Link href={`/maestro-ai/analytics/${type}`}>
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 }

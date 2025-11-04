@@ -159,8 +159,11 @@ export async function POST(request: NextRequest) {
       // ========== STEP 3: CREA UTENTE DAI DATI ODOO ==========
       console.log('✅ Step 3: Creating user object from Odoo data...');
 
+      // Salva l'Odoo UID per usarlo nel JWT
+      const odooUserId = odooAuthData.result.uid;
+
       const user = {
-        id: `odoo-${odooAuthData.result.uid}`,
+        id: `odoo-${odooUserId}`,
         email: email,
         name: odooAuthData.result.name || odooAuthData.result.username || 'Utente Odoo',
         role: userRole,  // ✅ FIX: Ruolo determinato dinamicamente da Odoo!
@@ -178,8 +181,9 @@ export async function POST(request: NextRequest) {
         note: `Utente Odoo - Ruolo: ${userRole}`
       };
 
-      const token = generateToken(user);
-      console.log(`✅ User object created: ${user.name} - UID: ${odooAuthData.result.uid} - Role: ${userRole}`);
+      // ✅ Passa odooUserId al generateToken per includerlo nel JWT
+      const token = generateToken(user, odooUserId);
+      console.log(`✅ User object created: ${user.name} - UID: ${odooUserId} - Role: ${userRole} - Email: ${email}`);
 
       // ========== STEP 4: CREA RESPONSE CON COOKIES ==========
       const response = NextResponse.json<ApiResponse>({

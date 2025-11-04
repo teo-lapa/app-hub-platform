@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 import { predictionEngine } from '@/lib/smart-ordering/prediction-engine';
+import { sql } from '@vercel/postgres';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -137,6 +138,32 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ ${supplierMap.size} prodotti con fornitore principale identificato`);
 
+    // 4.5. Carica cadenze fornitori dal database
+    console.log('📅 Caricamento cadenze fornitori...');
+    const cadencesResult = await sql`
+      SELECT odoo_supplier_id, cadence_value, average_lead_time_days, is_active
+      FROM supplier_avatars
+      WHERE is_active = true AND cadence_value IS NOT NULL
+    `;
+
+    const supplierCadences = new Map();
+    cadencesResult.rows.forEach((row: any) => {
+      supplierCadences.set(row.odoo_supplier_id, {
+        cadenceDays: row.cadence_value,
+        leadTimeDays: row.average_lead_time_days || 3
+      });
+    });
+    console.log(`✅ ${supplierCadences.size} cadenze caricate dal database`);
+
+    // Aggiorna supplierMap con le cadenze reali
+    supplierMap.forEach((supplier: any, templateId: any) => {
+      const cadence = supplierCadences.get(supplier.id);
+      if (cadence) {
+        supplier.leadTime = cadence.leadTimeDays;
+        supplier.cadenceDays = cadence.cadenceDays;
+      }
+    });
+
     // 5. Carica vendite ultimi 3 mesi
     console.log('📊 Caricamento vendite...');
     const sales = await rpc.searchRead(
@@ -197,6 +224,7 @@ export async function GET(request: NextRequest) {
           id: supplier.id,
           name: supplier.name,
           leadTime: supplier.leadTime,
+          cadenceDays: supplier.cadenceDays, // NUOVA: cadenza fornitore dal DB
           reliability: 70 // Default
         },
         productPrice: product.list_price

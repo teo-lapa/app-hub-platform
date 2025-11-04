@@ -201,16 +201,32 @@ export async function GET(request: NextRequest) {
         clientiEnabled = true;
       }
 
+      // 🔍 DEBUG: Verifica fix excludedEmails nel GET endpoint
+      console.log(`🔍 GET /api/apps/visibility - Building groups for app ${app.id}`);
+      console.log(`  settings.excludedUsers:`, settings.excludedUsers);
+      console.log(`  settings.excludedCustomers:`, settings.excludedCustomers);
+
       const groups = {
         dipendenti: {
           enabled: dipendentiEnabled,
-          excluded: (settings.excludedUsers || []).map((id: string) => parseInt(id, 10))
+          excluded: (settings.excludedUsers || [])
+            .map((id: string) => parseInt(id, 10))
+            .filter((id: number) => !isNaN(id)), // Remove NaN from converted emails
+          excludedEmails: (settings.excludedUsers || [])
+            .filter((val: string) => val.includes('@')) // Keep only emails
         },
         clienti: {
           enabled: clientiEnabled,
-          excluded: (settings.excludedCustomers || []).map((id: string) => parseInt(id, 10))
+          excluded: (settings.excludedCustomers || [])
+            .map((id: string) => parseInt(id, 10))
+            .filter((id: number) => !isNaN(id)), // Remove NaN from converted emails
+          excludedEmails: (settings.excludedCustomers || [])
+            .filter((val: string) => val.includes('@')) // Keep only emails
         }
       };
+
+      console.log(`  groups.dipendenti.excludedEmails:`, groups.dipendenti.excludedEmails);
+      console.log(`  groups.clienti.excludedEmails:`, groups.clienti.excludedEmails);
 
       return {
         id: app.id,
@@ -264,12 +280,22 @@ export async function POST(request: NextRequest) {
       const excludedCustomers: string[] = [];
 
       if (app.groups) {
-        // Converti gli ID numerici in stringhe
-        if (app.groups.dipendenti?.excluded) {
+        // PRIORITÀ 1: Usa gli EMAIL se disponibili (più affidabili)
+        if (app.groups.dipendenti?.excludedEmails && app.groups.dipendenti.excludedEmails.length > 0) {
+          excludedUsers.push(...app.groups.dipendenti.excludedEmails);
+          console.log(`  ✅ Using excludedEmails for dipendenti:`, app.groups.dipendenti.excludedEmails);
+        } else if (app.groups.dipendenti?.excluded) {
+          // FALLBACK: Usa gli ID se gli email non ci sono
           excludedUsers.push(...app.groups.dipendenti.excluded.map((id: number) => String(id)));
+          console.log(`  ⚠️ Using excludedIds for dipendenti (no emails):`, app.groups.dipendenti.excluded);
         }
-        if (app.groups.clienti?.excluded) {
+
+        if (app.groups.clienti?.excludedEmails && app.groups.clienti.excludedEmails.length > 0) {
+          excludedCustomers.push(...app.groups.clienti.excludedEmails);
+          console.log(`  ✅ Using excludedEmails for clienti:`, app.groups.clienti.excludedEmails);
+        } else if (app.groups.clienti?.excluded) {
           excludedCustomers.push(...app.groups.clienti.excluded.map((id: number) => String(id)));
+          console.log(`  ⚠️ Using excludedIds for clienti (no emails):`, app.groups.clienti.excluded);
         }
       }
 

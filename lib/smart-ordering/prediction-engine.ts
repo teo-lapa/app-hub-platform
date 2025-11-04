@@ -32,6 +32,7 @@ export interface ProductData {
     id: number;
     name: string;
     leadTime: number;
+    cadenceDays?: number;            // NUOVA: Cadenza fornitore dal DB (ogni quanti giorni si ordina)
     reliability: number;
     avgProductValue?: number;        // Valore medio prodotti fornitore
     totalProductsCount?: number;     // Totale prodotti fornitore
@@ -119,14 +120,19 @@ export class SmartPredictionEngine {
   ): number {
     const { avgDailySales, leadTimeDays, variability, supplierInfo, productPrice } = product;
 
-    // 1. Determina giorni di copertura basati su urgency
+    // 1. Determina giorni di copertura basati su cadenza fornitore o urgency
     let coverageDays: number;
 
-    if (urgencyLevel) {
-      // Usa configurazione basata su urgency
+    if (supplierInfo?.cadenceDays) {
+      // PRIORITÀ 1: Usa cadenza REALE dal database
+      // Quantità deve bastare per: cadenza × 2 (100% margine di sicurezza)
+      coverageDays = supplierInfo.cadenceDays * 2;
+      console.log(`📅 Usa cadenza DB: ${supplierInfo.cadenceDays} giorni → coverage ${coverageDays} giorni`);
+    } else if (urgencyLevel) {
+      // PRIORITÀ 2: Usa configurazione basata su urgency
       coverageDays = getCoverageDays(urgencyLevel);
     } else if (supplierInfo) {
-      // Calcola frequenza ordini stimata per raggiungere valore minimo
+      // PRIORITÀ 3: Calcola frequenza ordini stimata per raggiungere valore minimo
       const avgValue = supplierInfo.avgProductValue || productPrice || 30;
       const totalProducts = supplierInfo.totalProductsCount || 50;
 
