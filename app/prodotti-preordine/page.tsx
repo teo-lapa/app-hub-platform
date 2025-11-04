@@ -45,11 +45,19 @@ export default function ProdottiPreordinePage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [togglingProductId, setTogglingProductId] = useState<number | null>(null)
+  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
 
   // Customer assignment modal
   const [showCustomerModal, setShowCustomerModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [customerAssignments, setCustomerAssignments] = useState<Array<{ customerId: number, quantity: number }>>([])
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('')
+
+  // Supplier change modal
+  const [showSupplierModal, setShowSupplierModal] = useState(false)
+  const [selectedProductForSupplier, setSelectedProductForSupplier] = useState<Product | null>(null)
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState('')
 
   // Analytics modal
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false)
@@ -131,6 +139,8 @@ export default function ProdottiPreordinePage() {
 
   const togglePreOrder = async (productId: number, currentState: boolean) => {
     try {
+      setTogglingProductId(productId)
+
       const res = await fetch('/api/smart-ordering-v2/toggle-preorder-tag', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -138,27 +148,48 @@ export default function ProdottiPreordinePage() {
       })
 
       if (res.ok) {
+        const data = await res.json()
         // Update local state
         setAllProducts(prev => prev.map(p =>
           p.id === productId ? { ...p, isPreOrder: !currentState } : p
         ))
+        console.log(`✅ ${data.message}`)
+      } else {
+        const error = await res.json()
+        console.error('❌ Errore toggle pre-order:', error)
+        alert(`Errore: ${error.error || 'Impossibile modificare il tag PRE-ORDINE'}`)
       }
     } catch (error) {
-      console.error('Error toggling pre-order:', error)
+      console.error('❌ Error toggling pre-order:', error)
+      alert('Errore di connessione. Riprova.')
+    } finally {
+      setTogglingProductId(null)
     }
   }
 
-  const changeSupplier = async (productId: number, newSupplierId: number) => {
+  const openSupplierChange = (product: Product) => {
+    setSelectedProductForSupplier(product)
+    setShowSupplierModal(true)
+  }
+
+  const changeSupplier = async (newSupplierId: number) => {
+    if (!selectedProductForSupplier) return
+
     // TODO: Implement supplier change in Odoo
-    console.log(`Change product ${productId} to supplier ${newSupplierId}`)
+    console.log(`Change product ${selectedProductForSupplier.id} to supplier ${newSupplierId}`)
 
     // Update local state
     const newSupplier = suppliers.find(s => s.id === newSupplierId)
     if (newSupplier) {
       setAllProducts(prev => prev.map(p =>
-        p.id === productId ? { ...p, supplier: newSupplier } : p
+        p.id === selectedProductForSupplier.id ? { ...p, supplier: newSupplier } : p
       ))
     }
+
+    // Close modal
+    setShowSupplierModal(false)
+    setSelectedProductForSupplier(null)
+    setSupplierSearchTerm('')
   }
 
   const openCustomerAssignment = (product: Product) => {
@@ -268,6 +299,20 @@ export default function ProdottiPreordinePage() {
     p.supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const filteredCustomers = customers.filter(c => {
+    const search = customerSearchTerm.toLowerCase()
+    return (
+      c.name.toLowerCase().includes(search) ||
+      c.email?.toLowerCase().includes(search) ||
+      c.phone?.toLowerCase().includes(search) ||
+      c.city?.toLowerCase().includes(search)
+    )
+  })
+
+  const filteredSuppliers = suppliers.filter(s =>
+    s.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+  )
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
@@ -333,24 +378,39 @@ export default function ProdottiPreordinePage() {
                     <tr key={product.id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
                       {/* PRE-ORDINE Toggle */}
                       <td className="px-4 py-4 text-center">
-                        <input
-                          type="checkbox"
-                          checked={product.isPreOrder}
-                          onChange={() => togglePreOrder(product.id, product.isPreOrder)}
-                          className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                        />
+                        <div className="flex items-center justify-center">
+                          {togglingProductId === product.id ? (
+                            <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <input
+                              type="checkbox"
+                              checked={product.isPreOrder}
+                              onChange={() => togglePreOrder(product.id, product.isPreOrder)}
+                              className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                            />
+                          )}
+                        </div>
                       </td>
 
                       {/* Photo */}
                       <td className="px-4 py-4">
-                        <img
-                          src={`https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com/web/image/product.product/${product.id}/image_128`}
-                          alt={product.name}
-                          className="w-16 h-16 rounded-lg object-cover bg-white/10"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white"%3E%3Cpath stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/%3E%3C/svg%3E'
-                          }}
-                        />
+                        {imageErrors.has(product.id) ? (
+                          <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white" className="w-8 h-8">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                            </svg>
+                          </div>
+                        ) : (
+                          <img
+                            src={`https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com/web/image/product.product/${product.id}/image_128`}
+                            alt={product.name}
+                            className="w-16 h-16 rounded-lg object-cover bg-white/10"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              setImageErrors(prev => new Set(prev).add(product.id));
+                            }}
+                          />
+                        )}
                       </td>
 
                       {/* Product Name */}
@@ -358,19 +418,14 @@ export default function ProdottiPreordinePage() {
                         <div className="text-white font-medium">{product.name}</div>
                       </td>
 
-                      {/* Supplier Dropdown */}
+                      {/* Supplier */}
                       <td className="px-4 py-4">
-                        <select
-                          value={product.supplier.id}
-                          onChange={(e) => changeSupplier(product.id, Number(e.target.value))}
-                          className="w-full px-3 py-2 bg-slate-700 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        <button
+                          onClick={() => openSupplierChange(product)}
+                          className="w-full px-3 py-2 bg-slate-700 hover:bg-slate-600 border border-white/20 rounded-lg text-white text-sm text-left transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
                         >
-                          {suppliers.map(supplier => (
-                            <option key={supplier.id} value={supplier.id}>
-                              {supplier.name}
-                            </option>
-                          ))}
-                        </select>
+                          {product.supplier.name}
+                        </button>
                       </td>
 
                       {/* Stock */}
@@ -460,6 +515,7 @@ export default function ProdottiPreordinePage() {
                   setShowCustomerModal(false)
                   setSelectedProduct(null)
                   setCustomerAssignments([])
+                  setCustomerSearchTerm('')
                 }}
                 className="text-white/60 hover:text-white transition-colors"
               >
@@ -467,47 +523,90 @@ export default function ProdottiPreordinePage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
-              {customerAssignments.map((assignment, idx) => (
-                <div key={idx} className="flex gap-3 items-start">
-                  <select
-                    value={assignment.customerId}
-                    onChange={(e) => updateCustomerAssignment(idx, 'customerId', Number(e.target.value))}
-                    className="flex-1 px-4 py-2 bg-slate-700 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value={0}>Seleziona cliente...</option>
-                    {customers.map(customer => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name} {customer.city ? `(${customer.city})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    min="1"
-                    value={assignment.quantity || ''}
-                    onChange={(e) => updateCustomerAssignment(idx, 'quantity', Number(e.target.value))}
-                    placeholder="Quantità"
-                    className="w-32 px-4 py-2 bg-slate-700 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <button
-                    onClick={() => removeCustomerAssignment(idx)}
-                    className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition-all"
-                  >
-                    ✕
-                  </button>
+            <div className="p-6 space-y-4">
+              {/* Search bar */}
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cerca cliente per nome, email, telefono o città..."
+                  value={customerSearchTerm}
+                  onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-slate-700 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              {/* Selected customers list */}
+              {customerAssignments.length > 0 && (
+                <div className="space-y-2 border-t border-white/10 pt-4">
+                  <h3 className="text-sm font-semibold text-purple-300">Clienti Selezionati:</h3>
+                  {customerAssignments.map((assignment, idx) => {
+                    const customer = customers.find(c => c.id === assignment.customerId)
+                    return (
+                      <div key={idx} className="flex gap-3 items-center bg-slate-700/50 rounded-lg p-3">
+                        <div className="flex-1 text-white">
+                          {customer?.name || 'Cliente sconosciuto'}
+                          {customer?.city && <span className="text-gray-400 text-sm ml-2">({customer.city})</span>}
+                        </div>
+                        <input
+                          type="number"
+                          min="1"
+                          value={assignment.quantity || ''}
+                          onChange={(e) => updateCustomerAssignment(idx, 'quantity', Number(e.target.value))}
+                          placeholder="Qty"
+                          className="w-20 px-3 py-2 bg-slate-600 border border-white/20 rounded-lg text-white text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <button
+                          onClick={() => removeCustomerAssignment(idx)}
+                          className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition-all"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
-              ))}
+              )}
 
-              <button
-                onClick={addCustomerAssignment}
-                className="w-full px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg transition-all flex items-center justify-center gap-2"
-              >
-                <UserPlusIcon className="w-5 h-5" />
-                Aggiungi Cliente
-              </button>
+              {/* Available customers list */}
+              <div className="border-t border-white/10 pt-4">
+                <h3 className="text-sm font-semibold text-purple-300 mb-2">Aggiungi Cliente:</h3>
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {filteredCustomers.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      {customerSearchTerm ? 'Nessun cliente trovato' : 'Inizia a digitare per cercare...'}
+                    </div>
+                  ) : (
+                    filteredCustomers.map(customer => {
+                      const alreadyAdded = customerAssignments.some(a => a.customerId === customer.id)
+                      return (
+                        <button
+                          key={customer.id}
+                          onClick={() => {
+                            if (!alreadyAdded) {
+                              setCustomerAssignments([...customerAssignments, { customerId: customer.id, quantity: 1 }])
+                              setCustomerSearchTerm('')
+                            }
+                          }}
+                          disabled={alreadyAdded}
+                          className={`w-full text-left px-4 py-3 rounded-lg transition-all ${
+                            alreadyAdded
+                              ? 'bg-slate-700/30 text-gray-500 cursor-not-allowed'
+                              : 'bg-slate-700 hover:bg-slate-600 text-white'
+                          }`}
+                        >
+                          <div className="font-medium">{customer.name}</div>
+                          <div className="text-sm text-gray-400">
+                            {[customer.city, customer.email, customer.phone].filter(Boolean).join(' • ')}
+                          </div>
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
 
-              <div className="mt-6 p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
+              <div className="mt-4 p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
                 <div className="text-sm text-purple-200 mb-1">Quantità Totale da Ordinare:</div>
                 <div className="text-3xl font-bold text-purple-300">
                   {customerAssignments.reduce((sum, a) => sum + (a.quantity || 0), 0)} {selectedProduct.uom}
@@ -521,6 +620,7 @@ export default function ProdottiPreordinePage() {
                   setShowCustomerModal(false)
                   setSelectedProduct(null)
                   setCustomerAssignments([])
+                  setCustomerSearchTerm('')
                 }}
                 className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
               >
@@ -537,20 +637,113 @@ export default function ProdottiPreordinePage() {
         </div>
       )}
 
+      {/* Supplier Change Modal */}
+      {showSupplierModal && selectedProductForSupplier && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-800 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-purple-500/30">
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-white">Cambia Fornitore</h2>
+                <p className="text-gray-400 text-sm mt-1">{selectedProductForSupplier.name}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowSupplierModal(false)
+                  setSelectedProductForSupplier(null)
+                  setSupplierSearchTerm('')
+                }}
+                className="text-white/60 hover:text-white transition-colors"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Search bar */}
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cerca fornitore..."
+                  value={supplierSearchTerm}
+                  onChange={(e) => setSupplierSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-slate-700 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              {/* Current supplier */}
+              <div className="p-3 bg-purple-500/20 rounded-lg border border-purple-500/30">
+                <div className="text-sm text-purple-300 mb-1">Fornitore Attuale:</div>
+                <div className="text-white font-semibold">{selectedProductForSupplier.supplier.name}</div>
+              </div>
+
+              {/* Suppliers list */}
+              <div className="max-h-96 overflow-y-auto space-y-2">
+                {filteredSuppliers.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    {supplierSearchTerm ? 'Nessun fornitore trovato' : 'Inizia a digitare per cercare...'}
+                  </div>
+                ) : (
+                  filteredSuppliers.map(supplier => {
+                    const isCurrent = supplier.id === selectedProductForSupplier.supplier.id
+                    return (
+                      <button
+                        key={supplier.id}
+                        onClick={() => changeSupplier(supplier.id)}
+                        className={`w-full text-left px-4 py-3 rounded-lg transition-all ${
+                          isCurrent
+                            ? 'bg-purple-500/30 text-white border-2 border-purple-500'
+                            : 'bg-slate-700 hover:bg-slate-600 text-white'
+                        }`}
+                      >
+                        <div className="font-medium">{supplier.name}</div>
+                        {isCurrent && <div className="text-xs text-purple-300 mt-1">✓ Attuale</div>}
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-white/10 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowSupplierModal(false)
+                  setSelectedProductForSupplier(null)
+                  setSupplierSearchTerm('')
+                }}
+                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Analytics Modal */}
       {showAnalyticsModal && analyticsProduct && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl max-w-4xl w-full border border-white/20">
             <div className="p-6 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <img
-                  src={`https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com/web/image/product.product/${analyticsProduct.id}/image_256`}
-                  alt={analyticsProduct.name}
-                  className="w-20 h-20 rounded-xl object-cover bg-white/10"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white"%3E%3Cpath stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/%3E%3C/svg%3E'
-                  }}
-                />
+                {imageErrors.has(analyticsProduct.id) ? (
+                  <div className="w-20 h-20 rounded-xl bg-white/10 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white" className="w-10 h-10">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                  </div>
+                ) : (
+                  <img
+                    src={`https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com/web/image/product.product/${analyticsProduct.id}/image_256`}
+                    alt={analyticsProduct.name}
+                    className="w-20 h-20 rounded-xl object-cover bg-white/10"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      setImageErrors(prev => new Set(prev).add(analyticsProduct.id));
+                    }}
+                  />
+                )}
                 <div>
                   <h2 className="text-2xl font-bold text-white">📊 Analisi Prodotto</h2>
                   <p className="text-blue-200">{analyticsProduct.name}</p>
