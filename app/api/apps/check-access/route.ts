@@ -70,11 +70,19 @@ export async function POST(request: NextRequest) {
 
     const { userId, role, odooUserId, email } = decoded;
 
+    // TypeScript safety: ensure app is defined
+    if (!app) {
+      return NextResponse.json({
+        success: false,
+        error: 'App not found'
+      }, { status: 404 });
+    }
+
     console.log(`🔐 CHECK ACCESS - App: ${app.name} (${app.id}), User: ${userId} (${role}), Odoo: ${odooUserId}, Email: ${email}`);
 
     // LIVELLO 1: Carica impostazioni visibilità dal sistema di gestione
     const allVisibilities = await getAllAppVisibilities();
-    const appVisibility = allVisibilities.find(v => v.appId === app!.id);
+    const appVisibility = allVisibilities.find(v => v.appId === app.id);
 
     console.log(`  📋 Visibility settings:`, appVisibility);
 
