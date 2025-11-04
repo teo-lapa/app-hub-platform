@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
         ['parent_id', '=', false] // Solo aziende principali, non contatti
       ],
       ['id', 'name', 'email', 'phone', 'city'],
-      { limit: 1000, order: 'name ASC' }
+      1000,
+      'name ASC'
     );
 
     return NextResponse.json({
