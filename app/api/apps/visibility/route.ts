@@ -201,6 +201,11 @@ export async function GET(request: NextRequest) {
         clientiEnabled = true;
       }
 
+      // 🔍 DEBUG: Verifica fix excludedEmails nel GET endpoint
+      console.log(`🔍 GET /api/apps/visibility - Building groups for app ${app.id}`);
+      console.log(`  settings.excludedUsers:`, settings.excludedUsers);
+      console.log(`  settings.excludedCustomers:`, settings.excludedCustomers);
+
       const groups = {
         dipendenti: {
           enabled: dipendentiEnabled,
@@ -219,6 +224,9 @@ export async function GET(request: NextRequest) {
             .filter((val: string) => val.includes('@')) // Keep only emails
         }
       };
+
+      console.log(`  groups.dipendenti.excludedEmails:`, groups.dipendenti.excludedEmails);
+      console.log(`  groups.clienti.excludedEmails:`, groups.clienti.excludedEmails);
 
       return {
         id: app.id,
