@@ -153,11 +153,15 @@ export async function POST(request: NextRequest) {
 
       console.log('✅ [VIDEO-POLLING] Video scaricato con successo! Size:', videoBuffer.byteLength, 'bytes');
 
+      // Crea il data URL per il frontend
+      const dataUrl = `data:video/mp4;base64,${videoBase64}`;
+
       return NextResponse.json({
         status: 'completed',
         done: true,
         video: {
           data: videoBase64,
+          dataUrl: dataUrl, // Aggiunto per compatibilità frontend
           mimeType: 'video/mp4',
           size: videoBuffer.byteLength
         }
