@@ -80,88 +80,164 @@ export async function GET(request: NextRequest) {
       previous: `${previousStart.toISOString()} - ${previousEnd.toISOString()}`
     });
 
-    // Build base WHERE clause
-    const baseConditions = ['is_active = true'];
-    const params: any[] = [start.toISOString(), end.toISOString()];
-    let paramIndex = 3;
+    // Build base WHERE clause and params for current period
+    const params: any[] = [];
+    const conditions = ['is_active = true'];
+    let paramIndex = 1;
 
+    // Add date range for current period
+    conditions.push(`last_order_date >= $${paramIndex++}`);
+    params.push(start.toISOString());
+    conditions.push(`last_order_date <= $${paramIndex++}`);
+    params.push(end.toISOString());
+
+    // Add salesperson filter if present
     if (salespersonId) {
-      baseConditions.push(`assigned_salesperson_id = $${paramIndex}`);
+      conditions.push(`assigned_salesperson_id = $${paramIndex++}`);
       params.push(parseInt(salespersonId));
-      paramIndex++;
     }
 
-    const whereClause = baseConditions.join(' AND ');
+    const whereClause = conditions.join(' AND ');
+
+    console.log('🔍 [CUSTOMERS-ANALYTICS] WHERE clause:', whereClause);
+    console.log('🔍 [CUSTOMERS-ANALYTICS] Params:', params);
 
     // QUERY 1: Total customers with activity in period
     const totalResult = await sql.query(
       `SELECT COUNT(*) as total
        FROM customer_avatars
-       WHERE ${whereClause}
-         AND last_order_date >= $1
-         AND last_order_date <= $2`,
+       WHERE ${whereClause}`,
       params
     );
     const totalCustomers = parseInt(totalResult.rows[0]?.total || '0');
 
     // QUERY 2: New customers (first_order_date in period)
+    const newParams: any[] = [];
+    const newConditions = ['is_active = true'];
+    let newParamIndex = 1;
+
+    newConditions.push(`first_order_date >= $${newParamIndex++}`);
+    newParams.push(start.toISOString());
+    newConditions.push(`first_order_date <= $${newParamIndex++}`);
+    newParams.push(end.toISOString());
+
+    if (salespersonId) {
+      newConditions.push(`assigned_salesperson_id = $${newParamIndex++}`);
+      newParams.push(parseInt(salespersonId));
+    }
+
+    const newWhereClause = newConditions.join(' AND ');
+
     const newResult = await sql.query(
       `SELECT COUNT(*) as new
        FROM customer_avatars
-       WHERE ${whereClause}
-         AND first_order_date >= $1
-         AND first_order_date <= $2`,
-      params
+       WHERE ${newWhereClause}`,
+      newParams
     );
     const newCustomers = parseInt(newResult.rows[0]?.new || '0');
 
     // QUERY 3: Recurring customers (first_order_date before period, but active in period)
+    const recurringParams: any[] = [];
+    const recurringConditions = ['is_active = true'];
+    let recurringParamIndex = 1;
+
+    recurringConditions.push(`first_order_date < $${recurringParamIndex++}`);
+    recurringParams.push(start.toISOString());
+    recurringConditions.push(`last_order_date >= $${recurringParamIndex++}`);
+    recurringParams.push(start.toISOString());
+    recurringConditions.push(`last_order_date <= $${recurringParamIndex++}`);
+    recurringParams.push(end.toISOString());
+
+    if (salespersonId) {
+      recurringConditions.push(`assigned_salesperson_id = $${recurringParamIndex++}`);
+      recurringParams.push(parseInt(salespersonId));
+    }
+
+    const recurringWhereClause = recurringConditions.join(' AND ');
+
     const recurringResult = await sql.query(
       `SELECT COUNT(*) as recurring
        FROM customer_avatars
-       WHERE ${whereClause}
-         AND first_order_date < $1
-         AND last_order_date >= $1
-         AND last_order_date <= $2`,
-      params
+       WHERE ${recurringWhereClause}`,
+      recurringParams
     );
     const recurringCustomers = parseInt(recurringResult.rows[0]?.recurring || '0');
 
     // QUERY 4: Churn calculation - customers active in previous period but NOT in current period
-    const prevParams = [previousStart.toISOString(), previousEnd.toISOString()];
+    const prevParams: any[] = [];
+    const prevConditions = ['is_active = true'];
+    let prevParamIndex = 1;
+
+    prevConditions.push(`last_order_date >= $${prevParamIndex++}`);
+    prevParams.push(previousStart.toISOString());
+    prevConditions.push(`last_order_date <= $${prevParamIndex++}`);
+    prevParams.push(previousEnd.toISOString());
+
     if (salespersonId) {
-      prevParams.push(salespersonId);
+      prevConditions.push(`assigned_salesperson_id = $${prevParamIndex++}`);
+      prevParams.push(parseInt(salespersonId));
     }
+
+    const prevWhereClause = prevConditions.join(' AND ');
 
     const previousActiveResult = await sql.query(
       `SELECT COUNT(*) as prev_active
        FROM customer_avatars
-       WHERE ${whereClause}
-         AND last_order_date >= $1
-         AND last_order_date <= $2`,
+       WHERE ${prevWhereClause}`,
       prevParams
     );
     const previousActive = parseInt(previousActiveResult.rows[0]?.prev_active || '0');
 
+    // Churn: customers active in previous period but NOT in current period
+    const churnParams: any[] = [];
+    const churnConditions = ['is_active = true'];
+    let churnParamIndex = 1;
+
+    churnConditions.push(`last_order_date >= $${churnParamIndex++}`);
+    churnParams.push(previousStart.toISOString());
+    churnConditions.push(`last_order_date <= $${churnParamIndex++}`);
+    churnParams.push(previousEnd.toISOString());
+
+    if (salespersonId) {
+      churnConditions.push(`assigned_salesperson_id = $${churnParamIndex++}`);
+      churnParams.push(parseInt(salespersonId));
+    }
+
+    // Add subquery params for current period
+    churnParams.push(start.toISOString());
+    churnParams.push(end.toISOString());
+    const subqueryStartParam = churnParamIndex++;
+    const subqueryEndParam = churnParamIndex++;
+
+    // Build subquery WHERE clause
+    const subqueryConditions = ['is_active = true'];
+    let subqueryParamIndex = subqueryStartParam;
+    subqueryConditions.push(`last_order_date >= $${subqueryParamIndex++}`);
+    subqueryConditions.push(`last_order_date <= $${subqueryParamIndex++}`);
+
+    if (salespersonId) {
+      subqueryConditions.push(`assigned_salesperson_id = $${subqueryParamIndex++}`);
+      churnParams.push(parseInt(salespersonId));
+    }
+
+    const churnWhereClause = churnConditions.join(' AND ');
+    const subqueryWhereClause = subqueryConditions.join(' AND ');
+
     const churnedResult = await sql.query(
       `SELECT COUNT(*) as churned
        FROM customer_avatars
-       WHERE ${whereClause}
-         AND last_order_date >= $1
-         AND last_order_date <= $2
+       WHERE ${churnWhereClause}
          AND odoo_partner_id NOT IN (
            SELECT odoo_partner_id
            FROM customer_avatars
-           WHERE ${whereClause}
-             AND last_order_date >= $3
-             AND last_order_date <= $4
+           WHERE ${subqueryWhereClause}
          )`,
-      [...prevParams, start.toISOString(), end.toISOString()]
+      churnParams
     );
     const churned = parseInt(churnedResult.rows[0]?.churned || '0');
     const churnRate = previousActive > 0 ? (churned / previousActive) * 100 : 0;
 
-    // QUERY 5: Customers list with details
+    // QUERY 5: Customers list with details (reuse params from QUERY 1)
     const customersList = await sql.query(
       `SELECT
          id::text,
@@ -173,27 +249,39 @@ export async function GET(request: NextRequest) {
          churn_risk_score as "churnRisk"
        FROM customer_avatars
        WHERE ${whereClause}
-         AND last_order_date >= $1
-         AND last_order_date <= $2
        ORDER BY total_revenue DESC`,
       params
     );
 
     // QUERY 6: Breakdown by salesperson
+    const salesParams: any[] = [];
+    const salesConditions = ['is_active = true'];
+    let salesParamIndex = 1;
+
+    salesConditions.push(`last_order_date >= $${salesParamIndex++}`);
+    salesParams.push(start.toISOString());
+    salesConditions.push(`last_order_date <= $${salesParamIndex++}`);
+    salesParams.push(end.toISOString());
+
+    if (salespersonId) {
+      salesConditions.push(`assigned_salesperson_id = $${salesParamIndex++}`);
+      salesParams.push(parseInt(salespersonId));
+    }
+
+    salesConditions.push('assigned_salesperson_id IS NOT NULL');
+
+    const salesWhereClause = salesConditions.join(' AND ');
+
     const bySalespersonResult = await sql.query(
       `SELECT
          assigned_salesperson_id as "salespersonId",
          assigned_salesperson_name as "salespersonName",
          COUNT(*) as "customerCount"
        FROM customer_avatars
-       WHERE is_active = true
-         AND last_order_date >= $1
-         AND last_order_date <= $2
-         ${salespersonId ? `AND assigned_salesperson_id = $3` : ''}
-         AND assigned_salesperson_id IS NOT NULL
+       WHERE ${salesWhereClause}
        GROUP BY assigned_salesperson_id, assigned_salesperson_name
        ORDER BY "customerCount" DESC`,
-      salespersonId ? params : [start.toISOString(), end.toISOString()]
+      salesParams
     );
 
     const totalForPercentage = bySalespersonResult.rows.reduce(
@@ -211,20 +299,35 @@ export async function GET(request: NextRequest) {
     }));
 
     // QUERY 7: Breakdown by city
+    const cityParams: any[] = [];
+    const cityConditions = ['is_active = true'];
+    let cityParamIndex = 1;
+
+    cityConditions.push(`last_order_date >= $${cityParamIndex++}`);
+    cityParams.push(start.toISOString());
+    cityConditions.push(`last_order_date <= $${cityParamIndex++}`);
+    cityParams.push(end.toISOString());
+
+    if (salespersonId) {
+      cityConditions.push(`assigned_salesperson_id = $${cityParamIndex++}`);
+      cityParams.push(parseInt(salespersonId));
+    }
+
+    cityConditions.push('city IS NOT NULL');
+    cityConditions.push(`city != ''`);
+
+    const cityWhereClause = cityConditions.join(' AND ');
+
     const byCityResult = await sql.query(
       `SELECT
          city,
          COUNT(*) as "customerCount"
        FROM customer_avatars
-       WHERE ${whereClause}
-         AND last_order_date >= $1
-         AND last_order_date <= $2
-         AND city IS NOT NULL
-         AND city != ''
+       WHERE ${cityWhereClause}
        GROUP BY city
        ORDER BY "customerCount" DESC
        LIMIT 10`,
-      params
+      cityParams
     );
 
     const totalCitiesCount = byCityResult.rows.reduce(
@@ -240,17 +343,17 @@ export async function GET(request: NextRequest) {
         : 0
     }));
 
-    // QUERY 8: Daily/Weekly trend
+    // QUERY 8: Daily/Weekly trend (reuse params from QUERY 1)
     const trendInterval = period === 'week' ? '1 day' : period === 'month' ? '1 day' : '1 week';
+    const truncPeriod = period === 'week' || period === 'month' ? 'day' : 'week';
+
     const trendResult = await sql.query(
       `SELECT
-         DATE_TRUNC('${period === 'week' || period === 'month' ? 'day' : 'week'}', last_order_date) as date,
+         DATE_TRUNC('${truncPeriod}', last_order_date) as date,
          COUNT(DISTINCT odoo_partner_id) as customers
        FROM customer_avatars
        WHERE ${whereClause}
-         AND last_order_date >= $1
-         AND last_order_date <= $2
-       GROUP BY DATE_TRUNC('${period === 'week' || period === 'month' ? 'day' : 'week'}', last_order_date)
+       GROUP BY DATE_TRUNC('${truncPeriod}', last_order_date)
        ORDER BY date ASC`,
       params
     );
