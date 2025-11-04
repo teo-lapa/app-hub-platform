@@ -298,18 +298,19 @@ export async function GET(request: NextRequest) {
       return b.estimatedValue - a.estimatedValue;
     });
 
-    // Solo fornitori urgenti
+    // Calcola fornitori urgenti per statistiche
     const urgentSuppliers = suppliers.filter(s => s.criticalCount > 0 || s.highCount > 0);
 
     const executionTime = Date.now() - startTime;
     console.log(`✅ Analisi completata in ${executionTime}ms`);
+    console.log(`📊 Totale fornitori: ${suppliers.length}, Urgenti: ${urgentSuppliers.length}`);
 
     return NextResponse.json({
       success: true,
       analyzedAt: new Date().toISOString(),
       totalSuppliers: suppliers.length,
       urgentSuppliers: urgentSuppliers.length,
-      suppliers: urgentSuppliers,
+      suppliers: suppliers, // Ritorna TUTTI i fornitori, non solo urgenti
       summary: {
         totalCritical: suppliers.reduce((sum, s) => sum + s.criticalCount, 0),
         totalHigh: suppliers.reduce((sum, s) => sum + s.highCount, 0),
