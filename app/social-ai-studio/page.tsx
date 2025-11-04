@@ -192,11 +192,17 @@ export default function SocialAIStudioPage() {
       setResult(data.data);
 
       // Se c'è un video in generazione, avvia il polling
-      if (data.data.video?.operationId) {
+      const hasValidVideoOperation = data.data.video?.operationId &&
+                                      data.data.video.operationId.length > 0 &&
+                                      data.data.video.status === 'generating';
+
+      if (hasValidVideoOperation) {
+        console.log('✅ Video operation ID valido, avvio polling:', data.data.video.operationId);
         toast.success('Copy e immagine pronti! Video in generazione...', { id: loadingToast });
         startVideoPolling(data.data.video.operationId);
       } else if (contentType === 'video' || contentType === 'both') {
         // Se era richiesto un video ma non è stato generato
+        console.log('⚠️ Video richiesto ma non generato:', data.data.video);
         toast.success('Copy e immagine pronti! (Video non disponibile)', { id: loadingToast });
         setGenerationProgress(prev => [...prev, '⚠️ Video generation non disponibile al momento']);
       } else {
@@ -216,6 +222,13 @@ export default function SocialAIStudioPage() {
   // Polling Video
   // ==========================================
   const startVideoPolling = async (operationId: string) => {
+    // Validazione operationId
+    if (!operationId || operationId.trim().length === 0) {
+      console.error('❌ operationId non valido, skip polling');
+      setIsPollingVideo(false);
+      return;
+    }
+
     setIsPollingVideo(true);
     const maxAttempts = 60; // 5 minuti max (ogni 5 secondi)
     let attempts = 0;
@@ -229,6 +242,14 @@ export default function SocialAIStudioPage() {
         });
 
         const data = await response.json();
+
+        // Se c'è un errore 500, ferma il polling
+        if (!response.ok) {
+          console.error('❌ Errore video polling:', data.error);
+          setGenerationProgress(prev => [...prev, `❌ Video polling fallito: ${data.error || 'Errore sconosciuto'}`]);
+          setIsPollingVideo(false);
+          return;
+        }
 
         if (data.done && data.video) {
           // Video completato!
