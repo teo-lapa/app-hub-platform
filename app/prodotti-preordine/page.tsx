@@ -191,6 +191,7 @@ export default function ProdottiPreordinePage() {
 
     try {
       // Save all assignments
+      const savedAssignments = []
       for (const assignment of customerAssignments) {
         if (assignment.customerId > 0 && assignment.quantity > 0) {
           await fetch('/api/smart-ordering-v2/assign-preorder-customers', {
@@ -202,16 +203,32 @@ export default function ProdottiPreordinePage() {
               quantity: assignment.quantity
             })
           })
+
+          // Find customer name
+          const customer = customers.find(c => c.id === assignment.customerId)
+          if (customer) {
+            savedAssignments.push({
+              customerId: assignment.customerId,
+              customerName: customer.name,
+              quantity: assignment.quantity
+            })
+          }
         }
       }
 
-      // Reload data
-      await loadAllData()
+      // Update ONLY this product in local state - DON'T reload entire page
+      setAllProducts(prev => prev.map(p =>
+        p.id === selectedProduct.id
+          ? { ...p, assignedCustomers: savedAssignments }
+          : p
+      ))
+
       setShowCustomerModal(false)
       setSelectedProduct(null)
       setCustomerAssignments([])
     } catch (error) {
       console.error('Error saving assignments:', error)
+      alert('Errore nel salvataggio delle assegnazioni')
     }
   }
 
