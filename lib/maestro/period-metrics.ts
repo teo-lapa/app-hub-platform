@@ -54,11 +54,11 @@ export async function getPeriodMetrics(
     }
 
     if (startDate) {
-      filters.push(['date_order', '>=', startDate]);
+      filters.push(['commitment_date', '>=', startDate]);
     }
 
     if (endDate) {
-      filters.push(['date_order', '<=', endDate]);
+      filters.push(['commitment_date', '<=', endDate]);
     }
 
     console.log('🔍 [PERIOD-METRICS] Odoo filters:', JSON.stringify(filters));
@@ -67,7 +67,7 @@ export async function getPeriodMetrics(
     const orders = await odoo.searchRead(
       'sale.order',
       filters,
-      ['id', 'partner_id', 'date_order', 'amount_total', 'user_id'],
+      ['id', 'partner_id', 'commitment_date', 'amount_total', 'user_id'],
       0  // no limit
     );
 
@@ -131,11 +131,11 @@ export async function getCustomerPeriodMetrics(
     }
 
     if (startDate) {
-      filters.push(['date_order', '>=', startDate]);
+      filters.push(['commitment_date', '>=', startDate]);
     }
 
     if (endDate) {
-      filters.push(['date_order', '<=', endDate]);
+      filters.push(['commitment_date', '<=', endDate]);
     }
 
     // Fetch orders from Odoo
@@ -236,8 +236,8 @@ export async function getRevenueTrend(
     // Build filters
     const filters: any[] = [
       ['state', 'in', ['sale', 'done']],
-      ['date_order', '>=', startDate],
-      ['date_order', '<=', endDate]
+      ['commitment_date', '>=', startDate],
+      ['commitment_date', '<=', endDate]
     ];
 
     if (salespersonId) {
@@ -248,7 +248,7 @@ export async function getRevenueTrend(
     const orders = await odoo.searchRead(
       'sale.order',
       filters,
-      ['id', 'date_order', 'amount_total'],
+      ['id', 'commitment_date', 'amount_total'],
       0
     );
 
@@ -258,7 +258,7 @@ export async function getRevenueTrend(
     const trendMap = new Map<string, { revenue: number; orders: number }>();
 
     for (const order of orders) {
-      const orderDate = new Date(order.date_order);
+      const orderDate = new Date(order.commitment_date);
       let dateKey: string;
 
       if (period === 'week' || period === 'month') {
