@@ -249,7 +249,7 @@ export default function GestioneCadenzeFornitori() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Link
-              href="/"
+              href="/ordini-smart-v2"
               className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all backdrop-blur-sm"
             >
               <ArrowLeft className="w-6 h-6" />
