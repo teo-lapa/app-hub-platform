@@ -39,14 +39,16 @@ export async function GET(
       );
     }
 
-    const odooPartnerId = parseInt(params.id, 10);
-    console.log(`📊 [MAESTRO-API] Fetching customer detail for Odoo Partner ID: ${odooPartnerId}`);
+    // FIX: Accept both UUID (customer_avatars.id) and numeric (odoo_partner_id)
+    const customerId = params.id;
+    const isNumeric = /^\d+$/.test(customerId);
 
-    // 1. Fetch customer avatar from DB by odoo_partner_id (NOT by UUID id!)
-    const avatarResult = await sql`
-      SELECT * FROM customer_avatars
-      WHERE odoo_partner_id = ${odooPartnerId}
-    `;
+    console.log(`📊 [MAESTRO-API] Fetching customer detail for ID: ${customerId} (${isNumeric ? 'odoo_partner_id' : 'UUID'})`);
+
+    // 1. Fetch customer avatar from DB by either UUID id or odoo_partner_id
+    const avatarResult = isNumeric
+      ? await sql`SELECT * FROM customer_avatars WHERE odoo_partner_id = ${parseInt(customerId, 10)}`
+      : await sql`SELECT * FROM customer_avatars WHERE id = ${customerId}`;
 
     if (avatarResult.rows.length === 0) {
       return NextResponse.json(
