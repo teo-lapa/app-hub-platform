@@ -28,13 +28,13 @@ export async function GET(request: NextRequest) {
     // TODO: Implement proper Odoo-based customer analytics
     return NextResponse.json({
       success: true,
-      data: {
+      analytics: {
         totalCustomers: 0,
         newCustomers: 0,
         recurringCustomers: 0,
         churnRate: 0,
-        customers: [],
-        trend: [],
+        customersTrend: [],
+        customersList: [],
         bySalesperson: [],
         byCity: []
       }
