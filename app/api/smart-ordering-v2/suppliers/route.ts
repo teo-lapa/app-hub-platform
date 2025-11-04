@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         ['type', '=', 'product'],
         ['active', '=', true]
       ],
-      ['id', 'name', 'default_code', 'qty_available', 'uom_id', 'list_price', 'seller_ids', 'product_tmpl_id', 'tag_ids'],
+      ['id', 'name', 'default_code', 'qty_available', 'uom_id', 'list_price', 'seller_ids', 'product_tmpl_id'],
       0
     );
 
