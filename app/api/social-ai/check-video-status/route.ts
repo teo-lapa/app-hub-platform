@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 [VIDEO-POLLING] Controllo operazione:', operationId);
 
-    // L'SDK non funziona per il polling. Uso direttamente le REST API di Google
+    // Polling dell'operazione tramite REST API
     // https://generativelanguage.googleapis.com/v1beta/{name}
 
     let operation;
@@ -112,23 +111,69 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ottieni l'URI del file video (il video è già disponibile come URI/URL)
-    // Nota: Veo restituisce un file reference, non i dati raw
-    // Per ora restituiamo l'ID del file - il client dovrà gestire diversamente
-    // oppure usiamo un approccio alternativo
+    console.log('📹 [VIDEO-POLLING] Video file object:', JSON.stringify(videoFile, null, 2));
 
-    console.log('📹 [VIDEO-POLLING] Video file:', videoFile);
+    // Scarica il video usando Google AI Files API
+    // https://generativelanguage.googleapis.com/v1beta/files/{fileId}
+    try {
+      // Estrai il fileId dall'URI (formato: "files/{fileId}")
+      const fileId = videoFile.name || videoFile.uri;
 
-    // Restituisci l'URL del video invece del base64 (più efficiente)
-    return NextResponse.json({
-      status: 'completed',
-      done: true,
-      video: {
-        fileUri: videoFile.uri || '',
-        mimeType: 'video/mp4',
-        message: 'Video generato! Download disponibile tramite URI.'
+      if (!fileId) {
+        throw new Error('File ID non trovato nel video object');
       }
-    });
+
+      console.log('📥 [VIDEO-POLLING] Scaricamento video da fileId:', fileId);
+
+      // Download del file video
+      const downloadUrl = `https://generativelanguage.googleapis.com/v1beta/${fileId}`;
+
+      console.log('📥 [VIDEO-POLLING] Download URL:', downloadUrl);
+
+      const downloadResponse = await fetch(downloadUrl, {
+        method: 'GET',
+        headers: {
+          'x-goog-api-key': apiKey
+        }
+      });
+
+      if (!downloadResponse.ok) {
+        const errorText = await downloadResponse.text();
+        console.error('❌ [VIDEO-POLLING] Download error:', downloadResponse.status, errorText);
+        throw new Error(`Download failed: ${downloadResponse.status} - ${errorText}`);
+      }
+
+      // Ottieni i dati del video come buffer
+      const videoBuffer = await downloadResponse.arrayBuffer();
+      const videoBase64 = Buffer.from(videoBuffer).toString('base64');
+
+      console.log('✅ [VIDEO-POLLING] Video scaricato con successo! Size:', videoBuffer.byteLength, 'bytes');
+
+      return NextResponse.json({
+        status: 'completed',
+        done: true,
+        video: {
+          data: videoBase64,
+          mimeType: 'video/mp4',
+          size: videoBuffer.byteLength
+        }
+      });
+
+    } catch (downloadError: any) {
+      console.error('❌ [VIDEO-POLLING] Errore durante il download del video:', downloadError.message);
+
+      // Fallback: restituisci almeno l'URI del file
+      return NextResponse.json({
+        status: 'completed',
+        done: true,
+        video: {
+          fileUri: videoFile.name || videoFile.uri || '',
+          mimeType: 'video/mp4',
+          message: 'Video generato ma download fallito. Usa l\'URI per accedere al file.',
+          error: downloadError.message
+        }
+      });
+    }
 
   } catch (error: any) {
     console.error('❌ [VIDEO-POLLING] Errore:', error);
