@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     const assignmentsResult = await sql`
       SELECT product_id, customer_id, quantity
       FROM preorder_customer_assignments
-      WHERE product_id = ANY(${productIds})
+      WHERE product_id = ANY(${productIds as any})
     `;
 
     // Raggruppa per product_id

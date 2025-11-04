@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (tags.length === 0) {
       // Crea il tag se non esiste
       console.log('📌 Tag PRE-ORDINE non trovato, lo creo...');
-      const newTagId = await rpc.create('product.tag', {
+      const newTagId = await (rpc as any).create('product.tag', {
         name: 'PRE-ORDINE',
         color: 5 // Colore viola in Odoo
       });
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Scrivi i nuovi tag
-    await rpc.write('product.product', [productId], {
+    await (rpc as any).write('product.product', [productId], {
       tag_ids: [[6, 0, newTags]] // Odoo command: replace all tags
     });
 
