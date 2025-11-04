@@ -15,6 +15,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
+export const dynamic = 'force-dynamic';
+
 interface CustomerAnalytics {
   totalCustomers: number;
   newCustomers: number;
