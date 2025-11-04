@@ -56,9 +56,71 @@ export default function SocialAIStudioPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ==========================================
+  // Compressione Immagine (per evitare errori con foto troppo grandi)
+  // ==========================================
+  const compressImage = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // Calcola le dimensioni target (max 1024px sul lato più lungo)
+          const MAX_SIZE = 1024;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height = (height * MAX_SIZE) / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width = (width * MAX_SIZE) / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          // Crea canvas per ridimensionare
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Impossibile creare il canvas'));
+            return;
+          }
+
+          // Disegna l'immagine ridimensionata
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Converti in base64 con qualità ridotta (0.8 = 80%)
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+          // Calcola la riduzione di dimensione
+          const originalSize = (file.size / 1024).toFixed(0);
+          const compressedSize = ((compressedBase64.length * 3) / 4 / 1024).toFixed(0);
+
+          console.log(`Compressione: ${originalSize}KB → ${compressedSize}KB (${width}x${height}px)`);
+
+          resolve(compressedBase64);
+        };
+
+        img.onerror = () => reject(new Error('Errore nel caricamento dell\'immagine'));
+        img.src = e.target?.result as string;
+      };
+
+      reader.onerror = () => reject(new Error('Errore nella lettura del file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // ==========================================
   // Upload Foto Prodotto
   // ==========================================
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -67,14 +129,18 @@ export default function SocialAIStudioPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      setProductImage(base64);
-      setProductImagePreview(base64);
-      toast.success('Foto prodotto caricata!');
-    };
-    reader.readAsDataURL(file);
+    try {
+      toast.loading('Compressione immagine...');
+      const compressedBase64 = await compressImage(file);
+      setProductImage(compressedBase64);
+      setProductImagePreview(compressedBase64);
+      toast.dismiss();
+      toast.success('Foto prodotto caricata e ottimizzata!');
+    } catch (error: any) {
+      console.error('Errore compressione:', error);
+      toast.dismiss();
+      toast.error('Errore durante la compressione dell\'immagine');
+    }
   };
 
   // ==========================================
@@ -126,9 +192,19 @@ export default function SocialAIStudioPage() {
       setResult(data.data);
 
       // Se c'è un video in generazione, avvia il polling
-      if (data.data.video?.operationId) {
+      const hasValidVideoOperation = data.data.video?.operationId &&
+                                      data.data.video.operationId.length > 0 &&
+                                      data.data.video.status === 'generating';
+
+      if (hasValidVideoOperation) {
+        console.log('✅ Video operation ID valido, avvio polling:', data.data.video.operationId);
         toast.success('Copy e immagine pronti! Video in generazione...', { id: loadingToast });
         startVideoPolling(data.data.video.operationId);
+      } else if (contentType === 'video' || contentType === 'both') {
+        // Se era richiesto un video ma non è stato generato
+        console.log('⚠️ Video richiesto ma non generato:', data.data.video);
+        toast.success('Copy e immagine pronti! (Video non disponibile)', { id: loadingToast });
+        setGenerationProgress(prev => [...prev, '⚠️ Video generation non disponibile al momento']);
       } else {
         toast.success('Contenuti marketing generati con successo!', { id: loadingToast });
       }
@@ -146,6 +222,13 @@ export default function SocialAIStudioPage() {
   // Polling Video
   // ==========================================
   const startVideoPolling = async (operationId: string) => {
+    // Validazione operationId
+    if (!operationId || operationId.trim().length === 0) {
+      console.error('❌ operationId non valido, skip polling');
+      setIsPollingVideo(false);
+      return;
+    }
+
     setIsPollingVideo(true);
     const maxAttempts = 60; // 5 minuti max (ogni 5 secondi)
     let attempts = 0;
@@ -159,6 +242,14 @@ export default function SocialAIStudioPage() {
         });
 
         const data = await response.json();
+
+        // Se c'è un errore 500, ferma il polling
+        if (!response.ok) {
+          console.error('❌ Errore video polling:', data.error);
+          setGenerationProgress(prev => [...prev, `❌ Video polling fallito: ${data.error || 'Errore sconosciuto'}`]);
+          setIsPollingVideo(false);
+          return;
+        }
 
         if (data.done && data.video) {
           // Video completato!

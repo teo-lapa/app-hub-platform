@@ -28,13 +28,17 @@ export async function POST(request: NextRequest) {
 
     const rpc = createOdooRPCClient(sessionId);
 
+    console.log(`🔍 Toggle PRE-ORDINE per prodotto ${productId}, enable=${enable}`);
+
     // 1. Carica il tag "PRE-ORDINE"
+    console.log('🔍 Cercando tag PRE-ORDINE...');
     const tags = await rpc.searchRead(
       'product.tag',
       [['name', 'ilike', 'PRE-ORDINE']],
       ['id', 'name'],
       1
     );
+    console.log('🔍 Tag trovati:', tags);
 
     let preOrderTagId: number;
 
@@ -51,11 +55,11 @@ export async function POST(request: NextRequest) {
       preOrderTagId = tags[0].id;
     }
 
-    // 2. Carica i tag attuali del prodotto
+    // 2. Carica il product_tmpl_id dal product.product
     const products = await rpc.searchRead(
       'product.product',
       [['id', '=', productId]],
-      ['tag_ids']
+      ['product_tmpl_id']
     );
 
     if (products.length === 0) {
@@ -65,28 +69,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const currentTags = products[0].tag_ids || [];
+    const templateId = products[0].product_tmpl_id[0];
+    console.log(`🔍 Template ID: ${templateId}`);
 
-    // 3. Aggiorna i tag
+    // 3. Carica i tag attuali del template
+    const templates = await rpc.searchRead(
+      'product.template',
+      [['id', '=', templateId]],
+      ['product_tag_ids']
+    );
+
+    if (templates.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Template prodotto non trovato' },
+        { status: 404 }
+      );
+    }
+
+    const currentTags = templates[0].product_tag_ids || [];
+    console.log(`🔍 Tag attuali del template ${templateId}:`, currentTags);
+
+    // 4. Aggiorna i tag
     let newTags: number[];
     if (enable) {
       // Aggiungi il tag se non c'è già
       if (!currentTags.includes(preOrderTagId)) {
         newTags = [...currentTags, preOrderTagId];
+        console.log(`➕ Aggiungendo tag ${preOrderTagId} ai tag esistenti:`, currentTags, '→', newTags);
       } else {
         newTags = currentTags; // Già presente
+        console.log(`⚠️ Tag ${preOrderTagId} già presente, nessuna modifica`);
       }
     } else {
       // Rimuovi il tag
       newTags = currentTags.filter((id: number) => id !== preOrderTagId);
+      console.log(`➖ Rimuovendo tag ${preOrderTagId} dai tag esistenti:`, currentTags, '→', newTags);
     }
 
-    // 4. Scrivi i nuovi tag
-    await (rpc as any).write('product.product', [productId], {
-      tag_ids: [[6, 0, newTags]] // Odoo command: replace all tags
+    // 5. Scrivi i nuovi tag sul template
+    console.log(`💾 Scrivendo su product.template ID ${templateId} i tag:`, newTags);
+    const writeCommand = [[6, 0, newTags]];
+    console.log(`💾 Comando Odoo write:`, { product_tag_ids: writeCommand });
+
+    await (rpc as any).write('product.template', [templateId], {
+      product_tag_ids: writeCommand // Odoo command: replace all tags
     });
 
-    console.log(`✅ Tag PRE-ORDINE ${enable ? 'aggiunto a' : 'rimosso da'} prodotto ${productId}`);
+    console.log(`✅ Write completato, verifico risultato...`);
+
+    // 6. Verifica che il tag sia stato salvato
+    const verifyTemplates = await rpc.searchRead(
+      'product.template',
+      [['id', '=', templateId]],
+      ['product_tag_ids']
+    );
+    const savedTags = verifyTemplates[0]?.product_tag_ids || [];
+    console.log(`🔍 Tag dopo il save:`, savedTags);
+    console.log(`✅ Tag PRE-ORDINE ${enable ? 'aggiunto a' : 'rimosso da'} prodotto ${productId}`,
+      `- Salvato correttamente: ${enable ? savedTags.includes(preOrderTagId) : !savedTags.includes(preOrderTagId)}`);
 
     return NextResponse.json({
       success: true,
