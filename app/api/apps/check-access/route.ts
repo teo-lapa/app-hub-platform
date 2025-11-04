@@ -68,9 +68,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const { userId, role, odooUserId } = decoded;
+    const { userId, role, odooUserId, email } = decoded;
 
-    console.log(`🔐 CHECK ACCESS - App: ${app.name} (${app.id}), User: ${userId} (${role}), Odoo: ${odooUserId}`);
+    console.log(`🔐 CHECK ACCESS - App: ${app.name} (${app.id}), User: ${userId} (${role}), Odoo: ${odooUserId}, Email: ${email}`);
 
     // LIVELLO 1: Carica impostazioni visibilità dal sistema di gestione
     const allVisibilities = await getAllAppVisibilities();
@@ -166,43 +166,88 @@ export async function POST(request: NextRequest) {
     }
 
     // LIVELLO 4: Controlla esclusioni specifiche
-    // Usa odooUserId se disponibile, altrimenti userId
-    const userIdToCheck = String(odooUserId || userId);
-
-    // Controlla se l'utente è escluso specificamente
     const excludedUsers = appVisibility.excludedUsers || [];
     const excludedCustomers = appVisibility.excludedCustomers || [];
 
-    console.log(`  🔍 Checking exclusions for user ${userIdToCheck}...`);
-    console.log(`     excludedUsers:`, excludedUsers);
-    console.log(`     excludedCustomers:`, excludedCustomers);
+    console.log(`  🔍 DEBUG ESCLUSIONI:`);
+    console.log(`     userId: ${userId}`);
+    console.log(`     odooUserId: ${odooUserId}`);
+    console.log(`     email: ${email}`);
+    console.log(`     isInternalUser: ${isInternalUser}`);
+    console.log(`     excludedUsers array:`, excludedUsers);
+    console.log(`     excludedCustomers array:`, excludedCustomers);
 
-    if (isInternalUser && excludedUsers.includes(userIdToCheck)) {
-      console.log(`  ❌ User ${userIdToCheck} è in excludedUsers - ACCESSO NEGATO`);
-      return NextResponse.json({
-        success: true,
-        hasAccess: false,
-        reason: 'Accesso negato per questo utente specifico',
-        app: {
-          id: app.id,
-          name: app.name,
-          url: app.url
-        }
-      });
+    // ✅ CONTROLLO PRIMARIO: Usa EMAIL (più affidabile)
+    if (email) {
+      console.log(`  🔍 Controllo esclusione per email: ${email}`);
+
+      if (isInternalUser && excludedUsers.includes(email)) {
+        console.log(`  ❌ User email ${email} è in excludedUsers - ACCESSO NEGATO`);
+        return NextResponse.json({
+          success: true,
+          hasAccess: false,
+          reason: 'Accesso negato per questo utente specifico',
+          app: {
+            id: app.id,
+            name: app.name,
+            url: app.url
+          }
+        });
+      }
+
+      if (isPortalUser && excludedCustomers.includes(email)) {
+        console.log(`  ❌ User email ${email} è in excludedCustomers - ACCESSO NEGATO`);
+        return NextResponse.json({
+          success: true,
+          hasAccess: false,
+          reason: 'Accesso negato per questo cliente specifico',
+          app: {
+            id: app.id,
+            name: app.name,
+            url: app.url
+          }
+        });
+      }
+
+      console.log(`  ✅ Email ${email} NON è in esclusioni - continuo con controllo`);
     }
 
-    if (isPortalUser && excludedCustomers.includes(userIdToCheck)) {
-      console.log(`  ❌ User ${userIdToCheck} è in excludedCustomers - ACCESSO NEGATO`);
-      return NextResponse.json({
-        success: true,
-        hasAccess: false,
-        reason: 'Accesso negato per questo cliente specifico',
-        app: {
-          id: app.id,
-          name: app.name,
-          url: app.url
-        }
-      });
+    // ⚠️ FALLBACK: Se excludedUsers contiene numeri (IDs), controlla anche per ID
+    // Questo serve per backward compatibility
+    const userIdToCheck = String(odooUserId || userId);
+
+    if (isInternalUser && excludedUsers.some(item => !item.includes('@'))) {
+      // Ci sono ID nella lista
+      if (excludedUsers.includes(userIdToCheck)) {
+        console.log(`  ❌ User ID ${userIdToCheck} è in excludedUsers - ACCESSO NEGATO`);
+        return NextResponse.json({
+          success: true,
+          hasAccess: false,
+          reason: 'Accesso negato per questo utente specifico',
+          app: {
+            id: app.id,
+            name: app.name,
+            url: app.url
+          }
+        });
+      }
+    }
+
+    if (isPortalUser && excludedCustomers.some(item => !item.includes('@'))) {
+      // Ci sono ID nella lista
+      if (excludedCustomers.includes(userIdToCheck)) {
+        console.log(`  ❌ User ID ${userIdToCheck} è in excludedCustomers - ACCESSO NEGATO`);
+        return NextResponse.json({
+          success: true,
+          hasAccess: false,
+          reason: 'Accesso negato per questo cliente specifico',
+          app: {
+            id: app.id,
+            name: app.name,
+            url: app.url
+          }
+        });
+      }
     }
 
     // LIVELLO 5: Controlla requiredRole (solo se ha passato i controlli di visibilità)
