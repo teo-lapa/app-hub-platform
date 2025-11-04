@@ -38,11 +38,31 @@ export async function GET(request: NextRequest) {
         ['type', '=', 'product'],
         ['active', '=', true]
       ],
-      ['id', 'name', 'default_code', 'qty_available', 'uom_id', 'list_price', 'seller_ids', 'product_tmpl_id'],
+      ['id', 'name', 'default_code', 'qty_available', 'uom_id', 'list_price', 'seller_ids', 'product_tmpl_id', 'tag_ids'],
       0
     );
 
     console.log(`✅ ${products.length} prodotti caricati`);
+
+    // 1.5. Carica tag "PRE-ORDINE" per filtrare prodotti su ordinazione
+    console.log('🏷️ Ricerca tag PRE-ORDINE...');
+    let preOrderTagId: number | null = null;
+    try {
+      const tags = await rpc.searchRead(
+        'product.tag',
+        [['name', 'ilike', 'PRE-ORDINE']],
+        ['id', 'name'],
+        1
+      );
+      if (tags.length > 0) {
+        preOrderTagId = tags[0].id;
+        console.log(`✅ Tag PRE-ORDINE trovato (ID: ${preOrderTagId})`);
+      } else {
+        console.log('⚠️ Tag PRE-ORDINE non trovato - tutti i prodotti saranno inclusi');
+      }
+    } catch (error) {
+      console.log('⚠️ Errore caricamento tag, continuo senza filtro pre-ordine');
+    }
 
     // 2. Calcola data 3 mesi fa
     const threeMonthsAgo = new Date();
@@ -193,6 +213,12 @@ export async function GET(request: NextRequest) {
     const analyzedProducts = [];
 
     for (const product of products) {
+      // FILTRO: Escludi prodotti con tag PRE-ORDINE
+      if (preOrderTagId && product.tag_ids && product.tag_ids.includes(preOrderTagId)) {
+        console.log(`⏭️ Skip prodotto PRE-ORDINE: ${product.name}`);
+        continue;
+      }
+
       const soldQty = salesByProduct.get(product.id) || [];
       if (soldQty.length === 0) continue; // Skip senza vendite
 
