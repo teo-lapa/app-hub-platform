@@ -42,32 +42,39 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 [VIDEO-POLLING] Controllo operazione:', operationId);
 
-    const ai = new GoogleGenAI({ apiKey });
+    // L'SDK non funziona per il polling. Uso direttamente le REST API di Google
+    // https://generativelanguage.googleapis.com/v1beta/{name}
 
-    // Recupera lo stato dell'operazione
-    // L'SDK richiede che getVideosOperation riceva un oggetto operation COMPLETO
-    // Ma noi abbiamo solo il name. Ricostruiamo l'oggetto minimo necessario.
     let operation;
     try {
-      console.log('🔍 [VIDEO-POLLING] Polling operation:', operationId);
+      console.log('🔍 [VIDEO-POLLING] Polling operation via REST API:', operationId);
 
-      // Secondo la doc ufficiale, l'operation passata deve avere almeno { name: '...' }
-      // Creo un oggetto operation con il name e uso as any per evitare errori TS
-      const operationStub = {
-        name: operationId,
-        done: false,
-        _fromAPIResponse: () => {} // Metodo dummy richiesto internamente dall'SDK
-      };
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/${operationId}`;
 
-      operation = await (ai.operations as any).getVideosOperation({
-        operation: operationStub
+      console.log('🔍 [VIDEO-POLLING] Calling:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        }
       });
 
-      console.log('✅ [VIDEO-POLLING] Operation retrieved successfully!');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [VIDEO-POLLING] REST API error:', response.status, errorText);
+        throw new Error(`REST API returned ${response.status}: ${errorText}`);
+      }
+
+      operation = await response.json();
+
+      console.log('✅ [VIDEO-POLLING] Operation retrieved via REST!');
       console.log('🔍 [VIDEO-POLLING] Operation done:', operation.done);
+      console.log('🔍 [VIDEO-POLLING] Operation keys:', Object.keys(operation));
     } catch (opError: any) {
-      console.error('❌ [VIDEO-POLLING] Errore getVideosOperation:', opError.message);
-      console.error('❌ [VIDEO-POLLING] Error details:', JSON.stringify(opError, null, 2));
+      console.error('❌ [VIDEO-POLLING] Errore REST API polling:', opError.message);
+      console.error('❌ [VIDEO-POLLING] Error details:', opError.stack);
 
       // Se l'operazione non esiste o c'è un errore, restituisci un messaggio chiaro
       return NextResponse.json(
