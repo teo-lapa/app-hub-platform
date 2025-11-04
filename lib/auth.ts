@@ -6,7 +6,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-t
 
 export const generateToken = (user: User, odooUserId?: number): string => {
   const payload: any = {
-    userId: user.id,  // ✅ Renamed from 'id' to 'userId' per chiarezza
+    id: user.id,  // ✅ FIX: Use 'id' to match verifyToken expectation
+    userId: user.id,  // Keep userId for backward compatibility
     email: user.email,
     role: user.role,
     name: user.name,
