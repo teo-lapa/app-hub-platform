@@ -98,10 +98,14 @@ export async function POST(request: NextRequest) {
 
     // Video completato!
     console.log('✅ [VIDEO-POLLING] Video completato!');
+    console.log('🔍 [VIDEO-POLLING] Operation response keys:', Object.keys(operation.response || {}));
+    console.log('🔍 [VIDEO-POLLING] Operation response:', JSON.stringify(operation.response, null, 2));
 
     const videoFile = operation.response?.generatedVideos?.[0]?.video;
 
     if (!videoFile) {
+      console.error('❌ [VIDEO-POLLING] Video file not found in response');
+      console.error('📋 [VIDEO-POLLING] Full operation:', JSON.stringify(operation, null, 2));
       return NextResponse.json(
         { error: 'Nessun video trovato nella risposta' },
         { status: 500 }
