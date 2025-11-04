@@ -191,7 +191,7 @@ export default function ProdottiPreordinePage() {
 
     try {
       // Save all assignments
-      const savedAssignments = []
+      const savedAssignments: Array<{customerId: number, customerName: string, quantity: number}> = []
       for (const assignment of customerAssignments) {
         if (assignment.customerId > 0 && assignment.quantity > 0) {
           await fetch('/api/smart-ordering-v2/assign-preorder-customers', {
