@@ -204,11 +204,19 @@ export async function GET(request: NextRequest) {
       const groups = {
         dipendenti: {
           enabled: dipendentiEnabled,
-          excluded: (settings.excludedUsers || []).map((id: string) => parseInt(id, 10))
+          excluded: (settings.excludedUsers || [])
+            .map((id: string) => parseInt(id, 10))
+            .filter((id: number) => !isNaN(id)), // Remove NaN from converted emails
+          excludedEmails: (settings.excludedUsers || [])
+            .filter((val: string) => val.includes('@')) // Keep only emails
         },
         clienti: {
           enabled: clientiEnabled,
-          excluded: (settings.excludedCustomers || []).map((id: string) => parseInt(id, 10))
+          excluded: (settings.excludedCustomers || [])
+            .map((id: string) => parseInt(id, 10))
+            .filter((id: number) => !isNaN(id)), // Remove NaN from converted emails
+          excludedEmails: (settings.excludedCustomers || [])
+            .filter((val: string) => val.includes('@')) // Keep only emails
         }
       };
 
