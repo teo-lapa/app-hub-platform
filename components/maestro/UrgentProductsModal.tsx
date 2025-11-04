@@ -95,16 +95,16 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
           exit={{ scale: 0.9, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
-          <div className="p-6 border-b border-white/10">
+          {/* Header - Compatto */}
+          <div className="p-3 sm:p-4 border-b border-white/10">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center">
-                  <Bell className="w-6 h-6 text-orange-400" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-500/20 rounded-full flex items-center justify-center">
+                  <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">Prodotti Urgenti</h2>
-                  <p className="text-sm text-slate-400">
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-bold">Prodotti Urgenti</h2>
+                  <p className="text-xs sm:text-sm text-slate-400">
                     {products.length} prodott{products.length === 1 ? 'o' : 'i'} da vendere rapidamente
                   </p>
                 </div>
@@ -118,8 +118,8 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
             </div>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          {/* Content - Compatto */}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4">
             {loading ? (
               <div className="text-center py-12">
                 <div className="animate-spin w-12 h-12 border-4 border-orange-500/30 border-t-orange-500 rounded-full mx-auto mb-4"></div>
@@ -136,17 +136,17 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {products.map((product) => (
                   <motion.div
                     key={product.id}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="glass p-4 rounded-xl hover:bg-white/5 transition-all cursor-pointer"
+                    className="glass p-2 sm:p-3 rounded-xl hover:bg-white/5 transition-all cursor-pointer"
                     onClick={() => setSelectedProduct(product)}
                   >
-                    {/* Immagine */}
-                    <div className="w-full aspect-square rounded-lg overflow-hidden mb-3">
+                    {/* Immagine - Ridotta */}
+                    <div className="w-full aspect-square rounded-lg overflow-hidden mb-2">
                       {product.image ? (
                         <img
                           src={`data:image/png;base64,${product.image}`}
@@ -154,45 +154,38 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-4xl">
+                        <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-2xl sm:text-3xl">
                           📦
                         </div>
                       )}
                     </div>
 
-                    {/* Badge urgenza */}
-                    <div className={`text-xs font-bold mb-2 px-2 py-1 rounded-full text-center
+                    {/* Badge urgenza - Compatto */}
+                    <div className={`text-[10px] sm:text-xs font-bold mb-1 px-1.5 py-0.5 rounded text-center
                       ${product.urgencyLevel === 'expired'
                         ? 'bg-red-500/20 text-red-400 border border-red-500'
                         : 'bg-orange-500/20 text-orange-400 border border-orange-500'}`}>
                       {product.urgencyLevel === 'expired'
-                        ? `🔴 SCADUTO ${Math.abs(product.daysUntilExpiry)}gg fa`
+                        ? `⚠️ Scade tra ${product.daysUntilExpiry}gg`
                         : `⏰ Scade tra ${product.daysUntilExpiry}gg`}
                     </div>
 
-                    {/* Nome */}
-                    <h3 className="font-semibold text-sm line-clamp-2 mb-2">
+                    {/* Nome - Compatto */}
+                    <h3 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-1">
                       {product.productName}
                     </h3>
 
-                    {/* Quantità */}
-                    <div className="flex items-center gap-1 text-xs text-green-400 mb-1">
+                    {/* Quantità - Compatto */}
+                    <div className="flex items-center gap-1 text-[10px] sm:text-xs text-green-400 mb-0.5">
                       <Package className="w-3 h-3" />
                       <span>{product.quantity} {product.uom}</span>
                     </div>
 
-                    {/* Ubicazione */}
-                    <div className="flex items-center gap-1 text-xs text-slate-400 truncate">
+                    {/* Ubicazione - Compatto */}
+                    <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-400 truncate">
                       <MapPin className="w-3 h-3 flex-shrink-0" />
                       <span className="truncate">{product.locationName}</span>
                     </div>
-
-                    {/* Nota preview */}
-                    {product.note && (
-                      <div className="mt-2 p-2 glass-strong rounded text-xs text-slate-300 line-clamp-2">
-                        💬 {product.note}
-                      </div>
-                    )}
                   </motion.div>
                 ))}
               </div>
