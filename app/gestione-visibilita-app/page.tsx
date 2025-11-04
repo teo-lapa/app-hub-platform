@@ -210,6 +210,15 @@ export default function GestioneVisibilitaAppPage() {
     setSaving(true);
     setMessage(null);
 
+    // 🔍 DEBUG: Log completo dello stato prima di inviare
+    console.log('🚀 handleSave - Stato completo apps:', JSON.stringify(apps, null, 2));
+    const stellaApp = apps.find(a => a.id === 's17');
+    if (stellaApp) {
+      console.log('🌟 Stella AI Assistant (s17) groups:', stellaApp.groups);
+      console.log('  dipendenti.excluded:', stellaApp.groups.dipendenti.excluded);
+      console.log('  dipendenti.excludedEmails:', stellaApp.groups.dipendenti.excludedEmails);
+    }
+
     try {
       const response = await fetch('/api/apps/visibility', {
         method: 'POST',
