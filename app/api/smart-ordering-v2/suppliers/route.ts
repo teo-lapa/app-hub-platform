@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ ${products.length} prodotti caricati`);
 
-// 2. Calcola data 3 mesi fa
+    // 2. Calcola data 3 mesi fa
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
