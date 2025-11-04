@@ -430,6 +430,12 @@ AUDIO: Musica di sottofondo elegante e professionale`;
     // Converti l'aspect ratio per Veo (solo 16:9 o 9:16)
     const veoAspectRatio = params.aspectRatio === '9:16' ? '9:16' : '16:9';
 
+    console.log('🎬 [AGENT-VIDEO] Configurazione:', {
+      model: 'veo-3.1-generate-preview',
+      aspectRatio: veoAspectRatio,
+      durationSeconds: 6
+    });
+
     const operation = await ai.models.generateVideos({
       model: 'veo-3.1-generate-preview', // Latest Veo model
       prompt: prompt,
@@ -440,6 +446,11 @@ AUDIO: Musica di sottofondo elegante e professionale`;
       }
     });
 
+    if (!operation || !operation.name) {
+      console.warn('⚠️ [AGENT-VIDEO] Operazione video non ha restituito un ID');
+      return null;
+    }
+
     console.log('⏳ [AGENT-VIDEO] Video in generazione (operationId:', operation.name, ')');
 
     return {
@@ -449,7 +460,12 @@ AUDIO: Musica di sottofondo elegante e professionale`;
     };
 
   } catch (error: any) {
-    console.error('❌ [AGENT-VIDEO] Errore:', error.message);
+    console.error('❌ [AGENT-VIDEO] Errore durante la richiesta video:', error.message);
+    console.error('❌ [AGENT-VIDEO] Stack:', error.stack);
+
+    // L'API Veo potrebbe non essere disponibile o configurata
+    // Restituisci null invece di lanciare l'errore per permettere agli altri agenti di completare
+    console.warn('⚠️ [AGENT-VIDEO] Video generation fallita, continuo con solo immagine e copy');
     return null;
   }
 }

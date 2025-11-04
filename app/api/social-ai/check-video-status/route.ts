@@ -26,20 +26,36 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) {
+      console.error('❌ [VIDEO-POLLING] API key non configurata');
       return NextResponse.json(
         { error: 'API key non configurata' },
         { status: 500 }
       );
     }
 
-    const ai = new GoogleGenAI({ apiKey });
-
     console.log('🔍 [VIDEO-POLLING] Controllo operazione:', operationId);
 
+    const ai = new GoogleGenAI({ apiKey });
+
     // Recupera lo stato dell'operazione
-    const operation = await ai.operations.getVideosOperation({
-      operation: operationId
-    });
+    let operation;
+    try {
+      operation = await ai.operations.getVideosOperation({
+        operation: operationId
+      });
+    } catch (opError: any) {
+      console.error('❌ [VIDEO-POLLING] Errore getVideosOperation:', opError.message);
+
+      // Se l'operazione non esiste o c'è un errore, restituisci un messaggio chiaro
+      return NextResponse.json(
+        {
+          error: 'Errore nel recupero dello stato del video',
+          details: opError.message,
+          suggestion: 'Il video potrebbe non essere stato avviato correttamente o l\'API Veo non è disponibile'
+        },
+        { status: 500 }
+      );
+    }
 
     if (!operation.done) {
       console.log('⏳ [VIDEO-POLLING] Video ancora in generazione...');
