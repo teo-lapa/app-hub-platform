@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
     const analyzedProducts = [];
 
     for (const product of products) {
-const soldQty = salesByProduct.get(product.id) || [];
+      const soldQty = salesByProduct.get(product.id) || [];
       if (soldQty.length === 0) continue; // Skip senza vendite
 
       const totalSold = soldQty.reduce((sum: number, q: number) => sum + q, 0);
