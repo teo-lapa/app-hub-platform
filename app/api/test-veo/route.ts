@@ -35,6 +35,8 @@ export async function GET(request: NextRequest) {
 
     let operation;
     try {
+      console.log('🧪 [TEST-VEO] Chiamata generateVideos...');
+
       operation = await ai.models.generateVideos({
         model: 'veo-3.1-generate-preview',
         prompt: prompt,
@@ -46,7 +48,16 @@ export async function GET(request: NextRequest) {
       });
 
       console.log('✅ [TEST-VEO] generateVideos completato!');
-      console.log('🧪 [TEST-VEO] Operation:', JSON.stringify(operation, null, 2));
+      console.log('🧪 [TEST-VEO] Operation name:', operation?.name);
+      console.log('🧪 [TEST-VEO] Operation done:', operation?.done);
+      console.log('🧪 [TEST-VEO] Operation keys:', Object.keys(operation || {}));
+
+      if (!operation || !operation.name) {
+        return NextResponse.json({
+          error: 'Operation returned but has no name',
+          operation: operation
+        }, { status: 500 });
+      }
 
       return NextResponse.json({
         success: true,
@@ -54,7 +65,8 @@ export async function GET(request: NextRequest) {
         operation: {
           name: operation.name,
           done: operation.done,
-          hasResponse: !!operation.response
+          hasResponse: !!operation.response,
+          metadata: operation.metadata
         }
       });
 
