@@ -4,6 +4,8 @@ import { GoogleGenAI } from '@google/genai';
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minuti per generazione completa (video può richiedere tempo)
 
+const isDev = process.env.NODE_ENV === 'development';
+
 /**
  * POST /api/social-ai/generate-marketing
  *
@@ -89,19 +91,12 @@ export async function POST(request: NextRequest) {
     // Verifica API key
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) {
-      console.error('❌ [SOCIAL-AI] API key non configurata');
+      console.error('[SOCIAL-AI] API key non configurata');
       return NextResponse.json(
         { error: 'API key Gemini non configurata sul server' },
         { status: 500 }
       );
     }
-
-    console.log('🚀 [SOCIAL-AI] Avvio generazione marketing:', {
-      platform: socialPlatform,
-      contentType,
-      tone,
-      hasProductName: !!productName
-    });
 
     // Inizializza client Gemini
     const ai = new GoogleGenAI({ apiKey });
@@ -166,15 +161,11 @@ export async function POST(request: NextRequest) {
       agents.push(Promise.resolve(null)); // Placeholder
     }
 
-    console.log(`⚡ [SOCIAL-AI] Esecuzione ${agents.length} agenti in parallelo...`);
-
     // Esegui tutti gli agenti in PARALLELO
     const results = await Promise.all(agents);
     const copywritingResult = results[0] as { caption: string; hashtags: string[]; cta: string };
     const imageResult = results[1] as { data: string; mimeType: string; dataUrl: string } | null;
     const videoResult = results[2] as { operationId: string; status: string; estimatedTime: number } | null;
-
-    console.log('✅ [SOCIAL-AI] Tutti gli agenti completati!');
 
     // Costruisci risposta
     const result: MarketingResult = {
@@ -200,7 +191,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ [SOCIAL-AI] Errore:', error);
+    console.error('[SOCIAL-AI] Errore:', error);
 
     return NextResponse.json(
       {
@@ -226,8 +217,6 @@ async function generateCopywriting(
     productImageBase64: string;
   }
 ): Promise<{ caption: string; hashtags: string[]; cta: string }> {
-
-  console.log('✍️ [AGENT-COPYWRITING] Generazione copy...');
 
   const prompt = `Sei un esperto copywriter specializzato in social media marketing.
 
@@ -283,8 +272,6 @@ Rispondi SOLO con il JSON, senza markdown o spiegazioni.`;
     const cleanJson = textResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const parsed = JSON.parse(cleanJson);
 
-    console.log('✅ [AGENT-COPYWRITING] Completato');
-
     return {
       caption: parsed.caption || '',
       hashtags: parsed.hashtags || [],
@@ -292,7 +279,7 @@ Rispondi SOLO con il JSON, senza markdown o spiegazioni.`;
     };
 
   } catch (error: any) {
-    console.error('❌ [AGENT-COPYWRITING] Errore:', error.message);
+    console.error('[AGENT-COPYWRITING] Errore:', error.message);
     // Fallback
     return {
       caption: `Scopri ${params.productName}!`,
@@ -315,8 +302,6 @@ async function generateMarketingImage(
     productImageBase64: string;
   }
 ): Promise<{ data: string; mimeType: string; dataUrl: string } | null> {
-
-  console.log('🎨 [AGENT-IMAGE] Generazione immagine con Nano Banana 🍌...');
 
   const prompt = `Crea un'immagine marketing professionale e accattivante per ${params.platform}.
 
@@ -368,8 +353,6 @@ NON includere testo o loghi nell'immagine.`;
     for (const candidate of response.candidates || []) {
       for (const part of candidate.content?.parts || []) {
         if (part.inlineData && part.inlineData.data) {
-          console.log('✅ [AGENT-IMAGE] Immagine generata con Nano Banana 🍌');
-
           return {
             data: part.inlineData.data,
             mimeType: part.inlineData.mimeType || 'image/png',
@@ -379,11 +362,10 @@ NON includere testo o loghi nell'immagine.`;
       }
     }
 
-    console.warn('⚠️ [AGENT-IMAGE] Nessuna immagine generata');
     return null;
 
   } catch (error: any) {
-    console.error('❌ [AGENT-IMAGE] Errore:', error.message);
+    console.error('[AGENT-IMAGE] Errore:', error.message);
     return null;
   }
 }
@@ -402,20 +384,12 @@ async function generateMarketingVideo(
   }
 ): Promise<{ operationId: string; status: string; estimatedTime: number } | null> {
 
-  console.log('🎬 [AGENT-VIDEO] Generazione video con Veo 3.1...');
-
   // Usa API key separata per Veo se disponibile
   const veoApiKey = process.env.VEO_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
   if (!veoApiKey) {
-    console.error('❌ [AGENT-VIDEO] Nessuna API key disponibile per Veo');
+    console.error('[AGENT-VIDEO] Nessuna API key disponibile per Veo');
     return null;
-  }
-
-  if (process.env.VEO_API_KEY) {
-    console.log('✅ [AGENT-VIDEO] Usando VEO_API_KEY dedicata');
-  } else {
-    console.log('⚠️ [AGENT-VIDEO] Usando GEMINI_API_KEY (VEO_API_KEY non trovata)');
   }
 
   // Crea client dedicato per Veo con la sua API key
@@ -447,12 +421,6 @@ AUDIO: Musica di sottofondo elegante e professionale`;
     // Converti l'aspect ratio per Veo (solo 16:9 o 9:16)
     const veoAspectRatio = params.aspectRatio === '9:16' ? '9:16' : '16:9';
 
-    console.log('🎬 [AGENT-VIDEO] Configurazione:', {
-      model: 'veo-3.1-generate-preview',
-      aspectRatio: veoAspectRatio,
-      durationSeconds: 6
-    });
-
     const operation = await veoAI.models.generateVideos({
       model: 'veo-3.1-generate-preview', // Latest Veo model
       prompt: prompt,
@@ -464,11 +432,8 @@ AUDIO: Musica di sottofondo elegante e professionale`;
     });
 
     if (!operation || !operation.name) {
-      console.warn('⚠️ [AGENT-VIDEO] Operazione video non ha restituito un ID');
       return null;
     }
-
-    console.log('⏳ [AGENT-VIDEO] Video in generazione (operationId:', operation.name, ')');
 
     return {
       operationId: operation.name || '',
@@ -477,12 +442,13 @@ AUDIO: Musica di sottofondo elegante e professionale`;
     };
 
   } catch (error: any) {
-    console.error('❌ [AGENT-VIDEO] Errore durante la richiesta video:', error.message);
-    console.error('❌ [AGENT-VIDEO] Stack:', error.stack);
+    console.error('[AGENT-VIDEO] Errore durante la richiesta video:', error.message);
+    if (isDev) {
+      console.error('[AGENT-VIDEO] Stack:', error.stack);
+    }
 
     // L'API Veo potrebbe non essere disponibile o configurata
     // Restituisci null invece di lanciare l'errore per permettere agli altri agenti di completare
-    console.warn('⚠️ [AGENT-VIDEO] Video generation fallita, continuo con solo immagine e copy');
     return null;
   }
 }
