@@ -255,21 +255,12 @@ function calculateCadenceFromOrders(orders: OdooPurchaseOrder[]): SupplierOrderS
 }
 
 /**
- * Azzera tutte le cadenze esistenti (mette is_active = false)
+ * DEPRECATO - Non usare più
+ * Il flag is_active è MANUALE - NON deve essere modificato automaticamente
  */
 async function resetAllCadences(): Promise<void> {
-  try {
-    await sql`
-      UPDATE supplier_avatars
-      SET is_active = false,
-          notes = 'Cadenza azzerata per re-sync'
-      WHERE is_active = true
-    `;
-    console.log('✅ [RESET] Tutte le cadenze azzerate');
-  } catch (error) {
-    console.error('❌ [RESET] Errore azzeramento cadenze:', error);
-    throw error;
-  }
+  console.log('⚠️ [RESET] SKIPPED - is_active è gestito manualmente, non viene più resettato automaticamente');
+  // Non fa più nulla - il flag is_active è gestito SOLO manualmente
 }
 
 /**
@@ -289,11 +280,8 @@ export async function syncSuppliersFromOdoo(options: SyncOptions = {}): Promise<
     console.log('🔄 [SUPPLIER SYNC] Starting sync from Odoo...');
     console.log(`📅 [SUPPLIER SYNC] Analyzing last ${monthsBack} months of purchase orders`);
 
-    // STEP 0: Reset all existing cadences
-    if (!dryRun) {
-      console.log('🔄 [SUPPLIER SYNC] Resetting existing cadences...');
-      await resetAllCadences();
-    }
+    // STEP 0: NON resettiamo più i fornitori - is_active è MANUALE
+    console.log('ℹ️ [SUPPLIER SYNC] is_active flag is manual - will NOT reset existing suppliers');
 
     // STEP 1: Authenticate
     const uid = await authenticateOdoo();
@@ -335,6 +323,7 @@ export async function syncSuppliersFromOdoo(options: SyncOptions = {}): Promise<
 
         if (stats && stats.totalOrders > 0) {
           // Supplier WITH cadence (has recent orders)
+          // NON impostiamo is_active - è gestito MANUALMENTE
           await upsertSupplier({
             odoo_supplier_id: supplier.id,
             name: supplier.name,
@@ -345,7 +334,7 @@ export async function syncSuppliersFromOdoo(options: SyncOptions = {}): Promise<
             cadence_value: stats.averageCadenceDays,
             average_lead_time_days: stats.averageLeadTime,
             last_cadence_order_date: stats.lastOrderDate,
-            is_active: true,
+            // is_active NON viene modificato - resta come è nel DB
             notes: `Cadenza calcolata da ${stats.totalOrders} ordini negli ultimi ${monthsBack} mesi. Media: ${stats.averageCadenceDays} giorni.`
           });
 
@@ -353,6 +342,7 @@ export async function syncSuppliersFromOdoo(options: SyncOptions = {}): Promise<
           console.log(`✅ [SUPPLIER SYNC] ${supplier.name}: Cadenza ${stats.averageCadenceDays} gg (${stats.totalOrders} ordini)`);
         } else {
           // Supplier WITHOUT cadence (no recent orders)
+          // NON impostiamo is_active - è gestito MANUALMENTE
           await upsertSupplier({
             odoo_supplier_id: supplier.id,
             name: supplier.name,
@@ -363,7 +353,7 @@ export async function syncSuppliersFromOdoo(options: SyncOptions = {}): Promise<
             cadence_value: 7, // Default placeholder
             average_lead_time_days: 3,
             last_cadence_order_date: null,
-            is_active: false, // NOT ACTIVE - no recent orders
+            // is_active NON viene modificato - resta come è nel DB
             notes: `Nessun ordine negli ultimi ${monthsBack} mesi`
           });
 
