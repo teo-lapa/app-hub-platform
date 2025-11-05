@@ -50,24 +50,65 @@ export async function GET(request: NextRequest) {
         ['scheduled_date', '>=', `${date} 00:00:00`],
         ['scheduled_date', '<=', `${date} 23:59:59`]
       ],
-      ['id', 'name', 'state', 'scheduled_date', 'picking_ids', 'user_id'],
+      ['id', 'name', 'state', 'scheduled_date', 'picking_ids', 'user_id', 'x_studio_auto_del_giro', 'x_studio_autista_del_giro'],
       100,
       'name'
     );
 
     console.log(`[Smart Route AI] Found ${batches.length} batches`);
 
+    // Calculate total weight for each batch by summing picking weights
+    const batchesWithWeights = await Promise.all(
+      batches.map(async (b: any) => {
+        let totalWeight = 0;
+
+        if (b.picking_ids && b.picking_ids.length > 0) {
+          // Fetch all pickings for this batch
+          const pickings = await rpcClient.callKw(
+            'stock.picking',
+            'read',
+            [b.picking_ids, ['id', 'move_ids_without_package']]
+          );
+
+          // Collect all move IDs
+          const allMoveIds: number[] = [];
+          for (const picking of pickings) {
+            if (picking.move_ids_without_package && picking.move_ids_without_package.length > 0) {
+              allMoveIds.push(...picking.move_ids_without_package);
+            }
+          }
+
+          // Fetch weights from moves
+          if (allMoveIds.length > 0) {
+            const moves = await rpcClient.callKw(
+              'stock.move',
+              'read',
+              [allMoveIds, ['id', 'product_uom_qty']]
+            );
+
+            totalWeight = moves.reduce((sum: number, move: any) => sum + (move.product_uom_qty || 0), 0);
+          }
+        }
+
+        return {
+          id: b.id,
+          name: b.name,
+          state: b.state,
+          scheduledDate: b.scheduled_date,
+          pickingIds: b.picking_ids || [],
+          pickingCount: (b.picking_ids || []).length,
+          userId: b.user_id ? b.user_id[0] : null,
+          userName: b.user_id ? b.user_id[1] : null,
+          vehicleName: b.x_studio_auto_del_giro ? b.x_studio_auto_del_giro[1] : null,
+          driverName: b.x_studio_autista_del_giro ? b.x_studio_autista_del_giro[1] : null,
+          totalWeight: Math.round(totalWeight)
+        };
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      batches: batches.map((b: any) => ({
-        id: b.id,
-        name: b.name,
-        state: b.state,
-        scheduledDate: b.scheduled_date,
-        pickingIds: b.picking_ids || [],
-        userId: b.user_id ? b.user_id[0] : null,
-        userName: b.user_id ? b.user_id[1] : null
-      }))
+      batches: batchesWithWeights
     });
 
   } catch (error: any) {

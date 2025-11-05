@@ -64,11 +64,13 @@ export default function SmartRouteAIPage() {
   const [toast, setToast] = useState<{message: string, type: string} | null>(null);
   const [optimizationTime, setOptimizationTime] = useState<string>('-');
   const [sidebarVisible, setSidebarVisible] = useState(true);
-  const [batches, setBatches] = useState<Array<{id: number, name: string, state: string}>>([]);
+  const [batches, setBatches] = useState<Array<{id: number, name: string, state: string, vehicleName: string | null, driverName: string | null, totalWeight: number, pickingCount: number}>>([]);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [selectedPickingForMove, setSelectedPickingForMove] = useState<{id: number, currentBatch: string, date: string} | null>(null);
   const [showVehicleBatchModal, setShowVehicleBatchModal] = useState(false);
   const [selectedVehicleForBatch, setSelectedVehicleForBatch] = useState<{id: number, name: string, plate: string, driver: string, driverId: number, employeeId: number | null} | null>(null);
+  const [showBatchStateModal, setShowBatchStateModal] = useState(false);
+  const [selectedBatchForStateChange, setSelectedBatchForStateChange] = useState<{id: number, name: string, currentState: string, nextState: string} | null>(null);
 
   // Stats
   const [stats, setStats] = useState({
@@ -321,6 +323,70 @@ export default function SmartRouteAIPage() {
     } catch (error: any) {
       debugLog(`Error assigning vehicle: ${error.message}`, 'error');
       showToast('Errore assegnazione veicolo', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Handle batch click to advance state
+  async function handleBatchClick(batch: {id: number, name: string, state: string}) {
+    // Determine next state
+    let nextState: string;
+    let nextStateLabel: string;
+
+    if (batch.state === 'draft') {
+      nextState = 'done';
+      nextStateLabel = 'Pronto';
+    } else if (batch.state === 'done') {
+      nextState = 'cancel';
+      nextStateLabel = 'Completato';
+    } else {
+      showToast('Impossibile avanzare da questo stato', 'error');
+      return;
+    }
+
+    // Show confirmation modal
+    setSelectedBatchForStateChange({
+      id: batch.id,
+      name: batch.name,
+      currentState: batch.state,
+      nextState: nextStateLabel
+    });
+    setShowBatchStateModal(true);
+  }
+
+  // Confirm batch state change
+  async function confirmBatchStateChange() {
+    if (!selectedBatchForStateChange) return;
+
+    try {
+      debugLog(`Advancing batch ${selectedBatchForStateChange.id} to ${selectedBatchForStateChange.nextState}...`, 'info');
+      setLoading(true);
+
+      const response = await fetch('/api/smart-route-ai/batches/update-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          batchId: selectedBatchForStateChange.id
+        })
+      });
+
+      if (!response.ok) throw new Error('Error updating batch state');
+
+      const result = await response.json();
+
+      debugLog(`Batch state updated to ${result.newState}`, 'success');
+      showToast(`Batch passato a ${selectedBatchForStateChange.nextState}`, 'success');
+
+      // Reload batches to reflect new state
+      await loadBatches(dateFrom);
+
+      setShowBatchStateModal(false);
+      setSelectedBatchForStateChange(null);
+
+    } catch (error: any) {
+      debugLog(`Error updating batch state: ${error.message}`, 'error');
+      showToast('Errore aggiornamento stato batch', 'error');
     } finally {
       setLoading(false);
     }
@@ -655,6 +721,84 @@ export default function SmartRouteAIPage() {
             </button>
           </div>
 
+          {/* Batch List */}
+          {batches.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-4">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <span>📦</span> Batch
+              </h3>
+              <div className="space-y-2">
+                {batches.map((batch, index) => {
+                  // Use same colors as map
+                  const ROUTE_COLORS = [
+                    '#4f46e5', '#7c3aed', '#db2777', '#059669', '#d97706',
+                    '#dc2626', '#2563eb', '#16a34a', '#ea580c', '#8b5cf6'
+                  ];
+                  const color = ROUTE_COLORS[index % ROUTE_COLORS.length];
+
+                  // Determine state badge
+                  let stateBadge = '';
+                  let stateColor = '';
+                  if (batch.state === 'draft') {
+                    stateBadge = 'Bozza';
+                    stateColor = 'bg-yellow-100 text-yellow-800';
+                  } else if (batch.state === 'done') {
+                    stateBadge = 'Pronto';
+                    stateColor = 'bg-green-100 text-green-800';
+                  } else if (batch.state === 'cancel') {
+                    stateBadge = 'Completato';
+                    stateColor = 'bg-gray-100 text-gray-800';
+                  }
+
+                  return (
+                    <div
+                      key={batch.id}
+                      onClick={() => handleBatchClick(batch)}
+                      className="p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md"
+                      style={{
+                        borderColor: color,
+                        backgroundColor: `${color}10`
+                      }}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="font-semibold text-sm text-gray-900 mb-1">
+                            {batch.name}
+                          </div>
+                          <div className={`text-xs px-2 py-0.5 rounded-full inline-block ${stateColor}`}>
+                            {stateBadge}
+                          </div>
+                        </div>
+                        <div className="text-xs font-semibold px-2 py-1 rounded" style={{
+                          backgroundColor: color,
+                          color: 'white'
+                        }}>
+                          {batch.totalWeight} kg
+                        </div>
+                      </div>
+
+                      {batch.vehicleName && (
+                        <div className="text-xs text-gray-600 mb-1">
+                          🚗 {batch.vehicleName}
+                        </div>
+                      )}
+
+                      {batch.driverName && (
+                        <div className="text-xs text-gray-600 mb-1">
+                          👤 {batch.driverName}
+                        </div>
+                      )}
+
+                      <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-200">
+                        {batch.pickingCount} consegne • Clicca per avanzare
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Optimization */}
           <div className="bg-white rounded-lg shadow p-4">
             <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -926,6 +1070,68 @@ export default function SmartRouteAIPage() {
         </div>
       )}
 
+      {/* Batch State Change Confirmation Modal */}
+      {showBatchStateModal && selectedBatchForStateChange && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000]" onClick={() => setShowBatchStateModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Conferma Cambio Stato</h3>
+              <button
+                onClick={() => setShowBatchStateModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <div className="text-center mb-4">
+                <div className="text-5xl mb-3">⚠️</div>
+                <div className="text-lg font-semibold text-gray-900 mb-2">
+                  {selectedBatchForStateChange.name}
+                </div>
+                <div className="text-sm text-gray-600">
+                  Vuoi passare questo batch al prossimo stato?
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border-2 border-blue-200">
+                <div className="flex items-center justify-center gap-4">
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500 mb-1">Stato attuale</div>
+                    <div className="font-bold text-gray-900 capitalize">
+                      {selectedBatchForStateChange.currentState === 'draft' ? 'Bozza' : 'Pronto'}
+                    </div>
+                  </div>
+                  <div className="text-2xl text-blue-500">→</div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500 mb-1">Nuovo stato</div>
+                    <div className="font-bold text-indigo-900">
+                      {selectedBatchForStateChange.nextState}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowBatchStateModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={confirmBatchStateChange}
+                disabled={loading}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-semibold hover:from-indigo-600 hover:to-purple-600 transition-all disabled:opacity-50"
+              >
+                Conferma
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Batch Selection Modal */}
       {showBatchModal && selectedPickingForMove && (
