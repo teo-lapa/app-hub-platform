@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       selected: false // User will select manually
     }))
     // Sort vehicles: IVECO first, then BMW, then others
-    .sort((a, b) => {
+    .sort((a: any, b: any) => {
       const aIsIveco = a.name.toUpperCase().includes('IVECO');
       const bIsIveco = b.name.toUpperCase().includes('IVECO');
       const aIsBMW = a.name.toUpperCase().includes('BMW');
