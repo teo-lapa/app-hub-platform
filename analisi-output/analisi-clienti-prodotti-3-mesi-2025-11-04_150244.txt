@@ -1,0 +1,270 @@
+================================================================================
+ANALISI CLIENTI E PRODOTTI - ULTIMI 3 MESI
+================================================================================
+Generato il: 04/11/2025, 15:02:44
+Periodo: 2025-08-06 / 2025-11-04
+
+================================================================================
+ANALISI CLIENTI - CHI HA COMPRATO MENO
+================================================================================
+
+ANALISI MENSILE:
+--------------------------------------------------------------------------------
+
+Mese 1 (2025-08-06 / 2025-09-05)
+Totale clienti attivi: 148
+Top 10 che hanno comprato meno:
+    1. LAURA TEODORESCU PRIVATO                           €        0.00
+    2. LAPA - finest italian food GmbH, Mihai Nita        €        0.00
+    3. LAPA - finest italian food GmbH, Gregorio Buccolieri €        0.00
+    4. USO INTERNO                                        €        0.00
+    5. ZUMA FOOD GMBH                                     €       35.45
+    6. CASA COSI GMBH                                     €       37.44
+    7. L' APERITIVO GASTRO GMBH                           €       39.00
+    8. IYOKI GmbH                                         €       41.82
+    9. SPAZZATURA SCADUTI DETERIORATI                     €       49.75
+   10. Restaurant Linde Donatiello, Raffaele Pizzeria Linde €       57.33
+
+Mese 2 (2025-09-05 / 2025-10-05)
+Totale clienti attivi: 167
+Top 10 che hanno comprato meno:
+    1. LAPA - finest italian food GmbH, Zamfir Traian Liviu €        0.00
+    2. LAURA TEODORESCU PRIVATO                           €        0.00
+    3. HALTEN GASTRO GMBH, FAUSTO D'AGOSTINO              €        0.00
+    4. Farnsburg Gastro GmbH                              €        0.00
+    5. LAPA - finest italian food GmbH, Stefan Cosmin Rusu €        0.00
+    6. CAMPIONATURE                                       €        0.00
+    7. Alventotto GmbH                                    €        0.00
+    8. Food & Drinks Luzern GmbH                          €        0.00
+    9. LAPA - finest italian food GmbH, Alessandro Motta  €       37.70
+   10. CLAUDIO GALLINA                                    €       38.75
+
+Mese 3 (2025-10-05 / 2025-11-04)
+Totale clienti attivi: 180
+Top 10 che hanno comprato meno:
+    1. LAPA - finest italian food GmbH, Paul Teodorescu   €        0.00
+    2. LAURA TEODORESCU PRIVATO                           €        0.00
+    3. LAPA - finest italian food GmbH, Mihai Nita        €        0.00
+    4. Gebr. Da Silva Cleanservice AG                     €        0.00
+    5. LAPA - finest italian food GmbH, Domingos Ferreira €        0.00
+    6. Hibou Gastro GmbH                                  €        0.00
+    7. LAPA - finest italian food GmbH, Alexandru Dominte €        0.00
+    8. CAMPIONATURE                                       €        0.00
+    9. Tremondi B&B GmbH                                  €       16.03
+   10. TERZOANGOLO GMBH                                   €       28.17
+
+================================================================================
+CONFRONTO GLOBALE (3 MESI)
+================================================================================
+Totale clienti attivi: 212
+Top 20 che hanno comprato meno:
+    1. LAPA - finest italian food GmbH, Paul Teodorescu   €        0.00
+    2. LAURA TEODORESCU PRIVATO                           €        0.00
+    3. Gebr. Da Silva Cleanservice AG                     €        0.00
+    4. LAPA - finest italian food GmbH, Domingos Ferreira €        0.00
+    5. LAPA - finest italian food GmbH, Alexandru Dominte €        0.00
+    6. CAMPIONATURE                                       €        0.00
+    7. LAPA - finest italian food GmbH, Zamfir Traian Liviu €        0.00
+    8. HALTEN GASTRO GMBH, FAUSTO D'AGOSTINO              €        0.00
+    9. LAPA - finest italian food GmbH, Stefan Cosmin Rusu €        0.00
+   10. Alventotto GmbH                                    €        0.00
+   11. LAPA - finest italian food GmbH, Gregorio Buccolieri €        0.00
+   12. USO INTERNO                                        €        0.00
+   13. PIZZERIA PIAZZA AYDIN YASAR, AYDIN YASAR           €       48.70
+   14. SPAZZATURA SCADUTI DETERIORATI                     €       49.75
+   15. LAPA - finest italian food GmbH, Mihai Nita        €       58.00
+   16. GIUSEPPE GAMBARUCCI                                €       64.46
+   17. TAMARE GMBH RESTAURANT                             €       70.32
+   18. ROSSELLA LOMBARDO                                  €      101.45
+   19. Arunis Thai GmbH                                   €      106.75
+   20. PIZZERIA DA COSIMO E ANNA                          €      109.20
+
+
+================================================================================
+ANALISI PRODOTTI - DIMINUZIONE FATTURATO
+================================================================================
+
+ANALISI MENSILE:
+--------------------------------------------------------------------------------
+Top 30 prodotti con maggior calo:
+
+ 1. POMODORI PELATI 6X2500G LITO STRIANESE REG
+    Mese 1: €   3079.20
+    Mese 2: €   3448.22
+    Mese 3: €   1227.42
+    Calo:   €   1851.78 (-60.1%)
+
+ 2. FIORDILATTE BOCCONCINO PER PIZZERIA 500G VASCH 3KG TAMB
+    Mese 1: €   2360.04
+    Mese 2: €   3635.37
+    Mese 3: €    772.20
+    Calo:   €   1587.84 (-67.3%)
+
+ 3. CALZONE POMODORO MOZZARELLA 130G 30PZ CRT SG
+    Mese 1: €    633.60
+    Mese 2: €     40.52
+    Mese 3: €     40.52
+    Calo:   €    593.08 (-93.6%)
+
+ 4. CARCIOFI CON GAMBO GRIGLIATI LATTA 750G 6PZ CRT RIS
+    Mese 1: €    722.04
+    Mese 2: €    783.12
+    Mese 3: €    240.88
+    Calo:   €    481.16 (-66.6%)
+
+ 5. SCATOLA PORTA TORTA 45X55 DAMASCATA BIANCA 50 PZ CRT CAR
+    Mese 1: €    326.00
+    Mese 2: €      0.00
+    Mese 3: €      0.00
+    Calo:   €    326.00 (-100.0%)
+
+ 6. GAMBERO BLACK TIGER INTERO 4/6 CONF 1KG 10KG CRT GLASS 20% DSD
+    Mese 1: €    975.00
+    Mese 2: €    650.00
+    Mese 3: €    650.00
+    Calo:   €    325.00 (-33.3%)
+
+ 7. PASTA RIPIENA RICOTTA E SPINACI CONF CA 5KG CRT MARC (Tortello, Verde, 1000gr)
+    Mese 1: €    305.45
+    Mese 2: €      0.00
+    Mese 3: €      0.00
+    Calo:   €    305.45 (-100.0%)
+
+ 8. SACCO SPAZZATURA NERO 110L 10 SACC A ROT 15 ROT CRT JIRR NON USARE
+    Mese 1: €    285.00
+    Mese 2: €    999.02
+    Mese 3: €      0.00
+    Calo:   €    285.00 (-100.0%)
+
+ 9. CARTA ALIMENTI PROPILENE PERLATO 40G FOND BIANCO 75X50 CM 10KG CRT PACK 
+    Mese 1: €    425.62
+    Mese 2: €    280.62
+    Mese 3: €    143.50
+    Calo:   €    282.12 (-66.3%)
+
+10. PASTA NOCCIOLA SCURA "L" PZ 5.5KG MIO
+    Mese 1: €    279.84
+    Mese 2: €    135.63
+    Mese 3: €      0.00
+    Calo:   €    279.84 (-100.0%)
+
+11. TARTUFO NERO ESTIVO FRESCO ( TUBER AESTIVUM VITTAD.) TT
+    Mese 1: €    273.60
+    Mese 2: €      0.00
+    Mese 3: €      0.00
+    Calo:   €    273.60 (-100.0%)
+
+12. MOZZARELLA DI BUFALA CAMPANA DOP 2X125G 2KG CRT GIFF
+    Mese 1: €    256.11
+    Mese 2: €    297.00
+    Mese 3: €      0.00
+    Calo:   €    256.11 (-100.0%)
+
+13. CARTONI PIZZA VESUVIO BIA 33X33X3.5 100PZ CONF LINER
+    Mese 1: €    345.00
+    Mese 2: €    343.00
+    Mese 3: €     93.00
+    Calo:   €    252.00 (-73.0%)
+
+14. SCROCCHIARELLA CLASSICA 38X28 8PZX440G CRT EUR
+    Mese 1: €    681.48
+    Mese 2: €    736.53
+    Mese 3: €    437.24
+    Calo:   €    244.24 (-35.8%)
+
+15. GELATIERA INOX 2.5L 18X16.5X12H 168 PZ CRT SAM
+    Mese 1: €    238.56
+    Mese 2: €    255.36
+    Mese 3: €      0.00
+    Calo:   €    238.56 (-100.0%)
+
+16. FARINA MACINATA A PIETRA TIPO 1 5 STAGIONI SACCO 10KG AF
+    Mese 1: €    256.00
+    Mese 2: €    179.20
+    Mese 3: €     26.60
+    Calo:   €    229.40 (-89.6%)
+
+17. ZUPPA INGLESE MONO PZ 12 CT MAR
+    Mese 1: €    292.40
+    Mese 2: €      0.00
+    Mese 3: €     63.80
+    Calo:   €    228.60 (-78.2%)
+
+18. BICCHIERE CARTONE KRAFT ZEN CHIARO 250ML 50PZ 20CONF FIST 
+    Mese 1: €    229.00
+    Mese 2: €    107.80
+    Mese 3: €     10.74
+    Calo:   €    218.26 (-95.3%)
+
+19. PASTA RIPIENA BURRATA E POMODORINI PZ 5KG CRT MARC
+    Mese 1: €    217.90
+    Mese 2: €      0.00
+    Mese 3: €      0.00
+    Calo:   €    217.90 (-100.0%)
+
+20. COPERCHIO PS TRASPARENTE X GELATIERA INOX 2.5L 18X16.5X12H 336PZ A CT SAM
+    Mese 1: €    215.04
+    Mese 2: €      0.00
+    Mese 3: €      0.00
+    Calo:   €    215.04 (-100.0%)
+
+21. OLIO AL TARTUFO BIANCO 250ML 12BTL TT
+    Mese 1: €    227.17
+    Mese 2: €     11.49
+    Mese 3: €     21.00
+    Calo:   €    206.17 (-90.8%)
+
+22. PASTA RIPIENA DI PARMIGIANA CA 5 KG CRT MARC
+    Mese 1: €    203.30
+    Mese 2: €      0.00
+    Mese 3: €      0.00
+    Calo:   €    203.30 (-100.0%)
+
+23. MOZZARELLA DI BUFALA CAMPANA DOP 5X50G 3KG CRT SRI
+    Mese 1: €    269.34
+    Mese 2: €    437.08
+    Mese 3: €     70.08
+    Calo:   €    199.26 (-74.0%)
+
+24. Dispenser per rotoli carta in plastica ABS Jirr
+    Mese 1: €    192.00
+    Mese 2: €    192.00
+    Mese 3: €      0.00
+    Calo:   €    192.00 (-100.0%)
+
+25. FARINA 00 CAPUTO NUVOLA 25KG FERR
+    Mese 1: €   2210.17
+    Mese 2: €   3046.67
+    Mese 3: €   2025.58
+    Calo:   €    184.59 (-8.4%)
+
+26. GAMBERO INTERI ROSSI SICILIA 3° 30-45PZ AL KG - 8KG CRT POL
+    Mese 1: €    177.00
+    Mese 2: €     59.00
+    Mese 3: €      0.00
+    Calo:   €    177.00 (-100.0%)
+
+27. SAVOIARDI VINCENZOVO 200G 12PZ CRT POL
+    Mese 1: €    617.61
+    Mese 2: €    546.58
+    Mese 3: €    451.60
+    Calo:   €    166.01 (-26.9%)
+
+28. PASTA RIPIENA RICOTTA E LIMONE CONF CA 5KG CRT MARC
+    Mese 1: €    161.35
+    Mese 2: €      0.00
+    Mese 3: €      0.00
+    Calo:   €    161.35 (-100.0%)
+
+29. DESTROSIO MONO C DEX 02001 25KG MIO
+    Mese 1: €    153.00
+    Mese 2: €      0.00
+    Mese 3: €      0.00
+    Calo:   €    153.00 (-100.0%)
+
+30. [CIALDA VIENNA MEDIA 160 PZ] CONI CIALDA VIENNA MEDIA 160 PZ 3.36KG CRT POL
+    Mese 1: €    149.12
+    Mese 2: €      0.00
+    Mese 3: €      0.00
+    Calo:   €    149.12 (-100.0%)
+

@@ -189,7 +189,7 @@ export const standaloneApps: App[] = [
     icon: '🛒',
     badge: 'FREE',
     category: 'Vendite',
-    url: '/apps/vendite/catalogo',
+    url: '/catalogo-lapa',
     requiredRole: 'cliente_gratuito',
     createdAt: new Date('2023-09-01'),
     updatedAt: new Date('2023-12-28'),

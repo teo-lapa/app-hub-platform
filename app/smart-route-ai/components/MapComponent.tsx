@@ -35,6 +35,10 @@ interface Picking {
   lat: number;
   lng: number;
   weight: number;
+  batchId: number | null;
+  batchName: string | null;
+  batchVehicleName: string | null;
+  batchDriverName: string | null;
   scheduledDate: string;
   state: string;
 }
@@ -130,18 +134,31 @@ export default function MapComponent({ pickings, routes, vehicles }: MapComponen
 
     if (pickings.length === 0) return;
 
+    // Create a map of batchId -> color
+    const batchColorMap = new Map<number, string>();
+    const uniqueBatchIds = Array.from(new Set(pickings.map(p => p.batchId).filter(Boolean)));
+    uniqueBatchIds.forEach((batchId, idx) => {
+      batchColorMap.set(batchId!, ROUTE_COLORS[idx % ROUTE_COLORS.length]);
+    });
+
     // Add new markers
     pickings.forEach((picking, index) => {
       // Find if this picking is in a route
       let routeIndex = -1;
       let routeColor = '#4f46e5'; // default indigo
 
-      routes.forEach((route, rIdx) => {
-        if (route.pickings.some(p => p.id === picking.id)) {
-          routeIndex = rIdx;
-          routeColor = ROUTE_COLORS[rIdx % ROUTE_COLORS.length];
-        }
-      });
+      // If picking has a batch, use batch color instead
+      if (picking.batchId && batchColorMap.has(picking.batchId)) {
+        routeColor = batchColorMap.get(picking.batchId)!;
+      } else {
+        // Otherwise, use route color if available
+        routes.forEach((route, rIdx) => {
+          if (route.pickings.some(p => p.id === picking.id)) {
+            routeIndex = rIdx;
+            routeColor = ROUTE_COLORS[rIdx % ROUTE_COLORS.length];
+          }
+        });
+      }
 
       const markerIcon = L.divIcon({
         className: 'picking-marker',
@@ -179,10 +196,56 @@ export default function MapComponent({ pickings, routes, vehicles }: MapComponen
             <div style="font-size: 12px; margin-bottom: 4px;">
               <strong>Peso:</strong> ${picking.weight} kg
             </div>
-            <div style="font-size: 12px; color: #666;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
               <strong>Data:</strong> ${new Date(picking.scheduledDate).toLocaleDateString('it-IT')}
             </div>
-            ${routeIndex >= 0 ? `
+            ${picking.batchName ? `
+              <div style="
+                margin-top: 8px;
+                padding: 8px;
+                background: ${routeColor};
+                color: white;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.2s;
+              "
+              onclick="window.showBatchSelector(${picking.id}, '${picking.batchName}', '${picking.scheduledDate}')"
+              onmouseover="this.style.opacity='0.8'"
+              onmouseout="this.style.opacity='1'"
+              >
+                <div style="text-align: center; margin-bottom: 6px;">
+                  🚚 ${picking.batchName}
+                </div>
+                ${picking.batchVehicleName ? `
+                  <div style="font-size: 11px; opacity: 0.95; margin-bottom: 3px;">
+                    🚗 ${picking.batchVehicleName}
+                  </div>
+                ` : ''}
+                ${picking.batchDriverName ? `
+                  <div style="font-size: 11px; opacity: 0.95; margin-bottom: 3px;">
+                    👤 ${picking.batchDriverName}
+                  </div>
+                ` : ''}
+                <div style="font-size: 10px; margin-top: 6px; opacity: 0.85; text-align: center; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 4px;">
+                  Clicca per spostare
+                </div>
+              </div>
+            ` : `
+              <div style="
+                margin-top: 8px;
+                padding: 6px;
+                background: #f3f4f6;
+                color: #6b7280;
+                border-radius: 4px;
+                text-align: center;
+                font-size: 11px;
+              ">
+                Non assegnato a nessun batch
+              </div>
+            `}
+            ${routeIndex >= 0 && !picking.batchName ? `
               <div style="
                 margin-top: 8px;
                 padding: 6px;
