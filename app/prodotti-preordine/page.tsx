@@ -347,9 +347,12 @@ export default function ProdottiPreordinePage() {
     try {
       setIsCreatingAllOrders(true)
 
-      // Prepare data for single product (same format as createAllOrders)
-      const orderData = {
-        products: [{
+      // Prepare data - include BOTH main product AND all variants with assignments
+      const productsToOrder: any[] = []
+
+      // Add main product if it has assignments
+      if (product.assignedCustomers && product.assignedCustomers.length > 0) {
+        productsToOrder.push({
           productId: product.id,
           supplierId: product.supplier.id,
           supplierName: product.supplier.name,
@@ -358,7 +361,29 @@ export default function ProdottiPreordinePage() {
             customerName: a.customerName,
             quantity: a.quantity
           }))
-        }]
+        })
+      }
+
+      // ✨ NUOVO: Add all variants that have assignments
+      if (product.hasVariants && product.variants) {
+        for (const variant of product.variants) {
+          if (variant.assignedCustomers && variant.assignedCustomers.length > 0) {
+            productsToOrder.push({
+              productId: variant.id,  // Use VARIANT ID, not main product ID!
+              supplierId: product.supplier.id,
+              supplierName: product.supplier.name,
+              assignments: variant.assignedCustomers.map(a => ({
+                customerId: a.customerId,
+                customerName: a.customerName,
+                quantity: a.quantity
+              }))
+            })
+          }
+        }
+      }
+
+      const orderData = {
+        products: productsToOrder
       }
 
       const res = await fetch('/api/smart-ordering-v2/create-all-preorders', {
@@ -377,10 +402,18 @@ export default function ProdottiPreordinePage() {
       // Show success message with summary
       alert(`✅ Creati ${result.customerQuotesCreated || 0} preventivi clienti, ${result.supplierQuotesCreated || 0} preventivi fornitori`)
 
-      // Clear assignments for this product
-      setAllProducts(prev => prev.map(p =>
-        p.id === product.id ? { ...p, assignedCustomers: [] } : p
-      ))
+      // Clear assignments for this product AND all its variants
+      setAllProducts(prev => prev.map(p => {
+        if (p.id === product.id) {
+          return {
+            ...p,
+            assignedCustomers: [],
+            // ✨ NUOVO: Clear variant assignments too
+            variants: p.variants?.map(v => ({ ...v, assignedCustomers: [] }))
+          }
+        }
+        return p
+      }))
 
       // Reload data
       await loadAllData()
@@ -413,18 +446,45 @@ export default function ProdottiPreordinePage() {
     try {
       setIsCreatingAllOrders(true)
 
-      // Prepare data structure for API
+      // Prepare data structure for API - include main products AND all variants
+      const productsToOrder: any[] = []
+
+      for (const product of preOrderProducts) {
+        // Add main product if it has assignments
+        if (product.assignedCustomers && product.assignedCustomers.length > 0) {
+          productsToOrder.push({
+            productId: product.id,
+            supplierId: product.supplier.id,
+            supplierName: product.supplier.name,
+            assignments: product.assignedCustomers.map(a => ({
+              customerId: a.customerId,
+              customerName: a.customerName,
+              quantity: a.quantity
+            }))
+          })
+        }
+
+        // ✨ NUOVO: Add all variants that have assignments
+        if (product.hasVariants && product.variants) {
+          for (const variant of product.variants) {
+            if (variant.assignedCustomers && variant.assignedCustomers.length > 0) {
+              productsToOrder.push({
+                productId: variant.id,  // Use VARIANT ID, not main product ID!
+                supplierId: product.supplier.id,
+                supplierName: product.supplier.name,
+                assignments: variant.assignedCustomers.map(a => ({
+                  customerId: a.customerId,
+                  customerName: a.customerName,
+                  quantity: a.quantity
+                }))
+              })
+            }
+          }
+        }
+      }
+
       const orderData = {
-        products: preOrderProducts.map(product => ({
-          productId: product.id,
-          supplierId: product.supplier.id,
-          supplierName: product.supplier.name,
-          assignments: product.assignedCustomers.map(a => ({
-            customerId: a.customerId,
-            customerName: a.customerName,
-            quantity: a.quantity
-          }))
-        }))
+        products: productsToOrder
       }
 
       // Call API endpoint
