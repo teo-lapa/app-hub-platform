@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       driverId: vehicle.driver_id ? vehicle.driver_id[0] : null,
       employeeId: vehicle.driver_employee_id ? vehicle.driver_employee_id[0] : null,
       capacity: 1500, // Default capacity
-      selected: true // Default selected
+      selected: false // User will select manually
     }))
     // Sort vehicles: IVECO first, then BMW, then others
     .sort((a, b) => {
