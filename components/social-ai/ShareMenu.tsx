@@ -304,7 +304,7 @@ export default function ShareMenu({
           </div>
 
           {/* Web Share API (mobile) */}
-          {typeof navigator !== 'undefined' && navigator.share && (
+          {typeof navigator !== 'undefined' && typeof navigator.share !== 'undefined' && (
             <button
               onClick={handleWebShare}
               className="w-full flex items-center justify-center space-x-2 p-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-xl text-white font-medium transition-all"
