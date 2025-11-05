@@ -65,6 +65,9 @@ export default function ProdottiPreordinePage() {
   const [analyticsProduct, setAnalyticsProduct] = useState<Product | null>(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
 
+  // ✨ NEW: Global order creation loading state
+  const [isCreatingAllOrders, setIsCreatingAllOrders] = useState(false)
+
   useEffect(() => {
     loadAllData()
   }, [])
@@ -284,6 +287,7 @@ export default function ProdottiPreordinePage() {
     // Analytics data is already loaded with the product
   }
 
+  // ✨ UPDATED: Single product order creation - now uses the same API endpoint
   const createOrder = async (product: Product) => {
     if (!product.isPreOrder || product.assignedCustomers.length === 0) {
       alert('Prodotto deve essere PRE-ORDINE con clienti assegnati')
@@ -291,17 +295,118 @@ export default function ProdottiPreordinePage() {
     }
 
     try {
-      // Create orders for each customer
-      for (const assignment of product.assignedCustomers) {
-        // TODO: Create order in Odoo for this customer
-        console.log(`Creating order: Customer ${assignment.customerName}, Product ${product.name} x${assignment.quantity}`)
+      setIsCreatingAllOrders(true)
+
+      // Prepare data for single product (same format as createAllOrders)
+      const orderData = {
+        products: [{
+          productId: product.id,
+          supplierId: product.supplier.id,
+          supplierName: product.supplier.name,
+          assignments: product.assignedCustomers.map(a => ({
+            customerId: a.customerId,
+            customerName: a.customerName,
+            quantity: a.quantity
+          }))
+        }]
       }
 
-      alert('Ordini creati con successo!')
+      const res = await fetch('/api/smart-ordering-v2/create-all-preorders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Errore nella creazione degli ordini')
+      }
+
+      const result = await res.json()
+
+      // Show success message with summary
+      alert(`✅ Creati ${result.customerQuotesCreated || 0} preventivi clienti, ${result.supplierQuotesCreated || 0} preventivi fornitori`)
+
+      // Clear assignments for this product
+      setAllProducts(prev => prev.map(p =>
+        p.id === product.id ? { ...p, assignedCustomers: [] } : p
+      ))
+
+      // Reload data
       await loadAllData()
     } catch (error) {
-      console.error('Error creating orders:', error)
-      alert('Errore nella creazione degli ordini')
+      console.error('Error creating order:', error)
+      alert(`Errore: ${error instanceof Error ? error.message : 'Impossibile creare gli ordini'}`)
+    } finally {
+      setIsCreatingAllOrders(false)
+    }
+  }
+
+  // ✨ NEW: Create all orders for all pre-order products with assignments
+  const createAllOrders = async () => {
+    // Filter products that are PRE-ORDINE and have assigned customers
+    const preOrderProducts = allProducts.filter(p => p.isPreOrder && p.assignedCustomers.length > 0)
+
+    if (preOrderProducts.length === 0) {
+      alert('Nessun prodotto PRE-ORDINE con clienti assegnati')
+      return
+    }
+
+    // Ask for confirmation
+    const totalProducts = preOrderProducts.length
+    const totalCustomers = preOrderProducts.reduce((sum, p) => sum + p.assignedCustomers.length, 0)
+
+    if (!confirm(`Vuoi creare gli ordini per ${totalProducts} prodotti (${totalCustomers} assegnazioni clienti)?`)) {
+      return
+    }
+
+    try {
+      setIsCreatingAllOrders(true)
+
+      // Prepare data structure for API
+      const orderData = {
+        products: preOrderProducts.map(product => ({
+          productId: product.id,
+          supplierId: product.supplier.id,
+          supplierName: product.supplier.name,
+          assignments: product.assignedCustomers.map(a => ({
+            customerId: a.customerId,
+            customerName: a.customerName,
+            quantity: a.quantity
+          }))
+        }))
+      }
+
+      // Call API endpoint
+      const res = await fetch('/api/smart-ordering-v2/create-all-preorders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Errore nella creazione degli ordini')
+      }
+
+      const result = await res.json()
+
+      // Show success message with summary
+      alert(`✅ Creati ${result.customerQuotesCreated || 0} preventivi clienti, ${result.supplierQuotesCreated || 0} preventivi fornitori`)
+
+      // Clear assignments from local state for processed products
+      const processedProductIds = new Set(preOrderProducts.map(p => p.id))
+      setAllProducts(prev => prev.map(p =>
+        processedProductIds.has(p.id) ? { ...p, assignedCustomers: [] } : p
+      ))
+
+      // Reload data
+      await loadAllData()
+    } catch (error) {
+      console.error('Error creating all orders:', error)
+      alert(`Errore: ${error instanceof Error ? error.message : 'Impossibile creare gli ordini'}`)
+    } finally {
+      setIsCreatingAllOrders(false)
     }
   }
 
@@ -341,6 +446,29 @@ export default function ProdottiPreordinePage() {
               >
                 <ArrowLeftIcon className="w-6 h-6 text-white" />
               </button>
+
+              {/* ✨ NEW: Global "Create All Orders" Button */}
+              {allProducts.filter(p => p.isPreOrder && p.assignedCustomers.length > 0).length > 0 && (
+                <button
+                  onClick={createAllOrders}
+                  disabled={isCreatingAllOrders}
+                  className={`px-6 py-3 rounded-xl font-bold text-white text-lg transition-all transform hover:scale-105 shadow-lg ${
+                    isCreatingAllOrders
+                      ? 'bg-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+                  }`}
+                >
+                  {isCreatingAllOrders ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Creazione...</span>
+                    </div>
+                  ) : (
+                    '🚀 CREA TUTTI GLI ORDINI'
+                  )}
+                </button>
+              )}
+
               <div>
                 <h1 className="text-2xl font-bold text-white">Prodotti Pre-ordine</h1>
                 <p className="text-purple-200 text-sm">Gestisci prodotti su ordinazione e assegna ai clienti</p>
@@ -500,9 +628,14 @@ export default function ProdottiPreordinePage() {
                           {product.isPreOrder && product.assignedCustomers.length > 0 && (
                             <button
                               onClick={() => createOrder(product)}
-                              className="px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-sm rounded-lg transition-all font-semibold"
+                              disabled={isCreatingAllOrders}
+                              className={`px-3 py-1.5 text-white text-sm rounded-lg transition-all font-semibold ${
+                                isCreatingAllOrders
+                                  ? 'bg-gray-500 cursor-not-allowed'
+                                  : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+                              }`}
                             >
-                              🚀 ORDINA
+                              {isCreatingAllOrders ? '⏳' : '🚀 ORDINA'}
                             </button>
                           )}
                         </div>
