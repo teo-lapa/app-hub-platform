@@ -402,17 +402,16 @@ export default function SmartRouteAIPage() {
         </button>
 
         {/* Sidebar */}
-        <div className={`
-          fixed lg:relative
-          top-0 left-0
-          w-full lg:w-96
-          h-full lg:h-auto
-          bg-gray-50 border-r border-gray-200
-          overflow-y-auto p-4 space-y-4
-          transition-transform duration-300 ease-in-out
-          z-[1000]
-          ${sidebarVisible ? 'translate-x-0' : '-translate-x-full'}
-        `}>
+        {sidebarVisible && (
+          <div className="
+            fixed lg:relative
+            top-0 left-0
+            w-full lg:w-96
+            h-full lg:h-auto
+            bg-gray-50 border-r border-gray-200
+            overflow-y-auto p-4 space-y-4
+            z-[1000]
+          ">
 
           {/* Dynamic Capacity */}
           <div className="bg-white rounded-lg shadow p-4">
@@ -673,6 +672,8 @@ export default function SmartRouteAIPage() {
             🐛 {debugMode ? 'Nascondi' : 'Mostra'} Debug
           </button>
         </div>
+        )}
+
 
         {/* Map Area */}
         <div className="flex-1 relative w-full">
@@ -740,3 +741,4 @@ export default function SmartRouteAIPage() {
     </div>
   );
 }
+
