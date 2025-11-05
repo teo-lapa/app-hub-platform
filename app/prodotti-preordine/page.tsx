@@ -134,11 +134,18 @@ export default function ProdottiPreordinePage() {
         const preOrderIds = new Set(data.products?.map((p: any) => p.id) || [])
 
         // Mark products that have PRE-ORDINE tag
-        setAllProducts(prev => prev.map(p => ({
-          ...p,
-          isPreOrder: preOrderIds.has(p.id),
-          assignedCustomers: data.products?.find((pp: any) => pp.id === p.id)?.assignedCustomers || []
-        })))
+        setAllProducts(prev => prev.map(p => {
+          const preOrderProduct = data.products?.find((pp: any) => pp.id === p.id)
+          return {
+            ...p,
+            isPreOrder: preOrderIds.has(p.id),
+            assignedCustomers: preOrderProduct?.assigned_customers || [],
+            // ✨ Copy variant fields from API
+            hasVariants: preOrderProduct?.hasVariants || false,
+            variantCount: preOrderProduct?.variantCount || 0,
+            variants: preOrderProduct?.variants || []
+          }
+        }))
       }
 
       // Load customers
