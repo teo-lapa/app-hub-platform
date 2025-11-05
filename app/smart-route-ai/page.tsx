@@ -595,7 +595,12 @@ export default function SmartRouteAIPage() {
                           })()}
                         </div>
                         <div className={`text-xs ${vehicle.selected ? 'text-indigo-700' : 'text-gray-600'}`}>
-                          {vehicle.driver.split(' ')[0]}
+                          {(() => {
+                            // Format: "COMPANY, FirstName LastName" -> extract "FirstName"
+                            const parts = vehicle.driver.split(',');
+                            const namePart = parts.length > 1 ? parts[1].trim() : vehicle.driver;
+                            return namePart.split(' ')[0];
+                          })()}
                         </div>
                       </div>
                       <div className="text-xs bg-cyan-500 text-white px-2 py-1 rounded-full font-semibold">
