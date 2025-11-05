@@ -710,44 +710,68 @@ export default function ProdottiPreordinePage() {
                     {/* ✨ NUOVO: Righe varianti espanse */}
                     {product.hasVariants && expandedVariants.has(product.id) && product.variants && (
                       <>
-                        {product.variants.map((variant: any, idx: number) => (
-                          <tr key={`${product.id}-variant-${variant.id}`} className="bg-purple-900/20 border-b border-white/5">
-                            <td className="px-4 py-2"></td>
-                            <td className="px-4 py-2"></td>
-                            <td className="px-4 py-2 pl-8">
-                              <div className="text-sm text-gray-300 flex items-center gap-2">
-                                <span className="text-purple-400">→</span>
-                                {variant.name}
-                                {variant.code && <span className="text-xs text-gray-500">({variant.code})</span>}
-                              </div>
-                            </td>
-                            <td className="px-4 py-2"></td>
-                            <td className="px-4 py-2 text-center">
-                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                variant.stock > 10
-                                  ? 'bg-green-500/20 text-green-300'
-                                  : variant.stock > 0
-                                  ? 'bg-yellow-500/20 text-yellow-300'
-                                  : 'bg-red-500/20 text-red-300'
-                              }`}>
-                                {variant.stock.toFixed(1)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2 text-center">
-                              <button
-                                onClick={() => openCustomerAssignment(
-                                  { ...product, id: variant.id, name: variant.name, assignedCustomers: variant.assignedCustomers },
-                                  product.id  // Pass parent product ID
-                                )}
-                                className="px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs rounded transition-colors"
-                              >
-                                👥 Assegna
-                              </button>
-                            </td>
-                            <td className="px-4 py-2"></td>
-                            <td className="px-4 py-2"></td>
-                          </tr>
-                        ))}
+                        {product.variants.map((variant: any, idx: number) => {
+                          const variantTotalQty = variant.assignedCustomers?.reduce((sum: number, a: any) => sum + a.quantity, 0) || 0;
+
+                          return (
+                            <tr key={`${product.id}-variant-${variant.id}`} className="bg-purple-900/20 border-b border-white/5">
+                              <td className="px-4 py-2"></td>
+                              <td className="px-4 py-2"></td>
+                              <td className="px-4 py-2 pl-8">
+                                <div className="text-sm text-gray-300 flex items-center gap-2">
+                                  <span className="text-purple-400">→</span>
+                                  {variant.name}
+                                  {variant.code && <span className="text-xs text-gray-500">({variant.code})</span>}
+                                </div>
+                              </td>
+                              <td className="px-4 py-2"></td>
+                              <td className="px-4 py-2 text-center">
+                                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                                  variant.stock > 10
+                                    ? 'bg-green-500/20 text-green-300'
+                                    : variant.stock > 0
+                                    ? 'bg-yellow-500/20 text-yellow-300'
+                                    : 'bg-red-500/20 text-red-300'
+                                }`}>
+                                  {variant.stock.toFixed(1)}
+                                </span>
+                              </td>
+                              {/* Clienti Assegnati */}
+                              <td className="px-4 py-2">
+                                <button
+                                  onClick={() => openCustomerAssignment(
+                                    { ...product, id: variant.id, name: variant.name, assignedCustomers: variant.assignedCustomers },
+                                    product.id
+                                  )}
+                                  className="w-full px-2 py-1.5 bg-slate-700 hover:bg-slate-600 border border-white/20 rounded-lg text-white text-xs text-left transition-colors"
+                                >
+                                  {variant.assignedCustomers && variant.assignedCustomers.length > 0 ? (
+                                    <div className="space-y-1">
+                                      {variant.assignedCustomers.map((a: any, i: number) => {
+                                        const customer = customers.find(c => c.id === a.customerId);
+                                        return (
+                                          <div key={i} className="flex justify-between items-center">
+                                            <span className="truncate text-xs">{customer?.name || 'Cliente sconosciuto'}</span>
+                                            <span className="ml-2 text-purple-300 font-semibold">({a.quantity})</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-500 italic">Nessun cliente</div>
+                                  )}
+                                </button>
+                              </td>
+                              {/* Quantità Totale */}
+                              <td className="px-4 py-2 text-center">
+                                <span className="text-lg font-bold text-purple-300">
+                                  {variantTotalQty}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2"></td>
+                            </tr>
+                          );
+                        })}
                       </>
                     )}
                     </React.Fragment>
