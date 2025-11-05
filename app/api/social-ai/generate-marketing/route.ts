@@ -455,21 +455,17 @@ STYLE: Luxury commercial product photography in motion`;
     // Usa IMAGE-TO-VIDEO con l'immagine del prodotto come riferimento
     const operation = await veoAI.models.generateVideos({
       model: 'veo-3.1-generate-preview', // Latest Veo model
-      prompt: prompt,
-      image: {
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: params.productImageBase64
+      source: {
+        prompt: prompt,
+        image: {
+          imageBytes: params.productImageBase64,
+          mimeType: 'image/jpeg'
         }
       },
       config: {
         aspectRatio: veoAspectRatio,
         durationSeconds: 6,
-        resolution: '720p',
-        // Parametri per migliorare la qualità e fedeltà all'immagine
-        imageToVideoConfig: {
-          preserveImageFidelity: true // Mantieni fedeltà all'immagine di input
-        }
+        resolution: '720p'
       }
     });
 
