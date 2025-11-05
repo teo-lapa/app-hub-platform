@@ -103,8 +103,42 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 4. TODO: Load customer assignments from database (temporarily disabled for build fix)
+    // 4. Carica assegnazioni clienti dal database
     const assignmentsByProduct = new Map<number, any[]>();
+
+    try {
+      if (products.length > 0) {
+        // Carica assegnazioni per ogni prodotto
+        for (const product of products) {
+          const productId = product.id;
+          const assignmentsResult = await sql`
+            SELECT
+              product_id,
+              customer_id,
+              quantity,
+              notes
+            FROM preorder_customer_assignments
+            WHERE product_id = ${productId}
+            ORDER BY created_at DESC
+          `;
+
+          if (assignmentsResult.rows.length > 0) {
+            const assignments = assignmentsResult.rows.map((row: any) => ({
+              customerId: row.customer_id,
+              customerName: '', // Verrà caricato dal front-end
+              quantity: parseFloat(row.quantity),
+              notes: row.notes
+            }));
+            assignmentsByProduct.set(productId, assignments);
+          }
+        }
+
+        console.log(`✅ Caricate assegnazioni per ${assignmentsByProduct.size} prodotti`);
+      }
+    } catch (error) {
+      console.warn('⚠️ Errore caricamento assegnazioni (tabella potrebbe non esistere):', error);
+      // Non bloccare la risposta se la tabella non esiste ancora
+    }
 
     // 5. Formatta i prodotti
     const formattedProducts = products.map((product: any) => {
@@ -119,8 +153,8 @@ export async function GET(request: NextRequest) {
         uom: product.uom_id ? product.uom_id[1] : 'PZ',
         supplier_name: supplier ? supplier.name : 'Nessun fornitore',
         supplier_id: supplier ? supplier.id : null,
-        hasPreOrderTag: true, // Se siamo qui, il prodotto ha il tag per definizione
-        assigned_customers: assignmentsByProduct.get(product.id) || []
+        hasPreOrderTag: true,
+        assigned_customers: assignmentsByProduct.get(product.id) || []  // Carica da DB
       };
     });
 

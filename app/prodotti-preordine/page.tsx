@@ -222,31 +222,45 @@ export default function ProdottiPreordinePage() {
     if (!selectedProduct) return
 
     try {
-      // Save all assignments
-      const savedAssignments: Array<{customerId: number, customerName: string, quantity: number}> = []
-      for (const assignment of customerAssignments) {
-        if (assignment.customerId > 0 && assignment.quantity > 0) {
-          await fetch('/api/smart-ordering-v2/assign-preorder-customers', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              productId: selectedProduct.id,
-              customerId: assignment.customerId,
-              quantity: assignment.quantity
-            })
-          })
+      // Filtra solo assignments validi
+      const validAssignments = customerAssignments.filter(a => a.customerId > 0 && a.quantity > 0);
 
-          // Find customer name
-          const customer = customers.find(c => c.id === assignment.customerId)
-          if (customer) {
-            savedAssignments.push({
-              customerId: assignment.customerId,
-              customerName: customer.name,
-              quantity: assignment.quantity
-            })
-          }
-        }
+      if (validAssignments.length === 0) {
+        alert('Aggiungi almeno un cliente con quantità > 0');
+        return;
       }
+
+      // Manda TUTTI in una singola chiamata
+      const res = await fetch('/api/smart-ordering-v2/assign-preorder-customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: selectedProduct.id,
+          assignments: validAssignments.map(a => ({
+            customer_id: a.customerId,
+            quantity: a.quantity
+          }))
+        })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        console.error('Errore salvataggio:', error);
+        alert(`Errore: ${error.error || 'Impossibile salvare le assegnazioni'}`);
+        return;
+      }
+
+      console.log('Assegnazioni salvate con successo!');
+
+      // Recupera nomi clienti per local state
+      const savedAssignments = validAssignments.map(a => {
+        const customer = customers.find(c => c.id === a.customerId);
+        return {
+          customerId: a.customerId,
+          customerName: customer?.name || 'Cliente sconosciuto',
+          quantity: a.quantity
+        };
+      });
 
       // Update ONLY this product in local state - DON'T reload entire page
       setAllProducts(prev => prev.map(p =>
