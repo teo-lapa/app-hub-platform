@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
       [
         'id',
         'name',
+        'display_name',  // Nome completo con attributi variante
         'default_code',
         'qty_available',
         'uom_id',
@@ -76,7 +77,44 @@ export async function GET(request: NextRequest) {
       ]
     );
 
-    // 3. Carica informazioni fornitori
+    //  3.1. Carica varianti per ogni template
+    // Per ogni template, se ha più varianti, caricale tutte
+    const templateVariantsMap = new Map<number, any[]>();
+
+    // Prima raggruppo i prodotti per template
+    const productsByTemplate = new Map<number, any[]>();
+    for (const product of products) {
+      const tmplId = product.product_tmpl_id[0];
+      if (!productsByTemplate.has(tmplId)) {
+        productsByTemplate.set(tmplId, []);
+      }
+      productsByTemplate.get(tmplId)!.push(product);
+    }
+
+    // Poi per ogni template che ha più di 1 variante, carico tutte le varianti
+    for (const [tmplId, tmplProducts] of Array.from(productsByTemplate.entries())) {
+      if (tmplProducts.length > 1) {
+        // Questo template ha varianti! Carico tutte
+        const allVariants = await rpc.searchRead(
+          'product.product',
+          [
+            ['product_tmpl_id', '=', tmplId],
+            ['active', '=', true]
+          ],
+          [
+            'id',
+            'display_name',
+            'qty_available',
+            'lst_price',
+            'default_code'
+          ]
+        );
+        templateVariantsMap.set(tmplId, allVariants);
+        console.log(`📦 Template ${tmplId} ha ${allVariants.length} varianti`);
+      }
+    }
+
+    // 3.2. Carica informazioni fornitori
     const supplierIds = new Set<number>();
     products.forEach((product: any) => {
       if (product.seller_ids && product.seller_ids.length > 0) {
@@ -144,17 +182,33 @@ export async function GET(request: NextRequest) {
     const formattedProducts = products.map((product: any) => {
       const mainSupplierId = product.seller_ids && product.seller_ids.length > 0 ? product.seller_ids[0] : null;
       const supplier = mainSupplierId ? supplierMap.get(mainSupplierId) : null;
+      const tmplId = product.product_tmpl_id[0];
+
+      // Carica varianti se esistono per questo template
+      const variants = templateVariantsMap.get(tmplId) || [];
+      const hasVariants = variants.length > 1;
 
       return {
         id: product.id,
         name: product.name,
+        display_name: product.display_name || product.name,  // Nome con attributi variante
         image_url: `https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com/web/image/product.product/${product.id}/image_128`,
         stock: product.qty_available || 0,
         uom: product.uom_id ? product.uom_id[1] : 'PZ',
         supplier_name: supplier ? supplier.name : 'Nessun fornitore',
         supplier_id: supplier ? supplier.id : null,
         hasPreOrderTag: true,
-        assigned_customers: assignmentsByProduct.get(product.id) || []  // Carica da DB
+        assigned_customers: assignmentsByProduct.get(product.id) || [],  // Carica da DB
+        // ✨ NUOVO: Supporto varianti
+        hasVariants: hasVariants,
+        variantCount: variants.length,
+        variants: hasVariants ? variants.map(v => ({
+          id: v.id,
+          name: v.display_name,
+          stock: v.qty_available || 0,
+          price: v.lst_price || 0,
+          code: v.default_code || ''
+        })) : []
       };
     });
 

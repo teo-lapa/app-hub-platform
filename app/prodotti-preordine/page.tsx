@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeftIcon, MagnifyingGlassIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
@@ -23,6 +23,16 @@ interface Product {
   totalSold3Months?: number
   avgDailySales?: number
   daysOfStock?: number
+  // ✨ NUOVO: Supporto varianti
+  hasVariants?: boolean
+  variantCount?: number
+  variants?: Array<{
+    id: number
+    name: string
+    stock: number
+    price: number
+    code: string
+  }>
 }
 
 interface Supplier {
@@ -67,6 +77,9 @@ export default function ProdottiPreordinePage() {
 
   // ✨ NEW: Global order creation loading state
   const [isCreatingAllOrders, setIsCreatingAllOrders] = useState(false)
+
+  // ✨ NEW: Varianti espanse
+  const [expandedVariants, setExpandedVariants] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     loadAllData()
@@ -518,7 +531,8 @@ export default function ProdottiPreordinePage() {
                 </thead>
                 <tbody>
                   {filteredProducts.map((product) => (
-                    <tr key={product.id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
+                    <React.Fragment key={product.id}>
+                      <tr className="border-b border-white/10 hover:bg-white/5 transition-colors">
                       {/* PRE-ORDINE Toggle */}
                       <td className="px-4 py-4 text-center">
                         <div className="flex items-center justify-center">
@@ -558,7 +572,21 @@ export default function ProdottiPreordinePage() {
 
                       {/* Product Name */}
                       <td className="px-4 py-4">
-                        <div className="text-white font-medium">{product.name}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-white font-medium">{product.name}</div>
+                          {product.hasVariants && (
+                            <button
+                              onClick={() => setExpandedVariants(prev =>
+                                prev.has(product.id)
+                                  ? new Set(Array.from(prev).filter(id => id !== product.id))
+                                  : new Set([...Array.from(prev), product.id])
+                              )}
+                              className="px-2 py-1 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 rounded text-xs text-purple-300 transition-colors"
+                            >
+                              📦 {product.variantCount} Varianti {expandedVariants.has(product.id) ? '▲' : '▼'}
+                            </button>
+                          )}
+                        </div>
                       </td>
 
                       {/* Supplier */}
@@ -641,6 +669,48 @@ export default function ProdottiPreordinePage() {
                         </div>
                       </td>
                     </tr>
+
+                    {/* ✨ NUOVO: Righe varianti espanse */}
+                    {product.hasVariants && expandedVariants.has(product.id) && product.variants && (
+                      <>
+                        {product.variants.map((variant: any, idx: number) => (
+                          <tr key={`${product.id}-variant-${variant.id}`} className="bg-purple-900/20 border-b border-white/5">
+                            <td className="px-4 py-2"></td>
+                            <td className="px-4 py-2"></td>
+                            <td className="px-4 py-2 pl-8">
+                              <div className="text-sm text-gray-300 flex items-center gap-2">
+                                <span className="text-purple-400">→</span>
+                                {variant.name}
+                                {variant.code && <span className="text-xs text-gray-500">({variant.code})</span>}
+                              </div>
+                            </td>
+                            <td className="px-4 py-2"></td>
+                            <td className="px-4 py-2 text-center">
+                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                                variant.stock > 10
+                                  ? 'bg-green-500/20 text-green-300'
+                                  : variant.stock > 0
+                                  ? 'bg-yellow-500/20 text-yellow-300'
+                                  : 'bg-red-500/20 text-red-300'
+                              }`}>
+                                {variant.stock.toFixed(1)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              <button
+                                onClick={() => openCustomerAssignment({ ...product, id: variant.id, name: variant.name })}
+                                className="px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs rounded transition-colors"
+                              >
+                                👥 Assegna
+                              </button>
+                            </td>
+                            <td className="px-4 py-2"></td>
+                            <td className="px-4 py-2"></td>
+                          </tr>
+                        ))}
+                      </>
+                    )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
