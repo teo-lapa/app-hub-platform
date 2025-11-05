@@ -61,7 +61,20 @@ export async function GET(request: NextRequest) {
       employeeId: vehicle.driver_employee_id ? vehicle.driver_employee_id[0] : null,
       capacity: 1500, // Default capacity
       selected: true // Default selected
-    }));
+    }))
+    // Sort vehicles: IVECO first, then BMW, then others
+    .sort((a, b) => {
+      const aIsIveco = a.name.toUpperCase().includes('IVECO');
+      const bIsIveco = b.name.toUpperCase().includes('IVECO');
+      const aIsBMW = a.name.toUpperCase().includes('BMW');
+      const bIsBMW = b.name.toUpperCase().includes('BMW');
+      
+      if (aIsIveco && !bIsIveco) return -1;
+      if (!aIsIveco && bIsIveco) return 1;
+      if (aIsBMW && !bIsBMW) return -1;
+      if (!aIsBMW && bIsBMW) return 1;
+      return 0;
+    });
 
     return NextResponse.json({
       success: true,

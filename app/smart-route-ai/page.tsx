@@ -587,10 +587,15 @@ export default function SmartRouteAIPage() {
                       />
                       <div className="flex-1">
                         <div className={`font-semibold text-sm ${vehicle.selected ? 'text-indigo-900' : 'text-gray-900'}`}>
-                          {vehicle.name}
+                          {(() => {
+                            // Extract model from name (first part before /)
+                            const nameParts = vehicle.name.split('/');
+                            const model = nameParts[0]?.trim() || 'Veicolo';
+                            return `${model} ${vehicle.plate}`;
+                          })()}
                         </div>
                         <div className={`text-xs ${vehicle.selected ? 'text-indigo-700' : 'text-gray-600'}`}>
-                          {vehicle.driver}
+                          {vehicle.driver.split(' ')[0]}
                         </div>
                       </div>
                       <div className="text-xs bg-cyan-500 text-white px-2 py-1 rounded-full font-semibold">
