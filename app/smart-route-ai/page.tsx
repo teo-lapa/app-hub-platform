@@ -675,12 +675,14 @@ export default function SmartRouteAIPage() {
         </div>
 
         {/* Map Area */}
-        <div className="flex-1 relative w-full h-full">
-          <MapComponent
-            pickings={pickings}
-            routes={routes}
-            vehicles={vehicles}
-          />
+        <div className="flex-1 relative w-full">
+          <div className="absolute inset-0">
+            <MapComponent
+              pickings={pickings}
+              routes={routes}
+              vehicles={vehicles}
+            />
+          </div>
         </div>
 
         {/* Overlay when sidebar is open on mobile */}
