@@ -479,11 +479,11 @@ export default function SmartRouteAIPage() {
               <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
                 <div className="flex justify-between">
                   <span className="text-gray-600">WH/PICK trovati:</span>
-                  <span className="font-semibold">{stats.foundPickings}</span>
+                  <span className="font-semibold text-gray-900">{stats.foundPickings}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Con coordinate:</span>
-                  <span className="font-semibold">{stats.withCoordinates}</span>
+                  <span className="font-semibold text-gray-900">{stats.withCoordinates}</span>
                 </div>
               </div>
             </div>
@@ -602,11 +602,11 @@ export default function SmartRouteAIPage() {
             <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
               <div className="flex justify-between">
                 <span className="text-gray-600">Non assegnati:</span>
-                <span className="font-semibold">{stats.unassignedOrders}</span>
+                <span className="font-semibold text-gray-900">{stats.unassignedOrders}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Percorsi creati:</span>
-                <span className="font-semibold">{stats.createdRoutes}</span>
+                <span className="font-semibold text-gray-900">{stats.createdRoutes}</span>
               </div>
             </div>
           </div>
