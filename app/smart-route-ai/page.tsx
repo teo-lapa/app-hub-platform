@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, RefreshCw, Zap, Truck, MapPin, Clock, Package, TrendingDown } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Zap, Truck, MapPin, Clock, Package, TrendingDown, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 
 // Leaflet deve essere caricato dinamicamente per evitare errori SSR
@@ -59,6 +59,7 @@ export default function SmartRouteAIPage() {
   const [debugLogs, setDebugLogs] = useState<Array<{type: string, message: string, time: string}>>([]);
   const [toast, setToast] = useState<{message: string, type: string} | null>(null);
   const [optimizationTime, setOptimizationTime] = useState<string>('-');
+  const [sidebarVisible, setSidebarVisible] = useState(true);
 
   // Stats
   const [stats, setStats] = useState({
@@ -390,9 +391,29 @@ export default function SmartRouteAIPage() {
       </header>
 
       {/* Main Content */}
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-120px)]">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-88px)] relative">
+        {/* Toggle Button for Mobile/Desktop */}
+        <button
+          onClick={() => setSidebarVisible(!sidebarVisible)}
+          className="fixed top-20 left-4 z-[1001] bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-all lg:top-24"
+          aria-label="Toggle Sidebar"
+        >
+          {sidebarVisible ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+
         {/* Sidebar */}
-        <div className="w-full lg:w-96 bg-gray-50 border-r border-gray-200 overflow-y-auto p-4 space-y-4">
+        <div className={`
+          fixed lg:relative
+          top-0 left-0
+          w-full lg:w-96
+          h-full lg:h-auto
+          bg-gray-50 border-r border-gray-200
+          overflow-y-auto p-4 space-y-4
+          transition-transform duration-300 ease-in-out
+          z-[1000]
+          ${sidebarVisible ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0
+        `}>
 
           {/* Dynamic Capacity */}
           <div className="bg-white rounded-lg shadow p-4">
@@ -655,13 +676,21 @@ export default function SmartRouteAIPage() {
         </div>
 
         {/* Map Area */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative w-full h-full">
           <MapComponent
             pickings={pickings}
             routes={routes}
             vehicles={vehicles}
           />
         </div>
+
+        {/* Overlay when sidebar is open on mobile */}
+        {sidebarVisible && (
+          <div
+            className="fixed inset-0 bg-black/50 z-[999] lg:hidden"
+            onClick={() => setSidebarVisible(false)}
+          />
+        )}
       </div>
 
       {/* Toast Notification */}
