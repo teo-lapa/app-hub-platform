@@ -52,28 +52,37 @@ export async function POST(request: NextRequest) {
       throw new Error('Cannot connect to Odoo');
     }
 
-    // Update the batch with vehicle and driver/employee
-    // Note: In Odoo, stock.picking.batch has:
-    // - vehicle_id: many2one to fleet.vehicle
+    // Update the batch with driver/employee ONLY
+    // Note: In Odoo standard, stock.picking.batch has:
     // - user_id: many2one to res.users (the employee/driver)
     //
+    // vehicle_id is NOT a standard field - removed to avoid errors
     // When you set user_id on the batch, Odoo automatically propagates
     // the user to all pickings in that batch
-    const updateData: any = {
-      vehicle_id: vehicleId
-    };
+
+    const updateData: any = {};
 
     // If employeeId is provided, use it (this is the user_id)
-    // Otherwise, use driverId (which might be the partner_id of the driver)
     if (employeeId) {
       updateData.user_id = employeeId;
+      console.log(`[Smart Route AI] Setting user_id (employee) to: ${employeeId}`);
+    } else {
+      console.log(`[Smart Route AI] Warning: No employeeId provided, cannot set user_id`);
+      throw new Error('Employee ID is required to assign driver to batch');
     }
 
-    await rpcClient.callKw(
-      'stock.picking.batch',
-      'write',
-      [[batchId], updateData]
-    );
+    console.log(`[Smart Route AI] Update data:`, JSON.stringify(updateData));
+
+    try {
+      await rpcClient.callKw(
+        'stock.picking.batch',
+        'write',
+        [[batchId], updateData]
+      );
+    } catch (odooError: any) {
+      console.error('[Smart Route AI] Odoo error details:', odooError);
+      throw new Error(`Failed to update batch in Odoo: ${odooError.message || 'Unknown error'}`);
+    }
 
     console.log(`[Smart Route AI] Successfully assigned vehicle ${vehicleId} to batch ${batchId}`);
     console.log(`[Smart Route AI] Odoo will automatically propagate driver to all pickings`);
