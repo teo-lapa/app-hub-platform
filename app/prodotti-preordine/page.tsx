@@ -339,7 +339,7 @@ export default function ProdottiPreordinePage() {
 
   // ✨ UPDATED: Single product order creation - now uses the same API endpoint
   const createOrder = async (product: Product) => {
-    if (!product.isPreOrder || product.assignedCustomers.length === 0) {
+    if (!product.isPreOrder || !hasAssignedCustomers(product)) {
       alert('Prodotto deve essere PRE-ORDINE con clienti assegnati')
       return
     }
@@ -394,8 +394,8 @@ export default function ProdottiPreordinePage() {
 
   // ✨ NEW: Create all orders for all pre-order products with assignments
   const createAllOrders = async () => {
-    // Filter products that are PRE-ORDINE and have assigned customers
-    const preOrderProducts = allProducts.filter(p => p.isPreOrder && p.assignedCustomers.length > 0)
+    // Filter products that are PRE-ORDINE and have assigned customers (including variants)
+    const preOrderProducts = allProducts.filter(p => p.isPreOrder && hasAssignedCustomers(p))
 
     if (preOrderProducts.length === 0) {
       alert('Nessun prodotto PRE-ORDINE con clienti assegnati')
@@ -460,8 +460,33 @@ export default function ProdottiPreordinePage() {
     }
   }
 
+  // ✨ NUOVO: Controlla se prodotto ha clienti assegnati (incluse varianti)
+  const hasAssignedCustomers = (product: Product) => {
+    // Controlla prodotto principale
+    if (product.assignedCustomers.length > 0) return true
+
+    // Controlla varianti
+    if (product.hasVariants && product.variants) {
+      return product.variants.some(v => v.assignedCustomers && v.assignedCustomers.length > 0)
+    }
+
+    return false
+  }
+
   const calculateTotalQuantity = (product: Product) => {
-    return product.assignedCustomers.reduce((sum, a) => sum + a.quantity, 0)
+    // Quantità del prodotto principale
+    let total = product.assignedCustomers.reduce((sum, a) => sum + a.quantity, 0)
+
+    // ✨ NUOVO: Aggiungi quantità di TUTTE le varianti
+    if (product.hasVariants && product.variants) {
+      product.variants.forEach(variant => {
+        if (variant.assignedCustomers && variant.assignedCustomers.length > 0) {
+          total += variant.assignedCustomers.reduce((sum, a) => sum + a.quantity, 0)
+        }
+      })
+    }
+
+    return total
   }
 
   const filteredProducts = allProducts.filter(p =>
@@ -498,7 +523,7 @@ export default function ProdottiPreordinePage() {
               </button>
 
               {/* ✨ NEW: Global "Create All Orders" Button */}
-              {allProducts.filter(p => p.isPreOrder && p.assignedCustomers.length > 0).length > 0 && (
+              {allProducts.filter(p => p.isPreOrder && hasAssignedCustomers(p)).length > 0 && (
                 <button
                   onClick={createAllOrders}
                   disabled={isCreatingAllOrders}
@@ -690,7 +715,7 @@ export default function ProdottiPreordinePage() {
                           >
                             📊 Analisi
                           </button>
-                          {product.isPreOrder && product.assignedCustomers.length > 0 && (
+                          {product.isPreOrder && hasAssignedCustomers(product) && (
                             <button
                               onClick={() => createOrder(product)}
                               disabled={isCreatingAllOrders}
