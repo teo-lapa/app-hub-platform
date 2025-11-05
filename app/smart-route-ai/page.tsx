@@ -65,6 +65,8 @@ export default function SmartRouteAIPage() {
   const [batches, setBatches] = useState<Array<{id: number, name: string, state: string}>>([]);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [selectedPickingForMove, setSelectedPickingForMove] = useState<{id: number, currentBatch: string, date: string} | null>(null);
+  const [showVehicleBatchModal, setShowVehicleBatchModal] = useState(false);
+  const [selectedVehicleForBatch, setSelectedVehicleForBatch] = useState<{id: number, name: string, plate: string, driver: string, driverId: number, employeeId: number | null} | null>(null);
 
   // Stats
   const [stats, setStats] = useState({
@@ -284,14 +286,42 @@ export default function SmartRouteAIPage() {
     showToast(`Capacità aggiornata a ${newCapacity} kg`, 'success');
   }
 
-  // Toggle vehicle selection
-  function toggleVehicleSelection(vehicleId: number) {
-    setVehicles(prev => prev.map(v =>
-      v.id === vehicleId ? { ...v, selected: !v.selected } : v
-    ));
+  // Assign vehicle to batch
+  async function assignVehicleToBatch(batchId: number, vehicleId: number, driverId: number, employeeId: number | null) {
+    try {
+      debugLog(`Assigning vehicle ${vehicleId} to batch ${batchId}...`, 'info');
+      setLoading(true);
 
-    // Recalculate capacity when selection changes
-    setTimeout(() => calculateDynamicCapacity(), 100);
+      const response = await fetch('/api/smart-route-ai/batches/assign-vehicle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          batchId, 
+          vehicleId,
+          driverId,
+          employeeId
+        })
+      });
+
+      if (!response.ok) throw new Error('Error assigning vehicle');
+
+      debugLog('Vehicle assigned to batch successfully', 'success');
+      showToast('Veicolo assegnato al batch', 'success');
+      
+      // Mark vehicle as selected
+      setVehicles(prev => prev.map(v =>
+        v.id === vehicleId ? { ...v, selected: true } : v
+      ));
+
+      setShowVehicleBatchModal(false);
+      setSelectedVehicleForBatch(null);
+
+    } catch (error: any) {
+      debugLog(`Error assigning vehicle: ${error.message}`, 'error');
+      showToast('Errore assegnazione veicolo', 'error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   // Optimize routes
@@ -571,7 +601,10 @@ export default function SmartRouteAIPage() {
                 vehicles.map(vehicle => (
                   <div
                     key={vehicle.id}
-                    onClick={() => toggleVehicleSelection(vehicle.id)}
+                    onClick={() => {
+    setSelectedVehicleForBatch(vehicle);
+    setShowVehicleBatchModal(true);
+  }}
                     className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
                       vehicle.selected
                         ? 'border-indigo-500 bg-indigo-50'
@@ -807,7 +840,92 @@ export default function SmartRouteAIPage() {
         </div>
       )}
 
-            {/* Batch Selection Modal */}
+                  {/* Vehicle-Batch Assignment Modal */}
+      {showVehicleBatchModal && selectedVehicleForBatch && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000]" onClick={() => setShowVehicleBatchModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Assegna Veicolo a Batch</h3>
+              <button
+                onClick={() => setShowVehicleBatchModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200">
+              <div className="text-sm text-gray-600 mb-1">Veicolo selezionato:</div>
+              <div className="font-bold text-indigo-900">
+                {(() => {
+                  const nameParts = selectedVehicleForBatch.name.split('/');
+                  const model = nameParts[0]?.trim() || 'Veicolo';
+                  return `${model} ${selectedVehicleForBatch.plate}`;
+                })()}
+              </div>
+              <div className="text-sm text-indigo-700 mt-1">
+                Autista: {(() => {
+                  const parts = selectedVehicleForBatch.driver.split(',');
+                  const namePart = parts.length > 1 ? parts[1].trim() : selectedVehicleForBatch.driver;
+                  return namePart.split(' ')[0];
+                })()}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <div className="text-sm font-semibold text-gray-700 mb-2">
+                Seleziona il batch da assegnare a questo veicolo:
+              </div>
+              <div className="max-h-64 overflow-y-auto space-y-2">
+                {batches.length === 0 ? (
+                  <div className="text-center text-gray-500 py-8">
+                    <div className="text-4xl mb-2">📦</div>
+                    <div>Nessun batch disponibile</div>
+                    <div className="text-xs mt-1">Importa prima i picking per caricare i batch</div>
+                  </div>
+                ) : (
+                  batches.map(batch => (
+                    <button
+                      key={batch.id}
+                      onClick={() => assignVehicleToBatch(
+                        batch.id,
+                        selectedVehicleForBatch.id,
+                        selectedVehicleForBatch.driverId,
+                        selectedVehicleForBatch.employeeId
+                      )}
+                      className="w-full p-3 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold text-gray-900 group-hover:text-indigo-900">
+                            {batch.name}
+                          </div>
+                          <div className="text-xs text-gray-500 capitalize">
+                            {batch.state === 'draft' ? 'Bozza' : 'Pronto'}
+                          </div>
+                        </div>
+                        <div className="text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                          ✓
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowVehicleBatchModal(false)}
+              className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+            >
+              Annulla
+            </button>
+          </div>
+        </div>
+      )}
+
+
+      {/* Batch Selection Modal */}
       {showBatchModal && selectedPickingForMove && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000]" onClick={() => setShowBatchModal(false)}>
           <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
