@@ -395,39 +395,81 @@ async function generateMarketingVideo(
   // Crea client dedicato per Veo con la sua API key
   const veoAI = new GoogleGenAI({ apiKey: veoApiKey });
 
-  const prompt = `Crea un video marketing dinamico e professionale per ${params.platform}.
+  // Prompt potenziato per video fotorealistici basati sull'immagine del prodotto
+  const prompt = `Create a premium, hyper-realistic product video for ${params.platform} social media advertising.
 
-Prodotto: ${params.productName}
-${params.productDescription ? `Descrizione: ${params.productDescription}` : ''}
+PRODUCT: ${params.productName}
+${params.productDescription ? `DESCRIPTION: ${params.productDescription}` : ''}
 
-STILE VIDEO:
-- Movimento fluido e cinematografico
-- Transizioni eleganti
-- Focus sul prodotto
-- Illuminazione professionale da studio
-- Atmosfera premium e accattivante
-- Adatto per pubblicità su ${params.platform}
+CRITICAL INSTRUCTIONS - FOLLOW EXACTLY THE PRODUCT IMAGE:
+- Use the provided product image as the EXACT visual reference
+- Recreate the EXACT product shown in the image (same colors, textures, shape, packaging)
+- Maintain the EXACT appearance from the photo - this is crucial
+- The product MUST look identical to the reference image
 
-AZIONE:
-- Il prodotto viene mostrato da diverse angolazioni
-- Camera lenta per enfatizzare dettagli
-- Movimento rotatorio smooth intorno al prodotto
-- Zoom in progressivo sui dettagli chiave
+CAMERA MOVEMENT (choose ONE that best showcases the product):
+1. Smooth 360° rotation around the product (professional product showcase)
+2. Slow zoom in from medium shot to close-up (reveal details)
+3. Dolly in with slight parallax (cinematic approach)
+4. Elegant vertical pan from bottom to top (hero product reveal)
 
-DURATA: 6 secondi
-AUDIO: Musica di sottofondo elegante e professionale`;
+LIGHTING & ATMOSPHERE:
+- Professional studio lighting setup
+- Soft shadows and highlights that enhance product features
+- Clean, premium aesthetic
+- High-end commercial photography style
+
+ENVIRONMENT:
+- Elegant, minimal background that doesn't distract from product
+- Subtle depth of field (product in focus, background slightly blurred)
+- Premium surface (marble, wood, or neutral backdrop as appropriate)
+
+VISUAL QUALITY:
+- Photorealistic 3D rendering quality
+- Sharp focus on product
+- Natural color grading
+- Commercial advertising standard
+
+MOTION:
+- Smooth, fluid camera movement
+- No jerky or sudden movements
+- Professional gimbal-style stabilization
+- Slow-motion emphasis on key product features
+
+DURATION: 6 seconds of premium content
+STYLE: Luxury commercial product photography in motion`;
 
   try {
     // Converti l'aspect ratio per Veo (solo 16:9 o 9:16)
     const veoAspectRatio = params.aspectRatio === '9:16' ? '9:16' : '16:9';
 
+    if (isDev) {
+      console.log('[AGENT-VIDEO] Starting image-to-video generation:', {
+        product: params.productName,
+        platform: params.platform,
+        aspectRatio: veoAspectRatio,
+        imageSize: params.productImageBase64.length
+      });
+    }
+
+    // Usa IMAGE-TO-VIDEO con l'immagine del prodotto come riferimento
     const operation = await veoAI.models.generateVideos({
       model: 'veo-3.1-generate-preview', // Latest Veo model
       prompt: prompt,
+      image: {
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: params.productImageBase64
+        }
+      },
       config: {
         aspectRatio: veoAspectRatio,
         durationSeconds: 6,
-        resolution: '720p'
+        resolution: '720p',
+        // Parametri per migliorare la qualità e fedeltà all'immagine
+        imageToVideoConfig: {
+          preserveImageFidelity: true // Mantieni fedeltà all'immagine di input
+        }
       }
     });
 
