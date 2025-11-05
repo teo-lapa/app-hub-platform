@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       ],
       [
         'id', 'name', 'partner_id',
-        'scheduled_date', 'state', 'move_ids_without_package'
+        'scheduled_date', 'state', 'move_ids_without_package', 'batch_id'
       ],
       500,
       'scheduled_date'
@@ -145,7 +145,9 @@ export async function POST(request: NextRequest) {
           lng: partner.partner_longitude,
           weight: totalWeight,
           scheduledDate: picking.scheduled_date,
-          state: picking.state
+          state: picking.state,
+          batchId: picking.batch_id ? picking.batch_id[0] : null,
+          batchName: picking.batch_id ? picking.batch_id[1] : null
         });
       }
     }

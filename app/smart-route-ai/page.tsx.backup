@@ -28,8 +28,6 @@ interface Picking {
   lat: number;
   lng: number;
   weight: number;
-  batchId: number | null;
-  batchName: string | null;
   scheduledDate: string;
   state: string;
 }
@@ -62,9 +60,6 @@ export default function SmartRouteAIPage() {
   const [toast, setToast] = useState<{message: string, type: string} | null>(null);
   const [optimizationTime, setOptimizationTime] = useState<string>('-');
   const [sidebarVisible, setSidebarVisible] = useState(true);
-  const [batches, setBatches] = useState<Array<{id: number, name: string, state: string}>>([]);
-  const [showBatchModal, setShowBatchModal] = useState(false);
-  const [selectedPickingForMove, setSelectedPickingForMove] = useState<{id: number, currentBatch: string, date: string} | null>(null);
 
   // Stats
   const [stats, setStats] = useState({
@@ -106,19 +101,6 @@ export default function SmartRouteAIPage() {
     setDateFrom(today);
     setDateTo(today);
   }, []);
-
-  // Expose showBatchSelector to global window for map popup
-  useEffect(() => {
-    (window as any).showBatchSelector = (pickingId: number, currentBatch: string, date: string) => {
-      setSelectedPickingForMove({ id: pickingId, currentBatch, date });
-      setShowBatchModal(true);
-    };
-
-    return () => {
-      delete (window as any).showBatchSelector;
-    };
-  }, []);
-
 
   // Check Odoo connection
   async function checkOdooConnection() {
@@ -198,9 +180,6 @@ export default function SmartRouteAIPage() {
       calculateDynamicCapacity(data.pickings || []);
       showToast(`Importati ${data.pickings?.length || 0} picking`, 'success');
 
-      // Load batches for the selected date
-      await loadBatches(dateFrom);
-
     } catch (error: any) {
       debugLog(`Errore importazione: ${error.message}`, 'error');
       showToast('Errore importazione picking', 'error');
@@ -208,53 +187,6 @@ export default function SmartRouteAIPage() {
       setLoading(false);
     }
   }
-  // Load batches for a specific date
-  async function loadBatches(date: string) {
-    try {
-      debugLog(`Loading batches for ${date}...`, 'info');
-      
-      const response = await fetch(`/api/smart-route-ai/batches?date=${date}`);
-      if (!response.ok) throw new Error('Error loading batches');
-      
-      const data = await response.json();
-      setBatches(data.batches || []);
-      
-      debugLog(`Loaded ${data.batches?.length || 0} batches`, 'success');
-    } catch (error: any) {
-      debugLog(`Error loading batches: ${error.message}`, 'error');
-    }
-  }
-
-  // Move picking to another batch
-  async function movePickingToBatch(pickingId: number, targetBatchId: number) {
-    try {
-      debugLog(`Moving picking ${pickingId} to batch ${targetBatchId}...`, 'info');
-      setLoading(true);
-
-      const response = await fetch('/api/smart-route-ai/batches', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pickingId, targetBatchId })
-      });
-
-      if (!response.ok) throw new Error('Error moving picking');
-
-      debugLog('Picking moved successfully', 'success');
-      showToast('Picking spostato con successo', 'success');
-      
-      // Reload pickings to reflect the change
-      await importPickings();
-      setShowBatchModal(false);
-      setSelectedPickingForMove(null);
-
-    } catch (error: any) {
-      debugLog(`Error moving picking: ${error.message}`, 'error');
-      showToast('Errore spostamento picking', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }
-
 
   // Calculate dynamic capacity
   function calculateDynamicCapacity(pickingsList: Picking[] = pickings) {
@@ -470,16 +402,17 @@ export default function SmartRouteAIPage() {
         </button>
 
         {/* Sidebar */}
-        {sidebarVisible && (
-          <div className="
-            fixed lg:relative
-            top-0 left-0
-            w-full lg:w-96
-            h-full lg:h-auto
-            bg-gray-50 border-r border-gray-200
-            overflow-y-auto p-4 space-y-4
-            z-[1000]
-          ">
+        <div className={`
+          fixed lg:relative
+          top-0 left-0
+          w-full lg:w-96
+          h-full lg:h-auto
+          bg-gray-50 border-r border-gray-200
+          overflow-y-auto p-4 space-y-4
+          transition-transform duration-300 ease-in-out
+          z-[1000]
+          ${sidebarVisible ? 'translate-x-0' : '-translate-x-full'}
+        `}>
 
           {/* Dynamic Capacity */}
           <div className="bg-white rounded-lg shadow p-4">
@@ -547,11 +480,11 @@ export default function SmartRouteAIPage() {
               <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
                 <div className="flex justify-between">
                   <span className="text-gray-600">WH/PICK trovati:</span>
-                  <span className="font-semibold text-gray-900">{stats.foundPickings}</span>
+                  <span className="font-semibold">{stats.foundPickings}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Con coordinate:</span>
-                  <span className="font-semibold text-gray-900">{stats.withCoordinates}</span>
+                  <span className="font-semibold">{stats.withCoordinates}</span>
                 </div>
               </div>
             </div>
@@ -670,11 +603,11 @@ export default function SmartRouteAIPage() {
             <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
               <div className="flex justify-between">
                 <span className="text-gray-600">Non assegnati:</span>
-                <span className="font-semibold text-gray-900">{stats.unassignedOrders}</span>
+                <span className="font-semibold">{stats.unassignedOrders}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Percorsi creati:</span>
-                <span className="font-semibold text-gray-900">{stats.createdRoutes}</span>
+                <span className="font-semibold">{stats.createdRoutes}</span>
               </div>
             </div>
           </div>
@@ -740,8 +673,6 @@ export default function SmartRouteAIPage() {
             🐛 {debugMode ? 'Nascondi' : 'Mostra'} Debug
           </button>
         </div>
-        )}
-
 
         {/* Map Area */}
         <div className="flex-1 relative w-full">
@@ -797,70 +728,6 @@ export default function SmartRouteAIPage() {
         </div>
       )}
 
-            {/* Batch Selection Modal */}
-      {showBatchModal && selectedPickingForMove && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000]" onClick={() => setShowBatchModal(false)}>
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900">Sposta Picking</h3>
-              <button
-                onClick={() => setShowBatchModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <div className="text-sm text-gray-600">Batch attuale:</div>
-              <div className="font-semibold text-gray-900">{selectedPickingForMove.currentBatch}</div>
-            </div>
-
-            <div className="mb-4">
-              <div className="text-sm font-semibold text-gray-700 mb-2">Seleziona batch di destinazione:</div>
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                {batches
-                  .filter(b => b.name !== selectedPickingForMove.currentBatch)
-                  .map(batch => (
-                    <button
-                      key={batch.id}
-                      onClick={() => movePickingToBatch(selectedPickingForMove.id, batch.id)}
-                      className="w-full p-3 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-semibold text-gray-900 group-hover:text-indigo-900">
-                            {batch.name}
-                          </div>
-                          <div className="text-xs text-gray-500 capitalize">
-                            {batch.state === 'draft' ? 'Bozza' : 'Pronto'}
-                          </div>
-                        </div>
-                        <div className="text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                          →
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                {batches.filter(b => b.name !== selectedPickingForMove.currentBatch).length === 0 && (
-                  <div className="text-center text-gray-500 py-4">
-                    Nessun altro batch disponibile per questa data
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowBatchModal(false)}
-              className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
-            >
-              Annulla
-            </button>
-          </div>
-        </div>
-      )}
-
-
       {/* Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -873,4 +740,3 @@ export default function SmartRouteAIPage() {
     </div>
   );
 }
-
