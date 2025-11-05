@@ -53,7 +53,14 @@ export default function ProductSelector({ onSelect, onClose, isOpen }: ProductSe
     setHasSearched(true);
 
     try {
-      const response = await fetch('/api/portale-clienti/products', {
+      // Pass query parameter to API
+      const params = new URLSearchParams({
+        q: query,
+        limit: '50',
+        blockIntelligentSort: 'true' // Disable intelligent sorting for search
+      });
+
+      const response = await fetch(`/api/portale-clienti/products?${params}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -64,14 +71,8 @@ export default function ProductSelector({ onSelect, onClose, isOpen }: ProductSe
 
       const data = await response.json();
 
-      // Filtro client-side per query
-      const filtered = data.products.filter((p: Product) =>
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        (p.code && p.code.toLowerCase().includes(query.toLowerCase())) ||
-        (p.barcode && p.barcode.includes(query))
-      ).slice(0, 50); // Max 50 risultati
-
-      setProducts(filtered);
+      // Products are already filtered by API
+      setProducts(data.products || []);
     } catch (error: any) {
       console.error('Errore ricerca prodotti:', error);
       toast.error('Errore durante la ricerca prodotti');
