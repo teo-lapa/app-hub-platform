@@ -5,10 +5,12 @@ import {
   ArrowLeft, Home, Sparkles, Upload, Image as ImageIcon,
   Video, Loader2, Download, Instagram, Facebook, Linkedin,
   CheckCircle2, Wand2, MessageSquare, Hash, Target,
-  Play, X
+  Play, X, Package, Share2
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import ProductSelector from '@/components/social-ai/ProductSelector';
+import ShareMenu from '@/components/social-ai/ShareMenu';
 
 type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
 type ContentType = 'image' | 'video' | 'both';
@@ -52,6 +54,12 @@ export default function SocialAIStudioPage() {
 
   // Video polling
   const [isPollingVideo, setIsPollingVideo] = useState(false);
+
+  // Product Selector
+  const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
+
+  // Share Menu
+  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -115,6 +123,44 @@ export default function SocialAIStudioPage() {
       reader.onerror = () => reject(new Error('Errore nella lettura del file'));
       reader.readAsDataURL(file);
     });
+  };
+
+  // ==========================================
+  // Product Selector Handler
+  // ==========================================
+  const handleProductSelect = async (product: any) => {
+    // Set product info
+    setProductName(product.name);
+    setProductDescription(product.description || '');
+
+    // Se c'è un'immagine, usala
+    if (product.image) {
+      try {
+        // Se l'immagine è già base64, usala direttamente
+        if (product.image.startsWith('data:image')) {
+          setProductImage(product.image);
+          setProductImagePreview(product.image);
+          toast.success('Prodotto caricato! Foto e info precompilate.');
+        } else {
+          // Altrimenti converti in base64
+          const response = await fetch(product.image);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = reader.result as string;
+            setProductImage(base64);
+            setProductImagePreview(base64);
+            toast.success('Prodotto caricato! Foto e info precompilate.');
+          };
+          reader.readAsDataURL(blob);
+        }
+      } catch (error) {
+        console.error('Errore caricamento immagine prodotto:', error);
+        toast.error('Prodotto caricato, ma impossibile caricare l\'immagine');
+      }
+    } else {
+      toast.success('Prodotto caricato! Carica manualmente una foto.');
+    }
   };
 
   // ==========================================
@@ -343,8 +389,8 @@ export default function SocialAIStudioPage() {
                     <Sparkles className="h-8 w-8 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-3xl font-bold text-white">Social Marketing AI Studio</h1>
-                    <p className="text-purple-300">
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">Social Marketing AI Studio</h1>
+                    <p className="text-xs sm:text-sm text-purple-300">
                       Powered by Gemini 2.5 Flash (Nano Banana 🍌) & Veo 3.1
                     </p>
                   </div>
@@ -356,16 +402,16 @@ export default function SocialAIStudioPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-2 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="grid lg:grid-cols-2 gap-4 md:gap-6 lg:gap-8">
 
           {/* ========================================== */}
           {/* COLONNA SINISTRA: Configurazione */}
           {/* ========================================== */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
 
             {/* Upload Foto Prodotto */}
-            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6">
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
               <label className="block text-sm font-medium text-purple-300 mb-3 flex items-center space-x-2">
                 <Upload className="h-4 w-4" />
                 <span>Foto Prodotto/Processo</span>
@@ -380,13 +426,33 @@ export default function SocialAIStudioPage() {
                 className="hidden"
               />
 
+              {/* Pulsante Scegli dal Catalogo */}
+              <button
+                onClick={() => setIsProductSelectorOpen(true)}
+                disabled={isGenerating}
+                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 border border-emerald-400/50 rounded-lg text-white font-medium transition-all disabled:opacity-50 mb-3"
+              >
+                <Package className="h-4 w-4" />
+                <span className="text-sm">Scegli Prodotto dal Catalogo</span>
+              </button>
+
+              {/* Oppure carica foto */}
+              <div className="relative my-3">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-purple-500/30"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-2 bg-slate-800/40 text-purple-400">oppure</span>
+                </div>
+              </div>
+
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isGenerating}
                 className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-slate-900/50 hover:bg-slate-700/50 border border-purple-500/50 hover:border-purple-400 rounded-lg text-purple-300 hover:text-white transition-all disabled:opacity-50"
               >
                 <Upload className="h-4 w-4" />
-                <span className="text-sm">Carica Foto</span>
+                <span className="text-sm">Carica Foto Manualmente</span>
               </button>
 
               {productImagePreview && (
@@ -394,7 +460,7 @@ export default function SocialAIStudioPage() {
                   <img
                     src={productImagePreview}
                     alt="Prodotto"
-                    className="w-full h-auto rounded-lg border border-purple-500/50"
+                    className="w-full h-auto max-h-[200px] sm:max-h-[300px] object-contain rounded-lg border border-purple-500/50"
                   />
                   <button
                     onClick={() => {
@@ -413,7 +479,7 @@ export default function SocialAIStudioPage() {
             </div>
 
             {/* Info Prodotto */}
-            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6">
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
               <label className="block text-sm font-medium text-purple-300 mb-2">
                 Nome Prodotto (opzionale)
               </label>
@@ -439,7 +505,7 @@ export default function SocialAIStudioPage() {
             </div>
 
             {/* Social Platform */}
-            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6">
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
               <label className="block text-sm font-medium text-purple-300 mb-3">
                 Piattaforma Social
               </label>
@@ -466,7 +532,7 @@ export default function SocialAIStudioPage() {
             </div>
 
             {/* Content Type */}
-            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6">
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
               <label className="block text-sm font-medium text-purple-300 mb-3">
                 Tipo Contenuto
               </label>
@@ -492,7 +558,7 @@ export default function SocialAIStudioPage() {
             </div>
 
             {/* Tone & Target */}
-            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6">
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
               <label className="block text-sm font-medium text-purple-300 mb-2">
                 Tone of Voice
               </label>
@@ -530,17 +596,17 @@ export default function SocialAIStudioPage() {
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !productImage}
-              className="w-full flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-purple-500/25 text-lg"
+              className="w-full flex items-center justify-center space-x-2 sm:space-x-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-purple-500/25 text-sm sm:text-base md:text-lg"
             >
               {isGenerating ? (
                 <>
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" />
                   <span>Generazione in corso...</span>
                 </>
               ) : (
                 <>
-                  <Wand2 className="h-6 w-6" />
-                  <span>Genera Contenuti Marketing AI 🚀</span>
+                  <Wand2 className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="text-center">Genera Contenuti Marketing AI 🚀</span>
                 </>
               )}
             </button>
@@ -591,8 +657,17 @@ export default function SocialAIStudioPage() {
             {/* Risultati */}
             {result && (
               <>
+                {/* Pulsante Condividi (grande, sopra i risultati) */}
+                <button
+                  onClick={() => setIsShareMenuOpen(true)}
+                  className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25"
+                >
+                  <Share2 className="h-5 w-5" />
+                  <span>Condividi sui Social 🚀</span>
+                </button>
+
                 {/* Copywriting */}
-                <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6">
+                <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
                   <div className="flex items-center space-x-2 mb-4">
                     <MessageSquare className="h-5 w-5 text-purple-400" />
                     <h3 className="text-white font-semibold">Copywriting</h3>
@@ -732,6 +807,26 @@ export default function SocialAIStudioPage() {
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <ProductSelector
+        isOpen={isProductSelectorOpen}
+        onClose={() => setIsProductSelectorOpen(false)}
+        onSelect={handleProductSelect}
+      />
+
+      {result && (
+        <ShareMenu
+          isOpen={isShareMenuOpen}
+          onClose={() => setIsShareMenuOpen(false)}
+          caption={result.copywriting.caption}
+          hashtags={result.copywriting.hashtags}
+          cta={result.copywriting.cta}
+          imageUrl={result.image?.dataUrl}
+          videoUrl={result.video?.dataUrl}
+          platform={socialPlatform}
+        />
+      )}
     </div>
   );
 }
