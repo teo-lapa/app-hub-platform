@@ -20,8 +20,9 @@ export async function POST(request: NextRequest) {
     // Supporta sia il formato array che il formato singolo per backward compatibility
     let assignmentsArray: Array<{customer_id: number, quantity: number}> = [];
 
-    if (assignments) {
+    if (assignments !== undefined && assignments !== null) {
       // Nuovo formato array: { productId, assignments: [{customer_id, quantity}] }
+      // Può essere anche array vuoto per cancellare tutte le assegnazioni
       assignmentsArray = assignments;
       console.log(`📦 Ricevuto formato array con ${assignments.length} assignments per prodotto ${productId}`);
     } else if (customerId && quantity) {

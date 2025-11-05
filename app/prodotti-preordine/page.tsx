@@ -255,15 +255,11 @@ export default function ProdottiPreordinePage() {
     if (!selectedProduct) return
 
     try {
-      // Filtra solo assignments validi
+      // Filtra solo assignments validi (quantità > 0)
+      // Se tutti sono 0 o vuoti, validAssignments sarà vuoto e cancellerà tutti i clienti
       const validAssignments = customerAssignments.filter(a => a.customerId > 0 && a.quantity > 0);
 
-      if (validAssignments.length === 0) {
-        alert('Aggiungi almeno un cliente con quantità > 0');
-        return;
-      }
-
-      // Manda TUTTI in una singola chiamata
+      // Manda TUTTI in una singola chiamata (anche se array vuoto per cancellare tutto)
       const res = await fetch('/api/smart-ordering-v2/assign-preorder-customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1148,11 +1144,12 @@ export default function ProdottiPreordinePage() {
                         </div>
                         <input
                           type="number"
-                          min="1"
+                          min="0"
                           value={assignment.quantity || ''}
                           onChange={(e) => updateCustomerAssignment(idx, 'quantity', Number(e.target.value))}
                           placeholder="Qty"
                           className="w-16 sm:w-20 px-2 py-2 bg-slate-600 border border-white/20 rounded text-white text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[44px]"
+                          title="Inserisci 0 per rimuovere il cliente"
                         />
                         <button
                           onClick={() => removeCustomerAssignment(idx)}
