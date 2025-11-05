@@ -368,7 +368,7 @@ export default function SocialAIStudioPage() {
   const PlatformIcon = platformIcons[socialPlatform];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen min-h-[100dvh] bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
       <div className="bg-slate-900/80 backdrop-blur-sm border-b border-purple-500/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -389,7 +389,7 @@ export default function SocialAIStudioPage() {
                     <Sparkles className="h-8 w-8 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">Social Marketing AI Studio</h1>
+                    <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white">Social Marketing AI Studio</h1>
                     <p className="text-xs sm:text-sm text-purple-300">
                       Powered by Gemini 2.5 Flash (Nano Banana 🍌) & Veo 3.1
                     </p>
@@ -430,10 +430,10 @@ export default function SocialAIStudioPage() {
               <button
                 onClick={() => setIsProductSelectorOpen(true)}
                 disabled={isGenerating}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 border border-emerald-400/50 rounded-lg text-white font-medium transition-all disabled:opacity-50 mb-3"
+                className="w-full flex items-center justify-center space-x-2 px-4 py-3 sm:py-4 min-h-[48px] bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 border border-emerald-400/50 rounded-lg text-white font-medium transition-all disabled:opacity-50 mb-3"
               >
-                <Package className="h-4 w-4" />
-                <span className="text-sm">Scegli Prodotto dal Catalogo</span>
+                <Package className="h-5 w-5" />
+                <span className="text-sm sm:text-base">Scegli Prodotto dal Catalogo</span>
               </button>
 
               {/* Oppure carica foto */}
@@ -449,10 +449,10 @@ export default function SocialAIStudioPage() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isGenerating}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-slate-900/50 hover:bg-slate-700/50 border border-purple-500/50 hover:border-purple-400 rounded-lg text-purple-300 hover:text-white transition-all disabled:opacity-50"
+                className="w-full flex items-center justify-center space-x-2 px-4 py-3 sm:py-4 min-h-[48px] bg-slate-900/50 hover:bg-slate-700/50 border border-purple-500/50 hover:border-purple-400 rounded-lg text-purple-300 hover:text-white transition-all disabled:opacity-50"
               >
-                <Upload className="h-4 w-4" />
-                <span className="text-sm">Carica Foto Manualmente</span>
+                <Upload className="h-5 w-5" />
+                <span className="text-sm sm:text-base">Carica Foto Manualmente</span>
               </button>
 
               {productImagePreview && (
@@ -517,13 +517,13 @@ export default function SocialAIStudioPage() {
                       key={platform}
                       onClick={() => setSocialPlatform(platform)}
                       disabled={isGenerating}
-                      className={`flex items-center justify-center space-x-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      className={`flex items-center justify-center space-x-2 px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-all ${
                         socialPlatform === platform
                           ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
                           : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
                       } disabled:opacity-50 capitalize`}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-5 w-5" />
                       <span>{platform}</span>
                     </button>
                   );
@@ -536,21 +536,21 @@ export default function SocialAIStudioPage() {
               <label className="block text-sm font-medium text-purple-300 mb-3">
                 Tipo Contenuto
               </label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {(['image', 'video', 'both'] as ContentType[]).map((type) => (
                   <button
                     key={type}
                     onClick={() => setContentType(type)}
                     disabled={isGenerating}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                    className={`px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-all ${
                       contentType === type
                         ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
                         : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
                     } disabled:opacity-50 capitalize`}
                   >
-                    {type === 'image' && <ImageIcon className="h-4 w-4 mx-auto mb-1" />}
-                    {type === 'video' && <Video className="h-4 w-4 mx-auto mb-1" />}
-                    {type === 'both' && <Sparkles className="h-4 w-4 mx-auto mb-1" />}
+                    {type === 'image' && <ImageIcon className="h-5 w-5 mx-auto mb-1" />}
+                    {type === 'video' && <Video className="h-5 w-5 mx-auto mb-1" />}
+                    {type === 'both' && <Sparkles className="h-5 w-5 mx-auto mb-1" />}
                     {type === 'both' ? 'Entrambi' : type === 'image' ? 'Foto' : 'Video'}
                   </button>
                 ))}
@@ -626,10 +626,10 @@ export default function SocialAIStudioPage() {
           {/* ========================================== */}
           {/* COLONNA DESTRA: Risultati */}
           {/* ========================================== */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
 
             {/* Info Card */}
-            <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-6">
+            <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-4 sm:p-6">
               <h3 className="text-white font-semibold mb-3 flex items-center space-x-2">
                 <Sparkles className="h-5 w-5 text-purple-400" />
                 <span>Come funziona</span>

@@ -84,6 +84,39 @@ export default function ShareMenu({
     toast.success(`Download ${type === 'image' ? 'immagine' : 'video'} avviato!`);
   };
 
+  // Copia immagine negli appunti (Clipboard API)
+  const handleCopyImage = async () => {
+    if (!imageUrl) return;
+
+    try {
+      // Verifica supporto Clipboard API per immagini
+      if (!navigator.clipboard || !navigator.clipboard.write) {
+        toast.error('Copia immagine non supportata su questo browser');
+        return;
+      }
+
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+
+      const clipboardItem = new ClipboardItem({
+        [blob.type]: blob
+      });
+
+      await navigator.clipboard.write([clipboardItem]);
+      toast.success('Immagine copiata negli appunti! Puoi incollarla direttamente nell\'app.', { duration: 5000 });
+
+      // Copia anche il testo
+      setTimeout(async () => {
+        await copyToClipboard(fullText);
+        toast.success('Testo copiato! Ora hai immagine + testo negli appunti.', { duration: 4000 });
+      }, 500);
+
+    } catch (error) {
+      console.error('Errore copia immagine:', error);
+      toast.error('Impossibile copiare l\'immagine. Usa il download.', { duration: 4000 });
+    }
+  };
+
   const handleInstagram = async () => {
     // Instagram: copy text + download image + istruzioni
     await handleCopy(fullText, 'Testo');
@@ -156,11 +189,44 @@ export default function ShareMenu({
     }
 
     try {
+      // Strategia intelligente: prova a condividere immagine + clipboard per testo
+      if (imageUrl) {
+        // 1. Prima copia il testo negli appunti
+        try {
+          await copyToClipboard(fullText);
+          toast.success('Testo copiato negli appunti!', { duration: 2000 });
+        } catch (e) {
+          console.warn('Impossibile copiare testo', e);
+        }
+
+        // 2. Poi converti immagine in file e condividi
+        try {
+          const response = await fetch(imageUrl);
+          const blob = await response.blob();
+          const file = new File([blob], `marketing-${platform}.png`, { type: 'image/png' });
+
+          // Verifica se può condividere file
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'Contenuto Marketing'
+            });
+
+            toast.success('Immagine condivisa! Incolla il testo copiato nell\'app.', { duration: 5000 });
+            setTimeout(onClose, 1500);
+            return;
+          }
+        } catch (e) {
+          console.warn('Impossibile condividere file, fallback a testo', e);
+        }
+      }
+
+      // 3. Fallback: condividi solo testo
       await navigator.share({
         title: 'Contenuto Marketing',
-        text: fullText,
-        url: shareUrl
+        text: fullText
       });
+
       setTimeout(onClose, 1000);
     } catch (error: any) {
       if (error.name !== 'AbortError') {
@@ -335,15 +401,32 @@ export default function ShareMenu({
             </button>
 
             {imageUrl && (
-              <button
-                onClick={() => handleDownloadMedia(imageUrl, 'image')}
-                className="w-full flex items-center space-x-3 p-3 bg-slate-900/30 hover:bg-slate-700/50 border border-purple-500/20 hover:border-purple-500/50 rounded-lg transition-all group"
-              >
-                <Download className="h-5 w-5 text-purple-400 group-hover:text-purple-300" />
-                <span className="flex-1 text-left text-white text-sm group-hover:text-purple-300">
-                  Scarica immagine
-                </span>
-              </button>
+              <>
+                <button
+                  onClick={handleCopyImage}
+                  className="w-full flex items-center space-x-3 p-3 bg-gradient-to-r from-emerald-500/20 to-green-500/20 hover:from-emerald-500/30 hover:to-green-500/30 border border-emerald-500/30 hover:border-emerald-500/50 rounded-lg transition-all group"
+                >
+                  <Copy className="h-5 w-5 text-emerald-400 group-hover:text-emerald-300" />
+                  <div className="flex-1 text-left">
+                    <div className="text-white text-sm font-medium group-hover:text-emerald-300">
+                      Copia immagine + testo
+                    </div>
+                    <div className="text-xs text-emerald-500/70">
+                      Incolla direttamente nell'app (mobile)
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleDownloadMedia(imageUrl, 'image')}
+                  className="w-full flex items-center space-x-3 p-3 bg-slate-900/30 hover:bg-slate-700/50 border border-purple-500/20 hover:border-purple-500/50 rounded-lg transition-all group"
+                >
+                  <Download className="h-5 w-5 text-purple-400 group-hover:text-purple-300" />
+                  <span className="flex-1 text-left text-white text-sm group-hover:text-purple-300">
+                    Scarica immagine
+                  </span>
+                </button>
+              </>
             )}
 
             {videoUrl && (
