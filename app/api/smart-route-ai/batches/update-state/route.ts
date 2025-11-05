@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/smart-route-ai/batches/update-state
- * Update batch state: draft -> done -> cancel
+ * Update batch state: draft -> in_progress -> done
  *
  * Body: {
  *   batchId: number
@@ -68,13 +68,13 @@ export async function POST(request: NextRequest) {
     let actionMethod: string | null = null;
 
     if (currentState === 'draft') {
-      // draft -> done (call action_done method)
+      // draft -> in_progress (call action_confirm method to start batch)
+      newState = 'in_progress';
+      actionMethod = 'action_confirm';
+    } else if (currentState === 'in_progress') {
+      // in_progress -> done (call action_done method to complete batch)
       newState = 'done';
       actionMethod = 'action_done';
-    } else if (currentState === 'done') {
-      // done -> cancel (call action_cancel method)
-      newState = 'cancel';
-      actionMethod = 'action_cancel';
     } else {
       return NextResponse.json({
         success: false,

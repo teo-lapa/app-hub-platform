@@ -335,10 +335,10 @@ export default function SmartRouteAIPage() {
     let nextStateLabel: string;
 
     if (batch.state === 'draft') {
+      nextState = 'in_progress';
+      nextStateLabel = 'In corso';
+    } else if (batch.state === 'in_progress') {
       nextState = 'done';
-      nextStateLabel = 'Pronto';
-    } else if (batch.state === 'done') {
-      nextState = 'cancel';
       nextStateLabel = 'Completato';
     } else {
       showToast('Impossibile avanzare da questo stato', 'error');
@@ -742,12 +742,12 @@ export default function SmartRouteAIPage() {
                   if (batch.state === 'draft') {
                     stateBadge = 'Bozza';
                     stateColor = 'bg-yellow-100 text-yellow-800';
+                  } else if (batch.state === 'in_progress') {
+                    stateBadge = 'In corso';
+                    stateColor = 'bg-blue-100 text-blue-800';
                   } else if (batch.state === 'done') {
-                    stateBadge = 'Pronto';
-                    stateColor = 'bg-green-100 text-green-800';
-                  } else if (batch.state === 'cancel') {
                     stateBadge = 'Completato';
-                    stateColor = 'bg-gray-100 text-gray-800';
+                    stateColor = 'bg-green-100 text-green-800';
                   }
 
                   return (
@@ -1100,7 +1100,11 @@ export default function SmartRouteAIPage() {
                   <div className="text-center">
                     <div className="text-xs text-gray-500 mb-1">Stato attuale</div>
                     <div className="font-bold text-gray-900 capitalize">
-                      {selectedBatchForStateChange.currentState === 'draft' ? 'Bozza' : 'Pronto'}
+                      {selectedBatchForStateChange.currentState === 'draft'
+                        ? 'Bozza'
+                        : selectedBatchForStateChange.currentState === 'in_progress'
+                        ? 'In corso'
+                        : 'Completato'}
                     </div>
                   </div>
                   <div className="text-2xl text-blue-500">→</div>

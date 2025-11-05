@@ -42,11 +42,11 @@ export async function GET(request: NextRequest) {
       throw new Error('Cannot connect to Odoo');
     }
 
-    // Fetch batches in draft or done state for the date
+    // Fetch batches in draft, in_progress or done state for the date
     const batches = await rpcClient.searchRead(
       'stock.picking.batch',
       [
-        ['state', 'in', ['draft', 'done']],
+        ['state', 'in', ['draft', 'in_progress', 'done']],
         ['scheduled_date', '>=', `${date} 00:00:00`],
         ['scheduled_date', '<=', `${date} 23:59:59`]
       ],
