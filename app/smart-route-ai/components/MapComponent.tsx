@@ -37,6 +37,8 @@ interface Picking {
   weight: number;
   batchId: number | null;
   batchName: string | null;
+  batchVehicleName: string | null;
+  batchDriverName: string | null;
   scheduledDate: string;
   state: string;
 }
@@ -204,7 +206,6 @@ export default function MapComponent({ pickings, routes, vehicles }: MapComponen
                 background: ${routeColor};
                 color: white;
                 border-radius: 6px;
-                text-align: center;
                 font-size: 12px;
                 font-weight: bold;
                 cursor: pointer;
@@ -214,8 +215,20 @@ export default function MapComponent({ pickings, routes, vehicles }: MapComponen
               onmouseover="this.style.opacity='0.8'"
               onmouseout="this.style.opacity='1'"
               >
-                🚚 ${picking.batchName}
-                <div style="font-size: 10px; margin-top: 4px; opacity: 0.9;">
+                <div style="text-align: center; margin-bottom: 6px;">
+                  🚚 ${picking.batchName}
+                </div>
+                ${picking.batchVehicleName ? `
+                  <div style="font-size: 11px; opacity: 0.95; margin-bottom: 3px;">
+                    🚗 ${picking.batchVehicleName}
+                  </div>
+                ` : ''}
+                ${picking.batchDriverName ? `
+                  <div style="font-size: 11px; opacity: 0.95; margin-bottom: 3px;">
+                    👤 ${picking.batchDriverName}
+                  </div>
+                ` : ''}
+                <div style="font-size: 10px; margin-top: 6px; opacity: 0.85; text-align: center; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 4px;">
                   Clicca per spostare
                 </div>
               </div>

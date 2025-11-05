@@ -30,6 +30,8 @@ interface Picking {
   weight: number;
   batchId: number | null;
   batchName: string | null;
+  batchVehicleName: string | null;
+  batchDriverName: string | null;
   scheduledDate: string;
   state: string;
 }

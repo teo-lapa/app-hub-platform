@@ -55,6 +55,29 @@ export async function POST(request: NextRequest) {
       'scheduled_date'
     );
 
+    // Collect all unique batch IDs to fetch vehicle/driver info
+    const batchIdsSet = new Set(pickings.map((p: any) => p.batch_id?.[0]).filter(Boolean));
+    const batchIds = Array.from(batchIdsSet);
+
+    // Fetch batch info with vehicle and driver in bulk
+    let batchesMap: Record<number, any> = {};
+    if (batchIds.length > 0) {
+      console.log(`[Smart Route AI] Caricamento ${batchIds.length} batch con veicoli/autisti...`);
+
+      const batches = await rpcClient.callKw(
+        'stock.picking.batch',
+        'read',
+        [batchIds, ['id', 'name', 'x_studio_auto_del_giro', 'x_studio_autista_del_giro']]
+      );
+
+      // Create map: batchId -> batch data
+      for (const batch of batches) {
+        batchesMap[batch.id] = batch;
+      }
+
+      console.log(`[Smart Route AI] Caricati ${batches.length} batch con info veicoli`);
+    }
+
     console.log(`[Smart Route AI] Trovati ${pickings.length} picking WH/PICK`);
 
     // Collect all partner IDs to fetch in bulk (PATTERN da delivery/list)
@@ -135,6 +158,10 @@ export async function POST(request: NextRequest) {
         ].filter(Boolean);
         const address = addressParts.join(', ') || partner.name || 'Indirizzo sconosciuto';
 
+        // Get batch info if exists
+        const batchId = picking.batch_id ? picking.batch_id[0] : null;
+        const batch = batchId ? batchesMap[batchId] : null;
+
         formattedPickings.push({
           id: picking.id,
           name: picking.name,
@@ -146,8 +173,10 @@ export async function POST(request: NextRequest) {
           weight: totalWeight,
           scheduledDate: picking.scheduled_date,
           state: picking.state,
-          batchId: picking.batch_id ? picking.batch_id[0] : null,
-          batchName: picking.batch_id ? picking.batch_id[1] : null
+          batchId: batchId,
+          batchName: picking.batch_id ? picking.batch_id[1] : null,
+          batchVehicleName: batch?.x_studio_auto_del_giro ? batch.x_studio_auto_del_giro[1] : null,
+          batchDriverName: batch?.x_studio_autista_del_giro ? batch.x_studio_autista_del_giro[1] : null
         });
       }
     }
