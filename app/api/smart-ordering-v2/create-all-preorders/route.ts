@@ -132,6 +132,10 @@ export async function POST(request: NextRequest) {
       products: Array<{
         productId: number;
         totalQuantity: number;
+        customerBreakdown: Array<{
+          customerName: string;
+          quantity: number;
+        }>;
       }>;
     }>();
 
@@ -149,9 +153,16 @@ export async function POST(request: NextRequest) {
         0
       );
 
+      // Build customer breakdown for chatter message
+      const customerBreakdown = prodAssignment.assignments.map(a => ({
+        customerName: a.customerName,
+        quantity: a.quantity
+      }));
+
       supplierOrders.get(prodAssignment.supplierId)!.products.push({
         productId: prodAssignment.productId,
-        totalQuantity
+        totalQuantity,
+        customerBreakdown
       });
     }
 
@@ -166,6 +177,7 @@ export async function POST(request: NextRequest) {
 
         // Fetch product details and prepare order lines
         const orderLines: any[] = [];
+        const productNamesMap = new Map<number, string>(); // Store product names for chatter message
 
         for (const product of orderData.products) {
           try {
@@ -178,6 +190,8 @@ export async function POST(request: NextRequest) {
 
             if (products && products.length > 0) {
               const productData = products[0];
+              productNamesMap.set(product.productId, productData.name); // Store name for chatter
+
               orderLines.push([0, 0, {
                 product_id: product.productId,
                 product_uom_qty: product.quantity,
@@ -203,8 +217,10 @@ export async function POST(request: NextRequest) {
         const saleOrderData = {
           partner_id: customerId,
           date_order: tomorrowDate,
-          order_line: orderLines,
-          note: `📦 Pre-Ordine Generato Automaticamente\nData creazione: ${formattedDate}\n\n🤖 Generato da LAPA Smart Ordering Pre-Ordine`
+          commitment_date: tomorrowDate,  // Data consegna richiesta = DOMANI
+          order_line: orderLines
+          // NOTE: Non usiamo 'note' perché finisce nei Termini e Condizioni (visibile in fattura/bolla)
+          // Usiamo solo message_post nel chatter
         };
 
         const saleOrderId = await rpc.callKw('sale.order', 'create', [saleOrderData], {});
@@ -212,9 +228,14 @@ export async function POST(request: NextRequest) {
 
         // Add chatter message
         try {
+          const productDetailsHtml = orderData.products.map(p => {
+            const productName = productNamesMap.get(p.productId) || `Prodotto ID ${p.productId}`;
+            return `<li><strong>${productName}</strong>: ${p.quantity} unità</li>`;
+          }).join('\n');
+
           const chatterMessage = `<p>📦 <strong>Prodotti aggiunti da Pre-Ordine il ${formattedDate}</strong></p>
 <ul>
-${orderData.products.map(p => `<li>Prodotto ID ${p.productId}: ${p.quantity} unità</li>`).join('\n')}
+${productDetailsHtml}
 </ul>
 <p><em>🤖 Ordine creato automaticamente dal sistema di Pre-Ordine</em></p>`;
 
@@ -251,6 +272,7 @@ ${orderData.products.map(p => `<li>Prodotto ID ${p.productId}: ${p.quantity} uni
 
         // Fetch product details and prepare order lines
         const orderLines: any[] = [];
+        const productNamesMap = new Map<number, string>(); // Store product names for chatter message
 
         for (const product of orderData.products) {
           try {
@@ -263,6 +285,8 @@ ${orderData.products.map(p => `<li>Prodotto ID ${p.productId}: ${p.quantity} uni
 
             if (products && products.length > 0) {
               const productData = products[0];
+              productNamesMap.set(product.productId, productData.name); // Store name for chatter
+
               orderLines.push([0, 0, {
                 product_id: product.productId,
                 product_qty: product.totalQuantity,
@@ -288,18 +312,27 @@ ${orderData.products.map(p => `<li>Prodotto ID ${p.productId}: ${p.quantity} uni
         const purchaseOrderData = {
           partner_id: supplierId,
           date_order: tomorrowDate,
-          order_line: orderLines,
-          notes: `📦 Pre-Ordine Generato Automaticamente\nData creazione: ${formattedDate}\n\n🤖 Generato da LAPA Smart Ordering Pre-Ordine`
+          order_line: orderLines
+          // NOTE: Non usiamo 'notes' perché finisce nei Termini e Condizioni (visibile in fattura/bolla)
+          // Usiamo solo message_post nel chatter
         };
 
         const purchaseOrderId = await rpc.callKw('purchase.order', 'create', [purchaseOrderData], {});
         console.log(`  ✅ Purchase order created: ${purchaseOrderId}`);
 
-        // Add chatter message
+        // Add chatter message with customer breakdown
         try {
+          const productDetailsHtml = orderData.products.map(p => {
+            const productName = productNamesMap.get(p.productId) || `Prodotto ID ${p.productId}`;
+            const customerList = p.customerBreakdown
+              .map(c => `${c.customerName}: ${c.quantity} unità`)
+              .join(', ');
+            return `<li><strong>${productName}</strong>: ${p.totalQuantity} unità totali<br/><em style="color: #666;">📋 Destinazione: ${customerList}</em></li>`;
+          }).join('\n');
+
           const chatterMessage = `<p>📦 <strong>Prodotti aggiunti da Pre-Ordine il ${formattedDate}</strong></p>
 <ul>
-${orderData.products.map(p => `<li>Prodotto ID ${p.productId}: ${p.totalQuantity} unità totali</li>`).join('\n')}
+${productDetailsHtml}
 </ul>
 <p><em>🤖 Ordine creato automaticamente dal sistema di Pre-Ordine</em></p>`;
 
