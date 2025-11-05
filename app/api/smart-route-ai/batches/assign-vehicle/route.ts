@@ -17,8 +17,8 @@ export const dynamic = 'force-dynamic';
  * }
  *
  * This will:
- * 1. Update the batch with vehicle_id and user_id (employee)
- * 2. Odoo will automatically propagate the driver to all pickings in the batch
+ * 1. Update the batch with CUSTOM fields (x_studio_auto_del_giro, x_studio_autista_del_giro)
+ * 2. These fields do NOT propagate to pickings - they stay only on the batch
  */
 export async function POST(request: NextRequest) {
   try {
@@ -60,17 +60,19 @@ export async function POST(request: NextRequest) {
     // When you set user_id on the batch, Odoo automatically propagates
     // the user to all pickings in that batch
 
-    const updateData: any = {};
+    const updateData: any = {
+      x_studio_auto_del_giro: vehicleId,  // Set vehicle (fleet.vehicle)
+    };
 
-    // If employeeId is provided, use it (this is the user_id)
+    // For driver, we need to use employeeId which is the hr.employee ID
     if (employeeId) {
-      updateData.user_id = employeeId;
-      console.log(`[Smart Route AI] Setting user_id (employee) to: ${employeeId}`);
+      updateData.x_studio_autista_del_giro = employeeId;  // Set driver (hr.employee)
+      console.log(`[Smart Route AI] Setting x_studio_autista_del_giro (employee) to: ${employeeId}`);
     } else {
-      console.log(`[Smart Route AI] Warning: No employeeId provided, cannot set user_id`);
-      throw new Error('Employee ID is required to assign driver to batch');
+      console.log(`[Smart Route AI] Warning: No employeeId provided, only setting vehicle`);
     }
 
+    console.log(`[Smart Route AI] Setting x_studio_auto_del_giro (vehicle) to: ${vehicleId}`);
     console.log(`[Smart Route AI] Update data:`, JSON.stringify(updateData));
 
     try {
