@@ -146,32 +146,50 @@ export async function GET(request: NextRequest) {
 
     try {
       if (products.length > 0) {
-        // Carica assegnazioni per ogni prodotto
-        for (const product of products) {
-          const productId = product.id;
-          const assignmentsResult = await sql`
+        // Raccogli tutti gli ID (prodotti principali + varianti)
+        const allProductIds = new Set<number>();
+        products.forEach(p => allProductIds.add(p.id));
+
+        // Aggiungi anche gli ID delle varianti
+        for (const [tmplId, variants] of Array.from(templateVariantsMap.entries())) {
+          variants.forEach(v => allProductIds.add(v.id));
+        }
+
+        // Carica assegnazioni per TUTTI gli ID
+        if (allProductIds.size > 0) {
+          const productIdsArray = Array.from(allProductIds);
+
+          // Carica tutte le assegnazioni per questi prodotti/varianti
+          const placeholders = productIdsArray.map((_, i) => `$${i + 1}`).join(',');
+          const queryText = `
             SELECT
               product_id,
               customer_id,
               quantity,
               notes
             FROM preorder_customer_assignments
-            WHERE product_id = ${productId}
+            WHERE product_id IN (${placeholders})
             ORDER BY created_at DESC
           `;
 
-          if (assignmentsResult.rows.length > 0) {
-            const assignments = assignmentsResult.rows.map((row: any) => ({
+          const assignmentsResult = await sql.query(queryText, productIdsArray);
+
+          // Raggruppa per product_id
+          for (const row of assignmentsResult.rows) {
+            const productId = row.product_id;
+            if (!assignmentsByProduct.has(productId)) {
+              assignmentsByProduct.set(productId, []);
+            }
+            assignmentsByProduct.get(productId)!.push({
               customerId: row.customer_id,
               customerName: '', // Verrà caricato dal front-end
               quantity: parseFloat(row.quantity),
               notes: row.notes
-            }));
-            assignmentsByProduct.set(productId, assignments);
+            });
           }
         }
 
-        console.log(`✅ Caricate assegnazioni per ${assignmentsByProduct.size} prodotti`);
+        console.log(`✅ Caricate assegnazioni per ${assignmentsByProduct.size} prodotti/varianti`);
       }
     } catch (error) {
       console.warn('⚠️ Errore caricamento assegnazioni (tabella potrebbe non esistere):', error);
@@ -207,7 +225,8 @@ export async function GET(request: NextRequest) {
           name: v.display_name,
           stock: v.qty_available || 0,
           price: v.lst_price || 0,
-          code: v.default_code || ''
+          code: v.default_code || '',
+          assigned_customers: assignmentsByProduct.get(v.id) || []  // ✨ Assegnazioni per variante
         })) : []
       };
     });

@@ -32,6 +32,11 @@ interface Product {
     stock: number
     price: number
     code: string
+    assignedCustomers: Array<{
+      customerId: number
+      customerName: string
+      quantity: number
+    }>
   }>
 }
 
@@ -216,10 +221,15 @@ export default function ProdottiPreordinePage() {
     setSupplierSearchTerm('')
   }
 
-  const openCustomerAssignment = (product: Product) => {
-    setSelectedProduct(product)
+  const openCustomerAssignment = (product: Product, parentProductId?: number) => {
+    // Se è una variante, salva anche l'ID del prodotto parent
+    const productWithParent = parentProductId
+      ? { ...product, parentProductId }
+      : product;
+
+    setSelectedProduct(productWithParent as any)
     setCustomerAssignments(
-      product.assignedCustomers.map(a => ({
+      (product.assignedCustomers || []).map(a => ({
         customerId: a.customerId,
         quantity: a.quantity
       }))
@@ -285,12 +295,32 @@ export default function ProdottiPreordinePage() {
         };
       });
 
-      // Update ONLY this product in local state - DON'T reload entire page
-      setAllProducts(prev => prev.map(p =>
-        p.id === selectedProduct.id
-          ? { ...p, assignedCustomers: savedAssignments }
-          : p
-      ))
+      // Update local state - gestisce sia prodotti che varianti
+      const parentId = (selectedProduct as any).parentProductId;
+
+      if (parentId) {
+        // È una variante - aggiorna la variante dentro il prodotto parent
+        setAllProducts(prev => prev.map(p => {
+          if (p.id === parentId && p.variants) {
+            return {
+              ...p,
+              variants: p.variants.map(v =>
+                v.id === selectedProduct.id
+                  ? { ...v, assignedCustomers: savedAssignments }
+                  : v
+              )
+            };
+          }
+          return p;
+        }))
+      } else {
+        // È un prodotto normale - aggiorna direttamente
+        setAllProducts(prev => prev.map(p =>
+          p.id === selectedProduct.id
+            ? { ...p, assignedCustomers: savedAssignments }
+            : p
+        ))
+      }
 
       setShowCustomerModal(false)
       setSelectedProduct(null)
@@ -705,7 +735,10 @@ export default function ProdottiPreordinePage() {
                             </td>
                             <td className="px-4 py-2 text-center">
                               <button
-                                onClick={() => openCustomerAssignment({ ...product, id: variant.id, name: variant.name })}
+                                onClick={() => openCustomerAssignment(
+                                  { ...product, id: variant.id, name: variant.name, assignedCustomers: variant.assignedCustomers },
+                                  product.id  // Pass parent product ID
+                                )}
                                 className="px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs rounded transition-colors"
                               >
                                 👥 Assegna
