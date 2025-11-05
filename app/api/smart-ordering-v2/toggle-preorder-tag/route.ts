@@ -45,10 +45,10 @@ export async function POST(request: NextRequest) {
     if (tags.length === 0) {
       // Crea il tag se non esiste
       console.log('📌 Tag PRE-ORDINE non trovato, lo creo...');
-      const newTagId = await (rpc as any).create('product.tag', {
+      const newTagId = await rpc.callKw('product.tag', 'create', [{
         name: 'PRE-ORDINE',
         color: 5 // Colore viola in Odoo
-      });
+      }]);
       preOrderTagId = newTagId;
       console.log(`✅ Tag PRE-ORDINE creato con ID: ${preOrderTagId}`);
     } else {
@@ -111,9 +111,9 @@ export async function POST(request: NextRequest) {
     const writeCommand = [[6, 0, newTags]];
     console.log(`💾 Comando Odoo write:`, { product_tag_ids: writeCommand });
 
-    await (rpc as any).write('product.template', [templateId], {
+    await rpc.callKw('product.template', 'write', [[templateId], {
       product_tag_ids: writeCommand // Odoo command: replace all tags
-    });
+    }]);
 
     console.log(`✅ Write completato, verifico risultato...`);
 
