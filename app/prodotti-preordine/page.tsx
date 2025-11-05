@@ -572,73 +572,85 @@ export default function ProdottiPreordinePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
       <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
-        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-6">
+          {/* Mobile: Column layout */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* Left side: Back button, Title, Create All button */}
+            <div className="flex items-center gap-2 sm:gap-4">
               <button
                 onClick={() => router.push('/ordini-smart-v2')}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
               >
-                <ArrowLeftIcon className="w-6 h-6 text-white" />
+                <ArrowLeftIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </button>
 
-              {/* ✨ NEW: Global "Create All Orders" Button */}
-              {allProducts.filter(p => p.isPreOrder && hasAssignedCustomers(p)).length > 0 && (
-                <button
-                  onClick={createAllOrders}
-                  disabled={isCreatingAllOrders}
-                  className={`px-6 py-3 rounded-xl font-bold text-white text-lg transition-all transform hover:scale-105 shadow-lg ${
-                    isCreatingAllOrders
-                      ? 'bg-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
-                  }`}
-                >
-                  {isCreatingAllOrders ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Creazione...</span>
-                    </div>
-                  ) : (
-                    '🚀 CREA TUTTI GLI ORDINI'
-                  )}
-                </button>
-              )}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold text-white truncate">Prodotti Pre-ordine</h1>
+                <p className="text-purple-200 text-xs sm:text-sm hidden sm:block">Gestisci prodotti su ordinazione e assegna ai clienti</p>
+              </div>
 
-              <div>
-                <h1 className="text-2xl font-bold text-white">Prodotti Pre-ordine</h1>
-                <p className="text-purple-200 text-sm">Gestisci prodotti su ordinazione e assegna ai clienti</p>
+              {/* Stats badge on mobile - shows next to title */}
+              <div className="sm:hidden text-right flex-shrink-0">
+                <div className="text-xl font-bold text-white">{allProducts.filter(p => p.isPreOrder).length}</div>
+                <div className="text-purple-200 text-xs">PRE-ORDINE</div>
               </div>
             </div>
-            <div className="text-right">
+
+            {/* Right side: Stats (desktop only) */}
+            <div className="hidden sm:block text-right">
               <div className="text-3xl font-bold text-white">{allProducts.filter(p => p.isPreOrder).length}</div>
               <div className="text-purple-200 text-sm">Prodotti PRE-ORDINE</div>
             </div>
           </div>
+
+          {/* Global "Create All Orders" Button - Full width on mobile */}
+          {allProducts.filter(p => p.isPreOrder && hasAssignedCustomers(p)).length > 0 && (
+            <button
+              onClick={createAllOrders}
+              disabled={isCreatingAllOrders}
+              className={`mt-3 w-full sm:w-auto sm:mt-0 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-white text-sm sm:text-lg transition-all shadow-lg ${
+                isCreatingAllOrders
+                  ? 'bg-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+              }`}
+            >
+              {isCreatingAllOrders ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-sm sm:text-base">Creazione...</span>
+                </div>
+              ) : (
+                <span className="block sm:hidden">🚀 ORDINA TUTTO</span>
+              )}
+              {!isCreatingAllOrders && <span className="hidden sm:block">🚀 CREA TUTTI GLI ORDINI</span>}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Search Bar */}
-      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-6">
         <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <MagnifyingGlassIcon className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
           <input
             type="text"
             placeholder="Cerca prodotto o fornitore..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 text-sm sm:text-base bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
       </div>
 
       {/* Products Table */}
-      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+      <div className="max-w-[1800px] mx-auto px-2 sm:px-4 lg:px-8 pb-8">
         <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
           {loading ? (
             <div className="p-8 text-center text-white">Caricamento prodotti...</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
+              {/* Desktop Table - hidden on mobile */}
+              <table className="w-full hidden md:table">
                 <thead>
                   <tr className="border-b border-white/20">
                     <th className="px-4 py-4 text-center text-sm font-semibold text-purple-200 w-16">PRE-ORDINE</th>
@@ -863,6 +875,203 @@ export default function ProdottiPreordinePage() {
                   ))}
                 </tbody>
               </table>
+
+              {/* Mobile Card Layout - shown only on mobile */}
+              <div className="md:hidden space-y-4 p-4">
+                {filteredProducts.map((product) => (
+                  <div key={product.id} className="bg-white/5 rounded-lg border border-white/10 p-4 space-y-3">
+                    {/* Header with checkbox and image */}
+                    <div className="flex items-start gap-3">
+                      {/* PRE-ORDINE Toggle */}
+                      <div className="flex-shrink-0 pt-1">
+                        {togglingProductId === product.id ? (
+                          <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <input
+                            type="checkbox"
+                            checked={product.isPreOrder}
+                            onChange={() => togglePreOrder(product.id, product.isPreOrder)}
+                            className="w-6 h-6 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                          />
+                        )}
+                      </div>
+
+                      {/* Product Image */}
+                      <div className="flex-shrink-0">
+                        {imageErrors.has(product.id) ? (
+                          <div className="w-20 h-20 rounded-lg bg-white/10 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white" className="w-10 h-10">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                            </svg>
+                          </div>
+                        ) : (
+                          <img
+                            src={`https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com/web/image/product.product/${product.id}/image_128`}
+                            alt={product.name}
+                            className="w-20 h-20 rounded-lg object-cover bg-white/10"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              setImageErrors(prev => new Set(prev).add(product.id));
+                            }}
+                          />
+                        )}
+                      </div>
+
+                      {/* Product Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white font-medium text-base mb-2 break-words">{product.name}</div>
+                        {product.hasVariants && (
+                          <button
+                            onClick={() => setExpandedVariants(prev =>
+                              prev.has(product.id)
+                                ? new Set(Array.from(prev).filter(id => id !== product.id))
+                                : new Set([...Array.from(prev), product.id])
+                            )}
+                            className="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 rounded text-sm text-purple-300 transition-colors"
+                          >
+                            📦 {product.variantCount} Varianti {expandedVariants.has(product.id) ? '▲' : '▼'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Supplier and Stock */}
+                    <div className="flex justify-between items-center gap-2 text-sm">
+                      <div className="flex-1">
+                        <div className="text-gray-400 text-xs mb-1">Fornitore</div>
+                        <button
+                          onClick={() => openSupplierChange(product)}
+                          className="w-full px-3 py-2 bg-slate-700 hover:bg-slate-600 border border-white/20 rounded-lg text-white text-sm text-left transition-colors"
+                        >
+                          {product.supplier.name}
+                        </button>
+                      </div>
+                      <div>
+                        <div className="text-gray-400 text-xs mb-1 text-center">Stock</div>
+                        <span className={`inline-flex px-3 py-2 rounded-full text-sm font-medium ${
+                          product.currentStock > 10
+                            ? 'bg-green-500/20 text-green-300'
+                            : product.currentStock > 0
+                            ? 'bg-yellow-500/20 text-yellow-300'
+                            : 'bg-red-500/20 text-red-300'
+                        }`}>
+                          {product.currentStock.toFixed(1)} {product.uom}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Customers Assigned */}
+                    <div>
+                      <div className="text-gray-400 text-xs mb-2">Clienti Assegnati</div>
+                      <button
+                        onClick={() => openCustomerAssignment(product)}
+                        className="w-full px-3 py-2 bg-slate-700 hover:bg-slate-600 border border-white/20 rounded-lg text-white text-sm text-left transition-colors"
+                      >
+                        {product.assignedCustomers.length > 0 ? (
+                          <div className="space-y-1">
+                            {product.assignedCustomers.map((a, i) => {
+                              const customer = customers.find(c => c.id === a.customerId);
+                              return (
+                                <div key={i} className="flex justify-between items-center">
+                                  <span className="truncate">{customer?.name || 'Cliente sconosciuto'}</span>
+                                  <span className="ml-2 text-purple-300 font-semibold">({a.quantity})</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-gray-500 italic text-center">Nessun cliente</div>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Quantity and Actions */}
+                    <div className="flex items-center justify-between gap-3 pt-2 border-t border-white/10">
+                      <div className="text-center">
+                        <div className="text-gray-400 text-xs mb-1">Qtà Totale</div>
+                        <span className="text-2xl font-bold text-purple-300">
+                          {calculateTotalQuantity(product)}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => openAnalytics(product)}
+                          className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm rounded-lg transition-all whitespace-nowrap"
+                        >
+                          📊 Analisi
+                        </button>
+                        {product.isPreOrder && hasAssignedCustomers(product) && (
+                          <button
+                            onClick={() => createOrder(product)}
+                            disabled={isCreatingAllOrders}
+                            className={`px-4 py-2 text-white text-sm rounded-lg transition-all font-semibold whitespace-nowrap ${
+                              isCreatingAllOrders
+                                ? 'bg-gray-500 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+                            }`}
+                          >
+                            {isCreatingAllOrders ? '⏳' : '🚀 ORDINA'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Variants - Mobile Version */}
+                    {product.hasVariants && expandedVariants.has(product.id) && product.variants && (
+                      <div className="space-y-2 pt-3 border-t border-white/10">
+                        <div className="text-purple-300 text-sm font-semibold mb-2">Varianti:</div>
+                        {product.variants.map((variant: any) => {
+                          const variantTotalQty = variant.assignedCustomers?.reduce((sum: number, a: any) => sum + a.quantity, 0) || 0;
+                          return (
+                            <div key={variant.id} className="bg-purple-900/20 rounded-lg p-3 space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 text-sm text-gray-300">
+                                  <span className="text-purple-400">→</span> {variant.name}
+                                </div>
+                                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                                  variant.stock > 10
+                                    ? 'bg-green-500/20 text-green-300'
+                                    : variant.stock > 0
+                                    ? 'bg-yellow-500/20 text-yellow-300'
+                                    : 'bg-red-500/20 text-red-300'
+                                }`}>
+                                  {variant.stock.toFixed(1)}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => openCustomerAssignment(
+                                  { ...product, id: variant.id, name: variant.name, assignedCustomers: variant.assignedCustomers },
+                                  product.id
+                                )}
+                                className="w-full px-3 py-2 bg-slate-700 hover:bg-slate-600 border border-white/20 rounded-lg text-white text-xs text-left transition-colors"
+                              >
+                                {variant.assignedCustomers && variant.assignedCustomers.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {variant.assignedCustomers.map((a: any, i: number) => {
+                                      const customer = customers.find(c => c.id === a.customerId);
+                                      return (
+                                        <div key={i} className="flex justify-between items-center">
+                                          <span className="truncate">{customer?.name || 'Cliente sconosciuto'}</span>
+                                          <span className="ml-2 text-purple-300 font-semibold">({a.quantity})</span>
+                                        </div>
+                                      );
+                                    })}
+                                    <div className="text-center pt-2 border-t border-white/10 text-purple-300 font-bold">
+                                      Totale: {variantTotalQty}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-gray-500 italic text-center">👥 Assegna clienti</div>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -870,58 +1079,72 @@ export default function ProdottiPreordinePage() {
 
       {/* Customer Assignment Modal */}
       {showCustomerModal && selectedProduct && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 rounded-xl max-w-3xl w-full max-h-[80vh] overflow-hidden border border-purple-500/30">
-            <div className="p-6 border-b border-white/10 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div>
-                  <h2 className="text-xl font-bold text-white">Assegna Clienti</h2>
-                  <p className="text-gray-400 text-sm mt-1">{selectedProduct.name}</p>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4 z-50">
+          <div className="bg-slate-800 rounded-none sm:rounded-xl max-w-3xl w-full h-full sm:h-auto sm:max-h-[80vh] overflow-hidden border-0 sm:border border-purple-500/30">
+            {/* Header - Mobile optimized */}
+            <div className="p-4 sm:p-6 border-b border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-start justify-between sm:gap-4 flex-1">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-white">Assegna Clienti</h2>
+                  <p className="text-gray-400 text-xs sm:text-sm mt-1 truncate">{selectedProduct.name}</p>
                 </div>
                 <button
+                  onClick={() => {
+                    setShowCustomerModal(false)
+                    setSelectedProduct(null)
+                    setCustomerAssignments([])
+                    setCustomerSearchTerm('')
+                  }}
+                  className="text-white/60 hover:text-white transition-colors p-2 sm:hidden"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="flex gap-2 sm:gap-4">
+                <button
                   onClick={saveCustomerAssignments}
-                  className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm rounded-lg transition-all font-semibold"
+                  className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm rounded-lg transition-all font-semibold min-h-[48px]"
                 >
                   💾 Salva
                 </button>
+                <button
+                  onClick={() => {
+                    setShowCustomerModal(false)
+                    setSelectedProduct(null)
+                    setCustomerAssignments([])
+                    setCustomerSearchTerm('')
+                  }}
+                  className="hidden sm:block text-white/60 hover:text-white transition-colors p-2"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  setShowCustomerModal(false)
-                  setSelectedProduct(null)
-                  setCustomerAssignments([])
-                  setCustomerSearchTerm('')
-                }}
-                className="text-white/60 hover:text-white transition-colors"
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              {/* Search bar */}
+            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto" style={{maxHeight: 'calc(100vh - 140px)'}}>
+              {/* Search bar - Mobile optimized */}
               <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <MagnifyingGlassIcon className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Cerca cliente per nome, email, telefono o città..."
+                  placeholder="Cerca cliente..."
                   value={customerSearchTerm}
                   onChange={(e) => setCustomerSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-slate-700 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 text-sm sm:text-base bg-slate-700 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[48px]"
                 />
               </div>
 
-              {/* Selected customers list */}
+              {/* Selected customers list - Mobile optimized */}
               {customerAssignments.length > 0 && (
-                <div className="space-y-1.5 border-t border-white/10 pt-3">
+                <div className="space-y-2 border-t border-white/10 pt-3">
                   <h3 className="text-xs font-semibold text-purple-300 uppercase tracking-wide">Clienti Selezionati:</h3>
                   {customerAssignments.map((assignment, idx) => {
                     const customer = customers.find(c => c.id === assignment.customerId)
                     return (
-                      <div key={idx} className="flex gap-2 items-center bg-slate-700/50 rounded-lg p-2">
-                        <div className="flex-1 text-white text-sm">
-                          {customer?.name || 'Cliente sconosciuto'}
-                          {customer?.city && <span className="text-gray-400 text-xs ml-1.5">({customer.city})</span>}
+                      <div key={idx} className="flex gap-2 items-center bg-slate-700/50 rounded-lg p-3">
+                        <div className="flex-1 text-white text-sm min-w-0">
+                          <div className="truncate">{customer?.name || 'Cliente sconosciuto'}</div>
+                          {customer?.city && <div className="text-gray-400 text-xs mt-0.5">{customer.city}</div>}
                         </div>
                         <input
                           type="number"
@@ -929,11 +1152,11 @@ export default function ProdottiPreordinePage() {
                           value={assignment.quantity || ''}
                           onChange={(e) => updateCustomerAssignment(idx, 'quantity', Number(e.target.value))}
                           placeholder="Qty"
-                          className="w-16 px-2 py-1.5 bg-slate-600 border border-white/20 rounded text-white text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="w-16 sm:w-20 px-2 py-2 bg-slate-600 border border-white/20 rounded text-white text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[44px]"
                         />
                         <button
                           onClick={() => removeCustomerAssignment(idx)}
-                          className="px-2 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded transition-all text-sm"
+                          className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded transition-all text-sm min-w-[44px] min-h-[44px] flex items-center justify-center"
                         >
                           ✕
                         </button>
@@ -943,10 +1166,10 @@ export default function ProdottiPreordinePage() {
                 </div>
               )}
 
-              {/* Available customers list */}
+              {/* Available customers list - Mobile optimized */}
               <div className="border-t border-white/10 pt-3">
                 <h3 className="text-xs font-semibold text-purple-300 uppercase tracking-wide mb-2">Aggiungi Cliente:</h3>
-                <div className="max-h-64 overflow-y-auto space-y-1">
+                <div className="max-h-64 sm:max-h-96 overflow-y-auto space-y-1.5">
                   {filteredCustomers.length === 0 ? (
                     <div className="text-center py-6 text-gray-400 text-sm">
                       {customerSearchTerm ? 'Nessun cliente trovato' : 'Inizia a digitare per cercare...'}
@@ -964,17 +1187,17 @@ export default function ProdottiPreordinePage() {
                             }
                           }}
                           disabled={alreadyAdded}
-                          className={`w-full text-left px-3 py-2 rounded-lg transition-all ${
+                          className={`w-full text-left px-4 py-3 rounded-lg transition-all min-h-[56px] ${
                             alreadyAdded
                               ? 'bg-slate-700/30 text-gray-500 cursor-not-allowed'
-                              : 'bg-slate-700 hover:bg-slate-600 text-white'
+                              : 'bg-slate-700 hover:bg-slate-600 text-white active:bg-slate-500'
                           }`}
                         >
-                          <div className="font-medium text-sm">
+                          <div className="font-medium text-sm sm:text-base">
                             {customer.name}
                             {customer.parentName && <span className="text-xs text-purple-300 ml-2">({customer.parentName})</span>}
                           </div>
-                          <div className="text-xs text-gray-400">
+                          <div className="text-xs sm:text-sm text-gray-400 mt-0.5">
                             {[customer.city, customer.email, customer.phone].filter(Boolean).join(' • ')}
                           </div>
                         </button>
