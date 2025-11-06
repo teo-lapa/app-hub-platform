@@ -1073,32 +1073,39 @@ export default function SmartRouteAIPage() {
                     <div className="text-xs mt-1">Importa prima i picking per caricare i batch</div>
                   </div>
                 ) : (
-                  batches.filter(b => b.state !== 'done' && b.state !== 'cancel').map(batch => (
-                    <button
-                      key={batch.id}
-                      onClick={() => assignVehicleToBatch(
-                        batch.id,
-                        selectedVehicleForBatch.id,
-                        selectedVehicleForBatch.driverId,
-                        selectedVehicleForBatch.employeeId
-                      )}
-                      className="w-full p-3 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-semibold text-gray-900 group-hover:text-indigo-900">
-                            {batch.name}
+                  batches.filter(b => b.state !== 'done' && b.state !== 'cancel').map(batch => {
+                    const batchColor = getBatchColor(batch.id);
+                    return (
+                      <button
+                        key={batch.id}
+                        onClick={() => assignVehicleToBatch(
+                          batch.id,
+                          selectedVehicleForBatch.id,
+                          selectedVehicleForBatch.driverId,
+                          selectedVehicleForBatch.employeeId
+                        )}
+                        className="w-full p-3 text-left border-2 rounded-lg hover:opacity-80 transition-all group"
+                        style={{
+                          borderColor: batchColor,
+                          backgroundColor: `${batchColor}10`
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold" style={{ color: batchColor }}>
+                              {batch.name}
+                            </div>
+                            <div className="text-xs text-gray-600 capitalize">
+                              {batch.state === 'draft' ? 'Bozza' : 'Pronto'}
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500 capitalize">
-                            {batch.state === 'draft' ? 'Bozza' : 'Pronto'}
+                          <div style={{ color: batchColor }} className="opacity-0 group-hover:opacity-100 transition-opacity font-bold">
+                            ✓
                           </div>
                         </div>
-                        <div className="text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                          ✓
-                        </div>
-                      </div>
-                    </button>
-                  ))
+                      </button>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -1204,27 +1211,34 @@ export default function SmartRouteAIPage() {
               <div className="max-h-64 overflow-y-auto space-y-2">
                 {batches
                   .filter(b => b.name !== selectedPickingForMove.currentBatch && b.state !== 'done' && b.state !== 'cancel')
-                  .map(batch => (
-                    <button
-                      key={batch.id}
-                      onClick={() => movePickingToBatch(selectedPickingForMove.id, batch.id)}
-                      className="w-full p-3 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-semibold text-gray-900 group-hover:text-indigo-900">
-                            {batch.name}
+                  .map(batch => {
+                    const batchColor = getBatchColor(batch.id);
+                    return (
+                      <button
+                        key={batch.id}
+                        onClick={() => movePickingToBatch(selectedPickingForMove.id, batch.id)}
+                        className="w-full p-3 text-left border-2 rounded-lg hover:opacity-80 transition-all group"
+                        style={{
+                          borderColor: batchColor,
+                          backgroundColor: `${batchColor}10`
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold" style={{ color: batchColor }}>
+                              {batch.name}
+                            </div>
+                            <div className="text-xs text-gray-600 capitalize">
+                              {batch.state === 'draft' ? 'Bozza' : 'Pronto'}
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500 capitalize">
-                            {batch.state === 'draft' ? 'Bozza' : 'Pronto'}
+                          <div style={{ color: batchColor }} className="opacity-0 group-hover:opacity-100 transition-opacity font-bold">
+                            →
                           </div>
                         </div>
-                        <div className="text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                          →
-                        </div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 {batches.filter(b => b.name !== selectedPickingForMove.currentBatch && b.state !== 'done' && b.state !== 'cancel').length === 0 && (
                   <div className="text-center text-gray-500 py-4">
                     Nessun altro batch disponibile per questa data
