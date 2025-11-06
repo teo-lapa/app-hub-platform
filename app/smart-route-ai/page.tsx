@@ -722,13 +722,13 @@ export default function SmartRouteAIPage() {
           </div>
 
           {/* Batch List */}
-          {batches.length > 0 && (
+          {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').length > 0 && (
             <div className="bg-white rounded-lg shadow p-4">
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <span>📦</span> Batch
               </h3>
               <div className="space-y-2">
-                {batches.map((batch, index) => {
+                {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').map((batch, index) => {
                   // Use same colors as map
                   const ROUTE_COLORS = [
                     '#4f46e5', '#7c3aed', '#db2777', '#059669', '#d97706',
@@ -1023,14 +1023,14 @@ export default function SmartRouteAIPage() {
                 Seleziona il batch da assegnare a questo veicolo:
               </div>
               <div className="max-h-64 overflow-y-auto space-y-2">
-                {batches.length === 0 ? (
+                {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').length === 0 ? (
                   <div className="text-center text-gray-500 py-8">
                     <div className="text-4xl mb-2">📦</div>
                     <div>Nessun batch disponibile</div>
                     <div className="text-xs mt-1">Importa prima i picking per caricare i batch</div>
                   </div>
                 ) : (
-                  batches.map(batch => (
+                  batches.filter(b => b.state !== 'done' && b.state !== 'cancel').map(batch => (
                     <button
                       key={batch.id}
                       onClick={() => assignVehicleToBatch(
@@ -1160,7 +1160,7 @@ export default function SmartRouteAIPage() {
               <div className="text-sm font-semibold text-gray-700 mb-2">Seleziona batch di destinazione:</div>
               <div className="max-h-64 overflow-y-auto space-y-2">
                 {batches
-                  .filter(b => b.name !== selectedPickingForMove.currentBatch)
+                  .filter(b => b.name !== selectedPickingForMove.currentBatch && b.state !== 'done' && b.state !== 'cancel')
                   .map(batch => (
                     <button
                       key={batch.id}
@@ -1182,7 +1182,7 @@ export default function SmartRouteAIPage() {
                       </div>
                     </button>
                   ))}
-                {batches.filter(b => b.name !== selectedPickingForMove.currentBatch).length === 0 && (
+                {batches.filter(b => b.name !== selectedPickingForMove.currentBatch && b.state !== 'done' && b.state !== 'cancel').length === 0 && (
                   <div className="text-center text-gray-500 py-4">
                     Nessun altro batch disponibile per questa data
                   </div>
