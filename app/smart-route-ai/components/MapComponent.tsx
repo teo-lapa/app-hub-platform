@@ -134,11 +134,13 @@ export default function MapComponent({ pickings, routes, vehicles }: MapComponen
 
     if (pickings.length === 0) return;
 
-    // Create a map of batchId -> color
+    // Create a map of batchId -> color (using batch ID for consistency)
     const batchColorMap = new Map<number, string>();
     const uniqueBatchIds = Array.from(new Set(pickings.map(p => p.batchId).filter(Boolean)));
-    uniqueBatchIds.forEach((batchId, idx) => {
-      batchColorMap.set(batchId!, ROUTE_COLORS[idx % ROUTE_COLORS.length]);
+    uniqueBatchIds.forEach((batchId) => {
+      // Use batch ID modulo to get consistent color across UI
+      const colorIndex = batchId! % ROUTE_COLORS.length;
+      batchColorMap.set(batchId!, ROUTE_COLORS[colorIndex]);
     });
 
     // Add new markers

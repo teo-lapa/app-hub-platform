@@ -72,6 +72,19 @@ export default function SmartRouteAIPage() {
   const [showBatchStateModal, setShowBatchStateModal] = useState(false);
   const [selectedBatchForStateChange, setSelectedBatchForStateChange] = useState<{id: number, name: string, currentState: string, nextState: string} | null>(null);
 
+  // Route colors - must match MapComponent colors
+  const ROUTE_COLORS = [
+    '#4f46e5', '#7c3aed', '#db2777', '#059669', '#d97706',
+    '#dc2626', '#2563eb', '#16a34a', '#ea580c', '#8b5cf6'
+  ];
+
+  // Function to get consistent color for a batch based on its ID
+  const getBatchColor = (batchId: number) => {
+    // Use batch ID to consistently assign the same color
+    const colorIndex = batchId % ROUTE_COLORS.length;
+    return ROUTE_COLORS[colorIndex];
+  };
+
   // Stats
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -728,13 +741,9 @@ export default function SmartRouteAIPage() {
                 <span>📦</span> Batch
               </h3>
               <div className="space-y-2">
-                {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').map((batch, index) => {
-                  // Use same colors as map
-                  const ROUTE_COLORS = [
-                    '#4f46e5', '#7c3aed', '#db2777', '#059669', '#d97706',
-                    '#dc2626', '#2563eb', '#16a34a', '#ea580c', '#8b5cf6'
-                  ];
-                  const color = ROUTE_COLORS[index % ROUTE_COLORS.length];
+                {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').map((batch) => {
+                  // Get consistent color based on batch ID
+                  const color = getBatchColor(batch.id);
 
                   // Determine state badge
                   let stateBadge = '';
