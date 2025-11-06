@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     const templateIds = templates.map((t: any) => t.id);
+    console.log(`🔍 Trovati ${templates.length} template con tag PRE-ORDINE`);
 
     // 3. Carica i prodotti dai template
     const products = await rpc.searchRead(
@@ -198,6 +199,7 @@ export async function GET(request: NextRequest) {
 
     // 5. Formatta i prodotti - 🔥 SOLO 1 PRODOTTO PER TEMPLATE
     // Uso productsByTemplate per prendere il PRIMO prodotto di ogni template
+    console.log(`📦 productsByTemplate ha ${productsByTemplate.size} template`);
     const formattedProducts = Array.from(productsByTemplate.entries())
       .map(([tmplId, tmplProducts]) => {
         // Prendo sempre il PRIMO prodotto del template (quello principale)
