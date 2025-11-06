@@ -2680,7 +2680,6 @@ export default function DeliveryPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 overscroll-none"
             onClick={() => {}}
-            style={{ touchAction: 'none' }}
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -2688,6 +2687,7 @@ export default function DeliveryPage() {
               exit={{ scale: 0.9 }}
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
+              style={{ touchAction: 'pan-y' }}
             >
               <h2 className="text-xl font-bold mb-2">💰 Pagamento alla Consegna</h2>
 
