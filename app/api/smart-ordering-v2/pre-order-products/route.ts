@@ -197,21 +197,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. Formatta i prodotti - 🔥 SOLO 1 PRODOTTO PER TEMPLATE
-    // Raggruppo per template e prendo solo il primo prodotto di ogni template
-    const seenTemplates = new Set<number>();
-    const formattedProducts = products
-      .filter((product: any) => {
-        const tmplId = product.product_tmpl_id[0];
-        if (seenTemplates.has(tmplId)) {
-          return false; // Skip, già processato questo template
-        }
-        seenTemplates.add(tmplId);
-        return true; // Primo prodotto di questo template
-      })
-      .map((product: any) => {
+    // Uso productsByTemplate per prendere il PRIMO prodotto di ogni template
+    const formattedProducts = Array.from(productsByTemplate.entries())
+      .map(([tmplId, tmplProducts]) => {
+        // Prendo sempre il PRIMO prodotto del template (quello principale)
+        const product = tmplProducts[0];
         const mainSupplierId = product.seller_ids && product.seller_ids.length > 0 ? product.seller_ids[0] : null;
         const supplier = mainSupplierId ? supplierMap.get(mainSupplierId) : null;
-        const tmplId = product.product_tmpl_id[0];
 
         // Carica varianti se esistono per questo template
         const variants = templateVariantsMap.get(tmplId) || [];
