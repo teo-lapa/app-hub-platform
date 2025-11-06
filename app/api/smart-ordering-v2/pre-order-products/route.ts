@@ -196,40 +196,51 @@ export async function GET(request: NextRequest) {
       // Non bloccare la risposta se la tabella non esiste ancora
     }
 
-    // 5. Formatta i prodotti
-    const formattedProducts = products.map((product: any) => {
-      const mainSupplierId = product.seller_ids && product.seller_ids.length > 0 ? product.seller_ids[0] : null;
-      const supplier = mainSupplierId ? supplierMap.get(mainSupplierId) : null;
-      const tmplId = product.product_tmpl_id[0];
+    // 5. Formatta i prodotti - 🔥 SOLO 1 PRODOTTO PER TEMPLATE
+    // Raggruppo per template e prendo solo il primo prodotto di ogni template
+    const seenTemplates = new Set<number>();
+    const formattedProducts = products
+      .filter((product: any) => {
+        const tmplId = product.product_tmpl_id[0];
+        if (seenTemplates.has(tmplId)) {
+          return false; // Skip, già processato questo template
+        }
+        seenTemplates.add(tmplId);
+        return true; // Primo prodotto di questo template
+      })
+      .map((product: any) => {
+        const mainSupplierId = product.seller_ids && product.seller_ids.length > 0 ? product.seller_ids[0] : null;
+        const supplier = mainSupplierId ? supplierMap.get(mainSupplierId) : null;
+        const tmplId = product.product_tmpl_id[0];
 
-      // Carica varianti se esistono per questo template
-      const variants = templateVariantsMap.get(tmplId) || [];
-      const hasVariants = variants.length > 1;
+        // Carica varianti se esistono per questo template
+        const variants = templateVariantsMap.get(tmplId) || [];
+        const hasVariants = variants.length > 1;
 
-      return {
-        id: product.id,
-        name: product.name,
-        display_name: product.display_name || product.name,  // Nome con attributi variante
-        image_url: `https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com/web/image/product.product/${product.id}/image_128`,
-        stock: product.qty_available || 0,
-        uom: product.uom_id ? product.uom_id[1] : 'PZ',
-        supplier_name: supplier ? supplier.name : 'Nessun fornitore',
-        supplier_id: supplier ? supplier.id : null,
-        hasPreOrderTag: true,
-        assigned_customers: assignmentsByProduct.get(product.id) || [],  // Carica da DB
-        // ✨ NUOVO: Supporto varianti
-        hasVariants: hasVariants,
-        variantCount: variants.length,
-        variants: hasVariants ? variants.map(v => ({
-          id: v.id,
-          name: v.display_name,
-          stock: v.qty_available || 0,
-          price: v.lst_price || 0,
-          code: v.default_code || '',
-          assigned_customers: assignmentsByProduct.get(v.id) || []  // ✨ Assegnazioni per variante
-        })) : []
-      };
-    });
+        return {
+          id: product.id,
+          name: product.name,
+          display_name: product.display_name || product.name,  // Nome con attributi variante
+          image_url: `https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com/web/image/product.product/${product.id}/image_128`,
+          stock: product.qty_available || 0,
+          uom: product.uom_id ? product.uom_id[1] : 'PZ',
+          supplier_name: supplier ? supplier.name : 'Nessun fornitore',
+          supplier_id: supplier ? supplier.id : null,
+          hasPreOrderTag: true,
+          assigned_customers: assignmentsByProduct.get(product.id) || [],  // Carica da DB
+          // ✨ NUOVO: Supporto varianti
+          hasVariants: hasVariants,
+          variantCount: variants.length,
+          variants: hasVariants ? variants.map(v => ({
+            id: v.id,
+            name: v.display_name,
+            stock: v.qty_available || 0,
+            price: v.lst_price || 0,
+            code: v.default_code || '',
+            assigned_customers: assignmentsByProduct.get(v.id) || []  // ✨ Assegnazioni per variante
+          })) : []
+        };
+      });
 
     return NextResponse.json({
       success: true,
