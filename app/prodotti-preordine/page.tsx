@@ -63,6 +63,7 @@ export default function ProdottiPreordinePage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [togglingProductId, setTogglingProductId] = useState<number | null>(null)
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
+  const [filterMode, setFilterMode] = useState<'preordine' | 'altri'>('preordine')
 
   // Customer assignment modal
   const [showCustomerModal, setShowCustomerModal] = useState(false)
@@ -545,10 +546,20 @@ export default function ProdottiPreordinePage() {
     return total
   }
 
-  const filteredProducts = allProducts.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredProducts = allProducts
+    .filter(p => {
+      // Filtro per modalità (preordine o altri)
+      if (filterMode === 'preordine') {
+        return p.isPreOrder
+      } else {
+        return !p.isPreOrder
+      }
+    })
+    .filter(p => {
+      // Filtro per ricerca testuale
+      return p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
+    })
 
   const filteredCustomers = customers.filter(c => {
     const search = customerSearchTerm.toLowerCase()
@@ -626,15 +637,41 @@ export default function ProdottiPreordinePage() {
 
       {/* Search Bar */}
       <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-6">
-        <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Cerca prodotto o fornitore..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 text-sm sm:text-base bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
+        <div className="space-y-3">
+          <div className="relative">
+            <MagnifyingGlassIcon className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Cerca prodotto o fornitore..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 text-sm sm:text-base bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+
+          {/* Filter Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => setFilterMode('preordine')}
+              className={`flex-1 px-4 py-3 rounded-xl font-semibold text-sm sm:text-base transition-all ${
+                filterMode === 'preordine'
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
+              }`}
+            >
+              📦 Prodotti Pre-ordine ({allProducts.filter(p => p.isPreOrder).length})
+            </button>
+            <button
+              onClick={() => setFilterMode('altri')}
+              className={`flex-1 px-4 py-3 rounded-xl font-semibold text-sm sm:text-base transition-all ${
+                filterMode === 'altri'
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
+              }`}
+            >
+              🛍️ Altri Prodotti ({allProducts.filter(p => !p.isPreOrder).length})
+            </button>
+          </div>
         </div>
       </div>
 
