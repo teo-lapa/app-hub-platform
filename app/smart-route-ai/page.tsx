@@ -72,6 +72,50 @@ export default function SmartRouteAIPage() {
   const [showBatchStateModal, setShowBatchStateModal] = useState(false);
   const [selectedBatchForStateChange, setSelectedBatchForStateChange] = useState<{id: number, name: string, currentState: string, nextState: string} | null>(null);
 
+  // Route colors - well distinguished colors
+  const ROUTE_COLORS = [
+    '#4f46e5', // indigo
+    '#db2777', // pink
+    '#059669', // emerald
+    '#d97706', // amber/orange
+    '#dc2626', // red
+    '#16a34a', // green
+    '#ea580c', // orange
+    '#7c3aed', // violet
+    '#2563eb', // blue
+    '#8b5cf6', // purple
+    '#0891b2', // cyan
+    '#ca8a04', // yellow
+    '#be123c', // rose
+    '#0d9488', // teal
+    '#c026d3', // fuchsia
+  ];
+
+  // Create a stable mapping of batch ID to color index
+  const [batchColorMap, setBatchColorMap] = useState<Map<number, number>>(new Map());
+
+  // Update color map when batches change
+  useEffect(() => {
+    const newMap = new Map<number, number>();
+    const sortedBatches = [...batches].sort((a, b) => a.id - b.id);
+
+    sortedBatches.forEach((batch, index) => {
+      newMap.set(batch.id, index % ROUTE_COLORS.length);
+    });
+
+    setBatchColorMap(newMap);
+  }, [batches]);
+
+  // Function to get consistent color for a batch
+  const getBatchColor = (batchId: number) => {
+    const colorIndex = batchColorMap.get(batchId);
+    if (colorIndex !== undefined) {
+      return ROUTE_COLORS[colorIndex];
+    }
+    // Fallback
+    return ROUTE_COLORS[0];
+  };
+
   // Stats
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -722,19 +766,15 @@ export default function SmartRouteAIPage() {
           </div>
 
           {/* Batch List */}
-          {batches.length > 0 && (
+          {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').length > 0 && (
             <div className="bg-white rounded-lg shadow p-4">
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <span>📦</span> Batch
               </h3>
               <div className="space-y-2">
-                {batches.map((batch, index) => {
-                  // Use same colors as map
-                  const ROUTE_COLORS = [
-                    '#4f46e5', '#7c3aed', '#db2777', '#059669', '#d97706',
-                    '#dc2626', '#2563eb', '#16a34a', '#ea580c', '#8b5cf6'
-                  ];
-                  const color = ROUTE_COLORS[index % ROUTE_COLORS.length];
+                {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').map((batch) => {
+                  // Get consistent color based on batch ID
+                  const color = getBatchColor(batch.id);
 
                   // Determine state badge
                   let stateBadge = '';
@@ -939,6 +979,9 @@ export default function SmartRouteAIPage() {
               pickings={pickings}
               routes={routes}
               vehicles={vehicles}
+              batches={batches}
+              batchColorMap={batchColorMap}
+              routeColors={ROUTE_COLORS}
             />
           </div>
         </div>
@@ -1023,39 +1066,46 @@ export default function SmartRouteAIPage() {
                 Seleziona il batch da assegnare a questo veicolo:
               </div>
               <div className="max-h-64 overflow-y-auto space-y-2">
-                {batches.length === 0 ? (
+                {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').length === 0 ? (
                   <div className="text-center text-gray-500 py-8">
                     <div className="text-4xl mb-2">📦</div>
                     <div>Nessun batch disponibile</div>
                     <div className="text-xs mt-1">Importa prima i picking per caricare i batch</div>
                   </div>
                 ) : (
-                  batches.map(batch => (
-                    <button
-                      key={batch.id}
-                      onClick={() => assignVehicleToBatch(
-                        batch.id,
-                        selectedVehicleForBatch.id,
-                        selectedVehicleForBatch.driverId,
-                        selectedVehicleForBatch.employeeId
-                      )}
-                      className="w-full p-3 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-semibold text-gray-900 group-hover:text-indigo-900">
-                            {batch.name}
+                  batches.filter(b => b.state !== 'done' && b.state !== 'cancel').map(batch => {
+                    const batchColor = getBatchColor(batch.id);
+                    return (
+                      <button
+                        key={batch.id}
+                        onClick={() => assignVehicleToBatch(
+                          batch.id,
+                          selectedVehicleForBatch.id,
+                          selectedVehicleForBatch.driverId,
+                          selectedVehicleForBatch.employeeId
+                        )}
+                        className="w-full p-3 text-left border-2 rounded-lg hover:opacity-80 transition-all group"
+                        style={{
+                          borderColor: batchColor,
+                          backgroundColor: `${batchColor}10`
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold" style={{ color: batchColor }}>
+                              {batch.name}
+                            </div>
+                            <div className="text-xs text-gray-600 capitalize">
+                              {batch.state === 'draft' ? 'Bozza' : 'Pronto'}
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500 capitalize">
-                            {batch.state === 'draft' ? 'Bozza' : 'Pronto'}
+                          <div style={{ color: batchColor }} className="opacity-0 group-hover:opacity-100 transition-opacity font-bold">
+                            ✓
                           </div>
                         </div>
-                        <div className="text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                          ✓
-                        </div>
-                      </div>
-                    </button>
-                  ))
+                      </button>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -1160,29 +1210,36 @@ export default function SmartRouteAIPage() {
               <div className="text-sm font-semibold text-gray-700 mb-2">Seleziona batch di destinazione:</div>
               <div className="max-h-64 overflow-y-auto space-y-2">
                 {batches
-                  .filter(b => b.name !== selectedPickingForMove.currentBatch)
-                  .map(batch => (
-                    <button
-                      key={batch.id}
-                      onClick={() => movePickingToBatch(selectedPickingForMove.id, batch.id)}
-                      className="w-full p-3 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-semibold text-gray-900 group-hover:text-indigo-900">
-                            {batch.name}
+                  .filter(b => b.name !== selectedPickingForMove.currentBatch && b.state !== 'done' && b.state !== 'cancel')
+                  .map(batch => {
+                    const batchColor = getBatchColor(batch.id);
+                    return (
+                      <button
+                        key={batch.id}
+                        onClick={() => movePickingToBatch(selectedPickingForMove.id, batch.id)}
+                        className="w-full p-3 text-left border-2 rounded-lg hover:opacity-80 transition-all group"
+                        style={{
+                          borderColor: batchColor,
+                          backgroundColor: `${batchColor}10`
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold" style={{ color: batchColor }}>
+                              {batch.name}
+                            </div>
+                            <div className="text-xs text-gray-600 capitalize">
+                              {batch.state === 'draft' ? 'Bozza' : 'Pronto'}
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500 capitalize">
-                            {batch.state === 'draft' ? 'Bozza' : 'Pronto'}
+                          <div style={{ color: batchColor }} className="opacity-0 group-hover:opacity-100 transition-opacity font-bold">
+                            →
                           </div>
                         </div>
-                        <div className="text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                          →
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                {batches.filter(b => b.name !== selectedPickingForMove.currentBatch).length === 0 && (
+                      </button>
+                    );
+                  })}
+                {batches.filter(b => b.name !== selectedPickingForMove.currentBatch && b.state !== 'done' && b.state !== 'cancel').length === 0 && (
                   <div className="text-center text-gray-500 py-4">
                     Nessun altro batch disponibile per questa data
                   </div>

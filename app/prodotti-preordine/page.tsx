@@ -63,6 +63,8 @@ export default function ProdottiPreordinePage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [togglingProductId, setTogglingProductId] = useState<number | null>(null)
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
+  const [filterMode, setFilterMode] = useState<'preordine' | 'altri'>('preordine')
+  const [altriProdottiLoaded, setAltriProdottiLoaded] = useState(false)
 
   // Customer assignment modal
   const [showCustomerModal, setShowCustomerModal] = useState(false)
@@ -94,13 +96,39 @@ export default function ProdottiPreordinePage() {
     try {
       setLoading(true)
 
-      // Load ALL products from suppliers API
+      // 🚀 OTTIMIZZAZIONE: Carica SOLO prodotti pre-ordine all'avvio
+      // Load pre-order products with supplier info
+      const preOrderRes = await fetch('/api/smart-ordering-v2/pre-order-products')
+      if (preOrderRes.ok) {
+        const data = await preOrderRes.json()
+
+        // Build products list with supplier info from pre-order API
+        const products: Product[] = (data.products || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          currentStock: p.currentStock || 0,
+          uom: p.uom || 'pz',
+          supplier: {
+            id: p.supplier?.id || 0,
+            name: p.supplier?.name || 'Fornitore sconosciuto'
+          },
+          isPreOrder: true, // Tutti questi sono pre-ordine
+          assignedCustomers: p.assigned_customers || [],
+          totalSold3Months: p.totalSold3Months,
+          avgDailySales: p.avgDailySales,
+          daysOfStock: p.daysOfStock,
+          hasVariants: p.hasVariants || false,
+          variantCount: p.variantCount || 0,
+          variants: p.variants || []
+        }))
+
+        setAllProducts(products)
+      }
+
+      // Load suppliers list (leggero, solo per dropdown cambio fornitore)
       const suppliersRes = await fetch('/api/smart-ordering-v2/suppliers')
       if (suppliersRes.ok) {
         const data = await suppliersRes.json()
-
-        // Extract all products from all suppliers
-        const products: Product[] = []
         const suppliersList: Supplier[] = []
 
         data.suppliers?.forEach((supplier: any) => {
@@ -108,49 +136,9 @@ export default function ProdottiPreordinePage() {
             id: supplier.id,
             name: supplier.name
           })
-
-          supplier.products?.forEach((product: any) => {
-            products.push({
-              id: product.id,
-              name: product.name,
-              currentStock: product.currentStock || 0,
-              uom: product.uom || 'pz',
-              supplier: {
-                id: supplier.id,
-                name: supplier.name
-              },
-              isPreOrder: false, // Will be loaded from pre-order API
-              assignedCustomers: [],
-              totalSold3Months: product.totalSold3Months,
-              avgDailySales: product.avgDailySales,
-              daysOfStock: product.daysOfStock
-            })
-          })
         })
 
-        setAllProducts(products)
         setSuppliers(suppliersList)
-      }
-
-      // Load pre-order products to check which ones have the tag
-      const preOrderRes = await fetch('/api/smart-ordering-v2/pre-order-products')
-      if (preOrderRes.ok) {
-        const data = await preOrderRes.json()
-        const preOrderIds = new Set(data.products?.map((p: any) => p.id) || [])
-
-        // Mark products that have PRE-ORDINE tag
-        setAllProducts(prev => prev.map(p => {
-          const preOrderProduct = data.products?.find((pp: any) => pp.id === p.id)
-          return {
-            ...p,
-            isPreOrder: preOrderIds.has(p.id),
-            assignedCustomers: preOrderProduct?.assigned_customers || [],
-            // ✨ Copy variant fields from API
-            hasVariants: preOrderProduct?.hasVariants || false,
-            variantCount: preOrderProduct?.variantCount || 0,
-            variants: preOrderProduct?.variants || []
-          }
-        }))
       }
 
       // Load customers
@@ -161,6 +149,61 @@ export default function ProdottiPreordinePage() {
       }
     } catch (error) {
       console.error('Error loading data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 🆕 Carica "Altri prodotti" solo quando richiesto
+  const loadAltriProdotti = async () => {
+    if (altriProdottiLoaded) return // Già caricati
+
+    try {
+      setLoading(true)
+
+      // Load ALL products from suppliers API
+      const suppliersRes = await fetch('/api/smart-ordering-v2/suppliers')
+      if (suppliersRes.ok) {
+        const data = await suppliersRes.json()
+
+        // Extract all products from all suppliers
+        const allProductsFromSuppliers: Product[] = []
+
+        data.suppliers?.forEach((supplier: any) => {
+          supplier.products?.forEach((product: any) => {
+            allProductsFromSuppliers.push({
+              id: product.id,
+              name: product.name,
+              currentStock: product.currentStock || 0,
+              uom: product.uom || 'pz',
+              supplier: {
+                id: supplier.id,
+                name: supplier.name
+              },
+              isPreOrder: false, // Assumeremo che NON siano pre-ordine
+              assignedCustomers: [],
+              totalSold3Months: product.totalSold3Months,
+              avgDailySales: product.avgDailySales,
+              daysOfStock: product.daysOfStock
+            })
+          })
+        })
+
+        // Merge con prodotti pre-ordine esistenti (sovrascrivendoli se presenti)
+        setAllProducts(prev => {
+          const preOrderIds = new Set(prev.filter(p => p.isPreOrder).map(p => p.id))
+
+          // Filtra prodotti "altri" che NON sono già in pre-ordine
+          const altriProdotti = allProductsFromSuppliers.filter(p => !preOrderIds.has(p.id))
+
+          // Merge: mantieni pre-ordine + aggiungi altri
+          return [...prev, ...altriProdotti]
+        })
+
+        setAltriProdottiLoaded(true)
+      }
+    } catch (error) {
+      console.error('Error loading altri prodotti:', error)
     } finally {
       setLoading(false)
     }
@@ -435,7 +478,27 @@ export default function ProdottiPreordinePage() {
     const totalProducts = preOrderProducts.length
     const totalCustomers = preOrderProducts.reduce((sum, p) => sum + p.assignedCustomers.length, 0)
 
-    if (!confirm(`Vuoi creare gli ordini per ${totalProducts} prodotti (${totalCustomers} assegnazioni clienti)?`)) {
+    // Conta anche le varianti con assegnazioni
+    let totalVariantsWithAssignments = 0
+    let totalCustomersFromVariants = 0
+    preOrderProducts.forEach(p => {
+      if (p.hasVariants && p.variants) {
+        p.variants.forEach(v => {
+          if (v.assignedCustomers && v.assignedCustomers.length > 0) {
+            totalVariantsWithAssignments++
+            totalCustomersFromVariants += v.assignedCustomers.length
+          }
+        })
+      }
+    })
+
+    // Messaggio con info varianti se presenti
+    let confirmMessage = `Vuoi creare gli ordini per ${totalProducts} prodotti (${totalCustomers} assegnazioni clienti)?`
+    if (totalVariantsWithAssignments > 0) {
+      confirmMessage = `Vuoi creare gli ordini per ${totalProducts} prodotti (${totalCustomers} assegnazioni clienti) + ${totalVariantsWithAssignments} varianti (${totalCustomersFromVariants} assegnazioni)?`
+    }
+
+    if (!confirm(confirmMessage)) {
       return
     }
 
@@ -545,10 +608,20 @@ export default function ProdottiPreordinePage() {
     return total
   }
 
-  const filteredProducts = allProducts.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredProducts = allProducts
+    .filter(p => {
+      // Filtro per modalità (preordine o altri)
+      if (filterMode === 'preordine') {
+        return p.isPreOrder
+      } else {
+        return !p.isPreOrder
+      }
+    })
+    .filter(p => {
+      // Filtro per ricerca testuale
+      return p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
+    })
 
   const filteredCustomers = customers.filter(c => {
     const search = customerSearchTerm.toLowerCase()
@@ -626,15 +699,52 @@ export default function ProdottiPreordinePage() {
 
       {/* Search Bar */}
       <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-6">
-        <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Cerca prodotto o fornitore..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 text-sm sm:text-base bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
+        <div className="space-y-3">
+          <div className="relative">
+            <MagnifyingGlassIcon className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Cerca prodotto o fornitore..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 text-sm sm:text-base bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+
+          {/* Filter Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => setFilterMode('preordine')}
+              className={`flex-1 px-4 py-3 rounded-xl font-semibold text-sm sm:text-base transition-all ${
+                filterMode === 'preordine'
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
+              }`}
+            >
+              📦 Prodotti Pre-ordine ({allProducts.filter(p => p.isPreOrder).length})
+            </button>
+            <button
+              onClick={() => {
+                setFilterMode('altri')
+                loadAltriProdotti() // Lazy load altri prodotti
+              }}
+              disabled={loading && !altriProdottiLoaded}
+              className={`flex-1 px-4 py-3 rounded-xl font-semibold text-sm sm:text-base transition-all ${
+                filterMode === 'altri'
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
+              } ${loading && !altriProdottiLoaded ? 'opacity-50 cursor-wait' : ''}`}
+            >
+              {loading && !altriProdottiLoaded && filterMode === 'altri' ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Caricamento...
+                </span>
+              ) : (
+                `🛍️ Altri Prodotti (${allProducts.filter(p => !p.isPreOrder).length})`
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
