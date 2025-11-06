@@ -176,7 +176,15 @@ export default function MapComponent({ pickings, routes, vehicles, batches, batc
       const marker = L.marker([picking.lat, picking.lng], { icon: markerIcon })
         .addTo(mapRef.current!)
         .bindPopup(`
-          <div style="min-width: 200px; font-family: sans-serif;">
+          <div style="
+            min-width: 200px;
+            font-family: sans-serif;
+            border: 3px solid ${routeColor};
+            border-radius: 8px;
+            padding: 12px;
+            background: ${routeColor}10;
+            margin: -12px;
+          ">
             <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: ${routeColor};">
               ${picking.name}
             </div>
