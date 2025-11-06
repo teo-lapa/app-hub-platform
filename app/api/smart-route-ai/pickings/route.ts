@@ -39,13 +39,15 @@ export async function POST(request: NextRequest) {
     console.log('[Smart Route AI] Connessione Odoo OK');
 
     // Search for WH/PICK pickings using RPC client searchRead
+    // Exclude backorders (ordini residui)
     const pickings = await rpcClient.searchRead(
       'stock.picking',
       [
         ['name', 'ilike', 'WH/PICK'],
         ['state', 'in', ['confirmed', 'assigned', 'waiting']],
         ['scheduled_date', '>=', `${dateFrom} 00:00:00`],
-        ['scheduled_date', '<=', `${dateTo} 23:59:59`]
+        ['scheduled_date', '<=', `${dateTo} 23:59:59`],
+        ['backorder_id', '=', false]  // Exclude back orders
       ],
       [
         'id', 'name', 'partner_id',
