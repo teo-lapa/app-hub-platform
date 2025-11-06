@@ -478,7 +478,27 @@ export default function ProdottiPreordinePage() {
     const totalProducts = preOrderProducts.length
     const totalCustomers = preOrderProducts.reduce((sum, p) => sum + p.assignedCustomers.length, 0)
 
-    if (!confirm(`Vuoi creare gli ordini per ${totalProducts} prodotti (${totalCustomers} assegnazioni clienti)?`)) {
+    // Conta anche le varianti con assegnazioni
+    let totalVariantsWithAssignments = 0
+    let totalCustomersFromVariants = 0
+    preOrderProducts.forEach(p => {
+      if (p.hasVariants && p.variants) {
+        p.variants.forEach(v => {
+          if (v.assignedCustomers && v.assignedCustomers.length > 0) {
+            totalVariantsWithAssignments++
+            totalCustomersFromVariants += v.assignedCustomers.length
+          }
+        })
+      }
+    })
+
+    // Messaggio con info varianti se presenti
+    let confirmMessage = `Vuoi creare gli ordini per ${totalProducts} prodotti (${totalCustomers} assegnazioni clienti)?`
+    if (totalVariantsWithAssignments > 0) {
+      confirmMessage = `Vuoi creare gli ordini per ${totalProducts} prodotti (${totalCustomers} assegnazioni clienti) + ${totalVariantsWithAssignments} varianti (${totalCustomersFromVariants} assegnazioni)?`
+    }
+
+    if (!confirm(confirmMessage)) {
       return
     }
 
