@@ -72,17 +72,48 @@ export default function SmartRouteAIPage() {
   const [showBatchStateModal, setShowBatchStateModal] = useState(false);
   const [selectedBatchForStateChange, setSelectedBatchForStateChange] = useState<{id: number, name: string, currentState: string, nextState: string} | null>(null);
 
-  // Route colors - must match MapComponent colors
+  // Route colors - well distinguished colors
   const ROUTE_COLORS = [
-    '#4f46e5', '#7c3aed', '#db2777', '#059669', '#d97706',
-    '#dc2626', '#2563eb', '#16a34a', '#ea580c', '#8b5cf6'
+    '#4f46e5', // indigo
+    '#db2777', // pink
+    '#059669', // emerald
+    '#d97706', // amber/orange
+    '#dc2626', // red
+    '#16a34a', // green
+    '#ea580c', // orange
+    '#7c3aed', // violet
+    '#2563eb', // blue
+    '#8b5cf6', // purple
+    '#0891b2', // cyan
+    '#ca8a04', // yellow
+    '#be123c', // rose
+    '#0d9488', // teal
+    '#c026d3', // fuchsia
   ];
 
-  // Function to get consistent color for a batch based on its ID
+  // Create a stable mapping of batch ID to color index
+  const [batchColorMap, setBatchColorMap] = useState<Map<number, number>>(new Map());
+
+  // Update color map when batches change
+  useEffect(() => {
+    const newMap = new Map<number, number>();
+    const sortedBatches = [...batches].sort((a, b) => a.id - b.id);
+
+    sortedBatches.forEach((batch, index) => {
+      newMap.set(batch.id, index % ROUTE_COLORS.length);
+    });
+
+    setBatchColorMap(newMap);
+  }, [batches]);
+
+  // Function to get consistent color for a batch
   const getBatchColor = (batchId: number) => {
-    // Use batch ID to consistently assign the same color
-    const colorIndex = batchId % ROUTE_COLORS.length;
-    return ROUTE_COLORS[colorIndex];
+    const colorIndex = batchColorMap.get(batchId);
+    if (colorIndex !== undefined) {
+      return ROUTE_COLORS[colorIndex];
+    }
+    // Fallback
+    return ROUTE_COLORS[0];
   };
 
   // Stats
@@ -948,6 +979,9 @@ export default function SmartRouteAIPage() {
               pickings={pickings}
               routes={routes}
               vehicles={vehicles}
+              batches={batches}
+              batchColorMap={batchColorMap}
+              routeColors={ROUTE_COLORS}
             />
           </div>
         </div>

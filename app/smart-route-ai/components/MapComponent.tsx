@@ -12,20 +12,6 @@ const DEPOT = {
   name: "LAPA - Industriestrasse 18, 8424 Embrach"
 };
 
-// Colori per i percorsi
-const ROUTE_COLORS = [
-  '#4f46e5', // indigo
-  '#7c3aed', // violet
-  '#db2777', // pink
-  '#059669', // emerald
-  '#d97706', // amber
-  '#dc2626', // red
-  '#2563eb', // blue
-  '#16a34a', // green
-  '#ea580c', // orange
-  '#8b5cf6', // purple
-];
-
 interface Picking {
   id: number;
   name: string;
@@ -60,13 +46,26 @@ interface Route {
   geoName?: string;
 }
 
+interface Batch {
+  id: number;
+  name: string;
+  state: string;
+  vehicleName: string | null;
+  driverName: string | null;
+  totalWeight: number;
+  pickingCount: number;
+}
+
 interface MapComponentProps {
   pickings: Picking[];
   routes: Route[];
   vehicles: Vehicle[];
+  batches: Batch[];
+  batchColorMap: Map<number, number>;
+  routeColors: string[];
 }
 
-export default function MapComponent({ pickings, routes, vehicles }: MapComponentProps) {
+export default function MapComponent({ pickings, routes, vehicles, batches, batchColorMap, routeColors }: MapComponentProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
@@ -134,30 +133,22 @@ export default function MapComponent({ pickings, routes, vehicles }: MapComponen
 
     if (pickings.length === 0) return;
 
-    // Create a map of batchId -> color (using batch ID for consistency)
-    const batchColorMap = new Map<number, string>();
-    const uniqueBatchIds = Array.from(new Set(pickings.map(p => p.batchId).filter(Boolean)));
-    uniqueBatchIds.forEach((batchId) => {
-      // Use batch ID modulo to get consistent color across UI
-      const colorIndex = batchId! % ROUTE_COLORS.length;
-      batchColorMap.set(batchId!, ROUTE_COLORS[colorIndex]);
-    });
-
     // Add new markers
     pickings.forEach((picking, index) => {
       // Find if this picking is in a route
       let routeIndex = -1;
-      let routeColor = '#4f46e5'; // default indigo
+      let routeColor = routeColors[0]; // default first color
 
-      // If picking has a batch, use batch color instead
+      // If picking has a batch, use batch color from the map
       if (picking.batchId && batchColorMap.has(picking.batchId)) {
-        routeColor = batchColorMap.get(picking.batchId)!;
+        const colorIndex = batchColorMap.get(picking.batchId)!;
+        routeColor = routeColors[colorIndex];
       } else {
         // Otherwise, use route color if available
         routes.forEach((route, rIdx) => {
           if (route.pickings.some(p => p.id === picking.id)) {
             routeIndex = rIdx;
-            routeColor = ROUTE_COLORS[rIdx % ROUTE_COLORS.length];
+            routeColor = routeColors[rIdx % routeColors.length];
           }
         });
       }
@@ -275,7 +266,7 @@ export default function MapComponent({ pickings, routes, vehicles }: MapComponen
       ]);
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [pickings, routes]);
+  }, [pickings, routes, batchColorMap, routeColors]);
 
   // Update route polylines
   useEffect(() => {
@@ -289,7 +280,7 @@ export default function MapComponent({ pickings, routes, vehicles }: MapComponen
 
     // Draw routes
     routes.forEach((route, routeIndex) => {
-      const color = ROUTE_COLORS[routeIndex % ROUTE_COLORS.length];
+      const color = routeColors[routeIndex % routeColors.length];
 
       // Create route coordinates: depot -> pickings -> depot
       const routeCoords: [number, number][] = [
@@ -370,7 +361,7 @@ export default function MapComponent({ pickings, routes, vehicles }: MapComponen
       routeLayersRef.current.push(polyline);
       routeLayersRef.current.push(decorator as any);
     });
-  }, [routes]);
+  }, [routes, routeColors]);
 
   return (
     <>
@@ -419,20 +410,20 @@ export default function MapComponent({ pickings, routes, vehicles }: MapComponen
                 padding: '8px',
                 background: '#f9fafb',
                 borderRadius: '6px',
-                border: `2px solid ${ROUTE_COLORS[index % ROUTE_COLORS.length]}20`
+                border: `2px solid ${routeColors[index % routeColors.length]}20`
               }}
             >
               <div style={{
                 width: '4px',
                 height: '30px',
-                background: ROUTE_COLORS[index % ROUTE_COLORS.length],
+                background: routeColors[index % routeColors.length],
                 borderRadius: '2px'
               }}></div>
               <div style={{ flex: 1 }}>
                 <div style={{
                   fontSize: '12px',
                   fontWeight: '600',
-                  color: ROUTE_COLORS[index % ROUTE_COLORS.length],
+                  color: routeColors[index % routeColors.length],
                   marginBottom: '2px'
                 }}>
                   {route.geoName || `Percorso ${index + 1}`}
