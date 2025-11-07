@@ -30,7 +30,7 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
     setResults([]);
 
     try {
-      const response = await fetch('/api/catalogo-venditori/ai-match', {
+      const response = await fetch('/api/catalogo-venditori/ai-process-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,6 +38,7 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
         body: JSON.stringify({
           customerId,
           message: message.trim(),
+          messageType: 'text'
         }),
       });
 
@@ -47,9 +48,14 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
 
       const data = await response.json();
 
-      if (data.products && data.products.length > 0) {
-        setResults(data.products);
-        onProductsMatched(data.products);
+      if (!data.success) {
+        throw new Error(data.error || 'Errore nel processamento AI');
+      }
+
+      if (data.matches && data.matches.length > 0) {
+        setResults(data.matches);
+        onProductsMatched(data.matches);
+        console.log(`✅ AI found ${data.matches.length} products`);
       } else {
         setError('Nessun prodotto trovato nel messaggio');
       }
