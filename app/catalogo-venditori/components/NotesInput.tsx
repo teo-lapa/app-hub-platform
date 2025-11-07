@@ -42,7 +42,7 @@ export default function NotesInput({ value, onChange }: NotesInputProps) {
     <div className="space-y-3">
       <label className="block text-sm font-medium text-slate-300 flex items-center justify-between" style={{ fontSize: '14px', lineHeight: '1.5' }}>
         <span>
-          Note per l'Ordine
+          Note per il Magazzino
           <span className="text-slate-500 ml-2">(opzionale)</span>
         </span>
         {/* Character Counter - Always visible */}
@@ -56,7 +56,7 @@ export default function NotesInput({ value, onChange }: NotesInputProps) {
           ref={textareaRef}
           value={value}
           onChange={handleChange}
-          placeholder="Note per l'ordine (es. consegna urgente, indirizzo specifico, ecc.)"
+          placeholder="Note per il magazzino (es. prodotto in scadenza, attenzione speciale, ecc.)"
           rows={4}
           className="w-full min-h-[100px] px-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all resize-none placeholder:text-slate-500"
           style={{
@@ -75,8 +75,8 @@ export default function NotesInput({ value, onChange }: NotesInputProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p style={{ fontSize: '13px', lineHeight: '1.5' }}>
-          Aggiungi informazioni utili per la preparazione dell'ordine, come richieste di consegna urgente,
-          orari preferiti, o note speciali sul confezionamento.
+          Aggiungi informazioni per il magazzino, come prodotti in scadenza da prendere,
+          attenzioni particolari nella preparazione, o note speciali sul confezionamento.
         </p>
       </div>
 

@@ -251,7 +251,7 @@ export async function POST(request: NextRequest) {
       date_order: formatDateForOdoo(new Date()),
       state: 'draft',
       origin: 'Catalogo Venditori',
-      note: notes || 'Ordine creato dal Catalogo Venditori',
+      // Note: warehouse notes are posted to Chatter only, not in order.note field
     };
 
     // Add delivery date if provided (Odoo field: commitment_date or requested_date)
@@ -328,7 +328,7 @@ export async function POST(request: NextRequest) {
       try {
         console.log('📝 [CREATE-ORDER-API] Posting notes to Chatter...');
 
-        const notesMessage = `<p><strong>📝 Note Venditore</strong></p><p>${notes.replace(/\n/g, '<br/>')}</p><p><em>Note inserite dal venditore durante la creazione dell'ordine</em></p>`;
+        const notesMessage = `<p><strong>📦 Note per il Magazzino</strong></p><p>${notes.replace(/\n/g, '<br/>')}</p><p><em>Note inserite dal venditore per il magazzino</em></p>`;
 
         await callOdoo(
           cookies,
