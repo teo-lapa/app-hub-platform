@@ -85,6 +85,41 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ ${products.length} prodotti caricati (excluding preorder products)`);
 
+    // Load ALL incoming stock moves at once (batch query for efficiency)
+    console.log('📦 Caricamento merce in arrivo...');
+    const productIds = products.map((p: any) => p.id);
+
+    const incomingMoves = await rpc.searchRead(
+      'stock.move',
+      [
+        ['product_id', 'in', productIds],
+        ['picking_code', '=', 'incoming'],
+        ['state', 'in', ['confirmed', 'assigned', 'waiting']],
+      ],
+      ['product_id', 'product_uom_qty', 'date'],
+      0
+    );
+
+    // Aggregate by product_id
+    const incomingByProduct = new Map();
+    incomingMoves.forEach((move: any) => {
+      const productId = move.product_id[0];
+      const existing = incomingByProduct.get(productId) || { qty: 0, earliestDate: null };
+      existing.qty += move.product_uom_qty || 0;
+
+      // Track earliest arrival date
+      if (move.date) {
+        const moveDate = new Date(move.date);
+        if (!existing.earliestDate || moveDate < existing.earliestDate) {
+          existing.earliestDate = moveDate;
+        }
+      }
+
+      incomingByProduct.set(productId, existing);
+    });
+
+    console.log(`✅ Trovati ${incomingMoves.length} movimenti in arrivo per ${incomingByProduct.size} prodotti`);
+
     // 2. Calcola data 3 mesi fa
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
@@ -253,11 +288,20 @@ export async function GET(request: NextRequest) {
       const stdDev = Math.sqrt(variance);
       const variability = mean > 0 ? stdDev / mean : 0.5;
 
-      // USA PREDICTION ENGINE MIGLIORATO
+      // Add incoming quantity to current stock
+      const incomingData = incomingByProduct.get(product.id);
+      const incomingQty = incomingData?.qty || 0;
+      const effectiveStock = (product.qty_available || 0) + incomingQty;
+
+      if (incomingQty > 0) {
+        console.log(`📊 Prodotto ${product.id} (${product.name}): Stock ${product.qty_available} + In arrivo ${incomingQty} = ${effectiveStock}`);
+      }
+
+      // USA PREDICTION ENGINE MIGLIORATO con stock effettivo
       const prediction = predictionEngine.predict({
         productId: product.id,
         productName: product.name,
-        currentStock: product.qty_available || 0,
+        currentStock: effectiveStock, // Use adjusted stock!
         avgDailySales,
         variability,
         leadTimeDays: supplier.leadTime,
@@ -275,6 +319,9 @@ export async function GET(request: NextRequest) {
         id: product.id,
         name: product.name,
         currentStock: product.qty_available || 0,
+        incomingQty: incomingQty, // Add incoming data to response
+        incomingDate: incomingData?.earliestDate,
+        effectiveStock: effectiveStock, // Total available including incoming
         avgDailySales,
         daysRemaining: prediction.daysRemaining,
         urgencyLevel: prediction.urgencyLevel,
@@ -345,6 +392,9 @@ export async function GET(request: NextRequest) {
         id: p.id,
         name: p.name,
         currentStock: p.currentStock,
+        incomingQty: p.incomingQty || 0,
+        incomingDate: p.incomingDate,
+        effectiveStock: p.effectiveStock,
         avgDailySales: p.avgDailySales,
         daysRemaining: p.daysRemaining,
         urgencyLevel: p.urgencyLevel,
