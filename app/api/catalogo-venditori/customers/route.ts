@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -15,10 +15,22 @@ export const maxDuration = 60;
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('📋 [CATALOGO-VENDITORI] Fetching customers from Odoo...');
+    // Get user session
+    const cookieHeader = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
+
+    if (!uid) {
+      console.error('❌ [CATALOGO-VENDITORI] No valid user session');
+      return NextResponse.json(
+        { success: false, error: 'User session not valid' },
+        { status: 401 }
+      );
+    }
+
+    console.log('📋 [CATALOGO-VENDITORI] Fetching customers from Odoo... (User UID:', uid, ')');
 
     // Fetch all customers from Odoo
-    const customers = await callOdooAsAdmin(
+    const customers = await callOdoo(cookies, 
       'res.partner',
       'search_read',
       [],

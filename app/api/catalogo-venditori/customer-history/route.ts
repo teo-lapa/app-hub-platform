@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -19,6 +19,19 @@ export const maxDuration = 60;
  */
 export async function POST(request: NextRequest) {
   try {
+    // Get user session
+    const cookieHeader = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
+
+    if (!uid) {
+      console.error('No valid user session');
+      return NextResponse.json(
+        { success: false, error: 'User session not valid' },
+        { status: 401 }
+      );
+    }
+
+
     const body = await request.json();
     const { customerId, months = 6 } = body;
 
@@ -43,7 +56,7 @@ export async function POST(request: NextRequest) {
     console.log(`📅 [CATALOGO-VENDITORI] Searching orders from ${dateFromStr} onwards`);
 
     // Step 1: Fetch confirmed orders from last X months
-    const orders = await callOdooAsAdmin(
+    const orders = await callOdoo(cookies, 
       'sale.order',
       'search_read',
       [],
@@ -71,7 +84,7 @@ export async function POST(request: NextRequest) {
     const orderIds = orders.map((o: any) => o.id);
 
     // Step 2: Fetch all order lines for these orders
-    const orderLines = await callOdooAsAdmin(
+    const orderLines = await callOdoo(cookies, 
       'sale.order.line',
       'search_read',
       [],

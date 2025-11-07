@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import Anthropic from '@anthropic-ai/sdk';
 
 export const dynamic = 'force-dynamic';
@@ -62,13 +62,14 @@ interface CustomerHistoryProduct {
  * Fetch customer purchase history (last 6 months)
  */
 async function fetchCustomerHistory(
+  cookies: string | null,
   customerId: number,
   months: number = 6
 ): Promise<{ customer: any; productHistory: CustomerHistoryProduct[] }> {
   console.log(`📍 STEP 1: Fetching customer data for ID ${customerId}...`);
 
   // Get customer data
-  const customers = await callOdooAsAdmin(
+  const customers = await callOdoo(cookies, 
     'res.partner',
     'search_read',
     [],
@@ -92,7 +93,7 @@ async function fetchCustomerHistory(
   monthsAgo.setMonth(monthsAgo.getMonth() - months);
   const dateFrom = monthsAgo.toISOString().split('T')[0];
 
-  const orders = await callOdooAsAdmin(
+  const orders = await callOdoo(cookies, 
     'sale.order',
     'search_read',
     [],
@@ -117,7 +118,7 @@ async function fetchCustomerHistory(
   console.log('📍 STEP 3: Loading products from order history...');
   const orderIds = orders.map((o: any) => o.id);
 
-  const orderLines = await callOdooAsAdmin(
+  const orderLines = await callOdoo(cookies, 
     'sale.order.line',
     'search_read',
     [],
@@ -249,7 +250,7 @@ IMPORTANTE:
 /**
  * Fetch product images and stock from Odoo
  */
-async function enrichMatchesWithImages(matches: ProductMatch[]): Promise<ProductMatch[]> {
+async function enrichMatchesWithImages(cookies: string | null, matches: ProductMatch[]): Promise<ProductMatch[]> {
   console.log('📍 STEP 5: Fetching product data (images & stock) from Odoo...');
 
   // Get all product IDs that were found
@@ -264,7 +265,7 @@ async function enrichMatchesWithImages(matches: ProductMatch[]): Promise<Product
 
   try {
     // Fetch product data with images, stock, uom, and incoming qty
-    const products = await callOdooAsAdmin(
+    const products = await callOdoo(cookies, 
       'product.product',
       'search_read',
       [],
@@ -399,6 +400,20 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    // Get user session
+    const cookieHeader = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
+
+    if (!uid) {
+      console.error('❌ [AI-PROCESS-ORDER] No valid user session');
+      return NextResponse.json(
+        { success: false, error: 'User session not valid' },
+        { status: 401 }
+      );
+    }
+
+    console.log('✅ [AI-PROCESS-ORDER] User authenticated, UID:', uid);
+
     // Parse and validate request body
     const body: ProcessOrderRequest = await request.json();
 
@@ -455,7 +470,7 @@ export async function POST(request: NextRequest) {
     let productHistory: CustomerHistoryProduct[];
 
     try {
-      const historyData = await fetchCustomerHistory(body.customerId);
+      const historyData = await fetchCustomerHistory(cookies, body.customerId);
       customer = historyData.customer;
       productHistory = historyData.productHistory;
     } catch (odooError: any) {
@@ -494,7 +509,7 @@ export async function POST(request: NextRequest) {
 
     // Enrich matches with product images
     try {
-      aiResult.matches = await enrichMatchesWithImages(aiResult.matches);
+      aiResult.matches = await enrichMatchesWithImages(cookies, aiResult.matches);
     } catch (imageError: any) {
       console.error('⚠️ Warning: Failed to fetch product images:', imageError);
       // Continue without images - not critical
