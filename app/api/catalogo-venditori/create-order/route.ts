@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -8,6 +8,7 @@ export const maxDuration = 120;
  * POST /api/catalogo-venditori/create-order
  *
  * Creates a sale.order in Odoo from the cart for the seller catalog feature.
+ * Uses the logged-in user's session to track who created the order.
  *
  * Request Body:
  * - customerId: number - The Odoo partner ID of the customer
@@ -34,6 +35,20 @@ interface CreateOrderRequest {
 export async function POST(request: NextRequest) {
   try {
     console.log('📦 [CREATE-ORDER-API] POST - Starting order creation process');
+
+    // Get user session
+    const cookieHeader = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
+
+    if (!uid) {
+      console.error('❌ [CREATE-ORDER-API] No valid user session');
+      return NextResponse.json(
+        { success: false, error: 'User session not valid' },
+        { status: 401 }
+      );
+    }
+
+    console.log('✅ [CREATE-ORDER-API] User authenticated, UID:', uid);
 
     // Parse request body
     let body: CreateOrderRequest;
@@ -97,7 +112,8 @@ export async function POST(request: NextRequest) {
 
     // Get customer partner from Odoo
     console.log('🔍 [CREATE-ORDER-API] Fetching customer partner...');
-    const customerPartners = await callOdooAsAdmin(
+    const customerPartners = await callOdoo(
+      cookies,
       'res.partner',
       'search_read',
       [],
@@ -130,7 +146,8 @@ export async function POST(request: NextRequest) {
       console.log('🔍 [CREATE-ORDER-API] Validating delivery address...');
 
       // Validate that delivery address exists and belongs to customer
-      const deliveryAddresses = await callOdooAsAdmin(
+      const deliveryAddresses = await callOdoo(
+        cookies,
         'res.partner',
         'search_read',
         [],
@@ -165,7 +182,8 @@ export async function POST(request: NextRequest) {
     console.log('🔍 [CREATE-ORDER-API] Validating product availability...');
 
     for (const line of orderLines) {
-      const products = await callOdooAsAdmin(
+      const products = await callOdoo(
+        cookies,
         'product.product',
         'search_read',
         [],
@@ -249,7 +267,8 @@ export async function POST(request: NextRequest) {
       console.log('✅ [CREATE-ORDER-API] Payment term added:', customer.property_payment_term_id[0]);
     }
 
-    const odooOrderId = await callOdooAsAdmin(
+    const odooOrderId = await callOdoo(
+      cookies,
       'sale.order',
       'create',
       [orderData],
@@ -268,7 +287,8 @@ export async function POST(request: NextRequest) {
         product_uom_qty: line.quantity,
       };
 
-      return callOdooAsAdmin(
+      return callOdoo(
+        cookies,
         'sale.order.line',
         'create',
         [lineData],
@@ -282,7 +302,8 @@ export async function POST(request: NextRequest) {
 
     // Fetch order details from Odoo
     console.log('🔍 [CREATE-ORDER-API] Fetching order details...');
-    const createdOrder = await callOdooAsAdmin(
+    const createdOrder = await callOdoo(
+      cookies,
       'sale.order',
       'search_read',
       [],
@@ -309,7 +330,8 @@ export async function POST(request: NextRequest) {
 
         const notesMessage = `<p><strong>📝 Note Venditore</strong></p><p>${notes.replace(/\n/g, '<br/>')}</p><p><em>Note inserite dal venditore durante la creazione dell'ordine</em></p>`;
 
-        await callOdooAsAdmin(
+        await callOdoo(
+          cookies,
           'mail.message',
           'create',
           [{

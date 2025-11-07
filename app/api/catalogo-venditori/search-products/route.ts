@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callOdooAsAdmin } from '@/lib/odoo/admin-session';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -8,6 +8,7 @@ export const maxDuration = 30;
  * POST /api/catalogo-venditori/search-products
  *
  * Search for products by name or code in Odoo catalog
+ * Uses the logged-in user's session.
  *
  * Body:
  * {
@@ -31,10 +32,22 @@ export const maxDuration = 30;
  */
 export async function POST(request: NextRequest) {
   try {
+    // Get user session
+    const cookieHeader = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
+
+    if (!uid) {
+      console.error('❌ [SEARCH-PRODUCTS] No valid user session');
+      return NextResponse.json(
+        { success: false, error: 'User session not valid' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { query } = body;
 
-    console.log('🔍 [SEARCH-PRODUCTS] Search request:', query);
+    console.log('🔍 [SEARCH-PRODUCTS] Search request:', query, '(User UID:', uid, ')');
 
     // Validate query
     if (!query || typeof query !== 'string' || query.trim().length < 2) {
@@ -50,7 +63,8 @@ export async function POST(request: NextRequest) {
     const searchQuery = query.trim();
 
     // Search products in Odoo by name or default_code
-    const products = await callOdooAsAdmin(
+    const products = await callOdoo(
+      cookies,
       'product.product',
       'search_read',
       [],
