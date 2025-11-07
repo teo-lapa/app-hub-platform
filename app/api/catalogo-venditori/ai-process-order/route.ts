@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 90;
+
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || '');
 
 /**
  * AI ORDER PROCESSING ENDPOINT
@@ -29,7 +33,7 @@ export const maxDuration = 90;
 interface ProcessOrderRequest {
   customerId: number;
   message: string;
-  messageType: 'text' | 'audio' | 'image';
+  messageType: string;
 }
 
 interface ProductMatch {
@@ -56,6 +60,51 @@ interface CustomerHistoryProduct {
   count: number;
   total_qty: number;
   last_price: number;
+}
+
+/**
+ * Extract text from media files using Gemini
+ * Supports: images (OCR), audio (transcription), video (transcription)
+ */
+async function extractTextFromMedia(
+  fileBase64: string,
+  mimeType: string
+): Promise<string> {
+  console.log(`🔍 [GEMINI] Extracting text from ${mimeType}...`);
+
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    let prompt = '';
+    if (mimeType.startsWith('image/')) {
+      prompt = `Estrai il testo completo da questa immagine. Se è un ordine scritto a mano o digitato, trascrivi tutto il testo esattamente come appare. Includi quantità, nomi prodotti, note. Rispondi SOLO con il testo estratto, senza commenti aggiuntivi.`;
+    } else if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
+      prompt = `Trascrivi completamente l'audio. È un messaggio di un cliente che fa un ordine. Trascrivi tutto quello che dice, inclusi quantità, nomi prodotti, note. Rispondi SOLO con la trascrizione, senza commenti aggiuntivi.`;
+    } else {
+      throw new Error(`Unsupported mime type: ${mimeType}`);
+    }
+
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: fileBase64,
+          mimeType: mimeType,
+        },
+      },
+    ]);
+
+    const response = await result.response;
+    const extractedText = response.text();
+
+    console.log(`✅ [GEMINI] Text extracted (${extractedText.length} chars)`);
+    console.log(`📝 [GEMINI] Extracted text preview: ${extractedText.substring(0, 200)}...`);
+
+    return extractedText;
+  } catch (error) {
+    console.error('❌ [GEMINI] Error extracting text:', error);
+    throw new Error(`Failed to extract text from media: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 /**
@@ -177,12 +226,14 @@ function buildAIPrompt(
   customer: any,
   productHistory: CustomerHistoryProduct[],
   message: string,
-  messageType: 'text' | 'audio' | 'image'
+  messageType: string
 ): string {
-  const messageTypeDescription = {
+  const messageTypeDescription: Record<string, string> = {
     text: 'TESTO',
     audio: 'TRASCRIZIONE AUDIO',
     image: 'TESTO DA IMMAGINE',
+    recording: 'REGISTRAZIONE VOCALE',
+    document: 'DOCUMENTO',
   };
 
   return `Sei un assistente AI che aiuta a processare ordini di prodotti alimentari italiani.
@@ -198,7 +249,7 @@ ${productHistory
   )
   .join('\n')}
 
-TIPO MESSAGGIO: ${messageTypeDescription[messageType]}
+TIPO MESSAGGIO: ${messageTypeDescription[messageType] || 'TESTO'}
 
 MESSAGGIO ORDINE RICEVUTO:
 """
@@ -334,7 +385,7 @@ async function matchProductsWithAI(
   customer: any,
   productHistory: CustomerHistoryProduct[],
   message: string,
-  messageType: 'text' | 'audio' | 'image'
+  messageType: string
 ): Promise<AIMatchingResult> {
   console.log('📍 STEP 4: AI Product Matching...');
 
@@ -414,44 +465,75 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ [AI-PROCESS-ORDER] User authenticated, UID:', uid);
 
-    // Parse and validate request body
-    const body: ProcessOrderRequest = await request.json();
+    // Check if request has file (FormData) or JSON
+    const contentType = request.headers.get('content-type') || '';
+    let customerId: number;
+    let messageText: string;
+    let messageType: string;
 
-    console.log('🤖 [AI-PROCESS-ORDER] Starting AI order processing');
-    console.log('👤 Customer ID:', body.customerId);
-    console.log('💬 Message type:', body.messageType);
-    console.log('📝 Message preview:', body.message?.substring(0, 100));
+    if (contentType.includes('multipart/form-data')) {
+      // Handle file upload
+      console.log('📎 [AI-PROCESS-ORDER] Processing file upload with FormData');
+      const formData = await request.formData();
 
-    // Validate required fields
-    if (!body.customerId || typeof body.customerId !== 'number') {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'customerId is required and must be a number',
-        },
-        { status: 400 }
-      );
-    }
+      customerId = parseInt(formData.get('customerId') as string);
+      messageType = formData.get('messageType') as string || 'text';
+      const file = formData.get('file') as File | null;
+      const textMessage = formData.get('message') as string || '';
 
-    if (!body.message || typeof body.message !== 'string' || body.message.trim().length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
+      if (!customerId || isNaN(customerId)) {
+        return NextResponse.json(
+          { success: false, error: 'customerId is required and must be a number' },
+          { status: 400 }
+        );
+      }
+
+      if (file) {
+        // Extract text from media using Gemini
+        console.log(`📁 File received: ${file.name} (${file.type}, ${file.size} bytes)`);
+
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const fileBase64 = buffer.toString('base64');
+
+        messageText = await extractTextFromMedia(fileBase64, file.type);
+        console.log(`✅ [GEMINI→CLAUDE] Text extracted, passing to Claude for product matching`);
+      } else if (textMessage) {
+        messageText = textMessage;
+      } else {
+        return NextResponse.json(
+          { success: false, error: 'Either file or message text is required' },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Handle JSON request (existing flow)
+      const body: ProcessOrderRequest = await request.json();
+      customerId = body.customerId;
+      messageText = body.message;
+      messageType = body.messageType || 'text';
+
+      if (!customerId || typeof customerId !== 'number') {
+        return NextResponse.json(
+          { success: false, error: 'customerId is required and must be a number' },
+          { status: 400 }
+        );
+      }
+
+      if (!messageText || typeof messageText !== 'string' || messageText.trim().length === 0) {
+        return NextResponse.json(
+          { success: false,
           error: 'message is required and must be a non-empty string',
         },
         { status: 400 }
-      );
+        );
+      }
     }
 
-    if (!['text', 'audio', 'image'].includes(body.messageType)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'messageType must be one of: text, audio, image',
-        },
-        { status: 400 }
-      );
-    }
+    console.log('🤖 [AI-PROCESS-ORDER] Starting AI order processing');
+    console.log('👤 Customer ID:', customerId);
+    console.log('💬 Message type:', messageType);
+    console.log('📝 Message preview:', messageText.substring(0, 100));
 
     // Check API key
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -470,7 +552,7 @@ export async function POST(request: NextRequest) {
     let productHistory: CustomerHistoryProduct[];
 
     try {
-      const historyData = await fetchCustomerHistory(cookies, body.customerId);
+      const historyData = await fetchCustomerHistory(cookies, customerId);
       customer = historyData.customer;
       productHistory = historyData.productHistory;
     } catch (odooError: any) {
@@ -492,8 +574,8 @@ export async function POST(request: NextRequest) {
       aiResult = await matchProductsWithAI(
         customer,
         productHistory,
-        body.message,
-        body.messageType
+        messageText,
+        messageType
       );
     } catch (aiError: any) {
       console.error('❌ AI error:', aiError);
@@ -555,8 +637,8 @@ export async function POST(request: NextRequest) {
           },
           processing_time_ms: duration,
         },
-        message_analyzed: body.message,
-        message_type: body.messageType,
+        message_analyzed: messageText,
+        message_type: messageType,
       },
       { status: 200 }
     );

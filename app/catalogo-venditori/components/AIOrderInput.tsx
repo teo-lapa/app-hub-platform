@@ -53,19 +53,41 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
     setResults([]);
 
     try {
-      // TODO: Handle file upload - convert to base64 or use FormData
-      // For now, only text is supported
-      const response = await fetch('/api/catalogo-venditori/ai-process-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customerId,
-          message: message.trim(),
-          messageType: inputMode
-        }),
-      });
+      let response: Response;
+
+      if (selectedFile) {
+        // Send file via FormData (Gemini will extract text, then Claude will match products)
+        console.log(`📤 Sending ${selectedFile.type} file to AI for processing (Gemini→Claude flow)`);
+
+        const formData = new FormData();
+        formData.append('customerId', customerId.toString());
+        formData.append('file', selectedFile);
+        formData.append('messageType', inputMode);
+
+        // Add text message if present (can be additional notes with file)
+        if (message.trim()) {
+          formData.append('message', message.trim());
+        }
+
+        response = await fetch('/api/catalogo-venditori/ai-process-order', {
+          method: 'POST',
+          body: formData,
+          // Note: Don't set Content-Type header, browser will set it with boundary
+        });
+      } else {
+        // Send text-only via JSON
+        response = await fetch('/api/catalogo-venditori/ai-process-order', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customerId,
+            message: message.trim(),
+            messageType: inputMode
+          }),
+        });
+      }
 
       if (!response.ok) {
         throw new Error('Errore nel processamento AI');
@@ -81,6 +103,11 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
         setResults(data.matches);
         onProductsMatched(data.matches);
         console.log(`✅ AI found ${data.matches.length} products`);
+
+        // Clear input after successful processing
+        setMessage('');
+        setSelectedFile(null);
+        setInputMode('text');
       } else {
         setError('Nessun prodotto trovato nel messaggio');
       }
