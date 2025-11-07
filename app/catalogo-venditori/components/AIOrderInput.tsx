@@ -190,7 +190,7 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
       {/* Process Button */}
       <button
         onClick={handleProcess}
-        disabled={loading || !customerId || !message.trim()}
+        disabled={loading || !customerId || (!message.trim() && !selectedFile)}
         className="w-full min-h-[56px] px-6 py-4 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-semibold rounded-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg"
         style={{
           touchAction: 'manipulation',
