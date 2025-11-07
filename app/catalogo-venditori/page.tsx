@@ -28,6 +28,7 @@ export default function CatalogoVenditoriPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   const [cartProducts, setCartProducts] = useState<CartProduct[]>([]);
   const [orderNotes, setOrderNotes] = useState<string>('');
+  const [warehouseNotes, setWarehouseNotes] = useState<string>('');
   const [deliveryDate, setDeliveryDate] = useState<string>(getTomorrowDate());
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<{ name: string; id: number } | null>(null);
@@ -175,7 +176,8 @@ export default function CatalogoVenditoriPage() {
             product_id: p.product_id,
             quantity: p.quantity
           })),
-          notes: orderNotes || undefined,
+          orderNotes: orderNotes || undefined,
+          warehouseNotes: warehouseNotes || undefined,
           deliveryDate: deliveryDate || undefined
         })
       });
@@ -338,8 +340,10 @@ export default function CatalogoVenditoriPage() {
         {selectedCustomerId && cartProducts.length > 0 && (
           <div className="mb-4 sm:mb-6">
             <NotesInput
-              value={orderNotes}
-              onChange={setOrderNotes}
+              orderNotes={orderNotes}
+              warehouseNotes={warehouseNotes}
+              onOrderNotesChange={setOrderNotes}
+              onWarehouseNotesChange={setWarehouseNotes}
             />
           </div>
         )}

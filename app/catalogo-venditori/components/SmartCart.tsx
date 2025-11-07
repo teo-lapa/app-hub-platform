@@ -37,8 +37,10 @@ export default function SmartCart({
   const hasPrice = products.some(p => p.price !== undefined && p.price > 0);
 
   const handleQuantityChange = (index: number, newQty: string) => {
-    // Allow decimals like 2.5, 10.25, etc
-    const qty = parseFloat(newQty) || 0;
+    // Allow decimals with both comma and dot (2,5 or 2.5)
+    // Replace comma with dot for parseFloat
+    const normalizedQty = newQty.replace(',', '.');
+    const qty = parseFloat(normalizedQty) || 0;
     if (qty >= 0) {
       onQuantityChange(index, qty);
     }

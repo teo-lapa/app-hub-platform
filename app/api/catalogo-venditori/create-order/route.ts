@@ -28,7 +28,8 @@ interface CreateOrderRequest {
   customerId: number;
   deliveryAddressId: number | null;
   orderLines: OrderLine[];
-  notes?: string;
+  orderNotes?: string; // Customer-visible notes (goes to order.note field)
+  warehouseNotes?: string; // Internal notes (goes to Chatter)
   deliveryDate?: string; // Format: YYYY-MM-DD
 }
 
@@ -62,13 +63,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { customerId, deliveryAddressId, orderLines, notes, deliveryDate } = body;
+    const { customerId, deliveryAddressId, orderLines, orderNotes, warehouseNotes, deliveryDate } = body;
 
     console.log('📋 [CREATE-ORDER-API] Request data:', {
       customerId,
       deliveryAddressId,
       orderLinesCount: orderLines?.length,
-      hasNotes: !!notes,
+      hasOrderNotes: !!orderNotes,
+      hasWarehouseNotes: !!warehouseNotes,
       deliveryDate: deliveryDate || 'not specified'
     });
 
@@ -251,8 +253,13 @@ export async function POST(request: NextRequest) {
       date_order: formatDateForOdoo(new Date()),
       state: 'draft',
       origin: 'Catalogo Venditori',
-      // Note: warehouse notes are posted to Chatter only, not in order.note field
     };
+
+    // Add order notes (customer-visible) to the note field
+    if (orderNotes && orderNotes.trim()) {
+      orderData.note = orderNotes.trim();
+      console.log('✅ [CREATE-ORDER-API] Order notes added to note field');
+    }
 
     // Add delivery date if provided (Odoo field: commitment_date or requested_date)
     if (deliveryDate) {
@@ -323,12 +330,12 @@ export async function POST(request: NextRequest) {
       state: createdOrder?.[0]?.state
     });
 
-    // Post notes to Chatter if provided
-    if (notes && notes.trim()) {
+    // Post warehouse notes to Chatter if provided
+    if (warehouseNotes && warehouseNotes.trim()) {
       try {
-        console.log('📝 [CREATE-ORDER-API] Posting notes to Chatter...');
+        console.log('📝 [CREATE-ORDER-API] Posting warehouse notes to Chatter...');
 
-        const notesMessage = `<p><strong>📦 Note per il Magazzino</strong></p><p>${notes.replace(/\n/g, '<br/>')}</p><p><em>Note inserite dal venditore per il magazzino</em></p>`;
+        const notesMessage = `<p><strong>📦 Note per il Magazzino</strong></p><p>${warehouseNotes.replace(/\n/g, '<br/>')}</p><p><em>Note interne inserite dal venditore</em></p>`;
 
         await callOdoo(
           cookies,
@@ -344,10 +351,10 @@ export async function POST(request: NextRequest) {
           {}
         );
 
-        console.log('✅ [CREATE-ORDER-API] Notes posted to Chatter');
+        console.log('✅ [CREATE-ORDER-API] Warehouse notes posted to Chatter');
       } catch (notesError: any) {
-        console.error('❌ [CREATE-ORDER-API] Failed to post notes to Chatter:', notesError.message);
-        // Continue anyway - notes are also in order.note field
+        console.error('❌ [CREATE-ORDER-API] Failed to post warehouse notes to Chatter:', notesError.message);
+        // Continue anyway - not critical
       }
     }
 
