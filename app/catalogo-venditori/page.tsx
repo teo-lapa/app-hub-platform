@@ -210,15 +210,17 @@ export default function CatalogoVenditoriPage() {
     }
   };
 
-  // Handle new order - reset everything
+  // Handle new order - reset EVERYTHING
   const handleNewOrder = () => {
+    setSelectedCustomerId(null);
+    setSelectedCustomerName('');
+    setSelectedAddressId(null);
     setCartProducts([]);
     setOrderNotes('');
     setWarehouseNotes('');
     setOrderSuccess(null);
     setError(null);
     setDeliveryDate(getTomorrowDate());
-    // Keep customer and address selected for convenience
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
