@@ -63,52 +63,88 @@ interface CustomerHistoryProduct {
 }
 
 /**
- * Extract text from media files using Gemini
- * Supports: images (OCR), audio (transcription), video (transcription)
+ * Extract text from media files
+ * - Images: Uses Gemini (OCR)
+ * - Audio/Video: Uses OpenAI Whisper (transcription)
  */
 async function extractTextFromMedia(
   fileBase64: string,
   mimeType: string
 ): Promise<string> {
-  console.log(`🔍 [GEMINI] Extracting text from ${mimeType}...`);
-  console.log(`🔍 [GEMINI] File size: ${fileBase64.length} chars (base64)`);
-  console.log(`🔍 [GEMINI] API Key configured: ${!!(process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY)}`);
+  console.log(`🔍 [MEDIA-EXTRACT] Extracting text from ${mimeType}...`);
+  console.log(`🔍 [MEDIA-EXTRACT] File size: ${fileBase64.length} chars (base64)`);
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    console.log(`✅ [GEMINI] Model initialized: gemini-1.5-flash`);
-
-    let prompt = '';
     if (mimeType.startsWith('image/')) {
-      prompt = `Estrai il testo completo da questa immagine. Se è un ordine scritto a mano o digitato, trascrivi tutto il testo esattamente come appare. Includi quantità, nomi prodotti, note. Rispondi SOLO con il testo estratto, senza commenti aggiuntivi.`;
+      // Use Gemini for images (OCR)
+      console.log(`🖼️ [GEMINI] Using Gemini for image OCR`);
+      console.log(`🔍 [GEMINI] API Key configured: ${!!(process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY)}`);
+
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const prompt = `Estrai il testo completo da questa immagine. Se è un ordine scritto a mano o digitato, trascrivi tutto il testo esattamente come appare. Includi quantità, nomi prodotti, note. Rispondi SOLO con il testo estratto, senza commenti aggiuntivi.`;
+
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: fileBase64,
+            mimeType: mimeType,
+          },
+        },
+      ]);
+
+      const response = await result.response;
+      const extractedText = response.text();
+
+      console.log(`✅ [GEMINI] Text extracted (${extractedText.length} chars)`);
+      return extractedText;
     } else if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
-      prompt = `Trascrivi completamente l'audio. È un messaggio di un cliente che fa un ordine. Trascrivi tutto quello che dice, inclusi quantità, nomi prodotti, note. Rispondi SOLO con la trascrizione, senza commenti aggiuntivi.`;
+      // Use OpenAI Whisper for audio/video (better format support)
+      console.log(`🎤 [WHISPER] Using Whisper for audio transcription`);
+      console.log(`🔍 [WHISPER] API Key configured: ${!!process.env.OPENAI_API_KEY}`);
+
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY not configured');
+      }
+
+      // Convert base64 to buffer
+      const buffer = Buffer.from(fileBase64, 'base64');
+
+      // Create form data for Whisper API
+      const formData = new FormData();
+      const blob = new Blob([buffer], { type: mimeType });
+      formData.append('file', blob, 'audio.webm');
+      formData.append('model', 'whisper-1');
+      formData.append('language', 'it'); // Italian
+      formData.append('prompt', 'Questo è un ordine di prodotti alimentari. Trascrivi con precisione quantità e nomi prodotti.');
+
+      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ [WHISPER] API error: ${response.status} - ${errorText}`);
+        throw new Error(`Whisper API error: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      const transcription = result.text;
+
+      console.log(`✅ [WHISPER] Transcription completed (${transcription.length} chars)`);
+      console.log(`📝 [WHISPER] Preview: ${transcription.substring(0, 200)}...`);
+
+      return transcription;
     } else {
       throw new Error(`Unsupported mime type: ${mimeType}`);
     }
-
-    console.log(`📤 [GEMINI] Sending request to Gemini API...`);
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: fileBase64,
-          mimeType: mimeType,
-        },
-      },
-    ]);
-
-    console.log(`📥 [GEMINI] Received response from Gemini`);
-    const response = await result.response;
-    const extractedText = response.text();
-
-    console.log(`✅ [GEMINI] Text extracted (${extractedText.length} chars)`);
-    console.log(`📝 [GEMINI] Extracted text preview: ${extractedText.substring(0, 200)}...`);
-
-    return extractedText;
   } catch (error) {
-    console.error('❌ [GEMINI] Error extracting text:', error);
-    console.error('❌ [GEMINI] Error details:', JSON.stringify(error, null, 2));
+    console.error('❌ [MEDIA-EXTRACT] Error extracting text:', error);
+    console.error('❌ [MEDIA-EXTRACT] Error details:', JSON.stringify(error, null, 2));
     throw new Error(`Failed to extract text from media: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

@@ -67,7 +67,17 @@ export default function MediaUploadButtons({
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+
+      // Try to use audio/mp4 or audio/webm;codecs=opus (best compatibility with Gemini)
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeType = 'audio/mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      }
+
+      console.log(`🎤 Recording with mimeType: ${mimeType}`);
+      const recorder = new MediaRecorder(stream, { mimeType });
       const audioChunks: Blob[] = [];
 
       recorder.ondataavailable = (event) => {
@@ -75,7 +85,8 @@ export default function MediaUploadButtons({
       };
 
       recorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunks, { type: mimeType });
+        console.log(`🎤 Recording saved as ${mimeType}, size: ${audioBlob.size} bytes`);
         onRecordingStop(audioBlob);
         stream.getTracks().forEach(track => track.stop());
       };
