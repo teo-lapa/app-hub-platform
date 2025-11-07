@@ -8,6 +8,7 @@ export interface CartProduct {
   quantity: number;
   price?: number;
   image_url?: string | null;
+  qty_available?: number;
 }
 
 interface SmartCartProps {
@@ -197,14 +198,14 @@ export default function SmartCart({
                       </button>
                     </div>
 
-                    {product.price && product.price > 0 && (
-                      <div className="text-sm" style={{ fontSize: '14px', lineHeight: '1.5' }}>
-                        <span className="text-slate-400">Prezzo:</span>{' '}
-                        <span className="font-semibold text-emerald-400 text-base">
-                          €{(product.price * product.quantity).toFixed(2)}
-                        </span>
-                        <span className="text-slate-500 ml-1 text-xs">
-                          (€{product.price.toFixed(2)}/u)
+                    {/* Stock Quantity */}
+                    {product.qty_available !== undefined && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-slate-900 rounded-lg border border-slate-700">
+                        <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        <span className="text-xs text-slate-400" style={{ fontSize: '12px', lineHeight: '1.5' }}>
+                          Disponibili: <span className={`font-semibold ${product.qty_available > 0 ? 'text-emerald-400' : 'text-red-400'}`}>{product.qty_available}</span>
                         </span>
                       </div>
                     )}
@@ -232,23 +233,11 @@ export default function SmartCart({
       </div>
 
       {/* Summary */}
-      <div className="bg-slate-800 rounded-lg border border-slate-700 p-4 space-y-3">
+      <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-400" style={{ fontSize: '14px', lineHeight: '1.5' }}>Totale Articoli:</span>
+          <span className="text-slate-400" style={{ fontSize: '14px', lineHeight: '1.5' }}>Totale Prodotti:</span>
           <span className="font-semibold text-white text-lg" style={{ fontSize: '18px', lineHeight: '1.5' }}>{totalItems}</span>
         </div>
-
-        {hasPrice && (
-          <>
-            <div className="border-t border-slate-700" />
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-base" style={{ fontSize: '16px', lineHeight: '1.5' }}>Totale Importo:</span>
-              <span className="text-3xl font-bold text-emerald-400" style={{ fontSize: '28px', lineHeight: '1.5' }}>
-                €{totalPrice.toFixed(2)}
-              </span>
-            </div>
-          </>
-        )}
       </div>
 
       {/* Confirm Button - Sticky on mobile */}

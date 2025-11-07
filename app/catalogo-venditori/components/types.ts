@@ -11,6 +11,7 @@ export interface MatchedProduct {
   confidence: 'ALTA' | 'MEDIA' | 'BASSA' | 'NON_TROVATO';
   reasoning: string;             // AI explanation for the match
   image_url?: string | null;     // Product image URL (from Odoo)
+  qty_available?: number;        // Stock quantity available
 }
 
 // Product in shopping cart
@@ -22,6 +23,7 @@ export interface CartProduct {
   confidence?: string;           // Optional confidence from AI matching
   reasoning?: string;            // Optional AI reasoning
   image_url?: string | null;     // Product image URL (from Odoo)
+  qty_available?: number;        // Stock quantity available
 }
 
 // Customer from Odoo

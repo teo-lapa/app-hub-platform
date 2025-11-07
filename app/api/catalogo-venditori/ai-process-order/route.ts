@@ -40,6 +40,7 @@ interface ProductMatch {
   confidence: 'ALTA' | 'MEDIA' | 'BASSA' | 'NON_TROVATO';
   reasoning: string;
   image_url?: string | null;
+  qty_available?: number;
 }
 
 interface AIMatchingResult {
@@ -244,10 +245,10 @@ IMPORTANTE:
 }
 
 /**
- * Fetch product images from Odoo
+ * Fetch product images and stock from Odoo
  */
 async function enrichMatchesWithImages(matches: ProductMatch[]): Promise<ProductMatch[]> {
-  console.log('📍 STEP 5: Fetching product images from Odoo...');
+  console.log('📍 STEP 5: Fetching product data (images & stock) from Odoo...');
 
   // Get all product IDs that were found
   const productIds = matches
@@ -255,48 +256,50 @@ async function enrichMatchesWithImages(matches: ProductMatch[]): Promise<Product
     .map((m) => m.product_id as number);
 
   if (productIds.length === 0) {
-    console.log('⚠️ No products to fetch images for');
+    console.log('⚠️ No products to fetch data for');
     return matches;
   }
 
   try {
-    // Fetch product data with images
+    // Fetch product data with images and stock
     const products = await callOdooAsAdmin(
       'product.product',
       'search_read',
       [],
       {
         domain: [['id', 'in', productIds]],
-        fields: ['id', 'image_128'],
+        fields: ['id', 'image_128', 'qty_available'],
         limit: productIds.length,
       }
     );
 
-    console.log(`✅ Fetched ${products?.length || 0} product images`);
+    console.log(`✅ Fetched data for ${products?.length || 0} products`);
 
-    // Create a map of product_id to image_url
-    const imageMap = new Map<number, string>();
+    // Create a map of product_id to product data
+    const productDataMap = new Map<number, { image_url: string | null; qty_available: number }>();
     products?.forEach((product: any) => {
-      if (product.image_128) {
-        // Odoo returns base64 image data
-        imageMap.set(product.id, `data:image/png;base64,${product.image_128}`);
-      }
+      productDataMap.set(product.id, {
+        image_url: product.image_128 ? `data:image/png;base64,${product.image_128}` : null,
+        qty_available: product.qty_available || 0,
+      });
     });
 
-    // Enrich matches with image URLs
+    // Enrich matches with product data
     return matches.map((match) => {
-      if (match.product_id && imageMap.has(match.product_id)) {
+      if (match.product_id && productDataMap.has(match.product_id)) {
+        const data = productDataMap.get(match.product_id)!;
         return {
           ...match,
-          image_url: imageMap.get(match.product_id) || null,
+          image_url: data.image_url,
+          qty_available: data.qty_available,
         };
       }
-      return { ...match, image_url: null };
+      return { ...match, image_url: null, qty_available: 0 };
     });
   } catch (error) {
-    console.error('⚠️ Error fetching product images:', error);
-    // Return matches without images if fetch fails
-    return matches.map((m) => ({ ...m, image_url: null }));
+    console.error('⚠️ Error fetching product data:', error);
+    // Return matches without data if fetch fails
+    return matches.map((m) => ({ ...m, image_url: null, qty_available: 0 }));
   }
 }
 

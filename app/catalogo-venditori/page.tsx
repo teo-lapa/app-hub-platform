@@ -60,7 +60,8 @@ export default function CatalogoVenditoriPage() {
         quantity: p.quantita,
         confidence: p.confidence,
         reasoning: p.reasoning,
-        image_url: p.image_url || null
+        image_url: p.image_url || null,
+        qty_available: p.qty_available || 0
       }));
 
     // Add to cart (merge with existing)
@@ -109,7 +110,9 @@ export default function CatalogoVenditoriPage() {
       product_name: product.name,
       quantity: quantity,
       price: product.list_price || undefined,
-      confidence: 'MANUALE'
+      confidence: 'MANUALE',
+      image_url: product.image_128 ? `data:image/png;base64,${product.image_128}` : null,
+      qty_available: product.qty_available || 0
     };
 
     // Add to cart (merge with existing)
