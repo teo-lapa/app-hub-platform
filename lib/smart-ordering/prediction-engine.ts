@@ -80,6 +80,7 @@ export class SmartPredictionEngine {
 
   /**
    * Calcola safety stock dinamico basato su variabilità E affidabilità fornitore
+   * Usa un periodo base fisso di 14 giorni per garantire copertura consistente
    */
   calculateSafetyStock(
     avgDailySales: number,
@@ -87,13 +88,15 @@ export class SmartPredictionEngine {
     variability: number,
     supplierReliability: number = 70 // default medio
   ): number {
-    // Safety stock = (consumo medio × lead time) × multiplier
+    // Safety stock = (consumo medio × 14 giorni fissi) × multiplier
+    // Periodo base fisso di 14 giorni per copertura consistente indipendente dal lead time
     // Multiplier dipende da:
     // - Affidabilità fornitore (reliability score 0-100)
     // - Variabilità vendite (variability 0-1)
 
+    const safetyStockDays = 14; // Fixed base period for safety stock
     const multiplier = getSafetyStockMultiplier(supplierReliability, variability);
-    const baseStock = avgDailySales * leadTimeDays;
+    const baseStock = avgDailySales * safetyStockDays;
     const safetyStock = baseStock * multiplier;
 
     return Math.ceil(safetyStock);

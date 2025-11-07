@@ -30,19 +30,60 @@ export async function GET(request: NextRequest) {
 
     const rpc = createOdooRPCClient(sessionId);
 
-    // 1. Carica prodotti con stock
+    // 1. Load PRE-ORDINE tag ID to exclude preorder products
+    console.log('🔍 Caricamento tag PRE-ORDINE...');
+    let preOrderTagId: number | null = null;
+    try {
+      const tags = await rpc.searchRead(
+        'product.tag',
+        [['name', 'ilike', 'PRE-ORDINE']],
+        ['id', 'name'],
+        1
+      );
+      if (tags && tags.length > 0) {
+        preOrderTagId = tags[0].id;
+        console.log(`✅ Found PRE-ORDINE tag ID: ${preOrderTagId}`);
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not load PRE-ORDINE tag:', error);
+    }
+
+    // 2. Get templates with PRE-ORDINE tag
+    let excludedTemplateIds: number[] = [];
+    if (preOrderTagId) {
+      console.log('🔍 Caricamento template con tag PRE-ORDINE...');
+      const preorderTemplates = await rpc.searchRead(
+        'product.template',
+        [
+          ['product_tag_ids', 'in', [preOrderTagId]],
+          ['active', '=', true]
+        ],
+        ['id'],
+        0
+      );
+      excludedTemplateIds = preorderTemplates.map((t: any) => t.id);
+      console.log(`🚫 Excluding ${excludedTemplateIds.length} preorder templates`);
+    }
+
+    // 3. Carica prodotti con stock (excluding preorder products)
     console.log('📦 Caricamento prodotti...');
+    const productFilter: any[] = [
+      ['type', '=', 'product'],
+      ['active', '=', true]
+    ];
+
+    if (excludedTemplateIds.length > 0) {
+      productFilter.push(['product_tmpl_id', 'not in', excludedTemplateIds]);
+    }
+
     const products = await rpc.searchRead(
       'product.product',
-      [
-        ['type', '=', 'product'],
-        ['active', '=', true]
-      ],
+      productFilter,
       ['id', 'name', 'default_code', 'qty_available', 'uom_id', 'list_price', 'seller_ids', 'product_tmpl_id'],
       0
     );
 
-    console.log(`✅ ${products.length} prodotti caricati`);
+    console.log(`✅ ${products.length} prodotti caricati (excluding preorder products)`);
 
     // 2. Calcola data 3 mesi fa
     const threeMonthsAgo = new Date();
