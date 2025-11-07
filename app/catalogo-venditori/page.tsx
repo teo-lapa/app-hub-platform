@@ -358,7 +358,10 @@ export default function CatalogoVenditoriPage() {
         {selectedCustomerId && (
           <div className="mb-4 sm:mb-6">
             <div className="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 shadow-lg">
-              <ManualProductSearch onProductAdd={handleManualProductAdd} />
+              <ManualProductSearch
+                customerId={selectedCustomerId}
+                onProductAdd={handleManualProductAdd}
+              />
             </div>
           </div>
         )}
