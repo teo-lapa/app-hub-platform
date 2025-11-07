@@ -37,7 +37,8 @@ export default function SmartCart({
   const hasPrice = products.some(p => p.price !== undefined && p.price > 0);
 
   const handleQuantityChange = (index: number, newQty: string) => {
-    const qty = parseInt(newQty) || 0;
+    // Allow decimals like 2.5, 10.25, etc
+    const qty = parseFloat(newQty) || 0;
     if (qty >= 0) {
       onQuantityChange(index, qty);
     }
@@ -175,8 +176,8 @@ export default function SmartCart({
                       </button>
                       <input
                         type="number"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
+                        inputMode="decimal"
+                        step="any"
                         min="0"
                         value={product.quantity}
                         onChange={(e) => handleQuantityChange(index, e.target.value)}
