@@ -7,10 +7,19 @@ import CustomerSelector from './components/CustomerSelector';
 import AIOrderInput from './components/AIOrderInput';
 import SmartCart from './components/SmartCart';
 import NotesInput from './components/NotesInput';
+import ManualProductSearch from './components/ManualProductSearch';
+import DeliveryDatePicker from './components/DeliveryDatePicker';
 import type { MatchedProduct, CartProduct } from './components/types';
 
 export default function CatalogoVenditoriPage() {
   const router = useRouter();
+
+  // Get tomorrow's date as default
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  };
 
   // State
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
@@ -18,6 +27,7 @@ export default function CatalogoVenditoriPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   const [cartProducts, setCartProducts] = useState<CartProduct[]>([]);
   const [orderNotes, setOrderNotes] = useState<string>('');
+  const [deliveryDate, setDeliveryDate] = useState<string>(getTomorrowDate());
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<{ name: string; id: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +101,39 @@ export default function CatalogoVenditoriPage() {
     setCartProducts(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Handle manual product add
+  const handleManualProductAdd = (product: any, quantity: number) => {
+    const newCartProduct: CartProduct = {
+      product_id: product.id,
+      product_name: product.name,
+      quantity: quantity,
+      price: product.list_price || undefined,
+      confidence: 'MANUALE'
+    };
+
+    // Add to cart (merge with existing)
+    setCartProducts(prev => {
+      const existingIndex = prev.findIndex(p => p.product_id === newCartProduct.product_id);
+      if (existingIndex >= 0) {
+        // Product already in cart, add quantities
+        const updated = [...prev];
+        updated[existingIndex].quantity += newCartProduct.quantity;
+        return updated;
+      } else {
+        // New product, add to cart
+        return [...prev, newCartProduct];
+      }
+    });
+
+    // Scroll to cart on mobile
+    setTimeout(() => {
+      const cartElement = document.getElementById('smart-cart');
+      if (cartElement) {
+        cartElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 300);
+  };
+
   // Handle order confirmation
   const handleConfirmOrder = async () => {
     if (!selectedCustomerId) {
@@ -117,7 +160,8 @@ export default function CatalogoVenditoriPage() {
             product_id: p.product_id,
             quantity: p.quantity
           })),
-          notes: orderNotes || undefined
+          notes: orderNotes || undefined,
+          deliveryDate: deliveryDate || undefined
         })
       });
 
@@ -238,6 +282,18 @@ export default function CatalogoVenditoriPage() {
           />
         </div>
 
+        {/* Delivery Date Picker */}
+        {selectedCustomerId && (
+          <div className="mb-4 sm:mb-6">
+            <div className="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 shadow-lg">
+              <DeliveryDatePicker
+                value={deliveryDate}
+                onChange={setDeliveryDate}
+              />
+            </div>
+          </div>
+        )}
+
         {/* AI Order Input */}
         {selectedCustomerId && (
           <div className="mb-4 sm:mb-6">
@@ -245,6 +301,15 @@ export default function CatalogoVenditoriPage() {
               customerId={selectedCustomerId}
               onProductsMatched={handleProductsMatched}
             />
+          </div>
+        )}
+
+        {/* Manual Product Search */}
+        {selectedCustomerId && (
+          <div className="mb-4 sm:mb-6">
+            <div className="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 shadow-lg">
+              <ManualProductSearch onProductAdd={handleManualProductAdd} />
+            </div>
           </div>
         )}
 
@@ -298,6 +363,12 @@ export default function CatalogoVenditoriPage() {
               <li className="flex items-start gap-2 sm:gap-3">
                 <span className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
                   4
+                </span>
+                <span>Oppure usa la <strong className="text-white">ricerca manuale</strong> per aggiungere prodotti specifici</span>
+              </li>
+              <li className="flex items-start gap-2 sm:gap-3">
+                <span className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
+                  5
                 </span>
                 <span>Controlla il <strong className="text-white">carrello</strong>, modifica se necessario e conferma!</span>
               </li>

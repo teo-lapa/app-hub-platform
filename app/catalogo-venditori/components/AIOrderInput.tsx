@@ -182,24 +182,44 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
                 className="bg-slate-800 rounded-lg p-4 border border-slate-700 active:border-slate-600 transition-all"
                 style={{ contain: 'layout style' }}
               >
-                <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+                <div className="flex items-start gap-3 mb-3">
+                  {/* Product Image */}
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={product.product_name || 'Prodotto'}
+                      className="w-16 h-16 rounded-lg object-cover border border-slate-700 flex-shrink-0"
+                      style={{ imageRendering: 'auto' }}
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+
+                  {/* Product Info */}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-white mb-2" style={{ fontSize: '16px', lineHeight: '1.5' }}>
-                      {product.product_name}
-                    </h4>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h4 className="font-semibold text-white" style={{ fontSize: '16px', lineHeight: '1.5' }}>
+                        {product.product_name}
+                      </h4>
+                      <span
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-full border flex-shrink-0 ${getConfidenceBadgeColor(product.confidence)}`}
+                        style={{ fontSize: '12px', lineHeight: '1.5' }}
+                      >
+                        {getConfidenceLabel(product.confidence)}
+                      </span>
+                    </div>
                     <div className="text-sm text-slate-400" style={{ fontSize: '14px', lineHeight: '1.5' }}>
                       Quantità: <span className="text-emerald-400 font-semibold text-base">{product.quantita}</span>
                     </div>
                   </div>
-                  <span
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-full border flex-shrink-0 ${getConfidenceBadgeColor(product.confidence)}`}
-                    style={{ fontSize: '12px', lineHeight: '1.5' }}
-                  >
-                    {getConfidenceLabel(product.confidence)}
-                  </span>
                 </div>
 
-                {product.reasoning && (
+                {/* Show reasoning only for MEDIA, BASSA, or NON_TROVATO confidence */}
+                {product.reasoning && product.confidence !== 'ALTA' && product.confidence !== 'HIGH' && (
                   <div className="bg-slate-900 rounded-md p-3 border border-slate-700">
                     <div className="text-xs text-slate-400 mb-1" style={{ fontSize: '12px', lineHeight: '1.5' }}>Motivazione AI:</div>
                     <div className="text-sm text-slate-300" style={{ fontSize: '14px', lineHeight: '1.5' }}>{product.reasoning}</div>

@@ -28,6 +28,7 @@ interface CreateOrderRequest {
   deliveryAddressId: number | null;
   orderLines: OrderLine[];
   notes?: string;
+  deliveryDate?: string; // Format: YYYY-MM-DD
 }
 
 export async function POST(request: NextRequest) {
@@ -46,13 +47,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { customerId, deliveryAddressId, orderLines, notes } = body;
+    const { customerId, deliveryAddressId, orderLines, notes, deliveryDate } = body;
 
     console.log('📋 [CREATE-ORDER-API] Request data:', {
       customerId,
       deliveryAddressId,
       orderLinesCount: orderLines?.length,
-      hasNotes: !!notes
+      hasNotes: !!notes,
+      deliveryDate: deliveryDate || 'not specified'
     });
 
     // Validate input
@@ -233,6 +235,13 @@ export async function POST(request: NextRequest) {
       origin: 'Catalogo Venditori',
       note: notes || 'Ordine creato dal Catalogo Venditori',
     };
+
+    // Add delivery date if provided (Odoo field: commitment_date or requested_date)
+    if (deliveryDate) {
+      // Format delivery date to YYYY-MM-DD (Odoo date field format)
+      orderData.commitment_date = deliveryDate;
+      console.log('✅ [CREATE-ORDER-API] Delivery date set:', deliveryDate);
+    }
 
     // Add payment term if available
     if (customer.property_payment_term_id) {

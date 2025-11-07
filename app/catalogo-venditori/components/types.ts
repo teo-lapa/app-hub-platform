@@ -10,6 +10,7 @@ export interface MatchedProduct {
   product_name: string | null;   // Product name (null if not found)
   confidence: 'ALTA' | 'MEDIA' | 'BASSA' | 'NON_TROVATO';
   reasoning: string;             // AI explanation for the match
+  image_url?: string | null;     // Product image URL (from Odoo)
 }
 
 // Product in shopping cart

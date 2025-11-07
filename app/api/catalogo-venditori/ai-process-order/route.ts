@@ -39,6 +39,7 @@ interface ProductMatch {
   product_name: string | null;
   confidence: 'ALTA' | 'MEDIA' | 'BASSA' | 'NON_TROVATO';
   reasoning: string;
+  image_url?: string | null;
 }
 
 interface AIMatchingResult {
@@ -243,6 +244,63 @@ IMPORTANTE:
 }
 
 /**
+ * Fetch product images from Odoo
+ */
+async function enrichMatchesWithImages(matches: ProductMatch[]): Promise<ProductMatch[]> {
+  console.log('📍 STEP 5: Fetching product images from Odoo...');
+
+  // Get all product IDs that were found
+  const productIds = matches
+    .filter((m) => m.product_id !== null)
+    .map((m) => m.product_id as number);
+
+  if (productIds.length === 0) {
+    console.log('⚠️ No products to fetch images for');
+    return matches;
+  }
+
+  try {
+    // Fetch product data with images
+    const products = await callOdooAsAdmin(
+      'product.product',
+      'search_read',
+      [],
+      {
+        domain: [['id', 'in', productIds]],
+        fields: ['id', 'image_128'],
+        limit: productIds.length,
+      }
+    );
+
+    console.log(`✅ Fetched ${products?.length || 0} product images`);
+
+    // Create a map of product_id to image_url
+    const imageMap = new Map<number, string>();
+    products?.forEach((product: any) => {
+      if (product.image_128) {
+        // Odoo returns base64 image data
+        imageMap.set(product.id, `data:image/png;base64,${product.image_128}`);
+      }
+    });
+
+    // Enrich matches with image URLs
+    return matches.map((match) => {
+      if (match.product_id && imageMap.has(match.product_id)) {
+        return {
+          ...match,
+          image_url: imageMap.get(match.product_id) || null,
+        };
+      }
+      return { ...match, image_url: null };
+    });
+  } catch (error) {
+    console.error('⚠️ Error fetching product images:', error);
+    // Return matches without images if fetch fails
+    return matches.map((m) => ({ ...m, image_url: null }));
+  }
+}
+
+/**
  * Call Claude AI for product matching
  */
 async function matchProductsWithAI(
@@ -406,6 +464,14 @@ export async function POST(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    // Enrich matches with product images
+    try {
+      aiResult.matches = await enrichMatchesWithImages(aiResult.matches);
+    } catch (imageError: any) {
+      console.error('⚠️ Warning: Failed to fetch product images:', imageError);
+      // Continue without images - not critical
     }
 
     // Calculate statistics
