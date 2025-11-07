@@ -37,11 +37,19 @@ export default function SmartCart({
   const hasPrice = products.some(p => p.price !== undefined && p.price > 0);
 
   const handleQuantityChange = (index: number, newQty: string) => {
+    // Allow empty string (when user deletes all)
+    if (newQty === '' || newQty === '0') {
+      onQuantityChange(index, 0);
+      return;
+    }
+
     // Allow decimals with both comma and dot (2,5 or 2.5)
     // Replace comma with dot for parseFloat
     const normalizedQty = newQty.replace(',', '.');
-    const qty = parseFloat(normalizedQty) || 0;
-    if (qty >= 0) {
+    const qty = parseFloat(normalizedQty);
+
+    // Only update if it's a valid positive number
+    if (!isNaN(qty) && qty >= 0) {
       onQuantityChange(index, qty);
     }
   };
@@ -177,12 +185,13 @@ export default function SmartCart({
                         </svg>
                       </button>
                       <input
-                        type="number"
+                        type="text"
                         inputMode="decimal"
-                        step="any"
-                        min="0"
-                        value={product.quantity}
+                        pattern="[0-9]*[.,]?[0-9]*"
+                        value={product.quantity === 0 ? '' : product.quantity}
                         onChange={(e) => handleQuantityChange(index, e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                        placeholder="0"
                         className="w-16 min-h-[48px] text-center bg-transparent text-white font-semibold outline-none"
                         style={{
                           fontSize: '16px',
