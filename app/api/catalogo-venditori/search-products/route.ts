@@ -68,6 +68,8 @@ export async function POST(request: NextRequest) {
           'list_price',
           'image_128',
           'qty_available',
+          'uom_id',
+          'incoming_qty',
         ],
         limit: 50,
         order: 'name ASC',

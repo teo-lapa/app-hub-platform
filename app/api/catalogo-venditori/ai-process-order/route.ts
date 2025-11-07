@@ -41,6 +41,8 @@ interface ProductMatch {
   reasoning: string;
   image_url?: string | null;
   qty_available?: number;
+  uom_name?: string;
+  incoming_qty?: number;
 }
 
 interface AIMatchingResult {
@@ -261,14 +263,14 @@ async function enrichMatchesWithImages(matches: ProductMatch[]): Promise<Product
   }
 
   try {
-    // Fetch product data with images and stock
+    // Fetch product data with images, stock, uom, and incoming qty
     const products = await callOdooAsAdmin(
       'product.product',
       'search_read',
       [],
       {
         domain: [['id', 'in', productIds]],
-        fields: ['id', 'image_128', 'qty_available'],
+        fields: ['id', 'image_128', 'qty_available', 'uom_id', 'incoming_qty'],
         limit: productIds.length,
       }
     );
@@ -276,11 +278,18 @@ async function enrichMatchesWithImages(matches: ProductMatch[]): Promise<Product
     console.log(`✅ Fetched data for ${products?.length || 0} products`);
 
     // Create a map of product_id to product data
-    const productDataMap = new Map<number, { image_url: string | null; qty_available: number }>();
+    const productDataMap = new Map<number, {
+      image_url: string | null;
+      qty_available: number;
+      uom_name: string;
+      incoming_qty: number;
+    }>();
     products?.forEach((product: any) => {
       productDataMap.set(product.id, {
         image_url: product.image_128 ? `data:image/png;base64,${product.image_128}` : null,
         qty_available: product.qty_available || 0,
+        uom_name: product.uom_id && Array.isArray(product.uom_id) ? product.uom_id[1] : '',
+        incoming_qty: product.incoming_qty || 0,
       });
     });
 
@@ -292,14 +301,28 @@ async function enrichMatchesWithImages(matches: ProductMatch[]): Promise<Product
           ...match,
           image_url: data.image_url,
           qty_available: data.qty_available,
+          uom_name: data.uom_name,
+          incoming_qty: data.incoming_qty,
         };
       }
-      return { ...match, image_url: null, qty_available: 0 };
+      return {
+        ...match,
+        image_url: null,
+        qty_available: 0,
+        uom_name: '',
+        incoming_qty: 0
+      };
     });
   } catch (error) {
     console.error('⚠️ Error fetching product data:', error);
     // Return matches without data if fetch fails
-    return matches.map((m) => ({ ...m, image_url: null, qty_available: 0 }));
+    return matches.map((m) => ({
+      ...m,
+      image_url: null,
+      qty_available: 0,
+      uom_name: '',
+      incoming_qty: 0
+    }));
   }
 }
 

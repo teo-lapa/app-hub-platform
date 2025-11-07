@@ -12,6 +12,8 @@ export interface MatchedProduct {
   reasoning: string;             // AI explanation for the match
   image_url?: string | null;     // Product image URL (from Odoo)
   qty_available?: number;        // Stock quantity available
+  uom_name?: string;             // Unit of measure
+  incoming_qty?: number;         // Incoming quantity
 }
 
 // Product in shopping cart
@@ -24,6 +26,8 @@ export interface CartProduct {
   reasoning?: string;            // Optional AI reasoning
   image_url?: string | null;     // Product image URL (from Odoo)
   qty_available?: number;        // Stock quantity available
+  uom_name?: string;             // Unit of measure (es: "kg", "pz", "lt")
+  incoming_qty?: number;         // Incoming quantity (qty in arrivo)
 }
 
 // Customer from Odoo

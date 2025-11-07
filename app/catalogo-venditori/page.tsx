@@ -61,7 +61,9 @@ export default function CatalogoVenditoriPage() {
         confidence: p.confidence,
         reasoning: p.reasoning,
         image_url: p.image_url || null,
-        qty_available: p.qty_available || 0
+        qty_available: p.qty_available || 0,
+        uom_name: p.uom_name || '',
+        incoming_qty: p.incoming_qty || 0
       }));
 
     // Add to cart (merge with existing)
@@ -112,7 +114,9 @@ export default function CatalogoVenditoriPage() {
       price: product.list_price || undefined,
       confidence: 'MANUALE',
       image_url: product.image_128 ? `data:image/png;base64,${product.image_128}` : null,
-      qty_available: product.qty_available || 0
+      qty_available: product.qty_available || 0,
+      uom_name: product.uom_id && Array.isArray(product.uom_id) ? product.uom_id[1] : '',
+      incoming_qty: product.incoming_qty || 0
     };
 
     // Add to cart (merge with existing)
