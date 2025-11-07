@@ -51,7 +51,13 @@
       "Bash(lsof:*)",
       "Bash(taskkill:*)",
       "Bash(psql:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(npx next lint:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(pkill:*)",
+      "Bash(findstr:*)",
+      "Bash(cd:*)",
+      "Bash(Select-String -Pattern \"error|Error|fail|FAIL\" -Context 2)"
     ],
     "deny": [],
     "ask": []

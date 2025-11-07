@@ -1,14 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-
-export interface MatchedProduct {
-  product_id: number;
-  product_name: string;
-  quantity: number;
-  confidence: string;
-  reasoning: string;
-}
+import type { MatchedProduct } from './types';
 
 interface AIOrderInputProps {
   customerId: number | null;
@@ -189,7 +182,7 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
                       {product.product_name}
                     </h4>
                     <div className="text-sm text-slate-400" style={{ fontSize: '14px', lineHeight: '1.5' }}>
-                      Quantità: <span className="text-emerald-400 font-semibold text-base">{product.quantity}</span>
+                      Quantità: <span className="text-emerald-400 font-semibold text-base">{product.quantita}</span>
                     </div>
                   </div>
                   <span

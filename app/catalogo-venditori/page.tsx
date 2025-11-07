@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Home, ShoppingCart, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
-import { CustomerSelector } from './components/CustomerSelector';
-import { AIOrderInput } from './components/AIOrderInput';
-import { SmartCart } from './components/SmartCart';
-import { NotesInput } from './components/NotesInput';
+import CustomerSelector from './components/CustomerSelector';
+import AIOrderInput from './components/AIOrderInput';
+import SmartCart from './components/SmartCart';
+import NotesInput from './components/NotesInput';
 import type { MatchedProduct, CartProduct } from './components/types';
 
 export default function CatalogoVenditoriPage() {
@@ -47,7 +47,7 @@ export default function CatalogoVenditoriPage() {
       .map(p => ({
         product_id: p.product_id!,
         product_name: p.product_name!,
-        quantity: p.quantity,
+        quantity: p.quantita,
         confidence: p.confidence,
         reasoning: p.reasoning
       }));
