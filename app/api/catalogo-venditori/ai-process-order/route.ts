@@ -71,9 +71,12 @@ async function extractTextFromMedia(
   mimeType: string
 ): Promise<string> {
   console.log(`🔍 [GEMINI] Extracting text from ${mimeType}...`);
+  console.log(`🔍 [GEMINI] File size: ${fileBase64.length} chars (base64)`);
+  console.log(`🔍 [GEMINI] API Key configured: ${!!(process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY)}`);
 
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    console.log(`✅ [GEMINI] Model initialized: gemini-1.5-flash`);
 
     let prompt = '';
     if (mimeType.startsWith('image/')) {
@@ -84,6 +87,7 @@ async function extractTextFromMedia(
       throw new Error(`Unsupported mime type: ${mimeType}`);
     }
 
+    console.log(`📤 [GEMINI] Sending request to Gemini API...`);
     const result = await model.generateContent([
       prompt,
       {
@@ -94,6 +98,7 @@ async function extractTextFromMedia(
       },
     ]);
 
+    console.log(`📥 [GEMINI] Received response from Gemini`);
     const response = await result.response;
     const extractedText = response.text();
 
@@ -103,6 +108,7 @@ async function extractTextFromMedia(
     return extractedText;
   } catch (error) {
     console.error('❌ [GEMINI] Error extracting text:', error);
+    console.error('❌ [GEMINI] Error details:', JSON.stringify(error, null, 2));
     throw new Error(`Failed to extract text from media: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
