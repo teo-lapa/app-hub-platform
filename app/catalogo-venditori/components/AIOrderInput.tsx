@@ -219,7 +219,7 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
                 </div>
 
                 {/* Show reasoning only for MEDIA, BASSA, or NON_TROVATO confidence */}
-                {product.reasoning && product.confidence !== 'ALTA' && product.confidence !== 'HIGH' && (
+                {product.reasoning && product.confidence !== 'ALTA' && (
                   <div className="bg-slate-900 rounded-md p-3 border border-slate-700">
                     <div className="text-xs text-slate-400 mb-1" style={{ fontSize: '12px', lineHeight: '1.5' }}>Motivazione AI:</div>
                     <div className="text-sm text-slate-300" style={{ fontSize: '14px', lineHeight: '1.5' }}>{product.reasoning}</div>
