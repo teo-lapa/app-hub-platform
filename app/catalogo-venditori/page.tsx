@@ -197,6 +197,7 @@ export default function CatalogoVenditoriPage() {
       // Clear cart and reset form (keep orderSuccess visible)
       setCartProducts([]);
       setOrderNotes('');
+      setWarehouseNotes('');
 
       // Scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -207,6 +208,18 @@ export default function CatalogoVenditoriPage() {
     } finally {
       setIsCreatingOrder(false);
     }
+  };
+
+  // Handle new order - reset everything
+  const handleNewOrder = () => {
+    setCartProducts([]);
+    setOrderNotes('');
+    setWarehouseNotes('');
+    setOrderSuccess(null);
+    setError(null);
+    setDeliveryDate(getTomorrowDate());
+    // Keep customer and address selected for convenience
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -224,6 +237,18 @@ export default function CatalogoVenditoriPage() {
               >
                 <Home className="h-5 w-5 sm:h-5 sm:w-5" />
                 <span className="text-sm sm:text-base font-medium hidden xs:inline">Home</span>
+              </button>
+
+              {/* Nuovo Ordine Button */}
+              <button
+                onClick={handleNewOrder}
+                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-lg border border-emerald-500 transition-colors min-h-[48px] shrink-0"
+                aria-label="Nuovo ordine"
+              >
+                <svg className="h-5 w-5 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="text-sm sm:text-base font-medium hidden sm:inline">Nuovo Ordine</span>
               </button>
 
               {/* Title */}
