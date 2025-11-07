@@ -9,6 +9,7 @@ import SmartCart from './components/SmartCart';
 import NotesInput from './components/NotesInput';
 import ManualProductSearch from './components/ManualProductSearch';
 import DeliveryDatePicker from './components/DeliveryDatePicker';
+import OdooOrderLink from './components/OdooOrderLink';
 import type { MatchedProduct, CartProduct } from './components/types';
 
 export default function CatalogoVenditoriPage() {
@@ -51,6 +52,9 @@ export default function CatalogoVenditoriPage() {
 
   // Handle AI matched products
   const handleProductsMatched = (products: MatchedProduct[]) => {
+    // Clear previous order success when starting a new order
+    setOrderSuccess(null);
+
     // Convert matched products to cart products
     const newCartProducts: CartProduct[] = products
       .filter(p => p.product_id !== null) // Only add found products
@@ -107,6 +111,9 @@ export default function CatalogoVenditoriPage() {
 
   // Handle manual product add
   const handleManualProductAdd = (product: any, quantity: number) => {
+    // Clear previous order success when starting a new order
+    setOrderSuccess(null);
+
     const newCartProduct: CartProduct = {
       product_id: product.id,
       product_name: product.name,
@@ -185,14 +192,12 @@ export default function CatalogoVenditoriPage() {
         id: data.orderId
       });
 
-      // Reset form after 3 seconds
-      setTimeout(() => {
-        setCartProducts([]);
-        setOrderNotes('');
-        setOrderSuccess(null);
-        // Scroll to top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 3000);
+      // Clear cart and reset form (keep orderSuccess visible)
+      setCartProducts([]);
+      setOrderNotes('');
+
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
     } catch (err: any) {
       console.error('Errore creazione ordine:', err);
@@ -298,6 +303,14 @@ export default function CatalogoVenditoriPage() {
                 value={deliveryDate}
                 onChange={setDeliveryDate}
               />
+
+              {/* Odoo Order Link - Only shown after order confirmation */}
+              {orderSuccess && (
+                <OdooOrderLink
+                  orderId={orderSuccess.id}
+                  orderName={orderSuccess.name}
+                />
+              )}
             </div>
           </div>
         )}
