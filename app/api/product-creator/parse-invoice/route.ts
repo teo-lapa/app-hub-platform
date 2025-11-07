@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     // Use Claude Sonnet with PDF support
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 8192, // Aumentato per fatture con molti prodotti
+      max_tokens: 6000, // Limitato per evitare timeout Vercel (10s)
       messages: [
         {
           role: 'user',
@@ -84,9 +84,10 @@ REGOLE CRITICHE PER IL JSON:
 2. NON mettere virgole dopo l'ultimo elemento di array o oggetto
 3. Se un campo non è presente, usa null (senza virgolette)
 4. Per i numeri decimali usa il punto, non la virgola (es: 10.50 non "10,50")
-5. Estrai TUTTI i prodotti, anche se sono molti
+5. IMPORTANTE: Estrai MASSIMO 100 prodotti dalla fattura (i primi 100)
 6. Assicurati che OGNI oggetto nell'array prodotti sia separato da virgola
 7. NON inserire commenti nel JSON
+8. Se ci sono più di 100 prodotti, estrai solo i primi 100
 
 Formato JSON richiesto:
 {
@@ -178,9 +179,15 @@ Formato JSON richiesto:
 
     console.log('✅ Successfully parsed invoice with', parsedData.prodotti.length, 'products');
 
+    // Avvisa se ci sono molti prodotti (possibile limite)
+    const warning = parsedData.prodotti.length >= 100
+      ? 'ATTENZIONE: La fattura potrebbe contenere più prodotti. Sono stati estratti i primi 100.'
+      : undefined;
+
     return NextResponse.json({
       success: true,
       data: parsedData,
+      warning,
     });
 
   } catch (error: any) {
