@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { MatchedProduct } from './types';
+import MediaUploadButtons from './MediaUploadButtons';
 
 interface AIOrderInputProps {
   customerId: number | null;
@@ -13,10 +14,32 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<MatchedProduct[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [inputMode, setInputMode] = useState<'text' | 'image' | 'audio' | 'recording' | 'document'>('text');
+
+  const handleFileSelected = (file: File, type: 'image' | 'audio' | 'document') => {
+    setSelectedFile(file);
+    setInputMode(type);
+    setError(null);
+    console.log(`📎 File selected: ${file.name} (${file.type})`);
+  };
+
+  const handleRecordingStart = () => {
+    setInputMode('recording');
+    setError(null);
+    console.log('🎤 Recording started');
+  };
+
+  const handleRecordingStop = (audioBlob: Blob) => {
+    const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+    setSelectedFile(audioFile);
+    setInputMode('audio');
+    console.log('🎤 Recording stopped, file created');
+  };
 
   const handleProcess = async () => {
-    if (!message.trim()) {
-      setError('Inserisci un messaggio da processare');
+    if (!message.trim() && !selectedFile) {
+      setError('Inserisci un messaggio o carica un file');
       return;
     }
 
@@ -30,6 +53,8 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
     setResults([]);
 
     try {
+      // TODO: Handle file upload - convert to base64 or use FormData
+      // For now, only text is supported
       const response = await fetch('/api/catalogo-venditori/ai-process-order', {
         method: 'POST',
         headers: {
@@ -38,7 +63,7 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
         body: JSON.stringify({
           customerId,
           message: message.trim(),
-          messageType: 'text'
+          messageType: inputMode
         }),
       });
 
@@ -99,6 +124,42 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
         <label className="block text-sm font-medium text-slate-300 mb-2" style={{ fontSize: '14px', lineHeight: '1.5' }}>
           Messaggio Ordine
         </label>
+
+        {/* Media Upload Buttons - ABOVE textarea */}
+        <div className="mb-3">
+          <MediaUploadButtons
+            onFileSelected={handleFileSelected}
+            onRecordingStart={handleRecordingStart}
+            onRecordingStop={handleRecordingStop}
+            disabled={loading || !customerId}
+          />
+        </div>
+
+        {/* Selected File Indicator */}
+        {selectedFile && (
+          <div className="mb-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="text-sm text-emerald-400 font-medium">
+                {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedFile(null);
+                setInputMode('text');
+              }}
+              className="text-slate-400 hover:text-red-400 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
