@@ -59,7 +59,8 @@ export default function CatalogoVenditoriPage() {
         product_name: p.product_name!,
         quantity: p.quantita,
         confidence: p.confidence,
-        reasoning: p.reasoning
+        reasoning: p.reasoning,
+        image_url: p.image_url || null
       }));
 
     // Add to cart (merge with existing)

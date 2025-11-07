@@ -21,6 +21,7 @@ export interface CartProduct {
   price?: number;                // Optional price from Odoo
   confidence?: string;           // Optional confidence from AI matching
   reasoning?: string;            // Optional AI reasoning
+  image_url?: string | null;     // Product image URL (from Odoo)
 }
 
 // Customer from Odoo
