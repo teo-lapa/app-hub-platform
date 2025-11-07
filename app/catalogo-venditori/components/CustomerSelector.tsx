@@ -92,8 +92,24 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
       const response = await fetch('/api/catalogo-venditori/customers');
       if (!response.ok) throw new Error('Errore nel caricamento clienti');
       const data = await response.json();
-      setCustomers(data.customers || []);
+
+      if (!data.success) {
+        throw new Error(data.error || 'Errore nel caricamento clienti');
+      }
+
+      // Transform API data to match component interface
+      const transformedCustomers = (data.data || []).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        ref: c.ref || '',
+        city: c.city || '',
+        phone: c.phone || ''
+      }));
+
+      setCustomers(transformedCustomers);
+      console.log(`✅ Loaded ${transformedCustomers.length} customers`);
     } catch (err) {
+      console.error('❌ Error loading customers:', err);
       setError(err instanceof Error ? err.message : 'Errore sconosciuto');
     } finally {
       setLoadingCustomers(false);
@@ -104,11 +120,30 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
     setLoadingAddresses(true);
     setError(null);
     try {
-      const response = await fetch(`/api/catalogo-venditori/customers/${customerId}/addresses`);
+      const response = await fetch('/api/catalogo-venditori/customer-addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId })
+      });
       if (!response.ok) throw new Error('Errore nel caricamento indirizzi');
       const data = await response.json();
-      setAddresses(data.addresses || []);
+
+      if (!data.success) {
+        throw new Error(data.error || 'Errore nel caricamento indirizzi');
+      }
+
+      // Transform API data to match component interface
+      const transformedAddresses = (data.data || []).map((a: any) => ({
+        id: a.id,
+        address: `${a.street || ''} ${a.street2 || ''}`.trim(),
+        city: a.city || '',
+        cap: a.zip || ''
+      }));
+
+      setAddresses(transformedAddresses);
+      console.log(`✅ Loaded ${transformedAddresses.length} addresses for customer ${customerId}`);
     } catch (err) {
+      console.error('❌ Error loading addresses:', err);
       setError(err instanceof Error ? err.message : 'Errore sconosciuto');
       setAddresses([]);
     } finally {
