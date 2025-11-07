@@ -79,25 +79,36 @@ async function extractTextFromMedia(
       // Use Gemini for images (OCR)
       console.log(`🖼️ [GEMINI] Using Gemini for image OCR`);
       console.log(`🔍 [GEMINI] API Key configured: ${!!(process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY)}`);
+      console.log(`🔍 [GEMINI] Image mimeType: ${mimeType}`);
+      console.log(`🔍 [GEMINI] Image size (base64): ${fileBase64.length} chars (~${Math.round(fileBase64.length * 0.75 / 1024)} KB)`);
 
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      const prompt = `Estrai il testo completo da questa immagine. Se è un ordine scritto a mano o digitato, trascrivi tutto il testo esattamente come appare. Includi quantità, nomi prodotti, note. Rispondi SOLO con il testo estratto, senza commenti aggiuntivi.`;
+      try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const prompt = `Estrai il testo completo da questa immagine. Se è un ordine scritto a mano o digitato, trascrivi tutto il testo esattamente come appare. Includi quantità, nomi prodotti, note. Rispondi SOLO con il testo estratto, senza commenti aggiuntivi.`;
 
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: fileBase64,
-            mimeType: mimeType,
+        console.log(`📤 [GEMINI] Sending image to Gemini API...`);
+        const result = await model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              data: fileBase64,
+              mimeType: mimeType,
+            },
           },
-        },
-      ]);
+        ]);
 
-      const response = await result.response;
-      const extractedText = response.text();
+        console.log(`📥 [GEMINI] Response received`);
+        const response = await result.response;
+        const extractedText = response.text();
 
-      console.log(`✅ [GEMINI] Text extracted (${extractedText.length} chars)`);
-      return extractedText;
+        console.log(`✅ [GEMINI] Text extracted (${extractedText.length} chars)`);
+        return extractedText;
+      } catch (geminiError: any) {
+        console.error(`❌ [GEMINI] Gemini API error:`, geminiError);
+        console.error(`❌ [GEMINI] Error message:`, geminiError?.message || 'Unknown');
+        console.error(`❌ [GEMINI] Error response:`, geminiError?.response?.data || geminiError?.response || 'No response');
+        throw new Error(`Gemini OCR failed: ${geminiError?.message || geminiError}`);
+      }
     } else if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
       // Use OpenAI Whisper for audio/video (better format support)
       console.log(`🎤 [WHISPER] Using Whisper for audio transcription`);
