@@ -373,7 +373,7 @@ export default function CatalogoVenditoriPage() {
                 <span className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
                   2
                 </span>
-                <span>Incolla il <strong className="text-white">messaggio del cliente</strong> (WhatsApp, email, vocale trascritto)</span>
+                <span>Inserisci l'ordine del cliente: <strong className="text-white">testo</strong>, <strong className="text-white">foto</strong>, <strong className="text-white">audio</strong> o <strong className="text-white">registrazione vocale</strong></span>
               </li>
               <li className="flex items-start gap-2 sm:gap-3">
                 <span className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
