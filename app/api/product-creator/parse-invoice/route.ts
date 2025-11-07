@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     // Use Claude Sonnet with PDF support
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 4096,
+      max_tokens: 8192, // Aumentato per fatture con molti prodotti
       messages: [
         {
           role: 'user',
@@ -79,12 +79,16 @@ Per ogni prodotto, estrai:
 - unita_misura: unità di misura (es: PZ, KG, LT, CF, etc)
 - note: eventuali note o specifiche del prodotto
 
-IMPORTANTE:
-- Estrai TUTTI i prodotti dalla fattura, anche se sono molti
-- Se un campo non è presente, usa null
-- Per i numeri, usa il formato decimale con punto (es: 10.50 non "10,50")
-- Rispondi SOLO con un JSON valido nel formato:
+REGOLE CRITICHE PER IL JSON:
+1. Rispondi SOLO con un JSON valido, senza testo prima o dopo
+2. NON mettere virgole dopo l'ultimo elemento di array o oggetto
+3. Se un campo non è presente, usa null (senza virgolette)
+4. Per i numeri decimali usa il punto, non la virgola (es: 10.50 non "10,50")
+5. Estrai TUTTI i prodotti, anche se sono molti
+6. Assicurati che OGNI oggetto nell'array prodotti sia separato da virgola
+7. NON inserire commenti nel JSON
 
+Formato JSON richiesto:
 {
   "fornitore": "nome fornitore dalla fattura",
   "numero_fattura": "numero fattura",
@@ -92,17 +96,15 @@ IMPORTANTE:
   "prodotti": [
     {
       "nome": "...",
-      "codice": "..." o null,
+      "codice": null,
       "quantita": 0,
       "prezzo_unitario": 0.00,
       "prezzo_totale": 0.00,
-      "unita_misura": "..." o null,
-      "note": "..." o null
+      "unita_misura": null,
+      "note": null
     }
   ]
-}
-
-NON aggiungere testo prima o dopo il JSON. SOLO il JSON.`,
+}`,
             },
           ],
         },
@@ -118,9 +120,19 @@ NON aggiungere testo prima o dopo il JSON. SOLO il JSON.`,
     console.log('📝 Claude response:', responseText.substring(0, 500) + '...');
 
     // Parse JSON from response (handle markdown code blocks)
-    let jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
+    // Prova vari pattern per estrarre il JSON dai code block markdown
+    let jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
     if (!jsonMatch) {
-      jsonMatch = responseText.match(/```\n([\s\S]*?)\n```/);
+      jsonMatch = responseText.match(/```\s*([\s\S]*?)\s*```/);
+    }
+
+    // Se non trova backtick, cerca direttamente { } (JSON puro)
+    if (!jsonMatch && responseText.includes('{')) {
+      const startIdx = responseText.indexOf('{');
+      const endIdx = responseText.lastIndexOf('}');
+      if (startIdx !== -1 && endIdx !== -1) {
+        jsonMatch = [responseText, responseText.substring(startIdx, endIdx + 1)];
+      }
     }
 
     const jsonStr = jsonMatch ? jsonMatch[1] : responseText;
@@ -130,8 +142,22 @@ NON aggiungere testo prima o dopo il JSON. SOLO il JSON.`,
       parsedData = JSON.parse(jsonStr.trim());
     } catch (parseError: any) {
       console.error('❌ Errore parsing JSON da Claude:', parseError.message);
-      console.error('❌ JSON string:', jsonStr.substring(0, 500));
-      throw new Error(`Risposta AI non valida: ${parseError.message}. La risposta di Claude non è un JSON valido.`);
+      console.error('❌ JSON string (primi 1000 char):', jsonStr.substring(0, 1000));
+      console.error('❌ JSON string (ultimi 500 char):', jsonStr.substring(jsonStr.length - 500));
+
+      // Prova a riparare JSON comune: rimuovi trailing comma
+      try {
+        const fixedJson = jsonStr
+          .replace(/,\s*([\]}])/g, '$1') // Rimuovi virgole prima di ] o }
+          .replace(/}\s*{/g, '},{') // Aggiungi virgola tra oggetti
+          .replace(/\]\s*\[/g, '],['); // Aggiungi virgola tra array
+
+        console.log('🔧 Tentativo di riparazione JSON...');
+        parsedData = JSON.parse(fixedJson.trim());
+        console.log('✅ JSON riparato con successo!');
+      } catch (fixError) {
+        throw new Error(`Risposta AI non valida: ${parseError.message}. La risposta di Claude non è un JSON valido.`);
+      }
     }
 
     // Validate and clean data
