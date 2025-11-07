@@ -6,7 +6,9 @@ interface OdooOrderLinkProps {
 }
 
 export default function OdooOrderLink({ orderId, orderName }: OdooOrderLinkProps) {
-  const odooUrl = `https://erp.smartcash.cloud/web#id=${orderId}&model=sale.order&view_type=form`;
+  // Get Odoo URL from environment variable
+  const odooBaseUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+  const odooUrl = `${odooBaseUrl}/web#id=${orderId}&model=sale.order&view_type=form`;
 
   return (
     <div className="mt-4 animate-pulse-slow">
