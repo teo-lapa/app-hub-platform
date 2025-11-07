@@ -124,7 +124,15 @@ NON aggiungere testo prima o dopo il JSON. SOLO il JSON.`,
     }
 
     const jsonStr = jsonMatch ? jsonMatch[1] : responseText;
-    const parsedData = JSON.parse(jsonStr.trim());
+
+    let parsedData;
+    try {
+      parsedData = JSON.parse(jsonStr.trim());
+    } catch (parseError: any) {
+      console.error('❌ Errore parsing JSON da Claude:', parseError.message);
+      console.error('❌ JSON string:', jsonStr.substring(0, 500));
+      throw new Error(`Risposta AI non valida: ${parseError.message}. La risposta di Claude non è un JSON valido.`);
+    }
 
     // Validate and clean data
     if (!parsedData.prodotti || !Array.isArray(parsedData.prodotti)) {
