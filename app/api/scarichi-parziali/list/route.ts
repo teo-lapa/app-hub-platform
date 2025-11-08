@@ -109,23 +109,41 @@ async function getProdottiNonScaricati(sessionId: string, pickingId: number) {
   const moveLines = await callOdoo(sessionId, 'stock.move.line', 'search_read', [[
     ['picking_id', '=', pickingId]
   ]], {
-    fields: ['product_id', 'product_uom_id', 'qty_done', 'reserved_qty', 'product_qty']
+    fields: ['product_id', 'product_uom_id', 'qty_done']
   });
 
   const prodottiNonScaricati = [];
 
-  for (const line of moveLines) {
-    // reserved_qty o product_qty mostrano la quantità riservata/pianificata
-    const quantitaRiservata = line.reserved_qty || line.product_qty || 0;
-    const quantitaDone = line.qty_done || 0;
+  // Raggruppa per prodotto (potrebbero esserci più linee per lo stesso prodotto)
+  const prodottiMap = new Map();
 
-    // Se la quantità riservata è > 0 e qty_done è 0, il prodotto è nel furgone
-    if (quantitaRiservata > 0 && quantitaDone === 0) {
+  for (const line of moveLines) {
+    const productId = line.product_id ? line.product_id[0] : 0;
+    const productName = line.product_id ? line.product_id[1] : 'Prodotto sconosciuto';
+    const uom = line.product_uom_id ? line.product_uom_id[1] : 'PZ';
+    const qtyDone = line.qty_done || 0;
+
+    if (!prodottiMap.has(productId)) {
+      prodottiMap.set(productId, {
+        nome: productName,
+        quantitaEffettiva: 0,
+        uom: uom
+      });
+    }
+
+    const prodotto = prodottiMap.get(productId);
+    prodotto.quantitaEffettiva += qtyDone;
+  }
+
+  // Converti la mappa in array
+  // Se qty_done è 0, significa che il prodotto è ancora nel furgone (non consegnato)
+  for (const [productId, prodotto] of prodottiMap) {
+    if (prodotto.quantitaEffettiva === 0) {
       prodottiNonScaricati.push({
-        nome: line.product_id ? line.product_id[1] : 'Prodotto sconosciuto',
-        quantitaRichiesta: quantitaRiservata,
-        quantitaEffettiva: quantitaDone,
-        uom: line.product_uom_id ? line.product_uom_id[1] : 'PZ'
+        nome: prodotto.nome,
+        quantitaRichiesta: 1, // Non abbiamo questo dato dalle move_line
+        quantitaEffettiva: prodotto.quantitaEffettiva,
+        uom: prodotto.uom
       });
     }
   }
