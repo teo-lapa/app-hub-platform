@@ -107,23 +107,24 @@ async function getProdottiNonScaricati(sessionId: string, pickingId: number) {
   // Questi sono i prodotti effettivamente riservati/disponibili nel furgone
 
   const moveLines = await callOdoo(sessionId, 'stock.move.line', 'search_read', [[
-    ['picking_id', '=', pickingId],
-    ['state', 'in', ['assigned', 'partially_available']]
+    ['picking_id', '=', pickingId]
   ]], {
-    fields: ['product_id', 'product_uom_id', 'reserved_uom_qty', 'location_id', 'location_dest_id']
+    fields: ['product_id', 'product_uom_id', 'qty_done', 'reserved_qty', 'product_qty']
   });
 
   const prodottiNonScaricati = [];
 
   for (const line of moveLines) {
-    const quantitaRiservata = line.reserved_uom_qty || 0;
+    // reserved_qty o product_qty mostrano la quantità riservata/pianificata
+    const quantitaRiservata = line.reserved_qty || line.product_qty || 0;
+    const quantitaDone = line.qty_done || 0;
 
-    // Se c'è quantità riservata, significa che il prodotto è nel furgone
-    if (quantitaRiservata > 0) {
+    // Se la quantità riservata è > 0 e qty_done è 0, il prodotto è nel furgone
+    if (quantitaRiservata > 0 && quantitaDone === 0) {
       prodottiNonScaricati.push({
         nome: line.product_id ? line.product_id[1] : 'Prodotto sconosciuto',
         quantitaRichiesta: quantitaRiservata,
-        quantitaEffettiva: 0, // Non ancora consegnato
+        quantitaEffettiva: quantitaDone,
         uom: line.product_uom_id ? line.product_uom_id[1] : 'PZ'
       });
     }
