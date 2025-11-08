@@ -8,6 +8,39 @@ module.exports = {
   darkMode: 'class',
   theme: {
     extend: {
+      screens: {
+        'xs': '480px',
+        'sm': '640px',
+        'md': '768px',
+        'lg': '1024px',
+        'xl': '1280px',
+        '2xl': '1536px',
+        // Custom breakpoints for tablets
+        'tablet': '768px',
+        'tablet-lg': '1024px',
+        // Landscape orientation
+        'landscape': { 'raw': '(orientation: landscape)' },
+      },
+      spacing: {
+        'safe-top': 'env(safe-area-inset-top)',
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+        'safe-left': 'env(safe-area-inset-left)',
+        'safe-right': 'env(safe-area-inset-right)',
+      },
+      minHeight: {
+        'touch': '44px',
+        'touch-lg': '48px',
+        'screen-dynamic': '100dvh',
+      },
+      minWidth: {
+        'touch': '44px',
+        'touch-lg': '48px',
+      },
+      fontSize: {
+        'xs-mobile': ['0.75rem', { lineHeight: '1.25rem' }],
+        'sm-mobile': ['0.875rem', { lineHeight: '1.375rem' }],
+        'base-mobile': ['1rem', { lineHeight: '1.5rem' }],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

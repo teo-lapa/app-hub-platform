@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 import { predictionEngine } from '@/lib/smart-ordering/prediction-engine';
+import { sql } from '@vercel/postgres';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -29,46 +30,217 @@ export async function GET(request: NextRequest) {
 
     const rpc = createOdooRPCClient(sessionId);
 
-    // 1. Carica prodotti con stock
+    // 1. Load PRE-ORDINE tag ID to exclude preorder products
+    console.log('🔍 Caricamento tag PRE-ORDINE...');
+    let preOrderTagId: number | null = null;
+    try {
+      const tags = await rpc.searchRead(
+        'product.tag',
+        [['name', 'ilike', 'PRE-ORDINE']],
+        ['id', 'name'],
+        1
+      );
+      if (tags && tags.length > 0) {
+        preOrderTagId = tags[0].id;
+        console.log(`✅ Found PRE-ORDINE tag ID: ${preOrderTagId}`);
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not load PRE-ORDINE tag:', error);
+    }
+
+    // 2. Get templates with PRE-ORDINE tag
+    let excludedTemplateIds: number[] = [];
+    if (preOrderTagId) {
+      console.log('🔍 Caricamento template con tag PRE-ORDINE...');
+      const preorderTemplates = await rpc.searchRead(
+        'product.template',
+        [
+          ['product_tag_ids', 'in', [preOrderTagId]],
+          ['active', '=', true]
+        ],
+        ['id'],
+        0
+      );
+      excludedTemplateIds = preorderTemplates.map((t: any) => t.id);
+      console.log(`🚫 Excluding ${excludedTemplateIds.length} preorder templates`);
+    }
+
+    // 3. Carica prodotti con stock (excluding preorder products)
     console.log('📦 Caricamento prodotti...');
+    const productFilter: any[] = [
+      ['type', '=', 'product'],
+      ['active', '=', true]
+    ];
+
+    if (excludedTemplateIds.length > 0) {
+      productFilter.push(['product_tmpl_id', 'not in', excludedTemplateIds]);
+    }
+
     const products = await rpc.searchRead(
       'product.product',
-      [
-        ['type', '=', 'product'],
-        ['active', '=', true]
-      ],
+      productFilter,
       ['id', 'name', 'default_code', 'qty_available', 'uom_id', 'list_price', 'seller_ids', 'product_tmpl_id'],
       0
     );
 
-    console.log(`✅ ${products.length} prodotti caricati`);
+    console.log(`✅ ${products.length} prodotti caricati (excluding preorder products)`);
 
-    // 2. Carica info fornitori
-    const sellerIds = products.flatMap((p: any) => p.seller_ids || []).filter((id: number) => id > 0);
-    let supplierMap = new Map();
+    // Load ALL incoming stock moves at once (batch query for efficiency)
+    console.log('📦 Caricamento merce in arrivo...');
+    const productIds = products.map((p: any) => p.id);
 
-    if (sellerIds.length > 0) {
-      const sellers = await rpc.searchRead(
-        'product.supplierinfo',
-        [['id', 'in', sellerIds]],
-        ['partner_id', 'product_tmpl_id', 'delay', 'price'],
-        0
-      );
+    const incomingMoves = await rpc.searchRead(
+      'stock.move',
+      [
+        ['product_id', 'in', productIds],
+        ['picking_code', '=', 'incoming'],
+        ['state', 'in', ['confirmed', 'assigned', 'waiting']],
+      ],
+      ['product_id', 'product_uom_qty', 'date'],
+      0
+    );
 
-      sellers.forEach((s: any) => {
-        supplierMap.set(s.product_tmpl_id[0], {
-          id: s.partner_id[0],
-          name: s.partner_id[1],
-          leadTime: s.delay || 7,
-          price: s.price
-        });
-      });
-    }
+    // Aggregate by product_id
+    const incomingByProduct = new Map();
+    incomingMoves.forEach((move: any) => {
+      const productId = move.product_id[0];
+      const existing = incomingByProduct.get(productId) || { qty: 0, earliestDate: null };
+      existing.qty += move.product_uom_qty || 0;
 
-    // 3. Carica vendite ultimi 3 mesi
+      // Track earliest arrival date
+      if (move.date) {
+        const moveDate = new Date(move.date);
+        if (!existing.earliestDate || moveDate < existing.earliestDate) {
+          existing.earliestDate = moveDate;
+        }
+      }
+
+      incomingByProduct.set(productId, existing);
+    });
+
+    console.log(`✅ Trovati ${incomingMoves.length} movimenti in arrivo per ${incomingByProduct.size} prodotti`);
+
+    // 2. Calcola data 3 mesi fa
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
+    // 3. Carica ultimi ordini acquisto (ultimi 3 mesi) per determinare fornitore principale
+    console.log('📋 Caricamento ordini acquisto recenti...');
+    const purchaseOrders = await rpc.searchRead(
+      'purchase.order.line',
+      [
+        ['order_id.date_order', '>=', threeMonthsAgo.toISOString().split('T')[0]],
+        ['order_id.state', 'in', ['purchase', 'done']],
+        ['product_id', 'in', products.map((p: any) => p.id)]
+      ],
+      ['product_id', 'partner_id', 'order_id', 'product_qty', 'date_order'],
+      0
+    );
+
+    console.log(`✅ ${purchaseOrders.length} righe ordini acquisto caricate`);
+
+    // 4. Calcola fornitore principale per ogni prodotto (Opzione 3: Ordini Recenti)
+    const supplierMap = new Map();
+    const productPurchases = new Map(); // product_id -> [{supplierId, qty, date, orderId}]
+
+    purchaseOrders.forEach((line: any) => {
+      const productId = line.product_id[0];
+      if (!productPurchases.has(productId)) {
+        productPurchases.set(productId, []);
+      }
+      productPurchases.get(productId).push({
+        supplierId: line.partner_id[0],
+        supplierName: line.partner_id[1],
+        qty: line.product_qty || 0,
+        date: line.date_order,
+        orderId: line.order_id[0]
+      });
+    });
+
+    // Per ogni prodotto, trova fornitore principale
+    productPurchases.forEach((purchases, productId) => {
+      // Ordina per data decrescente (più recente prima)
+      purchases.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      // LOGICA OPZIONE 3: Fornitore dell'ultimo ordine + almeno 2 ordini negli ultimi 3 mesi
+      const supplierStats = new Map(); // supplierId -> {count, totalQty, lastDate}
+
+      purchases.forEach((p: any) => {
+        if (!supplierStats.has(p.supplierId)) {
+          supplierStats.set(p.supplierId, {
+            supplierId: p.supplierId,
+            supplierName: p.supplierName,
+            count: 0,
+            totalQty: 0,
+            lastDate: null
+          });
+        }
+        const stat = supplierStats.get(p.supplierId);
+        stat.count++;
+        stat.totalQty += p.qty;
+        if (!stat.lastDate || new Date(p.date) > new Date(stat.lastDate)) {
+          stat.lastDate = p.date;
+        }
+      });
+
+      // Trova fornitore principale: ultimo ordine + almeno 2 ordini totali
+      const lastSupplier = purchases[0]; // Più recente
+      const lastSupplierStats = supplierStats.get(lastSupplier.supplierId);
+
+      let mainSupplier = null;
+
+      if (lastSupplierStats && lastSupplierStats.count >= 2) {
+        // Ultimo fornitore ha almeno 2 ordini → è il principale
+        mainSupplier = lastSupplierStats;
+      } else {
+        // Prendi chi ha fatto più ordini (frequenza)
+        const sortedByCount = Array.from(supplierStats.values()).sort((a: any, b: any) => b.count - a.count);
+        mainSupplier = sortedByCount[0];
+      }
+
+      if (mainSupplier) {
+        // Trova il prodotto per ottenere product_tmpl_id
+        const product = products.find((p: any) => p.id === productId);
+        const templateId = product?.product_tmpl_id ? product.product_tmpl_id[0] : productId;
+
+        supplierMap.set(templateId, {
+          id: mainSupplier.supplierId,
+          name: mainSupplier.supplierName,
+          leadTime: 7, // Default, verrà sovrascritto se disponibile
+          price: 0
+        });
+      }
+    });
+
+    console.log(`✅ ${supplierMap.size} prodotti con fornitore principale identificato`);
+
+    // 4.5. Carica cadenze fornitori dal database
+    console.log('📅 Caricamento cadenze fornitori...');
+    const cadencesResult = await sql`
+      SELECT odoo_supplier_id, cadence_value, average_lead_time_days, is_active
+      FROM supplier_avatars
+      WHERE is_active = true AND cadence_value IS NOT NULL
+    `;
+
+    const supplierCadences = new Map();
+    cadencesResult.rows.forEach((row: any) => {
+      supplierCadences.set(row.odoo_supplier_id, {
+        cadenceDays: row.cadence_value,
+        leadTimeDays: row.average_lead_time_days || 3
+      });
+    });
+    console.log(`✅ ${supplierCadences.size} cadenze caricate dal database`);
+
+    // Aggiorna supplierMap con le cadenze reali
+    supplierMap.forEach((supplier: any, templateId: any) => {
+      const cadence = supplierCadences.get(supplier.id);
+      if (cadence) {
+        supplier.leadTime = cadence.leadTimeDays;
+        supplier.cadenceDays = cadence.cadenceDays;
+      }
+    });
+
+    // 5. Carica vendite ultimi 3 mesi
     console.log('📊 Caricamento vendite...');
     const sales = await rpc.searchRead(
       'sale.order.line',
@@ -83,7 +255,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ ${sales.length} righe vendite caricate`);
 
-    // 4. Calcola vendite per prodotto
+    // 6. Calcola vendite per prodotto
     const salesByProduct = new Map();
     sales.forEach((line: any) => {
       const pid = line.product_id[0];
@@ -93,7 +265,7 @@ export async function GET(request: NextRequest) {
       salesByProduct.get(pid).push(line.product_uom_qty || 0);
     });
 
-    // 5. Analizza ogni prodotto
+    // 7. Analizza ogni prodotto
     const analyzedProducts = [];
 
     for (const product of products) {
@@ -116,11 +288,20 @@ export async function GET(request: NextRequest) {
       const stdDev = Math.sqrt(variance);
       const variability = mean > 0 ? stdDev / mean : 0.5;
 
-      // USA PREDICTION ENGINE MIGLIORATO
+      // Add incoming quantity to current stock
+      const incomingData = incomingByProduct.get(product.id);
+      const incomingQty = incomingData?.qty || 0;
+      const effectiveStock = (product.qty_available || 0) + incomingQty;
+
+      if (incomingQty > 0) {
+        console.log(`📊 Prodotto ${product.id} (${product.name}): Stock ${product.qty_available} + In arrivo ${incomingQty} = ${effectiveStock}`);
+      }
+
+      // USA PREDICTION ENGINE MIGLIORATO con stock effettivo
       const prediction = predictionEngine.predict({
         productId: product.id,
         productName: product.name,
-        currentStock: product.qty_available || 0,
+        currentStock: effectiveStock, // Use adjusted stock!
         avgDailySales,
         variability,
         leadTimeDays: supplier.leadTime,
@@ -128,6 +309,7 @@ export async function GET(request: NextRequest) {
           id: supplier.id,
           name: supplier.name,
           leadTime: supplier.leadTime,
+          cadenceDays: supplier.cadenceDays, // NUOVA: cadenza fornitore dal DB
           reliability: 70 // Default
         },
         productPrice: product.list_price
@@ -137,6 +319,9 @@ export async function GET(request: NextRequest) {
         id: product.id,
         name: product.name,
         currentStock: product.qty_available || 0,
+        incomingQty: incomingQty, // Add incoming data to response
+        incomingDate: incomingData?.earliestDate,
+        effectiveStock: effectiveStock, // Total available including incoming
         avgDailySales,
         daysRemaining: prediction.daysRemaining,
         urgencyLevel: prediction.urgencyLevel,
@@ -154,7 +339,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ ${analyzedProducts.length} prodotti analizzati`);
 
-    // 6. Raggruppa per fornitore
+    // 8. Raggruppa per fornitore
     const supplierGroups = new Map();
 
     analyzedProducts.forEach((p: any) => {
@@ -207,6 +392,9 @@ export async function GET(request: NextRequest) {
         id: p.id,
         name: p.name,
         currentStock: p.currentStock,
+        incomingQty: p.incomingQty || 0,
+        incomingDate: p.incomingDate,
+        effectiveStock: p.effectiveStock,
         avgDailySales: p.avgDailySales,
         daysRemaining: p.daysRemaining,
         urgencyLevel: p.urgencyLevel,
@@ -221,7 +409,7 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // 7. Converti in array e ordina
+    // 9. Converti in array e ordina
     const suppliers = Array.from(supplierGroups.values());
     suppliers.sort((a, b) => {
       if (a.criticalCount !== b.criticalCount) return b.criticalCount - a.criticalCount;
@@ -229,18 +417,19 @@ export async function GET(request: NextRequest) {
       return b.estimatedValue - a.estimatedValue;
     });
 
-    // Solo fornitori urgenti
+    // Calcola fornitori urgenti per statistiche
     const urgentSuppliers = suppliers.filter(s => s.criticalCount > 0 || s.highCount > 0);
 
     const executionTime = Date.now() - startTime;
     console.log(`✅ Analisi completata in ${executionTime}ms`);
+    console.log(`📊 Totale fornitori: ${suppliers.length}, Urgenti: ${urgentSuppliers.length}`);
 
     return NextResponse.json({
       success: true,
       analyzedAt: new Date().toISOString(),
       totalSuppliers: suppliers.length,
       urgentSuppliers: urgentSuppliers.length,
-      suppliers: urgentSuppliers,
+      suppliers: suppliers, // Ritorna TUTTI i fornitori, non solo urgenti
       summary: {
         totalCritical: suppliers.reduce((sum, s) => sum + s.criticalCount, 0),
         totalHigh: suppliers.reduce((sum, s) => sum + s.highCount, 0),

@@ -67,6 +67,21 @@ export default function ProductCreator() {
         body: formData,
       });
 
+      // Verifica che la risposta sia OK
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Errore HTTP:', response.status, errorText.substring(0, 200));
+        throw new Error(`Errore HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // Verifica che sia JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('Risposta non JSON:', responseText.substring(0, 200));
+        throw new Error('La risposta del server non è JSON valido');
+      }
+
       const result = await response.json();
 
       if (result.success) {

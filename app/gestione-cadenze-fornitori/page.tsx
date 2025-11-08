@@ -151,15 +151,26 @@ export default function GestioneCadenzeFornitori() {
       const changesArray = Array.from(changes.entries());
       for (const [supplierId, changeData] of changesArray) {
         try {
+          // Build request body with only changed fields
+          const body: any = {};
+
+          if (changeData.cadence_value !== undefined) {
+            body.cadence_value = changeData.cadence_value;
+            body.cadence_type = 'fixed_days'; // Only set type when changing value
+          }
+
+          if (changeData.is_active !== undefined) {
+            body.is_active = changeData.is_active;
+          }
+
+          if (changeData.notes !== undefined) {
+            body.notes = changeData.notes || null;
+          }
+
           const response = await fetch(`/api/supplier-cadence/${supplierId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              cadence_value: changeData.cadence_value,
-              cadence_type: 'fixed_days',
-              is_active: changeData.is_active,
-              notes: changeData.notes || null
-            })
+            body: JSON.stringify(body)
           });
 
           const data = await response.json();
@@ -238,7 +249,7 @@ export default function GestioneCadenzeFornitori() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Link
-              href="/"
+              href="/ordini-smart-v2"
               className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all backdrop-blur-sm"
             >
               <ArrowLeft className="w-6 h-6" />

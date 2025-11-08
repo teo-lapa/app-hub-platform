@@ -60,6 +60,12 @@ export default function CatalogoLapaPage() {
         })
       });
 
+      // Verifica che la risposta sia JSON valido
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('La risposta del server non è JSON valido');
+      }
+
       const data: OdooResponse = await response.json();
 
       if (data.success && data.data) {
@@ -91,6 +97,13 @@ export default function CatalogoLapaPage() {
           search: ''
         })
       });
+
+      // Verifica che la risposta sia JSON valido
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('❌ Risposta non JSON dalla cache');
+        return;
+      }
 
       const data: OdooResponse = await response.json();
 

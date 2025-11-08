@@ -217,6 +217,53 @@ export interface SystemStatus {
   lastUpdate: string;
 }
 
+// Sales Timeline types
+export interface SalesTimelineData {
+  summary: {
+    totalOrders: number;
+    totalValue: number;
+    avgOrderValue: number;
+  };
+  byPeriod: SalesPeriodGroup[];
+  byTeam: SalesTeamGroup[];
+  timeline: TimelineDataPoint[];
+}
+
+export interface SalesPeriodGroup {
+  period: string;
+  orderCount: number;
+  totalValue: number;
+  orders: SalesOrder[];
+}
+
+export interface SalesTeamGroup {
+  teamName: string;
+  salesperson: string;
+  orderCount: number;
+  totalValue: number;
+  avgOrderValue: number;
+}
+
+export interface SalesOrder {
+  id: number;
+  name: string;
+  date_order: string;
+  commitment_date: string;
+  amount_total: number;
+  user_id: [number, string]; // Odoo many2one format [id, name]
+  team_id?: [number, string];
+  state: string;
+}
+
+export interface TimelineDataPoint {
+  date: string;
+  orderCount: number;
+  value: number;
+}
+
+export type GroupByOption = 'day' | 'week' | 'month' | 'team';
+export type PeriodOption = 'today' | 'week' | 'month' | 'quarter' | 'year';
+
 // Aggregated dashboard data interface
 export interface DashboardData {
   kpi: KPIData;

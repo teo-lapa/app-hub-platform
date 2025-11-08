@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, Package, Barcode, Tag, Eye, ArrowLeft, Home, X, Sparkles, Wand2 } from 'lucide-react';
 import Link from 'next/link';
 import { AIImageModal } from '@/components/catalogo-lapa/AIImageModal';
+import { useAppAccess } from '@/hooks/useAppAccess';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -30,6 +31,9 @@ interface OdooResponse {
 }
 
 export default function ProductPhotoManagerPage() {
+  // 🔐 CONTROLLO ACCESSO CENTRALIZZATO
+  const { hasAccess, loading: accessLoading } = useAppAccess('s34', true);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]); // Cache completa
   const [loading, setLoading] = useState(true);
@@ -44,8 +48,61 @@ export default function ProductPhotoManagerPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Categoria selezionata
   const [isAIModalOpen, setIsAIModalOpen] = useState(false); // Modal AI
   const [productForAI, setProductForAI] = useState<Product | null>(null); // Prodotto per AI
+  const [isMounted, setIsMounted] = useState(false);
 
   const productsPerPage = 50;
+
+  // Effetto per tracciare il mount del componente
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  // Carica prima pagina all'avvio
+  useEffect(() => {
+    if (hasAccess && !accessLoading) {
+      loadProducts(1, '');
+      // Avvia caricamento cache in background
+      setTimeout(() => loadAllProductsInBackground(), 1000);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasAccess, accessLoading]);
+
+  // Ricerca veloce automatica
+  useEffect(() => {
+    if (!hasAccess || accessLoading) return;
+
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim().length >= 3 || searchQuery.trim().length === 0) {
+        if (isCacheComplete) {
+          // Ricerca istantanea nella cache
+          searchInCache(searchQuery, 1);
+        } else {
+          // Ricerca server-side se cache non pronta
+          setIsAutoSearching(true);
+          setCurrentPage(1);
+          loadProducts(1, searchQuery, selectedCategory).finally(() => {
+            setIsAutoSearching(false);
+          });
+        }
+      }
+    }, isCacheComplete ? 0 : 300); // Istantanea se cache pronta, altrimenti 300ms
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, isCacheComplete, hasAccess, accessLoading]);
+
+  // 🔐 Se accesso negato, mostra schermata di caricamento mentre viene reindirizzato
+  if (accessLoading || !hasAccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+          <p className="text-slate-300">Verifica accesso in corso...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Handler quando viene generata una nuova immagine
   const handleImageGenerated = async (newImageBase64: string) => {
@@ -82,6 +139,8 @@ export default function ProductPhotoManagerPage() {
 
   // Carica prodotti con dati VERI da Odoo
   const loadProducts = async (page: number = 1, search: string = '', category: string | null = null) => {
+    if (!isMounted) return;
+
     try {
       setLoading(true);
       setError(null);
@@ -99,6 +158,8 @@ export default function ProductPhotoManagerPage() {
 
       const data: OdooResponse = await response.json();
 
+      if (!isMounted) return;
+
       if (data.success && data.data) {
         setProducts(data.data);
         setTotalProducts(data.total || data.data.length);
@@ -108,15 +169,20 @@ export default function ProductPhotoManagerPage() {
       }
     } catch (err) {
       console.error('Errore API:', err);
+      if (!isMounted) return;
       setError('Errore di connessione al server');
       setProducts([]);
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
   };
 
   // Carica tutti i prodotti in background per la cache
   const loadAllProductsInBackground = async () => {
+    if (!isMounted) return;
+
     try {
       console.log('🚀 Inizio caricamento cache completa...');
       const response = await fetch('/api/catalogo-lapa/products', {
@@ -130,6 +196,8 @@ export default function ProductPhotoManagerPage() {
       });
 
       const data: OdooResponse = await response.json();
+
+      if (!isMounted) return;
 
       if (data.success && data.data) {
         setAllProducts(data.data);
@@ -189,13 +257,6 @@ export default function ProductPhotoManagerPage() {
     setCurrentPage(page);
   };
 
-  // Carica prima pagina all'avvio
-  useEffect(() => {
-    loadProducts(1, searchQuery);
-    // Avvia caricamento cache in background
-    setTimeout(() => loadAllProductsInBackground(), 1000);
-  }, []);
-
   // Gestisci ricerca
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,27 +281,6 @@ export default function ProductPhotoManagerPage() {
     setCurrentPage(1);
     loadProducts(1, '', category);
   };
-
-  // Ricerca veloce automatica
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (searchQuery.trim().length >= 3 || searchQuery.trim().length === 0) {
-        if (isCacheComplete) {
-          // Ricerca istantanea nella cache
-          searchInCache(searchQuery, 1);
-        } else {
-          // Ricerca server-side se cache non pronta
-          setIsAutoSearching(true);
-          setCurrentPage(1);
-          loadProducts(1, searchQuery).finally(() => {
-            setIsAutoSearching(false);
-          });
-        }
-      }
-    }, isCacheComplete ? 0 : 300); // Istantanea se cache pronta, altrimenti 300ms
-
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, isCacheComplete]);
 
   // Cambia pagina
   const handlePageChange = (newPage: number) => {

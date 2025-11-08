@@ -58,7 +58,66 @@ export default function MenuPDFGeneratorPage() {
     fetchRestaurantInfo();
   }, []);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Funzione per comprimere immagini (max 1024px, qualità 80%)
+  const compressImage = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // Calcola dimensioni target (max 1024px sul lato più lungo)
+          const MAX_SIZE = 1024;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height = (height * MAX_SIZE) / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width = (width * MAX_SIZE) / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          // Crea canvas per ridimensionare
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Impossibile creare il canvas'));
+            return;
+          }
+
+          // Disegna immagine ridimensionata
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Converti in JPEG con qualità 80%
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+          // Log della compressione
+          const originalSize = (file.size / 1024).toFixed(0);
+          const compressedSize = ((compressedBase64.length * 3) / 4 / 1024).toFixed(0);
+          console.log(`📸 Compressione: ${originalSize}KB → ${compressedSize}KB (${width}x${height}px)`);
+
+          resolve(compressedBase64);
+        };
+
+        img.onerror = () => reject(new Error('Errore nel caricamento dell\'immagine'));
+        img.src = e.target?.result as string;
+      };
+
+      reader.onerror = () => reject(new Error('Errore nella lettura del file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -67,14 +126,18 @@ export default function MenuPDFGeneratorPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      setImageInput(base64);
-      setImagePreview(base64);
-      toast.success('Foto del menu caricata!');
-    };
-    reader.readAsDataURL(file);
+    try {
+      toast.loading('Compressione foto...');
+      const compressedBase64 = await compressImage(file);
+      setImageInput(compressedBase64);
+      setImagePreview(compressedBase64);
+      toast.dismiss();
+      toast.success('Foto del menu caricata e ottimizzata!');
+    } catch (error: any) {
+      console.error('Errore compressione:', error);
+      toast.dismiss();
+      toast.error('Errore durante la compressione della foto');
+    }
   };
 
   const handleGenerateMenu = async () => {
@@ -213,7 +276,7 @@ export default function MenuPDFGeneratorPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
 
@@ -222,13 +285,17 @@ export default function MenuPDFGeneratorPage() {
                       return;
                     }
 
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      const base64 = event.target?.result as string;
-                      setRestaurantLogo(base64);
-                      toast.success('Logo caricato!');
-                    };
-                    reader.readAsDataURL(file);
+                    try {
+                      toast.loading('Compressione logo...');
+                      const compressedBase64 = await compressImage(file);
+                      setRestaurantLogo(compressedBase64);
+                      toast.dismiss();
+                      toast.success('Logo caricato e ottimizzato!');
+                    } catch (error: any) {
+                      console.error('Errore compressione logo:', error);
+                      toast.dismiss();
+                      toast.error('Errore durante la compressione del logo');
+                    }
                   }}
                   className="hidden"
                   id="logo-upload"

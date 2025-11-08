@@ -39,21 +39,46 @@ export async function POST(request: NextRequest) {
     console.log('[Smart Route AI] Connessione Odoo OK');
 
     // Search for WH/PICK pickings using RPC client searchRead
+    // Exclude backorders (ordini residui)
     const pickings = await rpcClient.searchRead(
       'stock.picking',
       [
         ['name', 'ilike', 'WH/PICK'],
         ['state', 'in', ['confirmed', 'assigned', 'waiting']],
         ['scheduled_date', '>=', `${dateFrom} 00:00:00`],
-        ['scheduled_date', '<=', `${dateTo} 23:59:59`]
+        ['scheduled_date', '<=', `${dateTo} 23:59:59`],
+        ['backorder_id', '=', false]  // Exclude back orders
       ],
       [
         'id', 'name', 'partner_id',
-        'scheduled_date', 'state', 'move_ids_without_package'
+        'scheduled_date', 'state', 'move_ids_without_package', 'batch_id'
       ],
       500,
       'scheduled_date'
     );
+
+    // Collect all unique batch IDs to fetch vehicle/driver info
+    const batchIdsSet = new Set(pickings.map((p: any) => p.batch_id?.[0]).filter(Boolean));
+    const batchIds = Array.from(batchIdsSet);
+
+    // Fetch batch info with vehicle and driver in bulk
+    let batchesMap: Record<number, any> = {};
+    if (batchIds.length > 0) {
+      console.log(`[Smart Route AI] Caricamento ${batchIds.length} batch con veicoli/autisti...`);
+
+      const batches = await rpcClient.callKw(
+        'stock.picking.batch',
+        'read',
+        [batchIds, ['id', 'name', 'x_studio_auto_del_giro', 'x_studio_autista_del_giro']]
+      );
+
+      // Create map: batchId -> batch data
+      for (const batch of batches) {
+        batchesMap[batch.id] = batch;
+      }
+
+      console.log(`[Smart Route AI] Caricati ${batches.length} batch con info veicoli`);
+    }
 
     console.log(`[Smart Route AI] Trovati ${pickings.length} picking WH/PICK`);
 
@@ -135,6 +160,10 @@ export async function POST(request: NextRequest) {
         ].filter(Boolean);
         const address = addressParts.join(', ') || partner.name || 'Indirizzo sconosciuto';
 
+        // Get batch info if exists
+        const batchId = picking.batch_id ? picking.batch_id[0] : null;
+        const batch = batchId ? batchesMap[batchId] : null;
+
         formattedPickings.push({
           id: picking.id,
           name: picking.name,
@@ -145,7 +174,11 @@ export async function POST(request: NextRequest) {
           lng: partner.partner_longitude,
           weight: totalWeight,
           scheduledDate: picking.scheduled_date,
-          state: picking.state
+          state: picking.state,
+          batchId: batchId,
+          batchName: picking.batch_id ? picking.batch_id[1] : null,
+          batchVehicleName: batch?.x_studio_auto_del_giro ? batch.x_studio_auto_del_giro[1] : null,
+          batchDriverName: batch?.x_studio_autista_del_giro ? batch.x_studio_autista_del_giro[1] : null
         });
       }
     }

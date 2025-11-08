@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent, BarChart } from 'lucide-react';
 import Link from 'next/link';
 
 interface KPICardProps {
@@ -27,6 +27,7 @@ function KPICard({ title, value, change, changeType, icon, gradient, subtitle, i
       case 'Revenue': return '/super-dashboard/revenue';
       case 'Orders': return '/super-dashboard/orders';
       case 'Customers': return '/super-dashboard/customers';
+      case 'Analisi Prodotti': return '/analisi-prodotto';
       default: return '#';
     }
   };
@@ -253,6 +254,15 @@ export function KPISummarySection({ period }: KPISummarySectionProps) {
       subtitle: kpiData.orders.subtitle,
     },
     {
+      title: 'Analisi Prodotti',
+      value: 'Vai',
+      change: '',
+      changeType: 'neutral' as const,
+      icon: <BarChart className="w-6 h-6 text-white" />,
+      gradient: 'from-indigo-500 to-purple-600',
+      subtitle: 'Analisi dettagliata vendite e margini per prodotto',
+    },
+    {
       title: 'Customers',
       value: kpiData.customers.value.toString(),
       change: `${kpiData.customers.change > 0 ? '+' : ''}${kpiData.customers.change}`,
@@ -316,7 +326,7 @@ export function KPISummarySection({ period }: KPISummarySectionProps) {
         </h2>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8 gap-4">
         {kpis.map((kpi, index) => (
           <KPICard key={index} {...kpi} index={index} />
         ))}

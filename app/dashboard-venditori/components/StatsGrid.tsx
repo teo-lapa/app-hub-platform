@@ -53,27 +53,27 @@ export function StatsGrid({ stats, loading }: StatsGridProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-5 mb-4 sm:mb-6 md:mb-8">
       {statCards.map((card, index) => (
         <div
           key={index}
-          className={`bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border-l-4 ${card.borderColor} relative overflow-hidden group`}
+          className={`bg-white p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg sm:rounded-xl shadow-md hover:shadow-lg transition-shadow border-l-4 ${card.borderColor} relative overflow-hidden group`}
         >
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 to-emerald-600"></div>
 
           <div className="text-center">
-            <div className="text-4xl font-bold text-slate-800 my-3">
+            <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-slate-800 my-1 sm:my-2 md:my-3">
               {loading ? (
-                <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <div className="inline-block w-6 h-6 sm:w-8 sm:h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
               ) : (
-                card.number
+                <span className="block truncate px-1">{card.number}</span>
               )}
             </div>
-            <div className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
+            <div className="text-xs sm:text-sm font-semibold text-slate-600 uppercase tracking-wide">
               {card.label}
             </div>
             <div
-              className={`text-xs font-semibold mt-2 ${
+              className={`text-[10px] sm:text-xs font-semibold mt-1 sm:mt-2 ${
                 card.changeType === 'positive'
                   ? 'text-green-600'
                   : card.changeType === 'negative'

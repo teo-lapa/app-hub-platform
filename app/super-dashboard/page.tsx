@@ -12,6 +12,7 @@ import { ProductIntelligenceSection } from '@/components/super-dashboard/Product
 import { AlertsSection } from '@/components/super-dashboard/AlertsSection';
 import { AIInsightsSection } from '@/components/super-dashboard/AIInsightsSection';
 import { QuickActionsSection } from '@/components/super-dashboard/QuickActionsSection';
+import { SalesOrdersTimelineSection } from '@/components/super-dashboard/SalesOrdersTimelineSection';
 import { RefreshCw, Settings, Download, Calendar, Home } from 'lucide-react';
 import Link from 'next/link';
 
@@ -139,6 +140,9 @@ export default function SuperDashboardPage() {
       <div className="max-w-[1800px] mx-auto px-6 py-6 space-y-6">
         {/* KPI Summary Cards */}
         <KPISummarySection period={selectedPeriod} />
+
+        {/* Sales Orders Timeline - NEW SECTION */}
+        <SalesOrdersTimelineSection period={selectedPeriod} groupBy="week" />
 
         {/* Row 1: Customer Health + Alerts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

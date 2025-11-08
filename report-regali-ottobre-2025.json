@@ -1,0 +1,836 @@
+{
+  "periodo": "Ottobre 2025",
+  "costoTotaleRegali": "2279.03",
+  "numeroArticoliRegalati": 95,
+  "distribuzioneCosti": {
+    "Sotto €5": 43,
+    "€5 - €20": 27,
+    "€20 - €50": 16,
+    "€50 - €100": 3,
+    "Oltre €100": 6
+  },
+  "top10": [
+    {
+      "nome": "CAFFE IN GRANI BORBONE MISCELA ROSSA VENDING CONF 1KG 6KG CRT BOR",
+      "quantita": 35,
+      "costoTotale": "415.50",
+      "costoUnitario": "11.87"
+    },
+    {
+      "nome": "BABA GRANDI SECCHI TEDESCO 90 PZ 2.25KG CRT FERR",
+      "quantita": 8,
+      "costoTotale": "218.97",
+      "costoUnitario": "27.37"
+    },
+    {
+      "nome": "[159988] Sacchi Bio per Pattumiera 72x110cm - Grigio - 30gr",
+      "quantita": 7,
+      "costoTotale": "208.39",
+      "costoUnitario": "29.77"
+    },
+    {
+      "nome": "VINO CORTIGLIANO IGT TOSCANA ROSSO 0.75 L PZ 6PZ CRT CACC",
+      "quantita": 29,
+      "costoTotale": "159.21",
+      "costoUnitario": "5.49"
+    },
+    {
+      "nome": "MACCHINA A CIALDE PER CAFFE BLUEMOON BORBONE",
+      "quantita": 1,
+      "costoTotale": "138.76",
+      "costoUnitario": "138.76"
+    },
+    {
+      "nome": "JULIENNE TAGLIO NAPOLI UE VASC 2.5KG GIFF",
+      "quantita": 20,
+      "costoTotale": "104.80",
+      "costoUnitario": "5.24"
+    },
+    {
+      "nome": "CAPSULE CAFFE BORBONE BLU 100PZ CRT BOR",
+      "quantita": 3,
+      "costoTotale": "69.38",
+      "costoUnitario": "23.13"
+    },
+    {
+      "nome": "[270423] EQO Detergente Anticalcare per Bagno 750ml - Confezione 6 pezzi",
+      "quantita": 5,
+      "costoTotale": "54.40",
+      "costoUnitario": "10.88"
+    },
+    {
+      "nome": "SACCHETTO DA PANE DECORAZIONE ROSSA KRAFT 210SPAINK190 1000PZ CRT FIRST",
+      "quantita": 1000,
+      "costoTotale": "50.00",
+      "costoUnitario": "0.05"
+    },
+    {
+      "nome": "CIALDE CAFFE BORBONE BLU 150PZ CRT BOR",
+      "quantita": 2,
+      "costoTotale": "49.96",
+      "costoUnitario": "24.98"
+    }
+  ],
+  "prodottiCompleti": [
+    {
+      "codice": "N/A",
+      "nome": "CAFFE IN GRANI BORBONE MISCELA ROSSA VENDING CONF 1KG 6KG CRT BOR",
+      "categoria": "Secco 2 / Prima colazione / Bevande",
+      "quantita": 35,
+      "costoTotale": "415.50",
+      "costoUnitario": "11.87"
+    },
+    {
+      "codice": "N/A",
+      "nome": "BABA GRANDI SECCHI TEDESCO 90 PZ 2.25KG CRT FERR",
+      "categoria": "Secco 2 / Pasticceria / Dessert",
+      "quantita": 8,
+      "costoTotale": "218.97",
+      "costoUnitario": "27.37"
+    },
+    {
+      "codice": "159988",
+      "nome": "[159988] Sacchi Bio per Pattumiera 72x110cm - Grigio - 30gr",
+      "categoria": "Non Food / Attrezzature",
+      "quantita": 7,
+      "costoTotale": "208.39",
+      "costoUnitario": "29.77"
+    },
+    {
+      "codice": "N/A",
+      "nome": "VINO CORTIGLIANO IGT TOSCANA ROSSO 0.75 L PZ 6PZ CRT CACC",
+      "categoria": "Secco 2 / Bevande / Vini",
+      "quantita": 29,
+      "costoTotale": "159.21",
+      "costoUnitario": "5.49"
+    },
+    {
+      "codice": "N/A",
+      "nome": "MACCHINA A CIALDE PER CAFFE BLUEMOON BORBONE",
+      "categoria": "Non Food / Attrezzature",
+      "quantita": 1,
+      "costoTotale": "138.76",
+      "costoUnitario": "138.76"
+    },
+    {
+      "codice": "N/A",
+      "nome": "JULIENNE TAGLIO NAPOLI UE VASC 2.5KG GIFF",
+      "categoria": "Frigo / Formaggi latticini e uova / Formaggi di latte vaccino",
+      "quantita": 20,
+      "costoTotale": "104.80",
+      "costoUnitario": "5.24"
+    },
+    {
+      "codice": "N/A",
+      "nome": "CAPSULE CAFFE BORBONE BLU 100PZ CRT BOR",
+      "categoria": "Secco 2 / Prima colazione / Bevande",
+      "quantita": 3,
+      "costoTotale": "69.38",
+      "costoUnitario": "23.13"
+    },
+    {
+      "codice": "270423",
+      "nome": "[270423] EQO Detergente Anticalcare per Bagno 750ml - Confezione 6 pezzi",
+      "categoria": "Non Food / Detergenza / Prodotti per il bagno",
+      "quantita": 5,
+      "costoTotale": "54.40",
+      "costoUnitario": "10.88"
+    },
+    {
+      "codice": "N/A",
+      "nome": "SACCHETTO DA PANE DECORAZIONE ROSSA KRAFT 210SPAINK190 1000PZ CRT FIRST",
+      "categoria": "Non Food / Attrezzature / Prodotti di servizio",
+      "quantita": 1000,
+      "costoTotale": "50.00",
+      "costoUnitario": "0.05"
+    },
+    {
+      "codice": "N/A",
+      "nome": "CIALDE CAFFE BORBONE BLU 150PZ CRT BOR",
+      "categoria": "Secco 2 / Prima colazione / Bevande",
+      "quantita": 2,
+      "costoTotale": "49.96",
+      "costoUnitario": "24.98"
+    },
+    {
+      "codice": "N/A",
+      "nome": "SEMIFREDDO PISTACCHIO BARATTOLO PZ 10 CT MAR",
+      "categoria": "Pingu / Pasticceria / Dessert",
+      "quantita": 2,
+      "costoTotale": "40.74",
+      "costoUnitario": "20.37"
+    },
+    {
+      "codice": "N/A",
+      "nome": "CAFFE ORZO BORBONE ORO 6x10PZ CRT BOR",
+      "categoria": "Secco 2 / Prima colazione / Bevande",
+      "quantita": 2,
+      "costoTotale": "37.00",
+      "costoUnitario": "18.50"
+    },
+    {
+      "codice": "N/A",
+      "nome": "CAFFE GINSENG BORBONE ORO 6x10PZ CRT BOR",
+      "categoria": "Secco 2 / Prima colazione / Bevande",
+      "quantita": 2,
+      "costoTotale": "37.00",
+      "costoUnitario": "18.50"
+    },
+    {
+      "codice": "N/A",
+      "nome": "CAFFE IN GRANI BORBONE MISCELA BLU CONF 1KG 6KG CRT BOR",
+      "categoria": "Secco 2 / Prima colazione / Bevande",
+      "quantita": 5,
+      "costoTotale": "34.00",
+      "costoUnitario": "6.80"
+    },
+    {
+      "codice": "N/A",
+      "nome": "TORTA RICOTTA E PISTACCHIO 1.4 KG MAR",
+      "categoria": "Pingu / Pasticceria / Dessert",
+      "quantita": 2,
+      "costoTotale": "33.30",
+      "costoUnitario": "16.65"
+    },
+    {
+      "codice": "N/A",
+      "nome": "TORTA PROFITEROLES CIOCCOLATO BIANCO VASSOIO MAR",
+      "categoria": "Pingu / Pasticceria / Dessert",
+      "quantita": 2,
+      "costoTotale": "32.42",
+      "costoUnitario": "16.21"
+    },
+    {
+      "codice": "N/A",
+      "nome": "VINO VERMENTINO DOC TOSCANA BIANCO 0.75 L PZ 6PZ CRT CACC",
+      "categoria": "Secco 2 / Bevande / Vini",
+      "quantita": 6,
+      "costoTotale": "32.40",
+      "costoUnitario": "5.40"
+    },
+    {
+      "codice": "N/A",
+      "nome": "OLIO EXTRAVERGINE DI OLIVA 100% ITALIA NOVELLO (MOSTO/NON FILTRATO) 500ML 6PZ CRT PRIM",
+      "categoria": "All",
+      "quantita": 3,
+      "costoTotale": "31.92",
+      "costoUnitario": "10.64"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PECORINO MARZOLINO AL PEPERONCINO PZ 700G BN",
+      "categoria": "Frigo / Formaggi latticini e uova / Formaggi di pecora",
+      "quantita": 2,
+      "costoTotale": "30.66",
+      "costoUnitario": "15.33"
+    },
+    {
+      "codice": "N/A",
+      "nome": "ARANCINI DI RISO MIGNON 28G PZ 2X2.5KG CRT POL",
+      "categoria": "Pingu / FingerFood / Pronti",
+      "quantita": 5,
+      "costoTotale": "29.45",
+      "costoUnitario": "5.89"
+    },
+    {
+      "codice": "270425",
+      "nome": "[270425] Detersivo per Lavastoviglie EQO Professional Tanica 5.5 kg (Confezione 2 pezzi)",
+      "categoria": "Non Food / Detergenza",
+      "quantita": 2,
+      "costoTotale": "25.42",
+      "costoUnitario": "12.71"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PASTA RIPIENA AL BRASELLO CONF CA 5KG CRT MARC (Quadrato, Rosso., 250gr)",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 2,
+      "costoTotale": "24.90",
+      "costoUnitario": "12.45"
+    },
+    {
+      "codice": "N/A",
+      "nome": "SALMONE PORZIONATO C/PELLE 12PZ X 250G - 3KG CRT PH",
+      "categoria": "Pingu / Ittico / Pesci",
+      "quantita": 6,
+      "costoTotale": "24.18",
+      "costoUnitario": "4.03"
+    },
+    {
+      "codice": "SAINTHOMORE",
+      "nome": "[SAINTHOMORE] SAINT HONORE RIVISITATA MONO 12PZ CT MAR",
+      "categoria": "Pingu / Pasticceria / Dessert",
+      "quantita": 1,
+      "costoTotale": "21.50",
+      "costoUnitario": "21.50"
+    },
+    {
+      "codice": "11563",
+      "nome": "[11563] Puligen Disincrostante Professionale 1L",
+      "categoria": "Non Food / Detergenza",
+      "quantita": 4,
+      "costoTotale": "21.32",
+      "costoUnitario": "5.33"
+    },
+    {
+      "codice": "09632",
+      "nome": "[09632] NEOFORT RAPIDO Detergente Professionale 0,75L - Confezione 6 pezzi + 1 spruzzino",
+      "categoria": "Non Food / Detergenza",
+      "quantita": 1,
+      "costoTotale": "17.52",
+      "costoUnitario": "17.52"
+    },
+    {
+      "codice": "N/A",
+      "nome": "TORTA BABA PANNA E CREMA DI NOCCIOLA E CACAO 1.4 KG MAR",
+      "categoria": "Pingu / Pasticceria / Dessert",
+      "quantita": 1,
+      "costoTotale": "16.65",
+      "costoUnitario": "16.65"
+    },
+    {
+      "codice": "N/A",
+      "nome": "TORTA CHEESECAKE AL PISTACCHIO E CIOCCOLATO BIANCO 1.4 MAR",
+      "categoria": "Pingu / Pasticceria / Dessert",
+      "quantita": 1,
+      "costoTotale": "16.65",
+      "costoUnitario": "16.65"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PASTA RIPIENA PORCINI E PATATE CONF CA 5KG CRT MARC (Quadrato, Normale, 250gr)",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 1.25,
+      "costoTotale": "16.04",
+      "costoUnitario": "12.83"
+    },
+    {
+      "codice": "N/A",
+      "nome": "TORTA RICOTTA E NOCI 1.4 KG MAR",
+      "categoria": "Pingu / Pasticceria / Dessert",
+      "quantita": 1,
+      "costoTotale": "15.68",
+      "costoUnitario": "15.68"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PASTA RIPIENA CASTELMAGNO E TARTUFO CONF CA 3KG CRT MARC (Quadrato, Normale, 250gr)",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 1,
+      "costoTotale": "15.16",
+      "costoUnitario": "15.16"
+    },
+    {
+      "codice": "70114",
+      "nome": "[70114] Detergente Igienizzante Multigen Efficace 750ml",
+      "categoria": "Non Food / Detergenza",
+      "quantita": 5,
+      "costoTotale": "14.41",
+      "costoUnitario": "2.88"
+    },
+    {
+      "codice": "032124",
+      "nome": "[032124] Spugna Fibra Grossa ZIF - Confezione 50 pezzi",
+      "categoria": "Non Food / Detergenza",
+      "quantita": 44,
+      "costoTotale": "14.08",
+      "costoUnitario": "0.32"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PASTA RIPIENA RICOTTA E LIMONE CONF CA 5KG CRT MARC (mezzaluna, Normale, 250gr)",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 1,
+      "costoTotale": "12.94",
+      "costoUnitario": "12.94"
+    },
+    {
+      "codice": "32125",
+      "nome": "[32125] Panno in Microfibra Professionale Blu 32x32cm",
+      "categoria": "Non Food / Detergenza",
+      "quantita": 13,
+      "costoTotale": "12.61",
+      "costoUnitario": "0.97"
+    },
+    {
+      "codice": "N/A",
+      "nome": "TORTA PRETAGLIATA MERINGA TONDA 12 FETTE 900G PZ POL",
+      "categoria": "Pingu / Pasticceria / Dessert",
+      "quantita": 1,
+      "costoTotale": "12.55",
+      "costoUnitario": "12.55"
+    },
+    {
+      "codice": "N/A",
+      "nome": "FETTINE DI AURICCHIO PROVOLONE PICC CONF 100G 10 PZ CRT AUR",
+      "categoria": "Frigo / Formaggi latticini e uova / Formaggi di latte vaccino",
+      "quantita": 10,
+      "costoTotale": "12.00",
+      "costoUnitario": "1.20"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PROVOLONE AFFU. AURICCHIO FETTE SOTTILI CONF 100G 10PZ CRT AUR",
+      "categoria": "Frigo / Formaggi latticini e uova / Formaggi di latte vaccino",
+      "quantita": 10,
+      "costoTotale": "12.00",
+      "costoUnitario": "1.20"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PASTA RIPIENA ZUCCA CONF CA 5KG CRT MARC (Treccia, Arancione, 250gr)",
+      "categoria": "N/A",
+      "quantita": 1,
+      "costoTotale": "11.84",
+      "costoUnitario": "11.84"
+    },
+    {
+      "codice": "N/A",
+      "nome": "DITALINI RIGATI GRAGNANO IGP 12X500G CRT DI MART",
+      "categoria": "Secco 2 / Cereali / Pasta",
+      "quantita": 12,
+      "costoTotale": "11.16",
+      "costoUnitario": "0.93"
+    },
+    {
+      "codice": "N/A",
+      "nome": "SEPPIA TAGLIO JULIENNE 4.8KG CRT SENZA GLASS. FREDD",
+      "categoria": "Pingu / Ittico / Mollame",
+      "quantita": 1,
+      "costoTotale": "10.81",
+      "costoUnitario": "10.81"
+    },
+    {
+      "codice": "N/A",
+      "nome": "ASPARAGINA CON ERBA CIPOLLINA IN CROSTA DI FARINA DI GRANO 1KG CONF 4KG CRT SPIRC",
+      "categoria": "Pingu / Frutta e Verdura / Verdura",
+      "quantita": 1,
+      "costoTotale": "10.53",
+      "costoUnitario": "10.53"
+    },
+    {
+      "codice": "N/A",
+      "nome": "OLIVE E PORRO IN CROSTA DI FARINA DI GRANO CONF 1KG 4 KG CRT SPIRC",
+      "categoria": "Pingu",
+      "quantita": 1,
+      "costoTotale": "10.14",
+      "costoUnitario": "10.14"
+    },
+    {
+      "codice": "N/A",
+      "nome": "BARCHETTE MIGNON CACAO KG 2 CRT MIO",
+      "categoria": "Secco 2 / Pasticceria / Basi decori e farciture",
+      "quantita": 1,
+      "costoTotale": "9.80",
+      "costoUnitario": "9.80"
+    },
+    {
+      "codice": "50004",
+      "nome": "[50004] Pellicola Film Trasparente per Alimenti 300m x 9cm - Champagne",
+      "categoria": "Non Food / Attrezzature",
+      "quantita": 2,
+      "costoTotale": "9.70",
+      "costoUnitario": "4.85"
+    },
+    {
+      "codice": "N/A",
+      "nome": "ARGONIT AF/2 Disinfettante Professionale 750ml - Confezione 6 pezzi",
+      "categoria": "Non Food / Detergenza",
+      "quantita": 3,
+      "costoTotale": "9.60",
+      "costoUnitario": "3.20"
+    },
+    {
+      "codice": "N/A",
+      "nome": "TORTA PROFITEROLES BIANCO VASCHETTA 2,5KG EFF",
+      "categoria": "Pingu / Pasticceria / Dessert",
+      "quantita": 1,
+      "costoTotale": "7.97",
+      "costoUnitario": "7.97"
+    },
+    {
+      "codice": "N/A",
+      "nome": "DORATELLE FRITTELLE DI FARINA DI GRANO 1KG CONF 4KG CRT SPIRC",
+      "categoria": "Pingu / Frutta e Verdura / Verdura",
+      "quantita": 1,
+      "costoTotale": "7.39",
+      "costoUnitario": "7.39"
+    },
+    {
+      "codice": "N/A",
+      "nome": "Brillantante EQO Professional per Lavastoviglie - Tanica 5kg (Conf. 2pz)",
+      "categoria": "Non Food / Detergenza",
+      "quantita": 1,
+      "costoTotale": "7.31",
+      "costoUnitario": "7.31"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PETTOLE PREZZEMOLO E FORMAGGIO 1KG CONF 4KG CRT SPIRC",
+      "categoria": "Pingu / Frutta e Verdura / Verdura",
+      "quantita": 1,
+      "costoTotale": "7.30",
+      "costoUnitario": "7.30"
+    },
+    {
+      "codice": "N/A",
+      "nome": "RICOTTA DI PECORA VASCHETTA CA 1,5 KG CRT POL",
+      "categoria": "Frigo / Formaggi latticini e uova / Formaggi di pecora",
+      "quantita": 1,
+      "costoTotale": "6.68",
+      "costoUnitario": "6.68"
+    },
+    {
+      "codice": "N/A",
+      "nome": "VINO BIANCO PECORINO OFFIDA DOCG 0.75L PZ 6PZ CRT POL",
+      "categoria": "Secco 2 / Bevande / Vini",
+      "quantita": 1,
+      "costoTotale": "5.71",
+      "costoUnitario": "5.71"
+    },
+    {
+      "codice": "N/A",
+      "nome": "SACCO SPAZZ NERO 60L 10 SACC A ROT 20 ROT CRT JIRR ",
+      "categoria": "Non Food / Attrezzature / Pulizia e decori",
+      "quantita": 2,
+      "costoTotale": "4.82",
+      "costoUnitario": "2.41"
+    },
+    {
+      "codice": "N/A",
+      "nome": "TAGLIOLINI ALL UOVO 1KG CONF CA 5KG CRT MARC",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 1,
+      "costoTotale": "4.74",
+      "costoUnitario": "4.74"
+    },
+    {
+      "codice": "N/A",
+      "nome": "ROSMARINO AGHI BUSTA 1KG 10 KG CRT PAV",
+      "categoria": "Secco 2 / Condimenti / Sale e spezie",
+      "quantita": 1,
+      "costoTotale": "3.77",
+      "costoUnitario": "3.77"
+    },
+    {
+      "codice": "N/A",
+      "nome": "VERMICELLI 2.1MM GRAGNANO IGP 24X500G CRT DI MART",
+      "categoria": "Secco 2 / Cereali / Pasta",
+      "quantita": 4,
+      "costoTotale": "3.72",
+      "costoUnitario": "0.93"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PECORINO BUCARO PEPATO GLORIA PZ 250G 8PZ CRT AUR",
+      "categoria": "Frigo / Formaggi latticini e uova / Formaggi di pecora",
+      "quantita": 1,
+      "costoTotale": "3.58",
+      "costoUnitario": "3.58"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PASTA RIPIENA AMATRICIANA CONF 250 3KG CRT MARC",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 0.25,
+      "costoTotale": "3.40",
+      "costoUnitario": "13.61"
+    },
+    {
+      "codice": "N/A",
+      "nome": "DETERSIVO ANTICALCARE CHANTECLAIR 750ML 12PZ CRT MUS",
+      "categoria": "Secco 2",
+      "quantita": 1,
+      "costoTotale": "3.19",
+      "costoUnitario": "3.19"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PASTA FRESCA CON BACCALA CONF 1KG CA 5KG CRT MARC",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 0.25,
+      "costoTotale": "3.01",
+      "costoUnitario": "12.04"
+    },
+    {
+      "codice": "N/A",
+      "nome": "FARFALLE GRAGNANO IGP 12X500G CRT DI MART",
+      "categoria": "Secco 2 / Cereali / Pasta",
+      "quantita": 2,
+      "costoTotale": "2.12",
+      "costoUnitario": "1.06"
+    },
+    {
+      "codice": "N/A",
+      "nome": "LUMACHINE BARBIE GRAGNANO IGP 12X500G CRT DI MART",
+      "categoria": "Secco 2 / Cereali / Pasta",
+      "quantita": 2,
+      "costoTotale": "1.86",
+      "costoUnitario": "0.93"
+    },
+    {
+      "codice": "N/A",
+      "nome": "FORMAGGIO SCAMORZA BIANCA 250G 2.5KG 10PZ CRT TAMB",
+      "categoria": "Frigo / Formaggi latticini e uova / Formaggi di latte vaccino",
+      "quantita": 0.25,
+      "costoTotale": "1.60",
+      "costoUnitario": "6.40"
+    },
+    {
+      "codice": "N/A",
+      "nome": "MACCHERONCINI PASTA FRESCA ALL'UOVO 400G PZ 12 A CRT STR",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 1,
+      "costoTotale": "1.50",
+      "costoUnitario": "1.50"
+    },
+    {
+      "codice": "N/A",
+      "nome": "CALAMARATA PASTA FRESCA 500G PZ 8 A CRT STR",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 1,
+      "costoTotale": "1.36",
+      "costoUnitario": "1.36"
+    },
+    {
+      "codice": "N/A",
+      "nome": "SPUGNA ACCIAIO 25PZ CONF MUS",
+      "categoria": "Non Food / Attrezzature / Pulizia e decori",
+      "quantita": 1,
+      "costoTotale": "0.55",
+      "costoUnitario": "0.55"
+    },
+    {
+      "codice": "Delivery_007",
+      "nome": "[Delivery_007] Free delivery charges",
+      "categoria": "All / Deliveries",
+      "quantita": 103,
+      "costoTotale": "0.00",
+      "costoUnitario": "0.00"
+    },
+    {
+      "codice": "N/A",
+      "nome": "BRESAOLA 'CIMA PIAZZI' BLU KG 1.5 SOSIO",
+      "categoria": "Frigo / Salumi / Stagionati",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "MOZZARELLA DI BUFALA CIUFFO 2X125G 3KG CRT LA FAVORITA FERR",
+      "categoria": "Frigo / Formaggi latticini e uova / Mozzarelle",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PASTA RIPIENA RICOTTA E SPINACI CONF 250G CA 3KG CRT MARC",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PASTA FRESCA AL BRASATO CONF 250G CA 3KG CRT MARC",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "GORGONZOLA PICCANTE VASC. 1/8 4 PZ CONF PZ CA 1.5KG AUR",
+      "categoria": "Frigo / Formaggi latticini e uova / Formaggi di pecora",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PISELLI IQF BELGIO FINISSIMI 2.5KG CONF 10KG CRT FREDD",
+      "categoria": "Pingu / Frutta e Verdura / Legumi",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "CREMA RICOTTA SAC PER CANNOLI SICILIANI CON CIOCCOLATO IN SAC A POCHE 1KG 4PZ CRT RIC",
+      "categoria": "Pingu / Pasticceria / Basi decori e farciture",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "GAMBERO ROSSO (VIOLA) MEDITERRANEO INTERO VASCHETTA 1A 15/25 CONG CA 2 KG VASCH FREDD",
+      "categoria": "Pingu / Ittico / Crostacei",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "GAMBERO VANNAMEI COTTO SGUSC CON CODINO 16/20 CONF 1KG 10KG CRT GLASS 30% DSD",
+      "categoria": "Pingu",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "FARINA SENZA GLUTINE FIOREGLUT CAPUTO 1KG 12KG CRT FERR",
+      "categoria": "Secco / Cereali / Farine",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "NOCI SGUSCIATI CI BUSTA 1KG PAV",
+      "categoria": "Secco 2 / Frutta e Verdura / Frutta",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "MISTA CORTA ANTICA PASTA DI GRAGNANO IGP DI MARTINO 12X500G CRT FERR",
+      "categoria": "Secco 2 / Cereali / Pasta",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "LINGUINE 1.55MM D&G GRAGNANO IGP 24X500G CRT DI MART",
+      "categoria": "Secco 2 / Cereali / Pasta",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "MEZZE MANICHE RIGATE GRAGANANO IGP 10X500G CRT DI MART",
+      "categoria": "Secco 2 / Cereali / Pasta",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "SACCO SPAZZATURA SPESSO 110L 10PZ ROTOLO 20PZ CRT MUS",
+      "categoria": "Non Food / Attrezzature / Pulizia e decori",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "PISTACCHIO AROMA IN PASTA PISTACCHIO",
+      "nome": "[PISTACCHIO AROMA IN PASTA PISTACCHIO] AROMA IN PASTA PISTACCHIO 1KG CONF 10KG CRT MIO",
+      "categoria": "Secco 2 / Pasticceria / Basi decori e farciture",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "CAMEMBERT DI BUFALA 150G PZ 6PZ CRT AUR",
+      "categoria": "Frigo / Formaggi latticini e uova / Formaggi di latte vaccino",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "Rotella taglia pizza lama inox smontabile/riaffilabile manico alta resistenza diam 10 cm 26x10cm",
+      "categoria": "Non Food / Attrezzature",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "BOCCONCINO AI PINOLI 10G 70PZ CRT DDAI",
+      "categoria": "Pingu / Pasticceria / Dessert",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "BOCCONCINO AL CAFFÈ 10G 70PZ CRT DDAI",
+      "categoria": "Pingu / Pasticceria / Dessert",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "BOCCONCINO AI LAMPONI 10G 70PZ CRT DDAI",
+      "categoria": "Pingu / Pasticceria / Dessert",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "SALAME SPIANATA ROMANA PZ 2.5KG COA ",
+      "categoria": "Frigo / Salumi / Insaccati",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "VENTRICINA ABBRUZZESE IN VESCICA PZ 2KG SORR",
+      "categoria": "Frigo / Salumi / Insaccati",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PASTIGLIE PER LAVASTOVIGLIE \"SUN ALL-IN 1 REGULAR \" CONF DA 35 PZ - CONF - AL",
+      "categoria": "Non Food / Detergenza / Prodotti per la cucina",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "Dispenser per asciugamani piegati a Z trasparente 400 fogli",
+      "categoria": "Non Food / Detergenza / Prodotti per il bagno",
+      "quantita": 3,
+      "costoTotale": "0.00",
+      "costoUnitario": "0.00"
+    },
+    {
+      "codice": "90114",
+      "nome": "[90114] UNI5 Disincrostante Professionale per Lavastoviglie 5kg (2 pezzi)",
+      "categoria": "Non Food / Detergenza",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PASTA RIPIENA AL PROSCIUTTO CRUDO CONF CA 5KG CRT MARC (Tortellone, Normale, 1000gr)",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    },
+    {
+      "codice": "N/A",
+      "nome": "PASTA RIPIENA AL PROSCIUTTO CRUDO CONF CA 5KG CRT MARC (mezzaluna, Normale, 1000gr)",
+      "categoria": "Frigo / Cereali / Pasta",
+      "quantita": 0,
+      "costoTotale": "0.00",
+      "costoUnitario": "NaN"
+    }
+  ]
+}

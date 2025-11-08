@@ -1,0 +1,1662 @@
+{
+  "timestamp": "2025-11-04T14:02:44.251Z",
+  "periodi": {
+    "settimane": [
+      {
+        "nome": "Settimana 1",
+        "inizio": "2025-08-12",
+        "fine": "2025-08-19"
+      },
+      {
+        "nome": "Settimana 2",
+        "inizio": "2025-08-19",
+        "fine": "2025-08-26"
+      },
+      {
+        "nome": "Settimana 3",
+        "inizio": "2025-08-26",
+        "fine": "2025-09-02"
+      },
+      {
+        "nome": "Settimana 4",
+        "inizio": "2025-09-02",
+        "fine": "2025-09-09"
+      },
+      {
+        "nome": "Settimana 5",
+        "inizio": "2025-09-09",
+        "fine": "2025-09-16"
+      },
+      {
+        "nome": "Settimana 6",
+        "inizio": "2025-09-16",
+        "fine": "2025-09-23"
+      },
+      {
+        "nome": "Settimana 7",
+        "inizio": "2025-09-23",
+        "fine": "2025-09-30"
+      },
+      {
+        "nome": "Settimana 8",
+        "inizio": "2025-09-30",
+        "fine": "2025-10-07"
+      },
+      {
+        "nome": "Settimana 9",
+        "inizio": "2025-10-07",
+        "fine": "2025-10-14"
+      },
+      {
+        "nome": "Settimana 10",
+        "inizio": "2025-10-14",
+        "fine": "2025-10-21"
+      },
+      {
+        "nome": "Settimana 11",
+        "inizio": "2025-10-21",
+        "fine": "2025-10-28"
+      },
+      {
+        "nome": "Settimana 12",
+        "inizio": "2025-10-28",
+        "fine": "2025-11-04"
+      }
+    ],
+    "mesi": [
+      {
+        "nome": "Mese 1",
+        "inizio": "2025-08-06",
+        "fine": "2025-09-05"
+      },
+      {
+        "nome": "Mese 2",
+        "inizio": "2025-09-05",
+        "fine": "2025-10-05"
+      },
+      {
+        "nome": "Mese 3",
+        "inizio": "2025-10-05",
+        "fine": "2025-11-04"
+      }
+    ],
+    "inizioTotale": "2025-08-06",
+    "fineTotale": "2025-11-04"
+  },
+  "statistiche": {
+    "ordiniConsegnati": 1934,
+    "righeProdotto": 9936,
+    "clientiUnici": 212
+  },
+  "analisiClienti": {
+    "settimanale": [
+      {
+        "periodo": "Settimana 1",
+        "date": "2025-08-12 / 2025-08-19",
+        "top10Meno": [],
+        "totaleClienti": 0
+      },
+      {
+        "periodo": "Settimana 2",
+        "date": "2025-08-19 / 2025-08-26",
+        "top10Meno": [
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "USO INTERNO",
+            0
+          ],
+          [
+            "Emme Food GmbH",
+            17.75
+          ],
+          [
+            "L' APERITIVO GASTRO GMBH",
+            39
+          ],
+          [
+            "IYOKI GmbH",
+            41.82
+          ],
+          [
+            "Evos Food GmbH",
+            48.95
+          ],
+          [
+            "Caterina Gastro Group AG",
+            57.24
+          ],
+          [
+            "LA ROMAGNOLA CENTRO GMBH",
+            60.3
+          ],
+          [
+            "AnaMiRa GmbH",
+            61.19
+          ],
+          [
+            "Fescina-Event-Gastronomie, Leandro Fescina",
+            77.99
+          ]
+        ],
+        "totaleClienti": 59
+      },
+      {
+        "periodo": "Settimana 3",
+        "date": "2025-08-26 / 2025-09-02",
+        "top10Meno": [
+          [
+            "LAPA - finest italian food GmbH, Mihai Nita",
+            0
+          ],
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "USO INTERNO",
+            0
+          ],
+          [
+            "ZUMA FOOD GMBH",
+            35.45
+          ],
+          [
+            "CASA COSI GMBH",
+            37.44
+          ],
+          [
+            "IYOKI GmbH",
+            41.82
+          ],
+          [
+            "Restaurant Linde Donatiello, Raffaele Pizzeria Linde",
+            57.33
+          ],
+          [
+            "TAMARE GMBH RESTAURANT",
+            70.32
+          ],
+          [
+            "Locanda Trivisano GmbH",
+            89.5
+          ],
+          [
+            "Emme Food GmbH",
+            98.78
+          ]
+        ],
+        "totaleClienti": 120
+      },
+      {
+        "periodo": "Settimana 4",
+        "date": "2025-09-02 / 2025-09-09",
+        "top10Meno": [
+          [
+            "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+            0
+          ],
+          [
+            "Food & Drinks Luzern GmbH",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Mihai Nita",
+            0
+          ],
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Gregorio Buccolieri",
+            0
+          ],
+          [
+            "ELap Communication GmbH",
+            21.3
+          ],
+          [
+            "LAPA - finest italian food GmbH, Alessandro Motta",
+            37.7
+          ],
+          [
+            "Emme Food GmbH",
+            43.46
+          ],
+          [
+            "MIRABELLO GASTRO GMBH",
+            45
+          ],
+          [
+            "SPAZZATURA SCADUTI DETERIORATI",
+            49.75
+          ]
+        ],
+        "totaleClienti": 129
+      },
+      {
+        "periodo": "Settimana 5",
+        "date": "2025-09-09 / 2025-09-16",
+        "top10Meno": [
+          [
+            "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+            0
+          ],
+          [
+            "CAMPIONATURE",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Mihai Nita",
+            0
+          ],
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "Alventotto GmbH",
+            0
+          ],
+          [
+            "Macelleria FULVI",
+            35.85
+          ],
+          [
+            "CLAUDIO GALLINA",
+            38.75
+          ],
+          [
+            "Ristorante Gusto Mediterraneo GmbH",
+            41.370000000000005
+          ],
+          [
+            "BISTRO DA NORD A SUD, Stefano",
+            42
+          ],
+          [
+            "lick n'love GmbH - Gelateria Artigianale",
+            53.1
+          ]
+        ],
+        "totaleClienti": 128
+      },
+      {
+        "periodo": "Settimana 6",
+        "date": "2025-09-16 / 2025-09-23",
+        "top10Meno": [
+          [
+            "Farnsburg Gastro GmbH",
+            0
+          ],
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "Marina Gastro AG Osteria Vista",
+            31.8
+          ],
+          [
+            "CREAM HOUSE A. Fonso",
+            39.57
+          ],
+          [
+            "Restaurant Linde Donatiello",
+            47.51
+          ],
+          [
+            "LAPA - finest italian food GmbH, Mihai Nita",
+            58
+          ],
+          [
+            "CMG SERVICE GMBH",
+            81
+          ],
+          [
+            "Quaranta Gastro GmbH",
+            87.03
+          ],
+          [
+            "Pizza Kurier Pronto",
+            101.2
+          ],
+          [
+            "Glutenfree GUSTO ITALIANO BARNINI",
+            121.78999999999999
+          ]
+        ],
+        "totaleClienti": 107
+      },
+      {
+        "periodo": "Settimana 7",
+        "date": "2025-09-23 / 2025-09-30",
+        "top10Meno": [
+          [
+            "HALTEN GASTRO GMBH, FAUSTO D'AGOSTINO",
+            0
+          ],
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "Farnsburg Gastro GmbH",
+            0
+          ],
+          [
+            "CASA COSI GMBH",
+            29.3
+          ],
+          [
+            "LaTo GmbH",
+            49.5
+          ],
+          [
+            "DON LEONE PRODUKTION GMBH",
+            62.2
+          ],
+          [
+            "Emme Food GmbH",
+            62.28
+          ],
+          [
+            "CEMINI GMBH",
+            70.2
+          ],
+          [
+            "LA FONTANA UNO GMBH",
+            73.13
+          ],
+          [
+            "LA TERRA DEL BUON GUSTO GMBH",
+            91.64
+          ]
+        ],
+        "totaleClienti": 104
+      },
+      {
+        "periodo": "Settimana 8",
+        "date": "2025-09-30 / 2025-10-07",
+        "top10Meno": [
+          [
+            "Farnsburg Gastro GmbH",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Mihai Nita",
+            0
+          ],
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "CASA DI GIANLUCA GMBH",
+            0
+          ],
+          [
+            "HALTEN GASTRO GMBH, FAUSTO D'AGOSTINO",
+            0
+          ],
+          [
+            "Crustopia KLG",
+            18.4
+          ],
+          [
+            "WinCoGast GmbH",
+            43.31
+          ],
+          [
+            "aMA PASTICCERIA AG",
+            45
+          ],
+          [
+            "LAPA - finest italian food GmbH, Alessandro Motta",
+            52.550000000000004
+          ]
+        ],
+        "totaleClienti": 111
+      },
+      {
+        "periodo": "Settimana 9",
+        "date": "2025-10-07 / 2025-10-14",
+        "top10Meno": [
+          [
+            "LAPA - finest italian food GmbH, Mihai Nita",
+            0
+          ],
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "CAMPIONATURE",
+            0
+          ],
+          [
+            "TERZOANGOLO GMBH",
+            28.17
+          ],
+          [
+            "Arunis Thai GmbH",
+            42.7
+          ],
+          [
+            "aMA PASTICCERIA AG",
+            45
+          ],
+          [
+            "Dolce Fermata Famigliolo",
+            49.2
+          ],
+          [
+            "LAPA - finest italian food GmbH, Alessandro Motta",
+            52.550000000000004
+          ],
+          [
+            "Emme Food GmbH",
+            64.5
+          ],
+          [
+            "Crustopia KLG",
+            70
+          ]
+        ],
+        "totaleClienti": 117
+      },
+      {
+        "periodo": "Settimana 10",
+        "date": "2025-10-14 / 2025-10-21",
+        "top10Meno": [
+          [
+            "Hibou Gastro GmbH",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Alexandru Dominte",
+            0
+          ],
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Mihai Nita",
+            0
+          ],
+          [
+            "Crustopia KLG",
+            6.13
+          ],
+          [
+            "Tremondi B&B GmbH",
+            16.03
+          ],
+          [
+            "WinCoGast GmbH",
+            26.55
+          ],
+          [
+            "JUDITH SIMEON",
+            29.5
+          ],
+          [
+            "aMA PASTICCERIA AG",
+            44.34
+          ],
+          [
+            "PIZZERIA PIAZZA AYDIN YASAR, AYDIN YASAR",
+            48.7
+          ]
+        ],
+        "totaleClienti": 124
+      },
+      {
+        "periodo": "Settimana 11",
+        "date": "2025-10-21 / 2025-10-28",
+        "top10Meno": [
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Mihai Nita",
+            0
+          ],
+          [
+            "Gebr. Da Silva Cleanservice AG",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Domingos Ferreira",
+            0
+          ],
+          [
+            "SWISS STAR FAMILIA GMBH",
+            0
+          ],
+          [
+            "Hibou Gastro GmbH",
+            0
+          ],
+          [
+            "Emme Food GmbH",
+            36.65
+          ],
+          [
+            "Tennis Club Meilen",
+            46.83
+          ],
+          [
+            "PIZZERIA PIAZZA AYDIN YASAR, AYDIN YASAR",
+            48.7
+          ],
+          [
+            "LAPA - finest italian food GmbH, Alessandro Motta",
+            50.4
+          ]
+        ],
+        "totaleClienti": 126
+      },
+      {
+        "periodo": "Settimana 12",
+        "date": "2025-10-28 / 2025-11-04",
+        "top10Meno": [
+          [
+            "Dolce Fermata Famigliolo",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Paul Teodorescu",
+            0
+          ],
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Alessandro Motta",
+            33.019999999999996
+          ],
+          [
+            "IL TRIANGOLO DEL GUSTO BILLO & CO KLG",
+            50.87
+          ],
+          [
+            "Pizza da Pino GmbH",
+            56.260000000000005
+          ],
+          [
+            "Siculus GmbH",
+            74.75
+          ],
+          [
+            "Burro Concept GmbH",
+            78.03
+          ],
+          [
+            "MG GASTROBETRIEBE AG",
+            97.19
+          ],
+          [
+            "ROSSELLA LOMBARDO",
+            101.44999999999999
+          ]
+        ],
+        "totaleClienti": 107
+      }
+    ],
+    "mensile": [
+      {
+        "periodo": "Mese 1",
+        "date": "2025-08-06 / 2025-09-05",
+        "top10Meno": [
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Mihai Nita",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Gregorio Buccolieri",
+            0
+          ],
+          [
+            "USO INTERNO",
+            0
+          ],
+          [
+            "ZUMA FOOD GMBH",
+            35.45
+          ],
+          [
+            "CASA COSI GMBH",
+            37.44
+          ],
+          [
+            "L' APERITIVO GASTRO GMBH",
+            39
+          ],
+          [
+            "IYOKI GmbH",
+            41.82
+          ],
+          [
+            "SPAZZATURA SCADUTI DETERIORATI",
+            49.75
+          ],
+          [
+            "Restaurant Linde Donatiello, Raffaele Pizzeria Linde",
+            57.33
+          ]
+        ],
+        "totaleClienti": 148
+      },
+      {
+        "periodo": "Mese 2",
+        "date": "2025-09-05 / 2025-10-05",
+        "top10Meno": [
+          [
+            "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+            0
+          ],
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "HALTEN GASTRO GMBH, FAUSTO D'AGOSTINO",
+            0
+          ],
+          [
+            "Farnsburg Gastro GmbH",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+            0
+          ],
+          [
+            "CAMPIONATURE",
+            0
+          ],
+          [
+            "Alventotto GmbH",
+            0
+          ],
+          [
+            "Food & Drinks Luzern GmbH",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Alessandro Motta",
+            37.7
+          ],
+          [
+            "CLAUDIO GALLINA",
+            38.75
+          ]
+        ],
+        "totaleClienti": 167
+      },
+      {
+        "periodo": "Mese 3",
+        "date": "2025-10-05 / 2025-11-04",
+        "top10Meno": [
+          [
+            "LAPA - finest italian food GmbH, Paul Teodorescu",
+            0
+          ],
+          [
+            "LAURA TEODORESCU PRIVATO",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Mihai Nita",
+            0
+          ],
+          [
+            "Gebr. Da Silva Cleanservice AG",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Domingos Ferreira",
+            0
+          ],
+          [
+            "Hibou Gastro GmbH",
+            0
+          ],
+          [
+            "LAPA - finest italian food GmbH, Alexandru Dominte",
+            0
+          ],
+          [
+            "CAMPIONATURE",
+            0
+          ],
+          [
+            "Tremondi B&B GmbH",
+            16.03
+          ],
+          [
+            "TERZOANGOLO GMBH",
+            28.17
+          ]
+        ],
+        "totaleClienti": 180
+      }
+    ],
+    "confrontoGlobale": {
+      "top20Meno": [
+        [
+          "LAPA - finest italian food GmbH, Paul Teodorescu",
+          0
+        ],
+        [
+          "LAURA TEODORESCU PRIVATO",
+          0
+        ],
+        [
+          "Gebr. Da Silva Cleanservice AG",
+          0
+        ],
+        [
+          "LAPA - finest italian food GmbH, Domingos Ferreira",
+          0
+        ],
+        [
+          "LAPA - finest italian food GmbH, Alexandru Dominte",
+          0
+        ],
+        [
+          "CAMPIONATURE",
+          0
+        ],
+        [
+          "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+          0
+        ],
+        [
+          "HALTEN GASTRO GMBH, FAUSTO D'AGOSTINO",
+          0
+        ],
+        [
+          "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+          0
+        ],
+        [
+          "Alventotto GmbH",
+          0
+        ],
+        [
+          "LAPA - finest italian food GmbH, Gregorio Buccolieri",
+          0
+        ],
+        [
+          "USO INTERNO",
+          0
+        ],
+        [
+          "PIZZERIA PIAZZA AYDIN YASAR, AYDIN YASAR",
+          48.7
+        ],
+        [
+          "SPAZZATURA SCADUTI DETERIORATI",
+          49.75
+        ],
+        [
+          "LAPA - finest italian food GmbH, Mihai Nita",
+          58
+        ],
+        [
+          "GIUSEPPE GAMBARUCCI",
+          64.46000000000001
+        ],
+        [
+          "TAMARE GMBH RESTAURANT",
+          70.32
+        ],
+        [
+          "ROSSELLA LOMBARDO",
+          101.44999999999999
+        ],
+        [
+          "Arunis Thai GmbH",
+          106.75
+        ],
+        [
+          "PIZZERIA DA COSIMO E ANNA",
+          109.2
+        ]
+      ],
+      "totaleClienti": 212
+    }
+  },
+  "analisiProdotti": {
+    "settimanale": [
+      {
+        "prodotto": "FIORDILATTE BOCCONCINO PER PIZZERIA 500G VASCH 3KG TAMB",
+        "diminuzione": 984.6100000000001,
+        "percentuale": 68.27091755014874,
+        "vendite": [
+          0,
+          102.96,
+          2360.04,
+          2211.69,
+          2751.57,
+          1227,
+          858,
+          858,
+          772.1999999999999,
+          257.4,
+          0,
+          0
+        ]
+      },
+      {
+        "prodotto": "POMODORI PELATI 6X2500G LITO STRIANESE REG",
+        "diminuzione": 668.7133333333334,
+        "percentuale": 64.19360412653513,
+        "vendite": [
+          0,
+          110.16,
+          942.2400000000001,
+          2537.4,
+          2285.1600000000003,
+          375.32,
+          540.3599999999999,
+          254.22,
+          304.44,
+          334.50000000000006,
+          581.7600000000001,
+          222.72
+        ]
+      },
+      {
+        "prodotto": "CARCIOFI CON GAMBO GRIGLIATI LATTA 750G 6PZ CRT RIS",
+        "diminuzione": 299.86999999999995,
+        "percentuale": 86.14066165557523,
+        "vendite": [
+          0,
+          24.92,
+          709.5799999999999,
+          632.1399999999999,
+          709.5999999999999,
+          12.46,
+          24.92,
+          23.68,
+          83.86000000000001,
+          83.5,
+          24.3,
+          49.22
+        ]
+      },
+      {
+        "prodotto": "BRESAOLA PUNTA D'ANCA KG 1.5 SORR",
+        "diminuzione": 204.95500000000004,
+        "percentuale": 39.24035687846221,
+        "vendite": [
+          0,
+          364.98,
+          1133.2199999999998,
+          580.5300000000001,
+          780.18,
+          274.93000000000006,
+          44.8,
+          181.26999999999998,
+          921.74,
+          190.97,
+          227.12,
+          338.21000000000004
+        ]
+      },
+      {
+        "prodotto": "SCROCCHIARELLA CLASSICA 38X28 8PZX440G CRT EUR",
+        "diminuzione": 177.945,
+        "percentuale": 63.99134531244381,
+        "vendite": [
+          0,
+          0,
+          447.78,
+          556.44,
+          383.61999999999995,
+          280.62,
+          58.92,
+          60.29,
+          0,
+          207.09,
+          274.49,
+          0
+        ]
+      },
+      {
+        "prodotto": "PINSA ROMANA 15X36 CM 230G 16PZ CRT SG",
+        "diminuzione": 160.33166666666676,
+        "percentuale": 30.379654893638534,
+        "vendite": [
+          0,
+          503.63,
+          927.42,
+          714.14,
+          673.0300000000001,
+          348.34000000000003,
+          130.41,
+          696.4399999999999,
+          521.5,
+          346.21,
+          339.98,
+          170.03
+        ]
+      },
+      {
+        "prodotto": "OLIVE TAGGIASCHE DENOCCIOLATE IN SALAMOIA 900G 6PZ CRT RIS",
+        "diminuzione": 149.795,
+        "percentuale": 75.6941812577377,
+        "vendite": [
+          0,
+          27.14,
+          221.19,
+          469.52,
+          374.53,
+          94.99,
+          40.71,
+          82.74000000000001,
+          82.74000000000001,
+          41.7,
+          13.57,
+          27.14
+        ]
+      },
+      {
+        "prodotto": "CARTONI PIZZA VESUVIO BIA 33X33X3.5 100PZ CONF LINER",
+        "diminuzione": 138.16666666666669,
+        "percentuale": 81.11545988258317,
+        "vendite": [
+          0,
+          240,
+          345,
+          150,
+          216,
+          71,
+          100,
+          0,
+          0,
+          93,
+          0,
+          0
+        ]
+      },
+      {
+        "prodotto": "SACCO SPAZZATURA NERO 110L 10 SACC A ROT 15 ROT CRT JIRR NON USARE",
+        "diminuzione": 123.81666666666666,
+        "percentuale": 72.30029585798816,
+        "vendite": [
+          0,
+          0,
+          171,
+          342,
+          258.4,
+          256.12,
+          199.11999999999998,
+          85.5,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "prodotto": "SCATOLA PORTA TORTA 45X55 DAMASCATA BIANCA 50 PZ CRT CAR",
+        "diminuzione": 108.66666666666667,
+        "percentuale": 100,
+        "vendite": [
+          0,
+          326,
+          326,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "prodotto": "GAMBERO BLACK TIGER INTERO 4/6 CONF 1KG 10KG CRT GLASS 20% DSD",
+        "diminuzione": 108.33333333333331,
+        "percentuale": 40,
+        "vendite": [
+          0,
+          0,
+          975,
+          325,
+          325,
+          0,
+          0,
+          325,
+          0,
+          325,
+          0,
+          325
+        ]
+      },
+      {
+        "prodotto": "CAFFE IN GRANI BORBONE MISCELA ROSSA VENDING CONF 1KG 6KG CRT BOR",
+        "diminuzione": 105,
+        "percentuale": 100,
+        "vendite": [
+          0,
+          0,
+          0,
+          0,
+          630,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "prodotto": "MOZZARELLA DI BUFALA CAMPANA DOP 2X125G 2KG CRT GIFF",
+        "diminuzione": 100.625,
+        "percentuale": 92.42250287026407,
+        "vendite": [
+          0,
+          149.64,
+          206.61,
+          99,
+          115.5,
+          82.5,
+          0,
+          49.5,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "prodotto": "CALZONE POMODORO MOZZARELLA 130G 30PZ CRT SG",
+        "diminuzione": 92.09333333333333,
+        "percentuale": 87.20959595959596,
+        "vendite": [
+          0,
+          633.6,
+          0,
+          0,
+          0,
+          0,
+          40.52,
+          0,
+          40.52,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "prodotto": "BURRATA 2X125G VASC 250G 6PZ 1.5KG CRT TAMB",
+        "diminuzione": 91.38833333333366,
+        "percentuale": 11.080440445133338,
+        "vendite": [
+          0,
+          381.66999999999996,
+          1348.7500000000005,
+          944.9399999999999,
+          951.17,
+          1322.1000000000001,
+          736.4999999999999,
+          709.3899999999999,
+          735.66,
+          681.06,
+          835.48,
+          702.2099999999999
+        ]
+      },
+      {
+        "prodotto": "INSALATA DI MARE PRECOTT. IQF EXTRA CONG 3.6KG CRT FREDD",
+        "diminuzione": 85.55833333333332,
+        "percentuale": 44.32461836015749,
+        "vendite": [
+          0,
+          156.52,
+          388.64,
+          262.08000000000004,
+          164.86,
+          186.06,
+          152.68,
+          44.72,
+          22.36,
+          246.17000000000002,
+          22.36,
+          156.52
+        ]
+      },
+      {
+        "prodotto": "CIALDE CANNOLI SICILIANI MIGNON 3.2 KG CRT BADAL",
+        "diminuzione": 83.49500000000009,
+        "percentuale": 26.539207272496128,
+        "vendite": [
+          0,
+          147.67000000000002,
+          624.6000000000001,
+          612.05,
+          327.41999999999996,
+          175.92,
+          218.27,
+          299.75,
+          48.66,
+          294.02,
+          274.93,
+          251.05999999999997
+        ]
+      },
+      {
+        "prodotto": "GELATIERA INOX 2.5L 18X16.5X12H 168 PZ CRT SAM",
+        "diminuzione": 82.32000000000001,
+        "percentuale": 100,
+        "vendite": [
+          0,
+          0,
+          0,
+          238.56,
+          255.36,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "prodotto": "CASSETTA IN PLASTICA POLIETILENE USO ALIMENTARE IMPASTI 60X40CM H7CM GI",
+        "diminuzione": 81.77000000000001,
+        "percentuale": 63.51067961165049,
+        "vendite": [
+          0,
+          0,
+          135,
+          0,
+          637.5,
+          0,
+          0,
+          0,
+          0,
+          0,
+          281.88,
+          0
+        ]
+      },
+      {
+        "prodotto": "FARINA MACINATA A PIETRA TIPO 1 5 STAGIONI SACCO 10KG AF",
+        "diminuzione": 76.46666666666665,
+        "percentuale": 74.67447916666666,
+        "vendite": [
+          0,
+          128,
+          153.6,
+          153.6,
+          76.80000000000001,
+          102.4,
+          102.4,
+          0,
+          0,
+          0,
+          26.6,
+          26.6
+        ]
+      },
+      {
+        "prodotto": "MOZZARELLA DI BUFALA CAMPANA DOP 5X50G 3KG CRT SRI",
+        "diminuzione": 74.32333333333332,
+        "percentuale": 79.70045753503003,
+        "vendite": [
+          0,
+          43.5,
+          87,
+          217.78,
+          211.24,
+          0,
+          0,
+          43.5,
+          26.58,
+          43.5,
+          0,
+          0
+        ]
+      },
+      {
+        "prodotto": "PASTA RIPIENA BURRATA E POMODORINI PZ 5KG CRT MARC",
+        "diminuzione": 69.31666666666666,
+        "percentuale": 100,
+        "vendite": [
+          0,
+          217.9,
+          198,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "prodotto": "GAMBERO ARGENTINA L1 CONG BORDO CONF 2KG 12KG CRT DSD",
+        "diminuzione": 68.83,
+        "percentuale": 46.354330355138515,
+        "vendite": [
+          0,
+          0,
+          240.76,
+          24.08,
+          337.11999999999995,
+          288.96,
+          113.78,
+          12.04,
+          49.66,
+          48.16,
+          100.82,
+          153.48
+        ]
+      },
+      {
+        "prodotto": "POMODORI CILIEG GIALLI SEMISECCHI LATTA 750G 6PZ CRT RIS",
+        "diminuzione": 65.27999999999994,
+        "percentuale": 31.04875148632578,
+        "vendite": [
+          0,
+          0,
+          293.52,
+          233.76000000000002,
+          521.4599999999999,
+          212.76000000000002,
+          0,
+          0,
+          67.68,
+          229.02,
+          498.90000000000003,
+          74.22
+        ]
+      },
+      {
+        "prodotto": "SCATOLA PORTA TORTA 31X31X7 DAMASCATA BIANCA 100PZ CRT CAR",
+        "diminuzione": 62.666666666666664,
+        "percentuale": 100,
+        "vendite": [
+          0,
+          0,
+          0,
+          188,
+          188,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "prodotto": "PARMIGIANO REGGIANO DOP PV SV STAG MIN 22 MESI PZ 2KG LSM",
+        "diminuzione": 61.93999999999998,
+        "percentuale": 56.33896763435155,
+        "vendite": [
+          0,
+          46.66,
+          181.17999999999998,
+          140.44,
+          197.82999999999998,
+          93.53999999999999,
+          0,
+          0,
+          119.87,
+          72.06,
+          72.06,
+          24.02
+        ]
+      },
+      {
+        "prodotto": "CREMA DI RICOTTA CONGELATA1PZ 12KG BADAL",
+        "diminuzione": 59.47999999999999,
+        "percentuale": 19.873037086535245,
+        "vendite": [
+          0,
+          246.42,
+          535.42,
+          516.46,
+          358.5,
+          139,
+          347.5,
+          208.5,
+          144,
+          278,
+          246.41999999999996,
+          214.5
+        ]
+      },
+      {
+        "prodotto": "SALAME MILANO INTERO PZ 4KG SV COA",
+        "diminuzione": 58.95833333333333,
+        "percentuale": 70.23866253673259,
+        "vendite": [
+          0,
+          23.06,
+          240.29,
+          240.29,
+          0,
+          0,
+          0,
+          0,
+          126.83,
+          0,
+          0,
+          23.06
+        ]
+      },
+      {
+        "prodotto": "ARROSTICINI DI CARNE OVINA G25X196PZ 4.9 KG CRT POL",
+        "diminuzione": 58.778333333333336,
+        "percentuale": 100,
+        "vendite": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          352.67,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "prodotto": "PASTA RIPIENA RICOTTA E SPINACI CONF CA 5KG CRT MARC (Tortello, Verde, 1000gr)",
+        "diminuzione": 57.51666666666666,
+        "percentuale": 100,
+        "vendite": [
+          0,
+          17.75,
+          39.65,
+          287.7,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "mensile": [
+      {
+        "prodotto": "POMODORI PELATI 6X2500G LITO STRIANESE REG",
+        "diminuzione": 1851.7799999999997,
+        "percentuale": 60.138347622759156,
+        "mese1": 3079.2,
+        "mese2": 3448.2200000000007,
+        "mese3": 1227.42
+      },
+      {
+        "prodotto": "FIORDILATTE BOCCONCINO PER PIZZERIA 500G VASCH 3KG TAMB",
+        "diminuzione": 1587.8400000000001,
+        "percentuale": 67.28021558956628,
+        "mese1": 2360.04,
+        "mese2": 3635.37,
+        "mese3": 772.1999999999999
+      },
+      {
+        "prodotto": "CALZONE POMODORO MOZZARELLA 130G 30PZ CRT SG",
+        "diminuzione": 593.08,
+        "percentuale": 93.60479797979798,
+        "mese1": 633.6,
+        "mese2": 40.52,
+        "mese3": 40.52
+      },
+      {
+        "prodotto": "CARCIOFI CON GAMBO GRIGLIATI LATTA 750G 6PZ CRT RIS",
+        "diminuzione": 481.15999999999997,
+        "percentuale": 66.6389673702288,
+        "mese1": 722.04,
+        "mese2": 783.12,
+        "mese3": 240.88000000000002
+      },
+      {
+        "prodotto": "SCATOLA PORTA TORTA 45X55 DAMASCATA BIANCA 50 PZ CRT CAR",
+        "diminuzione": 326,
+        "percentuale": 100,
+        "mese1": 326,
+        "mese2": 0,
+        "mese3": 0
+      },
+      {
+        "prodotto": "GAMBERO BLACK TIGER INTERO 4/6 CONF 1KG 10KG CRT GLASS 20% DSD",
+        "diminuzione": 325,
+        "percentuale": 33.33333333333333,
+        "mese1": 975,
+        "mese2": 650,
+        "mese3": 650
+      },
+      {
+        "prodotto": "PASTA RIPIENA RICOTTA E SPINACI CONF CA 5KG CRT MARC (Tortello, Verde, 1000gr)",
+        "diminuzione": 305.45,
+        "percentuale": 100,
+        "mese1": 305.45,
+        "mese2": 0,
+        "mese3": 0
+      },
+      {
+        "prodotto": "SACCO SPAZZATURA NERO 110L 10 SACC A ROT 15 ROT CRT JIRR NON USARE",
+        "diminuzione": 285,
+        "percentuale": 100,
+        "mese1": 285,
+        "mese2": 999.02,
+        "mese3": 0
+      },
+      {
+        "prodotto": "CARTA ALIMENTI PROPILENE PERLATO 40G FOND BIANCO 75X50 CM 10KG CRT PACK ",
+        "diminuzione": 282.12,
+        "percentuale": 66.28447911282365,
+        "mese1": 425.62,
+        "mese2": 280.62,
+        "mese3": 143.5
+      },
+      {
+        "prodotto": "PASTA NOCCIOLA SCURA \"L\" PZ 5.5KG MIO",
+        "diminuzione": 279.84000000000003,
+        "percentuale": 100,
+        "mese1": 279.84000000000003,
+        "mese2": 135.63,
+        "mese3": 0
+      },
+      {
+        "prodotto": "TARTUFO NERO ESTIVO FRESCO ( TUBER AESTIVUM VITTAD.) TT",
+        "diminuzione": 273.6,
+        "percentuale": 100,
+        "mese1": 273.6,
+        "mese2": 0,
+        "mese3": 0
+      },
+      {
+        "prodotto": "MOZZARELLA DI BUFALA CAMPANA DOP 2X125G 2KG CRT GIFF",
+        "diminuzione": 256.11,
+        "percentuale": 100,
+        "mese1": 256.11,
+        "mese2": 297,
+        "mese3": 0
+      },
+      {
+        "prodotto": "CARTONI PIZZA VESUVIO BIA 33X33X3.5 100PZ CONF LINER",
+        "diminuzione": 252,
+        "percentuale": 73.04347826086956,
+        "mese1": 345,
+        "mese2": 343,
+        "mese3": 93
+      },
+      {
+        "prodotto": "SCROCCHIARELLA CLASSICA 38X28 8PZX440G CRT EUR",
+        "diminuzione": 244.24,
+        "percentuale": 35.839643129658974,
+        "mese1": 681.48,
+        "mese2": 736.53,
+        "mese3": 437.24
+      },
+      {
+        "prodotto": "GELATIERA INOX 2.5L 18X16.5X12H 168 PZ CRT SAM",
+        "diminuzione": 238.56,
+        "percentuale": 100,
+        "mese1": 238.56,
+        "mese2": 255.36,
+        "mese3": 0
+      },
+      {
+        "prodotto": "FARINA MACINATA A PIETRA TIPO 1 5 STAGIONI SACCO 10KG AF",
+        "diminuzione": 229.4,
+        "percentuale": 89.609375,
+        "mese1": 256,
+        "mese2": 179.20000000000002,
+        "mese3": 26.6
+      },
+      {
+        "prodotto": "ZUPPA INGLESE MONO PZ 12 CT MAR",
+        "diminuzione": 228.59999999999997,
+        "percentuale": 78.18057455540355,
+        "mese1": 292.4,
+        "mese2": 0,
+        "mese3": 63.8
+      },
+      {
+        "prodotto": "BICCHIERE CARTONE KRAFT ZEN CHIARO 250ML 50PZ 20CONF FIST ",
+        "diminuzione": 218.26,
+        "percentuale": 95.31004366812226,
+        "mese1": 229,
+        "mese2": 107.8,
+        "mese3": 10.74
+      },
+      {
+        "prodotto": "PASTA RIPIENA BURRATA E POMODORINI PZ 5KG CRT MARC",
+        "diminuzione": 217.9,
+        "percentuale": 100,
+        "mese1": 217.9,
+        "mese2": 0,
+        "mese3": 0
+      },
+      {
+        "prodotto": "COPERCHIO PS TRASPARENTE X GELATIERA INOX 2.5L 18X16.5X12H 336PZ A CT SAM",
+        "diminuzione": 215.04,
+        "percentuale": 100,
+        "mese1": 215.04,
+        "mese2": 0,
+        "mese3": 0
+      },
+      {
+        "prodotto": "OLIO AL TARTUFO BIANCO 250ML 12BTL TT",
+        "diminuzione": 206.17000000000002,
+        "percentuale": 90.75582163137739,
+        "mese1": 227.17000000000002,
+        "mese2": 11.49,
+        "mese3": 21
+      },
+      {
+        "prodotto": "PASTA RIPIENA DI PARMIGIANA CA 5 KG CRT MARC",
+        "diminuzione": 203.3,
+        "percentuale": 100,
+        "mese1": 203.3,
+        "mese2": 0,
+        "mese3": 0
+      },
+      {
+        "prodotto": "MOZZARELLA DI BUFALA CAMPANA DOP 5X50G 3KG CRT SRI",
+        "diminuzione": 199.26000000000005,
+        "percentuale": 73.9808420583649,
+        "mese1": 269.34000000000003,
+        "mese2": 437.08000000000004,
+        "mese3": 70.08
+      },
+      {
+        "prodotto": "Dispenser per rotoli carta in plastica ABS Jirr",
+        "diminuzione": 192,
+        "percentuale": 100,
+        "mese1": 192,
+        "mese2": 192,
+        "mese3": 0
+      },
+      {
+        "prodotto": "FARINA 00 CAPUTO NUVOLA 25KG FERR",
+        "diminuzione": 184.58999999999992,
+        "percentuale": 8.35184623807218,
+        "mese1": 2210.17,
+        "mese2": 3046.669999999999,
+        "mese3": 2025.5800000000002
+      },
+      {
+        "prodotto": "GAMBERO INTERI ROSSI SICILIA 3° 30-45PZ AL KG - 8KG CRT POL",
+        "diminuzione": 177,
+        "percentuale": 100,
+        "mese1": 177,
+        "mese2": 59,
+        "mese3": 0
+      },
+      {
+        "prodotto": "SAVOIARDI VINCENZOVO 200G 12PZ CRT POL",
+        "diminuzione": 166.0100000000001,
+        "percentuale": 26.879422289146888,
+        "mese1": 617.61,
+        "mese2": 546.5799999999999,
+        "mese3": 451.5999999999999
+      },
+      {
+        "prodotto": "PASTA RIPIENA RICOTTA E LIMONE CONF CA 5KG CRT MARC",
+        "diminuzione": 161.35,
+        "percentuale": 100,
+        "mese1": 161.35,
+        "mese2": 0,
+        "mese3": 0
+      },
+      {
+        "prodotto": "DESTROSIO MONO C DEX 02001 25KG MIO",
+        "diminuzione": 153,
+        "percentuale": 100,
+        "mese1": 153,
+        "mese2": 0,
+        "mese3": 0
+      },
+      {
+        "prodotto": "[CIALDA VIENNA MEDIA 160 PZ] CONI CIALDA VIENNA MEDIA 160 PZ 3.36KG CRT POL",
+        "diminuzione": 149.12,
+        "percentuale": 100,
+        "mese1": 149.12,
+        "mese2": 0,
+        "mese3": 0
+      }
+    ]
+  }
+}

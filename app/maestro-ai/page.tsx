@@ -25,7 +25,7 @@ import { PullToRefresh } from '@/components/maestro/PullToRefresh';
 import { ChatWidget } from '@/components/maestro/ChatWidget';
 import { VehicleStockButton } from '@/components/maestro/VehicleStockButton';
 import { UrgentProductsModal } from '@/components/maestro/UrgentProductsModal';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatCurrency, formatCurrencyValue, formatNumber } from '@/lib/utils';
 import { useCustomerAvatars, useAnalytics } from '@/hooks/useMaestroAI';
 import { useOfflineCache } from '@/hooks/useOfflineCache';
 import { useMaestroFilters } from '@/contexts/MaestroFiltersContext';
@@ -171,8 +171,9 @@ export default function MaestroAIDashboard() {
     }
   };
 
-  // ✅ FIXED: Use period-specific KPIs from Odoo (NOT lifetime totals from avatars)
+  // ✅ FIXED: Use period-specific KPIs from Odoo with REAL trend calculations
   // The analytics hook now queries Odoo directly for period-specific revenue and orders
+  // AND compares with previous period to calculate trend percentages
   const kpis = useMemo(() => {
     // Use period-specific KPIs from analytics.kpis
     if (analytics?.kpis) {
@@ -182,18 +183,22 @@ export default function MaestroAIDashboard() {
         revenue: analytics.kpis.revenue,
         orders: analytics.kpis.orders,
         customers: analytics.kpis.customers,
-        avgOrderValue: analytics.kpis.avgOrderValue
+        avgOrderValue: analytics.kpis.avgOrderValue,
+        revenueTrend: analytics.kpis.revenueTrend,
+        ordersTrend: analytics.kpis.ordersTrend,
+        customersTrend: analytics.kpis.customersTrend,
+        avgOrderValueTrend: analytics.kpis.avgOrderValueTrend
       });
 
       return {
         totalRevenue: analytics.kpis.revenue,
-        revenueTrend: 0, // TODO: Calculate trends
+        revenueTrend: analytics.kpis.revenueTrend || 0,
         totalOrders: analytics.kpis.orders,
-        ordersTrend: 0,
+        ordersTrend: analytics.kpis.ordersTrend || 0,
         activeCustomers: analytics.kpis.customers,
-        customersTrend: 0,
+        customersTrend: analytics.kpis.customersTrend || 0,
         avgOrderValue: analytics.kpis.avgOrderValue,
-        avgOrderTrend: 0
+        avgOrderTrend: analytics.kpis.avgOrderValueTrend || 0
       };
     }
 
@@ -384,13 +389,14 @@ export default function MaestroAIDashboard() {
         </motion.div>
 
         {/* KPI Cards - REAL DATA - Mobile: 2 cols, Desktop: 4 cols */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           <KPICard
             title="Revenue Totale"
             value={formatCurrency(kpis.totalRevenue)}
             icon={Banknote}
             trend={kpis.revenueTrend}
             color="green"
+            type="revenue"
           />
           <KPICard
             title="Ordini"
@@ -398,6 +404,7 @@ export default function MaestroAIDashboard() {
             icon={ShoppingCart}
             trend={kpis.ordersTrend}
             color="blue"
+            type="orders"
           />
           <KPICard
             title="Clienti Attivi"
@@ -405,13 +412,16 @@ export default function MaestroAIDashboard() {
             icon={Users}
             trend={kpis.customersTrend}
             color="purple"
+            type="customers"
           />
           <KPICard
             title="Valore Medio Ordine"
-            value={formatCurrency(kpis.avgOrderValue)}
+            value={formatCurrencyValue(kpis.avgOrderValue)}
             icon={TrendingUp}
             trend={kpis.avgOrderTrend}
             color="orange"
+            type="avg-order-value"
+            currencyLabel="CHF"
           />
         </div>
 
@@ -487,7 +497,7 @@ export default function MaestroAIDashboard() {
 
             {/* Scrollable Performers List */}
             {analytics?.topPerformers && analytics.topPerformers.length > 0 ? (
-              <div className="space-y-2 overflow-y-auto max-h-[400px] pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+              <div className="space-y-2 overflow-y-auto max-h-[250px] sm:max-h-[350px] md:max-h-[400px] pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
                 {analytics.topPerformers.map((performer, idx) => (
                   <button
                     key={performer.id}
@@ -586,7 +596,7 @@ export default function MaestroAIDashboard() {
               )}
             </div>
             {analytics?.topProducts && analytics.topProducts.length > 0 ? (
-              <div className="space-y-2 overflow-y-auto max-h-[400px] pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+              <div className="space-y-2 overflow-y-auto max-h-[250px] sm:max-h-[350px] md:max-h-[400px] pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
                 {analytics.topProducts.map((product, idx) => (
                   <div
                     key={product.product_id}
@@ -640,7 +650,7 @@ export default function MaestroAIDashboard() {
               <div className="space-y-3">
                 {churnAlerts.map((alert) => (
                   <Link key={alert.id} href={`/maestro-ai/customers/${alert.id}`}>
-                    <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer">
+                    <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer min-h-[44px] flex flex-col justify-center">
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h4 className="font-medium text-white">{alert.name}</h4>

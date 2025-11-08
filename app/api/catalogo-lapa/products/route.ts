@@ -102,9 +102,25 @@ export async function POST(request: NextRequest) {
       })
     });
 
+    // Verifica che la risposta sia OK
+    if (!productsResponse.ok) {
+      const errorText = await productsResponse.text();
+      console.error('❌ [CATALOGO] Risposta HTTP non OK:', productsResponse.status, errorText.substring(0, 200));
+      throw new Error(`Errore HTTP ${productsResponse.status}: ${productsResponse.statusText}`);
+    }
+
+    // Verifica che sia JSON
+    const contentType = productsResponse.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const responseText = await productsResponse.text();
+      console.error('❌ [CATALOGO] Risposta non JSON:', responseText.substring(0, 200));
+      throw new Error('La risposta di Odoo non è JSON valido');
+    }
+
     const productsData = await productsResponse.json();
 
     if (productsData.error) {
+      console.error('❌ [CATALOGO] Errore da Odoo:', productsData.error);
       throw new Error(productsData.error.message || 'Errore caricamento prodotti');
     }
 
@@ -141,7 +157,17 @@ export async function POST(request: NextRequest) {
         })
       });
 
-      const quantsData = await quantsResponse.json();
+      // Verifica risposta ubicazioni
+      if (!quantsResponse.ok) {
+        console.error('❌ [UBICAZIONI] Errore HTTP:', quantsResponse.status);
+      } else {
+        const contentType = quantsResponse.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('❌ [UBICAZIONI] Risposta non JSON');
+        }
+      }
+
+      const quantsData = quantsResponse.ok ? await quantsResponse.json() : { error: true };
 
       if (!quantsData.error && quantsData.result) {
         const quants = quantsData.result;

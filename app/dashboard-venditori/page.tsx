@@ -76,85 +76,98 @@ export default function DashboardVenditori() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen-dynamic bg-slate-50 pb-20 md:pb-8">
       {/* Header */}
-      <header className="bg-white shadow-md rounded-xl mb-8 p-5">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            {/* Home Button */}
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
-              title="Torna alla home"
-            >
-              🏠 Home
-            </button>
+      <header className="bg-white shadow-md rounded-xl mb-4 sm:mb-6 md:mb-8 p-3 sm:p-4 md:p-5">
+        <div className="max-w-7xl mx-auto">
+          {/* First row - Home button and title */}
+          <div className="flex items-center justify-between gap-2 sm:gap-3 mb-3 md:mb-4">
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4 flex-1 min-w-0">
+              {/* Home Button */}
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 md:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-xs sm:text-sm md:text-base min-h-touch shrink-0"
+                title="Torna alla home"
+              >
+                <span>🏠</span>
+                <span className="hidden xs:inline">Home</span>
+              </button>
 
-            <div className="text-2xl font-bold text-blue-600">
-              📊 Gestione Clienti Vendite
+              <div className="text-sm sm:text-lg md:text-2xl font-bold text-blue-600 truncate">
+                📊 <span className="hidden sm:inline">Gestione Clienti Vendite</span>
+                <span className="sm:hidden">Clienti</span>
+              </div>
             </div>
-          </div>
 
-          <TeamSelector
-            teams={teams}
-            selectedTeam={selectedTeam}
-            onTeamChange={setSelectedTeam}
-          />
-
-          <div className="flex items-center gap-4">
-            {/* Connection Status */}
+            {/* Connection Status - Hidden on mobile, shown on tablet+ */}
             <div
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
+              className={`hidden sm:flex items-center gap-2 px-3 py-2 rounded-full text-xs md:text-sm font-semibold shrink-0 ${
                 connectionStatus === 'connected'
                   ? 'bg-green-100 text-green-700 border-2 border-green-500'
                   : 'bg-red-100 text-red-700 border-2 border-red-500'
               }`}
             >
               <span>{connectionStatus === 'connected' ? '✓' : '🔄'}</span>
-              <span>{connectionStatus === 'connected' ? 'Connesso' : 'Connessione...'}</span>
+              <span className="hidden md:inline">{connectionStatus === 'connected' ? 'Connesso' : 'Connessione...'}</span>
+            </div>
+          </div>
+
+          {/* Second row - Team selector and user info */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 md:gap-4">
+            <div className="flex-1">
+              <TeamSelector
+                teams={teams}
+                selectedTeam={selectedTeam}
+                onTeamChange={setSelectedTeam}
+              />
             </div>
 
             {/* User Info */}
-            <div className="flex items-center gap-3 bg-slate-100 px-4 py-2 rounded-lg">
+            <div className="flex items-center gap-2 sm:gap-3 bg-slate-100 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm shrink-0">
               <div>
-                <div className="font-semibold">{user?.name || 'Caricamento...'}</div>
+                <div className="font-semibold truncate max-w-[150px] sm:max-w-none">{user?.name || 'Caricamento...'}</div>
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4">
         {/* Team Banner */}
         {selectedTeam && (
-          <div className="bg-gradient-to-br from-blue-600 to-emerald-600 text-white p-6 rounded-xl mb-6 shadow-lg">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <div className="bg-gradient-to-br from-blue-600 to-emerald-600 text-white p-3 sm:p-4 md:p-6 rounded-xl mb-4 sm:mb-5 md:mb-6 shadow-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6 items-center">
               <div>
-                <h3 className="text-2xl font-bold mb-2">
+                <h3 className="text-base sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2">
                   {teams.find(t => t.id === selectedTeam)?.name}
                 </h3>
-                <p className="opacity-90">
+                <p className="opacity-90 text-xs sm:text-sm md:text-base">
                   {teams.find(t => t.id === selectedTeam)?.description || 'Seleziona un team'}
                 </p>
               </div>
-              <div className="flex gap-6 flex-wrap justify-center">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold">
+                  <div className="text-lg sm:text-2xl md:text-3xl font-bold">
                     {teams.find(t => t.id === selectedTeam)?.memberCount || 0}
                   </div>
-                  <div className="text-sm opacity-90">Membri</div>
+                  <div className="text-xs sm:text-sm opacity-90">Membri</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold">
-                    CHF {Math.round(teams.find(t => t.id === selectedTeam)?.invoicedTarget || 0).toLocaleString()}
+                  <div className="text-lg sm:text-2xl md:text-3xl font-bold">
+                    <span className="hidden sm:inline">CHF </span>
+                    {Math.round(teams.find(t => t.id === selectedTeam)?.invoicedTarget || 0).toLocaleString()}
                   </div>
-                  <div className="text-sm opacity-90">Target</div>
+                  <div className="text-xs sm:text-sm opacity-90">Target</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold">
-                    CHF {Math.round(teams.find(t => t.id === selectedTeam)?.invoiced || 0).toLocaleString()}
+                  <div className="text-lg sm:text-2xl md:text-3xl font-bold">
+                    <span className="hidden sm:inline">CHF </span>
+                    {Math.round(teams.find(t => t.id === selectedTeam)?.invoiced || 0).toLocaleString()}
                   </div>
-                  <div className="text-sm opacity-90">Fatturato Totale</div>
+                  <div className="text-xs sm:text-sm opacity-90">
+                    <span className="hidden xs:inline">Fatturato</span>
+                    <span className="xs:hidden">Fatt.</span>
+                  </div>
                 </div>
               </div>
             </div>

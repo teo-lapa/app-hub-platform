@@ -11,6 +11,7 @@ type DevelopmentStatus = 'in_sviluppo' | 'pronta';
 interface GroupSettings {
   enabled: boolean;
   excluded: number[];
+  excludedEmails?: string[]; // NEW: email degli utenti esclusi
 }
 
 interface AppVisibility {
@@ -179,8 +180,14 @@ export default function GestioneVisibilitaAppPage() {
     setModalOpen(true);
   };
 
-  const handleSaveExclusions = (excludedIds: number[]) => {
+  const handleSaveExclusions = (excludedIds: number[], excludedEmails: string[]) => {
     if (!currentAppId) return;
+
+    console.log(`💾 handleSaveExclusions for app ${currentAppId}:`, {
+      type: modalType,
+      excludedIds,
+      excludedEmails
+    });
 
     setApps(apps.map(app =>
       app.id === currentAppId
@@ -190,7 +197,8 @@ export default function GestioneVisibilitaAppPage() {
               ...app.groups,
               [modalType]: {
                 ...app.groups[modalType],
-                excluded: excludedIds
+                excluded: excludedIds,
+                excludedEmails // NEW: Save emails too
               }
             }
           }
@@ -201,6 +209,15 @@ export default function GestioneVisibilitaAppPage() {
   const handleSave = async () => {
     setSaving(true);
     setMessage(null);
+
+    // 🔍 DEBUG: Log completo dello stato prima di inviare
+    console.log('🚀 handleSave - Stato completo apps:', JSON.stringify(apps, null, 2));
+    const stellaApp = apps.find(a => a.id === 's17');
+    if (stellaApp) {
+      console.log('🌟 Stella AI Assistant (s17) groups:', stellaApp.groups);
+      console.log('  dipendenti.excluded:', stellaApp.groups.dipendenti.excluded);
+      console.log('  dipendenti.excludedEmails:', stellaApp.groups.dipendenti.excludedEmails);
+    }
 
     try {
       const response = await fetch('/api/apps/visibility', {
@@ -528,6 +545,7 @@ export default function GestioneVisibilitaAppPage() {
           title={`${currentApp.name} - ${modalType === 'dipendenti' ? 'Dipendenti' : 'Clienti'}`}
           users={modalType === 'dipendenti' ? employees : customers}
           excludedIds={currentApp.groups[modalType].excluded}
+          excludedEmails={currentApp.groups[modalType].excludedEmails || []}
           onSave={handleSaveExclusions}
           loading={loadingUsers}
           type={modalType}

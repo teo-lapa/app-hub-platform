@@ -277,7 +277,7 @@ export default function DailyPlanPage() {
   // ============================================================================
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <motion.div
@@ -286,7 +286,7 @@ export default function DailyPlanPage() {
           className="w-full"
         >
           <Link href="/maestro-ai">
-            <button className="mb-4 flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors">
+            <button className="mb-4 flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors min-h-[44px]">
               <ArrowLeft className="h-4 w-4" />
               <span>Torna alla Dashboard</span>
             </button>
@@ -334,7 +334,7 @@ export default function DailyPlanPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-1 md:grid-cols-4 gap-4"
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"
           >
             <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
               <div className="flex items-center justify-between">

@@ -1,0 +1,178 @@
+{
+  "timestamp": "2025-11-04T14:57:52.148075",
+  "periodo": {
+    "inizio": "2025-08-06",
+    "fine": "2025-11-04"
+  },
+  "statistiche": {
+    "ordini_totali": 1000,
+    "ordini_consegnati": 943,
+    "righe_prodotto": 4928,
+    "clienti_unici": 184,
+    "prodotti_unici": 892
+  },
+  "top_20_clienti_meno": [
+    [
+      "LAPA - finest italian food GmbH, Paul Teodorescu",
+      0.0
+    ],
+    [
+      "LAURA TEODORESCU PRIVATO",
+      0.0
+    ],
+    [
+      "LAPA - finest italian food GmbH, Mihai Nita",
+      0.0
+    ],
+    [
+      "Gebr. Da Silva Cleanservice AG",
+      0.0
+    ],
+    [
+      "LAPA - finest italian food GmbH, Domingos Ferreira",
+      0.0
+    ],
+    [
+      "Hibou Gastro GmbH",
+      0.0
+    ],
+    [
+      "LAPA - finest italian food GmbH, Alexandru Dominte",
+      0.0
+    ],
+    [
+      "CAMPIONATURE",
+      0.0
+    ],
+    [
+      "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+      0.0
+    ],
+    [
+      "HALTEN GASTRO GMBH, FAUSTO D'AGOSTINO",
+      0.0
+    ],
+    [
+      "Tremondi B&B GmbH",
+      16.03
+    ],
+    [
+      "JUDITH SIMEON",
+      29.5
+    ],
+    [
+      "Arunis Thai GmbH",
+      42.7
+    ],
+    [
+      "PIZZERIA PIAZZA AYDIN YASAR, AYDIN YASAR",
+      48.7
+    ],
+    [
+      "GIUSEPPE GAMBARUCCI",
+      64.46000000000001
+    ],
+    [
+      "CLAUDIO GALLINA",
+      74.69
+    ],
+    [
+      "Buonvicini AG - Pasta mercato",
+      93.9
+    ],
+    [
+      "ROSSELLA LOMBARDO",
+      101.44999999999999
+    ],
+    [
+      "PIZZERIA DA COSIMO E ANNA",
+      109.2
+    ],
+    [
+      "PRIMOGUSTO GMBH",
+      116.96
+    ]
+  ],
+  "top_20_prodotti_meno": [
+    [
+      "TORTA PROFITEROLES CIOCCOLATO BIANCO VASSOIO MAR",
+      0.0
+    ],
+    [
+      "VINO CORTIGLIANO IGT TOSCANA ROSSO 0.75 L PZ 6PZ CRT CACC",
+      0.0
+    ],
+    [
+      "CAFFE IN GRANI BORBONE MISCELA BLU CONF 1KG 6KG CRT BOR",
+      0.0
+    ],
+    [
+      "OLIO EXTRAVERGINE DI OLIVA 100% ITALIA NOVELLO (MOSTO/NON FILTRATO) 500ML 6PZ CRT PRIM",
+      0.0
+    ],
+    [
+      "TORTA BABA PANNA E CREMA DI NOCCIOLA E CACAO 1.4 KG MAR",
+      0.0
+    ],
+    [
+      "CAFFE IN GRANI BORBONE MISCELA ROSSA VENDING CONF 1KG 6KG CRT BOR",
+      0.0
+    ],
+    [
+      "[032124] Spugna Fibra Grossa ZIF - Confezione 50 pezzi",
+      0.0
+    ],
+    [
+      "[159988] Sacchi Bio per Pattumiera 72x110cm - Grigio - 30gr",
+      0.0
+    ],
+    [
+      "[32125] Panno in Microfibra Professionale Blu 32x32cm",
+      0.0
+    ],
+    [
+      "[11563] Puligen Disincrostante Professionale 1L",
+      0.0
+    ],
+    [
+      "[70114] Detergente Igienizzante Multigen Efficace 750ml",
+      0.0
+    ],
+    [
+      "[270423] EQO Detergente Anticalcare per Bagno 750ml - Confezione 6 pezzi",
+      0.0
+    ],
+    [
+      "ARGONIT AF/2 Disinfettante Professionale 750ml - Confezione 6 pezzi",
+      0.0
+    ],
+    [
+      "RICOTTA DI PECORA VASCHETTA CA 1,5 KG CRT POL",
+      0.0
+    ],
+    [
+      "BABA GRANDI SECCHI TEDESCO 90 PZ 2.25KG CRT FERR",
+      0.0
+    ],
+    [
+      "[270425] Detersivo per Lavastoviglie EQO Professional Tanica 5.5 kg (Confezione 2 pezzi)",
+      0.0
+    ],
+    [
+      "SALSA DI PEPERONI VASO 225G 12PZ CRT RIS",
+      0.0
+    ],
+    [
+      "PROVOLONE DOLCE AURICCHIO FETTE SOTTILI CONF 100G 10 PZ CRT AUR",
+      0.0
+    ],
+    [
+      "PROVOLONE AFFU. AURICCHIO FETTE SOTTILI CONF 100G 10PZ CRT AUR",
+      0.0
+    ],
+    [
+      "FETTINE DI AURICCHIO PROVOLONE PICC CONF 100G 10 PZ CRT AUR",
+      0.0
+    ]
+  ]
+}

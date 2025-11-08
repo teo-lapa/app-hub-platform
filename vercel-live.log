@@ -1,0 +1,5564 @@
+Vercel CLI 48.1.6
+The "--output" option was ignored because it is now deprecated. Please remove it.
+Fetching deployment "staging.hub.lapa.ch" in teo-lapas-projects
+Displaying runtime logs for deployment app-hub-platform-g2jm0j7lo-teo-lapas-projects.vercel.app (dpl_HjF9bu6AffHZn989mNqGF4bY8N9d) starting from Nov Tu 10:30:08.09
+
+waiting for new logs...
+10:30:14.80  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/auth/me
+---------------------------------------------------------------
+🔍 [API-ME] Controllo autenticazione utente...
+
+waiting for new logs...
+10:30:14.80  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/auth/me
+---------------------------------------------------------------
+🍪 [API-ME] Cookies ricevuti: {
+  hasToken: true,
+  hasOdooSession: true,
+  tokenPreview: 'eyJhbGciOiJIUzI1NiIs...',
+  odooSessionPreview: 'fa49f53018167b0e0d53...'
+}
+
+waiting for new logs...
+10:30:14.80  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/auth/me
+---------------------------------------------------------------
+✅ [API-ME] JWT decodificato per utente Odoo: { email: 'paul@lapa.ch', userId: 'odoo-7', name: 'Paul Teodorescu' }
+
+waiting for new logs...
+10:30:15.39  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+📋 GET /api/apps/visibility - role: admin, userId: NaN
+
+waiting for new logs...
+10:30:15.40  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+🔍 isAppVisibleForRole - userId: NaN, userRole: admin, isInternal: true, isPortal: false, visibilityGroup: internal
+
+waiting for new logs...
+10:30:15.40  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+🔍 isAppVisibleForRole - userId: NaN, userRole: admin, isInternal: true, isPortal: false, visibilityGroup: internal
+
+waiting for new logs...
+10:30:15.40  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+🔍 isAppVisibleForRole - userId: NaN, userRole: admin, isInternal: true, isPortal: false, visibilityGroup: internal
+
+waiting for new logs...
+10:30:15.40  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+🔍 isAppVisibleForRole - userId: NaN, userRole: admin, isInternal: true, isPortal: false, visibilityGroup: internal
+
+waiting for new logs...
+10:30:33.66  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/urgent-products
+-----------------------------------------------------------------------
+📋 GET /api/urgent-products - Recupero prodotti urgenti...
+
+waiting for new logs...
+10:30:34.13  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/urgent-products
+-----------------------------------------------------------------------
+✅ Trovati 22 prodotti urgenti
+
+waiting for new logs...
+10:30:34.13  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/urgent-products
+-----------------------------------------------------------------------
+✅ Trovati 22 prodotti urgenti
+
+waiting for new logs...
+10:30:34.13  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/urgent-products
+-----------------------------------------------------------------------
+✅ Trovati 22 prodotti urgenti
+
+waiting for new logs...
+10:30:42.07  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/auth/me
+---------------------------------------------------------------
+🔍 [API-ME] Controllo autenticazione utente...
+
+waiting for new logs...
+10:30:42.07  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/auth/me
+---------------------------------------------------------------
+🔍 [API-ME] Controllo autenticazione utente...
+
+waiting for new logs...
+10:30:42.86  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+📋 GET /api/apps/visibility - role: null, userId: undefined
+
+waiting for new logs...
+10:30:42.86  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+📋 GET /api/apps/visibility - role: null, userId: undefined
+
+waiting for new logs...
+10:30:53.56  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/odoo/employees
+----------------------------------------------------------------------
+📡 RPC Request: { model: 'hr.employee', method: 'search_read', args: 1, kwargs: 3 }
+
+waiting for new logs...
+10:30:53.91  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/odoo/employees
+----------------------------------------------------------------------
+✅ [ODOO-CALL] hr.employee.search_read SUCCESS
+
+waiting for new logs...
+10:30:53.91  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/odoo/employees
+----------------------------------------------------------------------
+✅ [ODOO-CALL] hr.employee.search_read SUCCESS
+
+waiting for new logs...
+10:30:53.91  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/odoo/employees
+----------------------------------------------------------------------
+✅ [ODOO-CALL] hr.employee.search_read SUCCESS
+
+waiting for new logs...
+10:31:17.50  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+🔵 POST /api/apps/visibility - Start
+
+waiting for new logs...
+10:31:17.50  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+📦 Body ricevuto: {
+  "apps": [
+    {
+      "id": "1",
+      "name": "Menu App [P]",
+      "icon": "🍽️",
+      "category": "Business",
+      "visible": true,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "Booking System [P]",
+      "icon": "📅",
+      "category": "Business",
+      "visible": false,
+      "visibilityGroup": "none",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": false,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "AI Chat [P]",
+      "icon": "🤖",
+      "category": "AI & Tech",
+      "visible": true,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "4",
+      "name": "Analytics Dashboard [P]",
+      "icon": "📊",
+      "category": "Analytics",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "5",
+      "name": "Task Manager [P]",
+      "icon": "✅",
+      "category": "Productivity",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "6",
+      "name": "Invoice Generator [P]",
+      "icon": "🧾",
+      "category": "Finance",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "7",
+      "name": "Catalogo LAPA [P]",
+      "icon": "📦",
+      "category": "Business",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": [
+            3118,
+            2995,
+            6375,
+            8159,
+            832,
+            2492,
+            833,
+            1221,
+            831,
+            1213,
+            9126,
+            9125,
+            835,
+            3066,
+            892,
+            3105,
+            9187,
+            839,
+            2487,
+            2970,
+            3070,
+            6281,
+            849,
+            8951,
+            8934,
+            8950,
+            3055,
+            5509,
+            9952,
+            3158,
+            19,
+            8495,
+            7470,
+            7629,
+            7630,
+            9138,
+            9317,
+            8693,
+            9900,
+            9899,
+            9034,
+            850,
+            2463,
+            852,
+            5130,
+            2945,
+            2029,
+            8044,
+            9159,
+            9160,
+            9986,
+            2466,
+            2473,
+            1175,
+            6973,
+            3018,
+            2483,
+            859,
+            5680,
+            5693,
+            5695,
+            1797,
+            8761,
+            9469,
+            3010,
+            6862,
+            8634,
+            8638,
+            4999,
+            862,
+            1714,
+            2489,
+            869,
+            871,
+            2456,
+            1162,
+            3016,
+            2313,
+            2979,
+            2968,
+            4998,
+            874,
+            5012,
+            5324,
+            1163,
+            877,
+            5727,
+            7585,
+            883,
+            884,
+            2514,
+            9979,
+            9982,
+            891,
+            2521,
+            2517,
+            2518,
+            2366,
+            2523,
+            5083,
+            5382,
+            8011,
+            949,
+            9417,
+            9394,
+            9383,
+            8597,
+            1199,
+            9457,
+            9517,
+            6104,
+            6088,
+            6100,
+            6109,
+            6113,
+            893,
+            894,
+            5187,
+            1727,
+            897,
+            6446,
+            901,
+            902,
+            5270,
+            5269,
+            903,
+            2543,
+            905,
+            8450,
+            2546,
+            906,
+            9959,
+            3157,
+            1715,
+            968,
+            8739,
+            1718,
+            9026,
+            5863,
+            5689,
+            6612,
+            8680,
+            8136,
+            8261,
+            9139,
+            5132,
+            923,
+            9564,
+            5924,
+            5925,
+            5926,
+            6987,
+            6989,
+            900,
+            2554,
+            10,
+            7377,
+            9192,
+            9932,
+            1716,
+            9321,
+            7348,
+            1732,
+            919,
+            1222,
+            2321,
+            6320,
+            922,
+            9449,
+            9448,
+            5179,
+            5001,
+            2380,
+            7982,
+            2974,
+            9271,
+            9834,
+            9879,
+            9726,
+            8118,
+            5634,
+            6051,
+            7819,
+            7820,
+            6602,
+            5794,
+            5253,
+            5779,
+            5796,
+            9546,
+            2963,
+            8538,
+            9590,
+            2000,
+            925,
+            1870,
+            937,
+            2609,
+            8610,
+            9630,
+            5395,
+            9800,
+            7098,
+            7104,
+            9538,
+            5671,
+            1740,
+            6744,
+            3102,
+            9156,
+            9992,
+            9292,
+            9293,
+            8656,
+            8657,
+            6210,
+            8039,
+            942,
+            2613,
+            5927,
+            8520,
+            946,
+            947,
+            2628,
+            1975,
+            948,
+            5654,
+            953,
+            5134,
+            6150,
+            8291,
+            8294,
+            5806,
+            1657,
+            9463,
+            957,
+            961,
+            7557,
+            8870,
+            8871,
+            904,
+            9229,
+            2274,
+            5000,
+            2888,
+            972,
+            2685,
+            2421,
+            1869,
+            975,
+            5271,
+            1076,
+            7758,
+            7759,
+            7388,
+            12,
+            9599,
+            9651,
+            6381,
+            6383,
+            5679,
+            9628,
+            7730,
+            6512,
+            2519,
+            981,
+            5319,
+            9071,
+            986,
+            8574,
+            8576,
+            2352,
+            2750,
+            6438,
+            2919,
+            7974,
+            8005,
+            979,
+            22,
+            6309,
+            6314,
+            7935,
+            5491,
+            6194,
+            6408,
+            5931,
+            5807,
+            5932,
+            8389,
+            18,
+            5317,
+            9181,
+            2742,
+            2736,
+            2737,
+            5877,
+            5879,
+            9812,
+            9145,
+            995,
+            996,
+            2735,
+            9909,
+            997,
+            2740,
+            998,
+            999,
+            1989,
+            1002,
+            2488,
+            2454,
+            2461,
+            2481,
+            2444,
+            1129,
+            5136,
+            6439,
+            8752,
+            8633,
+            8636,
+            9104,
+            880,
+            5002,
+            9105,
+            7648,
+            1139,
+            2756,
+            5129,
+            1144,
+            1148,
+            1149,
+            6462,
+            1153,
+            5883,
+            885,
+            5504,
+            11,
+            7428,
+            2975,
+            9927,
+            6550,
+            6552,
+            1145,
+            7524,
+            7525,
+            8556,
+            6228,
+            8103,
+            6522,
+            9540,
+            9548,
+            1160,
+            6387,
+            6389,
+            1151,
+            971,
+            2676,
+            1133,
+            5137,
+            1187,
+            2814,
+            5295,
+            9433,
+            1188,
+            5486,
+            9211,
+            9218,
+            6437,
+            8221,
+            9924,
+            5433,
+            8701,
+            7086,
+            7090,
+            9643,
+            9266,
+            8700,
+            1176,
+            6477,
+            8708,
+            8711,
+            2286,
+            2013,
+            1193,
+            5871,
+            1196,
+            6172,
+            1880,
+            5028,
+            1759,
+            5321,
+            2777,
+            2402,
+            2991,
+            5240,
+            6143,
+            8896,
+            9903,
+            9895,
+            994,
+            9757,
+            5928,
+            10059,
+            10048,
+            6489,
+            9923,
+            1202,
+            8146,
+            1204,
+            5298,
+            5502,
+            5874,
+            2854,
+            1206,
+            1207,
+            2857,
+            8539,
+            9958,
+            8660,
+            8662,
+            10013,
+            5597,
+            9576,
+            1768,
+            5168,
+            2774,
+            5414,
+            7882,
+            8899,
+            7455,
+            8885,
+            8875,
+            8876,
+            5778,
+            838,
+            2959,
+            10071,
+            5228,
+            5231,
+            9506
+          ]
+        }
+      }
+    },
+    {
+      "id": "s1",
+      "name": "Gestione Inventario [P]",
+      "icon": "📦",
+      "category": "Magazzino",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": [
+            3118,
+            2995,
+            6375,
+            8159,
+            832,
+            2492,
+            833,
+            1221,
+            831,
+            1213,
+            9126,
+            9125,
+            835,
+            3066,
+            892,
+            3105,
+            9187,
+            839,
+            2487,
+            2970,
+            3070,
+            6281,
+            849,
+            8951,
+            8934,
+            8950,
+            3055,
+            5509,
+            9952,
+            3158,
+            19,
+            8495,
+            7470,
+            7629,
+            7630,
+            9138,
+            9317,
+            8693,
+            9900,
+            9899,
+            9034,
+            850,
+            2463,
+            852,
+            5130,
+            2945,
+            2029,
+            8044,
+            9159,
+            9160,
+            9986,
+            2466,
+            2473,
+            1175,
+            6973,
+            3018,
+            2483,
+            859,
+            5680,
+            5693,
+            5695,
+            1797,
+            8761,
+            9469,
+            3010,
+            6862,
+            8634,
+            8638,
+            4999,
+            862,
+            1714,
+            2489,
+            869,
+            871,
+            2456,
+            1162,
+            3016,
+            2313,
+            2979,
+            2968,
+            4998,
+            874,
+            5012,
+            5324,
+            1163,
+            877,
+            5727,
+            7585,
+            883,
+            884,
+            2514,
+            9979,
+            9982,
+            891,
+            2521,
+            2517,
+            2518,
+            2366,
+            2523,
+            5083,
+            5382,
+            8011,
+            949,
+            9417,
+            9394,
+            9383,
+            8597,
+            1199,
+            9457,
+            9517,
+            6104,
+            6088,
+            6100,
+            6109,
+            6113,
+            893,
+            894,
+            5187,
+            1727,
+            897,
+            6446,
+            901,
+            902,
+            5270,
+            5269,
+            903,
+            2543,
+            905,
+            8450,
+            2546,
+            906,
+            9959,
+            3157,
+            1715,
+            968,
+            8739,
+            1718,
+            9026,
+            5863,
+            5689,
+            6612,
+            8680,
+            8136,
+            8261,
+            9139,
+            5132,
+            923,
+            9564,
+            5924,
+            5925,
+            5926,
+            6987,
+            6989,
+            900,
+            2554,
+            10,
+            7377,
+            9192,
+            9932,
+            1716,
+            9321,
+            7348,
+            1732,
+            919,
+            1222,
+            2321,
+            6320,
+            922,
+            9449,
+            9448,
+            5179,
+            5001,
+            2380,
+            7982,
+            2974,
+            9271,
+            9834,
+            9879,
+            9726,
+            8118,
+            5634,
+            6051,
+            7819,
+            7820,
+            6602,
+            5794,
+            5253,
+            5779,
+            5796,
+            9546,
+            2963,
+            8538,
+            9590,
+            2000,
+            925,
+            1870,
+            937,
+            2609,
+            8610,
+            9630,
+            5395,
+            9800,
+            7098,
+            7104,
+            9538,
+            5671,
+            1740,
+            6744,
+            3102,
+            9156,
+            9992,
+            9292,
+            9293,
+            8656,
+            8657,
+            6210,
+            8039,
+            942,
+            2613,
+            5927,
+            8520,
+            946,
+            947,
+            2628,
+            1975,
+            948,
+            5654,
+            953,
+            5134,
+            6150,
+            8291,
+            8294,
+            5806,
+            1657,
+            9463,
+            957,
+            961,
+            7557,
+            8870,
+            8871,
+            904,
+            9229,
+            2274,
+            5000,
+            2888,
+            972,
+            2685,
+            2421,
+            1869,
+            975,
+            5271,
+            1076,
+            7758,
+            7759,
+            7388,
+            12,
+            9599,
+            9651,
+            6381,
+            6383,
+            5679,
+            9628,
+            7730,
+            6512,
+            2519,
+            981,
+            5319,
+            9071,
+            986,
+            8574,
+            8576,
+            2352,
+            2750,
+            6438,
+            2919,
+            7974,
+            8005,
+            979,
+            22,
+            6309,
+            6314,
+            7935,
+            5491,
+            6194,
+            6408,
+            5931,
+            5807,
+            5932,
+            8389,
+            18,
+            5317,
+            9181,
+            2742,
+            2736,
+            2737,
+            5877,
+            5879,
+            9812,
+            9145,
+            995,
+            996,
+            2735,
+            9909,
+            997,
+            2740,
+            998,
+            999,
+            1989,
+            1002,
+            2488,
+            2454,
+            2461,
+            2481,
+            2444,
+            1129,
+            5136,
+            6439,
+            8752,
+            8633,
+            8636,
+            9104,
+            880,
+            5002,
+            9105,
+            7648,
+            1139,
+            2756,
+            5129,
+            1144,
+            1148,
+            1149,
+            6462,
+            1153,
+            5883,
+            885,
+            5504,
+            11,
+            7428,
+            2975,
+            9927,
+            6550,
+            6552,
+            1145,
+            7524,
+            7525,
+            8556,
+            6228,
+            8103,
+            6522,
+            9540,
+            9548,
+            1160,
+            6387,
+            6389,
+            1151,
+            971,
+            2676,
+            1133,
+            5137,
+            1187,
+            2814,
+            5295,
+            9433,
+            1188,
+            5486,
+            9211,
+            9218,
+            6437,
+            8221,
+            9924,
+            5433,
+            8701,
+            7086,
+            7090,
+            9643,
+            9266,
+            8700,
+            1176,
+            6477,
+            8708,
+            8711,
+            2286,
+            2013,
+            1193,
+            5871,
+            1196,
+            6172,
+            1880,
+            5028,
+            1759,
+            5321,
+            2777,
+            2402,
+            2991,
+            5240,
+            6143,
+            8896,
+            9903,
+            9895,
+            994,
+            9757,
+            5928,
+            10059,
+            10048,
+            6489,
+            9923,
+            1202,
+            8146,
+            1204,
+            5298,
+            5502,
+            5874,
+            2854,
+            1206,
+            1207,
+            2857,
+            8539,
+            9958,
+            8660,
+            8662,
+            10013,
+            5597,
+            9576,
+            1768,
+            5168,
+            2774,
+            5414,
+            7882,
+            8899,
+            7455,
+            8885,
+            8875,
+            8876,
+            5778,
+            838,
+            2959,
+            10071,
+            5228,
+            5231,
+            9506
+          ]
+        }
+      }
+    },
+    {
+      "id": "s2",
+      "name": "Operazioni Magazzino [S]",
+      "icon": "🏭",
+      "category": "Magazzino",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s3",
+      "name": "Pick Residui [S]",
+      "icon": "📋",
+      "category": "Magazzino",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s4",
+      "name": "Prelievo Zone",
+      "icon": "🚛",
+      "category": "Magazzino",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s5",
+      "name": "Super User Magazzino [S]",
+      "icon": "👨‍💼",
+      "category": "Magazzino",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s21",
+      "name": "Gestione Ubicazioni [P]",
+      "icon": "🏭",
+      "category": "Magazzino",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s6",
+      "name": "Catalogo Venditori [S]",
+      "icon": "🛒",
+      "category": "Vendite",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s7",
+      "name": "Dashboard Venditori [S]",
+      "icon": "📊",
+      "category": "Vendite",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            81,
+            20,
+            3,
+            57,
+            87,
+            89
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s8",
+      "name": "Ordini Intelligenti [S]",
+      "icon": "🤖",
+      "category": "Vendite",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s26",
+      "name": "Prodotti Non Prelevati [S]",
+      "icon": "📦",
+      "category": "Vendite",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s9",
+      "name": "Controllo Consegne [S]",
+      "icon": "🚚",
+      "category": "Logistica",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s10",
+      "name": "LAPA Delivery",
+      "icon": "🚚",
+      "category": "Logistica",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s11",
+      "name": "Mappa Controllo [S]",
+      "icon": "🗺️",
+      "category": "Logistica",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s12",
+      "name": "Gestione Ritorni [S]",
+      "icon": "↩️",
+      "category": "Logistica",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s13",
+      "name": "Smart Route AI [P]",
+      "icon": "🗺️",
+      "category": "Logistica",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s14",
+      "name": "Controllo Diretto [S]",
+      "icon": "✅",
+      "category": "Magazzino",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s22",
+      "name": "Resi Furgoni [P]",
+      "icon": "🔄",
+      "category": "Logistica",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s15",
+      "name": "ClientiVision [S]",
+      "icon": "👥",
+      "category": "CRM",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s16",
+      "name": "Centralino AI [P]",
+      "icon": "📞",
+      "category": "Comunicazioni",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s17",
+      "name": "Stella AI Assistant [P]",
+      "icon": "🌟",
+      "category": "AI & Tech",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            21,
+            70,
+            20,
+            26,
+            48,
+            89,
+            50,
+            5,
+            3,
+            7,
+            49,
+            8,
+            57,
+            87
+          ],
+          "excludedEmails": [
+            "alessandro@lapa.ch",
+            "domingos@lapa.ch",
+            "dragos@techtonga.ro",
+            "gregorio@lapa.ch",
+            "gregorio@lapa.ch",
+            "ionut@lapa.ch",
+            "laura@lapa.ch",
+            "laura@lapa.ch",
+            "Magazzino@lapa.ch",
+            "mihai@lapa.ch",
+            "paul@lapa.ch",
+            "paul@lapa.ch",
+            "cosmin@lapa.ch",
+            "Liviu@lapa.ch"
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s18",
+      "name": "Stella Setup [P]",
+      "icon": "⚙️",
+      "category": "AI & Tech",
+      "visible": false,
+      "visibilityGroup": "none",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": false,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s19",
+      "name": "Ordini Fornitori Intelligenti [P]",
+      "icon": "🛒",
+      "category": "Acquisti",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s20",
+      "name": "Product Creator AI [P]",
+      "icon": "🤖",
+      "category": "Acquisti",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            81,
+            20,
+            3,
+            57,
+            87,
+            89,
+            70,
+            21
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s23",
+      "name": "Arrivo Merce [P]",
+      "icon": "📥",
+      "category": "Acquisti",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            81,
+            20,
+            3,
+            57,
+            87,
+            89,
+            70,
+            21
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s24",
+      "name": "LAPA Smart Ordering V2 [P]",
+      "icon": "🤖",
+      "category": "Acquisti",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            21
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s25",
+      "name": "Valida Fatture [P]",
+      "icon": "✅",
+      "category": "Finance",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            21,
+            81,
+            70,
+            20,
+            48,
+            26,
+            3,
+            7,
+            57,
+            87,
+            89
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": [
+            3118,
+            2995,
+            6375,
+            8159,
+            832,
+            2492,
+            833,
+            1221,
+            831,
+            1213,
+            9126,
+            9125,
+            835,
+            3066,
+            892,
+            3105,
+            9187,
+            839,
+            2487,
+            2970,
+            3070,
+            6281,
+            849,
+            8951,
+            8934,
+            8950,
+            3055,
+            5509,
+            9952,
+            3158,
+            19,
+            8495,
+            7470,
+            7629,
+            7630,
+            9138,
+            9317,
+            8693,
+            9900,
+            9899,
+            9034,
+            850,
+            2463,
+            852,
+            5130,
+            2945,
+            2029,
+            8044,
+            9159,
+            9160,
+            9986,
+            2466,
+            2473,
+            1175,
+            6973,
+            3018,
+            2483,
+            859,
+            5680,
+            5693,
+            5695,
+            1797,
+            8761,
+            9469,
+            3010,
+            6862,
+            8634,
+            8638,
+            4999,
+            862,
+            1714,
+            2489,
+            869,
+            871,
+            2456,
+            1162,
+            3016,
+            2313,
+            2979,
+            2968,
+            4998,
+            874,
+            5012,
+            5324,
+            1163,
+            877,
+            5727,
+            7585,
+            883,
+            884,
+            2514,
+            9979,
+            9982,
+            891,
+            2521,
+            2517,
+            2518,
+            2366,
+            2523,
+            5083,
+            5382,
+            8011,
+            949,
+            9417,
+            9394,
+            9383,
+            8597,
+            1199,
+            9457,
+            9517,
+            6104,
+            6088,
+            6100,
+            6109,
+            6113,
+            893,
+            894,
+            5187,
+            1727,
+            897,
+            6446,
+            901,
+            902,
+            5270,
+            5269,
+            903,
+            2543,
+            905,
+            8450,
+            2546,
+            906,
+            9959,
+            3157,
+            1715,
+            968,
+            8739,
+            1718,
+            9026,
+            5863,
+            5689,
+            6612,
+            8680,
+            8136,
+            8261,
+            9139,
+            5132,
+            923,
+            9564,
+            5924,
+            5925,
+            5926,
+            6987,
+            6989,
+            900,
+            2554,
+            10,
+            7377,
+            9192,
+            9932,
+            1716,
+            9321,
+            7348,
+            1732,
+            919,
+            1222,
+            2321,
+            6320,
+            922,
+            9449,
+            9448,
+            5179,
+            5001,
+            2380,
+            7982,
+            2974,
+            9271,
+            9834,
+            9879,
+            9726,
+            8118,
+            5634,
+            6051,
+            7819,
+            7820,
+            6602,
+            5794,
+            5253,
+            5779,
+            5796,
+            9546,
+            2963,
+            8538,
+            9590,
+            2000,
+            925,
+            1870,
+            937,
+            2609,
+            8610,
+            9630,
+            5395,
+            9800,
+            7098,
+            7104,
+            9538,
+            5671,
+            1740,
+            6744,
+            3102,
+            9156,
+            9992,
+            9292,
+            9293,
+            8656,
+            8657,
+            6210,
+            8039,
+            942,
+            2613,
+            5927,
+            8520,
+            946,
+            947,
+            2628,
+            1975,
+            948,
+            5654,
+            953,
+            5134,
+            6150,
+            8291,
+            8294,
+            5806,
+            1657,
+            9463,
+            957,
+            961,
+            7557,
+            8870,
+            8871,
+            904,
+            9229,
+            2274,
+            5000,
+            2888,
+            972,
+            2685,
+            2421,
+            1869,
+            975,
+            5271,
+            1076,
+            7758,
+            7759,
+            7388,
+            12,
+            9599,
+            9651,
+            6381,
+            6383,
+            5679,
+            9628,
+            7730,
+            6512,
+            2519,
+            981,
+            5319,
+            9071,
+            986,
+            8574,
+            8576,
+            2352,
+            2750,
+            6438,
+            2919,
+            7974,
+            8005,
+            979,
+            22,
+            6309,
+            6314,
+            7935,
+            5491,
+            6194,
+            6408,
+            5931,
+            5807,
+            5932,
+            8389,
+            18,
+            5317,
+            9181,
+            2742,
+            2736,
+            2737,
+            5877,
+            5879,
+            9812,
+            9145,
+            995,
+            996,
+            2735,
+            9909,
+            997,
+            2740,
+            998,
+            999,
+            1989,
+            1002,
+            2488,
+            2454,
+            2461,
+            2481,
+            2444,
+            1129,
+            5136,
+            6439,
+            8752,
+            8633,
+            8636,
+            9104,
+            880,
+            5002,
+            9105,
+            7648,
+            1139,
+            2756,
+            5129,
+            1144,
+            1148,
+            1149,
+            6462,
+            1153,
+            5883,
+            885,
+            5504,
+            11,
+            7428,
+            2975,
+            9927,
+            6550,
+            6552,
+            1145,
+            7524,
+            7525,
+            8556,
+            6228,
+            8103,
+            6522,
+            9540,
+            9548,
+            1160,
+            6387,
+            6389,
+            1151,
+            971,
+            2676,
+            1133,
+            5137,
+            1187,
+            2814,
+            5295,
+            9433,
+            1188,
+            5486,
+            9211,
+            9218,
+            6437,
+            8221,
+            9924,
+            5433,
+            8701,
+            7086,
+            7090,
+            9643,
+            9266,
+            8700,
+            1176,
+            6477,
+            8708,
+            8711,
+            2286,
+            2013,
+            1193,
+            5871,
+            1196,
+            6172,
+            1880,
+            5028,
+            1759,
+            5321,
+            2777,
+            2402,
+            2991,
+            5240,
+            6143,
+            8896,
+            9903,
+            9895,
+            994,
+            9757,
+            5928,
+            10059,
+            10048,
+            6489,
+            9923,
+            1202,
+            8146,
+            1204,
+            5298,
+            5502,
+            5874,
+            2854,
+            1206,
+            1207,
+            2857,
+            8539,
+            9958,
+            8660,
+            8662,
+            10013,
+            5597,
+            9576,
+            1768,
+            5168,
+            2774,
+            5414,
+            7882,
+            8899,
+            7455,
+            8885,
+            8875,
+            8876,
+            5778,
+            838,
+            2959,
+            10071,
+            5228,
+            5231,
+            9506
+          ]
+        }
+      }
+    },
+    {
+      "id": "s27",
+      "name": "Controllo Consegne [P]",
+      "icon": "📋",
+      "category": "Logistica",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s28",
+      "name": "Sales AI Hub [P]",
+      "icon": "🤖",
+      "category": "Vendite",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s29",
+      "name": "Maestro AI [P]",
+      "icon": "🎯",
+      "category": "Vendite",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            81,
+            20,
+            3,
+            57,
+            87,
+            89
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s30",
+      "name": "Portale Clienti [P]",
+      "icon": "🛒",
+      "category": "Business",
+      "visible": true,
+      "visibilityGroup": "all",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s31",
+      "name": "Controllo Scadenze",
+      "icon": "📅",
+      "category": "Magazzino",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s32",
+      "name": "Super Dashboard",
+      "icon": "⚡",
+      "category": "Analytics",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            21,
+            81,
+            70,
+            20,
+            48,
+            26,
+            89,
+            3,
+            7,
+            57,
+            87
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s33",
+      "name": "AI Image Studio",
+      "icon": "🎨",
+      "category": "AI & Tech",
+      "visible": true,
+      "visibilityGroup": "all",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s34",
+      "name": "Product Photo Manager",
+      "icon": "🍌",
+      "category": "AI & Tech",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            21,
+            81,
+            70,
+            20,
+            26,
+            48,
+            89,
+            3,
+            7,
+            57,
+            87
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s35",
+      "name": "Menu PDF Generator",
+      "icon": "📋",
+      "category": "Business",
+      "visible": true,
+      "visibilityGroup": "all",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    }
+  ]
+}
+
+waiting for new logs...
+10:31:17.50  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+⚠️ Using excludedIds for clienti (no emails): []
+
+waiting for new logs...
+10:31:17.50  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+⚠️ Using excludedIds for dipendenti (no emails): []
+
+waiting for new logs...
+10:31:17.50  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+⚠️ Using excludedIds for clienti (no emails): []
+
+waiting for new logs...
+10:31:17.50  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+App 26/42: s16 {
+  visible: false,
+  visibilityGroup: 'all',
+  groups: { dipendenti: true, clienti: true },
+  developmentStatus: 'in_sviluppo',
+  excludedUsers: 0,
+  excludedCustomers: 0
+}
+
+waiting for new logs...
+10:31:17.51  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+App 31/42: s23 {
+  visible: true,
+  visibilityGroup: 'internal',
+  groups: { dipendenti: true, clienti: false },
+  developmentStatus: 'pronta',
+  excludedUsers: 8,
+  excludedCustomers: 0
+}
+
+waiting for new logs...
+10:31:17.51  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+App 35/42: s28 {
+  visible: false,
+  visibilityGroup: 'all',
+  groups: { dipendenti: true, clienti: true },
+  developmentStatus: 'in_sviluppo',
+  excludedUsers: 0,
+  excludedCustomers: 0
+}
+
+waiting for new logs...
+10:31:17.51  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+⚠️ Using excludedIds for dipendenti (no emails): [
+  21, 81, 70, 20, 26,
+  48, 89,  3,  7, 57,
+  87
+]
+
+waiting for new logs...
+10:31:17.61  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 1: OK
+
+waiting for new logs...
+10:31:17.81  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 2: OK
+
+waiting for new logs...
+10:31:17.81  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+🔹 KV.saveAppVisibility - appId: 3, key: app_visibility:3
+
+waiting for new logs...
+10:31:17.90  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 3: OK
+
+waiting for new logs...
+10:31:18.00  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 4: OK
+
+waiting for new logs...
+10:31:18.09  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 5: OK
+
+waiting for new logs...
+10:31:18.19  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 6: OK
+
+waiting for new logs...
+10:31:18.28  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 7: OK
+
+waiting for new logs...
+10:31:18.38  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s1: OK
+
+waiting for new logs...
+10:31:18.48  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s2: OK
+
+waiting for new logs...
+10:31:18.57  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s3: OK
+
+waiting for new logs...
+10:31:18.67  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s4: OK
+
+waiting for new logs...
+10:31:18.76  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s5: OK
+
+waiting for new logs...
+10:31:18.76  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+💾 Salvando app: s21
+
+waiting for new logs...
+10:31:18.86  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s21: OK
+
+waiting for new logs...
+10:31:18.95  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s6: OK
+
+waiting for new logs...
+10:31:19.05  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s7: OK
+
+waiting for new logs...
+10:31:19.14  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s8: OK
+
+waiting for new logs...
+10:31:19.24  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s26: OK
+
+waiting for new logs...
+10:31:19.34  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s9: OK
+
+waiting for new logs...
+10:31:19.43  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s10: OK
+
+waiting for new logs...
+10:31:19.43  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ App salvata: s10 { success: true, key: 'app_visibility:s10' }
+
+waiting for new logs...
+10:31:19.52  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s11: OK
+
+waiting for new logs...
+10:31:19.53  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+💾 Salvando app: s12
+
+waiting for new logs...
+10:31:19.62  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s12: OK
+
+waiting for new logs...
+10:31:19.62  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+💾 Salvando app: s13
+
+waiting for new logs...
+10:31:19.71  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s13: OK
+
+waiting for new logs...
+10:31:19.72  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+🔹 KV.saveAppVisibility - appId: s14, key: app_visibility:s14
+
+waiting for new logs...
+10:31:19.81  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s14: OK
+
+waiting for new logs...
+10:31:19.91  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s22: OK
+
+waiting for new logs...
+10:31:19.91  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s22: OK
+
+waiting for new logs...
+10:31:30.13  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+🔵 POST /api/apps/visibility - Start
+
+waiting for new logs...
+10:31:30.14  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+📦 Body ricevuto: {
+  "apps": [
+    {
+      "id": "1",
+      "name": "Menu App [P]",
+      "icon": "🍽️",
+      "category": "Business",
+      "visible": true,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "Booking System [P]",
+      "icon": "📅",
+      "category": "Business",
+      "visible": false,
+      "visibilityGroup": "none",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": false,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "AI Chat [P]",
+      "icon": "🤖",
+      "category": "AI & Tech",
+      "visible": true,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "4",
+      "name": "Analytics Dashboard [P]",
+      "icon": "📊",
+      "category": "Analytics",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "5",
+      "name": "Task Manager [P]",
+      "icon": "✅",
+      "category": "Productivity",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "6",
+      "name": "Invoice Generator [P]",
+      "icon": "🧾",
+      "category": "Finance",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "7",
+      "name": "Catalogo LAPA [P]",
+      "icon": "📦",
+      "category": "Business",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": [
+            3118,
+            2995,
+            6375,
+            8159,
+            832,
+            2492,
+            833,
+            1221,
+            831,
+            1213,
+            9126,
+            9125,
+            835,
+            3066,
+            892,
+            3105,
+            9187,
+            839,
+            2487,
+            2970,
+            3070,
+            6281,
+            849,
+            8951,
+            8934,
+            8950,
+            3055,
+            5509,
+            9952,
+            3158,
+            19,
+            8495,
+            7470,
+            7629,
+            7630,
+            9138,
+            9317,
+            8693,
+            9900,
+            9899,
+            9034,
+            850,
+            2463,
+            852,
+            5130,
+            2945,
+            2029,
+            8044,
+            9159,
+            9160,
+            9986,
+            2466,
+            2473,
+            1175,
+            6973,
+            3018,
+            2483,
+            859,
+            5680,
+            5693,
+            5695,
+            1797,
+            8761,
+            9469,
+            3010,
+            6862,
+            8634,
+            8638,
+            4999,
+            862,
+            1714,
+            2489,
+            869,
+            871,
+            2456,
+            1162,
+            3016,
+            2313,
+            2979,
+            2968,
+            4998,
+            874,
+            5012,
+            5324,
+            1163,
+            877,
+            5727,
+            7585,
+            883,
+            884,
+            2514,
+            9979,
+            9982,
+            891,
+            2521,
+            2517,
+            2518,
+            2366,
+            2523,
+            5083,
+            5382,
+            8011,
+            949,
+            9417,
+            9394,
+            9383,
+            8597,
+            1199,
+            9457,
+            9517,
+            6104,
+            6088,
+            6100,
+            6109,
+            6113,
+            893,
+            894,
+            5187,
+            1727,
+            897,
+            6446,
+            901,
+            902,
+            5270,
+            5269,
+            903,
+            2543,
+            905,
+            8450,
+            2546,
+            906,
+            9959,
+            3157,
+            1715,
+            968,
+            8739,
+            1718,
+            9026,
+            5863,
+            5689,
+            6612,
+            8680,
+            8136,
+            8261,
+            9139,
+            5132,
+            923,
+            9564,
+            5924,
+            5925,
+            5926,
+            6987,
+            6989,
+            900,
+            2554,
+            10,
+            7377,
+            9192,
+            9932,
+            1716,
+            9321,
+            7348,
+            1732,
+            919,
+            1222,
+            2321,
+            6320,
+            922,
+            9449,
+            9448,
+            5179,
+            5001,
+            2380,
+            7982,
+            2974,
+            9271,
+            9834,
+            9879,
+            9726,
+            8118,
+            5634,
+            6051,
+            7819,
+            7820,
+            6602,
+            5794,
+            5253,
+            5779,
+            5796,
+            9546,
+            2963,
+            8538,
+            9590,
+            2000,
+            925,
+            1870,
+            937,
+            2609,
+            8610,
+            9630,
+            5395,
+            9800,
+            7098,
+            7104,
+            9538,
+            5671,
+            1740,
+            6744,
+            3102,
+            9156,
+            9992,
+            9292,
+            9293,
+            8656,
+            8657,
+            6210,
+            8039,
+            942,
+            2613,
+            5927,
+            8520,
+            946,
+            947,
+            2628,
+            1975,
+            948,
+            5654,
+            953,
+            5134,
+            6150,
+            8291,
+            8294,
+            5806,
+            1657,
+            9463,
+            957,
+            961,
+            7557,
+            8870,
+            8871,
+            904,
+            9229,
+            2274,
+            5000,
+            2888,
+            972,
+            2685,
+            2421,
+            1869,
+            975,
+            5271,
+            1076,
+            7758,
+            7759,
+            7388,
+            12,
+            9599,
+            9651,
+            6381,
+            6383,
+            5679,
+            9628,
+            7730,
+            6512,
+            2519,
+            981,
+            5319,
+            9071,
+            986,
+            8574,
+            8576,
+            2352,
+            2750,
+            6438,
+            2919,
+            7974,
+            8005,
+            979,
+            22,
+            6309,
+            6314,
+            7935,
+            5491,
+            6194,
+            6408,
+            5931,
+            5807,
+            5932,
+            8389,
+            18,
+            5317,
+            9181,
+            2742,
+            2736,
+            2737,
+            5877,
+            5879,
+            9812,
+            9145,
+            995,
+            996,
+            2735,
+            9909,
+            997,
+            2740,
+            998,
+            999,
+            1989,
+            1002,
+            2488,
+            2454,
+            2461,
+            2481,
+            2444,
+            1129,
+            5136,
+            6439,
+            8752,
+            8633,
+            8636,
+            9104,
+            880,
+            5002,
+            9105,
+            7648,
+            1139,
+            2756,
+            5129,
+            1144,
+            1148,
+            1149,
+            6462,
+            1153,
+            5883,
+            885,
+            5504,
+            11,
+            7428,
+            2975,
+            9927,
+            6550,
+            6552,
+            1145,
+            7524,
+            7525,
+            8556,
+            6228,
+            8103,
+            6522,
+            9540,
+            9548,
+            1160,
+            6387,
+            6389,
+            1151,
+            971,
+            2676,
+            1133,
+            5137,
+            1187,
+            2814,
+            5295,
+            9433,
+            1188,
+            5486,
+            9211,
+            9218,
+            6437,
+            8221,
+            9924,
+            5433,
+            8701,
+            7086,
+            7090,
+            9643,
+            9266,
+            8700,
+            1176,
+            6477,
+            8708,
+            8711,
+            2286,
+            2013,
+            1193,
+            5871,
+            1196,
+            6172,
+            1880,
+            5028,
+            1759,
+            5321,
+            2777,
+            2402,
+            2991,
+            5240,
+            6143,
+            8896,
+            9903,
+            9895,
+            994,
+            9757,
+            5928,
+            10059,
+            10048,
+            6489,
+            9923,
+            1202,
+            8146,
+            1204,
+            5298,
+            5502,
+            5874,
+            2854,
+            1206,
+            1207,
+            2857,
+            8539,
+            9958,
+            8660,
+            8662,
+            10013,
+            5597,
+            9576,
+            1768,
+            5168,
+            2774,
+            5414,
+            7882,
+            8899,
+            7455,
+            8885,
+            8875,
+            8876,
+            5778,
+            838,
+            2959,
+            10071,
+            5228,
+            5231,
+            9506
+          ]
+        }
+      }
+    },
+    {
+      "id": "s1",
+      "name": "Gestione Inventario [P]",
+      "icon": "📦",
+      "category": "Magazzino",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": [
+            3118,
+            2995,
+            6375,
+            8159,
+            832,
+            2492,
+            833,
+            1221,
+            831,
+            1213,
+            9126,
+            9125,
+            835,
+            3066,
+            892,
+            3105,
+            9187,
+            839,
+            2487,
+            2970,
+            3070,
+            6281,
+            849,
+            8951,
+            8934,
+            8950,
+            3055,
+            5509,
+            9952,
+            3158,
+            19,
+            8495,
+            7470,
+            7629,
+            7630,
+            9138,
+            9317,
+            8693,
+            9900,
+            9899,
+            9034,
+            850,
+            2463,
+            852,
+            5130,
+            2945,
+            2029,
+            8044,
+            9159,
+            9160,
+            9986,
+            2466,
+            2473,
+            1175,
+            6973,
+            3018,
+            2483,
+            859,
+            5680,
+            5693,
+            5695,
+            1797,
+            8761,
+            9469,
+            3010,
+            6862,
+            8634,
+            8638,
+            4999,
+            862,
+            1714,
+            2489,
+            869,
+            871,
+            2456,
+            1162,
+            3016,
+            2313,
+            2979,
+            2968,
+            4998,
+            874,
+            5012,
+            5324,
+            1163,
+            877,
+            5727,
+            7585,
+            883,
+            884,
+            2514,
+            9979,
+            9982,
+            891,
+            2521,
+            2517,
+            2518,
+            2366,
+            2523,
+            5083,
+            5382,
+            8011,
+            949,
+            9417,
+            9394,
+            9383,
+            8597,
+            1199,
+            9457,
+            9517,
+            6104,
+            6088,
+            6100,
+            6109,
+            6113,
+            893,
+            894,
+            5187,
+            1727,
+            897,
+            6446,
+            901,
+            902,
+            5270,
+            5269,
+            903,
+            2543,
+            905,
+            8450,
+            2546,
+            906,
+            9959,
+            3157,
+            1715,
+            968,
+            8739,
+            1718,
+            9026,
+            5863,
+            5689,
+            6612,
+            8680,
+            8136,
+            8261,
+            9139,
+            5132,
+            923,
+            9564,
+            5924,
+            5925,
+            5926,
+            6987,
+            6989,
+            900,
+            2554,
+            10,
+            7377,
+            9192,
+            9932,
+            1716,
+            9321,
+            7348,
+            1732,
+            919,
+            1222,
+            2321,
+            6320,
+            922,
+            9449,
+            9448,
+            5179,
+            5001,
+            2380,
+            7982,
+            2974,
+            9271,
+            9834,
+            9879,
+            9726,
+            8118,
+            5634,
+            6051,
+            7819,
+            7820,
+            6602,
+            5794,
+            5253,
+            5779,
+            5796,
+            9546,
+            2963,
+            8538,
+            9590,
+            2000,
+            925,
+            1870,
+            937,
+            2609,
+            8610,
+            9630,
+            5395,
+            9800,
+            7098,
+            7104,
+            9538,
+            5671,
+            1740,
+            6744,
+            3102,
+            9156,
+            9992,
+            9292,
+            9293,
+            8656,
+            8657,
+            6210,
+            8039,
+            942,
+            2613,
+            5927,
+            8520,
+            946,
+            947,
+            2628,
+            1975,
+            948,
+            5654,
+            953,
+            5134,
+            6150,
+            8291,
+            8294,
+            5806,
+            1657,
+            9463,
+            957,
+            961,
+            7557,
+            8870,
+            8871,
+            904,
+            9229,
+            2274,
+            5000,
+            2888,
+            972,
+            2685,
+            2421,
+            1869,
+            975,
+            5271,
+            1076,
+            7758,
+            7759,
+            7388,
+            12,
+            9599,
+            9651,
+            6381,
+            6383,
+            5679,
+            9628,
+            7730,
+            6512,
+            2519,
+            981,
+            5319,
+            9071,
+            986,
+            8574,
+            8576,
+            2352,
+            2750,
+            6438,
+            2919,
+            7974,
+            8005,
+            979,
+            22,
+            6309,
+            6314,
+            7935,
+            5491,
+            6194,
+            6408,
+            5931,
+            5807,
+            5932,
+            8389,
+            18,
+            5317,
+            9181,
+            2742,
+            2736,
+            2737,
+            5877,
+            5879,
+            9812,
+            9145,
+            995,
+            996,
+            2735,
+            9909,
+            997,
+            2740,
+            998,
+            999,
+            1989,
+            1002,
+            2488,
+            2454,
+            2461,
+            2481,
+            2444,
+            1129,
+            5136,
+            6439,
+            8752,
+            8633,
+            8636,
+            9104,
+            880,
+            5002,
+            9105,
+            7648,
+            1139,
+            2756,
+            5129,
+            1144,
+            1148,
+            1149,
+            6462,
+            1153,
+            5883,
+            885,
+            5504,
+            11,
+            7428,
+            2975,
+            9927,
+            6550,
+            6552,
+            1145,
+            7524,
+            7525,
+            8556,
+            6228,
+            8103,
+            6522,
+            9540,
+            9548,
+            1160,
+            6387,
+            6389,
+            1151,
+            971,
+            2676,
+            1133,
+            5137,
+            1187,
+            2814,
+            5295,
+            9433,
+            1188,
+            5486,
+            9211,
+            9218,
+            6437,
+            8221,
+            9924,
+            5433,
+            8701,
+            7086,
+            7090,
+            9643,
+            9266,
+            8700,
+            1176,
+            6477,
+            8708,
+            8711,
+            2286,
+            2013,
+            1193,
+            5871,
+            1196,
+            6172,
+            1880,
+            5028,
+            1759,
+            5321,
+            2777,
+            2402,
+            2991,
+            5240,
+            6143,
+            8896,
+            9903,
+            9895,
+            994,
+            9757,
+            5928,
+            10059,
+            10048,
+            6489,
+            9923,
+            1202,
+            8146,
+            1204,
+            5298,
+            5502,
+            5874,
+            2854,
+            1206,
+            1207,
+            2857,
+            8539,
+            9958,
+            8660,
+            8662,
+            10013,
+            5597,
+            9576,
+            1768,
+            5168,
+            2774,
+            5414,
+            7882,
+            8899,
+            7455,
+            8885,
+            8875,
+            8876,
+            5778,
+            838,
+            2959,
+            10071,
+            5228,
+            5231,
+            9506
+          ]
+        }
+      }
+    },
+    {
+      "id": "s2",
+      "name": "Operazioni Magazzino [S]",
+      "icon": "🏭",
+      "category": "Magazzino",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s3",
+      "name": "Pick Residui [S]",
+      "icon": "📋",
+      "category": "Magazzino",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s4",
+      "name": "Prelievo Zone",
+      "icon": "🚛",
+      "category": "Magazzino",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s5",
+      "name": "Super User Magazzino [S]",
+      "icon": "👨‍💼",
+      "category": "Magazzino",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s21",
+      "name": "Gestione Ubicazioni [P]",
+      "icon": "🏭",
+      "category": "Magazzino",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s6",
+      "name": "Catalogo Venditori [S]",
+      "icon": "🛒",
+      "category": "Vendite",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s7",
+      "name": "Dashboard Venditori [S]",
+      "icon": "📊",
+      "category": "Vendite",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            81,
+            20,
+            3,
+            57,
+            87,
+            89
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s8",
+      "name": "Ordini Intelligenti [S]",
+      "icon": "🤖",
+      "category": "Vendite",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s26",
+      "name": "Prodotti Non Prelevati [S]",
+      "icon": "📦",
+      "category": "Vendite",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s9",
+      "name": "Controllo Consegne [S]",
+      "icon": "🚚",
+      "category": "Logistica",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s10",
+      "name": "LAPA Delivery",
+      "icon": "🚚",
+      "category": "Logistica",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s11",
+      "name": "Mappa Controllo [S]",
+      "icon": "🗺️",
+      "category": "Logistica",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s12",
+      "name": "Gestione Ritorni [S]",
+      "icon": "↩️",
+      "category": "Logistica",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s13",
+      "name": "Smart Route AI [P]",
+      "icon": "🗺️",
+      "category": "Logistica",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s14",
+      "name": "Controllo Diretto [S]",
+      "icon": "✅",
+      "category": "Magazzino",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s22",
+      "name": "Resi Furgoni [P]",
+      "icon": "🔄",
+      "category": "Logistica",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s15",
+      "name": "ClientiVision [S]",
+      "icon": "👥",
+      "category": "CRM",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s16",
+      "name": "Centralino AI [P]",
+      "icon": "📞",
+      "category": "Comunicazioni",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s17",
+      "name": "Stella AI Assistant [P]",
+      "icon": "🌟",
+      "category": "AI & Tech",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            21,
+            70,
+            20,
+            26,
+            48,
+            89,
+            50,
+            5,
+            3,
+            7,
+            49,
+            8,
+            57,
+            87
+          ],
+          "excludedEmails": [
+            "alessandro@lapa.ch",
+            "domingos@lapa.ch",
+            "dragos@techtonga.ro",
+            "gregorio@lapa.ch",
+            "gregorio@lapa.ch",
+            "ionut@lapa.ch",
+            "laura@lapa.ch",
+            "laura@lapa.ch",
+            "Magazzino@lapa.ch",
+            "mihai@lapa.ch",
+            "paul@lapa.ch",
+            "paul@lapa.ch",
+            "cosmin@lapa.ch",
+            "Liviu@lapa.ch"
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s18",
+      "name": "Stella Setup [P]",
+      "icon": "⚙️",
+      "category": "AI & Tech",
+      "visible": false,
+      "visibilityGroup": "none",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": false,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s19",
+      "name": "Ordini Fornitori Intelligenti [P]",
+      "icon": "🛒",
+      "category": "Acquisti",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s20",
+      "name": "Product Creator AI [P]",
+      "icon": "🤖",
+      "category": "Acquisti",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            81,
+            20,
+            3,
+            57,
+            87,
+            89,
+            70,
+            21
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s23",
+      "name": "Arrivo Merce [P]",
+      "icon": "📥",
+      "category": "Acquisti",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            81,
+            20,
+            3,
+            57,
+            87,
+            89,
+            70,
+            21
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s24",
+      "name": "LAPA Smart Ordering V2 [P]",
+      "icon": "🤖",
+      "category": "Acquisti",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            21
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s25",
+      "name": "Valida Fatture [P]",
+      "icon": "✅",
+      "category": "Finance",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            21,
+            81,
+            70,
+            20,
+            48,
+            26,
+            3,
+            7,
+            57,
+            87,
+            89
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": [
+            3118,
+            2995,
+            6375,
+            8159,
+            832,
+            2492,
+            833,
+            1221,
+            831,
+            1213,
+            9126,
+            9125,
+            835,
+            3066,
+            892,
+            3105,
+            9187,
+            839,
+            2487,
+            2970,
+            3070,
+            6281,
+            849,
+            8951,
+            8934,
+            8950,
+            3055,
+            5509,
+            9952,
+            3158,
+            19,
+            8495,
+            7470,
+            7629,
+            7630,
+            9138,
+            9317,
+            8693,
+            9900,
+            9899,
+            9034,
+            850,
+            2463,
+            852,
+            5130,
+            2945,
+            2029,
+            8044,
+            9159,
+            9160,
+            9986,
+            2466,
+            2473,
+            1175,
+            6973,
+            3018,
+            2483,
+            859,
+            5680,
+            5693,
+            5695,
+            1797,
+            8761,
+            9469,
+            3010,
+            6862,
+            8634,
+            8638,
+            4999,
+            862,
+            1714,
+            2489,
+            869,
+            871,
+            2456,
+            1162,
+            3016,
+            2313,
+            2979,
+            2968,
+            4998,
+            874,
+            5012,
+            5324,
+            1163,
+            877,
+            5727,
+            7585,
+            883,
+            884,
+            2514,
+            9979,
+            9982,
+            891,
+            2521,
+            2517,
+            2518,
+            2366,
+            2523,
+            5083,
+            5382,
+            8011,
+            949,
+            9417,
+            9394,
+            9383,
+            8597,
+            1199,
+            9457,
+            9517,
+            6104,
+            6088,
+            6100,
+            6109,
+            6113,
+            893,
+            894,
+            5187,
+            1727,
+            897,
+            6446,
+            901,
+            902,
+            5270,
+            5269,
+            903,
+            2543,
+            905,
+            8450,
+            2546,
+            906,
+            9959,
+            3157,
+            1715,
+            968,
+            8739,
+            1718,
+            9026,
+            5863,
+            5689,
+            6612,
+            8680,
+            8136,
+            8261,
+            9139,
+            5132,
+            923,
+            9564,
+            5924,
+            5925,
+            5926,
+            6987,
+            6989,
+            900,
+            2554,
+            10,
+            7377,
+            9192,
+            9932,
+            1716,
+            9321,
+            7348,
+            1732,
+            919,
+            1222,
+            2321,
+            6320,
+            922,
+            9449,
+            9448,
+            5179,
+            5001,
+            2380,
+            7982,
+            2974,
+            9271,
+            9834,
+            9879,
+            9726,
+            8118,
+            5634,
+            6051,
+            7819,
+            7820,
+            6602,
+            5794,
+            5253,
+            5779,
+            5796,
+            9546,
+            2963,
+            8538,
+            9590,
+            2000,
+            925,
+            1870,
+            937,
+            2609,
+            8610,
+            9630,
+            5395,
+            9800,
+            7098,
+            7104,
+            9538,
+            5671,
+            1740,
+            6744,
+            3102,
+            9156,
+            9992,
+            9292,
+            9293,
+            8656,
+            8657,
+            6210,
+            8039,
+            942,
+            2613,
+            5927,
+            8520,
+            946,
+            947,
+            2628,
+            1975,
+            948,
+            5654,
+            953,
+            5134,
+            6150,
+            8291,
+            8294,
+            5806,
+            1657,
+            9463,
+            957,
+            961,
+            7557,
+            8870,
+            8871,
+            904,
+            9229,
+            2274,
+            5000,
+            2888,
+            972,
+            2685,
+            2421,
+            1869,
+            975,
+            5271,
+            1076,
+            7758,
+            7759,
+            7388,
+            12,
+            9599,
+            9651,
+            6381,
+            6383,
+            5679,
+            9628,
+            7730,
+            6512,
+            2519,
+            981,
+            5319,
+            9071,
+            986,
+            8574,
+            8576,
+            2352,
+            2750,
+            6438,
+            2919,
+            7974,
+            8005,
+            979,
+            22,
+            6309,
+            6314,
+            7935,
+            5491,
+            6194,
+            6408,
+            5931,
+            5807,
+            5932,
+            8389,
+            18,
+            5317,
+            9181,
+            2742,
+            2736,
+            2737,
+            5877,
+            5879,
+            9812,
+            9145,
+            995,
+            996,
+            2735,
+            9909,
+            997,
+            2740,
+            998,
+            999,
+            1989,
+            1002,
+            2488,
+            2454,
+            2461,
+            2481,
+            2444,
+            1129,
+            5136,
+            6439,
+            8752,
+            8633,
+            8636,
+            9104,
+            880,
+            5002,
+            9105,
+            7648,
+            1139,
+            2756,
+            5129,
+            1144,
+            1148,
+            1149,
+            6462,
+            1153,
+            5883,
+            885,
+            5504,
+            11,
+            7428,
+            2975,
+            9927,
+            6550,
+            6552,
+            1145,
+            7524,
+            7525,
+            8556,
+            6228,
+            8103,
+            6522,
+            9540,
+            9548,
+            1160,
+            6387,
+            6389,
+            1151,
+            971,
+            2676,
+            1133,
+            5137,
+            1187,
+            2814,
+            5295,
+            9433,
+            1188,
+            5486,
+            9211,
+            9218,
+            6437,
+            8221,
+            9924,
+            5433,
+            8701,
+            7086,
+            7090,
+            9643,
+            9266,
+            8700,
+            1176,
+            6477,
+            8708,
+            8711,
+            2286,
+            2013,
+            1193,
+            5871,
+            1196,
+            6172,
+            1880,
+            5028,
+            1759,
+            5321,
+            2777,
+            2402,
+            2991,
+            5240,
+            6143,
+            8896,
+            9903,
+            9895,
+            994,
+            9757,
+            5928,
+            10059,
+            10048,
+            6489,
+            9923,
+            1202,
+            8146,
+            1204,
+            5298,
+            5502,
+            5874,
+            2854,
+            1206,
+            1207,
+            2857,
+            8539,
+            9958,
+            8660,
+            8662,
+            10013,
+            5597,
+            9576,
+            1768,
+            5168,
+            2774,
+            5414,
+            7882,
+            8899,
+            7455,
+            8885,
+            8875,
+            8876,
+            5778,
+            838,
+            2959,
+            10071,
+            5228,
+            5231,
+            9506
+          ]
+        }
+      }
+    },
+    {
+      "id": "s27",
+      "name": "Controllo Consegne [P]",
+      "icon": "📋",
+      "category": "Logistica",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s28",
+      "name": "Sales AI Hub [P]",
+      "icon": "🤖",
+      "category": "Vendite",
+      "visible": false,
+      "visibilityGroup": "all",
+      "developmentStatus": "in_sviluppo",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s29",
+      "name": "Maestro AI [P]",
+      "icon": "🎯",
+      "category": "Vendite",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            81,
+            20,
+            3,
+            57,
+            87,
+            89
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s30",
+      "name": "Portale Clienti [P]",
+      "icon": "🛒",
+      "category": "Business",
+      "visible": true,
+      "visibilityGroup": "all",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s31",
+      "name": "Controllo Scadenze",
+      "icon": "📅",
+      "category": "Magazzino",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s32",
+      "name": "Super Dashboard",
+      "icon": "⚡",
+      "category": "Analytics",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            21,
+            81,
+            70,
+            20,
+            48,
+            26,
+            89,
+            3,
+            7,
+            57,
+            87
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s33",
+      "name": "AI Image Studio",
+      "icon": "🎨",
+      "category": "AI & Tech",
+      "visible": true,
+      "visibilityGroup": "all",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s34",
+      "name": "Product Photo Manager",
+      "icon": "🍌",
+      "category": "AI & Tech",
+      "visible": true,
+      "visibilityGroup": "internal",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": [
+            21,
+            81,
+            70,
+            20,
+            26,
+            48,
+            89,
+            3,
+            7,
+            57,
+            87
+          ]
+        },
+        "clienti": {
+          "enabled": false,
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "s35",
+      "name": "Menu PDF Generator",
+      "icon": "📋",
+      "category": "Business",
+      "visible": true,
+      "visibilityGroup": "all",
+      "developmentStatus": "pronta",
+      "groups": {
+        "dipendenti": {
+          "enabled": true,
+          "excluded": []
+        },
+        "clienti": {
+          "enabled": true,
+          "excluded": []
+        }
+      }
+    }
+  ]
+}
+
+waiting for new logs...
+10:31:30.14  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+⚠️ Using excludedIds for clienti (no emails): [
+  3118, 2995, 6375, 8159,  832, 2492,  833, 1221,  831, 1213,
+  9126, 9125,  835, 3066,  892, 3105, 9187,  839, 2487, 2970,
+  3070, 6281,  849, 8951, 8934, 8950, 3055, 5509, 9952, 3158,
+    19, 8495, 7470, 7629, 7630, 9138, 9317, 8693, 9900, 9899,
+  9034,  850, 2463,  852, 5130, 2945, 2029, 8044, 9159, 9160,
+  9986, 2466, 2473, 1175, 6973, 3018, 2483,  859, 5680, 5693,
+  5695, 1797, 8761, 9469, 3010, 6862, 8634, 8638, 4999,  862,
+  1714, 2489,  869,  871, 2456, 1162, 3016, 2313, 2979, 2968,
+  4998,  874, 5012, 5324, 1163,  877, 5727, 7585,  883,  884,
+  2514, 9979, 9982,  891, 2521, 2517, 2518, 2366, 2523, 5083,
+  ... 340 more items
+]
+
+waiting for new logs...
+10:31:30.14  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+⚠️ Using excludedIds for dipendenti (no emails): [ 81, 20, 3, 57, 87, 89 ]
+
+waiting for new logs...
+10:31:30.14  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+⚠️ Using excludedIds for dipendenti (no emails): []
+
+waiting for new logs...
+10:31:30.14  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+App 25/42: s15 {
+  visible: false,
+  visibilityGroup: 'all',
+  groups: { dipendenti: true, clienti: true },
+  developmentStatus: 'in_sviluppo',
+  excludedUsers: 0,
+  excludedCustomers: 0
+}
+
+waiting for new logs...
+10:31:30.14  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+⚠️ Using excludedIds for clienti (no emails): [
+  3118, 2995, 6375, 8159,  832, 2492,  833, 1221,  831, 1213,
+  9126, 9125,  835, 3066,  892, 3105, 9187,  839, 2487, 2970,
+  3070, 6281,  849, 8951, 8934, 8950, 3055, 5509, 9952, 3158,
+    19, 8495, 7470, 7629, 7630, 9138, 9317, 8693, 9900, 9899,
+  9034,  850, 2463,  852, 5130, 2945, 2029, 8044, 9159, 9160,
+  9986, 2466, 2473, 1175, 6973, 3018, 2483,  859, 5680, 5693,
+  5695, 1797, 8761, 9469, 3010, 6862, 8634, 8638, 4999,  862,
+  1714, 2489,  869,  871, 2456, 1162, 3016, 2313, 2979, 2968,
+  4998,  874, 5012, 5324, 1163,  877, 5727, 7585,  883,  884,
+  2514, 9979, 9982,  891, 2521, 2517, 2518, 2366, 2523, 5083,
+  ... 340 more items
+]
+
+waiting for new logs...
+10:31:30.14  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+App 41/42: s34 {
+  visible: true,
+  visibilityGroup: 'internal',
+  groups: { dipendenti: true, clienti: false },
+  developmentStatus: 'pronta',
+  excludedUsers: 11,
+  excludedCustomers: 0
+}
+
+waiting for new logs...
+10:31:30.34  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 1: OK
+
+waiting for new logs...
+10:31:30.34  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ App salvata: 1 { success: true, key: 'app_visibility:1' }
+
+waiting for new logs...
+10:31:30.53  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 2: OK
+
+waiting for new logs...
+10:31:30.63  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 3: OK
+
+waiting for new logs...
+10:31:30.73  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 4: OK
+
+waiting for new logs...
+10:31:30.82  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 5: OK
+
+waiting for new logs...
+10:31:30.82  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+🔹 KV.saveAppVisibility - appId: 6, key: app_visibility:6
+
+waiting for new logs...
+10:31:30.92  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 6: OK
+
+waiting for new logs...
+10:31:30.93  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+💾 Salvando app: 7
+
+waiting for new logs...
+10:31:31.01  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per 7: OK
+
+waiting for new logs...
+10:31:31.01  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+🔹 KV.saveAppVisibility - data: {
+  "excludedUsers": [],
+  "excludedCustomers": [
+    "3118",
+    "2995",
+    "6375",
+    "8159",
+    "832",
+    "2492",
+    "833",
+    "1221",
+    "831",
+    "1213",
+    "9126",
+    "9125",
+    "835",
+    "3066",
+    "892",
+    "3105",
+    "9187",
+    "839",
+    "2487",
+    "2970",
+    "3070",
+    "6281",
+    "849",
+    "8951",
+    "8934",
+    "8950",
+    "3055",
+    "5509",
+    "9952",
+    "3158",
+    "19",
+    "8495",
+    "7470",
+    "7629",
+    "7630",
+    "9138",
+    "9317",
+    "8693",
+    "9900",
+    "9899",
+    "9034",
+    "850",
+    "2463",
+    "852",
+    "5130",
+    "2945",
+    "2029",
+    "8044",
+    "9159",
+    "9160",
+    "9986",
+    "2466",
+    "2473",
+    "1175",
+    "6973",
+    "3018",
+    "2483",
+    "859",
+    "5680",
+    "5693",
+    "5695",
+    "1797",
+    "8761",
+    "9469",
+    "3010",
+    "6862",
+    "8634",
+    "8638",
+    "4999",
+    "862",
+    "1714",
+    "2489",
+    "869",
+    "871",
+    "2456",
+    "1162",
+    "3016",
+    "2313",
+    "2979",
+    "2968",
+    "4998",
+    "874",
+    "5012",
+    "5324",
+    "1163",
+    "877",
+    "5727",
+    "7585",
+    "883",
+    "884",
+    "2514",
+    "9979",
+    "9982",
+    "891",
+    "2521",
+    "2517",
+    "2518",
+    "2366",
+    "2523",
+    "5083",
+    "5382",
+    "8011",
+    "949",
+    "9417",
+    "9394",
+    "9383",
+    "8597",
+    "1199",
+    "9457",
+    "9517",
+    "6104",
+    "6088",
+    "6100",
+    "6109",
+    "6113",
+    "893",
+    "894",
+    "5187",
+    "1727",
+    "897",
+    "6446",
+    "901",
+    "902",
+    "5270",
+    "5269",
+    "903",
+    "2543",
+    "905",
+    "8450",
+    "2546",
+    "906",
+    "9959",
+    "3157",
+    "1715",
+    "968",
+    "8739",
+    "1718",
+    "9026",
+    "5863",
+    "5689",
+    "6612",
+    "8680",
+    "8136",
+    "8261",
+    "9139",
+    "5132",
+    "923",
+    "9564",
+    "5924",
+    "5925",
+    "5926",
+    "6987",
+    "6989",
+    "900",
+    "2554",
+    "10",
+    "7377",
+    "9192",
+    "9932",
+    "1716",
+    "9321",
+    "7348",
+    "1732",
+    "919",
+    "1222",
+    "2321",
+    "6320",
+    "922",
+    "9449",
+    "9448",
+    "5179",
+    "5001",
+    "2380",
+    "7982",
+    "2974",
+    "9271",
+    "9834",
+    "9879",
+    "9726",
+    "8118",
+    "5634",
+    "6051",
+    "7819",
+    "7820",
+    "6602",
+    "5794",
+    "5253",
+    "5779",
+    "5796",
+    "9546",
+    "2963",
+    "8538",
+    "9590",
+    "2000",
+    "925",
+    "1870",
+    "937",
+    "2609",
+    "8610",
+    "9630",
+    "5395",
+    "9800",
+    "7098",
+    "7104",
+    "9538",
+    "5671",
+    "1740",
+    "6744",
+    "3102",
+    "9156",
+    "9992",
+    "9292",
+    "9293",
+    "8656",
+    "8657",
+    "6210",
+    "8039",
+    "942",
+    "2613",
+    "5927",
+    "8520",
+    "946",
+    "947",
+    "2628",
+    "1975",
+    "948",
+    "5654",
+    "953",
+    "5134",
+    "6150",
+    "8291",
+    "8294",
+    "5806",
+    "1657",
+    "9463",
+    "957",
+    "961",
+    "7557",
+    "8870",
+    "8871",
+    "904",
+    "9229",
+    "2274",
+    "5000",
+    "2888",
+    "972",
+    "2685",
+    "2421",
+    "1869",
+    "975",
+    "5271",
+    "1076",
+    "7758",
+    "7759",
+    "7388",
+    "12",
+    "9599",
+    "9651",
+    "6381",
+    "6383",
+    "5679",
+    "9628",
+    "7730",
+    "6512",
+    "2519",
+    "981",
+    "5319",
+    "9071",
+    "986",
+    "8574",
+    "8576",
+    "2352",
+    "2750",
+    "6438",
+    "2919",
+    "7974",
+    "8005",
+    "979",
+    "22",
+    "6309",
+    "6314",
+    "7935",
+    "5491",
+    "6194",
+    "6408",
+    "5931",
+    "5807",
+    "5932",
+    "8389",
+    "18",
+    "5317",
+    "9181",
+    "2742",
+    "2736",
+    "2737",
+    "5877",
+    "5879",
+    "9812",
+    "9145",
+    "995",
+    "996",
+    "2735",
+    "9909",
+    "997",
+    "2740",
+    "998",
+    "999",
+    "1989",
+    "1002",
+    "2488",
+    "2454",
+    "2461",
+    "2481",
+    "2444",
+    "1129",
+    "5136",
+    "6439",
+    "8752",
+    "8633",
+    "8636",
+    "9104",
+    "880",
+    "5002",
+    "9105",
+    "7648",
+    "1139",
+    "2756",
+    "5129",
+    "1144",
+    "1148",
+    "1149",
+    "6462",
+    "1153",
+    "5883",
+    "885",
+    "5504",
+    "11",
+    "7428",
+    "2975",
+    "9927",
+    "6550",
+    "6552",
+    "1145",
+    "7524",
+    "7525",
+    "8556",
+    "6228",
+    "8103",
+    "6522",
+    "9540",
+    "9548",
+    "1160",
+    "6387",
+    "6389",
+    "1151",
+    "971",
+    "2676",
+    "1133",
+    "5137",
+    "1187",
+    "2814",
+    "5295",
+    "9433",
+    "1188",
+    "5486",
+    "9211",
+    "9218",
+    "6437",
+    "8221",
+    "9924",
+    "5433",
+    "8701",
+    "7086",
+    "7090",
+    "9643",
+    "9266",
+    "8700",
+    "1176",
+    "6477",
+    "8708",
+    "8711",
+    "2286",
+    "2013",
+    "1193",
+    "5871",
+    "1196",
+    "6172",
+    "1880",
+    "5028",
+    "1759",
+    "5321",
+    "2777",
+    "2402",
+    "2991",
+    "5240",
+    "6143",
+    "8896",
+    "9903",
+    "9895",
+    "994",
+    "9757",
+    "5928",
+    "10059",
+    "10048",
+    "6489",
+    "9923",
+    "1202",
+    "8146",
+    "1204",
+    "5298",
+    "5502",
+    "5874",
+    "2854",
+    "1206",
+    "1207",
+    "2857",
+    "8539",
+    "9958",
+    "8660",
+    "8662",
+    "10013",
+    "5597",
+    "9576",
+    "1768",
+    "5168",
+    "2774",
+    "5414",
+    "7882",
+    "8899",
+    "7455",
+    "8885",
+    "8875",
+    "8876",
+    "5778",
+    "838",
+    "2959",
+    "10071",
+    "5228",
+    "5231",
+    "9506"
+  ],
+  "visible": true,
+  "visibilityGroup": "internal",
+  "developmentStatus": "pronta"
+}
+
+waiting for new logs...
+10:31:31.11  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s1: OK
+
+waiting for new logs...
+10:31:31.11  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+💾 Salvando app: s2
+
+waiting for new logs...
+10:31:31.21  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s2: OK
+
+waiting for new logs...
+10:31:31.21  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ App salvata: s2 { success: true, key: 'app_visibility:s2' }
+
+waiting for new logs...
+10:31:31.30  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s3: OK
+
+waiting for new logs...
+10:31:31.40  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s4: OK
+
+waiting for new logs...
+10:31:31.40  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+🔹 KV.saveAppVisibility - data: {
+  "excludedUsers": [],
+  "excludedCustomers": [],
+  "visible": false,
+  "visibilityGroup": "all",
+  "developmentStatus": "in_sviluppo"
+}
+
+waiting for new logs...
+10:31:31.49  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s5: OK
+
+waiting for new logs...
+10:31:31.50  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ App salvata: s5 { success: true, key: 'app_visibility:s5' }
+
+waiting for new logs...
+10:31:31.59  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s21: OK
+
+waiting for new logs...
+10:31:31.69  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s6: OK
+
+waiting for new logs...
+10:31:31.78  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s7: OK
+
+waiting for new logs...
+10:31:31.88  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s8: OK
+
+waiting for new logs...
+10:31:31.98  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s26: OK
+
+waiting for new logs...
+10:31:32.07  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s9: OK
+
+waiting for new logs...
+10:31:32.17  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s10: OK
+
+waiting for new logs...
+10:31:32.26  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s11: OK
+
+waiting for new logs...
+10:31:32.36  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s12: OK
+
+waiting for new logs...
+10:31:32.36  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ App salvata: s12 { success: true, key: 'app_visibility:s12' }
+
+waiting for new logs...
+10:31:32.36  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+🔹 KV.saveAppVisibility - appId: s13, key: app_visibility:s13
+
+waiting for new logs...
+10:31:32.46  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s13: OK
+
+waiting for new logs...
+10:31:32.55  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s14: OK
+
+waiting for new logs...
+10:31:32.65  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s22: OK
+
+waiting for new logs...
+10:31:32.65  ℹ️  POST  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+------------------------------------------------------------------------
+✅ KV.set completato per s22: OK
+
+waiting for new logs...
+10:31:41.16  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+📋 GET /api/apps/visibility - role: admin, userId: NaN
+
+waiting for new logs...
+10:31:41.16  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+➜ App internal-only: VISIBLE for admin
+
+waiting for new logs...
+10:31:41.61  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+📋 GET /api/apps/visibility - role: admin, userId: NaN
+
+waiting for new logs...
+10:31:41.61  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+🔍 isAppVisibleForRole - userId: NaN, userRole: admin, isInternal: true, isPortal: false, visibilityGroup: internal
+
+waiting for new logs...
+10:31:41.61  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+➜ App internal-only: VISIBLE for admin
+
+waiting for new logs...
+10:31:41.62  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+➜ App internal-only: VISIBLE for admin
+
+waiting for new logs...
+10:31:41.62  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+➜ App internal-only: VISIBLE for admin
+
+waiting for new logs...
+10:31:41.62  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+➜ App internal-only: VISIBLE for admin
+
+waiting for new logs...
+10:31:41.62  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/apps/visibility
+-----------------------------------------------------------------------
+➜ App internal-only: VISIBLE for admin
+
+waiting for new logs...
+10:33:33.68  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/urgent-products
+-----------------------------------------------------------------------
+📋 GET /api/urgent-products - Recupero prodotti urgenti...
+
+waiting for new logs...
+10:33:33.68  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/urgent-products
+-----------------------------------------------------------------------
+📋 GET /api/urgent-products - Recupero prodotti urgenti...
+
+waiting for new logs...
+10:33:34.16  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/urgent-products
+-----------------------------------------------------------------------
+✅ Trovati 22 prodotti urgenti
+
+waiting for new logs...
+10:33:34.16  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/urgent-products
+-----------------------------------------------------------------------
+✅ Trovati 22 prodotti urgenti
+
+waiting for new logs...
+10:33:34.16  ℹ️  GET  ---  staging.hub.lapa.ch  ƒ  /api/urgent-products
+-----------------------------------------------------------------------
+✅ Trovati 22 prodotti urgenti
+
+waiting for new logs...
+WARN! Exceeded query duration limit of 5 minutes
+

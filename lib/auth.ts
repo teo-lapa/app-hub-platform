@@ -4,18 +4,22 @@ import { UserDatabase } from '@/lib/database/users';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 
-export const generateToken = (user: User): string => {
-  return jwt.sign(
-    {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      azienda: user.azienda,
-    },
-    JWT_SECRET,
-    { expiresIn: '7d' }
-  );
+export const generateToken = (user: User, odooUserId?: number): string => {
+  const payload: any = {
+    id: user.id,  // ✅ FIX: Use 'id' to match verifyToken expectation
+    userId: user.id,  // Keep userId for backward compatibility
+    email: user.email,
+    role: user.role,
+    name: user.name,
+    azienda: user.azienda,
+  };
+
+  // ✅ Aggiungi odooUserId se disponibile (per controlli esclusioni)
+  if (odooUserId) {
+    payload.odooUserId = odooUserId;
+  }
+
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 };
 
 export const verifyToken = (token: string): { id: string; email: string; role: UserRole } | null => {

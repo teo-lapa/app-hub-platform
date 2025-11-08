@@ -12,9 +12,9 @@ import { User } from '@/lib/types';
  * Lista email utenti con permessi speciali (possono vedere tutti i venditori)
  */
 export const MAESTRO_SUPER_USERS = [
-  'paul@lapa.com',
-  'laura@lapa.com',
-  'gregorio@lapa.com'
+  'paul@lapa.ch',      // FIX: Corrected all email domains to .ch
+  'laura@lapa.ch',     // FIX: Corrected all email domains to .ch
+  'gregorio@lapa.ch'   // FIX: Corrected all email domains to .ch
 ];
 
 /**
