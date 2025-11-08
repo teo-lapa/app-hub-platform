@@ -106,15 +106,16 @@ async function getProdottiNonScaricati(sessionId: string, pickingId: number) {
   const moves = await callOdoo(sessionId, 'stock.move', 'search_read', [[
     ['picking_id', '=', pickingId]
   ]], {
-    fields: ['product_id', 'product_uom_qty', 'quantity', 'product_uom', 'state']
+    fields: ['product_id', 'product_uom_qty', 'quantity_done', 'product_uom', 'state']
   });
 
   const prodottiNonScaricati = [];
 
   for (const move of moves) {
     const quantitaRichiesta = move.product_uom_qty || 0;
-    const quantitaEffettiva = move.quantity || 0;
+    const quantitaEffettiva = move.quantity_done || 0;
 
+    // Se la quantità effettiva è minore di quella richiesta, il prodotto è nel furgone
     if (quantitaEffettiva < quantitaRichiesta) {
       prodottiNonScaricati.push({
         nome: move.product_id ? move.product_id[1] : 'Prodotto sconosciuto',
