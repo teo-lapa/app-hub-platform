@@ -108,7 +108,7 @@ async function getProdottiNonScaricati(sessionId: string, pickingId: number) {
   const moveLines = await callOdoo(sessionId, 'stock.move.line', 'search_read', [[
     ['picking_id', '=', pickingId]
   ]], {
-    fields: ['product_id', 'product_uom_id', 'reserved_uom_qty', 'qty_done']
+    fields: ['product_id', 'product_uom_id', 'quantity', 'qty_done']
   });
 
   const prodottiNonScaricati = [];
@@ -120,7 +120,7 @@ async function getProdottiNonScaricati(sessionId: string, pickingId: number) {
     const productId = line.product_id ? line.product_id[0] : 0;
     const productName = line.product_id ? line.product_id[1] : 'Prodotto sconosciuto';
     const uom = line.product_uom_id ? line.product_uom_id[1] : 'PZ';
-    const qtyRichiesta = line.reserved_uom_qty || 0;
+    const qtyRichiesta = line.quantity || 0;
     const qtyDone = line.qty_done || 0;
 
     if (!prodottiMap.has(productId)) {
