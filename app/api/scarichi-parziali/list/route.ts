@@ -103,26 +103,28 @@ async function cercaScarichiParziali(sessionId: string, pickingId: number) {
 }
 
 async function getProdottiNonScaricati(sessionId: string, pickingId: number) {
-  const moves = await callOdoo(sessionId, 'stock.move', 'search_read', [[
-    ['picking_id', '=', pickingId]
+  // Per trovare i prodotti nel furgone, devo guardare le "Operazioni Dettagliate" (stock.move.line)
+  // Questi sono i prodotti effettivamente riservati/disponibili nel furgone
+
+  const moveLines = await callOdoo(sessionId, 'stock.move.line', 'search_read', [[
+    ['picking_id', '=', pickingId],
+    ['state', 'in', ['assigned', 'partially_available']]
   ]], {
-    fields: ['product_id', 'product_uom_qty', 'quantity', 'product_uom', 'state']
+    fields: ['product_id', 'product_uom_id', 'reserved_uom_qty', 'location_id', 'location_dest_id']
   });
 
   const prodottiNonScaricati = [];
 
-  for (const move of moves) {
-    const quantitaRichiesta = move.product_uom_qty || 0;
-    const quantitaEffettiva = move.quantity || 0;
+  for (const line of moveLines) {
+    const quantitaRiservata = line.reserved_uom_qty || 0;
 
-    // INVERSO: Mostra solo i prodotti NON ancora consegnati (ancora nel furgone)
-    // Se quantitaEffettiva < quantitaRichiesta significa che manca ancora della merce
-    if (quantitaEffettiva < quantitaRichiesta) {
+    // Se c'è quantità riservata, significa che il prodotto è nel furgone
+    if (quantitaRiservata > 0) {
       prodottiNonScaricati.push({
-        nome: move.product_id ? move.product_id[1] : 'Prodotto sconosciuto',
-        quantitaRichiesta,
-        quantitaEffettiva,
-        uom: move.product_uom ? move.product_uom[1] : 'PZ'
+        nome: line.product_id ? line.product_id[1] : 'Prodotto sconosciuto',
+        quantitaRichiesta: quantitaRiservata,
+        quantitaEffettiva: 0, // Non ancora consegnato
+        uom: line.product_uom_id ? line.product_uom_id[1] : 'PZ'
       });
     }
   }
