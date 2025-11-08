@@ -72,12 +72,12 @@ async function cercaScarichiParziali(sessionId: string, pickingId: number) {
     let allegati = [];
     if (msg.attachment_ids && msg.attachment_ids.length > 0) {
       const attachments = await callOdoo(sessionId, 'ir.attachment', 'read', [msg.attachment_ids], {
-        fields: ['id', 'name', 'datas_fname', 'mimetype', 'description']
+        fields: ['id', 'name', 'mimetype', 'description']
       });
 
       allegati = attachments.map((att: any) => ({
         id: att.id,
-        nome: att.name || att.datas_fname,
+        nome: att.name,
         tipo: att.mimetype,
         descrizione: att.description
       }));
