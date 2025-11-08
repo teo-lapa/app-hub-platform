@@ -188,19 +188,9 @@ export default function CatalogoVenditoriPage() {
         throw new Error(data.error || 'Errore nella creazione dell\'ordine');
       }
 
-      // Success!
-      setOrderSuccess({
-        name: data.orderName,
-        id: data.orderId
-      });
-
-      // Clear cart and reset form (keep orderSuccess visible)
-      setCartProducts([]);
-      setOrderNotes('');
-      setWarehouseNotes('');
-
-      // Scroll to top
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Success! Redirect to price review page
+      console.log('✅ Order created, redirecting to price review:', data.orderId);
+      router.push(`/catalogo-venditori/review-prices/${data.orderId}`);
 
     } catch (err: any) {
       console.error('Errore creazione ordine:', err);

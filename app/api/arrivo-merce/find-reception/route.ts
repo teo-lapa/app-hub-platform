@@ -126,7 +126,9 @@ export async function POST(request: NextRequest) {
           'display_name',
           'default_code',
           'product_tmpl_id',
-          'product_template_variant_value_ids'
+          'product_template_variant_value_ids',
+          'uom_id',           // Unità di misura di vendita
+          'uom_po_id'         // Unità di misura di acquisto
         ]
       ]);
 
@@ -147,6 +149,8 @@ export async function POST(request: NextRequest) {
           product_tmpl_id: product?.product_tmpl_id || [],
           variant_ids: product?.product_template_variant_value_ids || [],
           product_uom_id: ml.product_uom_id,
+          uom_name: product?.uom_id?.[1] || 'N/A',                    // UOM di vendita
+          uom_po_name: product?.uom_po_id?.[1] || 'N/A',              // UOM di acquisto
           qty_done: ml.qty_done || 0,
           product_uom_qty: relatedMove?.product_uom_qty || ml.quantity || 0, // 🔧 Prendi da stock.move
           lot_id: ml.lot_id,
@@ -422,7 +426,9 @@ export async function POST(request: NextRequest) {
         'display_name',
         'default_code',
         'product_tmpl_id',
-        'product_template_variant_value_ids'
+        'product_template_variant_value_ids',
+        'uom_id',           // Unità di misura di vendita
+        'uom_po_id'         // Unità di misura di acquisto
       ]
     ]);
 
@@ -443,6 +449,8 @@ export async function POST(request: NextRequest) {
         product_tmpl_id: product?.product_tmpl_id || [],
         variant_ids: product?.product_template_variant_value_ids || [],
         product_uom_id: ml.product_uom_id,
+        uom_name: product?.uom_id?.[1] || 'N/A',                    // UOM di vendita
+        uom_po_name: product?.uom_po_id?.[1] || 'N/A',              // UOM di acquisto
         qty_done: ml.qty_done || 0,
         product_uom_qty: relatedMove?.product_uom_qty || ml.quantity || 0, // 🔧 Prendi da stock.move
         lot_id: ml.lot_id,

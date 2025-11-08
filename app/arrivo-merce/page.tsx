@@ -1010,6 +1010,10 @@ export default function ArrivoMercePage() {
                       <p className="text-gray-600">
                         Quantità: {line.qty_done || 0}
                       </p>
+                      <div className="mt-2 text-xs text-gray-500 flex gap-4">
+                        <span>📦 UdM Acquisto: <strong className="text-blue-600">{line.uom_po_name || 'N/A'}</strong></span>
+                        <span>🏷️ UdM Vendita: <strong className="text-green-600">{line.uom_name || 'N/A'}</strong></span>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -107,6 +107,82 @@ export async function POST(request: NextRequest) {
           odooProduct.hs_code = product.codice_sa; // Harmonized System Code
         }
 
+        // TRACCIABILITÀ: Attiva per prodotti FRIGO (freschi)
+        const isFrigo = product.categoria_nome?.toLowerCase().includes('frigo') ||
+                       product.categoria_nome?.toLowerCase().includes('lattic') ||
+                       product.categoria_nome?.toLowerCase().includes('mozzarell') ||
+                       product.nome_completo?.toLowerCase().includes('fresc');
+
+        if (isFrigo) {
+          odooProduct.tracking = 'lot'; // Tracciabilità per lotti
+          odooProduct.use_expiration_date = true; // Data scadenza
+          console.log(`   🧊 Prodotto FRIGO - Tracciabilità attivata`);
+        }
+
+        // IVA: Get tax IDs for customer and supplier
+        try {
+          // IVA Cliente: 8.1% per food, 22% per non-food
+          const isNonFood = product.categoria_nome?.toLowerCase().includes('non-food') ||
+                           product.categoria_nome?.toLowerCase().includes('pulizia') ||
+                           product.categoria_nome?.toLowerCase().includes('carta');
+
+          const taxRate = isNonFood ? 22 : 8.1;
+
+          const taxSaleResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cookie': `session_id=${sessionId}`
+            },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'call',
+              params: {
+                model: 'account.tax',
+                method: 'search_read',
+                args: [[['amount', '=', taxRate], ['type_tax_use', '=', 'sale']], ['id']],
+                kwargs: { limit: 1 }
+              },
+              id: Math.floor(Math.random() * 1000000000)
+            })
+          });
+          const taxSaleData = await taxSaleResponse.json();
+
+          if (taxSaleData.result && taxSaleData.result.length > 0) {
+            odooProduct.taxes_id = [[6, 0, [taxSaleData.result[0].id]]];
+            console.log(`   💰 IVA Cliente ${taxRate}% impostata`);
+          }
+
+          // IVA Fornitore: 0% import (per fornitori esteri) o 8.1% (per fornitori italiani)
+          // Default: 0% import per sicurezza
+          const taxPurchaseResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cookie': `session_id=${sessionId}`
+            },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'call',
+              params: {
+                model: 'account.tax',
+                method: 'search_read',
+                args: [[['amount', '=', 0], ['type_tax_use', '=', 'purchase']], ['id']],
+                kwargs: { limit: 1 }
+              },
+              id: Math.floor(Math.random() * 1000000000)
+            })
+          });
+          const taxPurchaseData = await taxPurchaseResponse.json();
+
+          if (taxPurchaseData.result && taxPurchaseData.result.length > 0) {
+            odooProduct.supplier_taxes_id = [[6, 0, [taxPurchaseData.result[0].id]]];
+            console.log(`   💰 IVA Fornitore 0% import impostata`);
+          }
+        } catch (taxError) {
+          console.warn('⚠️  Errore impostazione IVA:', taxError);
+        }
+
         // Add tags and notes
         let notes = [];
         if (product.tags && product.tags.length > 0) {
@@ -168,12 +244,43 @@ export async function POST(request: NextRequest) {
             try {
               console.log(`💰 Creating supplier price for product ${productId} with supplier ${product.fornitore_odoo_id}`);
 
-              const priceListData = {
+              // Get EUR currency ID
+              const eurResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Cookie': `session_id=${sessionId}`
+                },
+                body: JSON.stringify({
+                  jsonrpc: '2.0',
+                  method: 'call',
+                  params: {
+                    model: 'res.currency',
+                    method: 'search_read',
+                    args: [[['name', '=', 'EUR']], ['id']],
+                    kwargs: { limit: 1 }
+                  },
+                  id: Math.floor(Math.random() * 1000000000)
+                })
+              });
+              const eurData = await eurResponse.json();
+              const eurId = eurData.result?.[0]?.id || 3; // Default EUR ID
+
+              const priceListData: any = {
                 partner_id: product.fornitore_odoo_id,
                 product_id: productId,
                 price: product.prezzo_acquisto,
                 min_qty: 1,
+                currency_id: eurId, // SEMPRE EUR
               };
+
+              // Add supplier product name and code from invoice
+              if (product.nome || product.nome_completo) {
+                priceListData.product_name = product.nome || product.nome_completo;
+              }
+              if (product.codice_ean) {
+                priceListData.product_code = product.codice_ean;
+              }
 
               const priceResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
                 method: 'POST',
