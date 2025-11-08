@@ -187,7 +187,7 @@ export async function GET(
 
     // Enrich order lines with product data and price comparison
     const enrichedLines = orderLines.map((line: any) => {
-      const product = productMap.get(line.product_id[0]);
+      const product: any = productMap.get(line.product_id[0]);
 
       return {
         id: line.id,
