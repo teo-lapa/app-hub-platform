@@ -149,8 +149,9 @@ PRODOTTO DALLA FATTURA:
 Nome: ${product.nome}
 ${product.codice ? `Codice: ${product.codice}` : ''}
 ${product.prezzo_unitario ? `Prezzo acquisto: €${product.prezzo_unitario}` : ''}
-${product.unita_misura ? `Unità dalla fattura: ${product.unita_misura}` : ''}
-${product.quantita ? `Quantità: ${product.quantita}` : ''}
+${product.unita_misura ? `Unità di Misura dalla fattura: ${product.unita_misura}` : ''}
+${product.quantita ? `Quantità ordinata: ${product.quantita}` : ''}
+${product.prezzo_totale ? `Prezzo totale riga: €${product.prezzo_totale}` : ''}
 ${product.note ? `Note: ${product.note}` : ''}
 
 CONTESTO ODOO:
@@ -200,6 +201,26 @@ LOGICA INTELLIGENTE:
 - **Peso**: Per unità SINGOLA di vendita, non per cartone. Se incerto: 0.1 kg
 - **Non bloccare**: Se non trovi un campo, usa null o valori di default
 
+CONFIGURAZIONE PRODOTTI (IMPORTANTE):
+1. **Unità di Misura**:
+   - Se la fattura dice "PZ" ma indica quantità come cartoni (es: "X6", "X12", "CONF"), il prodotto si vende a PEZZI
+   - UoM vendita = sempre "Unità(i)" o "pz" per i pezzi singoli
+   - UoM acquisto = potrebbe essere diversa (cartone, confezione, ecc) ma per semplicità usa la stessa dell'UoM vendita
+
+2. **Prezzo di Acquisto**:
+   - Il prezzo dalla fattura è il prezzo a cui compriamo (per cartone/conf se indicato)
+   - Questo va nel campo "prezzo_acquisto" e "standard_price"
+
+3. **IVA/Tasse** (NON gestire qui, solo informazione):
+   - Prodotti Food italiani: IVA 8.1% vendita
+   - Prodotti Non-Food: IVA 22% vendita
+   - Fornitori esteri: IVA 0% import acquisto
+   - (Questa configurazione verrà fatta dopo la creazione)
+
+4. **Fornitore**:
+   - Usa sempre il fornitore_odoo_id dal contesto se disponibile
+   - Il prezzo fornitore sarà quello della fattura
+
 Rispondi SOLO con JSON valido:
 {
   "nome_completo": "...",
@@ -246,6 +267,7 @@ Rispondi SOLO con JSON valido:
       codice_ean: product.codice || enrichedData.codice_ean,
       prezzo_acquisto: product.prezzo_unitario,
       quantita_acquisto: product.quantita,
+      unita_misura_fattura: product.unita_misura, // UoM dalla fattura
       unita_misura_acquisto: product.unita_misura,
       note_acquisto: product.note,
     };
@@ -255,6 +277,13 @@ Rispondi SOLO con JSON valido:
     return NextResponse.json({
       success: true,
       data: finalProduct,
+      comparison: {
+        uom_fattura: product.unita_misura,
+        uom_odoo: enrichedData.uom_nome,
+        uom_odoo_id: enrichedData.uom_odoo_id,
+        prezzo_fattura: product.prezzo_unitario,
+        quantita_fattura: product.quantita
+      }
     });
 
   } catch (error: any) {
