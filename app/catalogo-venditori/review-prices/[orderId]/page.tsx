@@ -334,11 +334,13 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                       <h3 className="text-base sm:text-lg font-bold text-white line-clamp-2">
                         {line.productName}
                       </h3>
-                      {line.isLocked ? (
-                        <Lock className="h-5 w-5 text-red-400 shrink-0" title="Prezzo bloccato" />
-                      ) : (
-                        <Unlock className="h-5 w-5 text-green-400 shrink-0" title="Prezzo modificabile" />
-                      )}
+                      <div title={line.isLocked ? "Prezzo bloccato" : "Prezzo modificabile"}>
+                        {line.isLocked ? (
+                          <Lock className="h-5 w-5 text-red-400 shrink-0" />
+                        ) : (
+                          <Unlock className="h-5 w-5 text-green-400 shrink-0" />
+                        )}
+                      </div>
                     </div>
                     {line.productCode && (
                       <p className="text-sm text-slate-400">Codice: {line.productCode}</p>
