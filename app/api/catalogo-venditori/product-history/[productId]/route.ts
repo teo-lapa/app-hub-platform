@@ -155,7 +155,7 @@ export async function GET(
 
     // Prepare recent sales with customer info
     const recentSales = orderLines.slice(0, 20).map((line: any) => {
-      const order = orderMap.get(line.order_id[0]);
+      const order: any = orderMap.get(line.order_id[0]);
       return {
         orderId: order?.id,
         orderName: order?.name,
