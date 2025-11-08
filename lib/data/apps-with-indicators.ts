@@ -181,6 +181,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-01-23'),
     updatedAt: new Date('2025-01-23'),
   },
+  {
+    id: 's28',
+    name: 'Scarichi Parziali [P]',
+    description: 'Gestione resi da scarichi parziali: visualizza ordini residui con prodotti rimasti nei furgoni e crea automaticamente trasferimenti verso buffer (Frigo/Pingu/Sopra).',
+    icon: '🚚',
+    badge: 'PRO',
+    category: 'Magazzino',
+    url: '/scarichi-parziali',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-11-08'),
+    updatedAt: new Date('2025-11-08'),
+  },
   // VENDITE
   {
     id: 's6',
