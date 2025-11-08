@@ -103,45 +103,46 @@ async function cercaScarichiParziali(sessionId: string, pickingId: number) {
 }
 
 async function getProdottiNonScaricati(sessionId: string, pickingId: number) {
-  // Per trovare i prodotti nel furgone, devo guardare le "Operazioni Dettagliate" (stock.move.line)
-  // Questi sono i prodotti effettivamente riservati/disponibili nel furgone
+  // Per trovare i prodotti nel furgone, leggo le "Operazioni Dettagliate" (stock.move.line)
 
   const moveLines = await callOdoo(sessionId, 'stock.move.line', 'search_read', [[
     ['picking_id', '=', pickingId]
   ]], {
-    fields: ['product_id', 'product_uom_id', 'qty_done']
+    fields: ['product_id', 'product_uom_id', 'product_uom_qty', 'qty_done']
   });
 
   const prodottiNonScaricati = [];
 
-  // Raggruppa per prodotto (potrebbero esserci più linee per lo stesso prodotto)
+  // Raggruppa per prodotto
   const prodottiMap = new Map();
 
   for (const line of moveLines) {
     const productId = line.product_id ? line.product_id[0] : 0;
     const productName = line.product_id ? line.product_id[1] : 'Prodotto sconosciuto';
     const uom = line.product_uom_id ? line.product_uom_id[1] : 'PZ';
+    const qtyRichiesta = line.product_uom_qty || 0;
     const qtyDone = line.qty_done || 0;
 
     if (!prodottiMap.has(productId)) {
       prodottiMap.set(productId, {
         nome: productName,
+        quantitaRichiesta: 0,
         quantitaEffettiva: 0,
         uom: uom
       });
     }
 
     const prodotto = prodottiMap.get(productId);
+    prodotto.quantitaRichiesta += qtyRichiesta;
     prodotto.quantitaEffettiva += qtyDone;
   }
 
-  // Converti la mappa in array
-  // Se qty_done è 0, significa che il prodotto è ancora nel furgone (non consegnato)
+  // Prodotti con qty_done = 0 sono ancora nel furgone
   for (const [productId, prodotto] of Array.from(prodottiMap.entries())) {
-    if (prodotto.quantitaEffettiva === 0) {
+    if (prodotto.quantitaEffettiva === 0 && prodotto.quantitaRichiesta > 0) {
       prodottiNonScaricati.push({
         nome: prodotto.nome,
-        quantitaRichiesta: 1, // Non abbiamo questo dato dalle move_line
+        quantitaRichiesta: prodotto.quantitaRichiesta,
         quantitaEffettiva: prodotto.quantitaEffettiva,
         uom: prodotto.uom
       });
