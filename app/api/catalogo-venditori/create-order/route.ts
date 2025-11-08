@@ -330,6 +330,67 @@ export async function POST(request: NextRequest) {
       state: createdOrder?.[0]?.state
     });
 
+    // Get user name for chatter message
+    let userName = 'Venditore';
+    try {
+      const users = await callOdoo(
+        cookies,
+        'res.users',
+        'search_read',
+        [],
+        {
+          domain: [['id', '=', uid]],
+          fields: ['name'],
+          limit: 1
+        }
+      );
+
+      if (users && users.length > 0) {
+        userName = users[0].name;
+        console.log('✅ [CREATE-ORDER-API] User name retrieved:', userName);
+      }
+    } catch (userError: any) {
+      console.error('⚠️ [CREATE-ORDER-API] Could not fetch user name:', userError.message);
+      // Continue with default name
+    }
+
+    // Post automatic creation message to Chatter (ALWAYS)
+    try {
+      console.log('📝 [CREATE-ORDER-API] Posting creation message to Chatter...');
+
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString('it-IT', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      const formattedTime = now.toLocaleTimeString('it-IT', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const creationMessage = `<p><strong>📱 Ordine inserito da Catalogo Venditori AI</strong></p><ul><li><strong>Venditore:</strong> ${userName}</li><li><strong>Data/Ora:</strong> ${formattedDate} ${formattedTime}</li><li><strong>Prodotti inseriti:</strong> ${orderLines.length}</li></ul>`;
+
+      await callOdoo(
+        cookies,
+        'mail.message',
+        'create',
+        [{
+          model: 'sale.order',
+          res_id: odooOrderId,
+          body: creationMessage,
+          message_type: 'comment',
+          subtype_id: 1, // mt_note (internal note)
+        }],
+        {}
+      );
+
+      console.log('✅ [CREATE-ORDER-API] Creation message posted to Chatter');
+    } catch (chatterError: any) {
+      console.error('⚠️ [CREATE-ORDER-API] Failed to post creation message to Chatter:', chatterError.message);
+      // Continue anyway - not critical
+    }
+
     // Post warehouse notes to Chatter if provided
     if (warehouseNotes && warehouseNotes.trim()) {
       try {
