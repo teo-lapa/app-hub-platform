@@ -296,7 +296,7 @@ export class PickingOdooClient {
       const fields = [
         'move_id', 'product_id', 'product_uom_id', 'location_id', 'location_dest_id',
         'lot_id', 'lot_name', 'package_id', 'quantity', 'qty_done',
-        'product_uom_qty', 'reserved_uom_qty', 'picking_id', 'state',
+        'reserved_uom_qty', 'picking_id', 'state',
         'reference', 'result_package_id', 'owner_id'
       ];
 
@@ -783,7 +783,7 @@ export class PickingOdooClient {
           productBarcode: product?.barcode || '',
           locationId: ml.location_id[0],
           locationName: ml.location_id[1],
-          quantity: ml.quantity || ml.product_uom_qty || 0,
+          quantity: ml.quantity || ml.reserved_uom_qty || 0,
           qty_done: ml.qty_done || 0,
           uom: ml.product_uom_id && typeof ml.product_uom_id[1] === 'string' ? ml.product_uom_id[1].split(' ')[0] : 'PZ',
           lot_id: ml.lot_id || undefined,
@@ -967,7 +967,7 @@ export class PickingOdooClient {
       lot_id: line.lot_id || undefined,
       lot_name: line.lot_name || undefined,
       package_id: line.package_id || undefined,
-      quantity: line.quantity || line.product_uom_qty || 0,
+      quantity: line.quantity || line.reserved_uom_qty || 0,
       qty_done: line.qty_done || 0,
       product_uom_qty: line.product_uom_qty,
       reserved_uom_qty: line.reserved_uom_qty,
