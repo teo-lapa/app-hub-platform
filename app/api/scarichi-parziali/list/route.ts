@@ -137,7 +137,7 @@ async function getProdottiNonScaricati(sessionId: string, pickingId: number) {
 
   // Converti la mappa in array
   // Se qty_done è 0, significa che il prodotto è ancora nel furgone (non consegnato)
-  for (const [productId, prodotto] of prodottiMap) {
+  for (const [productId, prodotto] of Array.from(prodottiMap.entries())) {
     if (prodotto.quantitaEffettiva === 0) {
       prodottiNonScaricati.push({
         nome: prodotto.nome,

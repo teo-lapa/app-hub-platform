@@ -106,6 +106,11 @@ export default function PrelievoZonePage() {
     totalTime: 0 // Mantenuto per compatibilità ma non più aggiornato da effect
   });
 
+  // Tracciamento tempi dettagliato per zona e operazioni
+  const [zoneStartTime, setZoneStartTime] = useState<Date | null>(null);
+  const [operationStartTimes, setOperationStartTimes] = useState<Record<number, Date>>({});
+  const [operationDurations, setOperationDurations] = useState<Record<number, number>>({});
+
   // Conteggi per zona usando gli ID
   const [zoneCounts, setZoneCounts] = useState<{ [key: string]: number }>({
     'secco': 0,
@@ -376,6 +381,9 @@ export default function PrelievoZonePage() {
     setShowZoneSelector(false);
     setShowLocationList(true);
 
+    // Inizia tracciamento tempo zona
+    setZoneStartTime(new Date());
+
     // Carica ubicazioni per la zona E precarica TUTTE le operazioni
     await loadZoneLocations(zone);
 
@@ -565,12 +573,22 @@ export default function PrelievoZonePage() {
         if (op.id === operationId) {
           const updatedOp = { ...op, qty_done: qtyDone };
 
-          // Se completata, aggiorna statistiche
+          // Se completata, aggiorna statistiche E salva durata
           if (qtyDone >= op.quantity && op.qty_done < op.quantity) {
             setWorkStats(prevStats => ({
               ...prevStats,
               completedOperations: prevStats.completedOperations + 1
             }));
+
+            // Calcola e salva durata operazione
+            if (operationStartTimes[operationId]) {
+              const duration = Math.floor((Date.now() - operationStartTimes[operationId].getTime()) / 1000);
+              setOperationDurations(prev => ({
+                ...prev,
+                [operationId]: duration
+              }));
+            }
+
             toast.success(`✅ ${op.productName} completato!`);
           }
 
@@ -890,8 +908,10 @@ export default function PrelievoZonePage() {
       const now = new Date();
       const dateStr = now.toLocaleString('it-IT');
 
-      // Calcola tempo totale zona
-      const zoneTime = workStats.currentZoneTime || 0;
+      // Calcola tempo totale zona (da zoneStartTime a ora)
+      const zoneTime = zoneStartTime
+        ? Math.floor((now.getTime() - zoneStartTime.getTime()) / 1000)
+        : (workStats.currentZoneTime || 0);
       const zoneTimeStr = formatTime(zoneTime);
 
       // Raccogli statistiche dettagliate dalle operazioni
@@ -908,17 +928,23 @@ export default function PrelievoZonePage() {
 
           const locationKey = op.locationName || 'Sconosciuta';
           if (!productsByLocation.has(locationKey)) {
-            productsByLocation.set(locationKey, { products: [], qty: 0 });
+            productsByLocation.set(locationKey, { products: [], qty: 0, time: 0 });
           }
 
           const loc = productsByLocation.get(locationKey)!;
+          const opDuration = operationDurations[op.id] || 0;
+
           loc.products.push({
             name: op.productName,
             code: op.productCode,
             qty: op.qty_done,
-            uom: op.uom
+            uom: op.uom,
+            duration: opDuration // Aggiungi durata operazione
           });
           loc.qty += op.qty_done;
+          if (loc.time !== undefined) {
+            loc.time += opDuration; // Somma tempo ubicazione
+          }
         }
       });
 
@@ -954,14 +980,18 @@ export default function PrelievoZonePage() {
       Array.from(productsByLocation.entries())
         .sort((a, b) => a[0].localeCompare(b[0]))
         .forEach(([locationName, data]) => {
+          const locationTimeStr = data.time ? formatTime(data.time) : '0s';
           reportHtml += `
     <div style="margin: 10px 0; padding: 10px; background: #f5f5f5; border-left: 3px solid #2196F3; border-radius: 4px;">
       <p style="margin: 0 0 5px 0;"><strong>${locationName}</strong></p>
       <p style="margin: 5px 0; font-size: 12px; color: #666;">
-        ${data.products.length} prodotti • ${data.qty} pz totali
+        ${data.products.length} prodotti • ${data.qty} pz totali • ⏱️ ${locationTimeStr}
       </p>
       <ul style="margin: 5px 0 0 20px; padding: 0; font-size: 12px;">
-        ${data.products.map(p => `<li>${p.name} (${p.code || 'N/A'}) - ${p.qty} ${p.uom}</li>`).join('')}
+        ${data.products.map(p => {
+          const durationStr = p.duration ? ` (⏱️ ${formatTime(p.duration)})` : '';
+          return `<li>${p.name} (${p.code || 'N/A'}) - ${p.qty} ${p.uom}${durationStr}</li>`;
+        }).join('')}
       </ul>
     </div>`;
         });
@@ -1266,6 +1296,11 @@ export default function PrelievoZonePage() {
                 onClick={async () => {
                   // Genera e salva report prima di tornare alle zone
                   await generateAndSaveZoneReport();
+
+                  // Reset tempi zona per la prossima zona
+                  setZoneStartTime(null);
+                  setOperationStartTimes({});
+                  setOperationDurations({});
 
                   setShowLocationList(false);
                   setShowZoneSelector(true);
@@ -1594,6 +1629,14 @@ export default function PrelievoZonePage() {
                           return;
                         }
 
+                        // Traccia inizio operazione se non già tracciata
+                        if (!operationStartTimes[operation.id]) {
+                          setOperationStartTimes(prev => ({
+                            ...prev,
+                            [operation.id]: new Date()
+                          }));
+                        }
+
                         updateOperation(operation.id, operation.quantity);
                         toast.success(`✅ Operazione completata con quantità: ${operation.quantity}`);
                       }}
@@ -1711,6 +1754,14 @@ export default function PrelievoZonePage() {
                   key={operation.id}
                   
                   onClick={() => {
+                    // Traccia inizio operazione se non già tracciata
+                    if (!operationStartTimes[operation.id]) {
+                      setOperationStartTimes(prev => ({
+                        ...prev,
+                        [operation.id]: new Date()
+                      }));
+                    }
+
                     setSelectedOperation(operation);
                     setShowProductSelector(false);
                     setShowNumericKeyboard(true);
