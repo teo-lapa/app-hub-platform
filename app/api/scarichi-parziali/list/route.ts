@@ -103,17 +103,32 @@ async function cercaScarichiParziali(sessionId: string, pickingId: number) {
 }
 
 async function getProdottiNonScaricati(sessionId: string, pickingId: number) {
+  // Per un picking residuo (assigned), dobbiamo calcolare la quantità effettivamente da consegnare
+  // guardando nelle move_line la qty_done
+
   const moves = await callOdoo(sessionId, 'stock.move', 'search_read', [[
     ['picking_id', '=', pickingId]
   ]], {
-    fields: ['product_id', 'product_uom_qty', 'quantity_done', 'product_uom', 'state']
+    fields: ['id', 'product_id', 'product_uom_qty', 'product_uom', 'state']
   });
 
   const prodottiNonScaricati = [];
 
   for (const move of moves) {
     const quantitaRichiesta = move.product_uom_qty || 0;
-    const quantitaEffettiva = move.quantity_done || 0;
+
+    // Cerco le stock.move.line per questo move
+    const moveLines = await callOdoo(sessionId, 'stock.move.line', 'search_read', [[
+      ['move_id', '=', move.id]
+    ]], {
+      fields: ['qty_done', 'product_uom_qty']
+    });
+
+    // Somma qty_done di tutte le move_line
+    let quantitaEffettiva = 0;
+    for (const line of moveLines) {
+      quantitaEffettiva += line.qty_done || 0;
+    }
 
     // Se la quantità effettiva è minore di quella richiesta, il prodotto è nel furgone
     if (quantitaEffettiva < quantitaRichiesta) {
