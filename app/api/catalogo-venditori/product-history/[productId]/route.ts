@@ -126,7 +126,8 @@ export async function GET(
     }
 
     // Get unique order IDs to fetch customer info
-    const orderIds = [...new Set(orderLines.map((line: any) => line.order_id[0]))];
+    const orderIdsSet = new Set(orderLines.map((line: any) => line.order_id[0]));
+    const orderIds = Array.from(orderIdsSet);
 
     console.log('🔍 [PRODUCT-HISTORY-API] Fetching orders info...');
     const orders = await callOdoo(
