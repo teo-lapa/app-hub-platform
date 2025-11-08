@@ -146,11 +146,21 @@ export default function ReviewPricesPage({ params }: RouteParams) {
 
   // Handle input change (for text input)
   const handleInputChange = (lineId: number, field: 'priceUnit' | 'discount', value: string) => {
-    const current = inputValues.get(lineId) || { priceUnit: '', discount: '' };
-    setInputValues(new Map(inputValues.set(lineId, {
+    const line = orderData?.lines.find(l => l.id === lineId);
+    if (!line) return;
+
+    const edited = editedLines.get(lineId);
+    const current = inputValues.get(lineId) || {
+      priceUnit: edited?.priceUnit !== undefined ? edited.priceUnit.toFixed(2) : line.currentPriceUnit.toFixed(2),
+      discount: edited?.discount !== undefined ? edited.discount.toFixed(1) : line.currentDiscount.toFixed(1)
+    };
+
+    const newInputValues = new Map(inputValues);
+    newInputValues.set(lineId, {
       ...current,
       [field]: value
-    })));
+    });
+    setInputValues(newInputValues);
   };
 
   // Handle input blur (convert to number and save)
