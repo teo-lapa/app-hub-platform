@@ -259,24 +259,24 @@ export default function CatalogoVenditoriPage() {
     <div className="min-h-screen-dynamic bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header - Sticky on mobile */}
       <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700 shadow-lg">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-          <div className="py-3 sm:py-4">
-            <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+          <div className="py-2 sm:py-3">
+            <div className="flex items-center justify-between gap-1.5 sm:gap-3">
               {/* Home Button */}
               <button
                 onClick={() => router.push('/dashboard')}
-                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-800/70 hover:bg-slate-700 text-white rounded-lg border border-slate-600 transition-colors min-h-[48px] shrink-0"
-                aria-label="Torna alla home"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-slate-800/70 hover:bg-slate-700 text-white rounded-lg border border-slate-600 transition-colors min-h-[44px] shrink-0"
+                aria-label="Home"
               >
-                <Home className="h-5 w-5 sm:h-5 sm:w-5" />
-                <span className="text-sm sm:text-base font-medium hidden xs:inline">Home</span>
+                <Home className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-base font-medium hidden sm:inline">Home</span>
               </button>
 
               {/* Nuovo Ordine Button */}
               <button
                 onClick={handleNewOrder}
-                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-lg border border-emerald-500 transition-colors min-h-[48px] shrink-0"
-                aria-label="Nuovo ordine"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-lg border border-emerald-500 transition-colors min-h-[44px] shrink-0"
+                aria-label="Nuovo"
               >
                 <svg className="h-5 w-5 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -288,29 +288,29 @@ export default function CatalogoVenditoriPage() {
               <button
                 onClick={loadCustomerOrders}
                 disabled={!selectedCustomerId}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg border transition-colors min-h-[48px] shrink-0 ${
+                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg border transition-colors min-h-[44px] shrink-0 ${
                   selectedCustomerId
                     ? 'bg-blue-600/80 hover:bg-blue-600 text-white border-blue-500'
                     : 'bg-slate-700/50 text-slate-500 border-slate-600 cursor-not-allowed'
                 }`}
-                aria-label="Revisione prezzi"
-                title={!selectedCustomerId ? 'Seleziona un cliente per vedere gli ordini' : 'Vedi ordini e preventivi del cliente'}
+                aria-label="Revisione"
+                title={!selectedCustomerId ? 'Seleziona un cliente' : 'Vedi ordini del cliente'}
               >
-                <FileText className="h-5 w-5 sm:h-5 sm:w-5" />
-                <span className="text-sm sm:text-base font-medium hidden lg:inline">Revisione Prezzi</span>
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-base font-medium hidden lg:inline">Revisione</span>
               </button>
 
               {/* Title */}
-              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                <div className="bg-gradient-to-r from-emerald-500 to-blue-500 p-2 sm:p-2.5 rounded-xl shrink-0">
-                  <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              <div className="flex items-center gap-1.5 sm:gap-3 flex-1 min-w-0">
+                <div className="bg-gradient-to-r from-emerald-500 to-blue-500 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl shrink-0">
+                  <Sparkles className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate">
-                    Catalogo Venditori AI
+                  <h1 className="text-sm sm:text-xl lg:text-2xl font-bold text-white truncate">
+                    Catalogo AI
                   </h1>
-                  <p className="text-xs sm:text-sm text-slate-300 hidden sm:block">
-                    Inserimento ordini intelligente
+                  <p className="text-[10px] sm:text-sm text-slate-300 hidden sm:block">
+                    Ordini intelligenti
                   </p>
                 </div>
               </div>
@@ -318,9 +318,9 @@ export default function CatalogoVenditoriPage() {
               {/* Cart Badge */}
               <div className="flex items-center gap-2 shrink-0">
                 <div className="relative">
-                  <ShoppingCart className="h-6 w-6 text-slate-300" />
+                  <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 text-slate-300" />
                   {cartProducts.length > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    <span className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 bg-emerald-500 text-white text-[10px] sm:text-xs font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center">
                       {cartProducts.length}
                     </span>
                   )}
@@ -332,18 +332,18 @@ export default function CatalogoVenditoriPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 pb-24 sm:pb-8">
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4 pb-20 sm:pb-8">
         {/* Success Message */}
         {orderSuccess && (
-          <div className="mb-4 sm:mb-6 bg-green-500/20 border-2 border-green-500 rounded-xl p-4 sm:p-5 animate-pulse">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="h-8 w-8 text-green-400 shrink-0" />
+          <div className="mb-2 sm:mb-4 bg-green-500/20 border border-green-500 rounded-lg p-2 sm:p-4 animate-pulse">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 sm:h-8 sm:w-8 text-green-400 shrink-0" />
               <div>
-                <h3 className="text-lg sm:text-xl font-bold text-green-400 mb-1">
-                  Ordine Creato con Successo! 🎉
+                <h3 className="text-sm sm:text-xl font-bold text-green-400">
+                  Ordine Creato! 🎉
                 </h3>
-                <p className="text-sm sm:text-base text-green-300">
-                  Ordine <strong>{orderSuccess.name}</strong> (ID: {orderSuccess.id})
+                <p className="text-xs sm:text-base text-green-300">
+                  <strong>{orderSuccess.name}</strong> (ID: {orderSuccess.id})
                 </p>
               </div>
             </div>
@@ -352,19 +352,19 @@ export default function CatalogoVenditoriPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 sm:mb-6 bg-red-500/20 border-2 border-red-500 rounded-xl p-4 sm:p-5">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-6 w-6 text-red-400 shrink-0 mt-0.5" />
+          <div className="mb-2 sm:mb-4 bg-red-500/20 border border-red-500 rounded-lg p-2 sm:p-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 sm:h-6 sm:w-6 text-red-400 shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-base sm:text-lg font-bold text-red-400 mb-1">Errore</h3>
-                <p className="text-sm sm:text-base text-red-300">{error}</p>
+                <h3 className="text-sm sm:text-lg font-bold text-red-400">Errore</h3>
+                <p className="text-xs sm:text-base text-red-300">{error}</p>
               </div>
             </div>
           </div>
         )}
 
         {/* Customer Selector */}
-        <div className="mb-4 sm:mb-6">
+        <div className="mb-2 sm:mb-4">
           <CustomerSelector
             onCustomerSelect={handleCustomerSelect}
             onAddressSelect={handleAddressSelect}
@@ -373,8 +373,8 @@ export default function CatalogoVenditoriPage() {
 
         {/* Delivery Date Picker */}
         {selectedCustomerId && (
-          <div className="mb-4 sm:mb-6">
-            <div className="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 shadow-lg">
+          <div className="mb-2 sm:mb-4">
+            <div className="bg-slate-800 rounded-lg p-2 sm:p-4 border border-slate-700 shadow-lg">
               <DeliveryDatePicker
                 value={deliveryDate}
                 onChange={setDeliveryDate}
@@ -393,7 +393,7 @@ export default function CatalogoVenditoriPage() {
 
         {/* AI Order Input */}
         {selectedCustomerId && (
-          <div className="mb-4 sm:mb-6">
+          <div className="mb-2 sm:mb-4">
             <AIOrderInput
               customerId={selectedCustomerId}
               onProductsMatched={handleProductsMatched}
@@ -403,8 +403,8 @@ export default function CatalogoVenditoriPage() {
 
         {/* Manual Product Search */}
         {selectedCustomerId && (
-          <div className="mb-4 sm:mb-6">
-            <div className="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 shadow-lg">
+          <div className="mb-2 sm:mb-4">
+            <div className="bg-slate-800 rounded-lg p-2 sm:p-4 border border-slate-700 shadow-lg">
               <ManualProductSearch
                 customerId={selectedCustomerId}
                 onProductAdd={handleManualProductAdd}
@@ -415,7 +415,7 @@ export default function CatalogoVenditoriPage() {
 
         {/* Order Notes */}
         {selectedCustomerId && cartProducts.length > 0 && (
-          <div className="mb-4 sm:mb-6">
+          <div className="mb-2 sm:mb-4">
             <NotesInput
               orderNotes={orderNotes}
               warehouseNotes={warehouseNotes}
@@ -426,7 +426,7 @@ export default function CatalogoVenditoriPage() {
         )}
 
         {/* Smart Cart */}
-        <div id="smart-cart" className="scroll-mt-20">
+        <div id="smart-cart" className="scroll-mt-16 sm:scroll-mt-20">
           <SmartCart
             products={cartProducts}
             onQuantityChange={handleQuantityChange}
@@ -438,38 +438,38 @@ export default function CatalogoVenditoriPage() {
 
         {/* Help Card - Mobile Optimized */}
         {!selectedCustomerId && (
-          <div className="mt-6 sm:mt-8 bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 sm:p-6">
-            <h3 className="text-lg sm:text-xl font-bold text-blue-400 mb-3 sm:mb-4 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
+          <div className="mt-3 sm:mt-6 bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 sm:p-4">
+            <h3 className="text-sm sm:text-xl font-bold text-blue-400 mb-2 sm:mb-3 flex items-center gap-1.5">
+              <Sparkles className="h-4 w-4 sm:h-6 sm:w-6" />
               Come funziona
             </h3>
-            <ol className="space-y-2 sm:space-y-3 text-sm sm:text-base text-slate-300">
-              <li className="flex items-start gap-2 sm:gap-3">
-                <span className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
+            <ol className="space-y-1.5 sm:space-y-3 text-xs sm:text-base text-slate-300">
+              <li className="flex items-start gap-1.5 sm:gap-3">
+                <span className="flex-shrink-0 w-5 h-5 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] sm:text-sm font-bold">
                   1
                 </span>
-                <span>Seleziona il <strong className="text-white">cliente</strong> e l'indirizzo di consegna</span>
+                <span>Seleziona il <strong className="text-white">cliente</strong> e indirizzo</span>
               </li>
-              <li className="flex items-start gap-2 sm:gap-3">
-                <span className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
+              <li className="flex items-start gap-1.5 sm:gap-3">
+                <span className="flex-shrink-0 w-5 h-5 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] sm:text-sm font-bold">
                   2
                 </span>
                 <span>Inserisci l'ordine del cliente: <strong className="text-white">testo</strong>, <strong className="text-white">foto</strong>, <strong className="text-white">audio</strong> o <strong className="text-white">registrazione vocale</strong></span>
               </li>
-              <li className="flex items-start gap-2 sm:gap-3">
-                <span className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
+              <li className="flex items-start gap-1.5 sm:gap-3">
+                <span className="flex-shrink-0 w-5 h-5 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] sm:text-sm font-bold">
                   3
                 </span>
                 <span>L'<strong className="text-white">AI processa</strong> il messaggio e trova i prodotti automaticamente</span>
               </li>
-              <li className="flex items-start gap-2 sm:gap-3">
-                <span className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
+              <li className="flex items-start gap-1.5 sm:gap-3">
+                <span className="flex-shrink-0 w-5 h-5 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] sm:text-sm font-bold">
                   4
                 </span>
                 <span>Oppure usa la <strong className="text-white">ricerca manuale</strong> per aggiungere prodotti specifici</span>
               </li>
-              <li className="flex items-start gap-2 sm:gap-3">
-                <span className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
+              <li className="flex items-start gap-1.5 sm:gap-3">
+                <span className="flex-shrink-0 w-5 h-5 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] sm:text-sm font-bold">
                   5
                 </span>
                 <span>Controlla il <strong className="text-white">carrello</strong>, modifica se necessario e conferma!</span>
@@ -499,76 +499,76 @@ export default function CatalogoVenditoriPage() {
         </div>
       )}
 
-      {/* Orders Modal */}
+      {/* Orders Modal - Mobile Optimized */}
       {showOrdersModal && (
-        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
-          <div className="bg-slate-800 rounded-xl max-w-4xl w-full max-h-[85vh] overflow-auto border border-slate-700 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-2 sm:p-4">
+          <div className="bg-slate-800 rounded-lg sm:rounded-xl max-w-4xl w-full max-h-[85vh] overflow-auto border border-slate-700 shadow-2xl">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-4 sm:p-6 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl sm:text-2xl font-bold text-white mb-1">
+            <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-2 sm:p-4 lg:p-6 flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm sm:text-xl lg:text-2xl font-bold text-white mb-0.5 sm:mb-1 truncate">
                   Ordini e Preventivi
                 </h3>
-                <p className="text-sm text-slate-400">
+                <p className="text-[10px] sm:text-sm text-slate-400 truncate">
                   {selectedCustomerName}
                 </p>
               </div>
               <button
                 onClick={() => setShowOrdersModal(false)}
-                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-slate-700 rounded-lg transition-colors shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
                 aria-label="Chiudi"
               >
-                <X className="h-6 w-6 text-slate-400" />
+                <X className="h-5 w-5 sm:h-6 sm:w-6 text-slate-400" />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="p-4 sm:p-6">
+            <div className="p-2 sm:p-4 lg:p-6">
               {/* Loading State */}
               {loadingOrders && (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="h-12 w-12 text-blue-400 animate-spin mb-3" />
-                  <p className="text-slate-400">Caricamento ordini...</p>
+                <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+                  <Loader2 className="h-8 w-8 sm:h-12 sm:w-12 text-blue-400 animate-spin mb-2 sm:mb-3" />
+                  <p className="text-xs sm:text-base text-slate-400">Caricamento ordini...</p>
                 </div>
               )}
 
               {/* Empty State */}
               {!loadingOrders && customerOrders.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <FileText className="h-16 w-16 text-slate-600 mb-3" />
-                  <p className="text-slate-400 text-lg">Nessun ordine o preventivo trovato</p>
+                <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+                  <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-slate-600 mb-2 sm:mb-3" />
+                  <p className="text-sm sm:text-lg text-slate-400">Nessun ordine o preventivo trovato</p>
                 </div>
               )}
 
               {/* Orders List */}
               {!loadingOrders && customerOrders.length > 0 && (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {/* Statistics */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
-                      <p className="text-xs text-slate-400 mb-1">Preventivi</p>
-                      <p className="text-2xl font-bold text-yellow-400">
+                  <div className="grid grid-cols-2 gap-1.5 sm:gap-3 mb-2 sm:mb-4">
+                    <div className="bg-slate-700/50 rounded-lg p-1.5 sm:p-3 border border-slate-600">
+                      <p className="text-[10px] sm:text-xs text-slate-400 mb-0.5 sm:mb-1">Preventivi</p>
+                      <p className="text-lg sm:text-2xl font-bold text-yellow-400">
                         {customerOrders.filter(o => o.orderType === 'quotation').length}
                       </p>
                     </div>
-                    <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
-                      <p className="text-xs text-slate-400 mb-1">Ordini Confermati</p>
-                      <p className="text-2xl font-bold text-green-400">
+                    <div className="bg-slate-700/50 rounded-lg p-1.5 sm:p-3 border border-slate-600">
+                      <p className="text-[10px] sm:text-xs text-slate-400 mb-0.5 sm:mb-1">Ordini Confermati</p>
+                      <p className="text-lg sm:text-2xl font-bold text-green-400">
                         {customerOrders.filter(o => o.orderType === 'order').length}
                       </p>
                     </div>
                   </div>
 
                   {/* Orders Table */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                  <div className="overflow-x-auto -mx-2 sm:mx-0">
+                    <table className="w-full text-xs sm:text-sm">
                       <thead>
                         <tr className="border-b border-slate-700">
-                          <th className="text-left py-3 px-3 text-xs font-semibold text-slate-400">Numero</th>
-                          <th className="text-left py-3 px-3 text-xs font-semibold text-slate-400">Stato</th>
-                          <th className="text-left py-3 px-3 text-xs font-semibold text-slate-400 hidden sm:table-cell">Data</th>
-                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 hidden md:table-cell">Totale</th>
-                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400">Azione</th>
+                          <th className="text-left py-1.5 sm:py-3 px-1.5 sm:px-3 text-[10px] sm:text-xs font-semibold text-slate-400">Numero</th>
+                          <th className="text-left py-1.5 sm:py-3 px-1.5 sm:px-3 text-[10px] sm:text-xs font-semibold text-slate-400">Stato</th>
+                          <th className="text-left py-1.5 sm:py-3 px-1.5 sm:px-3 text-[10px] sm:text-xs font-semibold text-slate-400 hidden sm:table-cell">Data</th>
+                          <th className="text-right py-1.5 sm:py-3 px-1.5 sm:px-3 text-[10px] sm:text-xs font-semibold text-slate-400 hidden md:table-cell">Totale</th>
+                          <th className="text-right py-1.5 sm:py-3 px-1.5 sm:px-3 text-[10px] sm:text-xs font-semibold text-slate-400">Azione</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -578,47 +578,49 @@ export default function CatalogoVenditoriPage() {
                             className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors"
                           >
                             {/* Order Number */}
-                            <td className="py-3 px-3">
-                              <div className="flex items-center gap-2">
+                            <td className="py-2 sm:py-3 px-1.5 sm:px-3">
+                              <div className="flex items-center gap-1 sm:gap-2">
                                 {order.orderType === 'quotation' ? (
-                                  <FileText className="h-4 w-4 text-yellow-400 shrink-0" />
+                                  <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400 shrink-0" />
                                 ) : (
-                                  <CheckCircle className="h-4 w-4 text-green-400 shrink-0" />
+                                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-400 shrink-0" />
                                 )}
-                                <span className="font-semibold text-white">{order.name}</span>
+                                <span className="font-semibold text-white text-[10px] sm:text-sm truncate">{order.name}</span>
                               </div>
                             </td>
 
                             {/* State */}
-                            <td className="py-3 px-3">
+                            <td className="py-2 sm:py-3 px-1.5 sm:px-3">
                               <span
-                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                className={`inline-flex items-center px-1 sm:px-2 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-xs font-medium ${
                                   order.orderType === 'quotation'
                                     ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
                                     : 'bg-green-500/20 text-green-400 border border-green-500/30'
                                 }`}
                               >
-                                {order.stateLabel}
+                                <span className="hidden sm:inline">{order.stateLabel}</span>
+                                <span className="sm:hidden">{order.stateLabel.substring(0, 10)}{order.stateLabel.length > 10 ? '...' : ''}</span>
                               </span>
                             </td>
 
                             {/* Date */}
-                            <td className="py-3 px-3 text-slate-300 hidden sm:table-cell">
+                            <td className="py-2 sm:py-3 px-1.5 sm:px-3 text-slate-300 hidden sm:table-cell text-xs">
                               {new Date(order.date).toLocaleDateString('it-IT')}
                             </td>
 
                             {/* Total Amount */}
-                            <td className="py-3 px-3 text-right font-semibold text-blue-400 hidden md:table-cell">
+                            <td className="py-2 sm:py-3 px-1.5 sm:px-3 text-right font-semibold text-blue-400 hidden md:table-cell text-xs sm:text-sm">
                               {order.currency} {order.amountTotal.toFixed(2)}
                             </td>
 
                             {/* Action */}
-                            <td className="py-3 px-3 text-right">
+                            <td className="py-2 sm:py-3 px-1.5 sm:px-3 text-right">
                               <button
                                 onClick={() => handleSelectOrder(order.id)}
-                                className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-medium rounded-lg transition-colors"
+                                className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-600/80 hover:bg-blue-600 text-white text-[10px] sm:text-xs font-medium rounded-lg transition-colors min-h-[32px]"
                               >
-                                Revisiona
+                                <span className="hidden sm:inline">Revisiona</span>
+                                <span className="sm:hidden">Vedi</span>
                               </button>
                             </td>
                           </tr>
