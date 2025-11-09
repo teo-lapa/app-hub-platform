@@ -62,20 +62,20 @@ export const ORDER_OPTIMIZATION_CONFIG = {
    * Coverage già include safety buffer (no aggiunta separata)
    */
   coverageDays: {
-    /** Prodotti CRITICAL/EMERGENCY: lead time + 7 giorni buffer */
-    critical: 10,
+    /** Prodotti CRITICAL/EMERGENCY: lead time + 4 giorni buffer */
+    critical: 7,
 
-    /** Prodotti HIGH urgency: lead time + 10 giorni buffer */
-    high: 13,
+    /** Prodotti HIGH urgency: lead time + 7 giorni buffer */
+    high: 10,
 
-    /** Prodotti MEDIUM urgency: lead time + 14 giorni buffer */
-    medium: 17,
+    /** Prodotti MEDIUM urgency: lead time + 10 giorni buffer */
+    medium: 13,
 
-    /** Prodotti LOW urgency: lead time + 21 giorni buffer */
-    low: 24,
+    /** Prodotti LOW urgency: lead time + 14 giorni buffer */
+    low: 17,
 
     /** Default se urgency non determinata */
-    default: 14,
+    default: 10,
   },
 
   /**
