@@ -23,6 +23,18 @@ interface RouteContext {
   };
 }
 
+interface FormattedOrder {
+  id: number;
+  name: string;
+  state: string;
+  stateLabel: string;
+  orderType: 'quotation' | 'order';
+  date: string;
+  amountTotal: number;
+  currency: string;
+  lineCount: number;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: RouteContext
@@ -109,7 +121,7 @@ export async function GET(
     console.log(`✅ [CUSTOMER-ORDERS-API] Found ${orders.length} orders`);
 
     // Format orders for frontend
-    const formattedOrders = orders.map((order: any) => {
+    const formattedOrders: FormattedOrder[] = orders.map((order: any) => {
       // Determine order type and label
       let orderType: 'quotation' | 'order' = 'order';
       let stateLabel = '';
@@ -152,8 +164,8 @@ export async function GET(
     });
 
     // Separate quotations and orders
-    const quotations = formattedOrders.filter(o => o.orderType === 'quotation');
-    const confirmedOrders = formattedOrders.filter(o => o.orderType === 'order');
+    const quotations = formattedOrders.filter((o: FormattedOrder) => o.orderType === 'quotation');
+    const confirmedOrders = formattedOrders.filter((o: FormattedOrder) => o.orderType === 'order');
 
     console.log('✅ [CUSTOMER-ORDERS-API] Results:', {
       totalOrders: formattedOrders.length,
