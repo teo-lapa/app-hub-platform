@@ -342,12 +342,12 @@ export default function ReviewPricesPage({ params }: RouteParams) {
 
     const markers = [];
 
-    // Marker for +40% on cost price
+    // Marker for +40% on cost price (Punto Critico)
     const fortyPercentPrice = costPrice * 1.4;
     if (fortyPercentPrice >= range.min && fortyPercentPrice <= range.max) {
       const position = ((fortyPercentPrice - range.min) / (range.max - range.min)) * 100;
       markers.push({
-        label: '+40%',
+        label: 'PC',
         position,
         color: 'rgb(251, 191, 36)' // yellow
       });
@@ -976,13 +976,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                       </div>
 
                       {/* Range Labels */}
-                      <div className="flex items-center justify-between text-[9px] sm:text-xs text-slate-500">
-                        <span className="text-red-400">
-                          {activeSlider.type === 'price'
-                            ? `Min: CHF ${getSliderRange(line, 'price').min.toFixed(2)}`
-                            : '0%'
-                          }
-                        </span>
+                      <div className="flex items-center justify-end text-[9px] sm:text-xs text-slate-500">
                         <span className="text-green-400">
                           {activeSlider.type === 'price'
                             ? `Max: CHF ${getSliderRange(line, 'price').max.toFixed(2)}`
