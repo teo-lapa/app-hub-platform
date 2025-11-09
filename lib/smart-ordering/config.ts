@@ -58,23 +58,24 @@ export const ORDER_OPTIMIZATION_CONFIG = {
    * GIORNI DI COPERTURA (Coverage Days)
    * Quanti giorni di stock deve coprire l'ordine
    *
-   * Formula: Qtà = (consumo_giornaliero × coverage_days) + safety_stock
+   * Formula NUOVA: Qtà = (consumo_giornaliero × coverage_days) - stock_effettivo
+   * Coverage già include safety buffer (no aggiunta separata)
    */
   coverageDays: {
-    /** Prodotti CRITICAL/EMERGENCY: massima priorità */
-    critical: 45,
+    /** Prodotti CRITICAL/EMERGENCY: lead time + 7 giorni buffer */
+    critical: 10,
 
-    /** Prodotti HIGH urgency */
-    high: 35,
+    /** Prodotti HIGH urgency: lead time + 10 giorni buffer */
+    high: 13,
 
-    /** Prodotti MEDIUM urgency */
-    medium: 28,
+    /** Prodotti MEDIUM urgency: lead time + 14 giorni buffer */
+    medium: 17,
 
-    /** Prodotti LOW urgency o basso consumo */
-    low: 21,
+    /** Prodotti LOW urgency: lead time + 21 giorni buffer */
+    low: 24,
 
     /** Default se urgency non determinata */
-    default: 30,
+    default: 14,
   },
 
   /**

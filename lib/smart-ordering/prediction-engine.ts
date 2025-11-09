@@ -121,19 +121,23 @@ export class SmartPredictionEngine {
     product: ProductData,
     urgencyLevel?: 'CRITICAL' | 'EMERGENCY' | 'HIGH' | 'MEDIUM' | 'LOW'
   ): number {
-    const { avgDailySales, leadTimeDays, variability, supplierInfo, productPrice } = product;
+    const { currentStock, avgDailySales, leadTimeDays, variability, supplierInfo, productPrice } = product;
 
     // 1. Determina giorni di copertura basati su cadenza fornitore o urgency
     let coverageDays: number;
+    let useSeparateSafetyStock = false; // Flag per sapere se aggiungere safety stock separato
 
     if (supplierInfo?.cadenceDays) {
       // PRIORITÀ 1: Usa cadenza REALE dal database
-      // Quantità deve bastare per: cadenza × 2 (100% margine di sicurezza)
-      coverageDays = supplierInfo.cadenceDays * 2;
-      console.log(`📅 Usa cadenza DB: ${supplierInfo.cadenceDays} giorni → coverage ${coverageDays} giorni`);
+      // Formula: leadTime + cadenza + buffer (50% cadenza)
+      const bufferDays = Math.ceil(supplierInfo.cadenceDays * 0.5);
+      coverageDays = leadTimeDays + supplierInfo.cadenceDays + bufferDays;
+      console.log(`📅 Cadenza DB: ${supplierInfo.cadenceDays}gg → coverage ${coverageDays}gg (lead ${leadTimeDays} + cadenza ${supplierInfo.cadenceDays} + buffer ${bufferDays})`);
     } else if (urgencyLevel) {
-      // PRIORITÀ 2: Usa configurazione basata su urgency
+      // PRIORITÀ 2: Usa configurazione basata su urgency (già include safety buffer)
       coverageDays = getCoverageDays(urgencyLevel);
+      // Coverage days da config GIÀ include safety buffer, non aggiungere separato
+      useSeparateSafetyStock = false;
     } else if (supplierInfo) {
       // PRIORITÀ 3: Calcola frequenza ordini stimata per raggiungere valore minimo
       const avgValue = supplierInfo.avgProductValue || productPrice || 30;
@@ -147,49 +151,63 @@ export class SmartPredictionEngine {
 
       // Coverage = frequenza ordini + lead time (per sicurezza)
       coverageDays = orderFrequencyDays + leadTimeDays;
+      useSeparateSafetyStock = true; // In questo caso aggiungi safety stock
     } else {
       // Fallback: usa default da config
       coverageDays = ORDER_OPTIMIZATION_CONFIG.coverageDays.default;
+      useSeparateSafetyStock = false;
     }
 
-    // 2. Calcola safety stock intelligente
-    const reliability = supplierInfo?.reliability || 70;
-    const safetyStock = this.calculateSafetyStock(
-      avgDailySales,
-      leadTimeDays,
-      variability,
-      reliability
-    );
+    // 2. Calcola stock target
+    let targetStock = avgDailySales * coverageDays;
 
-    // 3. Quantità = (consumo × coverage) + safety stock
-    const baseQuantity = avgDailySales * coverageDays;
-    const totalQuantity = baseQuantity + safetyStock;
+    // 3. Aggiungi safety stock SOLO se necessario
+    if (useSeparateSafetyStock) {
+      const reliability = supplierInfo?.reliability || 70;
+      const safetyStock = this.calculateSafetyStock(
+        avgDailySales,
+        leadTimeDays,
+        variability,
+        reliability
+      );
+      targetStock += safetyStock;
+    }
 
-    // 4. Arrotonda per eccesso (mai ordinare meno del necessario)
-    return Math.ceil(totalQuantity);
+    // 4. SOTTRAI stock effettivo (currentStock include già merce in arrivo!)
+    const quantityNeeded = targetStock - currentStock;
+
+    // 5. Se quantità negativa o zero, non ordinare
+    if (quantityNeeded <= 0) {
+      return 0;
+    }
+
+    // 6. Arrotonda per eccesso (mai ordinare meno del necessario)
+    return Math.ceil(quantityNeeded);
   }
 
   /**
    * Determina urgenza ordine
+   *
+   * CRITICAL: < 2 giorni (azione immediata!)
+   * HIGH: < 5 giorni (ordina presto)
+   * MEDIUM: < 10 giorni (monitora)
+   * LOW: >= 10 giorni (stock sufficiente)
    */
   determineUrgency(
     daysRemaining: number,
     leadTimeDays: number
   ): { level: PredictionResult['urgencyLevel']; color: string } {
-    const criticalThreshold = leadTimeDays * 0.5;  // < 50% lead time
-    const highThreshold = leadTimeDays * 1.0;      // < 100% lead time
-    const mediumThreshold = leadTimeDays * 1.5;    // < 150% lead time
-
+    // Soglie fisse più realistiche (indipendenti da lead time)
     if (daysRemaining <= 0) {
-      return { level: 'CRITICAL', color: '#EF4444' }; // Red
-    } else if (daysRemaining < criticalThreshold) {
-      return { level: 'CRITICAL', color: '#EF4444' };
-    } else if (daysRemaining < highThreshold) {
-      return { level: 'HIGH', color: '#F97316' }; // Orange
-    } else if (daysRemaining < mediumThreshold) {
-      return { level: 'MEDIUM', color: '#EAB308' }; // Yellow
+      return { level: 'CRITICAL', color: '#EF4444' }; // Red - ZERO STOCK!
+    } else if (daysRemaining <= 2) {
+      return { level: 'CRITICAL', color: '#EF4444' }; // Red - Ordina OGGI
+    } else if (daysRemaining <= 5) {
+      return { level: 'HIGH', color: '#F97316' }; // Orange - Ordina questa settimana
+    } else if (daysRemaining <= 10) {
+      return { level: 'MEDIUM', color: '#EAB308' }; // Yellow - Monitora
     } else {
-      return { level: 'LOW', color: '#22C55E' }; // Green
+      return { level: 'LOW', color: '#22C55E' }; // Green - Stock OK
     }
   }
 
