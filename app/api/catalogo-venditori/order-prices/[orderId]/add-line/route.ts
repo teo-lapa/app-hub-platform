@@ -73,7 +73,10 @@ export async function POST(
       'search_read',
       [],
       {
-        domain: [['id', '=', orderId]],
+        domain: [
+          ['id', '=', orderId],
+          ['company_id', '=', 1] // Only LAPA company orders
+        ],
         fields: ['id', 'name', 'state', 'partner_id', 'pricelist_id'],
         limit: 1
       }
@@ -108,7 +111,10 @@ export async function POST(
       'search_read',
       [],
       {
-        domain: [['id', '=', productId]],
+        domain: [
+          ['id', '=', productId],
+          ['company_id', 'in', [1, false]] // LAPA company or shared products
+        ],
         fields: ['id', 'name', 'list_price', 'uom_id', 'taxes_id'],
         limit: 1
       }
@@ -123,6 +129,27 @@ export async function POST(
     }
 
     const product = products[0];
+
+    // Filter taxes to only use those from company 1
+    let companyTaxIds: number[] = [];
+    if (product.taxes_id && product.taxes_id.length > 0) {
+      console.log('🔍 [ADD-LINE-API] Filtering taxes for company 1...');
+      const taxes = await callOdoo(
+        cookies,
+        'account.tax',
+        'search_read',
+        [],
+        {
+          domain: [
+            ['id', 'in', product.taxes_id],
+            ['company_id', '=', 1] // Only LAPA company taxes
+          ],
+          fields: ['id', 'name']
+        }
+      );
+      companyTaxIds = taxes.map((tax: any) => tax.id);
+      console.log(`✅ [ADD-LINE-API] Found ${companyTaxIds.length} taxes for company 1`);
+    }
 
     // Get price from pricelist if available
     let priceUnit = product.list_price;
@@ -153,8 +180,9 @@ export async function POST(
       product_uom_qty: quantity,
       price_unit: priceUnit,
       product_uom: product.uom_id ? product.uom_id[0] : 1,
-      tax_id: product.taxes_id && product.taxes_id.length > 0
-        ? [[6, 0, product.taxes_id]]
+      company_id: 1, // LAPA - finest italian food GmbH
+      tax_id: companyTaxIds.length > 0
+        ? [[6, 0, companyTaxIds]]
         : false
     };
 

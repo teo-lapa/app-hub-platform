@@ -58,7 +58,10 @@ export async function GET(
       'search_read',
       [],
       {
-        domain: [['id', '=', orderId]],
+        domain: [
+          ['id', '=', orderId],
+          ['company_id', '=', 1] // Only LAPA company orders
+        ],
         fields: [
           'id',
           'name',
@@ -141,7 +144,10 @@ export async function GET(
       'search_read',
       [],
       {
-        domain: [['id', 'in', productIds]],
+        domain: [
+          ['id', 'in', productIds],
+          ['company_id', 'in', [1, false]] // LAPA company or shared products
+        ],
         fields: [
           'id',
           'name',

@@ -127,7 +127,10 @@ export async function POST(request: NextRequest) {
       'search_read',
       [],
       {
-        domain: [['id', '=', orderId]],
+        domain: [
+          ['id', '=', orderId],
+          ['company_id', '=', 1] // Only LAPA company orders
+        ],
         fields: ['id', 'name', 'state'],
         limit: 1
       }

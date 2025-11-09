@@ -253,6 +253,7 @@ export async function POST(request: NextRequest) {
       date_order: formatDateForOdoo(new Date()),
       state: 'draft',
       origin: 'Catalogo Venditori',
+      company_id: 1, // LAPA - finest italian food GmbH
     };
 
     // Add order notes (customer-visible) to the note field
@@ -292,6 +293,7 @@ export async function POST(request: NextRequest) {
         order_id: odooOrderId,
         product_id: line.product_id,
         product_uom_qty: line.quantity,
+        company_id: 1, // LAPA - finest italian food GmbH
       };
 
       return callOdoo(
