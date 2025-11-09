@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Home, CheckCircle, AlertCircle, Loader2, DollarSign, TrendingDown, Lock, Unlock, TrendingUp, Award, Info, BarChart, X } from 'lucide-react';
+import { ArrowLeft, Home, CheckCircle, AlertCircle, Loader2, DollarSign, TrendingDown, Lock, Unlock, TrendingUp, Award, Info, BarChart, X, Trash2 } from 'lucide-react';
 import type { OrderData, OrderLine, PriceUpdate } from '../types';
 import ManualProductSearch from '../../components/ManualProductSearch';
 
@@ -291,25 +291,47 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   };
 
   // Handle remove line from order
-  const handleRemoveLine = (lineId: number) => {
+  const handleRemoveLine = async (lineId: number) => {
     if (!orderData) return;
 
-    // Remove line from order data
-    const updatedLines = orderData.lines.filter(line => line.id !== lineId);
-    setOrderData({
-      ...orderData,
-      lines: updatedLines
-    });
+    try {
+      setLoading(true);
+      setError('');
 
-    // Remove from edited lines if exists
-    const newEditedLines = new Map(editedLines);
-    newEditedLines.delete(lineId);
-    setEditedLines(newEditedLines);
+      console.log('🗑️ Deleting line from Odoo:', {
+        orderId: orderData.id,
+        lineId
+      });
 
-    // Remove from quantity values if exists
-    const newQuantityValues = new Map(quantityValues);
-    newQuantityValues.delete(lineId);
-    setQuantityValues(newQuantityValues);
+      // Call API to delete line from Odoo order
+      const response = await fetch(`/api/catalogo-venditori/order-prices/${orderData.id}/delete-line`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lineId: lineId
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Errore nella cancellazione del prodotto');
+      }
+
+      console.log('✅ Line deleted from Odoo successfully');
+
+      // Reload order data to get updated totals
+      await loadOrderData();
+
+      console.log('✅ Order data reloaded after deletion');
+    } catch (error) {
+      console.error('❌ Error deleting line:', error);
+      setError(error instanceof Error ? error.message : 'Errore nella cancellazione del prodotto');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle add product to order
@@ -971,7 +993,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                           className="p-1 sm:p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded border border-red-500/30 transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
                           title="Elimina"
                         >
-                          <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                         </button>
                         {/* Lock/Unlock Icon */}
                         <div title={line.isLocked ? "Bloccato" : "Modificabile"} className="flex items-center justify-center min-h-[32px]">
