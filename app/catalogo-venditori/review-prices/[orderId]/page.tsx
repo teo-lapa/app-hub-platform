@@ -381,17 +381,21 @@ export default function ReviewPricesPage({ params }: RouteParams) {
     }
   };
 
-  // Get slider range based on cost price
+  // Get slider range based on cost price and average selling price
   const getSliderRange = (line: OrderLine, type: 'price' | 'discount'): { min: number; max: number } => {
     if (type === 'discount') {
       return { min: 0, max: 100 };
     }
-    // Price slider: from costPrice + 6% margin to 250% of cost price
+    // Price slider: from costPrice + 5% margin to avgSellingPrice + 150% (or 400% of cost if no avg)
     const costPrice = line.costPrice || 0;
-    return {
-      min: costPrice * 1.06, // +6% margin for coverage
-      max: costPrice * 2.5 // 250% of cost price
-    };
+    const avgSellingPrice = line.avgSellingPrice || 0;
+
+    const min = costPrice * 1.05; // +5% margin for coverage
+    const max = avgSellingPrice > 0
+      ? avgSellingPrice * 2.5 // avg + 150%
+      : costPrice * 4.2; // 400% of cost price if no average
+
+    return { min, max };
   };
 
   // Get reference markers positions for price slider
@@ -413,7 +417,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       });
     }
 
-    // Marker for 3-month average selling price
+    // Marker for 3-month average selling price (only shown when available)
     if (avgSellingPrice > 0 && avgSellingPrice >= range.min && avgSellingPrice <= range.max) {
       const position = ((avgSellingPrice - range.min) / (range.max - range.min)) * 100;
       markers.push({

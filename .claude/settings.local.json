@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Select-Object -First 1)"
+      "Bash(Select-Object -First 1)",
+      "Bash(git merge:*)"
     ],
     "deny": [],
     "ask": []
