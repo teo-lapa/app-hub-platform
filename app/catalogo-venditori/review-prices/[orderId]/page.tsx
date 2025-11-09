@@ -60,6 +60,12 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   const [productHistory, setProductHistory] = useState<ProductHistory | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Slider state - default to 'price' for all lines
+  const [activeSlider, setActiveSlider] = useState<{ lineId: number; type: 'price' | 'discount' }>({
+    lineId: -1,
+    type: 'price'
+  });
+
   // Load order data
   useEffect(() => {
     loadOrderData();
@@ -79,6 +85,14 @@ export default function ReviewPricesPage({ params }: RouteParams) {
 
       setOrderData(data.order);
       console.log('✅ Order data loaded:', data.order);
+
+      // Initialize slider with first line ID
+      if (data.order.lines && data.order.lines.length > 0) {
+        setActiveSlider({
+          lineId: data.order.lines[0].id,
+          type: 'price'
+        });
+      }
 
       // Load customer stats
       if (data.order.customerId) {
@@ -217,6 +231,51 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       ...current,
       [field]: value
     })));
+  };
+
+  // Handle field click - switch slider type
+  const handleFieldClick = (lineId: number, type: 'price' | 'discount') => {
+    setActiveSlider({ lineId, type });
+  };
+
+  // Handle slider change
+  const handleSliderChange = (lineId: number, value: number) => {
+    const { type } = activeSlider;
+    const field = type === 'price' ? 'priceUnit' : 'discount';
+    handlePriceChange(lineId, field, value);
+  };
+
+  // Get slider range based on cost price
+  const getSliderRange = (line: OrderLine, type: 'price' | 'discount'): { min: number; max: number } => {
+    if (type === 'discount') {
+      return { min: 0, max: 100 };
+    }
+    // Price slider: from costPrice to costPrice + 400%
+    const costPrice = line.costPrice || 0;
+    return {
+      min: costPrice,
+      max: costPrice * 5 // costPrice + 400% = costPrice * 5
+    };
+  };
+
+  // Get current slider value
+  const getSliderValue = (line: OrderLine, type: 'price' | 'discount'): number => {
+    const edited = editedLines.get(line.id);
+    if (type === 'price') {
+      return edited?.priceUnit ?? line.currentPriceUnit;
+    }
+    return edited?.discount ?? line.currentDiscount;
+  };
+
+  // Calculate slider color percentage (0 = red, 100 = green)
+  const getSliderColorPercentage = (line: OrderLine, type: 'price' | 'discount'): number => {
+    const value = getSliderValue(line, type);
+    const range = getSliderRange(line, type);
+
+    if (range.max === range.min) return 50;
+
+    const percentage = ((value - range.min) / (range.max - range.min)) * 100;
+    return Math.max(0, Math.min(100, percentage));
   };
 
   // Calculate line total with edited values
@@ -396,8 +455,43 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   if (!orderData) return null;
 
   return (
-    <div className="min-h-screen-dynamic bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
+    <>
+      {/* Slider Custom Styles */}
+      <style jsx>{`
+        input[type="range"].slider-gradient::-webkit-slider-thumb {
+          appearance: none;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background: white;
+          cursor: pointer;
+          border: 3px solid rgb(59, 130, 246);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        input[type="range"].slider-gradient::-moz-range-thumb {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background: white;
+          cursor: pointer;
+          border: 3px solid rgb(59, 130, 246);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        input[type="range"].slider-gradient::-webkit-slider-runnable-track {
+          height: 12px;
+          border-radius: 6px;
+        }
+
+        input[type="range"].slider-gradient::-moz-range-track {
+          height: 12px;
+          border-radius: 6px;
+        }
+      `}</style>
+
+      <div className="min-h-screen-dynamic bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        {/* Header */}
       <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700 shadow-lg">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
           <div className="py-3 sm:py-4">
@@ -620,13 +714,15 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                       type="text"
                       inputMode="decimal"
                       value={getInputValue(line.id, 'priceUnit')}
-                      onChange={(e) => handleInputChange(line.id, 'priceUnit', e.target.value)}
-                      onBlur={() => handleInputBlur(line.id, 'priceUnit')}
+                      onClick={() => handleFieldClick(line.id, 'price')}
+                      readOnly
                       disabled={line.isLocked}
-                      className={`w-full px-3 py-2 rounded-lg border text-white text-sm sm:text-base ${
+                      className={`w-full px-3 py-2 rounded-lg border text-white text-sm sm:text-base cursor-pointer transition-all ${
                         line.isLocked
                           ? 'bg-slate-700/50 border-slate-600 cursor-not-allowed'
-                          : 'bg-slate-700 border-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                          : activeSlider.lineId === line.id && activeSlider.type === 'price'
+                          ? 'bg-blue-600/20 border-blue-500 ring-2 ring-blue-500'
+                          : 'bg-slate-700 border-slate-600 hover:border-blue-400'
                       }`}
                     />
                     {line.standardPrice > 0 && line.standardPrice !== priceUnit && (
@@ -645,13 +741,15 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                       type="text"
                       inputMode="decimal"
                       value={getInputValue(line.id, 'discount')}
-                      onChange={(e) => handleInputChange(line.id, 'discount', e.target.value)}
-                      onBlur={() => handleInputBlur(line.id, 'discount')}
+                      onClick={() => handleFieldClick(line.id, 'discount')}
+                      readOnly
                       disabled={line.isLocked}
-                      className={`w-full px-3 py-2 rounded-lg border text-white text-sm sm:text-base ${
+                      className={`w-full px-3 py-2 rounded-lg border text-white text-sm sm:text-base cursor-pointer transition-all ${
                         line.isLocked
                           ? 'bg-slate-700/50 border-slate-600 cursor-not-allowed'
-                          : 'bg-slate-700 border-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                          : activeSlider.lineId === line.id && activeSlider.type === 'discount'
+                          ? 'bg-blue-600/20 border-blue-500 ring-2 ring-blue-500'
+                          : 'bg-slate-700 border-slate-600 hover:border-blue-400'
                       }`}
                     />
                   </div>
@@ -676,6 +774,62 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                     <span>
                       Risparmio: CHF {(line.quantity * priceUnit * discount / 100).toFixed(2)}
                     </span>
+                  </div>
+                )}
+
+                {/* Price/Discount Slider - Always visible when this line is active */}
+                {activeSlider.lineId === line.id && !line.isLocked && (
+                  <div className="mt-4 pt-4 border-t border-slate-700">
+                    <div className="space-y-2">
+                      {/* Slider Header */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs sm:text-sm font-medium text-slate-300">
+                          {activeSlider.type === 'price' ? 'Prezzo Unitario' : 'Sconto'}
+                        </span>
+                        <span className="text-xs sm:text-sm font-bold text-white">
+                          {activeSlider.type === 'price'
+                            ? `CHF ${getSliderValue(line, 'price').toFixed(2)}`
+                            : `${getSliderValue(line, 'discount').toFixed(1)}%`
+                          }
+                        </span>
+                      </div>
+
+                      {/* Slider Input */}
+                      <div className="relative">
+                        <input
+                          type="range"
+                          min={getSliderRange(line, activeSlider.type).min}
+                          max={getSliderRange(line, activeSlider.type).max}
+                          step={activeSlider.type === 'price' ? '0.01' : '0.1'}
+                          value={getSliderValue(line, activeSlider.type)}
+                          onChange={(e) => handleSliderChange(line.id, parseFloat(e.target.value))}
+                          className="w-full h-3 rounded-lg appearance-none cursor-pointer slider-gradient"
+                          style={{
+                            background: `linear-gradient(to right,
+                              rgb(239, 68, 68) 0%,
+                              rgb(251, 191, 36) ${getSliderColorPercentage(line, activeSlider.type) / 2}%,
+                              rgb(34, 197, 94) ${getSliderColorPercentage(line, activeSlider.type)}%,
+                              rgb(34, 197, 94) 100%)`
+                          }}
+                        />
+                      </div>
+
+                      {/* Range Labels */}
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span className="text-red-400">
+                          {activeSlider.type === 'price'
+                            ? `Min: CHF ${getSliderRange(line, 'price').min.toFixed(2)}`
+                            : '0%'
+                          }
+                        </span>
+                        <span className="text-green-400">
+                          {activeSlider.type === 'price'
+                            ? `Max: CHF ${getSliderRange(line, 'price').max.toFixed(2)}`
+                            : '100%'
+                          }
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -901,6 +1055,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
