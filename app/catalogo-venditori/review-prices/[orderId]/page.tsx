@@ -783,10 +783,10 @@ export default function ReviewPricesPage({ params }: RouteParams) {
             </div>
           </div>
           <button
-            onClick={() => router.push('/catalogo-venditori')}
+            onClick={() => router.back()}
             className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
           >
-            Torna al catalogo
+            Indietro
           </button>
         </div>
       </div>
@@ -839,7 +839,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
             <div className="flex items-center justify-between gap-1.5 sm:gap-3">
               {/* Back Button */}
               <button
-                onClick={() => router.push('/catalogo-venditori')}
+                onClick={() => router.back()}
                 className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-slate-800/70 hover:bg-slate-700 text-white rounded-lg border border-slate-600 transition-colors min-h-[44px] shrink-0"
                 aria-label="Indietro"
               >
