@@ -30,17 +30,25 @@ export default function CatalogoProdotti() {
   const [filterMode, setFilterMode] = useState<'all' | 'supplier'>('all');
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [addToOrderModal, setAddToOrderModal] = useState<Product | null>(null);
+  const [quantity, setQuantity] = useState<string>('');
 
   useEffect(() => {
     loadAllSuppliers();
   }, []);
 
-  // Load products when selectedSupplierId changes
+  // Load products when selectedSupplierId OR filterMode changes
   useEffect(() => {
-    loadProducts();
-  }, [selectedSupplierId]);
+    // Solo carica prodotti se siamo in modalità supplier CON un supplier selezionato
+    // oppure se siamo in modalità "all"
+    if (filterMode === 'supplier' && selectedSupplierId !== null) {
+      loadProducts();
+    } else if (filterMode === 'all') {
+      loadProducts();
+    }
+  }, [selectedSupplierId, filterMode]);
 
-  // Auto-select supplier from URL params
+  // Auto-select supplier from URL params (only once on mount)
   useEffect(() => {
     const supplierIdParam = searchParams.get('supplier_id');
     if (supplierIdParam) {
@@ -48,7 +56,7 @@ export default function CatalogoProdotti() {
       setFilterMode('supplier');
       setSelectedSupplierId(supplierId);
     }
-  }, [searchParams]);
+  }, []); // Empty deps - only run once on mount
 
   async function loadAllSuppliers() {
     try {
@@ -103,6 +111,47 @@ export default function CatalogoProdotti() {
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Add to order function
+  function handleAddToOrder(product: Product) {
+    setAddToOrderModal(product);
+    setQuantity(''); // Reset quantity
+  }
+
+  function confirmAddToOrder() {
+    if (!addToOrderModal || !quantity || parseFloat(quantity) <= 0) {
+      alert('Inserisci una quantità valida');
+      return;
+    }
+
+    // Get existing cart from sessionStorage
+    const existingCart = sessionStorage.getItem('pendingOrderProducts');
+    const cart = existingCart ? JSON.parse(existingCart) : [];
+
+    // Add new product
+    cart.push({
+      productId: addToOrderModal.id,
+      productName: addToOrderModal.name,
+      quantity: parseFloat(quantity),
+      uom: addToOrderModal.uom,
+      supplierId: addToOrderModal.supplier_id,
+      supplierName: addToOrderModal.supplier_name,
+      currentStock: addToOrderModal.current_stock,
+      avgPrice: addToOrderModal.avg_price
+    });
+
+    // Save to sessionStorage
+    sessionStorage.setItem('pendingOrderProducts', JSON.stringify(cart));
+
+    // Close modal and redirect
+    setAddToOrderModal(null);
+    alert(`✅ ${addToOrderModal.name} aggiunto! Quantità: ${quantity} ${addToOrderModal.uom}\n\nVerrai reindirizzato alla pagina ordini...`);
+
+    // Redirect to orders page
+    setTimeout(() => {
+      window.location.href = '/ordini-smart-v2';
+    }, 1000);
+  }
 
   if (loading) {
     return (
@@ -218,17 +267,17 @@ export default function CatalogoProdotti() {
         </div>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {filteredProducts.map((product) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 overflow-hidden hover:border-white/30 transition-all"
+              className="bg-white/5 backdrop-blur-lg rounded-lg border border-white/10 overflow-hidden hover:border-white/30 transition-all"
             >
               {/* Product Image */}
               <div
-                className="relative h-32 bg-white/10 cursor-pointer hover:bg-white/20 transition-colors"
+                className="relative h-24 bg-white/10 cursor-pointer hover:bg-white/20 transition-colors"
                 onClick={() => setSelectedProduct(product)}
               >
                 {product.image_url ? (
@@ -239,7 +288,7 @@ export default function CatalogoProdotti() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <Package className="w-12 h-12 text-white/20" />
+                    <Package className="w-10 h-10 text-white/20" />
                   </div>
                 )}
                 {/* Stock Badge */}
@@ -255,12 +304,12 @@ export default function CatalogoProdotti() {
               </div>
 
               {/* Product Info */}
-              <div className="p-3">
-                <h3 className="text-white font-semibold text-xs mb-1.5 line-clamp-2 h-8">
+              <div className="p-2">
+                <h3 className="text-white font-semibold text-xs mb-1 line-clamp-2 h-7">
                   {product.name}
                 </h3>
 
-                <div className="text-xs text-white/60 mb-2">
+                <div className="text-xs text-white/60 mb-1.5 truncate">
                   {product.supplier_name}
                 </div>
 
@@ -289,10 +338,10 @@ export default function CatalogoProdotti() {
 
                 {/* Add Button */}
                 <button
-                  onClick={() => alert(`🚧 Aggiunta prodotto "${product.name}" in arrivo!`)}
-                  className="w-full mt-3 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition-all font-semibold text-xs"
+                  onClick={() => handleAddToOrder(product)}
+                  className="w-full mt-2 px-2 py-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-md transition-all font-semibold text-xs"
                 >
-                  ➕ Aggiungi all'Ordine
+                  ➕ Aggiungi
                 </button>
               </div>
             </motion.div>
@@ -429,7 +478,7 @@ export default function CatalogoProdotti() {
                 </button>
                 <button
                   onClick={() => {
-                    alert(`🚧 Aggiunta prodotto "${selectedProduct.name}" in arrivo!`);
+                    handleAddToOrder(selectedProduct);
                     setSelectedProduct(null);
                   }}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-medium rounded-lg transition-all"
@@ -437,6 +486,63 @@ export default function CatalogoProdotti() {
                   ➕ Aggiungi all'Ordine
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Aggiungi all'Ordine */}
+      {addToOrderModal && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setAddToOrderModal(null)}
+        >
+          <div
+            className="bg-slate-800 rounded-2xl max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-slate-700">
+              <h3 className="text-xl font-bold text-white mb-2">Aggiungi all'Ordine</h3>
+              <p className="text-white/60 text-sm">{addToOrderModal.name}</p>
+              <p className="text-white/40 text-xs mt-1">Stock attuale: {addToOrderModal.current_stock.toFixed(1)} {addToOrderModal.uom}</p>
+            </div>
+
+            {/* Body */}
+            <div className="p-6">
+              <label className="block text-white font-medium mb-2">
+                Quantità da ordinare ({addToOrderModal.uom})
+              </label>
+              <input
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                placeholder="Es. 10"
+                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    confirmAddToOrder();
+                  }
+                }}
+              />
+              <p className="text-white/40 text-xs mt-2">Premi Invio per confermare</p>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 bg-slate-900/50 rounded-b-2xl flex gap-3">
+              <button
+                onClick={() => setAddToOrderModal(null)}
+                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={confirmAddToOrder}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold rounded-lg transition-all"
+              >
+                ✓ Conferma
+              </button>
             </div>
           </div>
         </div>
