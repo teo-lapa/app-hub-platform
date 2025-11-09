@@ -216,10 +216,15 @@ export async function GET(request: NextRequest) {
           name: product.name,
           display_name: product.display_name || product.name,  // Nome con attributi variante
           image_url: `https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com/web/image/product.product/${product.id}/image_128`,
-          stock: product.qty_available || 0,
+          currentStock: product.qty_available || 0,
           uom: product.uom_id ? product.uom_id[1] : 'PZ',
-          supplier_name: supplier ? supplier.name : 'Nessun fornitore',
-          supplier_id: supplier ? supplier.id : null,
+          supplier: supplier ? {
+            id: supplier.id,
+            name: supplier.name
+          } : {
+            id: 0,
+            name: 'Nessun fornitore'
+          },
           hasPreOrderTag: true,
           assigned_customers: assignmentsByProduct.get(product.id) || [],  // Carica da DB
           // ✨ NUOVO: Supporto varianti
