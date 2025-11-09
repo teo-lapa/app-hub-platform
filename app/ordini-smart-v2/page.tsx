@@ -788,7 +788,7 @@ export default function SmartOrderingV2() {
                     </thead>
                     <tbody>
                       {selectedSupplier.products
-                        .filter(p => ['CRITICAL', 'HIGH'].includes(p.urgencyLevel))
+                        .filter(p => ['CRITICAL', 'HIGH', 'MEDIUM'].includes(p.urgencyLevel))
                         .sort((a, b) => {
                           const urgencyOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
                           return urgencyOrder[a.urgencyLevel as keyof typeof urgencyOrder] -
