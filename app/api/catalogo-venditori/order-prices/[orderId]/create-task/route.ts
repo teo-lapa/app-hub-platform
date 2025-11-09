@@ -118,6 +118,39 @@ export async function POST(
       );
     }
 
+    // Get the order line to retrieve clean product name
+    console.log('🔍 [CREATE-TASK-API] Fetching order line details...');
+    const orderLines = await callOdoo(
+      cookies,
+      'sale.order.line',
+      'search_read',
+      [],
+      {
+        domain: [
+          ['id', '=', lineId],
+          ['order_id', '=', orderId]
+        ],
+        fields: ['id', 'product_id', 'name'],
+        limit: 1
+      }
+    );
+
+    if (!orderLines || orderLines.length === 0) {
+      console.error('❌ [CREATE-TASK-API] Order line not found:', lineId);
+      return NextResponse.json(
+        { success: false, error: `Order line ${lineId} not found` },
+        { status: 404 }
+      );
+    }
+
+    const orderLine = orderLines[0];
+    // Use only product name from product_id, not the full description
+    const cleanProductName = orderLine.product_id && Array.isArray(orderLine.product_id)
+      ? orderLine.product_id[1]
+      : productName;
+
+    console.log('✅ [CREATE-TASK-API] Using clean product name:', cleanProductName);
+
     // Calculate profit margin percentage
     const profitMargin = costPrice > 0
       ? (((proposedPrice - costPrice) / costPrice) * 100).toFixed(2)
@@ -127,7 +160,7 @@ export async function POST(
     const maxPrice = avgSellingPrice > 0 ? (avgSellingPrice * 2.5).toFixed(2) : (costPrice * 4.2).toFixed(2);
 
     let taskDescription = `Richiesta di blocco prezzo per prodotto:\n\n`;
-    taskDescription += `📦 Prodotto: ${productName}\n`;
+    taskDescription += `📦 Prodotto: ${cleanProductName}\n`;
     if (productCode) {
       taskDescription += `🔖 Codice: ${productCode}\n`;
     }
@@ -190,7 +223,7 @@ export async function POST(
       res_model: 'sale.order',
       res_id: orderId,
       activity_type_id: 4, // TODO activity type (standard in Odoo)
-      summary: `Blocco Prezzo: ${productName.substring(0, 50)}`,
+      summary: `Blocco Prezzo: ${cleanProductName.substring(0, 50)}`,
       note: taskDescription,
       user_id: 8, // Assign to Laura Teodorescu
       date_deadline: dueDateStr,
@@ -216,7 +249,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       activityId,
-      message: `Attività creata per Laura sul preventivo ${order.name}`
+      message: `Attività creata per Laura: ${cleanProductName} - ${order.name}`
     });
 
   } catch (error: any) {
