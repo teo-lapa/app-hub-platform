@@ -127,13 +127,23 @@ export class SmartPredictionEngine {
     let coverageDays: number;
     let useSeparateSafetyStock = false; // Flag per sapere se aggiungere safety stock separato
 
-    if (supplierInfo?.cadenceDays && urgencyLevel && ['MEDIUM', 'LOW'].includes(urgencyLevel)) {
-      // PRIORITÀ 1: Usa cadenza REALE dal database SOLO per prodotti MEDIUM/LOW
-      // Per CRITICAL/HIGH, l'urgenza ha la priorità!
-      // Formula: leadTime + cadenza + buffer (50% cadenza)
-      const bufferDays = Math.ceil(supplierInfo.cadenceDays * 0.5);
+    if (supplierInfo?.cadenceDays) {
+      // PRIORITÀ 1: Usa SEMPRE cadenza REALE dal database quando disponibile
+      // Formula: leadTime + cadenza + buffer (variabile in base urgenza)
+
+      // Buffer dinamico basato su urgenza (più critico = buffer più piccolo)
+      let bufferMultiplier = 0.5; // Default 50%
+      if (urgencyLevel === 'CRITICAL' || urgencyLevel === 'EMERGENCY') {
+        bufferMultiplier = 0.3; // 30% per urgenti (ordinare prima del necessario)
+      } else if (urgencyLevel === 'HIGH') {
+        bufferMultiplier = 0.4; // 40% per HIGH
+      } else if (urgencyLevel === 'LOW') {
+        bufferMultiplier = 0.6; // 60% per LOW (più margine)
+      }
+
+      const bufferDays = Math.ceil(supplierInfo.cadenceDays * bufferMultiplier);
       coverageDays = leadTimeDays + supplierInfo.cadenceDays + bufferDays;
-      console.log(`📅 Cadenza DB: ${supplierInfo.cadenceDays}gg → coverage ${coverageDays}gg (lead ${leadTimeDays} + cadenza ${supplierInfo.cadenceDays} + buffer ${bufferDays})`);
+      console.log(`📅 Cadenza DB: ${supplierInfo.cadenceDays}gg (${urgencyLevel}) → coverage ${coverageDays}gg (lead ${leadTimeDays} + cadenza ${supplierInfo.cadenceDays} + buffer ${bufferDays})`);
     } else if (urgencyLevel) {
       // PRIORITÀ 2: Usa configurazione basata su urgency (già include safety buffer)
       coverageDays = getCoverageDays(urgencyLevel);
