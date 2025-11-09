@@ -127,8 +127,9 @@ export class SmartPredictionEngine {
     let coverageDays: number;
     let useSeparateSafetyStock = false; // Flag per sapere se aggiungere safety stock separato
 
-    if (supplierInfo?.cadenceDays) {
-      // PRIORITÀ 1: Usa cadenza REALE dal database
+    if (supplierInfo?.cadenceDays && urgencyLevel && ['MEDIUM', 'LOW'].includes(urgencyLevel)) {
+      // PRIORITÀ 1: Usa cadenza REALE dal database SOLO per prodotti MEDIUM/LOW
+      // Per CRITICAL/HIGH, l'urgenza ha la priorità!
       // Formula: leadTime + cadenza + buffer (50% cadenza)
       const bufferDays = Math.ceil(supplierInfo.cadenceDays * 0.5);
       coverageDays = leadTimeDays + supplierInfo.cadenceDays + bufferDays;
