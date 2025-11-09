@@ -89,19 +89,6 @@ export async function GET(
 
     const order = orders[0];
 
-    // Only allow editing draft orders
-    if (order.state !== 'draft') {
-      console.error('❌ [ORDER-PRICES-API] Order is not in draft state:', order.state);
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Order ${order.name} is already confirmed and cannot be edited`,
-          state: order.state
-        },
-        { status: 409 }
-      );
-    }
-
     console.log('✅ [ORDER-PRICES-API] Order found:', {
       id: order.id,
       name: order.name,
