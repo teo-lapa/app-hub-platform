@@ -159,8 +159,34 @@ export async function POST(
     dueDate.setDate(dueDate.getDate() + 2);
     const dueDateStr = dueDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
 
+    // First, get the model ID for 'sale.order'
+    console.log('🔍 [CREATE-TASK-API] Looking up sale.order model ID...');
+    const models = await callOdoo(
+      cookies,
+      'ir.model',
+      'search_read',
+      [],
+      {
+        domain: [['model', '=', 'sale.order']],
+        fields: ['id', 'model'],
+        limit: 1
+      }
+    );
+
+    if (!models || models.length === 0) {
+      console.error('❌ [CREATE-TASK-API] Could not find sale.order model');
+      return NextResponse.json(
+        { success: false, error: 'Could not find sale.order model' },
+        { status: 500 }
+      );
+    }
+
+    const modelId = models[0].id;
+    console.log(`✅ [CREATE-TASK-API] Found sale.order model ID: ${modelId}`);
+
     // Create mail.activity record
     const activityData = {
+      res_model_id: modelId, // Use model ID instead of model name
       res_model: 'sale.order',
       res_id: orderId,
       activity_type_id: 4, // TODO activity type (standard in Odoo)
