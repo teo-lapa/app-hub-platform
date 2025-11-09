@@ -88,6 +88,18 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   const [taskNote, setTaskNote] = useState('');
   const [creatingTask, setCreatingTask] = useState(false);
 
+  // Delivery date editing state
+  const [editingDeliveryDate, setEditingDeliveryDate] = useState(false);
+  const [newDeliveryDate, setNewDeliveryDate] = useState<string>('');
+  const [updatingDelivery, setUpdatingDelivery] = useState(false);
+
+  // Order cancellation state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+
+  // Check if order can be edited (only draft state allows editing)
+  const canEditOrder = orderData?.state === 'draft';
+
   // Load order data
   useEffect(() => {
     loadOrderData();
@@ -677,6 +689,76 @@ export default function ReviewPricesPage({ params }: RouteParams) {
     }
   };
 
+  // Update delivery date
+  const handleUpdateDeliveryDate = async () => {
+    if (!newDeliveryDate) {
+      setError('Inserisci una data di consegna');
+      return;
+    }
+
+    try {
+      setUpdatingDelivery(true);
+      setError(null);
+
+      const response = await fetch(`/api/catalogo-venditori/order-prices/${orderId}/update-delivery`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deliveryDate: newDeliveryDate })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Errore aggiornamento data consegna');
+      }
+
+      console.log('✅ Delivery date updated');
+      setEditingDeliveryDate(false);
+
+      // Reload order data to show new date
+      await loadOrderData();
+
+    } catch (err: any) {
+      console.error('❌ Error updating delivery date:', err);
+      setError(err.message || 'Errore aggiornamento data consegna');
+    } finally {
+      setUpdatingDelivery(false);
+    }
+  };
+
+  // Cancel order
+  const handleCancelOrder = async () => {
+    try {
+      setCancellingOrder(true);
+      setError(null);
+
+      const response = await fetch(`/api/catalogo-venditori/order-prices/${orderId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Errore annullamento ordine');
+      }
+
+      console.log('✅ Order cancelled');
+      setShowCancelModal(false);
+
+      // Redirect back after 1 second
+      setTimeout(() => {
+        router.back();
+      }, 1000);
+
+    } catch (err: any) {
+      console.error('❌ Error cancelling order:', err);
+      setError(err.message || 'Errore annullamento ordine');
+    } finally {
+      setCancellingOrder(false);
+    }
+  };
+
   const totals = calculateTotals();
   const hasChanges = editedLines.size > 0 || quantityValues.size > 0;
 
@@ -907,9 +989,53 @@ export default function ReviewPricesPage({ params }: RouteParams) {
             </div>
             <div>
               <p className="text-[10px] sm:text-sm text-slate-400 mb-0.5">Consegna</p>
-              <p className="text-xs sm:text-lg font-semibold text-white truncate">
-                {orderData.deliveryDate ? new Date(orderData.deliveryDate).toLocaleDateString('it-IT') : 'N/D'}
-              </p>
+              {orderData.state === 'draft' || orderData.state === 'sale' ? (
+                editingDeliveryDate ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={newDeliveryDate}
+                      onChange={(e) => setNewDeliveryDate(e.target.value)}
+                      className="flex-1 px-2 py-2 bg-slate-700 text-white text-xs sm:text-sm rounded border border-slate-600 focus:border-blue-500 outline-none min-h-[40px]"
+                    />
+                    <button
+                      onClick={handleUpdateDeliveryDate}
+                      disabled={updatingDelivery}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white text-xs sm:text-sm rounded transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
+                    >
+                      {updatingDelivery ? 'Salvo...' : '✓'}
+                    </button>
+                    <button
+                      onClick={() => setEditingDeliveryDate(false)}
+                      className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs sm:text-sm rounded transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs sm:text-lg font-semibold text-white truncate">
+                      {orderData.deliveryDate ? new Date(orderData.deliveryDate).toLocaleDateString('it-IT') : 'N/D'}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setNewDeliveryDate(orderData.deliveryDate || '');
+                        setEditingDeliveryDate(true);
+                      }}
+                      className="p-1 hover:bg-slate-700 rounded transition-colors"
+                      title="Modifica data consegna"
+                    >
+                      <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                  </div>
+                )
+              ) : (
+                <p className="text-xs sm:text-lg font-semibold text-white truncate">
+                  {orderData.deliveryDate ? new Date(orderData.deliveryDate).toLocaleDateString('it-IT') : 'N/D'}
+                </p>
+              )}
             </div>
             {orderData.pricelist && (
               <div className="col-span-2">
@@ -1070,30 +1196,34 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                         >
                           <BarChart className="h-3 w-3 sm:h-4 sm:w-4" />
                         </button>
-                        {/* Task Request Button - only enabled when price is edited */}
-                        <button
-                          onClick={() => {
-                            setTaskRequestLine(line);
-                            setShowTaskModal(true);
-                          }}
-                          disabled={!isEdited}
-                          className={`p-1 sm:p-1.5 rounded border transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center ${
-                            isEdited
-                              ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border-purple-500/30 cursor-pointer'
-                              : 'bg-slate-700/50 text-slate-500 border-slate-600 cursor-not-allowed opacity-50'
-                          }`}
-                          title={isEdited ? "Richiedi blocco prezzo" : "Modifica prima il prezzo"}
-                        >
-                          <ClipboardCheck className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </button>
-                        {/* Delete Button */}
-                        <button
-                          onClick={() => handleRemoveLine(line.id)}
-                          className="p-1 sm:p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded border border-red-500/30 transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
-                          title="Elimina"
-                        >
-                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </button>
+                        {/* Task Request Button - only show in draft state and when price is edited */}
+                        {canEditOrder && (
+                          <button
+                            onClick={() => {
+                              setTaskRequestLine(line);
+                              setShowTaskModal(true);
+                            }}
+                            disabled={!isEdited}
+                            className={`p-1 sm:p-1.5 rounded border transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center ${
+                              isEdited
+                                ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border-purple-500/30 cursor-pointer'
+                                : 'bg-slate-700/50 text-slate-500 border-slate-600 cursor-not-allowed opacity-50'
+                            }`}
+                            title={isEdited ? "Richiedi blocco prezzo" : "Modifica prima il prezzo"}
+                          >
+                            <ClipboardCheck className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </button>
+                        )}
+                        {/* Delete Button - only show in draft state */}
+                        {canEditOrder && (
+                          <button
+                            onClick={() => handleRemoveLine(line.id)}
+                            className="p-1 sm:p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded border border-red-500/30 transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+                            title="Elimina"
+                          >
+                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </button>
+                        )}
                         {/* Lock/Unlock Icon */}
                         <div title={line.isLocked ? "Bloccato" : "Modificabile"} className="flex items-center justify-center min-h-[32px]">
                           {line.isLocked ? (
@@ -1109,7 +1239,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                     )}
                     <div className="text-[10px] sm:text-sm text-slate-400 flex items-center gap-1">
                       <span>Qtà:</span>
-                      {editingQuantity === line.id ? (
+                      {editingQuantity === line.id && canEditOrder ? (
                         <input
                           type="number"
                           inputMode="numeric"
@@ -1122,14 +1252,18 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                       ) : (
                         <span
                           onClick={() => {
-                            setEditingQuantity(line.id);
-                            if (!quantityValues.has(line.id)) {
-                              const newQuantityValues = new Map(quantityValues);
-                              newQuantityValues.set(line.id, line.quantity);
-                              setQuantityValues(newQuantityValues);
+                            if (canEditOrder) {
+                              setEditingQuantity(line.id);
+                              if (!quantityValues.has(line.id)) {
+                                const newQuantityValues = new Map(quantityValues);
+                                newQuantityValues.set(line.id, line.quantity);
+                                setQuantityValues(newQuantityValues);
+                              }
                             }
                           }}
-                          className="font-semibold text-white cursor-pointer hover:text-blue-400 transition-colors min-h-[32px] flex items-center"
+                          className={`font-semibold text-white min-h-[32px] flex items-center ${
+                            canEditOrder ? 'cursor-pointer hover:text-blue-400 transition-colors' : 'cursor-not-allowed'
+                          }`}
                         >
                           {quantityValues.get(line.id) || line.quantity} {line.uom}
                         </span>
@@ -1149,15 +1283,15 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                       type="text"
                       inputMode="decimal"
                       value={getInputValue(line.id, 'priceUnit')}
-                      onClick={() => handleFieldClick(line.id, 'price')}
+                      onClick={() => canEditOrder && handleFieldClick(line.id, 'price')}
                       readOnly
-                      disabled={line.isLocked}
-                      className={`w-full px-1.5 sm:px-3 py-1.5 sm:py-2 rounded border text-white text-xs sm:text-base cursor-pointer transition-all min-h-[36px] ${
-                        line.isLocked
+                      disabled={line.isLocked || !canEditOrder}
+                      className={`w-full px-1.5 sm:px-3 py-1.5 sm:py-2 rounded border text-white text-xs sm:text-base transition-all min-h-[36px] ${
+                        line.isLocked || !canEditOrder
                           ? 'bg-slate-700/50 border-slate-600 cursor-not-allowed'
                           : activeSlider.lineId === line.id && activeSlider.type === 'price'
-                          ? 'bg-blue-600/20 border-blue-500 ring-1 ring-blue-500'
-                          : 'bg-slate-700 border-slate-600 hover:border-blue-400'
+                          ? 'bg-blue-600/20 border-blue-500 ring-1 ring-blue-500 cursor-pointer'
+                          : 'bg-slate-700 border-slate-600 hover:border-blue-400 cursor-pointer'
                       }`}
                     />
                     {line.standardPrice > 0 && line.standardPrice !== priceUnit && (
@@ -1176,15 +1310,15 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                       type="text"
                       inputMode="decimal"
                       value={getInputValue(line.id, 'discount')}
-                      onClick={() => handleFieldClick(line.id, 'discount')}
+                      onClick={() => canEditOrder && handleFieldClick(line.id, 'discount')}
                       readOnly
-                      disabled={line.isLocked}
-                      className={`w-full px-1.5 sm:px-3 py-1.5 sm:py-2 rounded border text-white text-xs sm:text-base cursor-pointer transition-all min-h-[36px] ${
-                        line.isLocked
+                      disabled={line.isLocked || !canEditOrder}
+                      className={`w-full px-1.5 sm:px-3 py-1.5 sm:py-2 rounded border text-white text-xs sm:text-base transition-all min-h-[36px] ${
+                        line.isLocked || !canEditOrder
                           ? 'bg-slate-700/50 border-slate-600 cursor-not-allowed'
                           : activeSlider.lineId === line.id && activeSlider.type === 'discount'
-                          ? 'bg-blue-600/20 border-blue-500 ring-1 ring-blue-500'
-                          : 'bg-slate-700 border-slate-600 hover:border-blue-400'
+                          ? 'bg-blue-600/20 border-blue-500 ring-1 ring-blue-500 cursor-pointer'
+                          : 'bg-slate-700 border-slate-600 hover:border-blue-400 cursor-pointer'
                       }`}
                     />
                   </div>
@@ -1213,7 +1347,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                 )}
 
                 {/* Price/Discount Slider - Always visible when this line is active */}
-                {activeSlider.lineId === line.id && !line.isLocked && (
+                {activeSlider.lineId === line.id && !line.isLocked && canEditOrder && (
                   <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-700">
                     <div className="space-y-1 sm:space-y-2">
                       {/* Slider Header */}
@@ -1258,13 +1392,14 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                           step={activeSlider.type === 'price' ? '0.01' : '0.1'}
                           value={getSliderValue(line, activeSlider.type)}
                           onChange={(e) => handleSliderChange(line.id, parseFloat(e.target.value))}
-                          className="w-full h-2 sm:h-3 rounded-lg appearance-none cursor-pointer slider-gradient"
+                          className="w-full h-3 sm:h-4 rounded-lg appearance-none cursor-pointer slider-gradient touch-pan-x"
                           style={{
                             background: `linear-gradient(to right,
                               rgb(239, 68, 68) 0%,
                               rgb(251, 191, 36) ${getSliderColorPercentage(line, activeSlider.type) / 2}%,
                               rgb(34, 197, 94) ${getSliderColorPercentage(line, activeSlider.type)}%,
-                              rgb(34, 197, 94) 100%)`
+                              rgb(34, 197, 94) 100%)`,
+                            WebkitTapHighlightColor: 'transparent'
                           }}
                         />
                       </div>
@@ -1320,51 +1455,69 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       </main>
 
       {/* Fixed Bottom Actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700 shadow-2xl z-50">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-3">
-          <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
-            {/* Save Changes Button */}
-            {hasChanges && (
-              <button
-                onClick={handleSavePrices}
-                className="flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2.5 sm:py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors min-h-[44px] text-xs sm:text-base"
-              >
-                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
-                Salva Modifiche
-              </button>
-            )}
+      {orderData.state !== 'done' && orderData.state !== 'cancel' && (
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700 shadow-2xl z-50">
+          <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-3">
+            <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
+              {/* DRAFT state: Show save and confirm buttons */}
+              {orderData.state === 'draft' && (
+                <>
+                  {/* Save Changes Button */}
+                  {hasChanges && (
+                    <button
+                      onClick={handleSavePrices}
+                      className="flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2.5 sm:py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors min-h-[44px] text-xs sm:text-base"
+                    >
+                      <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
+                      Salva Modifiche
+                    </button>
+                  )}
 
-            {/* Confirm Order Button */}
-            <button
-              onClick={handleConfirmOrder}
-              disabled={isConfirming || confirmSuccess}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2.5 sm:py-3.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-slate-600 disabled:to-slate-600 text-white rounded-lg font-bold transition-all min-h-[44px] text-xs sm:text-base shadow-lg"
-            >
-              {isConfirming ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Conferma in corso...
-                </>
-              ) : confirmSuccess ? (
-                <>
-                  <CheckCircle className="h-5 w-5" />
-                  Ordine Confermato!
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-5 w-5" />
-                  Conferma Ordine Finale
+                  {/* Confirm Order Button */}
+                  <button
+                    onClick={handleConfirmOrder}
+                    disabled={isConfirming || confirmSuccess}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2.5 sm:py-3.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-slate-600 disabled:to-slate-600 text-white rounded-lg font-bold transition-all min-h-[44px] text-xs sm:text-base shadow-lg"
+                  >
+                    {isConfirming ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Conferma in corso...
+                      </>
+                    ) : confirmSuccess ? (
+                      <>
+                        <CheckCircle className="h-5 w-5" />
+                        Ordine Confermato!
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-5 w-5" />
+                        Conferma Ordine Finale
+                      </>
+                    )}
+                  </button>
                 </>
               )}
-            </button>
+
+              {/* SALE state: Show cancel button only */}
+              {orderData.state === 'sale' && (
+                <button
+                  onClick={() => setShowCancelModal(true)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2.5 sm:py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-all min-h-[44px] text-xs sm:text-base shadow-lg"
+                >
+                  <X className="h-5 w-5" />
+                  Annulla Ordine
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Task Creation Modal */}
       {showTaskModal && taskRequestLine && (
         <div
-          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-2 sm:p-4"
+          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
           onClick={() => {
             setShowTaskModal(false);
             setTaskRequestLine(null);
@@ -1372,7 +1525,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
           }}
         >
           <div
-            className="bg-slate-800 rounded-lg p-3 sm:p-6 max-w-xl w-full border border-purple-500/30 shadow-2xl"
+            className="bg-slate-800 rounded-lg p-3 sm:p-6 max-w-xl w-full border border-purple-500/30 shadow-2xl my-auto max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -1417,10 +1570,10 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                 value={taskNote}
                 onChange={(e) => setTaskNote(e.target.value)}
                 placeholder="Spiega il motivo della richiesta di blocco prezzo (obbligatorio)..."
-                className="w-full min-h-[120px] px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all resize-none text-sm"
+                className="w-full min-h-[140px] sm:min-h-[120px] px-3 py-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all resize-none text-sm touch-manipulation"
                 required
                 style={{
-                  fontSize: '14px',
+                  fontSize: '16px',
                   lineHeight: '1.5',
                 }}
               />
@@ -1434,7 +1587,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                   setTaskRequestLine(null);
                   setTaskNote('');
                 }}
-                className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors"
+                className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors min-h-[48px] text-sm sm:text-base"
                 disabled={creatingTask}
               >
                 Annulla
@@ -1442,17 +1595,90 @@ export default function ReviewPricesPage({ params }: RouteParams) {
               <button
                 onClick={handleRequestPriceLock}
                 disabled={creatingTask || !taskNote.trim()}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors min-h-[48px] text-sm sm:text-base"
               >
                 {creatingTask ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                     Invio...
                   </>
                 ) : (
                   <>
-                    <ClipboardCheck className="h-4 w-4" />
+                    <ClipboardCheck className="h-4 w-4 sm:h-5 sm:w-5" />
                     Invia Richiesta
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Order Confirmation Modal */}
+      {showCancelModal && (
+        <div
+          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
+          onClick={() => setShowCancelModal(false)}
+        >
+          <div
+            className="bg-slate-800 rounded-lg p-3 sm:p-6 max-w-md w-full border border-red-500/30 shadow-2xl my-auto max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start gap-1.5 sm:gap-3 mb-3 sm:mb-4">
+              <div className="bg-red-500/20 p-1.5 sm:p-2.5 rounded-lg border border-red-500/30">
+                <X className="h-4 w-4 sm:h-6 sm:w-6 text-red-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm sm:text-xl font-bold text-white">
+                  Annulla Ordine
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1">
+                  {orderData?.name}
+                </p>
+              </div>
+            </div>
+
+            {/* Warning Message */}
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 sm:p-4 mb-4">
+              <p className="text-xs sm:text-sm text-slate-200">
+                Sei sicuro di voler annullare questo ordine?
+              </p>
+              <p className="text-xs text-slate-400 mt-2">
+                Questa azione non può essere annullata. L'ordine passerà allo stato "Annullato".
+              </p>
+            </div>
+
+            {/* Error Display */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2 sm:p-3 mb-3">
+                <p className="text-xs sm:text-sm text-red-400">{error}</p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 sm:gap-3">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors min-h-[48px] text-sm sm:text-base"
+                disabled={cancellingOrder}
+              >
+                Annulla
+              </button>
+              <button
+                onClick={handleCancelOrder}
+                disabled={cancellingOrder}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors min-h-[48px] text-sm sm:text-base"
+              >
+                {cancellingOrder ? (
+                  <>
+                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                    Annullamento...
+                  </>
+                ) : (
+                  <>
+                    <X className="h-4 w-4 sm:h-5 sm:w-5" />
+                    Conferma Annullamento
                   </>
                 )}
               </button>
@@ -1464,7 +1690,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       {/* Product History Modal */}
       {showHistoryModal && selectedProduct && (
         <div
-          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-2 sm:p-4"
+          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
           onClick={() => {
             setShowHistoryModal(false);
             setProductHistory(null);
@@ -1472,7 +1698,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
           }}
         >
           <div
-            className="bg-slate-800 rounded-lg p-3 sm:p-6 max-w-2xl w-full max-h-[85vh] overflow-auto border border-slate-700 shadow-2xl"
+            className="bg-slate-800 rounded-lg p-3 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-2xl my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
