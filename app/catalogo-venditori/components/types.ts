@@ -14,6 +14,7 @@ export interface MatchedProduct {
   qty_available?: number;        // Stock quantity available
   uom_name?: string;             // Unit of measure
   incoming_qty?: number;         // Incoming quantity
+  incoming_date?: string | null; // Expected arrival date for incoming stock
 }
 
 // Product in shopping cart
@@ -28,6 +29,7 @@ export interface CartProduct {
   qty_available?: number;        // Stock quantity available
   uom_name?: string;             // Unit of measure (es: "kg", "pz", "lt")
   incoming_qty?: number;         // Incoming quantity (qty in arrivo)
+  incoming_date?: string | null; // Expected arrival date for incoming stock
 }
 
 // Customer from Odoo

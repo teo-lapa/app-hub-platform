@@ -11,6 +11,7 @@ export interface CartProduct {
   qty_available?: number;
   uom_name?: string;
   incoming_qty?: number;
+  incoming_date?: string | null;
 }
 
 interface SmartCartProps {
@@ -228,13 +229,25 @@ export default function SmartCart({
 
                     {/* Incoming Quantity */}
                     {product.incoming_qty !== undefined && product.incoming_qty > 0 && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 rounded-lg border border-blue-500/30">
-                        <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
-                        <span className="text-xs text-blue-400 font-semibold" style={{ fontSize: '12px', lineHeight: '1.5' }}>
-                          In arrivo: {product.incoming_qty} {product.uom_name || ''}
-                        </span>
+                      <div className="flex flex-col gap-1 px-3 py-2 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                          </svg>
+                          <span className="text-xs text-blue-400 font-semibold" style={{ fontSize: '12px', lineHeight: '1.5' }}>
+                            In arrivo: {product.incoming_qty} {product.uom_name || ''}
+                          </span>
+                        </div>
+                        {product.incoming_date && (
+                          <div className="flex items-center gap-2 ml-6">
+                            <svg className="w-3 h-3 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="text-xs text-blue-300" style={{ fontSize: '11px', lineHeight: '1.5' }}>
+                              {new Date(product.incoming_date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

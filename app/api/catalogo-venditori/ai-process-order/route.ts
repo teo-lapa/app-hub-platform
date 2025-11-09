@@ -47,6 +47,7 @@ interface ProductMatch {
   qty_available?: number;
   uom_name?: string;
   incoming_qty?: number;
+  incoming_date?: string | null;
 }
 
 interface AIMatchingResult {
@@ -393,7 +394,7 @@ async function enrichMatchesWithImages(cookies: string | null, matches: ProductM
 
   try {
     // Fetch product data with images, stock, uom, and incoming qty
-    const products = await callOdoo(cookies, 
+    const products = await callOdoo(cookies,
       'product.product',
       'search_read',
       [],
@@ -406,12 +407,46 @@ async function enrichMatchesWithImages(cookies: string | null, matches: ProductM
 
     console.log(`✅ Fetched data for ${products?.length || 0} products`);
 
+    // Fetch incoming stock moves to get expected arrival dates
+    let incomingDates: Map<number, string> = new Map();
+    if (productIds.length > 0) {
+      const stockMoves = await callOdoo(
+        cookies,
+        'stock.move',
+        'search_read',
+        [],
+        {
+          domain: [
+            ['product_id', 'in', productIds],
+            ['state', 'in', ['waiting', 'confirmed', 'assigned']],
+            ['picking_code', '=', 'incoming'],
+          ],
+          fields: ['product_id', 'date', 'date_deadline'],
+          order: 'date ASC',
+          limit: 500,
+        }
+      );
+
+      console.log(`📅 Found ${stockMoves?.length || 0} incoming stock moves`);
+
+      stockMoves?.forEach((move: any) => {
+        const productId = Array.isArray(move.product_id) ? move.product_id[0] : move.product_id;
+        const arrivalDate = move.date || move.date_deadline;
+        if (arrivalDate && !incomingDates.has(productId)) {
+          incomingDates.set(productId, arrivalDate);
+        }
+      });
+
+      console.log(`✅ Mapped arrival dates for ${incomingDates.size} products`);
+    }
+
     // Create a map of product_id to product data
     const productDataMap = new Map<number, {
       image_url: string | null;
       qty_available: number;
       uom_name: string;
       incoming_qty: number;
+      incoming_date: string | null;
     }>();
     products?.forEach((product: any) => {
       productDataMap.set(product.id, {
@@ -419,6 +454,7 @@ async function enrichMatchesWithImages(cookies: string | null, matches: ProductM
         qty_available: product.qty_available || 0,
         uom_name: product.uom_id && Array.isArray(product.uom_id) ? product.uom_id[1] : '',
         incoming_qty: product.incoming_qty || 0,
+        incoming_date: incomingDates.get(product.id) || null,
       });
     });
 
@@ -432,6 +468,7 @@ async function enrichMatchesWithImages(cookies: string | null, matches: ProductM
           qty_available: data.qty_available,
           uom_name: data.uom_name,
           incoming_qty: data.incoming_qty,
+          incoming_date: data.incoming_date,
         };
       }
       return {
@@ -439,7 +476,8 @@ async function enrichMatchesWithImages(cookies: string | null, matches: ProductM
         image_url: null,
         qty_available: 0,
         uom_name: '',
-        incoming_qty: 0
+        incoming_qty: 0,
+        incoming_date: null,
       };
     });
   } catch (error) {
@@ -450,7 +488,8 @@ async function enrichMatchesWithImages(cookies: string | null, matches: ProductM
       image_url: null,
       qty_available: 0,
       uom_name: '',
-      incoming_qty: 0
+      incoming_qty: 0,
+      incoming_date: null,
     }));
   }
 }

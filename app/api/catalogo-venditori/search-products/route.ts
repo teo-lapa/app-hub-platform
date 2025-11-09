@@ -94,6 +94,44 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ [SEARCH-PRODUCTS] Found ${products?.length || 0} products`);
 
+    // Fetch incoming stock moves to get expected arrival dates
+    let incomingDates: Map<number, string> = new Map();
+    if (products && products.length > 0) {
+      const productIds = products.map((p: any) => p.id);
+
+      // Get incoming stock moves (waiting, confirmed, or assigned) for these products
+      const stockMoves = await callOdoo(
+        cookies,
+        'stock.move',
+        'search_read',
+        [],
+        {
+          domain: [
+            ['product_id', 'in', productIds],
+            ['state', 'in', ['waiting', 'confirmed', 'assigned']],
+            ['picking_code', '=', 'incoming'], // Only incoming moves
+          ],
+          fields: ['product_id', 'date', 'date_deadline'],
+          order: 'date ASC', // Earliest date first
+          limit: 500,
+        }
+      );
+
+      console.log(`📅 [SEARCH-PRODUCTS] Found ${stockMoves?.length || 0} incoming stock moves`);
+
+      // Map each product to its earliest incoming date
+      stockMoves?.forEach((move: any) => {
+        const productId = Array.isArray(move.product_id) ? move.product_id[0] : move.product_id;
+        const arrivalDate = move.date || move.date_deadline;
+
+        if (arrivalDate && !incomingDates.has(productId)) {
+          incomingDates.set(productId, arrivalDate);
+        }
+      });
+
+      console.log(`✅ [SEARCH-PRODUCTS] Mapped arrival dates for ${incomingDates.size} products`);
+    }
+
     // If customerId provided, fetch last purchase date for each product
     let productsWithHistory = products || [];
     if (customerId && products && products.length > 0) {
@@ -128,13 +166,20 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      // Add last purchase date to products
+      // Add last purchase date and incoming date to products
       productsWithHistory = products.map((product: any) => ({
         ...product,
         last_purchase_date: lastPurchaseMap.get(product.id) || null,
+        incoming_date: incomingDates.get(product.id) || null,
       }));
 
       console.log(`✅ [SEARCH-PRODUCTS] Added purchase history for ${lastPurchaseMap.size} products`);
+    } else {
+      // Add incoming date even if no customer specified
+      productsWithHistory = products.map((product: any) => ({
+        ...product,
+        incoming_date: incomingDates.get(product.id) || null,
+      }));
     }
 
     return NextResponse.json(
