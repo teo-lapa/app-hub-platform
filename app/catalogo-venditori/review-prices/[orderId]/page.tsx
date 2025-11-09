@@ -934,10 +934,26 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                 <div className="bg-gradient-to-r from-green-500 to-blue-500 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl shrink-0">
                   <DollarSign className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                 </div>
-                <div className="min-w-0">
-                  <h1 className="text-sm sm:text-xl lg:text-2xl font-bold text-white truncate">
-                    Revisione Prezzi
-                  </h1>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-sm sm:text-xl lg:text-2xl font-bold text-white truncate">
+                      Revisione Prezzi
+                    </h1>
+                    {/* Order State Badge */}
+                    <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full border ${
+                      orderData.state === 'draft' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                      orderData.state === 'sent' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                      orderData.state === 'sale' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                      orderData.state === 'done' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                      'bg-red-500/20 text-red-400 border-red-500/30'
+                    }`}>
+                      {orderData.state === 'draft' ? 'Bozza' :
+                       orderData.state === 'sent' ? 'Inviato' :
+                       orderData.state === 'sale' ? 'Confermato' :
+                       orderData.state === 'done' ? 'Consegnato' :
+                       'Annullato'}
+                    </span>
+                  </div>
                   <p className="text-[10px] sm:text-sm text-slate-300 truncate">
                     Ordine {orderData.name}
                   </p>
@@ -989,7 +1005,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
             </div>
             <div>
               <p className="text-[10px] sm:text-sm text-slate-400 mb-0.5">Consegna</p>
-              {orderData.state === 'draft' || orderData.state === 'sale' ? (
+              {orderData.state === 'draft' || orderData.state === 'sent' || orderData.state === 'sale' ? (
                 editingDeliveryDate ? (
                   <div className="flex items-center gap-2">
                     <input
