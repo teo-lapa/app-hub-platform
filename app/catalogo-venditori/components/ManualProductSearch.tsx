@@ -9,6 +9,11 @@ interface Product {
   list_price?: number;
   image_128?: string;
   last_purchase_date?: string;
+  qty_available?: number;
+  incoming_qty?: number;
+  incoming_date?: string | null;
+  uom_id?: [number, string] | false;
+  uom_name?: string;
 }
 
 interface ManualProductSearchProps {

@@ -73,7 +73,8 @@ export default function CatalogoVenditoriPage() {
         image_url: p.image_url || null,
         qty_available: p.qty_available || 0,
         uom_name: p.uom_name || '',
-        incoming_qty: p.incoming_qty || 0
+        incoming_qty: p.incoming_qty || 0,
+        incoming_date: p.incoming_date || null,
       }));
 
     // Add to cart (merge with existing)
@@ -129,7 +130,8 @@ export default function CatalogoVenditoriPage() {
       image_url: product.image_128 ? `data:image/png;base64,${product.image_128}` : null,
       qty_available: product.qty_available || 0,
       uom_name: product.uom_id && Array.isArray(product.uom_id) ? product.uom_id[1] : '',
-      incoming_qty: product.incoming_qty || 0
+      incoming_qty: product.incoming_qty || 0,
+      incoming_date: product.incoming_date || null,
     };
 
     // Add to cart (merge with existing)
