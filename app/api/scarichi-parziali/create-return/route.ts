@@ -107,6 +107,28 @@ export async function POST(request: NextRequest) {
 
     console.log(`📦 Trovati ${moves.length} prodotti nell'ordine residuo`);
 
+    // STEP 3.5: Leggi i lotti dal picking originale
+    console.log('🔍 Ricerca lotti dal picking originale...');
+
+    const moveLines = await callOdoo(sessionId, 'stock.move.line', 'search_read', [[
+      ['picking_id', '=', pickingOriginale.id],
+      ['state', '!=', 'cancel']
+    ]], {
+      fields: ['product_id', 'lot_id', 'lot_name', 'quantity', 'location_id']
+    });
+
+    // Crea mapping product_id -> lot info
+    const productLotMap = new Map();
+    for (const ml of moveLines) {
+      if (ml.lot_id && ml.product_id) {
+        productLotMap.set(ml.product_id[0], {
+          lot_id: ml.lot_id[0],
+          lot_name: ml.lot_id[1]
+        });
+        console.log(`  📦 Prodotto ${ml.product_id[1]} → Lotto ${ml.lot_id[1]}`);
+      }
+    }
+
     // STEP 4: Cerca l'ubicazione Deposito
     console.log('🔍 Ricerca ubicazione Deposito...');
 
@@ -200,9 +222,37 @@ export async function POST(request: NextRequest) {
       await callOdoo(sessionId, 'stock.picking', 'action_assign', [[pickingId]]);
       console.log(`✅ Picking ${pickingId} assegnato`);
 
-      // Valida il picking (completa il trasferimento)
-      // NOTA: Potrebbe essere necessario impostare le quantità effettive prima
-      // Per ora lo lasciamo in stato "Ready" per validazione manuale
+      // STEP 7: Compila le operazioni dettagliate (stock.move.line) con qty_done e lotti
+      console.log('📝 Compilazione operazioni dettagliate...');
+
+      const createdMoveLines = await callOdoo(sessionId, 'stock.move.line', 'search_read', [[
+        ['picking_id', '=', pickingId]
+      ]], {
+        fields: ['id', 'product_id', 'quantity', 'lot_id', 'lot_name']
+      });
+
+      console.log(`📦 Trovate ${createdMoveLines.length} operazioni dettagliate da compilare`);
+
+      for (const moveLine of createdMoveLines) {
+        const updateData: any = {
+          qty_done: moveLine.quantity || 0
+        };
+
+        // Se esiste un lotto per questo prodotto nel picking originale, impostalo
+        const productId = moveLine.product_id[0];
+        const lotInfo = productLotMap.get(productId);
+
+        if (lotInfo) {
+          updateData.lot_id = lotInfo.lot_id;
+          console.log(`  ✓ Move line ${moveLine.id}: qty_done=${updateData.qty_done}, lot=${lotInfo.lot_name}`);
+        } else {
+          console.log(`  ✓ Move line ${moveLine.id}: qty_done=${updateData.qty_done} (nessun lotto)`);
+        }
+
+        await callOdoo(sessionId, 'stock.move.line', 'write', [[moveLine.id], updateData]);
+      }
+
+      console.log(`✅ Operazioni dettagliate compilate con successo!`)
 
     } catch (error) {
       console.warn(`⚠️  Errore conferma/assegnazione picking ${pickingId}:`, error);
