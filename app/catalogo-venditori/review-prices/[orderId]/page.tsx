@@ -102,6 +102,14 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       setOrderData(data.order);
       console.log('✅ Order data loaded:', data.order);
 
+      // Log isLocked status for each line
+      if (data.order.lines) {
+        console.log('🔒 Lock status for each product:');
+        data.order.lines.forEach((line: any) => {
+          console.log(`  Product ${line.productId} (${line.productName}): isLocked = ${line.isLocked}`);
+        });
+      }
+
       // Initialize slider with first line ID
       if (data.order.lines && data.order.lines.length > 0) {
         setActiveSlider({
