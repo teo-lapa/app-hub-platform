@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Home, CheckCircle, AlertCircle, Loader2, DollarSign, TrendingDown, Lock, Unlock, TrendingUp, Award, Info, BarChart, X } from 'lucide-react';
 import type { OrderData, OrderLine, PriceUpdate } from '../types';
+import ManualProductSearch from '../../components/ManualProductSearch';
 
 interface CustomerStats {
   totalRevenue: number;
@@ -65,6 +66,10 @@ export default function ReviewPricesPage({ params }: RouteParams) {
     lineId: -1,
     type: 'price'
   });
+
+  // Quantity editing state
+  const [editingQuantity, setEditingQuantity] = useState<number | null>(null);
+  const [quantityValues, setQuantityValues] = useState<Map<number, number>>(new Map());
 
   // Load order data
   useEffect(() => {
@@ -243,6 +248,77 @@ export default function ReviewPricesPage({ params }: RouteParams) {
     const { type } = activeSlider;
     const field = type === 'price' ? 'priceUnit' : 'discount';
     handlePriceChange(lineId, field, value);
+  };
+
+  // Handle quantity change
+  const handleQuantityChange = (lineId: number, value: string) => {
+    const quantity = parseInt(value) || 0;
+    if (quantity > 0) {
+      const newQuantityValues = new Map(quantityValues);
+      newQuantityValues.set(lineId, quantity);
+      setQuantityValues(newQuantityValues);
+    }
+  };
+
+  // Handle remove line from order
+  const handleRemoveLine = (lineId: number) => {
+    if (!orderData) return;
+
+    // Remove line from order data
+    const updatedLines = orderData.lines.filter(line => line.id !== lineId);
+    setOrderData({
+      ...orderData,
+      lines: updatedLines
+    });
+
+    // Remove from edited lines if exists
+    const newEditedLines = new Map(editedLines);
+    newEditedLines.delete(lineId);
+    setEditedLines(newEditedLines);
+
+    // Remove from quantity values if exists
+    const newQuantityValues = new Map(quantityValues);
+    newQuantityValues.delete(lineId);
+    setQuantityValues(newQuantityValues);
+  };
+
+  // Handle add product to order
+  const handleAddProduct = async (product: any, quantity: number) => {
+    if (!orderData) return;
+
+    try {
+      // Create a new temporary line with the product
+      const newLine: OrderLine = {
+        id: Date.now(), // Temporary ID
+        productId: product.id,
+        productName: product.name,
+        productCode: product.default_code || '',
+        quantity: quantity,
+        uom: 'Unit',
+        currentPriceUnit: product.list_price || 0,
+        currentDiscount: 0,
+        currentSubtotal: (product.list_price || 0) * quantity,
+        currentTotal: (product.list_price || 0) * quantity,
+        standardPrice: product.list_price || 0,
+        costPrice: 0,
+        avgSellingPrice: 0,
+        imageUrl: product.image_128 ? `data:image/png;base64,${product.image_128}` : null,
+        qtyAvailable: 0,
+        isLocked: false,
+        taxIds: []
+      };
+
+      // Add the new line to order data
+      setOrderData({
+        ...orderData,
+        lines: [...orderData.lines, newLine]
+      });
+
+      console.log('✅ Product added to order:', product.name);
+    } catch (error) {
+      console.error('❌ Error adding product:', error);
+      setError('Errore nell\'aggiunta del prodotto');
+    }
   };
 
   // Get slider range based on cost price
@@ -716,6 +792,14 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                         >
                           <BarChart className="h-4 w-4" />
                         </button>
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => handleRemoveLine(line.id)}
+                          className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/30 transition-colors"
+                          title="Elimina prodotto"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
                         {/* Lock/Unlock Icon */}
                         <div title={line.isLocked ? "Prezzo bloccato" : "Prezzo modificabile"}>
                           {line.isLocked ? (
@@ -729,9 +813,34 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                     {line.productCode && (
                       <p className="text-sm text-slate-400">Codice: {line.productCode}</p>
                     )}
-                    <p className="text-sm text-slate-400">
-                      Quantità: <span className="font-semibold text-white">{line.quantity} {line.uom}</span>
-                    </p>
+                    <div className="text-sm text-slate-400 flex items-center gap-2">
+                      <span>Quantità:</span>
+                      {editingQuantity === line.id ? (
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={quantityValues.get(line.id) || line.quantity}
+                          onChange={(e) => handleQuantityChange(line.id, e.target.value)}
+                          onBlur={() => setEditingQuantity(null)}
+                          autoFocus
+                          className="w-20 px-2 py-1 bg-slate-700 border border-blue-500 rounded text-white font-semibold"
+                        />
+                      ) : (
+                        <span
+                          onClick={() => {
+                            setEditingQuantity(line.id);
+                            if (!quantityValues.has(line.id)) {
+                              const newQuantityValues = new Map(quantityValues);
+                              newQuantityValues.set(line.id, line.quantity);
+                              setQuantityValues(newQuantityValues);
+                            }
+                          }}
+                          className="font-semibold text-white cursor-pointer hover:text-blue-400 transition-colors"
+                        >
+                          {quantityValues.get(line.id) || line.quantity} {line.uom}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -911,6 +1020,15 @@ export default function ReviewPricesPage({ params }: RouteParams) {
             </div>
           </div>
         </div>
+
+        {/* Product Search */}
+        <div className="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 shadow-lg mb-6">
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-4">Aggiungi Prodotto</h3>
+          <ManualProductSearch
+            customerId={orderData.customerId}
+            onProductAdd={handleAddProduct}
+          />
+        </div>
       </main>
 
       {/* Fixed Bottom Actions */}
@@ -1043,57 +1161,12 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                   </div>
                 </div>
 
-                {/* Recent Orders Table */}
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-300 mb-3">
-                    Ultimi {productHistory.recentOrders.length} Ordini
-                  </h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-700">
-                          <th className="text-left py-2 px-3 text-xs font-semibold text-slate-400">Cliente</th>
-                          <th className="text-left py-2 px-3 text-xs font-semibold text-slate-400">Data</th>
-                          <th className="text-right py-2 px-3 text-xs font-semibold text-slate-400">Qtà</th>
-                          <th className="text-right py-2 px-3 text-xs font-semibold text-slate-400">Prezzo</th>
-                          <th className="text-right py-2 px-3 text-xs font-semibold text-slate-400">Sconto</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {productHistory.recentOrders.map((order, index) => (
-                          <tr
-                            key={order.orderId}
-                            className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors"
-                          >
-                            <td className="py-2.5 px-3">
-                              <span className="text-slate-300 font-medium">
-                                {order.customerAlias}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-slate-400">
-                              {new Date(order.date).toLocaleDateString('it-IT')}
-                            </td>
-                            <td className="py-2.5 px-3 text-right text-slate-300">
-                              {order.quantity}
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-semibold text-blue-400">
-                              CHF {order.priceUnit.toFixed(2)}
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-semibold text-yellow-400">
-                              {order.discount.toFixed(1)}%
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                {/* Info text */}
+                <div className="text-center">
+                  <p className="text-xs text-slate-400">
+                    Calcolato sugli ultimi 50 ordini confermati
+                  </p>
                 </div>
-
-                {productHistory.recentOrders.length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-slate-400">Nessuno storico disponibile per questo prodotto</p>
-                  </div>
-                )}
               </div>
             )}
 

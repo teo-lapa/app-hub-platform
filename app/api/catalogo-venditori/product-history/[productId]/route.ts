@@ -154,7 +154,7 @@ export async function GET(
     const avgDiscount = discounts.reduce((sum: number, d: number) => sum + d, 0) / discounts.length;
 
     // Prepare recent sales with customer info
-    const recentSales = orderLines.slice(0, 20).map((line: any) => {
+    const recentSales = orderLines.slice(0, 50).map((line: any) => {
       const order: any = orderMap.get(line.order_id[0]);
       return {
         orderId: order?.id,

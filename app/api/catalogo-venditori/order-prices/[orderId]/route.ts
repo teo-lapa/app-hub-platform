@@ -227,6 +227,35 @@ export async function GET(
       }
     }
 
+    // Check for locked prices in pricelist
+    const lockedPricesMap = new Map<number, boolean>();
+    if (order.pricelist_id && order.pricelist_id[0]) {
+      console.log('🔍 [ORDER-PRICES-API] Checking for locked prices in pricelist...');
+      const pricelistItems = await callOdoo(
+        cookies,
+        'product.pricelist.item',
+        'search_read',
+        [],
+        {
+          domain: [
+            ['pricelist_id', '=', order.pricelist_id[0]],
+            ['product_id', 'in', productIds],
+            ['applied_on', '=', '0_product_variant']
+          ],
+          fields: ['id', 'product_id', 'compute_price', 'fixed_price']
+        }
+      );
+
+      pricelistItems.forEach((item: any) => {
+        const productId = item.product_id[0];
+        // Price is locked if it has a fixed_price (compute_price = 'fixed')
+        const isLocked = item.compute_price === 'fixed' && item.fixed_price > 0;
+        lockedPricesMap.set(productId, isLocked);
+      });
+
+      console.log(`✅ [ORDER-PRICES-API] Found ${lockedPricesMap.size} pricelist items`);
+    }
+
     // Enrich order lines with product data and price comparison
     const enrichedLines = orderLines.map((line: any) => {
       const product: any = productMap.get(line.product_id[0]);
@@ -254,8 +283,8 @@ export async function GET(
         imageUrl: product?.image_128 ? `data:image/png;base64,${product.image_128}` : null,
         qtyAvailable: product?.qty_available || 0,
 
-        // Editable status (can be enhanced with custom logic)
-        isLocked: false, // Default: all prices are editable
+        // Editable status - locked if fixed price in pricelist
+        isLocked: lockedPricesMap.get(line.product_id[0]) || false,
 
         // Tax info
         taxIds: line.tax_id || []
