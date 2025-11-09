@@ -250,12 +250,44 @@ export default function ReviewPricesPage({ params }: RouteParams) {
     if (type === 'discount') {
       return { min: 0, max: 100 };
     }
-    // Price slider: from costPrice to costPrice + 400%
+    // Price slider: from costPrice + 6% margin to costPrice + 400%
     const costPrice = line.costPrice || 0;
     return {
-      min: costPrice,
+      min: costPrice * 1.06, // +6% margin for coverage
       max: costPrice * 5 // costPrice + 400% = costPrice * 5
     };
+  };
+
+  // Get reference markers positions for price slider
+  const getPriceMarkers = (line: OrderLine): { label: string; position: number; color: string }[] => {
+    const costPrice = line.costPrice || 0;
+    const standardPrice = line.standardPrice || 0;
+    const range = getSliderRange(line, 'price');
+
+    const markers = [];
+
+    // Marker for +40% on cost price
+    const fortyPercentPrice = costPrice * 1.4;
+    if (fortyPercentPrice >= range.min && fortyPercentPrice <= range.max) {
+      const position = ((fortyPercentPrice - range.min) / (range.max - range.min)) * 100;
+      markers.push({
+        label: '+40%',
+        position,
+        color: 'rgb(251, 191, 36)' // yellow
+      });
+    }
+
+    // Marker for standard/average price
+    if (standardPrice > 0 && standardPrice >= range.min && standardPrice <= range.max) {
+      const position = ((standardPrice - range.min) / (range.max - range.min)) * 100;
+      markers.push({
+        label: 'Medio',
+        position,
+        color: 'rgb(59, 130, 246)' // blue
+      });
+    }
+
+    return markers;
   };
 
   // Get current slider value
@@ -794,8 +826,28 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                         </span>
                       </div>
 
-                      {/* Slider Input */}
-                      <div className="relative">
+                      {/* Slider Input with Markers */}
+                      <div className="relative pb-6">
+                        {/* Reference Markers (only for price slider) */}
+                        {activeSlider.type === 'price' && getPriceMarkers(line).map((marker, idx) => (
+                          <div
+                            key={idx}
+                            className="absolute top-0 transform -translate-x-1/2 flex flex-col items-center"
+                            style={{ left: `${marker.position}%` }}
+                          >
+                            <div
+                              className="w-1 h-3 rounded-full mb-1"
+                              style={{ backgroundColor: marker.color }}
+                            />
+                            <span
+                              className="text-xs font-bold whitespace-nowrap"
+                              style={{ color: marker.color }}
+                            >
+                              {marker.label}
+                            </span>
+                          </div>
+                        ))}
+
                         <input
                           type="range"
                           min={getSliderRange(line, activeSlider.type).min}
