@@ -399,6 +399,12 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   const handleRequestPriceLock = async () => {
     if (!taskRequestLine || !orderData) return;
 
+    // Validazione: la nota è obbligatoria
+    if (!taskNote.trim()) {
+      alert('⚠️ La nota per Laura è obbligatoria. Inserisci una spiegazione per la richiesta.');
+      return;
+    }
+
     try {
       setCreatingTask(true);
       setError('');
@@ -1402,51 +1408,17 @@ export default function ReviewPricesPage({ params }: RouteParams) {
               </button>
             </div>
 
-            {/* Task Details Preview */}
-            <div className="bg-slate-900/50 rounded-lg p-3 sm:p-4 mb-4 border border-slate-700">
-              <h4 className="text-xs sm:text-sm font-bold text-white mb-2">Dettagli Richiesta:</h4>
-              <div className="space-y-1 text-xs sm:text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Prezzo di Costo:</span>
-                  <span className="text-white font-semibold">CHF {taskRequestLine.costPrice.toFixed(2)}</span>
-                </div>
-                {taskRequestLine.avgSellingPrice > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Prezzo Medio (3 mesi):</span>
-                    <span className="text-blue-400 font-semibold">CHF {taskRequestLine.avgSellingPrice.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Prezzo Proposto:</span>
-                  <span className="text-purple-400 font-bold">
-                    CHF {(editedLines.get(taskRequestLine.id)?.priceUnit ?? taskRequestLine.currentPriceUnit).toFixed(2)}
-                  </span>
-                </div>
-                {(() => {
-                  const proposedPrice = editedLines.get(taskRequestLine.id)?.priceUnit ?? taskRequestLine.currentPriceUnit;
-                  const margin = taskRequestLine.costPrice > 0
-                    ? (((proposedPrice - taskRequestLine.costPrice) / taskRequestLine.costPrice) * 100).toFixed(2)
-                    : 'N/A';
-                  return (
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Margine di Profitto:</span>
-                      <span className="text-emerald-400 font-bold">{margin}%</span>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-
             {/* Note Input */}
             <div className="mb-4">
               <label className="block text-xs sm:text-sm text-slate-300 font-medium mb-2">
-                Note per Laura (opzionale):
+                Note per Laura: <span className="text-red-400">*</span>
               </label>
               <textarea
                 value={taskNote}
                 onChange={(e) => setTaskNote(e.target.value)}
-                placeholder="Aggiungi una nota per spiegare la richiesta..."
-                className="w-full min-h-[100px] px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all resize-none text-sm"
+                placeholder="Spiega il motivo della richiesta di blocco prezzo (obbligatorio)..."
+                className="w-full min-h-[120px] px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all resize-none text-sm"
+                required
                 style={{
                   fontSize: '14px',
                   lineHeight: '1.5',
@@ -1469,8 +1441,8 @@ export default function ReviewPricesPage({ params }: RouteParams) {
               </button>
               <button
                 onClick={handleRequestPriceLock}
-                disabled={creatingTask}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 text-white rounded-lg font-semibold transition-colors"
+                disabled={creatingTask || !taskNote.trim()}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
               >
                 {creatingTask ? (
                   <>
