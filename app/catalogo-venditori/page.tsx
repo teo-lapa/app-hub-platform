@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Home, ShoppingCart, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Home, ShoppingCart, Sparkles, CheckCircle, AlertCircle, FileText, X, Loader2 } from 'lucide-react';
 import CustomerSelector from './components/CustomerSelector';
 import AIOrderInput from './components/AIOrderInput';
 import SmartCart from './components/SmartCart';
@@ -33,6 +33,11 @@ export default function CatalogoVenditoriPage() {
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<{ name: string; id: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Orders modal state
+  const [showOrdersModal, setShowOrdersModal] = useState(false);
+  const [customerOrders, setCustomerOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   // Auto-scroll to top on mount (mobile optimization)
   useEffect(() => {
@@ -214,6 +219,42 @@ export default function CatalogoVenditoriPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Load customer orders and quotations
+  const loadCustomerOrders = async () => {
+    if (!selectedCustomerId) {
+      setError('Seleziona un cliente prima di vedere gli ordini');
+      return;
+    }
+
+    try {
+      setLoadingOrders(true);
+      setShowOrdersModal(true);
+      setCustomerOrders([]);
+
+      const response = await fetch(`/api/catalogo-venditori/customer-orders/${selectedCustomerId}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setCustomerOrders(data.orders);
+        console.log('✅ Customer orders loaded:', data.orders.length);
+      } else {
+        throw new Error(data.error || 'Errore nel caricamento ordini');
+      }
+    } catch (err: any) {
+      console.error('❌ Error loading customer orders:', err);
+      setError(err.message || 'Errore nel caricamento ordini');
+      setShowOrdersModal(false);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  // Handle order selection from modal
+  const handleSelectOrder = (orderId: number) => {
+    setShowOrdersModal(false);
+    router.push(`/catalogo-venditori/review-prices/${orderId}`);
+  };
+
   return (
     <div className="min-h-screen-dynamic bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header - Sticky on mobile */}
@@ -241,6 +282,22 @@ export default function CatalogoVenditoriPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 <span className="text-sm sm:text-base font-medium hidden sm:inline">Nuovo Ordine</span>
+              </button>
+
+              {/* Revisione Prezzi Button */}
+              <button
+                onClick={loadCustomerOrders}
+                disabled={!selectedCustomerId}
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg border transition-colors min-h-[48px] shrink-0 ${
+                  selectedCustomerId
+                    ? 'bg-blue-600/80 hover:bg-blue-600 text-white border-blue-500'
+                    : 'bg-slate-700/50 text-slate-500 border-slate-600 cursor-not-allowed'
+                }`}
+                aria-label="Revisione prezzi"
+                title={!selectedCustomerId ? 'Seleziona un cliente per vedere gli ordini' : 'Vedi ordini e preventivi del cliente'}
+              >
+                <FileText className="h-5 w-5 sm:h-5 sm:w-5" />
+                <span className="text-sm sm:text-base font-medium hidden lg:inline">Revisione Prezzi</span>
               </button>
 
               {/* Title */}
@@ -439,6 +496,140 @@ export default function CatalogoVenditoriPage() {
             <span>{cartProducts.length}</span>
             <span className="text-sm">Prodotti</span>
           </button>
+        </div>
+      )}
+
+      {/* Orders Modal */}
+      {showOrdersModal && (
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
+          <div className="bg-slate-800 rounded-xl max-w-4xl w-full max-h-[85vh] overflow-auto border border-slate-700 shadow-2xl">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-4 sm:p-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-1">
+                  Ordini e Preventivi
+                </h3>
+                <p className="text-sm text-slate-400">
+                  {selectedCustomerName}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowOrdersModal(false)}
+                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                aria-label="Chiudi"
+              >
+                <X className="h-6 w-6 text-slate-400" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 sm:p-6">
+              {/* Loading State */}
+              {loadingOrders && (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="h-12 w-12 text-blue-400 animate-spin mb-3" />
+                  <p className="text-slate-400">Caricamento ordini...</p>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!loadingOrders && customerOrders.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <FileText className="h-16 w-16 text-slate-600 mb-3" />
+                  <p className="text-slate-400 text-lg">Nessun ordine o preventivo trovato</p>
+                </div>
+              )}
+
+              {/* Orders List */}
+              {!loadingOrders && customerOrders.length > 0 && (
+                <div className="space-y-3">
+                  {/* Statistics */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
+                      <p className="text-xs text-slate-400 mb-1">Preventivi</p>
+                      <p className="text-2xl font-bold text-yellow-400">
+                        {customerOrders.filter(o => o.orderType === 'quotation').length}
+                      </p>
+                    </div>
+                    <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
+                      <p className="text-xs text-slate-400 mb-1">Ordini Confermati</p>
+                      <p className="text-2xl font-bold text-green-400">
+                        {customerOrders.filter(o => o.orderType === 'order').length}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Orders Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-700">
+                          <th className="text-left py-3 px-3 text-xs font-semibold text-slate-400">Numero</th>
+                          <th className="text-left py-3 px-3 text-xs font-semibold text-slate-400">Stato</th>
+                          <th className="text-left py-3 px-3 text-xs font-semibold text-slate-400 hidden sm:table-cell">Data</th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 hidden md:table-cell">Totale</th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400">Azione</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {customerOrders.map((order) => (
+                          <tr
+                            key={order.id}
+                            className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors"
+                          >
+                            {/* Order Number */}
+                            <td className="py-3 px-3">
+                              <div className="flex items-center gap-2">
+                                {order.orderType === 'quotation' ? (
+                                  <FileText className="h-4 w-4 text-yellow-400 shrink-0" />
+                                ) : (
+                                  <CheckCircle className="h-4 w-4 text-green-400 shrink-0" />
+                                )}
+                                <span className="font-semibold text-white">{order.name}</span>
+                              </div>
+                            </td>
+
+                            {/* State */}
+                            <td className="py-3 px-3">
+                              <span
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  order.orderType === 'quotation'
+                                    ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                                    : 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                }`}
+                              >
+                                {order.stateLabel}
+                              </span>
+                            </td>
+
+                            {/* Date */}
+                            <td className="py-3 px-3 text-slate-300 hidden sm:table-cell">
+                              {new Date(order.date).toLocaleDateString('it-IT')}
+                            </td>
+
+                            {/* Total Amount */}
+                            <td className="py-3 px-3 text-right font-semibold text-blue-400 hidden md:table-cell">
+                              {order.currency} {order.amountTotal.toFixed(2)}
+                            </td>
+
+                            {/* Action */}
+                            <td className="py-3 px-3 text-right">
+                              <button
+                                onClick={() => handleSelectOrder(order.id)}
+                                className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-medium rounded-lg transition-colors"
+                              >
+                                Revisiona
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

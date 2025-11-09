@@ -121,8 +121,27 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       const data = await response.json();
 
       if (data.success) {
-        setProductHistory(data.history);
-        console.log('✅ Product history loaded:', data.history);
+        // Map API response to ProductHistory type
+        const history: ProductHistory = {
+          productId: data.product.id,
+          productName: data.product.name,
+          avgPrice: data.statistics.avgPrice,
+          minPrice: data.statistics.minPrice,
+          maxPrice: data.statistics.maxPrice,
+          avgDiscount: data.statistics.avgDiscount,
+          recentOrders: data.recentSales.map((sale: any) => ({
+            orderId: sale.orderId,
+            orderName: sale.orderName,
+            customerAlias: sale.customerName,
+            date: sale.date,
+            priceUnit: sale.priceUnit,
+            discount: sale.discount,
+            quantity: sale.quantity
+          }))
+        };
+
+        setProductHistory(history);
+        console.log('✅ Product history loaded:', history);
       }
     } catch (err: any) {
       console.error('❌ Error loading product history:', err);
