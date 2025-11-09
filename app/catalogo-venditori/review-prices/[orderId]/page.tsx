@@ -14,6 +14,13 @@ interface CustomerStats {
   orderCount: number;
 }
 
+interface GlobalStats {
+  averageOrderValue: number;
+  totalRevenue: number;
+  customerCount: number;
+  orderCount: number;
+}
+
 interface ProductHistory {
   productId: number;
   productName: string;
@@ -54,6 +61,10 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   // Customer stats state
   const [customerStats, setCustomerStats] = useState<CustomerStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+
+  // Global stats state
+  const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
+  const [loadingGlobalStats, setLoadingGlobalStats] = useState(false);
 
   // Product history modal state
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -99,10 +110,11 @@ export default function ReviewPricesPage({ params }: RouteParams) {
         });
       }
 
-      // Load customer stats
+      // Load customer stats and global stats
       if (data.order.customerId) {
         loadCustomerStats(data.order.customerId);
       }
+      loadGlobalStats();
     } catch (err: any) {
       console.error('❌ Error loading order:', err);
       setError(err.message || 'Errore nel caricamento ordine');
@@ -126,6 +138,24 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       console.error('❌ Error loading customer stats:', err);
     } finally {
       setLoadingStats(false);
+    }
+  };
+
+  // Load global stats
+  const loadGlobalStats = async () => {
+    try {
+      setLoadingGlobalStats(true);
+      const response = await fetch('/api/catalogo-venditori/global-stats');
+      const data = await response.json();
+
+      if (data.success) {
+        setGlobalStats(data.stats);
+        console.log('✅ Global stats loaded:', data.stats);
+      }
+    } catch (err: any) {
+      console.error('❌ Error loading global stats:', err);
+    } finally {
+      setLoadingGlobalStats(false);
     }
   };
 
@@ -287,37 +317,45 @@ export default function ReviewPricesPage({ params }: RouteParams) {
     if (!orderData) return;
 
     try {
-      // Create a new temporary line with the product
-      const newLine: OrderLine = {
-        id: Date.now(), // Temporary ID
+      setLoading(true);
+      setError('');
+
+      console.log('➕ Adding product to order in Odoo:', {
+        orderId: orderData.id,
         productId: product.id,
         productName: product.name,
-        productCode: product.default_code || '',
-        quantity: quantity,
-        uom: 'Unit',
-        currentPriceUnit: product.list_price || 0,
-        currentDiscount: 0,
-        currentSubtotal: (product.list_price || 0) * quantity,
-        currentTotal: (product.list_price || 0) * quantity,
-        standardPrice: product.list_price || 0,
-        costPrice: 0,
-        avgSellingPrice: 0,
-        imageUrl: product.image_128 ? `data:image/png;base64,${product.image_128}` : null,
-        qtyAvailable: 0,
-        isLocked: false,
-        taxIds: []
-      };
-
-      // Add the new line to order data
-      setOrderData({
-        ...orderData,
-        lines: [...orderData.lines, newLine]
+        quantity
       });
 
-      console.log('✅ Product added to order:', product.name);
+      // Call API to add product line to Odoo order
+      const response = await fetch(`/api/catalogo-venditori/order-prices/${orderData.id}/add-line`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productId: product.id,
+          quantity: quantity
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Errore nell\'aggiunta del prodotto');
+      }
+
+      console.log('✅ Product added to Odoo order successfully:', data.lineId);
+
+      // Reload order data to get updated prices, costs, and all product details
+      await loadOrderData();
+
+      console.log('✅ Order data reloaded with new product');
     } catch (error) {
       console.error('❌ Error adding product:', error);
-      setError('Errore nell\'aggiunta del prodotto');
+      setError(error instanceof Error ? error.message : 'Errore nell\'aggiunta del prodotto');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -412,48 +450,86 @@ export default function ReviewPricesPage({ params }: RouteParams) {
     return { subtotal, tax, total };
   };
 
-  // Save price changes
+  // Save all changes (quantities and prices)
   const handleSavePrices = async () => {
-    if (editedLines.size === 0) {
+    if (editedLines.size === 0 && quantityValues.size === 0) {
       setError('Nessuna modifica da salvare');
       return;
     }
 
     try {
       setError(null);
+      setLoading(true);
 
-      const updates: PriceUpdate[] = Array.from(editedLines.entries()).map(([lineId, values]) => ({
-        lineId,
-        priceUnit: values.priceUnit,
-        discount: values.discount
-      }));
+      // 1. Save quantity changes first
+      if (quantityValues.size > 0) {
+        console.log('💾 Saving quantity changes...');
 
-      const response = await fetch('/api/catalogo-venditori/update-prices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId,
-          updates
-        })
-      });
+        const quantityUpdates = Array.from(quantityValues.entries()).map(([lineId, quantity]) => ({
+          lineId,
+          quantity
+        }));
 
-      const data = await response.json();
+        const quantityResponse = await fetch('/api/catalogo-venditori/update-quantities', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId,
+            updates: quantityUpdates
+          })
+        });
 
-      if (!data.success) {
-        throw new Error(data.error || 'Errore nel salvataggio prezzi');
+        const quantityData = await quantityResponse.json();
+
+        if (!quantityData.success) {
+          throw new Error(quantityData.error || 'Errore nel salvataggio quantità');
+        }
+
+        console.log('✅ Quantities updated:', quantityData);
       }
 
-      console.log('✅ Prices updated:', data);
+      // 2. Save price/discount changes
+      if (editedLines.size > 0) {
+        console.log('💾 Saving price changes...');
 
-      // Reload order data
+        const priceUpdates: PriceUpdate[] = Array.from(editedLines.entries()).map(([lineId, values]) => ({
+          lineId,
+          priceUnit: values.priceUnit,
+          discount: values.discount
+        }));
+
+        const priceResponse = await fetch('/api/catalogo-venditori/update-prices', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId,
+            updates: priceUpdates
+          })
+        });
+
+        const priceData = await priceResponse.json();
+
+        if (!priceData.success) {
+          throw new Error(priceData.error || 'Errore nel salvataggio prezzi');
+        }
+
+        console.log('✅ Prices updated:', priceData);
+      }
+
+      // 3. Reload order data to get fresh data from Odoo
       await loadOrderData();
 
-      // Clear edits
+      // 4. Clear all edits
       setEditedLines(new Map());
+      setQuantityValues(new Map());
+
+      console.log('✅ All changes saved successfully');
 
     } catch (err: any) {
-      console.error('❌ Error saving prices:', err);
-      setError(err.message || 'Errore nel salvataggio prezzi');
+      console.error('❌ Error saving changes:', err);
+      setError(err.message || 'Errore nel salvataggio modifiche');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -497,7 +573,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   };
 
   const totals = calculateTotals();
-  const hasChanges = editedLines.size > 0;
+  const hasChanges = editedLines.size > 0 || quantityValues.size > 0;
 
   // Helper functions for customer stats
   const getTierColor = (tier: CustomerStats['tier']) => {
@@ -525,6 +601,58 @@ export default function ReviewPricesPage({ params }: RouteParams) {
     if (discount >= 10) return 'bg-orange-500/20 text-orange-400 border-orange-500';
     if (discount >= 5) return 'bg-yellow-500/20 text-yellow-400 border-yellow-500';
     return 'bg-green-500/20 text-green-400 border-green-500';
+  };
+
+  // Calculate customer position relative to global average
+  const getCustomerPosition = () => {
+    if (!customerStats || !globalStats || globalStats.averageOrderValue === 0) {
+      return null;
+    }
+
+    const ratio = customerStats.averageOrderValue / globalStats.averageOrderValue;
+
+    // Calculate percentage (0-100) for position on bar
+    // Map ratio to 0-100 scale:
+    // ratio < 0.5 (molto sotto) -> 0-20%
+    // ratio 0.5-0.9 (sotto) -> 20-45%
+    // ratio 0.9-1.1 (media) -> 45-55%
+    // ratio 1.1-1.5 (sopra) -> 55-80%
+    // ratio > 1.5 (molto sopra) -> 80-100%
+
+    let position;
+    let label;
+    let color;
+
+    if (ratio < 0.5) {
+      position = ratio * 40; // 0-20%
+      label = 'Molto Sotto Media';
+      color = 'rgb(239, 68, 68)'; // red
+    } else if (ratio < 0.9) {
+      position = 20 + ((ratio - 0.5) / 0.4) * 25; // 20-45%
+      label = 'Sotto Media';
+      color = 'rgb(251, 191, 36)'; // yellow
+    } else if (ratio < 1.1) {
+      position = 45 + ((ratio - 0.9) / 0.2) * 10; // 45-55%
+      label = 'Media';
+      color = 'rgb(59, 130, 246)'; // blue
+    } else if (ratio < 1.5) {
+      position = 55 + ((ratio - 1.1) / 0.4) * 25; // 55-80%
+      label = 'Sopra Media';
+      color = 'rgb(34, 197, 94)'; // green
+    } else {
+      position = 80 + Math.min((ratio - 1.5) / 1.5 * 20, 20); // 80-100%
+      label = 'Molto Sopra Media';
+      color = 'rgb(168, 85, 247)'; // purple
+    }
+
+    return {
+      position: Math.min(Math.max(position, 0), 100),
+      label,
+      color,
+      ratio,
+      customerAvg: customerStats.averageOrderValue,
+      globalAvg: globalStats.averageOrderValue
+    };
   };
 
   if (loading) {
@@ -684,6 +812,51 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                 <p className="text-xs sm:text-base font-semibold text-blue-400 truncate">{orderData.pricelist.name}</p>
               </div>
             )}
+
+            {/* Customer Position Bar */}
+            {(() => {
+              const position = getCustomerPosition();
+              if (!position) return null;
+
+              return (
+                <div className="col-span-2 mt-2 sm:mt-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] sm:text-xs text-slate-400">Posizione Cliente vs Media</p>
+                    <p className="text-[9px] sm:text-xs text-slate-400">
+                      CHF {position.customerAvg.toFixed(0)} vs {position.globalAvg.toFixed(0)}
+                    </p>
+                  </div>
+
+                  {/* Position Bar */}
+                  <div className="relative h-3 sm:h-4 bg-slate-700/50 rounded-full overflow-hidden border border-slate-600">
+                    {/* Gradient background */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-yellow-500 via-blue-500 via-green-500 to-purple-500 opacity-40"></div>
+
+                    {/* Customer position marker */}
+                    <div
+                      className="absolute top-0 bottom-0 w-1 sm:w-1.5 -ml-0.5 sm:-ml-0.75 transition-all duration-300"
+                      style={{
+                        left: `${position.position}%`,
+                        backgroundColor: position.color,
+                        boxShadow: `0 0 8px ${position.color}`
+                      }}
+                    />
+                  </div>
+
+                  {/* Label */}
+                  <div className="flex items-center justify-between mt-0.5">
+                    <p className="text-[9px] sm:text-xs text-slate-500">Molto Sotto</p>
+                    <p
+                      className="text-[9px] sm:text-xs font-bold"
+                      style={{ color: position.color }}
+                    >
+                      {position.label}
+                    </p>
+                    <p className="text-[9px] sm:text-xs text-slate-500">Molto Sopra</p>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -1029,14 +1202,14 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700 shadow-2xl z-50">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-3">
           <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
-            {/* Save Prices Button */}
+            {/* Save Changes Button */}
             {hasChanges && (
               <button
                 onClick={handleSavePrices}
                 className="flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2.5 sm:py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors min-h-[44px] text-xs sm:text-base"
               >
                 <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
-                Salva Prezzi
+                Salva Modifiche
               </button>
             )}
 
