@@ -7,7 +7,7 @@ export const maxDuration = 120;
 /**
  * POST /api/catalogo-venditori/order-prices/[orderId]/create-task
  *
- * Creates a task in Odoo requesting price lock approval from Laura
+ * Creates an activity on the order in Odoo requesting price lock approval from Laura
  *
  * Body:
  * - lineId: number
@@ -16,9 +16,9 @@ export const maxDuration = 120;
  * - avgSellingPrice: number
  * - proposedPrice: number
  * - discount: number
- * - note: string (optional)
+ * - note: string (required)
  *
- * Returns task creation confirmation
+ * Returns activity creation confirmation
  */
 
 interface RouteContext {
@@ -151,41 +151,46 @@ export async function POST(
 
     taskDescription += `⚠️ Si prega di verificare e approvare il blocco di questo prezzo nel listino del cliente.`;
 
-    // Create task in Odoo assigned to Laura (user ID: 8)
-    console.log('📋 [CREATE-TASK-API] Creating task in Odoo...');
+    // Create activity on the order assigned to Laura (user ID: 8)
+    console.log('📋 [CREATE-TASK-API] Creating activity on order in Odoo...');
 
-    const taskData = {
-      name: `Blocco Prezzo: ${productName.substring(0, 50)} - ${order.name}`,
-      description: taskDescription,
-      user_ids: [[6, 0, [8]]], // Assign to Laura Teodorescu
-      partner_id: order.partner_id[0], // Link to customer
-      company_id: 1, // LAPA company
-      priority: '1', // High priority
-      // If you have a specific project for these tasks, add project_id here
-      // project_id: PROJECT_ID
+    // Calculate due date (2 days from now)
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 2);
+    const dueDateStr = dueDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+    // Create mail.activity record
+    const activityData = {
+      res_model: 'sale.order',
+      res_id: orderId,
+      activity_type_id: 4, // TODO activity type (standard in Odoo)
+      summary: `Blocco Prezzo: ${productName.substring(0, 50)}`,
+      note: taskDescription,
+      user_id: 8, // Assign to Laura Teodorescu
+      date_deadline: dueDateStr,
     };
 
-    const taskId = await callOdoo(
+    const activityId = await callOdoo(
       cookies,
-      'project.task',
+      'mail.activity',
       'create',
-      [taskData]
+      [activityData]
     );
 
-    if (!taskId) {
-      console.error('❌ [CREATE-TASK-API] Failed to create task');
+    if (!activityId) {
+      console.error('❌ [CREATE-TASK-API] Failed to create activity');
       return NextResponse.json(
-        { success: false, error: 'Failed to create task in Odoo' },
+        { success: false, error: 'Failed to create activity in Odoo' },
         { status: 500 }
       );
     }
 
-    console.log(`✅ [CREATE-TASK-API] Task created successfully with ID: ${taskId}`);
+    console.log(`✅ [CREATE-TASK-API] Activity created successfully with ID: ${activityId}`);
 
     return NextResponse.json({
       success: true,
-      taskId,
-      message: `Richiesta inviata a Laura per il prodotto ${productName}`
+      activityId,
+      message: `Attività creata per Laura sul preventivo ${order.name}`
     });
 
   } catch (error: any) {
