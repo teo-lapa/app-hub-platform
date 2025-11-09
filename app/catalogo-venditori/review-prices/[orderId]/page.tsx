@@ -261,7 +261,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   // Get reference markers positions for price slider
   const getPriceMarkers = (line: OrderLine): { label: string; position: number; color: string }[] => {
     const costPrice = line.costPrice || 0;
-    const standardPrice = line.standardPrice || 0;
+    const avgSellingPrice = line.avgSellingPrice || 0;
     const range = getSliderRange(line, 'price');
 
     const markers = [];
@@ -277,9 +277,9 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       });
     }
 
-    // Marker for standard/average price
-    if (standardPrice > 0 && standardPrice >= range.min && standardPrice <= range.max) {
-      const position = ((standardPrice - range.min) / (range.max - range.min)) * 100;
+    // Marker for 3-month average selling price
+    if (avgSellingPrice > 0 && avgSellingPrice >= range.min && avgSellingPrice <= range.max) {
+      const position = ((avgSellingPrice - range.min) / (range.max - range.min)) * 100;
       markers.push({
         label: 'Medio',
         position,

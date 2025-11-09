@@ -15,6 +15,7 @@ export interface OrderLine {
   // Standard prices (for comparison)
   standardPrice: number;
   costPrice: number;
+  avgSellingPrice: number; // 3-month average selling price from actual sales
 
   // Product info
   imageUrl: string | null;

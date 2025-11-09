@@ -158,6 +158,48 @@ export async function GET(
     // Create product lookup map
     const productMap = new Map(products.map((p: any) => [p.id, p]));
 
+    // Fetch 3-month average selling prices for all products
+    console.log('🔍 [ORDER-PRICES-API] Fetching 3-month average prices...');
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const dateFromStr = threeMonthsAgo.toISOString().split('T')[0];
+
+    const historicalLines = await callOdoo(
+      cookies,
+      'sale.order.line',
+      'search_read',
+      [],
+      {
+        domain: [
+          ['product_id', 'in', productIds],
+          ['state', 'in', ['sale', 'done']],
+          ['create_date', '>=', dateFromStr]
+        ],
+        fields: ['product_id', 'price_unit']
+      }
+    );
+
+    // Calculate average selling price per product
+    const avgPriceMap = new Map<number, number>();
+    const pricesByProduct = new Map<number, number[]>();
+
+    historicalLines.forEach((line: any) => {
+      const productId = line.product_id[0];
+      const price = line.price_unit;
+
+      if (!pricesByProduct.has(productId)) {
+        pricesByProduct.set(productId, []);
+      }
+      pricesByProduct.get(productId)!.push(price);
+    });
+
+    pricesByProduct.forEach((prices, productId) => {
+      const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
+      avgPriceMap.set(productId, avgPrice);
+    });
+
+    console.log(`✅ [ORDER-PRICES-API] Calculated average prices for ${avgPriceMap.size} products from ${historicalLines.length} historical sales`);
+
     // Get pricelist details if exists
     let pricelistInfo = null;
     if (order.pricelist_id && order.pricelist_id[0]) {
@@ -206,6 +248,7 @@ export async function GET(
         // Standard prices (for comparison)
         standardPrice: product?.list_price || 0,
         costPrice: product?.standard_price || 0,
+        avgSellingPrice: avgPriceMap.get(line.product_id[0]) || product?.list_price || 0,
 
         // Product info
         imageUrl: product?.image_128 ? `data:image/png;base64,${product.image_128}` : null,
