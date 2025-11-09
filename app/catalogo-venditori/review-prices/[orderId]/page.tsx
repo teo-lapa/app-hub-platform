@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Home, CheckCircle, AlertCircle, Loader2, DollarSign, TrendingDown, Lock, Unlock, TrendingUp, Award, Info, BarChart, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, Home, CheckCircle, AlertCircle, Loader2, DollarSign, TrendingDown, Lock, Unlock, TrendingUp, Award, Info, BarChart, X, Trash2, ClipboardCheck } from 'lucide-react';
 import type { OrderData, OrderLine, PriceUpdate } from '../types';
 import ManualProductSearch from '../../components/ManualProductSearch';
 
@@ -81,6 +81,12 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   // Quantity editing state
   const [editingQuantity, setEditingQuantity] = useState<number | null>(null);
   const [quantityValues, setQuantityValues] = useState<Map<number, number>>(new Map());
+
+  // Task creation modal state
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskRequestLine, setTaskRequestLine] = useState<OrderLine | null>(null);
+  const [taskNote, setTaskNote] = useState('');
+  const [creatingTask, setCreatingTask] = useState(false);
 
   // Load order data
   useEffect(() => {
@@ -386,6 +392,65 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       setError(error instanceof Error ? error.message : 'Errore nell\'aggiunta del prodotto');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle task creation request
+  const handleRequestPriceLock = async () => {
+    if (!taskRequestLine || !orderData) return;
+
+    try {
+      setCreatingTask(true);
+      setError('');
+
+      const edited = editedLines.get(taskRequestLine.id);
+      const proposedPrice = edited?.priceUnit ?? taskRequestLine.currentPriceUnit;
+      const discount = edited?.discount ?? taskRequestLine.currentDiscount;
+
+      console.log('📋 Creating task for price lock approval:', {
+        lineId: taskRequestLine.id,
+        productName: taskRequestLine.productName,
+        proposedPrice
+      });
+
+      const response = await fetch(`/api/catalogo-venditori/order-prices/${orderData.id}/create-task`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lineId: taskRequestLine.id,
+          productName: taskRequestLine.productName,
+          productCode: taskRequestLine.productCode,
+          costPrice: taskRequestLine.costPrice,
+          avgSellingPrice: taskRequestLine.avgSellingPrice,
+          proposedPrice,
+          discount,
+          note: taskNote
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Errore nella creazione del task');
+      }
+
+      console.log('✅ Task created successfully:', data.taskId);
+
+      // Close modal and reset state
+      setShowTaskModal(false);
+      setTaskRequestLine(null);
+      setTaskNote('');
+
+      // Show success message
+      alert(`✅ Richiesta inviata a Laura per il prodotto: ${taskRequestLine.productName.split(' - ')[0]}`);
+
+    } catch (error) {
+      console.error('❌ Error creating task:', error);
+      setError(error instanceof Error ? error.message : 'Errore nella creazione del task');
+    } finally {
+      setCreatingTask(false);
     }
   };
 
@@ -999,6 +1064,22 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                         >
                           <BarChart className="h-3 w-3 sm:h-4 sm:w-4" />
                         </button>
+                        {/* Task Request Button - only enabled when price is edited */}
+                        <button
+                          onClick={() => {
+                            setTaskRequestLine(line);
+                            setShowTaskModal(true);
+                          }}
+                          disabled={!isEdited}
+                          className={`p-1 sm:p-1.5 rounded border transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center ${
+                            isEdited
+                              ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border-purple-500/30 cursor-pointer'
+                              : 'bg-slate-700/50 text-slate-500 border-slate-600 cursor-not-allowed opacity-50'
+                          }`}
+                          title={isEdited ? "Richiedi blocco prezzo" : "Modifica prima il prezzo"}
+                        >
+                          <ClipboardCheck className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </button>
                         {/* Delete Button */}
                         <button
                           onClick={() => handleRemoveLine(line.id)}
@@ -1273,6 +1354,140 @@ export default function ReviewPricesPage({ params }: RouteParams) {
           </div>
         </div>
       </div>
+
+      {/* Task Creation Modal */}
+      {showTaskModal && taskRequestLine && (
+        <div
+          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-2 sm:p-4"
+          onClick={() => {
+            setShowTaskModal(false);
+            setTaskRequestLine(null);
+            setTaskNote('');
+          }}
+        >
+          <div
+            className="bg-slate-800 rounded-lg p-3 sm:p-6 max-w-xl w-full border border-purple-500/30 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between mb-3 sm:mb-4">
+              <div className="flex items-start gap-1.5 sm:gap-3">
+                <div className="bg-purple-500/20 p-1.5 sm:p-2.5 rounded-lg border border-purple-500/30">
+                  <ClipboardCheck className="h-4 w-4 sm:h-6 sm:w-6 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-xl font-bold text-white">
+                    Richiedi Blocco Prezzo
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-300 line-clamp-2 mt-1">
+                    {taskRequestLine.productName.split(' - ')[0]}
+                  </p>
+                  {taskRequestLine.productCode && (
+                    <p className="text-[10px] sm:text-xs text-slate-400">
+                      Cod: {taskRequestLine.productCode}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowTaskModal(false);
+                  setTaskRequestLine(null);
+                  setTaskNote('');
+                }}
+                className="p-1.5 sm:p-2 bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-white rounded-lg transition-colors shrink-0"
+                title="Chiudi"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Task Details Preview */}
+            <div className="bg-slate-900/50 rounded-lg p-3 sm:p-4 mb-4 border border-slate-700">
+              <h4 className="text-xs sm:text-sm font-bold text-white mb-2">Dettagli Richiesta:</h4>
+              <div className="space-y-1 text-xs sm:text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Prezzo di Costo:</span>
+                  <span className="text-white font-semibold">CHF {taskRequestLine.costPrice.toFixed(2)}</span>
+                </div>
+                {taskRequestLine.avgSellingPrice > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Prezzo Medio (3 mesi):</span>
+                    <span className="text-blue-400 font-semibold">CHF {taskRequestLine.avgSellingPrice.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Prezzo Proposto:</span>
+                  <span className="text-purple-400 font-bold">
+                    CHF {(editedLines.get(taskRequestLine.id)?.priceUnit ?? taskRequestLine.currentPriceUnit).toFixed(2)}
+                  </span>
+                </div>
+                {(() => {
+                  const proposedPrice = editedLines.get(taskRequestLine.id)?.priceUnit ?? taskRequestLine.currentPriceUnit;
+                  const margin = taskRequestLine.costPrice > 0
+                    ? (((proposedPrice - taskRequestLine.costPrice) / taskRequestLine.costPrice) * 100).toFixed(2)
+                    : 'N/A';
+                  return (
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Margine di Profitto:</span>
+                      <span className="text-emerald-400 font-bold">{margin}%</span>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Note Input */}
+            <div className="mb-4">
+              <label className="block text-xs sm:text-sm text-slate-300 font-medium mb-2">
+                Note per Laura (opzionale):
+              </label>
+              <textarea
+                value={taskNote}
+                onChange={(e) => setTaskNote(e.target.value)}
+                placeholder="Aggiungi una nota per spiegare la richiesta..."
+                className="w-full min-h-[100px] px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all resize-none text-sm"
+                style={{
+                  fontSize: '14px',
+                  lineHeight: '1.5',
+                }}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 sm:gap-3">
+              <button
+                onClick={() => {
+                  setShowTaskModal(false);
+                  setTaskRequestLine(null);
+                  setTaskNote('');
+                }}
+                className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors"
+                disabled={creatingTask}
+              >
+                Annulla
+              </button>
+              <button
+                onClick={handleRequestPriceLock}
+                disabled={creatingTask}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 text-white rounded-lg font-semibold transition-colors"
+              >
+                {creatingTask ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Invio...
+                  </>
+                ) : (
+                  <>
+                    <ClipboardCheck className="h-4 w-4" />
+                    Invia Richiesta
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Product History Modal */}
       {showHistoryModal && selectedProduct && (
