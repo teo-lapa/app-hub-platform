@@ -250,11 +250,11 @@ export default function ReviewPricesPage({ params }: RouteParams) {
     if (type === 'discount') {
       return { min: 0, max: 100 };
     }
-    // Price slider: from costPrice + 6% margin to costPrice + 400%
+    // Price slider: from costPrice + 6% margin to 250% of cost price
     const costPrice = line.costPrice || 0;
     return {
       min: costPrice * 1.06, // +6% margin for coverage
-      max: costPrice * 5 // costPrice + 400% = costPrice * 5
+      max: costPrice * 2.5 // 250% of cost price
     };
   };
 
