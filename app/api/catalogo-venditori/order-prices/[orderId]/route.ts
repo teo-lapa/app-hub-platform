@@ -236,7 +236,9 @@ export async function GET(
     // Check for locked prices in pricelist
     const lockedPricesMap = new Map<number, boolean>();
     if (order.pricelist_id && order.pricelist_id[0]) {
-      console.log('🔍 [ORDER-PRICES-API] Checking for locked prices in pricelist...');
+      console.log('🔍 [ORDER-PRICES-API] Checking for locked prices in pricelist:', order.pricelist_id[0]);
+      console.log('🔍 [ORDER-PRICES-API] Product IDs:', productIds);
+
       const pricelistItems = await callOdoo(
         cookies,
         'product.pricelist.item',
@@ -245,21 +247,27 @@ export async function GET(
         {
           domain: [
             ['pricelist_id', '=', order.pricelist_id[0]],
-            ['product_id', 'in', productIds],
-            ['applied_on', '=', '0_product_variant']
+            ['product_id', 'in', productIds]
+            // Removed applied_on filter to catch all rules
           ],
-          fields: ['id', 'product_id', 'compute_price', 'fixed_price']
+          fields: ['id', 'product_id', 'compute_price', 'fixed_price', 'applied_on']
         }
       );
 
+      console.log(`🔍 [ORDER-PRICES-API] Found ${pricelistItems.length} pricelist items:`,
+        JSON.stringify(pricelistItems, null, 2));
+
       pricelistItems.forEach((item: any) => {
-        const productId = item.product_id[0];
+        const productId = item.product_id ? item.product_id[0] : null;
+        if (!productId) return;
+
         // Price is locked if it has a fixed_price (compute_price = 'fixed')
-        const isLocked = item.compute_price === 'fixed' && item.fixed_price > 0;
+        const isLocked = item.compute_price === 'fixed';
+        console.log(`  Product ${productId}: compute_price=${item.compute_price}, fixed_price=${item.fixed_price}, isLocked=${isLocked}`);
         lockedPricesMap.set(productId, isLocked);
       });
 
-      console.log(`✅ [ORDER-PRICES-API] Found ${lockedPricesMap.size} pricelist items`);
+      console.log(`✅ [ORDER-PRICES-API] Locked prices map:`, Array.from(lockedPricesMap.entries()));
     }
 
     // Enrich order lines with product data and price comparison
