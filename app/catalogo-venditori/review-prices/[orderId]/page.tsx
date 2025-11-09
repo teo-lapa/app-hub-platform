@@ -601,29 +601,29 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       <div className="min-h-screen-dynamic bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         {/* Header */}
       <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700 shadow-lg">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-          <div className="py-3 sm:py-4">
-            <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+          <div className="py-2 sm:py-3">
+            <div className="flex items-center justify-between gap-1.5 sm:gap-3">
               {/* Back Button */}
               <button
                 onClick={() => router.push('/catalogo-venditori')}
-                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-800/70 hover:bg-slate-700 text-white rounded-lg border border-slate-600 transition-colors min-h-[48px] shrink-0"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-slate-800/70 hover:bg-slate-700 text-white rounded-lg border border-slate-600 transition-colors min-h-[44px] shrink-0"
                 aria-label="Indietro"
               >
-                <ArrowLeft className="h-5 w-5" />
-                <span className="text-sm sm:text-base font-medium hidden xs:inline">Indietro</span>
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-base font-medium hidden sm:inline">Indietro</span>
               </button>
 
               {/* Title */}
-              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                <div className="bg-gradient-to-r from-green-500 to-blue-500 p-2 sm:p-2.5 rounded-xl shrink-0">
-                  <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              <div className="flex items-center gap-1.5 sm:gap-3 flex-1 min-w-0">
+                <div className="bg-gradient-to-r from-green-500 to-blue-500 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl shrink-0">
+                  <DollarSign className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate">
+                  <h1 className="text-sm sm:text-xl lg:text-2xl font-bold text-white truncate">
                     Revisione Prezzi
                   </h1>
-                  <p className="text-xs sm:text-sm text-slate-300">
+                  <p className="text-[10px] sm:text-sm text-slate-300 truncate">
                     Ordine {orderData.name}
                   </p>
                 </div>
@@ -634,18 +634,18 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 pb-32">
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-6 pb-24 sm:pb-32">
         {/* Success Message */}
         {confirmSuccess && (
-          <div className="mb-4 sm:mb-6 bg-green-500/20 border-2 border-green-500 rounded-xl p-4 sm:p-5 animate-pulse">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="h-8 w-8 text-green-400 shrink-0" />
+          <div className="mb-2 sm:mb-4 bg-green-500/20 border border-green-500 rounded-lg p-2 sm:p-4 animate-pulse">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 sm:h-8 sm:w-8 text-green-400 shrink-0" />
               <div>
-                <h3 className="text-lg sm:text-xl font-bold text-green-400 mb-1">
+                <h3 className="text-sm sm:text-xl font-bold text-green-400">
                   Ordine Confermato! 🎉
                 </h3>
-                <p className="text-sm sm:text-base text-green-300">
-                  Ordine {orderData.name} confermato con successo
+                <p className="text-xs sm:text-base text-green-300">
+                  Ordine {orderData.name} confermato
                 </p>
               </div>
             </div>
@@ -654,34 +654,34 @@ export default function ReviewPricesPage({ params }: RouteParams) {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 sm:mb-6 bg-red-500/20 border-2 border-red-500 rounded-xl p-4 sm:p-5">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-6 w-6 text-red-400 shrink-0 mt-0.5" />
+          <div className="mb-2 sm:mb-4 bg-red-500/20 border border-red-500 rounded-lg p-2 sm:p-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 sm:h-6 sm:w-6 text-red-400 shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-base sm:text-lg font-bold text-red-400 mb-1">Errore</h3>
-                <p className="text-sm sm:text-base text-red-300">{error}</p>
+                <h3 className="text-sm sm:text-lg font-bold text-red-400">Errore</h3>
+                <p className="text-xs sm:text-base text-red-300">{error}</p>
               </div>
             </div>
           </div>
         )}
 
         {/* Order Info Card */}
-        <div className="mb-4 sm:mb-6 bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 shadow-lg">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="mb-2 sm:mb-4 bg-slate-800 rounded-lg p-2 sm:p-4 border border-slate-700 shadow-lg">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div>
-              <p className="text-sm text-slate-400 mb-1">Cliente</p>
-              <p className="text-base sm:text-lg font-semibold text-white">{orderData.customerName}</p>
+              <p className="text-[10px] sm:text-sm text-slate-400 mb-0.5">Cliente</p>
+              <p className="text-xs sm:text-lg font-semibold text-white truncate">{orderData.customerName}</p>
             </div>
             <div>
-              <p className="text-sm text-slate-400 mb-1">Data Consegna</p>
-              <p className="text-base sm:text-lg font-semibold text-white">
-                {orderData.deliveryDate ? new Date(orderData.deliveryDate).toLocaleDateString('it-IT') : 'Non specificata'}
+              <p className="text-[10px] sm:text-sm text-slate-400 mb-0.5">Consegna</p>
+              <p className="text-xs sm:text-lg font-semibold text-white truncate">
+                {orderData.deliveryDate ? new Date(orderData.deliveryDate).toLocaleDateString('it-IT') : 'N/D'}
               </p>
             </div>
             {orderData.pricelist && (
-              <div className="sm:col-span-2">
-                <p className="text-sm text-slate-400 mb-1">Listino Prezzi</p>
-                <p className="text-base sm:text-lg font-semibold text-blue-400">{orderData.pricelist.name}</p>
+              <div className="col-span-2">
+                <p className="text-[10px] sm:text-sm text-slate-400 mb-0.5">Listino</p>
+                <p className="text-xs sm:text-base font-semibold text-blue-400 truncate">{orderData.pricelist.name}</p>
               </div>
             )}
           </div>
@@ -689,64 +689,64 @@ export default function ReviewPricesPage({ params }: RouteParams) {
 
         {/* Customer Stats Card */}
         {loadingStats && (
-          <div className="mb-4 sm:mb-6 bg-gradient-to-r from-green-500/10 to-blue-500/10 rounded-xl p-4 sm:p-6 border border-green-500/30 shadow-lg">
-            <div className="flex items-center justify-center gap-3">
-              <Loader2 className="h-5 w-5 text-green-400 animate-spin" />
-              <p className="text-sm text-slate-300">Caricamento statistiche cliente...</p>
+          <div className="mb-2 sm:mb-4 bg-gradient-to-r from-green-500/10 to-blue-500/10 rounded-lg p-2 sm:p-4 border border-green-500/30">
+            <div className="flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 animate-spin" />
+              <p className="text-xs sm:text-sm text-slate-300">Caricamento stats...</p>
             </div>
           </div>
         )}
 
         {customerStats && (
-          <div className="mb-4 sm:mb-6 bg-gradient-to-r from-green-500/10 to-blue-500/10 rounded-xl p-4 sm:p-6 border border-green-500/30 shadow-lg">
-            <div className="flex items-center gap-3 mb-4">
-              <div className={`bg-gradient-to-r ${getTierColor(customerStats.tier)} p-2.5 rounded-xl`}>
-                <Award className="h-6 w-6 text-white" />
+          <div className="mb-2 sm:mb-4 bg-gradient-to-r from-green-500/10 to-blue-500/10 rounded-lg p-2 sm:p-4 border border-green-500/30">
+            <div className="flex items-center gap-1.5 sm:gap-3 mb-2">
+              <div className={`bg-gradient-to-r ${getTierColor(customerStats.tier)} p-1.5 sm:p-2.5 rounded-lg`}>
+                <Award className="h-3 w-3 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">Statistiche Cliente</h3>
-                <p className="text-sm text-slate-300">Profilo vendita e sconti suggeriti</p>
+                <h3 className="text-xs sm:text-lg font-bold text-white">Statistiche Cliente</h3>
+                <p className="text-[10px] sm:text-sm text-slate-300 hidden sm:block">Profilo e sconti suggeriti</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-3">
               {/* Fatturato Totale */}
-              <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp className="h-4 w-4 text-green-400" />
-                  <p className="text-xs text-slate-400">Fatturato</p>
+              <div className="bg-slate-800/50 rounded-lg p-1.5 sm:p-3 border border-slate-700">
+                <div className="flex items-center gap-1 mb-0.5">
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-400" />
+                  <p className="text-[9px] sm:text-xs text-slate-400">Fatturato</p>
                 </div>
-                <p className="text-lg font-bold text-green-400">
-                  CHF {customerStats.totalRevenue.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <p className="text-[10px] sm:text-base font-bold text-green-400 truncate">
+                  {customerStats.totalRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </p>
               </div>
 
               {/* Tier Cliente */}
-              <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
-                <p className="text-xs text-slate-400 mb-1">Tier</p>
-                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${getTierBadgeColor(customerStats.tier)}`}>
-                  <Award className="h-4 w-4" />
-                  <span className="text-sm font-bold">{customerStats.tier}</span>
+              <div className="bg-slate-800/50 rounded-lg p-1.5 sm:p-3 border border-slate-700">
+                <p className="text-[9px] sm:text-xs text-slate-400 mb-0.5">Tier</p>
+                <div className={`inline-flex items-center gap-0.5 sm:gap-1.5 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded border ${getTierBadgeColor(customerStats.tier)}`}>
+                  <Award className="h-2.5 w-2.5 sm:h-4 sm:w-4" />
+                  <span className="text-[9px] sm:text-sm font-bold">{customerStats.tier}</span>
                 </div>
               </div>
 
               {/* Sconto Suggerito */}
-              <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
-                <p className="text-xs text-slate-400 mb-1">Sconto Suggerito</p>
-                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${getDiscountBadgeColor(customerStats.suggestedDiscount)}`}>
-                  <TrendingDown className="h-4 w-4" />
-                  <span className="text-lg font-bold">{customerStats.suggestedDiscount.toFixed(1)}%</span>
+              <div className="bg-slate-800/50 rounded-lg p-1.5 sm:p-3 border border-slate-700">
+                <p className="text-[9px] sm:text-xs text-slate-400 mb-0.5">Sconto</p>
+                <div className={`inline-flex items-center gap-0.5 sm:gap-1.5 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded border ${getDiscountBadgeColor(customerStats.suggestedDiscount)}`}>
+                  <TrendingDown className="h-2.5 w-2.5 sm:h-4 sm:w-4" />
+                  <span className="text-xs sm:text-base font-bold">{customerStats.suggestedDiscount.toFixed(1)}%</span>
                 </div>
               </div>
 
               {/* Media Ordini */}
-              <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
-                <p className="text-xs text-slate-400 mb-1">Media Ordini</p>
-                <p className="text-lg font-bold text-blue-400">
-                  CHF {customerStats.averageOrderValue.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <div className="bg-slate-800/50 rounded-lg p-1.5 sm:p-3 border border-slate-700">
+                <p className="text-[9px] sm:text-xs text-slate-400 mb-0.5">Media</p>
+                <p className="text-[10px] sm:text-base font-bold text-blue-400 truncate">
+                  {customerStats.averageOrderValue.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </p>
-                <p className="text-xs text-slate-500">
-                  {customerStats.orderCount} ordini
+                <p className="text-[8px] sm:text-xs text-slate-500">
+                  {customerStats.orderCount} ord
                 </p>
               </div>
             </div>
@@ -754,7 +754,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
         )}
 
         {/* Product Lines */}
-        <div className="space-y-3 sm:space-y-4 mb-6">
+        <div className="space-y-1.5 sm:space-y-3 mb-4">
           {orderData.lines.map((line) => {
             const edited = editedLines.get(line.id);
             const priceUnit = edited?.priceUnit ?? line.currentPriceUnit;
@@ -765,56 +765,56 @@ export default function ReviewPricesPage({ params }: RouteParams) {
             return (
               <div
                 key={line.id}
-                className={`bg-slate-800 rounded-xl p-4 sm:p-5 border transition-all ${
+                className={`bg-slate-800 rounded-lg p-2 sm:p-4 border transition-all ${
                   isEdited ? 'border-yellow-500 shadow-lg shadow-yellow-500/20' : 'border-slate-700'
                 }`}
               >
                 {/* Product Header */}
-                <div className="flex gap-3 sm:gap-4 mb-4">
+                <div className="flex gap-2 sm:gap-3 mb-2">
                   {line.imageUrl && (
                     <img
                       src={line.imageUrl}
                       alt={line.productName}
-                      className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border border-slate-600 shrink-0"
+                      className="w-12 h-12 sm:w-20 sm:h-20 object-cover rounded border border-slate-600 shrink-0"
                     />
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="text-base sm:text-lg font-bold text-white line-clamp-1">
+                    <div className="flex items-start justify-between gap-1 mb-0.5">
+                      <h3 className="text-xs sm:text-base font-bold text-white line-clamp-2 leading-tight">
                         {line.productName.split(' - ')[0]}
                       </h3>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0">
                         {/* History Button */}
                         <button
                           onClick={() => loadProductHistory(line.productId, line)}
-                          className="p-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg border border-blue-500/30 transition-colors"
-                          title="Storico prezzi prodotto"
+                          className="p-1 sm:p-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded border border-blue-500/30 transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+                          title="Storico"
                         >
-                          <BarChart className="h-4 w-4" />
+                          <BarChart className="h-3 w-3 sm:h-4 sm:w-4" />
                         </button>
                         {/* Delete Button */}
                         <button
                           onClick={() => handleRemoveLine(line.id)}
-                          className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/30 transition-colors"
-                          title="Elimina prodotto"
+                          className="p-1 sm:p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded border border-red-500/30 transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+                          title="Elimina"
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-3 w-3 sm:h-4 sm:w-4" />
                         </button>
                         {/* Lock/Unlock Icon */}
-                        <div title={line.isLocked ? "Prezzo bloccato" : "Prezzo modificabile"}>
+                        <div title={line.isLocked ? "Bloccato" : "Modificabile"} className="flex items-center justify-center min-h-[32px]">
                           {line.isLocked ? (
-                            <Lock className="h-5 w-5 text-red-400" />
+                            <Lock className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-red-400" />
                           ) : (
-                            <Unlock className="h-5 w-5 text-green-400" />
+                            <Unlock className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-green-400" />
                           )}
                         </div>
                       </div>
                     </div>
                     {line.productCode && (
-                      <p className="text-sm text-slate-400">Codice: {line.productCode}</p>
+                      <p className="text-[10px] sm:text-sm text-slate-400 truncate">Cod: {line.productCode}</p>
                     )}
-                    <div className="text-sm text-slate-400 flex items-center gap-2">
-                      <span>Quantità:</span>
+                    <div className="text-[10px] sm:text-sm text-slate-400 flex items-center gap-1">
+                      <span>Qtà:</span>
                       {editingQuantity === line.id ? (
                         <input
                           type="number"
@@ -823,7 +823,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                           onChange={(e) => handleQuantityChange(line.id, e.target.value)}
                           onBlur={() => setEditingQuantity(null)}
                           autoFocus
-                          className="w-20 px-2 py-1 bg-slate-700 border border-blue-500 rounded text-white font-semibold"
+                          className="w-16 px-1.5 py-0.5 bg-slate-700 border border-blue-500 rounded text-white font-semibold text-xs"
                         />
                       ) : (
                         <span
@@ -835,7 +835,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                               setQuantityValues(newQuantityValues);
                             }
                           }}
-                          className="font-semibold text-white cursor-pointer hover:text-blue-400 transition-colors"
+                          className="font-semibold text-white cursor-pointer hover:text-blue-400 transition-colors min-h-[32px] flex items-center"
                         >
                           {quantityValues.get(line.id) || line.quantity} {line.uom}
                         </span>
@@ -845,11 +845,11 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                 </div>
 
                 {/* Price Fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
                   {/* Price Unit */}
                   <div>
-                    <label className="block text-xs sm:text-sm text-slate-400 mb-1.5">
-                      Prezzo Unitario (CHF)
+                    <label className="block text-[10px] sm:text-sm text-slate-400 mb-0.5 sm:mb-1 truncate">
+                      Prezzo
                     </label>
                     <input
                       type="text"
@@ -858,25 +858,25 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                       onClick={() => handleFieldClick(line.id, 'price')}
                       readOnly
                       disabled={line.isLocked}
-                      className={`w-full px-3 py-2 rounded-lg border text-white text-sm sm:text-base cursor-pointer transition-all ${
+                      className={`w-full px-1.5 sm:px-3 py-1.5 sm:py-2 rounded border text-white text-xs sm:text-base cursor-pointer transition-all min-h-[36px] ${
                         line.isLocked
                           ? 'bg-slate-700/50 border-slate-600 cursor-not-allowed'
                           : activeSlider.lineId === line.id && activeSlider.type === 'price'
-                          ? 'bg-blue-600/20 border-blue-500 ring-2 ring-blue-500'
+                          ? 'bg-blue-600/20 border-blue-500 ring-1 ring-blue-500'
                           : 'bg-slate-700 border-slate-600 hover:border-blue-400'
                       }`}
                     />
                     {line.standardPrice > 0 && line.standardPrice !== priceUnit && (
-                      <p className="text-xs text-slate-500 mt-1">
-                        Prezzo standard: CHF {line.standardPrice.toFixed(2)}
+                      <p className="text-[9px] sm:text-xs text-slate-500 mt-0.5 truncate hidden sm:block">
+                        Std: {line.standardPrice.toFixed(2)}
                       </p>
                     )}
                   </div>
 
                   {/* Discount */}
                   <div>
-                    <label className="block text-xs sm:text-sm text-slate-400 mb-1.5">
-                      Sconto (%)
+                    <label className="block text-[10px] sm:text-sm text-slate-400 mb-0.5 sm:mb-1 truncate">
+                      Sconto
                     </label>
                     <input
                       type="text"
@@ -885,11 +885,11 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                       onClick={() => handleFieldClick(line.id, 'discount')}
                       readOnly
                       disabled={line.isLocked}
-                      className={`w-full px-3 py-2 rounded-lg border text-white text-sm sm:text-base cursor-pointer transition-all ${
+                      className={`w-full px-1.5 sm:px-3 py-1.5 sm:py-2 rounded border text-white text-xs sm:text-base cursor-pointer transition-all min-h-[36px] ${
                         line.isLocked
                           ? 'bg-slate-700/50 border-slate-600 cursor-not-allowed'
                           : activeSlider.lineId === line.id && activeSlider.type === 'discount'
-                          ? 'bg-blue-600/20 border-blue-500 ring-2 ring-blue-500'
+                          ? 'bg-blue-600/20 border-blue-500 ring-1 ring-blue-500'
                           : 'bg-slate-700 border-slate-600 hover:border-blue-400'
                       }`}
                     />
@@ -897,11 +897,11 @@ export default function ReviewPricesPage({ params }: RouteParams) {
 
                   {/* Total */}
                   <div>
-                    <label className="block text-xs sm:text-sm text-slate-400 mb-1.5">
-                      Totale Riga (CHF)
+                    <label className="block text-[10px] sm:text-sm text-slate-400 mb-0.5 sm:mb-1 truncate">
+                      Totale
                     </label>
-                    <div className="px-3 py-2 rounded-lg bg-slate-700/50 border border-slate-600">
-                      <p className="text-lg sm:text-xl font-bold text-green-400">
+                    <div className="px-1.5 sm:px-3 py-1.5 sm:py-2 rounded bg-slate-700/50 border border-slate-600 min-h-[36px] flex items-center">
+                      <p className="text-xs sm:text-xl font-bold text-green-400 truncate">
                         {lineTotal.toFixed(2)}
                       </p>
                     </div>
@@ -910,8 +910,8 @@ export default function ReviewPricesPage({ params }: RouteParams) {
 
                 {/* Savings Indicator */}
                 {discount > 0 && (
-                  <div className="mt-3 flex items-center gap-2 text-xs sm:text-sm text-green-400">
-                    <TrendingDown className="h-4 w-4" />
+                  <div className="mt-1.5 sm:mt-2 flex items-center gap-1 text-[10px] sm:text-sm text-green-400">
+                    <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>
                       Risparmio: CHF {(line.quantity * priceUnit * discount / 100).toFixed(2)}
                     </span>
@@ -920,12 +920,12 @@ export default function ReviewPricesPage({ params }: RouteParams) {
 
                 {/* Price/Discount Slider - Always visible when this line is active */}
                 {activeSlider.lineId === line.id && !line.isLocked && (
-                  <div className="mt-4 pt-4 border-t border-slate-700">
-                    <div className="space-y-2">
+                  <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-700">
+                    <div className="space-y-1 sm:space-y-2">
                       {/* Slider Header */}
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs sm:text-sm font-medium text-slate-300">
-                          {activeSlider.type === 'price' ? 'Prezzo Unitario' : 'Sconto'}
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] sm:text-sm font-medium text-slate-300">
+                          {activeSlider.type === 'price' ? 'Prezzo' : 'Sconto'}
                         </span>
                         <span className="text-xs sm:text-sm font-bold text-white">
                           {activeSlider.type === 'price'
@@ -936,7 +936,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                       </div>
 
                       {/* Slider Input with Markers */}
-                      <div className="relative pb-6">
+                      <div className="relative pb-4 sm:pb-6">
                         {/* Reference Markers (only for price slider) */}
                         {activeSlider.type === 'price' && getPriceMarkers(line).map((marker, idx) => (
                           <div
@@ -945,11 +945,11 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                             style={{ left: `${marker.position}%` }}
                           >
                             <div
-                              className="w-1 h-3 rounded-full mb-1"
+                              className="w-0.5 sm:w-1 h-2 sm:h-3 rounded-full mb-0.5"
                               style={{ backgroundColor: marker.color }}
                             />
                             <span
-                              className="text-xs font-bold whitespace-nowrap"
+                              className="text-[9px] sm:text-xs font-bold whitespace-nowrap"
                               style={{ color: marker.color }}
                             >
                               {marker.label}
@@ -964,7 +964,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                           step={activeSlider.type === 'price' ? '0.01' : '0.1'}
                           value={getSliderValue(line, activeSlider.type)}
                           onChange={(e) => handleSliderChange(line.id, parseFloat(e.target.value))}
-                          className="w-full h-3 rounded-lg appearance-none cursor-pointer slider-gradient"
+                          className="w-full h-2 sm:h-3 rounded-lg appearance-none cursor-pointer slider-gradient"
                           style={{
                             background: `linear-gradient(to right,
                               rgb(239, 68, 68) 0%,
@@ -976,7 +976,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                       </div>
 
                       {/* Range Labels */}
-                      <div className="flex items-center justify-between text-xs text-slate-500">
+                      <div className="flex items-center justify-between text-[9px] sm:text-xs text-slate-500">
                         <span className="text-red-400">
                           {activeSlider.type === 'price'
                             ? `Min: CHF ${getSliderRange(line, 'price').min.toFixed(2)}`
@@ -999,22 +999,22 @@ export default function ReviewPricesPage({ params }: RouteParams) {
         </div>
 
         {/* Order Totals */}
-        <div className="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 shadow-lg mb-6">
-          <h3 className="text-lg sm:text-xl font-bold text-white mb-4">Riepilogo Ordine</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-sm sm:text-base">
+        <div className="bg-slate-800 rounded-lg p-2 sm:p-4 border border-slate-700 shadow-lg mb-2 sm:mb-4">
+          <h3 className="text-sm sm:text-xl font-bold text-white mb-1.5 sm:mb-3">Riepilogo</h3>
+          <div className="space-y-1">
+            <div className="flex justify-between items-center text-xs sm:text-base">
               <span className="text-slate-400">Subtotale:</span>
-              <span className="font-semibold text-white">CHF {totals.subtotal.toFixed(2)}</span>
+              <span className="font-semibold text-white text-xs sm:text-base">{totals.subtotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between items-center text-sm sm:text-base">
+            <div className="flex justify-between items-center text-xs sm:text-base">
               <span className="text-slate-400">IVA:</span>
-              <span className="font-semibold text-white">CHF {totals.tax.toFixed(2)}</span>
+              <span className="font-semibold text-white text-xs sm:text-base">{totals.tax.toFixed(2)}</span>
             </div>
-            <div className="border-t border-slate-700 pt-2 mt-2">
+            <div className="border-t border-slate-700 pt-1 sm:pt-2 mt-1">
               <div className="flex justify-between items-center">
-                <span className="text-lg sm:text-xl font-bold text-white">Totale:</span>
-                <span className="text-xl sm:text-2xl font-bold text-green-400">
-                  CHF {totals.total.toFixed(2)}
+                <span className="text-sm sm:text-xl font-bold text-white">Totale:</span>
+                <span className="text-base sm:text-2xl font-bold text-green-400">
+                  {totals.total.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -1022,8 +1022,8 @@ export default function ReviewPricesPage({ params }: RouteParams) {
         </div>
 
         {/* Product Search */}
-        <div className="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 shadow-lg mb-6">
-          <h3 className="text-lg sm:text-xl font-bold text-white mb-4">Aggiungi Prodotto</h3>
+        <div className="bg-slate-800 rounded-lg p-2 sm:p-4 border border-slate-700 shadow-lg mb-2">
+          <h3 className="text-sm sm:text-xl font-bold text-white mb-1.5 sm:mb-3">Aggiungi Prodotto</h3>
           <ManualProductSearch
             customerId={orderData.customerId}
             onProductAdd={handleAddProduct}
@@ -1033,16 +1033,16 @@ export default function ReviewPricesPage({ params }: RouteParams) {
 
       {/* Fixed Bottom Actions */}
       <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700 shadow-2xl z-50">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-3">
+          <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
             {/* Save Prices Button */}
             {hasChanges && (
               <button
                 onClick={handleSavePrices}
-                className="flex items-center justify-center gap-2 px-4 sm:px-6 py-3 sm:py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors min-h-[48px] text-sm sm:text-base"
+                className="flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2.5 sm:py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors min-h-[44px] text-xs sm:text-base"
               >
-                <DollarSign className="h-5 w-5" />
-                Salva Modifiche Prezzi
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
+                Salva Prezzi
               </button>
             )}
 
@@ -1050,7 +1050,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
             <button
               onClick={handleConfirmOrder}
               disabled={isConfirming || confirmSuccess}
-              className="flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 sm:py-3.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-slate-600 disabled:to-slate-600 text-white rounded-lg font-bold transition-all min-h-[48px] text-sm sm:text-base shadow-lg"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2.5 sm:py-3.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-slate-600 disabled:to-slate-600 text-white rounded-lg font-bold transition-all min-h-[44px] text-xs sm:text-base shadow-lg"
             >
               {isConfirming ? (
                 <>
@@ -1076,7 +1076,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       {/* Product History Modal */}
       {showHistoryModal && selectedProduct && (
         <div
-          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-2 sm:p-4"
           onClick={() => {
             setShowHistoryModal(false);
             setProductHistory(null);
@@ -1084,25 +1084,25 @@ export default function ReviewPricesPage({ params }: RouteParams) {
           }}
         >
           <div
-            className="bg-slate-800 rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-auto border border-slate-700 shadow-2xl"
+            className="bg-slate-800 rounded-lg p-3 sm:p-6 max-w-2xl w-full max-h-[85vh] overflow-auto border border-slate-700 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex items-start gap-3">
-                <div className="bg-blue-500/20 p-2.5 rounded-xl border border-blue-500/30">
-                  <BarChart className="h-6 w-6 text-blue-400" />
+            <div className="flex items-start justify-between mb-3 sm:mb-4">
+              <div className="flex items-start gap-1.5 sm:gap-3">
+                <div className="bg-blue-500/20 p-1.5 sm:p-2.5 rounded-lg border border-blue-500/30">
+                  <BarChart className="h-4 w-4 sm:h-6 sm:w-6 text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-1">
-                    Storico Prezzi Prodotto
+                  <h3 className="text-sm sm:text-xl font-bold text-white">
+                    Storico Prezzi
                   </h3>
-                  <p className="text-sm text-slate-300">
+                  <p className="text-xs sm:text-sm text-slate-300 line-clamp-1">
                     {selectedProduct.productName.split(' - ')[0]}
                   </p>
                   {selectedProduct.productCode && (
-                    <p className="text-xs text-slate-400">
-                      Codice: {selectedProduct.productCode}
+                    <p className="text-[10px] sm:text-xs text-slate-400">
+                      Cod: {selectedProduct.productCode}
                     </p>
                   )}
                 </div>
@@ -1113,7 +1113,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                   setProductHistory(null);
                   setSelectedProduct(null);
                 }}
-                className="p-2 bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-white rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-white rounded-lg transition-colors shrink-0"
                 title="Chiudi"
               >
                 <X className="h-5 w-5" />
@@ -1122,40 +1122,40 @@ export default function ReviewPricesPage({ params }: RouteParams) {
 
             {/* Loading State */}
             {loadingHistory && (
-              <div className="flex items-center justify-center py-12">
+              <div className="flex items-center justify-center py-6 sm:py-12">
                 <div className="text-center">
-                  <Loader2 className="h-10 w-10 text-blue-400 animate-spin mx-auto mb-3" />
-                  <p className="text-sm text-slate-300">Caricamento storico...</p>
+                  <Loader2 className="h-6 w-6 sm:h-10 sm:w-10 text-blue-400 animate-spin mx-auto mb-2" />
+                  <p className="text-xs sm:text-sm text-slate-300">Caricamento...</p>
                 </div>
               </div>
             )}
 
             {/* History Content */}
             {!loadingHistory && productHistory && (
-              <div className="space-y-6">
+              <div className="space-y-2 sm:space-y-4">
                 {/* Statistics Summary */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
-                    <p className="text-xs text-slate-400 mb-1">Prezzo Medio</p>
-                    <p className="text-lg font-bold text-blue-400">
-                      CHF {productHistory.avgPrice.toFixed(2)}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-3">
+                  <div className="bg-slate-700/50 rounded p-1.5 sm:p-3 border border-slate-600">
+                    <p className="text-[9px] sm:text-xs text-slate-400 mb-0.5">Medio</p>
+                    <p className="text-xs sm:text-lg font-bold text-blue-400 truncate">
+                      {productHistory.avgPrice.toFixed(2)}
                     </p>
                   </div>
-                  <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
-                    <p className="text-xs text-slate-400 mb-1">Prezzo Min</p>
-                    <p className="text-lg font-bold text-green-400">
-                      CHF {productHistory.minPrice.toFixed(2)}
+                  <div className="bg-slate-700/50 rounded p-1.5 sm:p-3 border border-slate-600">
+                    <p className="text-[9px] sm:text-xs text-slate-400 mb-0.5">Min</p>
+                    <p className="text-xs sm:text-lg font-bold text-green-400 truncate">
+                      {productHistory.minPrice.toFixed(2)}
                     </p>
                   </div>
-                  <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
-                    <p className="text-xs text-slate-400 mb-1">Prezzo Max</p>
-                    <p className="text-lg font-bold text-red-400">
-                      CHF {productHistory.maxPrice.toFixed(2)}
+                  <div className="bg-slate-700/50 rounded p-1.5 sm:p-3 border border-slate-600">
+                    <p className="text-[9px] sm:text-xs text-slate-400 mb-0.5">Max</p>
+                    <p className="text-xs sm:text-lg font-bold text-red-400 truncate">
+                      {productHistory.maxPrice.toFixed(2)}
                     </p>
                   </div>
-                  <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
-                    <p className="text-xs text-slate-400 mb-1">Sconto Medio</p>
-                    <p className="text-lg font-bold text-yellow-400">
+                  <div className="bg-slate-700/50 rounded p-1.5 sm:p-3 border border-slate-600">
+                    <p className="text-[9px] sm:text-xs text-slate-400 mb-0.5">Sconto</p>
+                    <p className="text-xs sm:text-lg font-bold text-yellow-400 truncate">
                       {productHistory.avgDiscount.toFixed(1)}%
                     </p>
                   </div>
@@ -1163,8 +1163,8 @@ export default function ReviewPricesPage({ params }: RouteParams) {
 
                 {/* Info text */}
                 <div className="text-center">
-                  <p className="text-xs text-slate-400">
-                    Calcolato sugli ultimi 50 ordini confermati
+                  <p className="text-[10px] sm:text-xs text-slate-400">
+                    Ultimi 50 ordini confermati
                   </p>
                 </div>
               </div>
