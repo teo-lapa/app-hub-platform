@@ -97,8 +97,8 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingOrder, setCancellingOrder] = useState(false);
 
-  // Check if order can be edited (only draft state allows editing)
-  const canEditOrder = orderData?.state === 'draft';
+  // Check if order can be edited (draft and sent states allow editing)
+  const canEditOrder = orderData?.state === 'draft' || orderData?.state === 'sent';
 
   // Load order data
   useEffect(() => {
@@ -1459,8 +1459,8 @@ export default function ReviewPricesPage({ params }: RouteParams) {
         <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700 shadow-2xl z-50">
           <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-3">
             <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
-              {/* DRAFT state: Show save and confirm buttons */}
-              {orderData.state === 'draft' && (
+              {/* DRAFT/SENT state: Show save and confirm buttons */}
+              {(orderData.state === 'draft' || orderData.state === 'sent') && (
                 <>
                   {/* Save Changes Button */}
                   {hasChanges && (
