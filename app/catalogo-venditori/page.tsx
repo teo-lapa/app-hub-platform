@@ -286,6 +286,17 @@ export default function CatalogoVenditoriPage() {
                 <span className="text-sm sm:text-base font-medium hidden sm:inline">Nuovo Ordine</span>
               </button>
 
+              {/* Ordini Button - Navigate to orders list */}
+              <button
+                onClick={() => router.push('/catalogo-venditori/ordini')}
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-purple-600/80 hover:bg-purple-600 text-white rounded-lg border border-purple-500 transition-colors min-h-[44px] shrink-0"
+                aria-label="Ordini"
+                title="Visualizza tutti gli ordini"
+              >
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-base font-medium hidden lg:inline">Ordini</span>
+              </button>
+
               {/* Revisione Prezzi Button */}
               <button
                 onClick={loadCustomerOrders}
