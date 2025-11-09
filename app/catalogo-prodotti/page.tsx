@@ -218,17 +218,17 @@ export default function CatalogoProdotti() {
         </div>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredProducts.map((product) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden hover:border-white/30 transition-all"
+              className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 overflow-hidden hover:border-white/30 transition-all"
             >
               {/* Product Image */}
               <div
-                className="relative h-48 bg-white/10 cursor-pointer hover:bg-white/20 transition-colors"
+                className="relative h-32 bg-white/10 cursor-pointer hover:bg-white/20 transition-colors"
                 onClick={() => setSelectedProduct(product)}
               >
                 {product.image_url ? (
@@ -239,11 +239,11 @@ export default function CatalogoProdotti() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <Package className="w-16 h-16 text-white/20" />
+                    <Package className="w-12 h-12 text-white/20" />
                   </div>
                 )}
                 {/* Stock Badge */}
-                <div className={`absolute top-2 right-2 px-3 py-1 rounded-full text-xs font-bold ${
+                <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold ${
                   product.current_stock > 10
                     ? 'bg-green-500/80 text-white'
                     : product.current_stock > 0
@@ -255,17 +255,17 @@ export default function CatalogoProdotti() {
               </div>
 
               {/* Product Info */}
-              <div className="p-4">
-                <h3 className="text-white font-semibold text-sm mb-2 line-clamp-2 h-10">
+              <div className="p-3">
+                <h3 className="text-white font-semibold text-xs mb-1.5 line-clamp-2 h-8">
                   {product.name}
                 </h3>
 
-                <div className="text-xs text-white/60 mb-3">
+                <div className="text-xs text-white/60 mb-2">
                   {product.supplier_name}
                 </div>
 
                 {/* Sales Stats */}
-                <div className="space-y-2 text-xs">
+                <div className="space-y-1 text-xs">
                   <div className="flex items-center justify-between text-white/80">
                     <span>Vendite 5gg:</span>
                     <span className="font-semibold flex items-center gap-1">
@@ -290,7 +290,7 @@ export default function CatalogoProdotti() {
                 {/* Add Button */}
                 <button
                   onClick={() => alert(`🚧 Aggiunta prodotto "${product.name}" in arrivo!`)}
-                  className="w-full mt-4 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition-all font-semibold text-sm"
+                  className="w-full mt-3 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition-all font-semibold text-xs"
                 >
                   ➕ Aggiungi all'Ordine
                 </button>

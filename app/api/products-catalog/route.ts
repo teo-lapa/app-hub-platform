@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
           method: 'search_read',
           args: [domain],
           kwargs: {
-            fields: ['id', 'name', 'image_256', 'qty_available', 'uom_id', 'seller_ids', 'list_price'],
+            fields: ['id', 'name', 'image_256', 'qty_available', 'uom_id', 'seller_ids', 'list_price', 'product_tmpl_id'],
             limit: 2000,  // Increased to show all products
             order: 'name ASC',
             context: { bin_size: false }  // Get full base64 image, not just size
@@ -151,6 +151,7 @@ export async function GET(request: NextRequest) {
     const ordersData = await ordersResponse.json();
     const saleOrders = ordersData.result || [];
     const saleOrderIds = saleOrders.map((so: any) => so.id);
+    console.log(`📊 [PRODUCTS-CATALOG] Found ${saleOrders.length} sale orders in last 14 days`);
 
     // Fetch sale order lines
     let saleLines: any[] = [];
@@ -178,6 +179,7 @@ export async function GET(request: NextRequest) {
 
       const linesData = await linesResponse.json();
       saleLines = linesData.result || [];
+      console.log(`📊 [PRODUCTS-CATALOG] Found ${saleLines.length} sale order lines`);
     }
 
     // Calculate sales by product and time period
@@ -206,7 +208,9 @@ export async function GET(request: NextRequest) {
     // Build final product list
     const catalogProducts = products.map((p: any) => {
       const sales = salesMap.get(p.id) || { sales_5: 0, sales_10: 0, sales_14: 0 };
-      const supplierInfo = supplierMap.get(p.id);
+      // FIX: Use product_tmpl_id for supplier lookup (not product.product id)
+      const tmplId = p.product_tmpl_id ? p.product_tmpl_id[0] : p.id;
+      const supplierInfo = supplierMap.get(tmplId);
       const uom = p.uom_id ? p.uom_id[1] : 'Units';
 
       return {
