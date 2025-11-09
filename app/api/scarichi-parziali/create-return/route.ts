@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
         location_dest_id: depositoLocationId
       }]);
 
-      movesCreated.push(moveId);
+      movesCreated.push({ moveId, product });
       console.log(`  ✓ Move ${moveId} creato: ${product.productName} x${product.qty}`);
     }
 
@@ -218,41 +218,39 @@ export async function POST(request: NextRequest) {
       await callOdoo(sessionId, 'stock.picking', 'action_confirm', [[pickingId]]);
       console.log(`✅ Picking ${pickingId} confermato`);
 
-      // Assegna quantità
-      await callOdoo(sessionId, 'stock.picking', 'action_assign', [[pickingId]]);
-      console.log(`✅ Picking ${pickingId} assegnato`);
+      // STEP 7: Crea manualmente le stock.move.line con qty_done e lotti già impostati
+      console.log('📝 Creazione operazioni dettagliate...');
 
-      // STEP 7: Compila le operazioni dettagliate (stock.move.line) con qty_done e lotti
-      console.log('📝 Compilazione operazioni dettagliate...');
+      for (const { moveId, product } of movesCreated) {
+        const lotInfo = productLotMap.get(product.productId);
 
-      const createdMoveLines = await callOdoo(sessionId, 'stock.move.line', 'search_read', [[
-        ['picking_id', '=', pickingId]
-      ]], {
-        fields: ['id', 'product_id', 'quantity', 'lot_id', 'lot_name']
-      });
-
-      console.log(`📦 Trovate ${createdMoveLines.length} operazioni dettagliate da compilare`);
-
-      for (const moveLine of createdMoveLines) {
-        const updateData: any = {
-          qty_done: moveLine.quantity || 0
+        const moveLineData: any = {
+          move_id: moveId,
+          picking_id: pickingId,
+          product_id: product.productId,
+          product_uom_id: product.uom[0],
+          location_id: vanLocationId,
+          location_dest_id: depositoLocationId,
+          quantity: product.qty,
+          qty_done: product.qty  // Imposta qty_done subito con la quantità richiesta
         };
 
-        // Se esiste un lotto per questo prodotto nel picking originale, impostalo
-        const productId = moveLine.product_id[0];
-        const lotInfo = productLotMap.get(productId);
-
+        // Se esiste un lotto, impostalo
         if (lotInfo) {
-          updateData.lot_id = lotInfo.lot_id;
-          console.log(`  ✓ Move line ${moveLine.id}: qty_done=${updateData.qty_done}, lot=${lotInfo.lot_name}`);
+          moveLineData.lot_id = lotInfo.lot_id;
+          console.log(`  ✓ Creazione move line: ${product.productName} x${product.qty}, lotto=${lotInfo.lot_name}`);
         } else {
-          console.log(`  ✓ Move line ${moveLine.id}: qty_done=${updateData.qty_done} (nessun lotto)`);
+          console.log(`  ✓ Creazione move line: ${product.productName} x${product.qty} (nessun lotto)`);
         }
 
-        await callOdoo(sessionId, 'stock.move.line', 'write', [[moveLine.id], updateData]);
+        await callOdoo(sessionId, 'stock.move.line', 'create', [moveLineData]);
       }
 
-      console.log(`✅ Operazioni dettagliate compilate con successo!`)
+      console.log(`✅ Operazioni dettagliate create con successo!`);
+
+      // Assegna il picking (ora dovrebbe riconoscere le move.line già create)
+      await callOdoo(sessionId, 'stock.picking', 'action_assign', [[pickingId]]);
+      console.log(`✅ Picking ${pickingId} assegnato`);
 
     } catch (error) {
       console.warn(`⚠️  Errore conferma/assegnazione picking ${pickingId}:`, error);
