@@ -110,8 +110,9 @@ export async function GET(request: NextRequest) {
     // 1. Aziende (is_company=true)
     // 2. Contatti (is_company=false AND type='contact')
     // 3. ESCLUSI indirizzi di consegna/fatturazione (type='delivery'/'invoice')
+    // NOTA: NON filtro per customer_rank perché molti clienti hanno customer_rank=0
     const searchDomain = [
-      ['customer_rank', '>', 0],           // Solo clienti (non fornitori)
+      // RIMOSSO: ['customer_rank', '>', 0] → Bloccava 3360+ clienti incluso DGD
 
       // Logica OR: Aziende O Contatti veri (NO indirizzi)
       '|',
