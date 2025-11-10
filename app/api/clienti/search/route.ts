@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+
+const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
 
 // ID TEAM LAPA REALI
 const LAPA_TEAM_IDS = [5, 9, 12, 8, 1, 11, 14];
@@ -14,33 +17,52 @@ const USER_TEAM_PERMISSIONS: Record<number, number[] | 'ALL'> = {
   249: 'ALL'   // Gregorio Buccolieri → SUPER ADMIN
 };
 
-// Usa l'API esistente /api/odoo/rpc per chiamare Odoo
-async function callOdoo(model: string, method: string, args: any[] = [], kwargs: any = {}) {
+// Chiama DIRETTAMENTE Odoo usando il session_id dell'utente
+async function callOdoo(
+  model: string,
+  method: string,
+  args: any[] = [],
+  kwargs: any = {},
+  sessionId: string
+): Promise<any> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/odoo/rpc`, {
+    console.log(`📡 Chiamata Odoo: ${model}.${method}`);
+
+    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw/${model}/${method}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`,
+      },
       body: JSON.stringify({
-        model,
-        method,
-        args,
-        kwargs
-      })
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model,
+          method,
+          args,
+          kwargs: kwargs || {}
+        },
+        id: Date.now(),
+      }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ HTTP Error: ${response.status}`, errorText);
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const data = await response.json();
 
-    if (!data.success) {
-      throw new Error(data.error || 'RPC Error');
+    if (data.error) {
+      console.error('❌ Errore Odoo:', data.error);
+      throw new Error(data.error.data?.message || 'Errore Odoo');
     }
 
     return data.result;
   } catch (error: any) {
-    console.error(`❌ Errore chiamata RPC ${model}.${method}:`, error);
+    console.error(`❌ Errore chiamata ${model}.${method}:`, error);
     throw error;
   }
 }
@@ -59,7 +81,6 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q');
-    const userId = parseInt(searchParams.get('userId') || '7'); // Default Paul
 
     if (!query || query.trim().length < 2) {
       return NextResponse.json({
@@ -68,24 +89,22 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`🔍 Ricerca clienti: "${query}" per utente ${userId}`);
+    // Ottieni session_id dell'utente loggato
+    const cookieStore = cookies();
+    const sessionId = cookieStore.get('odoo_session_id')?.value;
 
-    // Verifica permessi utente
-    const userPermissions = USER_TEAM_PERMISSIONS[userId];
-    if (!userPermissions) {
+    if (!sessionId) {
+      console.error('❌ Utente NON loggato');
       return NextResponse.json({
         success: false,
-        error: 'Utente non autorizzato'
-      }, { status: 403 });
+        error: 'Devi fare login per cercare clienti'
+      }, { status: 401 });
     }
 
-    // Determina i team accessibili
-    let allowedTeamIds = LAPA_TEAM_IDS;
-    if (userPermissions !== 'ALL') {
-      allowedTeamIds = LAPA_TEAM_IDS.filter(id => userPermissions.includes(id));
-    }
+    console.log(`🔍 Ricerca clienti: "${query}"`);
 
-    console.log(`🔐 Team accessibili per utente ${userId}:`, allowedTeamIds);
+    // Per ora cerca in TUTTI i team LAPA (permessi gestiti lato Odoo)
+    const allowedTeamIds = LAPA_TEAM_IDS;
 
     // Cerca clienti in Odoo
     // Cerca per: nome, email, telefono, città, indirizzo
@@ -123,7 +142,8 @@ export async function GET(request: NextRequest) {
         ],
         limit: 50, // Massimo 50 risultati
         order: 'name asc'
-      }
+      },
+      sessionId
     );
 
     console.log(`✅ Trovati ${companies.length} clienti per query "${query}"`);
