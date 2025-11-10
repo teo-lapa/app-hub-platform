@@ -123,6 +123,47 @@ export default function MapComponent({ pickings, routes, vehicles, batches, batc
     };
   }, []);
 
+  // Helper function to group overlapping pickings
+  const groupOverlappingPickings = (pickings: Picking[]) => {
+    const groups: Picking[][] = [];
+    const processed = new Set<number>();
+    const OVERLAP_THRESHOLD = 0.0001; // ~11 meters
+
+    pickings.forEach((picking) => {
+      if (processed.has(picking.id)) return;
+
+      // Find all pickings at the same location
+      const group = pickings.filter(p => {
+        if (processed.has(p.id)) return false;
+        const latDiff = Math.abs(p.lat - picking.lat);
+        const lngDiff = Math.abs(p.lng - picking.lng);
+        return latDiff < OVERLAP_THRESHOLD && lngDiff < OVERLAP_THRESHOLD;
+      });
+
+      group.forEach(p => processed.add(p.id));
+      groups.push(group);
+    });
+
+    return groups;
+  };
+
+  // Helper function to calculate fan-out positions
+  const calculateFanOutPosition = (centerLat: number, centerLng: number, index: number, total: number) => {
+    if (total === 1) return { lat: centerLat, lng: centerLng };
+
+    // Distance from center in degrees (roughly 50 meters)
+    const radius = 0.0005;
+
+    // Distribute markers in a circle
+    const angleStep = (2 * Math.PI) / total;
+    const angle = angleStep * index - (Math.PI / 2); // Start from top
+
+    return {
+      lat: centerLat + radius * Math.cos(angle),
+      lng: centerLng + radius * Math.sin(angle)
+    };
+  };
+
   // Update pickings markers
   useEffect(() => {
     if (!mapRef.current) return;
@@ -133,137 +174,204 @@ export default function MapComponent({ pickings, routes, vehicles, batches, batc
 
     if (pickings.length === 0) return;
 
-    // Add new markers
-    pickings.forEach((picking, index) => {
-      // Find if this picking is in a route
-      let routeIndex = -1;
-      let routeColor = routeColors[0]; // default first color
+    // Group overlapping pickings
+    const groups = groupOverlappingPickings(pickings);
 
-      // If picking has a batch, use batch color from the map
-      if (picking.batchId && batchColorMap.has(picking.batchId)) {
-        const colorIndex = batchColorMap.get(picking.batchId)!;
-        routeColor = routeColors[colorIndex];
-      } else {
-        // Otherwise, use route color if available
-        routes.forEach((route, rIdx) => {
-          if (route.pickings.some(p => p.id === picking.id)) {
-            routeIndex = rIdx;
-            routeColor = routeColors[rIdx % routeColors.length];
-          }
+    // Add new markers with fan-out effect for overlapping ones
+    groups.forEach(group => {
+      const centerLat = group[0].lat;
+      const centerLng = group[0].lng;
+
+      group.forEach((picking, groupIndex) => {
+        const pickingIndex = pickings.findIndex(p => p.id === picking.id);
+
+        // Find if this picking is in a route
+        let routeIndex = -1;
+        let routeColor = routeColors[0]; // default first color
+
+        // If picking has a batch, use batch color from the map
+        if (picking.batchId && batchColorMap.has(picking.batchId)) {
+          const colorIndex = batchColorMap.get(picking.batchId)!;
+          routeColor = routeColors[colorIndex];
+        } else {
+          // Otherwise, use route color if available
+          routes.forEach((route, rIdx) => {
+            if (route.pickings.some(p => p.id === picking.id)) {
+              routeIndex = rIdx;
+              routeColor = routeColors[rIdx % routeColors.length];
+            }
+          });
+        }
+
+        // Calculate position (fan-out if multiple markers)
+        const position = calculateFanOutPosition(centerLat, centerLng, groupIndex, group.length);
+
+        // Add indicator if this is part of a group
+        const isGrouped = group.length > 1;
+        const markerLabel = routes.length > 0 ? '●' : pickingIndex + 1;
+
+        const markerIcon = L.divIcon({
+          className: 'picking-marker',
+          html: `
+            <div style="
+              background: ${routeColor};
+              color: white;
+              padding: 6px 10px;
+              border-radius: 8px;
+              font-size: 13px;
+              font-weight: bold;
+              box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+              border: 2px solid white;
+              min-width: 30px;
+              text-align: center;
+              ${isGrouped ? 'position: relative;' : ''}
+            ">
+              ${markerLabel}
+              ${isGrouped ? `
+                <div style="
+                  position: absolute;
+                  top: -8px;
+                  right: -8px;
+                  background: #ef4444;
+                  color: white;
+                  border-radius: 50%;
+                  width: 18px;
+                  height: 18px;
+                  font-size: 10px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  border: 2px solid white;
+                  font-weight: bold;
+                ">${groupIndex + 1}/${group.length}</div>
+              ` : ''}
+            </div>
+          `,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
         });
-      }
 
-      const markerIcon = L.divIcon({
-        className: 'picking-marker',
-        html: `
-          <div style="
-            background: ${routeColor};
-            color: white;
-            padding: 6px 10px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            border: 2px solid white;
-            min-width: 30px;
-            text-align: center;
-          ">${routes.length > 0 ? '●' : index + 1}</div>
-        `,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
+        const marker = L.marker([position.lat, position.lng], { icon: markerIcon })
+          .addTo(mapRef.current!)
+          .bindPopup(`
+            <div style="
+              min-width: 200px;
+              font-family: sans-serif;
+              border: 3px solid ${routeColor};
+              border-radius: 8px;
+              padding: 12px;
+              background: ${routeColor}10;
+              margin: -12px;
+            ">
+              ${isGrouped ? `
+                <div style="
+                  background: #ef4444;
+                  color: white;
+                  padding: 4px 8px;
+                  border-radius: 4px;
+                  font-size: 11px;
+                  font-weight: bold;
+                  text-align: center;
+                  margin-bottom: 8px;
+                ">
+                  📍 Consegna ${groupIndex + 1} di ${group.length} nello stesso luogo
+                </div>
+              ` : ''}
+              <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: ${routeColor};">
+                ${picking.name}
+              </div>
+              <div style="font-size: 13px; margin-bottom: 4px;">
+                <strong>Cliente:</strong> ${picking.partnerName}
+              </div>
+              <div style="font-size: 12px; color: #666; margin-bottom: 4px;">
+                📍 ${picking.address}
+              </div>
+              <div style="font-size: 12px; margin-bottom: 4px;">
+                <strong>Peso:</strong> ${picking.weight} kg
+              </div>
+              <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
+                <strong>Data:</strong> ${new Date(picking.scheduledDate).toLocaleDateString('it-IT')}
+              </div>
+              ${picking.batchName ? `
+                <div style="
+                  margin-top: 8px;
+                  padding: 8px;
+                  background: ${routeColor};
+                  color: white;
+                  border-radius: 6px;
+                  font-size: 12px;
+                  font-weight: bold;
+                  cursor: pointer;
+                  transition: all 0.2s;
+                "
+                onclick="window.showBatchSelector(${picking.id}, '${picking.batchName}', '${picking.scheduledDate}')"
+                onmouseover="this.style.opacity='0.8'"
+                onmouseout="this.style.opacity='1'"
+                >
+                  <div style="text-align: center; margin-bottom: 6px;">
+                    🚚 ${picking.batchName}
+                  </div>
+                  ${picking.batchVehicleName ? `
+                    <div style="font-size: 11px; opacity: 0.95; margin-bottom: 3px;">
+                      🚗 ${picking.batchVehicleName}
+                    </div>
+                  ` : ''}
+                  ${picking.batchDriverName ? `
+                    <div style="font-size: 11px; opacity: 0.95; margin-bottom: 3px;">
+                      👤 ${picking.batchDriverName}
+                    </div>
+                  ` : ''}
+                  <div style="font-size: 10px; margin-top: 6px; opacity: 0.85; text-align: center; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 4px;">
+                    Clicca per spostare
+                  </div>
+                </div>
+              ` : `
+                <div style="
+                  margin-top: 8px;
+                  padding: 6px;
+                  background: #f3f4f6;
+                  color: #6b7280;
+                  border-radius: 4px;
+                  text-align: center;
+                  font-size: 11px;
+                ">
+                  Non assegnato a nessun batch
+                </div>
+              `}
+              ${routeIndex >= 0 && !picking.batchName ? `
+                <div style="
+                  margin-top: 8px;
+                  padding: 6px;
+                  background: ${routeColor};
+                  color: white;
+                  border-radius: 4px;
+                  text-align: center;
+                  font-size: 12px;
+                  font-weight: bold;
+                ">
+                  ${routes[routeIndex].geoName || `Percorso ${routeIndex + 1}`}
+                </div>
+              ` : ''}
+            </div>
+          `);
+
+        markersRef.current.push(marker);
+
+        // Draw connecting lines for grouped markers
+        if (isGrouped) {
+          const line = L.polyline(
+            [[centerLat, centerLng], [position.lat, position.lng]],
+            {
+              color: routeColor,
+              weight: 2,
+              opacity: 0.5,
+              dashArray: '5, 5'
+            }
+          ).addTo(mapRef.current!);
+
+          markersRef.current.push(line as any);
+        }
       });
-
-      const marker = L.marker([picking.lat, picking.lng], { icon: markerIcon })
-        .addTo(mapRef.current!)
-        .bindPopup(`
-          <div style="
-            min-width: 200px;
-            font-family: sans-serif;
-            border: 3px solid ${routeColor};
-            border-radius: 8px;
-            padding: 12px;
-            background: ${routeColor}10;
-            margin: -12px;
-          ">
-            <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: ${routeColor};">
-              ${picking.name}
-            </div>
-            <div style="font-size: 13px; margin-bottom: 4px;">
-              <strong>Cliente:</strong> ${picking.partnerName}
-            </div>
-            <div style="font-size: 12px; color: #666; margin-bottom: 4px;">
-              📍 ${picking.address}
-            </div>
-            <div style="font-size: 12px; margin-bottom: 4px;">
-              <strong>Peso:</strong> ${picking.weight} kg
-            </div>
-            <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
-              <strong>Data:</strong> ${new Date(picking.scheduledDate).toLocaleDateString('it-IT')}
-            </div>
-            ${picking.batchName ? `
-              <div style="
-                margin-top: 8px;
-                padding: 8px;
-                background: ${routeColor};
-                color: white;
-                border-radius: 6px;
-                font-size: 12px;
-                font-weight: bold;
-                cursor: pointer;
-                transition: all 0.2s;
-              "
-              onclick="window.showBatchSelector(${picking.id}, '${picking.batchName}', '${picking.scheduledDate}')"
-              onmouseover="this.style.opacity='0.8'"
-              onmouseout="this.style.opacity='1'"
-              >
-                <div style="text-align: center; margin-bottom: 6px;">
-                  🚚 ${picking.batchName}
-                </div>
-                ${picking.batchVehicleName ? `
-                  <div style="font-size: 11px; opacity: 0.95; margin-bottom: 3px;">
-                    🚗 ${picking.batchVehicleName}
-                  </div>
-                ` : ''}
-                ${picking.batchDriverName ? `
-                  <div style="font-size: 11px; opacity: 0.95; margin-bottom: 3px;">
-                    👤 ${picking.batchDriverName}
-                  </div>
-                ` : ''}
-                <div style="font-size: 10px; margin-top: 6px; opacity: 0.85; text-align: center; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 4px;">
-                  Clicca per spostare
-                </div>
-              </div>
-            ` : `
-              <div style="
-                margin-top: 8px;
-                padding: 6px;
-                background: #f3f4f6;
-                color: #6b7280;
-                border-radius: 4px;
-                text-align: center;
-                font-size: 11px;
-              ">
-                Non assegnato a nessun batch
-              </div>
-            `}
-            ${routeIndex >= 0 && !picking.batchName ? `
-              <div style="
-                margin-top: 8px;
-                padding: 6px;
-                background: ${routeColor};
-                color: white;
-                border-radius: 4px;
-                text-align: center;
-                font-size: 12px;
-                font-weight: bold;
-              ">
-                ${routes[routeIndex].geoName || `Percorso ${routeIndex + 1}`}
-              </div>
-            ` : ''}
-          </div>
-        `);
-
-      markersRef.current.push(marker);
     });
 
     // Fit bounds to show all markers
