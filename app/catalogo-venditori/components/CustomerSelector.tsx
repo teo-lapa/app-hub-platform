@@ -24,7 +24,6 @@ interface CustomerSelectorProps {
 
 export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: CustomerSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [addresses, setAddresses] = useState<DeliveryAddress[]>([]);
@@ -36,42 +35,77 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout>();
 
-  // Fetch customers on mount
-  useEffect(() => {
-    fetchCustomers();
+  // RICERCA LIVE su Odoo invece di caricare tutti i clienti
+  const searchCustomersLive = useCallback(async (term: string) => {
+    if (term.trim().length < 2) {
+      setFilteredCustomers([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    setLoadingCustomers(true);
+    setError(null);
+
+    try {
+      console.log(`🔍 Ricerca live clienti: "${term}"`);
+
+      const response = await fetch(`/api/clienti/search?q=${encodeURIComponent(term)}&userId=7`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log(`✅ Trovati ${data.count} clienti`);
+
+        // Transform API data to match component interface
+        const transformedCustomers = (data.results || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          ref: c.id.toString(),
+          city: c.city || '',
+          phone: c.phone || ''
+        }));
+
+        setFilteredCustomers(transformedCustomers);
+        setShowDropdown(true);
+      } else {
+        console.error('❌ Errore ricerca:', data.error);
+        setFilteredCustomers([]);
+        setShowDropdown(false);
+      }
+    } catch (err) {
+      console.error('❌ Errore ricerca live:', err);
+      setError(err instanceof Error ? err.message : 'Errore ricerca');
+      setFilteredCustomers([]);
+      setShowDropdown(false);
+    } finally {
+      setLoadingCustomers(false);
+    }
   }, []);
 
-  // Debounced search filter (300ms)
-  const debouncedFilter = useCallback((term: string) => {
+  // Debounced LIVE search (500ms)
+  const debouncedLiveSearch = useCallback((term: string) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
     debounceTimerRef.current = setTimeout(() => {
-      if (term.trim() === '') {
-        setFilteredCustomers([]);
-        setShowDropdown(false);
-      } else {
-        const filtered = customers.filter(customer =>
-          customer.name.toLowerCase().includes(term.toLowerCase()) ||
-          customer.ref.toLowerCase().includes(term.toLowerCase()) ||
-          customer.city.toLowerCase().includes(term.toLowerCase())
-        );
-        setFilteredCustomers(filtered);
-        setShowDropdown(true);
-      }
-    }, 300);
-  }, [customers]);
+      searchCustomersLive(term);
+    }, 500);
+  }, [searchCustomersLive]);
 
-  // Filter customers based on search term with debounce
+  // Search when term changes
   useEffect(() => {
-    debouncedFilter(searchTerm);
+    debouncedLiveSearch(searchTerm);
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchTerm, debouncedFilter]);
+  }, [searchTerm, debouncedLiveSearch]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -85,36 +119,6 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchCustomers = async () => {
-    setLoadingCustomers(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/catalogo-venditori/customers');
-      if (!response.ok) throw new Error('Errore nel caricamento clienti');
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Errore nel caricamento clienti');
-      }
-
-      // Transform API data to match component interface
-      const transformedCustomers = (data.data || []).map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        ref: c.ref || '',
-        city: c.city || '',
-        phone: c.phone || ''
-      }));
-
-      setCustomers(transformedCustomers);
-      console.log(`✅ Loaded ${transformedCustomers.length} customers`);
-    } catch (err) {
-      console.error('❌ Error loading customers:', err);
-      setError(err instanceof Error ? err.message : 'Errore sconosciuto');
-    } finally {
-      setLoadingCustomers(false);
-    }
-  };
 
   const fetchAddresses = async (customerId: number) => {
     setLoadingAddresses(true);
@@ -179,7 +183,7 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onFocus={() => searchTerm && setShowDropdown(true)}
-            placeholder="Cerca per nome, codice o città..."
+            placeholder="🔍 Cerca in TUTTI i clienti Odoo..."
             autoComplete="off"
             className="w-full min-h-[52px] sm:min-h-[48px] px-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
             style={{
