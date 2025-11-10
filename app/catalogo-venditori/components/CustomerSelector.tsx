@@ -33,6 +33,7 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
   const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout>();
 
   // RICERCA LIVE su Odoo invece di caricare tutti i clienti
@@ -69,8 +70,10 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
           phone: c.phone || ''
         }));
 
+        console.log('📋 Clienti trasformati:', transformedCustomers);
         setFilteredCustomers(transformedCustomers);
         setShowDropdown(true);
+        console.log('✅ Dropdown dovrebbe essere visibile ora');
       } else {
         console.error('❌ Errore ricerca:', data.error);
         setFilteredCustomers([]);
@@ -179,6 +182,7 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
         </label>
         <div className="relative">
           <input
+            ref={inputRef}
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -193,7 +197,6 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
               WebkitTapHighlightColor: 'transparent',
               WebkitFontSmoothing: 'antialiased',
             }}
-            disabled={loadingCustomers}
           />
           {searchTerm && !loadingCustomers && (
             <button
@@ -219,7 +222,7 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
 
         {/* Dropdown */}
         {showDropdown && filteredCustomers.length > 0 && (
-          <div className="absolute z-50 w-full mt-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-[300px] overflow-y-auto overscroll-contain" style={{ scrollBehavior: 'smooth' }}>
+          <div className="absolute z-[9999] w-full mt-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-[300px] overflow-y-auto overscroll-contain" style={{ scrollBehavior: 'smooth' }}>
             {filteredCustomers.map((customer) => (
               <button
                 key={customer.id}
