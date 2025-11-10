@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Odoo from 'odoo-xmlrpc';
 
 // ID TEAM LAPA REALI
 const LAPA_TEAM_IDS = [5, 9, 12, 8, 1, 11, 14];
@@ -15,67 +14,35 @@ const USER_TEAM_PERMISSIONS: Record<number, number[] | 'ALL'> = {
   249: 'ALL'   // Gregorio Buccolieri → SUPER ADMIN
 };
 
-// Configurazione Odoo da variabili d'ambiente
-const ODOO_CONFIG = {
-  url: process.env.ODOO_URL || 'https://lapa.odoo.com',
-  port: parseInt(process.env.ODOO_PORT || '443'),
-  db: process.env.ODOO_DB || 'lapa',
-  username: process.env.ODOO_USERNAME || 'paul@lapa.ch',
-  password: process.env.ODOO_PASSWORD || ''
-};
-
-// Funzione per connettersi a Odoo
-function connectOdoo(): Promise<{ odoo: any; uid: number }> {
-  return new Promise((resolve, reject) => {
-    const odoo = new Odoo({
-      url: ODOO_CONFIG.url,
-      port: ODOO_CONFIG.port,
-      db: ODOO_CONFIG.db,
-      username: ODOO_CONFIG.username,
-      password: ODOO_CONFIG.password
+// Usa l'API esistente /api/odoo/rpc per chiamare Odoo
+async function callOdoo(model: string, method: string, args: any[] = [], kwargs: any = {}) {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/odoo/rpc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        method,
+        args,
+        kwargs
+      })
     });
 
-    odoo.connect((err: any) => {
-      if (err) {
-        console.error('❌ Errore connessione Odoo:', err);
-        return reject(new Error('Impossibile connettersi a Odoo'));
-      }
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
 
-      // Usa uid 7 (Paul) come default
-      const uid = 7;
-      console.log(`✅ Connesso a Odoo come uid: ${uid}`);
-      resolve({ odoo, uid });
-    });
-  });
-}
+    const data = await response.json();
 
-// Funzione per chiamare metodi Odoo
-function callOdoo(
-  odoo: any,
-  uid: number,
-  model: string,
-  method: string,
-  args: any[],
-  kwargs: any = {}
-): Promise<any> {
-  return new Promise((resolve, reject) => {
-    odoo.execute_kw(
-      ODOO_CONFIG.db,
-      uid,
-      ODOO_CONFIG.password,
-      model,
-      method,
-      args,
-      kwargs,
-      (err: any, value: any) => {
-        if (err) {
-          console.error(`❌ Errore ${model}.${method}:`, err);
-          return reject(err);
-        }
-        resolve(value);
-      }
-    );
-  });
+    if (!data.success) {
+      throw new Error(data.error || 'RPC Error');
+    }
+
+    return data.result;
+  } catch (error: any) {
+    console.error(`❌ Errore chiamata RPC ${model}.${method}:`, error);
+    throw error;
+  }
 }
 
 // Funzione per formattare l'indirizzo
@@ -112,9 +79,6 @@ export async function GET(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Connetti a Odoo
-    const { odoo, uid } = await connectOdoo();
-
     // Determina i team accessibili
     let allowedTeamIds = LAPA_TEAM_IDS;
     if (userPermissions !== 'ALL') {
@@ -139,8 +103,6 @@ export async function GET(request: NextRequest) {
     ];
 
     const companies = await callOdoo(
-      odoo,
-      uid,
       'res.partner',
       'search_read',
       [searchDomain],
