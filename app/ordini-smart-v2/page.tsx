@@ -248,6 +248,40 @@ export default function SmartOrderingV2() {
     setSelectedProducts(new Map());
   }
 
+  async function loadPreOrdersForSupplier() {
+    if (!selectedSupplier) return;
+
+    try {
+      setLoadingPreOrders(true);
+
+      // Trova i pre-ordini per questo fornitore
+      const preOrderSupplier = preOrderSuppliers.find(s => s.supplierId === selectedSupplier.id);
+
+      if (!preOrderSupplier) {
+        alert('ℹ️ Nessun pre-ordine trovato per questo fornitore');
+        return;
+      }
+
+      // Auto-seleziona i prodotti pre-ordine con le quantità totali
+      const newMap = new Map(selectedProducts);
+
+      preOrderSupplier.products.forEach((preOrderProduct: any) => {
+        // Aggiungi o aggiorna la quantità selezionata
+        newMap.set(preOrderProduct.productId, preOrderProduct.totalQuantity);
+      });
+
+      setSelectedProducts(newMap);
+
+      alert(`✅ Caricati ${preOrderSupplier.products.length} prodotti pre-ordine!\nQuantità totale: ${preOrderSupplier.totalQuantity}\nClienti: ${preOrderSupplier.totalCustomers}`);
+
+    } catch (error) {
+      console.error('Errore caricamento pre-ordini:', error);
+      alert('❌ Errore nel caricamento dei pre-ordini');
+    } finally {
+      setLoadingPreOrders(false);
+    }
+  }
+
   // Sort suppliers: favorites first, then by urgency (filter out inactive suppliers)
   const sortedSuppliers = [...suppliers]
     .filter(s => s.isActive !== false) // Filtra fornitori inattivi
@@ -473,7 +507,13 @@ export default function SmartOrderingV2() {
                     const fullSupplier = suppliers.find(s => s.id === supplier.supplierId);
                     if (fullSupplier) {
                       setSelectedSupplier(fullSupplier);
-                      // TODO: Auto-seleziona i prodotti pre-ordine
+
+                      // Auto-seleziona i prodotti pre-ordine
+                      const newMap = new Map();
+                      supplier.products.forEach((preOrderProduct: any) => {
+                        newMap.set(preOrderProduct.productId, preOrderProduct.totalQuantity);
+                      });
+                      setSelectedProducts(newMap);
                     }
                   }}
                   className="bg-purple-500/20 hover:bg-purple-500/30 backdrop-blur-sm rounded-xl p-4 cursor-pointer transition-all border border-purple-400/30 hover:scale-105"
@@ -496,9 +536,46 @@ export default function SmartOrderingV2() {
                   </div>
 
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      // TODO: Crea ordini direttamente
+
+                      if (!confirm(`Creare ordini per ${supplier.supplierName}?\n\n${supplier.totalProducts} prodotti\n${supplier.totalCustomers} clienti\nQuantità totale: ${supplier.totalQuantity}`)) {
+                        return;
+                      }
+
+                      try {
+                        // Chiama l'API create-all-preorders esistente
+                        const response = await fetch('/api/smart-ordering-v2/create-all-preorders', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            products: supplier.products.map((p: any) => ({
+                              productId: p.productId,
+                              supplierId: supplier.supplierId,
+                              supplierName: supplier.supplierName,
+                              assignments: p.assignments.map((a: any) => ({
+                                customerId: a.customerId,
+                                customerName: a.customerName,
+                                quantity: a.quantity
+                              }))
+                            }))
+                          })
+                        });
+
+                        if (response.ok) {
+                          const result = await response.json();
+                          alert(`✅ Ordini creati con successo!\n\nPreventivi Clienti: ${result.customerQuotesCreated}\nPreventivi Fornitori: ${result.supplierQuotesCreated}`);
+                          // Ricarica i dati per aggiornare il dashboard
+                          await loadPreOrders();
+                          await loadData();
+                        } else {
+                          const error = await response.json();
+                          alert(`❌ Errore: ${error.error || 'Impossibile creare gli ordini'}`);
+                        }
+                      } catch (error) {
+                        console.error('Errore creazione ordini:', error);
+                        alert('❌ Errore nella creazione degli ordini');
+                      }
                     }}
                     className="w-full mt-3 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg transition-all font-semibold text-sm"
                   >
@@ -816,7 +893,7 @@ export default function SmartOrderingV2() {
                       <XMarkIcon className="w-8 h-8" />
                     </button>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={selectAllProducts}
                       className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg transition-all text-sm font-medium"
@@ -834,6 +911,12 @@ export default function SmartOrderingV2() {
                       className="px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition-all text-sm font-medium"
                     >
                       📦 Aggiungi Catalogo
+                    </button>
+                    <button
+                      onClick={loadPreOrdersForSupplier}
+                      className="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg transition-all text-sm font-medium"
+                    >
+                      📋 Carica Pre-Ordini
                     </button>
                   </div>
                 </div>
