@@ -20,6 +20,7 @@ export default function DashboardVenditori() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAdvancedDashboard, setShowAdvancedDashboard] = useState(false);
   const [showFinancialDashboard, setShowFinancialDashboard] = useState(false);
+  const [liveSearchResults, setLiveSearchResults] = useState<any[]>([]);
 
   const {
     user,
@@ -39,10 +40,16 @@ export default function DashboardVenditori() {
     }
   }, [selectedTeam]);
 
+  // Determina quali clienti mostrare
+  // Se c'è ricerca live, usa quei risultati; altrimenti filtra i clienti del team
+  const displayClients = searchQuery.trim().length >= 2 && liveSearchResults.length > 0
+    ? liveSearchResults
+    : clients;
+
   // Filtra clienti
-  const filteredClients = clients.filter(client => {
-    // Filtro per status
-    if (activeFilter !== 'all') {
+  const filteredClients = displayClients.filter(client => {
+    // Filtro per status (solo per clienti del team, non per risultati live search)
+    if (activeFilter !== 'all' && liveSearchResults.length === 0) {
       if (activeFilter === 'active' && client.status !== 'active') return false;
       if (activeFilter === 'warning' && client.status !== 'warning') return false;
       if (activeFilter === 'inactive' && client.status !== 'inactive') return false;
@@ -50,13 +57,23 @@ export default function DashboardVenditori() {
       if (activeFilter === 'decreasing_5weeks' && client.trend !== 'decreasing') return false;
     }
 
-    // Filtro per ricerca
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return (
-        client.name.toLowerCase().includes(query) ||
-        client.email?.toLowerCase().includes(query) ||
-        client.address?.toLowerCase().includes(query)
+    // Filtro per ricerca locale (solo se NON stiamo usando live search)
+    if (searchQuery && liveSearchResults.length === 0) {
+      const query = searchQuery.toLowerCase().trim();
+
+      // Cerca in TUTTI i campi del cliente
+      const searchableFields = [
+        client.name,                    // Nome cliente
+        client.email,                   // Email
+        client.phone,                   // Telefono
+        client.address,                 // Indirizzo completo
+        client.salesperson,             // Nome venditore
+        // Estrae città, via e CAP dall'indirizzo se presenti
+        ...(client.address?.split(',') || [])
+      ];
+
+      return searchableFields.some(field =>
+        field && field.toString().toLowerCase().includes(query)
       );
     }
 
@@ -183,6 +200,8 @@ export default function DashboardVenditori() {
           onFilterChange={setActiveFilter}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          onLiveSearchResults={setLiveSearchResults}
+          userId={user?.id}
         />
 
         {/* Client Grid */}
