@@ -78,6 +78,10 @@ export default function SmartOrderingV2() {
   const [searchTerm, setSearchTerm] = useState('');
   // Removed showPreOrderModal state - now using dedicated page
 
+  // Pre-orders state
+  const [preOrderSuppliers, setPreOrderSuppliers] = useState<any[]>([]);
+  const [loadingPreOrders, setLoadingPreOrders] = useState(false);
+
   // Cadence Management
   const [cadenceModal, setCadenceModal] = useState<{ supplier: Supplier | null; isOpen: boolean }>({
     supplier: null,
@@ -92,6 +96,7 @@ export default function SmartOrderingV2() {
 
   useEffect(() => {
     loadData();
+    loadPreOrders();
     // Load favorites from localStorage
     const saved = localStorage.getItem('favoriteSuppliers');
     if (saved) {
@@ -114,6 +119,21 @@ export default function SmartOrderingV2() {
       console.error('Errore caricamento:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadPreOrders() {
+    try {
+      setLoadingPreOrders(true);
+      const response = await fetch('/api/smart-ordering-v2/pre-orders-summary');
+      const data = await response.json();
+      if (data.success) {
+        setPreOrderSuppliers(data.preOrderSuppliers || []);
+      }
+    } catch (error) {
+      console.error('Errore caricamento pre-ordini:', error);
+    } finally {
+      setLoadingPreOrders(false);
     }
   }
 
@@ -430,6 +450,66 @@ export default function SmartOrderingV2() {
           </button>
         </div>
       </motion.div>
+
+      {/* PRE-ORDINI PROGRAMMATI */}
+      {!selectedSupplier && preOrderSuppliers.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="bg-purple-500/10 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
+            <h3 className="text-purple-300 font-bold text-xl mb-4 flex items-center gap-2">
+              <span className="w-3 h-3 bg-purple-500 rounded-full animate-pulse"></span>
+              📦 PRE-ORDINI PROGRAMMATI ({preOrderSuppliers.length})
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {preOrderSuppliers.map(supplier => (
+                <div
+                  key={supplier.supplierId}
+                  onClick={() => {
+                    // Trova il fornitore nei suppliers e aprilo
+                    const fullSupplier = suppliers.find(s => s.id === supplier.supplierId);
+                    if (fullSupplier) {
+                      setSelectedSupplier(fullSupplier);
+                      // TODO: Auto-seleziona i prodotti pre-ordine
+                    }
+                  }}
+                  className="bg-purple-500/20 hover:bg-purple-500/30 backdrop-blur-sm rounded-xl p-4 cursor-pointer transition-all border border-purple-400/30 hover:scale-105"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="text-white font-bold mb-1">{supplier.supplierName}</div>
+                      <div className="text-purple-300 text-sm">
+                        {supplier.totalProducts} prodotti • {supplier.totalCustomers} clienti
+                      </div>
+                    </div>
+                    <div className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                      PRE-ORDINE
+                    </div>
+                  </div>
+
+                  <div className="bg-purple-900/30 rounded-lg p-3 mt-2">
+                    <div className="text-purple-200 text-xs mb-1">Quantità Totale</div>
+                    <div className="text-white text-2xl font-bold">{supplier.totalQuantity}</div>
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // TODO: Crea ordini direttamente
+                    }}
+                    className="w-full mt-3 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg transition-all font-semibold text-sm"
+                  >
+                    🚀 Crea Ordini
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* URGENT ORDERS SECTION - ALWAYS VISIBLE */}
       {!selectedSupplier && (
