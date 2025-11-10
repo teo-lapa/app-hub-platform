@@ -149,6 +149,14 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
 
       setAddresses(transformedAddresses);
       console.log(`✅ Loaded ${transformedAddresses.length} addresses for customer ${customerId}`);
+
+      // SELEZIONE AUTOMATICA del primo indirizzo
+      if (transformedAddresses.length > 0) {
+        const firstAddressId = transformedAddresses[0].id;
+        setSelectedAddressId(firstAddressId);
+        onAddressSelect(firstAddressId);
+        console.log(`🎯 Auto-selezionato primo indirizzo: ${firstAddressId}`);
+      }
     } catch (err) {
       console.error('❌ Error loading addresses:', err);
       setError(err instanceof Error ? err.message : 'Errore sconosciuto');

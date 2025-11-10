@@ -101,18 +101,26 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
-    console.log(`🔍 Ricerca clienti: "${query}"`);
+    console.log(`🔍 Ricerca GLOBALE clienti: "${query}"`);
 
-    // Per ora cerca in TUTTI i team LAPA (permessi gestiti lato Odoo)
-    const allowedTeamIds = LAPA_TEAM_IDS;
+    // RICERCA GLOBALE: cerca in TUTTO Odoo, non solo team LAPA
+    // Permessi gestiti automaticamente da Odoo tramite session_id
 
-    // Cerca clienti in Odoo
-    // Cerca per: nome, email, telefono, città, indirizzo
+    // Domain corretto per trovare:
+    // 1. Aziende (is_company=true)
+    // 2. Contatti (is_company=false AND type='contact')
+    // 3. ESCLUSI indirizzi di consegna/fatturazione (type='delivery'/'invoice')
     const searchDomain = [
-      ['team_id', 'in', allowedTeamIds],
-      ['is_company', '=', true],
-      ['customer_rank', '>', 0],
-      ['parent_id', '=', false],
+      ['customer_rank', '>', 0],           // Solo clienti (non fornitori)
+
+      // Logica OR: Aziende O Contatti veri (NO indirizzi)
+      '|',
+        ['is_company', '=', true],         // Aziende
+        '&',                                // AND
+          ['is_company', '=', false],      // Contatti
+          ['type', '=', 'contact'],        // Ma solo type='contact' (NO delivery/invoice)
+
+      // Ricerca testuale (nome, email, telefono, città)
       '|', '|', '|', '|',
       ['name', 'ilike', query],
       ['email', 'ilike', query],
@@ -138,7 +146,10 @@ export async function GET(request: NextRequest) {
           'country_id',
           'user_id',
           'team_id',
-          'child_ids'
+          'child_ids',
+          'type',           // Per vedere se è contact/delivery/invoice
+          'is_company',     // Per vedere se è azienda o contatto
+          'parent_id'       // Per vedere se è figlio di un'azienda
         ],
         limit: 50, // Massimo 50 risultati
         order: 'name asc'
@@ -160,7 +171,10 @@ export async function GET(request: NextRequest) {
       salesperson: company.user_id ? company.user_id[1] : 'Non assegnato',
       teamId: company.team_id ? company.team_id[0] : null,
       teamName: company.team_id ? company.team_id[1] : 'Nessun team',
-      hasChildren: (company.child_ids || []).length > 0
+      hasChildren: (company.child_ids || []).length > 0,
+      isCompany: company.is_company,
+      type: company.type,
+      parentId: company.parent_id ? company.parent_id[0] : null
     }));
 
     return NextResponse.json({
