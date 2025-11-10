@@ -19,12 +19,13 @@ export async function GET(request: NextRequest) {
 
     const rpc = createOdooRPCClient(sessionId);
 
-    // Carica tutti i partner che sono clienti (customer = true)
+    // Carica tutti i partner attivi
     // Include sia aziende che contatti privati
+    // NOTA: NON filtro per customer_rank perché molti clienti hanno customer_rank=0
     const customers = await rpc.searchRead(
       'res.partner',
       [
-        ['customer_rank', '>', 0], // È un cliente
+        // RIMOSSO: ['customer_rank', '>', 0] → Bloccava 3360+ clienti incluso DGD
         ['active', '=', true]
         // Rimosso parent_id filter per includere anche i contatti privati
       ],
