@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Home, CheckCircle, AlertCircle, Loader2, DollarSign, TrendingDown, Lock, Unlock, TrendingUp, Award, Info, BarChart, X, Trash2, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft, Home, CheckCircle, AlertCircle, Loader2, DollarSign, TrendingDown, Lock, Unlock, TrendingUp, Award, Info, BarChart, X, Trash2, ClipboardCheck, Bell, Tag } from 'lucide-react';
 import type { OrderData, OrderLine, PriceUpdate } from '../types';
 import ManualProductSearch from '../../components/ManualProductSearch';
+import { UrgentProductsModal } from '@/components/maestro/UrgentProductsModal';
+import { OfferProductsModal } from '@/components/maestro/OfferProductsModal';
 
 interface CustomerStats {
   totalRevenue: number;
@@ -97,13 +99,41 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingOrder, setCancellingOrder] = useState(false);
 
+  // Prodotti urgenti e offerte
+  const [showUrgentModal, setShowUrgentModal] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [urgentCount, setUrgentCount] = useState(0);
+  const [offerCount, setOfferCount] = useState(0);
+
   // Check if order can be edited (draft and sent states allow editing)
   const canEditOrder = orderData?.state === 'draft' || orderData?.state === 'sent';
 
   // Load order data
   useEffect(() => {
     loadOrderData();
+    loadProductCounts(); // Carica conteggi prodotti urgenti e offerte
   }, [orderId]);
+
+  // Carica conteggi prodotti urgenti e offerte
+  const loadProductCounts = async () => {
+    try {
+      // Carica prodotti urgenti
+      const urgentResponse = await fetch('/api/urgent-products', { credentials: 'include' });
+      const urgentData = await urgentResponse.json();
+      if (urgentData.success) {
+        setUrgentCount(urgentData.count || 0);
+      }
+
+      // Carica prodotti in offerta
+      const offerResponse = await fetch('/api/offer-products', { credentials: 'include' });
+      const offerData = await offerResponse.json();
+      if (offerData.success) {
+        setOfferCount(offerData.count || 0);
+      }
+    } catch (error) {
+      console.error('Errore caricamento conteggi:', error);
+    }
+  };
 
   const loadOrderData = async () => {
     try {
@@ -959,6 +989,39 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                   </p>
                 </div>
               </div>
+
+              {/* Urgent/Offer Buttons */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                {/* Urgenti Button */}
+                <button
+                  onClick={() => setShowUrgentModal(true)}
+                  className="relative flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white rounded-lg transition-colors min-h-[44px] min-w-[44px] justify-center"
+                  title="Prodotti Urgenti"
+                >
+                  <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="text-xs font-medium hidden sm:inline">Urgenti</span>
+                  {urgentCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                      {urgentCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Offerte Button */}
+                <button
+                  onClick={() => setShowOfferModal(true)}
+                  className="relative flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-colors min-h-[44px] min-w-[44px] justify-center"
+                  title="Prodotti in Offerta"
+                >
+                  <Tag className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="text-xs font-medium hidden sm:inline">Offerte</span>
+                  {offerCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-green-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                      {offerCount}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1809,6 +1872,28 @@ export default function ReviewPricesPage({ params }: RouteParams) {
             )}
           </div>
         </div>
+      )}
+
+      {/* Urgent Products Modal */}
+      {showUrgentModal && (
+        <UrgentProductsModal
+          isOpen={showUrgentModal}
+          onClose={() => {
+            setShowUrgentModal(false);
+            loadProductCounts(); // Ricarica conteggi quando si chiude
+          }}
+        />
+      )}
+
+      {/* Offer Products Modal */}
+      {showOfferModal && (
+        <OfferProductsModal
+          isOpen={showOfferModal}
+          onClose={() => {
+            setShowOfferModal(false);
+            loadProductCounts(); // Ricarica conteggi quando si chiude
+          }}
+        />
       )}
       </div>
     </>
