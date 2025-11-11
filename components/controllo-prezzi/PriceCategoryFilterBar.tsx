@@ -11,10 +11,18 @@ interface PriceCategoryFilterBarProps {
     blocked: number;
     all: number;
   };
-  onSelect: (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked') => void;
+  onSelect: (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all') => void;
 }
 
 const PRICE_CATEGORIES: PriceCategory[] = [
+  {
+    id: 'all',
+    name: 'TUTTI I PREZZI',
+    icon: '📊',
+    description: 'Visualizza tutti i prodotti',
+    gradient: 'from-slate-500 to-slate-700',
+    count: 0,
+  },
   {
     id: 'below_critical',
     name: 'SOTTO PUNTO CRITICO',
@@ -80,7 +88,7 @@ export function PriceCategoryFilterBar({
       )}
 
       {/* Griglia filtri */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 max-w-7xl mx-auto">
         {PRICE_CATEGORIES.map((category, index) => {
           const count = counts[category.id];
           const isHighlighted = count === maxCount && maxCount > 0;

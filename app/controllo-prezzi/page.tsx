@@ -69,7 +69,7 @@ export default function ControlloPrezziPage() {
   }, []);
 
   // Seleziona categoria e mostra prodotti
-  const handleSelectCategory = async (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked') => {
+  const handleSelectCategory = async (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all') => {
     setSelectedCategory(category);
     setCurrentView('products');
     setLoading(true);
@@ -83,6 +83,7 @@ export default function ControlloPrezziPage() {
       if (data.success) {
         setProducts(data.products || []);
         const categoryLabels = {
+          all: 'TUTTI I PREZZI',
           below_critical: 'SOTTO PUNTO CRITICO',
           critical_to_avg: 'TRA PC E MEDIO',
           above_avg: 'SOPRA MEDIO',
