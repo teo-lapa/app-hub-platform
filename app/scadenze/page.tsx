@@ -9,6 +9,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { ExpiryProductCard } from '@/components/scadenze/ExpiryProductCard';
 import { UrgencyFilterBar } from '@/components/scadenze/UrgencyFilterBar';
 import { WasteTransferModal } from '@/components/inventario/WasteTransferModal';
+import { ProductManagementModal } from '@/components/maestro/ProductManagementModal';
 import { ExpiryProduct } from '@/lib/types/expiry';
 import toast from 'react-hot-toast';
 
@@ -82,11 +83,10 @@ export default function ScadenzePage() {
   const [offerPriceInput, setOfferPriceInput] = useState('');
   const [offerDiscountInput, setOfferDiscountInput] = useState('');
 
-  // Carica conteggi all'avvio
-  useEffect(() => {
-    checkConnection();
-    loadCounts();
-  }, []);
+  // Stati per modal gestione
+  const [showManagementModal, setShowManagementModal] = useState(false);
+  const [urgentProductsCount, setUrgentProductsCount] = useState(0);
+  const [offerProductsCount, setOfferProductsCount] = useState(0);
 
   const checkConnection = async () => {
     try {
@@ -114,6 +114,35 @@ export default function ScadenzePage() {
       toast.error('Errore caricamento conteggi');
     }
   };
+
+  // Carica conteggi prodotti urgenti e offerte
+  const loadManagementCounts = async () => {
+    try {
+      const [urgentRes, offerRes] = await Promise.all([
+        fetch('/api/urgent-products', { credentials: 'include' }),
+        fetch('/api/offer-products', { credentials: 'include' })
+      ]);
+
+      const urgentData = await urgentRes.json();
+      const offerData = await offerRes.json();
+
+      if (urgentData.success) {
+        setUrgentProductsCount(urgentData.count || 0);
+      }
+      if (offerData.success) {
+        setOfferProductsCount(offerData.count || 0);
+      }
+    } catch (error) {
+      console.error('Errore caricamento conteggi gestione:', error);
+    }
+  };
+
+  // Carica conteggi all'avvio
+  useEffect(() => {
+    checkConnection();
+    loadCounts();
+    loadManagementCounts();
+  }, []);
 
   // Seleziona urgenza e mostra prodotti
   const handleSelectUrgency = async (urgency: 'expired' | 'expiring' | 'ok' | 'all' | 'no-movement-30' | 'no-movement-90') => {
@@ -393,6 +422,9 @@ export default function ScadenzePage() {
             <UrgencyFilterBar
               counts={urgencyCounts}
               onSelect={handleSelectUrgency}
+              onManagementClick={() => setShowManagementModal(true)}
+              urgentCount={urgentProductsCount}
+              offerCount={offerProductsCount}
             />
           </motion.div>
         )}
@@ -821,6 +853,16 @@ export default function ScadenzePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Modal Gestione Urgenti/Offerte */}
+      <ProductManagementModal
+        isOpen={showManagementModal}
+        onClose={() => {
+          setShowManagementModal(false);
+          // Ricarica conteggi quando si chiude il modal
+          loadManagementCounts();
+        }}
+      />
 
       {/* Modal Metti in Offerta */}
       <AnimatePresence>
