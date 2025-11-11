@@ -443,6 +443,57 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Post message about urgent/offer products if any
+    const urgentProducts = orderLines.filter(l => l.source === 'urgent');
+    const offerProducts = orderLines.filter(l => l.source === 'offer');
+
+    if (urgentProducts.length > 0 || offerProducts.length > 0) {
+      try {
+        console.log('📝 [CREATE-ORDER-API] Posting urgent/offer products message to Chatter...');
+
+        let specialProductsMessage = '<p><strong>⚡ Prodotti Speciali in questo Ordine</strong></p><ul>';
+
+        if (urgentProducts.length > 0) {
+          specialProductsMessage += '<li><strong>🔔 Prodotti Urgenti:</strong> ' + urgentProducts.length;
+          urgentProducts.forEach(p => {
+            const priceInfo = p.price ? ` - CHF ${p.price.toFixed(2)}` : '';
+            specialProductsMessage += `<br/>• ${p.product_name} (x${p.quantity}${priceInfo})`;
+          });
+          specialProductsMessage += '</li>';
+        }
+
+        if (offerProducts.length > 0) {
+          specialProductsMessage += '<li><strong>🏷️ Prodotti in Offerta:</strong> ' + offerProducts.length;
+          offerProducts.forEach(p => {
+            const priceInfo = p.price ? ` - CHF ${p.price.toFixed(2)}` : '';
+            specialProductsMessage += `<br/>• ${p.product_name} (x${p.quantity}${priceInfo})`;
+          });
+          specialProductsMessage += '</li>';
+        }
+
+        specialProductsMessage += '</ul><p><em>Questi prodotti hanno prezzi speciali da controllo scadenze</em></p>';
+
+        await callOdoo(
+          cookies,
+          'mail.message',
+          'create',
+          [{
+            model: 'sale.order',
+            res_id: odooOrderId,
+            body: specialProductsMessage,
+            message_type: 'comment',
+            subtype_id: 1, // mt_note (internal note)
+          }],
+          {}
+        );
+
+        console.log('✅ [CREATE-ORDER-API] Urgent/Offer products message posted to Chatter');
+      } catch (specialError: any) {
+        console.error('⚠️ [CREATE-ORDER-API] Failed to post special products message:', specialError.message);
+        // Continue anyway - not critical
+      }
+    }
+
     console.log('✅ [CREATE-ORDER-API] Order creation completed successfully');
 
     return NextResponse.json({

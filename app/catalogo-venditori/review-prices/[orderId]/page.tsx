@@ -135,6 +135,41 @@ export default function ReviewPricesPage({ params }: RouteParams) {
     }
   };
 
+  // Aggiungi prodotto urgente/offerta all'ordine esistente
+  const handleAddProductToOrder = async (productId: number, productName: string, quantity: number, price?: number, source?: 'offer' | 'urgent') => {
+    try {
+      console.log('➕ Adding product to existing order:', { productId, quantity, price, source });
+
+      const response = await fetch(`/api/catalogo-venditori/add-order-line`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: orderId,
+          productId: productId,
+          productName: productName,
+          quantity: quantity,
+          price: price,
+          source: source
+        }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('✅ Product added to order successfully');
+        // Ricarica l'ordine per mostrare la nuova riga
+        await loadOrderData();
+      } else {
+        console.error('❌ Error adding product:', data.error);
+        alert(`Errore: ${data.error || 'Impossibile aggiungere il prodotto'}`);
+      }
+    } catch (error: any) {
+      console.error('❌ Error adding product to order:', error);
+      alert(`Errore: ${error.message || 'Errore durante l\'aggiunta del prodotto'}`);
+    }
+  };
+
   const loadOrderData = async () => {
     try {
       setLoading(true);
@@ -1875,23 +1910,47 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       )}
 
       {/* Urgent Products Modal */}
-      {showUrgentModal && (
+      {showUrgentModal && orderData && (
         <UrgentProductsModal
           isOpen={showUrgentModal}
           onClose={() => {
             setShowUrgentModal(false);
             loadProductCounts(); // Ricarica conteggi quando si chiude
           }}
+          customerId={orderData.customerId}
+          customerName={orderData.customerName}
+          showRemoveButton={false}
+          onProductAdd={(urgentProduct, quantity) => {
+            handleAddProductToOrder(
+              urgentProduct.productId,
+              urgentProduct.productName,
+              quantity,
+              urgentProduct.suggestedPrice,
+              'urgent'
+            );
+          }}
         />
       )}
 
       {/* Offer Products Modal */}
-      {showOfferModal && (
+      {showOfferModal && orderData && (
         <OfferProductsModal
           isOpen={showOfferModal}
           onClose={() => {
             setShowOfferModal(false);
             loadProductCounts(); // Ricarica conteggi quando si chiude
+          }}
+          customerId={orderData.customerId}
+          customerName={orderData.customerName}
+          showRemoveButton={false}
+          onProductAdd={(offerProduct, quantity) => {
+            handleAddProductToOrder(
+              offerProduct.productId,
+              offerProduct.productName,
+              quantity,
+              offerProduct.offerPrice,
+              'offer'
+            );
           }}
         />
       )}
