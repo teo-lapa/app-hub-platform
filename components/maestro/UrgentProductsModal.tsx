@@ -90,8 +90,12 @@ export function UrgentProductsModal({
       return;
     }
 
-    if (quantityInput <= 0 || quantityInput > selectedProduct.quantity) {
-      toast.error(`⚠️ Quantità non valida (max: ${selectedProduct.quantity})`);
+    const maxQty = (selectedProduct as any).availableQuantity !== undefined
+      ? (selectedProduct as any).availableQuantity
+      : selectedProduct.quantity;
+
+    if (quantityInput <= 0 || quantityInput > maxQty) {
+      toast.error(`⚠️ Quantità non valida (max disponibile: ${maxQty})`);
       return;
     }
 
@@ -219,7 +223,20 @@ export function UrgentProductsModal({
                     {/* Quantità - Compatto */}
                     <div className="flex items-center gap-1 text-[10px] sm:text-xs text-green-400 mb-0.5">
                       <Package className="w-3 h-3" />
-                      <span>{product.quantity} {product.uom}</span>
+                      <span>
+                        {(product as any).availableQuantity !== undefined ? (
+                          <>
+                            {(product as any).availableQuantity} {product.uom}
+                            {(product as any).reservedQuantity > 0 && (
+                              <span className="text-orange-400 ml-1">
+                                ({(product as any).reservedQuantity} pren.)
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          `${product.quantity} ${product.uom}`
+                        )}
+                      </span>
                     </div>
 
                     {/* Ubicazione - Compatto */}
@@ -303,7 +320,18 @@ export function UrgentProductsModal({
                   <Package className="w-4 h-4 text-green-400" />
                   <span className="text-slate-400">Quantità:</span>
                   <span className="font-semibold text-green-400">
-                    {selectedProduct.quantity} {selectedProduct.uom}
+                    {(selectedProduct as any).availableQuantity !== undefined ? (
+                      <>
+                        {(selectedProduct as any).availableQuantity} {selectedProduct.uom} disponibili
+                        {(selectedProduct as any).reservedQuantity > 0 && (
+                          <span className="text-orange-400 text-xs ml-2">
+                            ({(selectedProduct as any).reservedQuantity} già prenotati in altri ordini)
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      `${selectedProduct.quantity} ${selectedProduct.uom}`
+                    )}
                   </span>
                 </div>
 
@@ -369,23 +397,38 @@ export function UrgentProductsModal({
                     <input
                       type="number"
                       min="1"
-                      max={selectedProduct.quantity}
+                      max={(selectedProduct as any).availableQuantity !== undefined ? (selectedProduct as any).availableQuantity : selectedProduct.quantity}
                       value={quantityInput}
                       onChange={(e) => {
                         const val = parseInt(e.target.value) || 1;
-                        setQuantityInput(Math.min(selectedProduct.quantity, Math.max(1, val)));
+                        const maxQty = (selectedProduct as any).availableQuantity !== undefined ? (selectedProduct as any).availableQuantity : selectedProduct.quantity;
+                        setQuantityInput(Math.min(maxQty, Math.max(1, val)));
                       }}
                       className="flex-1 glass-strong p-3 rounded-lg text-center font-bold text-xl"
                     />
                     <button
-                      onClick={() => setQuantityInput(prev => Math.min(selectedProduct.quantity, prev + 1))}
+                      onClick={() => {
+                        const maxQty = (selectedProduct as any).availableQuantity !== undefined ? (selectedProduct as any).availableQuantity : selectedProduct.quantity;
+                        setQuantityInput(prev => Math.min(maxQty, prev + 1));
+                      }}
                       className="w-12 h-12 glass-strong rounded-lg font-bold text-xl hover:bg-white/5"
                     >
                       +
                     </button>
                   </div>
                   <p className="text-xs text-slate-400 text-center mt-2">
-                    Disponibili: {selectedProduct.quantity} {selectedProduct.uom}
+                    {(selectedProduct as any).availableQuantity !== undefined ? (
+                      <>
+                        Disponibili: {(selectedProduct as any).availableQuantity} {selectedProduct.uom}
+                        {(selectedProduct as any).reservedQuantity > 0 && (
+                          <span className="text-orange-400">
+                            {' '}({(selectedProduct as any).reservedQuantity} prenotati)
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      `Disponibili: ${selectedProduct.quantity} ${selectedProduct.uom}`
+                    )}
                   </p>
                 </div>
               )}

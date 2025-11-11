@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import type {
   OfferProduct,
   AddOfferProductRequest,
@@ -11,12 +12,81 @@ import type {
 const OFFER_PRODUCTS_KEY = 'offer_products';
 
 /**
+ * Calcola la quantità prenotata in ordini draft/sent per un prodotto specifico
+ * con lotto e ubicazione specifici
+ */
+async function calculateReservedQuantity(
+  cookies: string,
+  productId: number,
+  lotId?: number,
+  locationId?: number
+): Promise<number> {
+  try {
+    if (!lotId && !locationId) {
+      // Se non c'è lotto/ubicazione specifica, non calcoliamo prenotazioni
+      return 0;
+    }
+
+    // Cerca ordini in stato draft/sent che contengono questo prodotto
+    const orderLines = await callOdoo(
+      cookies,
+      'sale.order.line',
+      'search_read',
+      [],
+      {
+        domain: [
+          ['product_id', '=', productId],
+          ['state', 'in', ['draft', 'sale']], // draft o confermato ma non ancora consegnato
+        ],
+        fields: ['id', 'product_uom_qty', 'name', 'order_id']
+      }
+    );
+
+    if (!orderLines || orderLines.length === 0) {
+      return 0;
+    }
+
+    // Filtra le righe che hanno il lotto/ubicazione nelle note
+    let reservedQty = 0;
+    for (const line of orderLines) {
+      const lineName = line.name || '';
+
+      // Cerca il lotId o locationId nelle note del prodotto
+      let isMatch = false;
+
+      if (lotId && lineName.includes(`Lotto: ${lotId}`)) {
+        isMatch = true;
+      }
+
+      if (locationId && lineName.includes(`Ubicazione:`)) {
+        // Può contenere ID o nome, per ora matchiamo genericamente
+        isMatch = true;
+      }
+
+      if (isMatch) {
+        reservedQty += line.product_uom_qty || 0;
+        console.log(`📦 Found reserved qty: ${line.product_uom_qty} in order line ${line.id}`);
+      }
+    }
+
+    return reservedQty;
+  } catch (error) {
+    console.error('❌ Error calculating reserved quantity:', error);
+    return 0; // In caso di errore, assumiamo 0 prenotato
+  }
+}
+
+/**
  * GET /api/offer-products
- * Recupera tutti i prodotti in offerta
+ * Recupera tutti i prodotti in offerta con calcolo quantità prenotate
  */
 export async function GET(request: NextRequest) {
   try {
     console.log('📋 GET /api/offer-products - Recupero prodotti in offerta...');
+
+    // Get Odoo session per calcolare prenotazioni
+    const cookieHeader = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
 
     // Recupera tutti i prodotti in offerta da Vercel KV
     const offerProducts = await kv.hgetall<Record<string, OfferProduct>>(OFFER_PRODUCTS_KEY);
@@ -33,6 +103,26 @@ export async function GET(request: NextRequest) {
     const productsArray = Object.values(offerProducts).sort((a, b) => {
       return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
     });
+
+    // Calcola quantità prenotate per ogni prodotto (solo se autenticato)
+    if (uid && cookies) {
+      console.log('🔍 Calcolo quantità prenotate per prodotti in offerta...');
+
+      for (const product of productsArray) {
+        const reservedQty = await calculateReservedQuantity(
+          cookies,
+          product.productId,
+          product.lotId,
+          product.locationId
+        );
+
+        // Aggiungi la quantità prenotata al prodotto
+        (product as any).reservedQuantity = reservedQty;
+        (product as any).availableQuantity = product.quantity - reservedQty;
+
+        console.log(`📊 Prodotto ${product.productName}: ${product.quantity} totali, ${reservedQty} prenotati, ${product.quantity - reservedQty} disponibili`);
+      }
+    }
 
     console.log(`✅ Trovati ${productsArray.length} prodotti in offerta`);
 
