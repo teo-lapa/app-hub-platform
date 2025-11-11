@@ -22,6 +22,7 @@ export const maxDuration = 120;
 interface OrderLine {
   product_id: number;
   quantity: number;
+  product_name?: string; // Optional, used for better error messages
 }
 
 interface CreateOrderRequest {
