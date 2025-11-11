@@ -717,6 +717,37 @@ export default function CatalogoVenditoriPage() {
           setShowUrgentModal(false);
           loadProductCounts(); // Ricarica conteggi quando chiude
         }}
+        customerId={selectedCustomerId}
+        customerName={selectedCustomerName}
+        showRemoveButton={false}
+        onProductAdd={(urgentProduct, quantity) => {
+          // Aggiungi prodotto urgente al carrello
+          const cartProduct: CartProduct = {
+            product_id: urgentProduct.productId,
+            product_name: urgentProduct.productName,
+            quantity: quantity,
+            confidence: 1.0,
+            reasoning: `Prodotto urgente (scade: ${urgentProduct.expirationDate}) - ${urgentProduct.note}`,
+            image_url: urgentProduct.image ? `data:image/png;base64,${urgentProduct.image}` : null,
+            qty_available: urgentProduct.quantity,
+            uom_name: urgentProduct.uom,
+            incoming_qty: 0,
+            incoming_date: null
+          };
+
+          setCartProducts(prev => {
+            const existingIndex = prev.findIndex(p => p.product_id === urgentProduct.productId);
+            if (existingIndex >= 0) {
+              // Prodotto già nel carrello, somma quantità
+              const updated = [...prev];
+              updated[existingIndex].quantity += quantity;
+              return updated;
+            } else {
+              // Nuovo prodotto
+              return [...prev, cartProduct];
+            }
+          });
+        }}
       />
 
       {/* Modal Prodotti in Offerta */}
@@ -725,6 +756,37 @@ export default function CatalogoVenditoriPage() {
         onClose={() => {
           setShowOfferModal(false);
           loadProductCounts(); // Ricarica conteggi quando chiude
+        }}
+        customerId={selectedCustomerId}
+        customerName={selectedCustomerName}
+        showRemoveButton={false}
+        onProductAdd={(offerProduct, quantity) => {
+          // Aggiungi prodotto in offerta al carrello
+          const cartProduct: CartProduct = {
+            product_id: offerProduct.productId,
+            product_name: offerProduct.productName,
+            quantity: quantity,
+            confidence: 1.0,
+            reasoning: `Prodotto in offerta - ${offerProduct.note}${offerProduct.offerPrice ? ` - Prezzo offerta: CHF ${offerProduct.offerPrice.toFixed(2)}` : ''}`,
+            image_url: offerProduct.image ? `data:image/png;base64,${offerProduct.image}` : null,
+            qty_available: offerProduct.quantity,
+            uom_name: offerProduct.uom,
+            incoming_qty: 0,
+            incoming_date: null
+          };
+
+          setCartProducts(prev => {
+            const existingIndex = prev.findIndex(p => p.product_id === offerProduct.productId);
+            if (existingIndex >= 0) {
+              // Prodotto già nel carrello, somma quantità
+              const updated = [...prev];
+              updated[existingIndex].quantity += quantity;
+              return updated;
+            } else {
+              // Nuovo prodotto
+              return [...prev, cartProduct];
+            }
+          });
         }}
       />
     </div>

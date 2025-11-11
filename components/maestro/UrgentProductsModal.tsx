@@ -2,25 +2,45 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Bell, Calendar, Package, MapPin, AlertTriangle, Trash2 } from 'lucide-react';
+import { X, Bell, Calendar, Package, MapPin, AlertTriangle, Trash2, ShoppingCart } from 'lucide-react';
 import type { UrgentProduct } from '@/lib/types/expiry';
 import toast from 'react-hot-toast';
 
 interface UrgentProductsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  // Props per catalogo venditori
+  customerId?: number | null;
+  customerName?: string;
+  onProductAdd?: (product: UrgentProduct, quantity: number) => void;
+  showRemoveButton?: boolean; // default true per magazzino, false per venditori
 }
 
-export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProps) {
+export function UrgentProductsModal({
+  isOpen,
+  onClose,
+  customerId = null,
+  customerName = '',
+  onProductAdd,
+  showRemoveButton = true // default true per retrocompatibilità
+}: UrgentProductsModalProps) {
   const [products, setProducts] = useState<UrgentProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<UrgentProduct | null>(null);
+  const [quantityInput, setQuantityInput] = useState<number>(1);
 
   useEffect(() => {
     if (isOpen) {
       loadUrgentProducts();
     }
   }, [isOpen]);
+
+  // Reset quantità quando cambia prodotto selezionato
+  useEffect(() => {
+    if (selectedProduct) {
+      setQuantityInput(1);
+    }
+  }, [selectedProduct]);
 
   const loadUrgentProducts = async () => {
     setLoading(true);
@@ -59,6 +79,27 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
       }
     } catch (error: any) {
       toast.error('Errore: ' + error.message);
+    }
+  };
+
+  const handleAddToOrder = () => {
+    if (!selectedProduct) return;
+
+    if (!customerId) {
+      toast.error('⚠️ Seleziona prima un cliente');
+      return;
+    }
+
+    if (quantityInput <= 0 || quantityInput > selectedProduct.quantity) {
+      toast.error(`⚠️ Quantità non valida (max: ${selectedProduct.quantity})`);
+      return;
+    }
+
+    // Chiama callback per aggiungere al carrello
+    if (onProductAdd) {
+      onProductAdd(selectedProduct, quantityInput);
+      toast.success(`✅ ${quantityInput} ${selectedProduct.uom} aggiunti all'ordine`);
+      setSelectedProduct(null);
     }
   };
 
@@ -309,21 +350,76 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
                     </div>
                   </div>
                   <div className="text-xs text-slate-500 mt-2">
-                    Da: {selectedProduct.addedBy} • {formatDate(selectedProduct.addedAt)} alle {formatTime(selectedProduct.addedAt)}
+                    Da: {selectedProduct.addedBy?.split('@')[0] || selectedProduct.addedBy} • {formatDate(selectedProduct.addedAt)} alle {formatTime(selectedProduct.addedAt)}
                   </div>
+                </div>
+              )}
+
+              {/* Input Quantità (solo per catalogo venditori) */}
+              {onProductAdd && (
+                <div className="glass p-4 rounded-lg mb-4">
+                  <label className="block text-sm font-semibold mb-2">Quantità</label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setQuantityInput(prev => Math.max(1, prev - 1))}
+                      className="w-12 h-12 glass-strong rounded-lg font-bold text-xl hover:bg-white/5"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      max={selectedProduct.quantity}
+                      value={quantityInput}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        setQuantityInput(Math.min(selectedProduct.quantity, Math.max(1, val)));
+                      }}
+                      className="flex-1 glass-strong p-3 rounded-lg text-center font-bold text-xl"
+                    />
+                    <button
+                      onClick={() => setQuantityInput(prev => Math.min(selectedProduct.quantity, prev + 1))}
+                      className="w-12 h-12 glass-strong rounded-lg font-bold text-xl hover:bg-white/5"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 text-center mt-2">
+                    Disponibili: {selectedProduct.quantity} {selectedProduct.uom}
+                  </p>
                 </div>
               )}
 
               {/* Azioni */}
               <div className="space-y-3">
-                <button
-                  onClick={() => handleRemoveProduct(selectedProduct.id)}
-                  className="w-full glass-strong p-4 min-h-[56px] rounded-lg hover:bg-red-500/20 transition-all
-                           flex items-center justify-center gap-2 group"
-                >
-                  <Trash2 className="w-5 h-5 text-red-400" />
-                  <span className="font-semibold">Rimuovi dalla Lista</span>
-                </button>
+                {/* Pulsante Aggiungi all'Ordine (solo per catalogo venditori) */}
+                {onProductAdd && (
+                  <button
+                    onClick={handleAddToOrder}
+                    disabled={!customerId}
+                    className="w-full glass-strong p-4 min-h-[56px] rounded-lg bg-gradient-to-r from-green-600 to-emerald-600
+                             hover:from-green-700 hover:to-emerald-700 disabled:from-slate-600 disabled:to-slate-600
+                             disabled:opacity-50 disabled:cursor-not-allowed transition-all
+                             flex items-center justify-center gap-2 group"
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    <span className="font-semibold">
+                      {customerId ? 'Aggiungi all\'Ordine' : 'Seleziona Cliente'}
+                    </span>
+                  </button>
+                )}
+
+                {/* Pulsante Rimuovi (solo per magazzino) */}
+                {showRemoveButton && (
+                  <button
+                    onClick={() => handleRemoveProduct(selectedProduct.id)}
+                    className="w-full glass-strong p-4 min-h-[56px] rounded-lg hover:bg-red-500/20 transition-all
+                             flex items-center justify-center gap-2 group"
+                  >
+                    <Trash2 className="w-5 h-5 text-red-400" />
+                    <span className="font-semibold">Rimuovi dalla Lista</span>
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>
