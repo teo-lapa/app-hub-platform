@@ -146,12 +146,12 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
                     onClick={() => setSelectedProduct(product)}
                   >
                     {/* Immagine - Ridotta */}
-                    <div className="w-full aspect-square rounded-lg overflow-hidden mb-2">
+                    <div className="w-full aspect-square rounded-lg overflow-hidden mb-2 bg-white p-2">
                       {product.image ? (
                         <img
                           src={`data:image/png;base64,${product.image}`}
                           alt={product.productName}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-2xl sm:text-3xl">
@@ -220,12 +220,12 @@ export function UrgentProductsModal({ isOpen, onClose }: UrgentProductsModalProp
               </button>
 
               {/* Immagine */}
-              <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 rounded-xl overflow-hidden">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 rounded-xl overflow-hidden bg-white p-2">
                 {selectedProduct.image ? (
                   <img
                     src={`data:image/png;base64,${selectedProduct.image}`}
                     alt={selectedProduct.productName}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-6xl">
