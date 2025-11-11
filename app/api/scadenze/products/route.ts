@@ -192,7 +192,7 @@ export async function GET(request: NextRequest) {
 
       // Costruisci ExpiryProduct
       const expiryProduct: ExpiryProduct = {
-        id: quant.id,
+        id: product.id, // ID del prodotto, NON del quant!
         name: product.name || '',
         code: product.default_code || '',
         barcode: product.barcode || '',
@@ -433,7 +433,7 @@ async function getNoMovementProducts(
 
       // Costruisci ExpiryProduct (usa formato compatibile)
       const expiryProduct: ExpiryProduct = {
-        id: quant.id,
+        id: product.id, // ID del prodotto, NON del quant!
         name: product.name || '',
         code: product.default_code || '',
         barcode: product.barcode || '',
