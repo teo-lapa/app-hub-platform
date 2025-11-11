@@ -1,0 +1,291 @@
+# ==========================================
+# VIDEO PROMPT TEMPLATES - TOML FORMAT
+# Social Marketing AI Studio
+# ==========================================
+# Questo file contiene tutti i template dei prompt per la generazione video
+# Formato TOML per migliore leggibilità e manutenzione
+
+[metadata]
+version = "2.0"
+last_updated = "2025-11-11"
+model = "veo-3.1-generate-preview"
+default_duration = 8
+default_style = "classic"
+
+# ==========================================
+# 🎬 STILE CLASSICO
+# ==========================================
+[styles.classic]
+name = "Classico"
+emoji = "🎬"
+description = "Rotazione prodotto smooth professionale"
+suitable_for = ["tutti i prodotti", "e-commerce", "cataloghi"]
+
+[styles.classic.settings]
+camera_movement = "360° rotation"
+lighting = "studio professionale"
+background = "elegante minimalista"
+pace = "smooth e costante"
+
+[styles.classic.prompt]
+title = "PREMIUM PROFESSIONAL product video"
+critical_instructions = [
+    "Use the provided image as EXACT visual reference",
+    "Recreate IDENTICAL product (colors, textures, shape, packaging)",
+    "Product MUST look exactly like the reference photo"
+]
+camera_details = [
+    "Smooth 360° rotation around the product at constant speed",
+    "Professional turntable showcase style",
+    "Camera orbits horizontally at product's eye level",
+    "Complete or near-complete rotation"
+]
+lighting_environment = [
+    "High-end studio lighting with soft key light and rim lights",
+    "Elegant gradient background (dark to light) or solid premium color",
+    "Product sits on premium surface (white marble, glossy black, brushed metal)",
+    "Clean, minimal, professional aesthetic"
+]
+visual_quality = [
+    "Photorealistic commercial product photography",
+    "Sharp focus throughout, subtle depth of field",
+    "Natural color grading, accurate product colors",
+    "Broadcast-quality smooth motion"
+]
+style_note = "Classic luxury product showcase"
+
+# ==========================================
+# 💥 STILE ESPLOSIVO
+# ==========================================
+[styles.explosive]
+name = "Esplosivo"
+emoji = "💥"
+description = "Esplosione + ricomposizione drammatica"
+suitable_for = ["tech products", "gaming", "energetic brands", "giovani"]
+
+[styles.explosive.settings]
+camera_movement = "esplosione + ricomposizione"
+lighting = "dinamico ad alta energia"
+background = "scuro per enfatizzare particelle"
+pace = "veloce con rallenti strategici"
+
+[styles.explosive.prompt]
+title = "EXPLOSIVE, HIGH-ENERGY product reveal video"
+sequence = [
+    "START (0-30%): Product intact, centered, slightly rotating",
+    "EXPLOSION (30-50%): Product EXPLODES into hundreds of particles/fragments with dramatic burst",
+    "RECOMPOSITION (50-100%): Particles reverse and reassemble, ending with perfect intact product"
+]
+visual_style = [
+    "High contrast, vibrant colors",
+    "Particle effects with glow and trails",
+    "Dynamic lighting changes during explosion/recomposition",
+    "Dark or gradient background to emphasize particles",
+    "Cinematic color grading"
+]
+motion = [
+    "Fast-paced, energetic",
+    "Slow motion during peak explosion moment",
+    "Speed ramps for dramatic effect"
+]
+style_note = "Epic explosive product reveal with particle effects"
+
+# ==========================================
+# ✨ STILE PREMIUM LUXURY
+# ==========================================
+[styles.premium]
+name = "Premium Luxury"
+emoji = "✨"
+description = "Slow motion elegante ultra-lusso"
+suitable_for = ["luxury brands", "gioielli", "moda", "profumi", "orologi"]
+
+[styles.premium.settings]
+camera_movement = "slow dolly + orbit elegante"
+lighting = "golden hour / studio warm"
+background = "lusso (seta, velluto, oro)"
+pace = "lentissimo, elegante"
+
+[styles.premium.prompt]
+title = "ULTRA-LUXURY, ELEGANT slow-motion product video"
+camera_details = [
+    "Extremely slow, graceful dolly movement around product",
+    "Combination of slow horizontal orbit + gentle vertical rise",
+    "Subtle parallax effect revealing product dimensions",
+    "Smooth as silk, high-end commercial style"
+]
+luxury_elements = [
+    "Soft golden hour or studio lighting with warm tones",
+    "Elegant bokeh in background with subtle sparkle/light particles",
+    "Premium materials visible: reflections on glossy surfaces, texture details",
+    "Luxury backdrop: silk fabric, velvet, gold accents, or sophisticated gradient",
+    "Subtle lens flares and light rays"
+]
+atmosphere = [
+    "Sophisticated, aspirational, high-end fashion commercial feel",
+    "Every frame looks like luxury magazine photography",
+    "Emphasis on product's premium quality and craftsmanship",
+    "Slow motion emphasizes elegance (time feels slower in luxury)"
+]
+technical = [
+    "Shallow depth of field, product in sharp focus",
+    "Film-like color grading (slightly desaturated, warm)",
+    "Perfect exposure and highlights"
+]
+style_note = "Ultra-premium luxury fashion commercial"
+
+# ==========================================
+# ⚡ STILE DINAMICO
+# ==========================================
+[styles.dynamic]
+name = "Dinamico"
+emoji = "⚡"
+description = "Zoom + movimento veloce energetico"
+suitable_for = ["sport", "tech", "bevande energetiche", "auto", "giovani"]
+
+[styles.dynamic.settings]
+camera_movement = "zoom veloce + orbit rapido"
+lighting = "dinamico e vibrante"
+background = "grafico moderno"
+pace = "velocissimo e energetico"
+
+[styles.dynamic.prompt]
+title = "DYNAMIC, ENERGETIC, FAST-PACED product video"
+sequence = [
+    "START (0-25%): Quick zoom in from wide shot to medium, product enters with energy",
+    "MID (25-60%): Fast orbit around product (180-270°), quick position changes",
+    "END (60-100%): Dramatic push in to hero shot, slight slow-motion finale"
+]
+visual_style = [
+    "Vibrant, punchy colors with high saturation",
+    "Dynamic lighting that changes with camera movement",
+    "Motion blur on fast movements (but product stays sharp)",
+    "Bold, graphic background or energetic gradient",
+    "High contrast, edgy modern aesthetic"
+]
+motion_characteristics = [
+    "Fast-paced, exciting, attention-grabbing",
+    "Quick cuts in motion (camera speed changes)",
+    "Modern music video / sports commercial energy",
+    "Youth-oriented, bold, confident"
+]
+style_note = "High-energy dynamic sports/tech commercial"
+
+# ==========================================
+# 🎥 STILE CINEMATICO
+# ==========================================
+[styles.cinematic]
+name = "Cinematico"
+emoji = "🎥"
+description = "Dolly in + parallax Hollywood style"
+suitable_for = ["prodotti premium", "storytelling", "automotive", "alta gamma"]
+
+[styles.cinematic.settings]
+camera_movement = "dolly in professionale + parallax"
+lighting = "cinematografico drammatico"
+background = "stratificato con profondità"
+pace = "controllato epico"
+
+[styles.cinematic.prompt]
+title = "CINEMATIC, HOLLYWOOD-STYLE product video"
+camera_details = [
+    "Professional dolly-in shot with parallax effect",
+    "Camera slowly pushes forward toward product",
+    "Subtle vertical rise as camera approaches (hero angle)",
+    "Background elements move at different speeds (parallax/depth)",
+    "Smooth, controlled, blockbuster film style"
+]
+hollywood_production = [
+    "Dramatic cinematic lighting (rim lights, motivated lighting)",
+    "Atmospheric haze/smoke for depth and drama",
+    "Lens characteristics: anamorphic-style bokeh, subtle lens breathing",
+    "Foreground and background elements for depth layers",
+    "Epic scale feeling even for small products"
+]
+atmosphere_mood = [
+    "Dramatic, storytelling quality",
+    "Product as the 'hero' of an epic story",
+    "Moody color grading (teal & orange, or desaturated with color pops)",
+    "Atmospheric particles floating in light rays",
+    "Sense of discovery and revelation"
+]
+technical_details = [
+    "Shallow depth of field (f/2.8 equivalent)",
+    "Motion blur for realism",
+    "Film grain texture (subtle)",
+    "Widescreen cinematic framing"
+]
+style_note = "Hollywood blockbuster product reveal"
+
+# ==========================================
+# CONFIGURAZIONI GLOBALI
+# ==========================================
+[global_settings]
+default_resolution = "720p"
+supported_durations = [6, 8]
+supported_aspect_ratios = ["16:9", "9:16", "1:1", "4:3"]
+
+[global_settings.logo_overlay]
+enabled = true
+position = "bottom-right"
+opacity = 0.7
+fade_in_duration = 1.0
+display_percentage = 40  # Ultimi 40% del video
+
+[global_settings.quality]
+motion_blur = true
+photorealistic = true
+color_accuracy = "high"
+antialiasing = true
+
+# ==========================================
+# BEST PRACTICES
+# ==========================================
+[best_practices]
+product_matching = [
+    "Sempre usare l'immagine fornita come riferimento ESATTO",
+    "Ricreare colori, texture e forme identiche all'originale",
+    "Il prodotto deve sembrare identico alla foto di riferimento"
+]
+timing = [
+    "6 secondi: ideale per TikTok e Reels veloci",
+    "8 secondi: migliore per storytelling e dettagli"
+]
+platform_recommendations = [
+    "Instagram: preferire 'classic' o 'premium'",
+    "TikTok: preferire 'explosive' o 'dynamic'",
+    "LinkedIn: preferire 'classic' o 'cinematic'",
+    "Facebook: qualsiasi stile va bene"
+]
+
+# ==========================================
+# SUGGERIMENTI PER CATEGORIA PRODOTTO
+# ==========================================
+[product_categories.food_beverage]
+recommended_styles = ["premium", "dynamic", "classic"]
+avoid_styles = ["explosive"]  # Il cibo non dovrebbe "esplodere"
+special_notes = "Enfatizzare texture, freschezza, appetibilità"
+
+[product_categories.tech_gadgets]
+recommended_styles = ["dynamic", "explosive", "cinematic"]
+avoid_styles = []
+special_notes = "Mostrare design moderno, innovazione tecnologica"
+
+[product_categories.fashion_accessories]
+recommended_styles = ["premium", "cinematic", "classic"]
+avoid_styles = ["explosive"]
+special_notes = "Eleganza, materiali pregiati, lifestyle aspirazionale"
+
+[product_categories.beauty_cosmetics]
+recommended_styles = ["premium", "classic"]
+avoid_styles = ["explosive", "dynamic"]
+special_notes = "Lusso, texture cremose, packaging raffinato"
+
+[product_categories.sports_fitness]
+recommended_styles = ["dynamic", "explosive", "cinematic"]
+avoid_styles = []
+special_notes = "Energia, movimento, performance"
+
+[product_categories.home_decor]
+recommended_styles = ["classic", "premium", "cinematic"]
+avoid_styles = ["explosive"]
+special_notes = "Ambiente accogliente, stile di vita, eleganza"

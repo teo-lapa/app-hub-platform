@@ -15,6 +15,7 @@ import ShareMenu from '@/components/social-ai/ShareMenu';
 type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
 type ContentType = 'image' | 'video' | 'both';
 type Tone = 'professional' | 'casual' | 'fun' | 'luxury';
+type VideoStyle = 'classic' | 'explosive' | 'premium' | 'dynamic' | 'cinematic';
 
 interface MarketingResult {
   copywriting: {
@@ -46,6 +47,10 @@ export default function SocialAIStudioPage() {
   const [contentType, setContentType] = useState<ContentType>('both');
   const [tone, setTone] = useState<Tone>('professional');
   const [targetAudience, setTargetAudience] = useState('');
+  const [videoStyle, setVideoStyle] = useState<VideoStyle>('classic');
+  const [videoDuration, setVideoDuration] = useState<6 | 8>(8);
+  const [addLogo, setAddLogo] = useState(false);
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
 
   // Generation states
   const [isGenerating, setIsGenerating] = useState(false);
@@ -218,7 +223,10 @@ export default function SocialAIStudioPage() {
           socialPlatform,
           contentType,
           tone,
-          targetAudience: targetAudience || undefined
+          targetAudience: targetAudience || undefined,
+          videoStyle,
+          videoDuration,
+          companyLogo: companyLogo || undefined
         })
       });
 
@@ -556,6 +564,175 @@ export default function SocialAIStudioPage() {
                 ))}
               </div>
             </div>
+
+            {/* Video Style (mostra solo se video o both) */}
+            {(contentType === 'video' || contentType === 'both') && (
+              <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
+                <label className="block text-sm font-medium text-purple-300 mb-3 flex items-center space-x-2">
+                  <Sparkles className="h-4 w-4" />
+                  <span>Stile Video</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setVideoStyle('classic')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm transition-all ${
+                      videoStyle === 'classic'
+                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="font-semibold">🎬 Classico</div>
+                    <div className="text-xs opacity-75">Rotazione prodotto smooth</div>
+                  </button>
+
+                  <button
+                    onClick={() => setVideoStyle('explosive')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm transition-all ${
+                      videoStyle === 'explosive'
+                        ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="font-semibold">💥 Esplosivo</div>
+                    <div className="text-xs opacity-75">Esplosione + ricomposizione</div>
+                  </button>
+
+                  <button
+                    onClick={() => setVideoStyle('premium')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm transition-all ${
+                      videoStyle === 'premium'
+                        ? 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="font-semibold">✨ Premium Luxury</div>
+                    <div className="text-xs opacity-75">Slow motion elegante</div>
+                  </button>
+
+                  <button
+                    onClick={() => setVideoStyle('dynamic')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm transition-all ${
+                      videoStyle === 'dynamic'
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="font-semibold">⚡ Dinamico</div>
+                    <div className="text-xs opacity-75">Zoom + movimento veloce</div>
+                  </button>
+
+                  <button
+                    onClick={() => setVideoStyle('cinematic')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm transition-all ${
+                      videoStyle === 'cinematic'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="font-semibold">🎥 Cinematico</div>
+                    <div className="text-xs opacity-75">Dolly in + parallax</div>
+                  </button>
+                </div>
+
+                {/* Durata Video */}
+                <div className="mt-4 pt-4 border-t border-purple-500/30">
+                  <label className="block text-sm font-medium text-purple-300 mb-2">
+                    Durata Video
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setVideoDuration(6)}
+                      disabled={isGenerating}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        videoDuration === 6
+                          ? 'bg-purple-500 text-white'
+                          : 'bg-slate-900/50 text-purple-300 border border-purple-500/50'
+                      } disabled:opacity-50`}
+                    >
+                      6 secondi
+                    </button>
+                    <button
+                      onClick={() => setVideoDuration(8)}
+                      disabled={isGenerating}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        videoDuration === 8
+                          ? 'bg-purple-500 text-white'
+                          : 'bg-slate-900/50 text-purple-300 border border-purple-500/50'
+                      } disabled:opacity-50`}
+                    >
+                      8 secondi ⭐
+                    </button>
+                  </div>
+                </div>
+
+                {/* Opzione Logo Aziendale */}
+                <div className="mt-4 pt-4 border-t border-purple-500/30">
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={addLogo}
+                      onChange={(e) => setAddLogo(e.target.checked)}
+                      disabled={isGenerating}
+                      className="w-5 h-5 rounded border-purple-500/50 bg-slate-900/50 text-purple-500 focus:ring-2 focus:ring-purple-500"
+                    />
+                    <span className="text-sm text-purple-300">
+                      Aggiungi logo aziendale nel video
+                    </span>
+                  </label>
+
+                  {addLogo && !companyLogo && (
+                    <div className="mt-3">
+                      <button
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.onchange = async (e: any) => {
+                            const file = e.target?.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setCompanyLogo(reader.result as string);
+                                toast.success('Logo caricato!');
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          };
+                          input.click();
+                        }}
+                        className="w-full px-4 py-2 bg-slate-900/50 border border-purple-500/50 rounded-lg text-purple-300 hover:border-purple-400 transition-all text-sm"
+                      >
+                        📤 Carica Logo PNG/SVG
+                      </button>
+                    </div>
+                  )}
+
+                  {companyLogo && (
+                    <div className="mt-3 relative">
+                      <img
+                        src={companyLogo}
+                        alt="Logo"
+                        className="h-12 w-auto mx-auto bg-white/10 p-2 rounded"
+                      />
+                      <button
+                        onClick={() => {
+                          setCompanyLogo(null);
+                          setAddLogo(false);
+                        }}
+                        className="absolute top-0 right-0 p-1 bg-red-500 rounded-full text-white text-xs"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Tone & Target */}
             <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
