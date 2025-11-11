@@ -136,9 +136,21 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   };
 
   // Aggiungi prodotto urgente/offerta all'ordine esistente
-  const handleAddProductToOrder = async (productId: number, productName: string, quantity: number, price?: number, source?: 'offer' | 'urgent') => {
+  const handleAddProductToOrder = async (
+    productId: number,
+    productName: string,
+    quantity: number,
+    price?: number,
+    source?: 'offer' | 'urgent',
+    lotId?: number,
+    lotName?: string,
+    locationId?: number,
+    locationName?: string
+  ) => {
     try {
-      console.log('➕ Adding product to existing order:', { productId, quantity, price, source });
+      console.log('➕ Adding product to existing order:', {
+        productId, quantity, price, source, lotId, lotName, locationId, locationName
+      });
 
       const response = await fetch(`/api/catalogo-venditori/add-order-line`, {
         method: 'POST',
@@ -149,7 +161,11 @@ export default function ReviewPricesPage({ params }: RouteParams) {
           productName: productName,
           quantity: quantity,
           price: price,
-          source: source
+          source: source,
+          lotId: lotId,
+          lotName: lotName,
+          locationId: locationId,
+          locationName: locationName
         }),
         credentials: 'include'
       });
@@ -1926,7 +1942,11 @@ export default function ReviewPricesPage({ params }: RouteParams) {
               urgentProduct.productName,
               quantity,
               urgentProduct.suggestedPrice,
-              'urgent'
+              'urgent',
+              urgentProduct.lotId,
+              urgentProduct.lotName,
+              urgentProduct.locationId,
+              urgentProduct.locationName
             );
           }}
         />
@@ -1949,7 +1969,11 @@ export default function ReviewPricesPage({ params }: RouteParams) {
               offerProduct.productName,
               quantity,
               offerProduct.offerPrice,
-              'offer'
+              'offer',
+              offerProduct.lotId,
+              offerProduct.lotName,
+              offerProduct.locationId,
+              offerProduct.locationName
             );
           }}
         />

@@ -18,6 +18,10 @@ interface AddOrderLineRequest {
   quantity: number;
   price?: number;
   source?: 'offer' | 'urgent';
+  lotId?: number;
+  lotName?: string;
+  locationId?: number;
+  locationName?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -50,7 +54,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { orderId, productId, productName, quantity, price, source } = body;
+    const { orderId, productId, productName, quantity, price, source, lotId, lotName, locationId, locationName } = body;
 
     console.log('📋 [ADD-ORDER-LINE-API] Request data:', {
       orderId,
@@ -58,7 +62,11 @@ export async function POST(request: NextRequest) {
       productName,
       quantity,
       price,
-      source
+      source,
+      lotId,
+      lotName,
+      locationId,
+      locationName
     });
 
     // Validate input
@@ -162,6 +170,30 @@ export async function POST(request: NextRequest) {
       console.log(`✅ [ADD-ORDER-LINE-API] Added ${badge} badge to product name`);
     }
 
+    // Add lot and location information to order line notes
+    if (lotName || locationName) {
+      const locationInfo: string[] = [];
+      if (locationName) {
+        locationInfo.push(`📍 Ubicazione: ${locationName}`);
+      }
+      if (lotName) {
+        locationInfo.push(`📦 Lotto: ${lotName}`);
+      }
+
+      // Store as JSON in a custom field or in the description
+      // Note: We'll add this to the line description so warehouse staff can see it
+      const noteText = `\n\n⚠️ PRELEVARE DA:\n${locationInfo.join('\n')}`;
+
+      // If name was already set (from badge), append to it, otherwise use product name
+      if (!lineData.name) {
+        lineData.name = `${productName}${noteText}`;
+      } else {
+        lineData.name = `${lineData.name}${noteText}`;
+      }
+
+      console.log(`✅ [ADD-ORDER-LINE-API] Added location/lot info: ${locationInfo.join(', ')}`);
+    }
+
     const orderLineId = await callOdoo(
       cookies,
       'sale.order.line',
@@ -178,6 +210,19 @@ export async function POST(request: NextRequest) {
         const messageType = source === 'offer' ? 'offerta' : 'urgente';
         const priceInfo = price ? ` al prezzo di CHF ${price.toFixed(2)}` : '';
 
+        // Add location/lot info to chatter message
+        let locationInfo = '';
+        if (locationName || lotName) {
+          locationInfo = '<p><strong>⚠️ Prelevare da:</strong></p><ul>';
+          if (locationName) {
+            locationInfo += `<li>📍 Ubicazione: <strong>${locationName}</strong></li>`;
+          }
+          if (lotName) {
+            locationInfo += `<li>📦 Lotto: <strong>${lotName}</strong></li>`;
+          }
+          locationInfo += '</ul>';
+        }
+
         await callOdoo(
           cookies,
           'sale.order',
@@ -187,6 +232,7 @@ export async function POST(request: NextRequest) {
             body: `<p>➕ <strong>Prodotto aggiunto da ${messageType}</strong></p>
                    <p>📦 <strong>${productName}</strong></p>
                    <p>🔢 Quantità: ${quantity}${priceInfo}</p>
+                   ${locationInfo}
                    <p><em>Aggiunto durante la revisione prezzi</em></p>`,
             message_type: 'comment'
           }
