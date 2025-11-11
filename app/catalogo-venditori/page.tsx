@@ -516,43 +516,171 @@ export default function CatalogoVenditoriPage() {
 
         {/* Help Card - Mobile Optimized */}
         {!selectedCustomerId && (
-          <div className="mt-3 sm:mt-6 bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 sm:p-4">
-            <h3 className="text-sm sm:text-xl font-bold text-blue-400 mb-2 sm:mb-3 flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 sm:h-6 sm:w-6" />
-              Come funziona
-            </h3>
-            <ol className="space-y-1.5 sm:space-y-3 text-xs sm:text-base text-slate-300">
-              <li className="flex items-start gap-1.5 sm:gap-3">
-                <span className="flex-shrink-0 w-5 h-5 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] sm:text-sm font-bold">
-                  1
-                </span>
-                <span>Seleziona il <strong className="text-white">cliente</strong> e indirizzo</span>
-              </li>
-              <li className="flex items-start gap-1.5 sm:gap-3">
-                <span className="flex-shrink-0 w-5 h-5 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] sm:text-sm font-bold">
-                  2
-                </span>
-                <span>Inserisci l'ordine del cliente: <strong className="text-white">testo</strong>, <strong className="text-white">foto</strong>, <strong className="text-white">audio</strong> o <strong className="text-white">registrazione vocale</strong></span>
-              </li>
-              <li className="flex items-start gap-1.5 sm:gap-3">
-                <span className="flex-shrink-0 w-5 h-5 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] sm:text-sm font-bold">
-                  3
-                </span>
-                <span>L'<strong className="text-white">AI processa</strong> il messaggio e trova i prodotti automaticamente</span>
-              </li>
-              <li className="flex items-start gap-1.5 sm:gap-3">
-                <span className="flex-shrink-0 w-5 h-5 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] sm:text-sm font-bold">
-                  4
-                </span>
-                <span>Oppure usa la <strong className="text-white">ricerca manuale</strong> per aggiungere prodotti specifici</span>
-              </li>
-              <li className="flex items-start gap-1.5 sm:gap-3">
-                <span className="flex-shrink-0 w-5 h-5 sm:w-7 sm:h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] sm:text-sm font-bold">
-                  5
-                </span>
-                <span>Controlla il <strong className="text-white">carrello</strong>, modifica se necessario e conferma!</span>
-              </li>
-            </ol>
+          <div className="mt-3 sm:mt-6 bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-3 sm:p-6 space-y-4 sm:space-y-6">
+            {/* Titolo */}
+            <div>
+              <h3 className="text-base sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-1 sm:mb-2 flex items-center gap-2">
+                <Sparkles className="h-5 w-5 sm:h-7 sm:w-7 text-blue-400" />
+                Come Funziona l'App
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-400">
+                Sistema intelligente per creare ordini rapidamente con AI, controllo scadenze e offerte speciali
+              </p>
+            </div>
+
+            {/* Sezione Pulsanti */}
+            <div className="space-y-3 sm:space-y-4">
+              <h4 className="text-sm sm:text-lg font-bold text-white flex items-center gap-2">
+                <svg className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Pulsanti e Funzionalità
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                {/* Nuovo Ordine */}
+                <div className="bg-slate-800/50 rounded-lg p-2 sm:p-3 border border-slate-700">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-emerald-500 to-blue-500 rounded flex items-center justify-center">
+                      <svg className="h-3 w-3 sm:h-4 sm:w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </div>
+                    <span className="font-bold text-white text-xs sm:text-sm">Nuovo Ordine</span>
+                  </div>
+                  <p className="text-[10px] sm:text-xs text-slate-400">Ricomincia da zero. Cancella cliente e carrello per iniziare un nuovo ordine.</p>
+                </div>
+
+                {/* Ordini */}
+                <div className="bg-slate-800/50 rounded-lg p-2 sm:p-3 border border-slate-700">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-purple-600 rounded flex items-center justify-center">
+                      <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                    </div>
+                    <span className="font-bold text-white text-xs sm:text-sm">Ordini</span>
+                  </div>
+                  <p className="text-[10px] sm:text-xs text-slate-400">Visualizza tutti gli ordini creati. Controllo storico completo.</p>
+                </div>
+
+                {/* Urgenti */}
+                <div className="bg-slate-800/50 rounded-lg p-2 sm:p-3 border border-slate-700">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-orange-600 rounded flex items-center justify-center">
+                      <Bell className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                    </div>
+                    <span className="font-bold text-white text-xs sm:text-sm">Prodotti Urgenti</span>
+                  </div>
+                  <p className="text-[10px] sm:text-xs text-slate-400">Prodotti in scadenza da vendere subito. Prezzi speciali suggeriti. Vedi lotto e ubicazione. Tracciamento prenotazioni real-time.</p>
+                </div>
+
+                {/* Offerte */}
+                <div className="bg-slate-800/50 rounded-lg p-2 sm:p-3 border border-slate-700">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-600 rounded flex items-center justify-center">
+                      <Tag className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                    </div>
+                    <span className="font-bold text-white text-xs sm:text-sm">Prodotti in Offerta</span>
+                  </div>
+                  <p className="text-[10px] sm:text-xs text-slate-400">Prodotti con prezzi promozionali. Scorte limitate da smaltire. Vedi quantità disponibile vs prenotata.</p>
+                </div>
+
+                {/* Revisione Prezzi */}
+                <div className="bg-slate-800/50 rounded-lg p-2 sm:p-3 border border-slate-700 sm:col-span-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-600 rounded flex items-center justify-center">
+                      <svg className="h-3 w-3 sm:h-4 sm:w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                    </div>
+                    <span className="font-bold text-white text-xs sm:text-sm">Ordini Cliente (Revisione Prezzi)</span>
+                  </div>
+                  <p className="text-[10px] sm:text-xs text-slate-400">Vedi ordini draft e preventivi del cliente selezionato. Clicca per andare alla revisione prezzi dove puoi modificare quantità, aggiungere prodotti urgenti/offerte, e confermare.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Sezione Flusso */}
+            <div className="space-y-3 sm:space-y-4">
+              <h4 className="text-sm sm:text-lg font-bold text-white flex items-center gap-2">
+                <svg className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Flusso Operativo
+              </h4>
+
+              <ol className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-slate-300">
+                <li className="flex items-start gap-2 sm:gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
+                    1
+                  </span>
+                  <div>
+                    <strong className="text-white">Seleziona Cliente</strong>
+                    <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">Cerca per nome/codice e scegli indirizzo di consegna</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-2 sm:gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
+                    2
+                  </span>
+                  <div>
+                    <strong className="text-white">Inserisci Ordine con AI</strong>
+                    <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">Scrivi testo, carica foto, allega audio o registra vocalmente. L'AI trova automaticamente i prodotti e le quantità.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-2 sm:gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
+                    3
+                  </span>
+                  <div>
+                    <strong className="text-white">Aggiungi Prodotti Speciali</strong>
+                    <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">Usa pulsanti <span className="text-orange-400">Urgenti</span> e <span className="text-blue-400">Offerte</span> per prodotti con prezzi vantaggiosi. Vedi quantità disponibili in tempo reale.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-2 sm:gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
+                    4
+                  </span>
+                  <div>
+                    <strong className="text-white">Ricerca Manuale (Opzionale)</strong>
+                    <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">Cerca prodotti specifici per nome o codice. Vedi disponibilità e aggiungi al carrello.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-2 sm:gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
+                    5
+                  </span>
+                  <div>
+                    <strong className="text-white">Controlla Carrello e Conferma</strong>
+                    <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">Modifica quantità, aggiungi note, imposta data consegna. Clicca "Crea Ordine" per salvare in Odoo.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-2 sm:gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
+                    ✓
+                  </span>
+                  <div>
+                    <strong className="text-emerald-400">Revisione Prezzi Finale</strong>
+                    <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">Dopo la creazione, vai alla revisione prezzi per analisi intelligente, confronto storico e conferma definitiva.</p>
+                  </div>
+                </li>
+              </ol>
+            </div>
+
+            {/* Features Highlight */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-3 sm:pt-4 border-t border-slate-700">
+              <div className="text-center">
+                <div className="text-lg sm:text-2xl font-bold text-emerald-400">AI</div>
+                <div className="text-[10px] sm:text-xs text-slate-400">Intelligenza Artificiale</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg sm:text-2xl font-bold text-orange-400">Real-time</div>
+                <div className="text-[10px] sm:text-xs text-slate-400">Prenotazioni Live</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg sm:text-2xl font-bold text-blue-400">Smart</div>
+                <div className="text-[10px] sm:text-xs text-slate-400">Analisi Prezzi</div>
+              </div>
+            </div>
           </div>
         )}
       </main>
