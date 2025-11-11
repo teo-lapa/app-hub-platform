@@ -205,3 +205,65 @@ export interface RemoveUrgentProductResponse {
   success: boolean;
   error?: string;
 }
+
+// ========== OFFER PRODUCTS SYSTEM ==========
+
+export interface OfferProduct {
+  id: string; // Unique ID: {productId}:{lotId}:{timestamp}
+  productId: number;
+  productName: string;
+  productCode?: string;
+  productBarcode?: string;
+  image?: string; // base64 image
+  lotId?: number;
+  lotName?: string;
+  quantity: number;
+  uom: string;
+  locationId?: number;
+  locationName?: string;
+  zoneId?: string;
+  note: string; // Nota dell'operatore magazzino
+  addedBy: string; // Email operatore
+  addedAt: string; // ISO timestamp
+  estimatedValue?: number;
+  offerPrice?: number; // Prezzo offerta
+  discountPercentage?: number; // Percentuale sconto
+}
+
+export interface AddOfferProductRequest {
+  productId: number;
+  productName: string;
+  productCode?: string;
+  productBarcode?: string;
+  image?: string;
+  lotId?: number;
+  lotName?: string;
+  quantity: number;
+  uom: string;
+  locationId?: number;
+  locationName?: string;
+  zoneId?: string;
+  note: string;
+  addedBy: string;
+  estimatedValue?: number;
+  offerPrice?: number;
+  discountPercentage?: number;
+}
+
+export interface AddOfferProductResponse {
+  success: boolean;
+  offerProduct?: OfferProduct;
+  error?: string;
+}
+
+export interface GetOfferProductsResponse {
+  success: boolean;
+  products: OfferProduct[];
+  count: number;
+  error?: string;
+}
+
+export interface RemoveOfferProductResponse {
+  success: boolean;
+  error?: string;
+}
