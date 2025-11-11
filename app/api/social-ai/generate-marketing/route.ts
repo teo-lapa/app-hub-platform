@@ -34,9 +34,6 @@ interface GenerateMarketingRequest {
   contentType: 'image' | 'video' | 'both';
   tone?: 'professional' | 'casual' | 'fun' | 'luxury';
   targetAudience?: string;
-  videoStyle?: 'classic' | 'explosive' | 'premium' | 'dynamic' | 'cinematic';
-  videoDuration?: 6 | 8;
-  companyLogo?: string;
 }
 
 interface MarketingResult {
@@ -73,10 +70,7 @@ export async function POST(request: NextRequest) {
       socialPlatform,
       contentType,
       tone = 'professional',
-      targetAudience = 'pubblico generale',
-      videoStyle = 'classic',
-      videoDuration = 8,
-      companyLogo
+      targetAudience = 'pubblico generale'
     } = body;
 
     // Validazione
@@ -160,10 +154,7 @@ export async function POST(request: NextRequest) {
           productDescription,
           platform: socialPlatform,
           aspectRatio,
-          productImageBase64: cleanBase64,
-          videoStyle,
-          videoDuration,
-          companyLogo: companyLogo ? companyLogo.replace(/^data:image\/\w+;base64,/, '') : undefined
+          productImageBase64: cleanBase64
         })
       );
     } else {
@@ -390,9 +381,6 @@ async function generateMarketingVideo(
     platform: string;
     aspectRatio: string;
     productImageBase64: string;
-    videoStyle?: 'classic' | 'explosive' | 'premium' | 'dynamic' | 'cinematic';
-    videoDuration?: 6 | 8;
-    companyLogo?: string;
   }
 ): Promise<{ operationId: string; status: string; estimatedTime: number } | null> {
 
@@ -407,218 +395,49 @@ async function generateMarketingVideo(
   // Crea client dedicato per Veo con la sua API key
   const veoAI = new GoogleGenAI({ apiKey: veoApiKey });
 
-  const videoStyle = params.videoStyle || 'classic';
-  const videoDuration = params.videoDuration || 8;
-
-  console.log('[AGENT-VIDEO] Parametri ricevuti:', {
-    videoStyle,
-    videoDuration,
-    hasLogo: !!params.companyLogo,
-    platform: params.platform
-  });
-
-  // ==========================================
-  // 📝 PROMPT LIBRARY - 5 STILI VIDEO
-  // ==========================================
-
-  const videoStylePrompts = {
-    // 🎬 CLASSICO: Rotazione smooth professionale
-    classic: `Create a PREMIUM PROFESSIONAL product video for ${params.platform} advertising.
+  // Prompt potenziato per video fotorealistici basati sull'immagine del prodotto
+  const prompt = `Create a premium, hyper-realistic product video for ${params.platform} social media advertising.
 
 PRODUCT: ${params.productName}
 ${params.productDescription ? `DESCRIPTION: ${params.productDescription}` : ''}
 
-⭐ CRITICAL - MATCH THE PRODUCT IMAGE EXACTLY:
-- Use the provided image as EXACT visual reference
-- Recreate IDENTICAL product (colors, textures, shape, packaging)
-- Product MUST look exactly like the reference photo
+CRITICAL INSTRUCTIONS - FOLLOW EXACTLY THE PRODUCT IMAGE:
+- Use the provided product image as the EXACT visual reference
+- Recreate the EXACT product shown in the image (same colors, textures, shape, packaging)
+- Maintain the EXACT appearance from the photo - this is crucial
+- The product MUST look identical to the reference image
 
-🎬 CAMERA MOVEMENT:
-- Smooth 360° rotation around the product at constant speed
-- Professional turntable showcase style
-- Camera orbits horizontally at product's eye level
-- Complete or near-complete rotation during ${videoDuration} seconds
+CAMERA MOVEMENT (choose ONE that best showcases the product):
+1. Smooth 360° rotation around the product (professional product showcase)
+2. Slow zoom in from medium shot to close-up (reveal details)
+3. Dolly in with slight parallax (cinematic approach)
+4. Elegant vertical pan from bottom to top (hero product reveal)
 
-💎 LIGHTING & ENVIRONMENT:
-- High-end studio lighting with soft key light and rim lights
-- Elegant gradient background (dark to light) or solid premium color
-- Product sits on premium surface (white marble, glossy black, brushed metal)
-- Clean, minimal, professional aesthetic
+LIGHTING & ATMOSPHERE:
+- Professional studio lighting setup
+- Soft shadows and highlights that enhance product features
+- Clean, premium aesthetic
+- High-end commercial photography style
 
-✨ VISUAL QUALITY:
-- Photorealistic commercial product photography
-- Sharp focus throughout, subtle depth of field
-- Natural color grading, accurate product colors
-- Broadcast-quality smooth motion
+ENVIRONMENT:
+- Elegant, minimal background that doesn't distract from product
+- Subtle depth of field (product in focus, background slightly blurred)
+- Premium surface (marble, wood, or neutral backdrop as appropriate)
 
-DURATION: ${videoDuration} seconds
-STYLE: Classic luxury product showcase`,
+VISUAL QUALITY:
+- Photorealistic 3D rendering quality
+- Sharp focus on product
+- Natural color grading
+- Commercial advertising standard
 
-    // 💥 ESPLOSIVO: Esplosione + ricomposizione
-    explosive: `Create an EXPLOSIVE, HIGH-ENERGY product reveal video for ${params.platform}.
+MOTION:
+- Smooth, fluid camera movement
+- No jerky or sudden movements
+- Professional gimbal-style stabilization
+- Slow-motion emphasis on key product features
 
-PRODUCT: ${params.productName}
-${params.productDescription ? `DESCRIPTION: ${params.productDescription}` : ''}
-
-⭐ CRITICAL - MATCH THE PRODUCT IMAGE EXACTLY:
-- Use the provided image as EXACT visual reference
-- Product MUST look identical to the reference photo
-
-💥 EXPLOSIVE EFFECT SEQUENCE:
-1. START (0-${Math.floor(videoDuration * 0.3)}s): Product intact, centered, slightly rotating
-2. EXPLOSION (${Math.floor(videoDuration * 0.3)}-${Math.floor(videoDuration * 0.5)}s):
-   - Product EXPLODES into hundreds of particles/fragments
-   - Dramatic burst with energy trails
-   - Particles scatter in all directions with motion blur
-3. RECOMPOSITION (${Math.floor(videoDuration * 0.5)}-${videoDuration}s):
-   - Particles reverse and fly back together
-   - Product reassembles piece by piece
-   - Ends with perfect intact product, slightly rotating
-
-🎨 VISUAL STYLE:
-- High contrast, vibrant colors
-- Particle effects with glow and trails
-- Dynamic lighting changes during explosion/recomposition
-- Dark or gradient background to emphasize particles
-- Cinematic color grading
-
-⚡ MOTION:
-- Fast-paced, energetic
-- Slow motion during peak explosion moment
-- Speed ramps for dramatic effect
-
-DURATION: ${videoDuration} seconds
-STYLE: Epic explosive product reveal with particle effects`,
-
-    // ✨ PREMIUM: Slow motion elegante luxury
-    premium: `Create an ULTRA-LUXURY, ELEGANT slow-motion product video for ${params.platform}.
-
-PRODUCT: ${params.productName}
-${params.productDescription ? `DESCRIPTION: ${params.productDescription}` : ''}
-
-⭐ CRITICAL - MATCH THE PRODUCT IMAGE EXACTLY:
-- Use the provided image as EXACT visual reference
-- Product MUST look identical to the reference photo
-
-✨ PREMIUM CAMERA MOVEMENT:
-- Extremely slow, graceful dolly movement around product
-- Combination of slow horizontal orbit + gentle vertical rise
-- Subtle parallax effect revealing product dimensions
-- Smooth as silk, high-end commercial style
-
-💎 LUXURY VISUAL ELEMENTS:
-- Soft golden hour or studio lighting with warm tones
-- Elegant bokeh in background with subtle sparkle/light particles
-- Premium materials visible: reflections on glossy surfaces, texture details
-- Luxury backdrop: silk fabric, velvet, gold accents, or sophisticated gradient
-- Subtle lens flares and light rays
-
-🎭 ATMOSPHERE:
-- Sophisticated, aspirational, high-end fashion commercial feel
-- Every frame looks like luxury magazine photography
-- Emphasis on product's premium quality and craftsmanship
-- Slow motion emphasizes elegance (time feels slower in luxury)
-
-📸 TECHNICAL:
-- Shallow depth of field, product in sharp focus
-- Film-like color grading (slightly desaturated, warm)
-- Perfect exposure and highlights
-
-DURATION: ${videoDuration} seconds in elegant slow motion
-STYLE: Ultra-premium luxury fashion commercial`,
-
-    // ⚡ DINAMICO: Zoom + movimento veloce energetico
-    dynamic: `Create a DYNAMIC, ENERGETIC, FAST-PACED product video for ${params.platform}.
-
-PRODUCT: ${params.productName}
-${params.productDescription ? `DESCRIPTION: ${params.productDescription}` : ''}
-
-⭐ CRITICAL - MATCH THE PRODUCT IMAGE EXACTLY:
-- Use the provided image as EXACT visual reference
-- Product MUST look identical to the reference photo
-
-⚡ DYNAMIC CAMERA SEQUENCE:
-1. START (0-${Math.floor(videoDuration * 0.25)}s):
-   - Quick zoom in from wide shot to medium
-   - Product enters frame with energy
-2. MID (${Math.floor(videoDuration * 0.25)}-${Math.floor(videoDuration * 0.6)}s):
-   - Fast orbit around product (180-270°)
-   - Camera moves with speed and purpose
-   - Quick position changes, dynamic angles
-3. END (${Math.floor(videoDuration * 0.6)}-${videoDuration}s):
-   - Dramatic push in to hero shot
-   - Slight slow-motion on final moment
-   - Product fills frame, commanding presence
-
-🎨 ENERGETIC VISUAL STYLE:
-- Vibrant, punchy colors with high saturation
-- Dynamic lighting that changes with camera movement
-- Motion blur on fast movements (but product stays sharp)
-- Bold, graphic background or energetic gradient
-- High contrast, edgy modern aesthetic
-
-⚡ MOTION CHARACTERISTICS:
-- Fast-paced, exciting, attention-grabbing
-- Quick cuts in motion (camera speed changes)
-- Modern music video / sports commercial energy
-- Youth-oriented, bold, confident
-
-DURATION: ${videoDuration} seconds of non-stop action
-STYLE: High-energy dynamic sports/tech commercial`,
-
-    // 🎥 CINEMATICO: Dolly in + parallax Hollywood
-    cinematic: `Create a CINEMATIC, HOLLYWOOD-STYLE product video for ${params.platform}.
-
-PRODUCT: ${params.productName}
-${params.productDescription ? `DESCRIPTION: ${params.productDescription}` : ''}
-
-⭐ CRITICAL - MATCH THE PRODUCT IMAGE EXACTLY:
-- Use the provided image as EXACT visual reference
-- Product MUST look identical to the reference photo
-
-🎥 CINEMATIC CAMERA MOVEMENT:
-- Professional dolly-in shot with parallax effect
-- Camera slowly pushes forward toward product
-- Subtle vertical rise as camera approaches (hero angle)
-- Background elements move at different speeds (parallax/depth)
-- Smooth, controlled, blockbuster film style
-
-🎬 HOLLYWOOD PRODUCTION VALUE:
-- Dramatic cinematic lighting (rim lights, motivated lighting)
-- Atmospheric haze/smoke for depth and drama
-- Lens characteristics: anamorphic-style bokeh, subtle lens breathing
-- Foreground and background elements for depth layers
-- Epic scale feeling even for small products
-
-🌟 ATMOSPHERE & MOOD:
-- Dramatic, storytelling quality
-- Product as the "hero" of an epic story
-- Moody color grading (teal & orange, or desaturated with color pops)
-- Atmospheric particles floating in light rays
-- Sense of discovery and revelation
-
-📽️ TECHNICAL CINEMATIC DETAILS:
-- Shallow depth of field (f/2.8 equivalent)
-- Motion blur for realism
-- Film grain texture (subtle)
-- Widescreen cinematic framing
-
-DURATION: ${videoDuration} seconds of pure cinema
-STYLE: Hollywood blockbuster product reveal`
-  };
-
-  const prompt = videoStylePrompts[videoStyle];
-
-  // Aggiungi istruzioni per il logo se presente
-  const finalPrompt = params.companyLogo
-    ? `${prompt}
-
-🏷️ COMPANY BRANDING:
-- Subtly integrate the company logo in bottom corner (last ${Math.floor(videoDuration * 0.4)} seconds)
-- Logo should be elegant overlay, not distracting
-- Semi-transparent, professional placement
-- Fades in smoothly`
-    : prompt;
+DURATION: 6 seconds of premium content
+STYLE: Luxury commercial product photography in motion`;
 
   try {
     // Converti l'aspect ratio per Veo (solo 16:9 o 9:16)
@@ -637,7 +456,7 @@ STYLE: Hollywood blockbuster product reveal`
     const operation = await veoAI.models.generateVideos({
       model: 'veo-3.1-generate-preview', // Latest Veo model
       source: {
-        prompt: finalPrompt,
+        prompt: prompt,
         image: {
           imageBytes: params.productImageBase64,
           mimeType: 'image/jpeg'
@@ -645,7 +464,7 @@ STYLE: Hollywood blockbuster product reveal`
       },
       config: {
         aspectRatio: veoAspectRatio,
-        durationSeconds: videoDuration,
+        durationSeconds: 6,
         resolution: '720p'
       }
     });
@@ -662,12 +481,9 @@ STYLE: Hollywood blockbuster product reveal`
 
   } catch (error: any) {
     console.error('[AGENT-VIDEO] Errore durante la richiesta video:', error.message);
-    console.error('[AGENT-VIDEO] Error details:', {
-      message: error.message,
-      stack: error.stack,
-      videoStyle,
-      videoDuration
-    });
+    if (isDev) {
+      console.error('[AGENT-VIDEO] Stack:', error.stack);
+    }
 
     // L'API Veo potrebbe non essere disponibile o configurata
     // Restituisci null invece di lanciare l'errore per permettere agli altri agenti di completare
