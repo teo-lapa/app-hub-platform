@@ -410,6 +410,13 @@ async function generateMarketingVideo(
   const videoStyle = params.videoStyle || 'classic';
   const videoDuration = params.videoDuration || 8;
 
+  console.log('[AGENT-VIDEO] Parametri ricevuti:', {
+    videoStyle,
+    videoDuration,
+    hasLogo: !!params.companyLogo,
+    platform: params.platform
+  });
+
   // ==========================================
   // 📝 PROMPT LIBRARY - 5 STILI VIDEO
   // ==========================================
@@ -655,9 +662,12 @@ STYLE: Hollywood blockbuster product reveal`
 
   } catch (error: any) {
     console.error('[AGENT-VIDEO] Errore durante la richiesta video:', error.message);
-    if (isDev) {
-      console.error('[AGENT-VIDEO] Stack:', error.stack);
-    }
+    console.error('[AGENT-VIDEO] Error details:', {
+      message: error.message,
+      stack: error.stack,
+      videoStyle,
+      videoDuration
+    });
 
     // L'API Veo potrebbe non essere disponibile o configurata
     // Restituisci null invece di lanciare l'errore per permettere agli altri agenti di completare
