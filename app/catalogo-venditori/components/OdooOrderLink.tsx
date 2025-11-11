@@ -16,7 +16,7 @@ export default function OdooOrderLink({ orderId, orderName }: OdooOrderLinkProps
         href={odooUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95"
+        className="flex items-center justify-center gap-3 px-6 py-4 min-h-[56px] bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95"
         style={{
           fontSize: '16px',
           lineHeight: '1.5',
@@ -40,7 +40,7 @@ export default function OdooOrderLink({ orderId, orderName }: OdooOrderLinkProps
           />
         </svg>
         <div className="flex flex-col items-start">
-          <span className="text-sm opacity-90">Apri in Odoo</span>
+          <span className="text-base opacity-90" style={{ fontSize: '16px', lineHeight: '1.5' }}>Apri in Odoo</span>
           <span className="text-lg font-extrabold">{orderName}</span>
         </div>
         <svg

@@ -174,14 +174,14 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
           )}
         </div>
 
-        {/* Search Results Dropdown */}
+        {/* Search Results Dropdown - Mobile Optimized */}
         {isDropdownOpen && searchResults.length > 0 && (
-          <div className="absolute bottom-full z-50 w-full mb-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-[400px] overflow-y-auto">
+          <div className="absolute sm:bottom-full bottom-auto sm:top-auto top-full z-50 w-full sm:mb-2 mt-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-[60vh] sm:max-h-[400px] overflow-y-auto overscroll-contain">
             {searchResults.map((product) => (
               <button
                 key={product.id}
                 onClick={() => handleSelectProduct(product)}
-                className="w-full flex items-center gap-3 p-3 hover:bg-slate-700 active:bg-slate-600 transition-colors text-left border-b border-slate-700 last:border-b-0"
+                className="w-full flex items-center gap-3 p-3 min-h-[56px] hover:bg-slate-700 active:bg-slate-600 transition-colors text-left border-b border-slate-700 last:border-b-0"
                 style={{
                   touchAction: 'manipulation',
                   WebkitTapHighlightColor: 'transparent',
@@ -204,7 +204,7 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
 
                 {/* Product Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-white break-words" style={{ fontSize: '15px', lineHeight: '1.5' }}>
+                  <div className="font-semibold text-white break-words" style={{ fontSize: '16px', lineHeight: '1.5' }}>
                     {product.name}
                   </div>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
