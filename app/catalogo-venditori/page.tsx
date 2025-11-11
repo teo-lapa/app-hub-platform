@@ -211,7 +211,10 @@ export default function CatalogoVenditoriPage() {
           deliveryAddressId: selectedAddressId,
           orderLines: cartProducts.map(p => ({
             product_id: p.product_id,
-            quantity: p.quantity
+            quantity: p.quantity,
+            price: p.price, // ✅ Passa il prezzo dall'offerta/urgente
+            source: p.source, // ✅ Passa la fonte (offer/urgent)
+            product_name: p.product_name // ✅ Per badge nel nome
           })),
           orderNotes: orderNotes || undefined,
           warehouseNotes: warehouseNotes || undefined,
