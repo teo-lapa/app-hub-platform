@@ -12,8 +12,8 @@ import type {
 const OFFER_PRODUCTS_KEY = 'offer_products';
 
 /**
- * Calcola la quantità prenotata in ordini draft/sent per un prodotto specifico
- * con lotto e ubicazione specifici
+ * Calcola la quantità prenotata per un prodotto specifico
+ * con lotto e ubicazione specifici usando stock.quant di Odoo
  */
 async function calculateReservedQuantity(
   cookies: string,
@@ -27,49 +27,46 @@ async function calculateReservedQuantity(
       return 0;
     }
 
-    // Cerca ordini in stato draft/sent che contengono questo prodotto
-    const orderLines = await callOdoo(
+    // Costruisci domain per cercare il quant specifico
+    const domain: any[] = [
+      ['product_id', '=', productId],
+    ];
+
+    if (lotId) {
+      domain.push(['lot_id', '=', lotId]);
+    }
+
+    if (locationId) {
+      domain.push(['location_id', '=', locationId]);
+    }
+
+    // Cerca stock.quant che ha il campo reserved_quantity
+    const quants = await callOdoo(
       cookies,
-      'sale.order.line',
+      'stock.quant',
       'search_read',
       [],
       {
-        domain: [
-          ['product_id', '=', productId],
-          ['state', 'in', ['draft', 'sale']], // draft o confermato ma non ancora consegnato
-        ],
-        fields: ['id', 'product_uom_qty', 'name', 'order_id']
+        domain: domain,
+        fields: ['id', 'product_id', 'lot_id', 'location_id', 'quantity', 'reserved_quantity']
       }
     );
 
-    if (!orderLines || orderLines.length === 0) {
+    if (!quants || quants.length === 0) {
+      console.log(`📦 No quants found for product ${productId}, lot ${lotId}, location ${locationId}`);
       return 0;
     }
 
-    // Filtra le righe che hanno il lotto/ubicazione nelle note
-    let reservedQty = 0;
-    for (const line of orderLines) {
-      const lineName = line.name || '';
-
-      // Cerca il lotId o locationId nelle note del prodotto
-      let isMatch = false;
-
-      if (lotId && lineName.includes(`Lotto: ${lotId}`)) {
-        isMatch = true;
-      }
-
-      if (locationId && lineName.includes(`Ubicazione:`)) {
-        // Può contenere ID o nome, per ora matchiamo genericamente
-        isMatch = true;
-      }
-
-      if (isMatch) {
-        reservedQty += line.product_uom_qty || 0;
-        console.log(`📦 Found reserved qty: ${line.product_uom_qty} in order line ${line.id}`);
-      }
+    // Somma tutte le quantità prenotate
+    let totalReserved = 0;
+    for (const quant of quants) {
+      const reserved = quant.reserved_quantity || 0;
+      totalReserved += reserved;
+      console.log(`📦 Quant ${quant.id}: ${reserved} reserved (${quant.quantity} total)`);
     }
 
-    return reservedQty;
+    console.log(`📊 Total reserved for product ${productId}: ${totalReserved}`);
+    return totalReserved;
   } catch (error) {
     console.error('❌ Error calculating reserved quantity:', error);
     return 0; // In caso di errore, assumiamo 0 prenotato
