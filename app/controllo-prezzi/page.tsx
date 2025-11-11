@@ -28,7 +28,7 @@ export default function ControlloPrezziPage() {
 
   // Stati principali
   const [currentView, setCurrentView] = useState<'filter' | 'products'>('filter');
-  const [selectedCategory, setSelectedCategory] = useState<'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all' | null>(null);
   const [products, setProducts] = useState<PriceCheckProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<PriceCheckProduct | null>(null);
 
@@ -228,6 +228,7 @@ export default function ControlloPrezziPage() {
   const getCategoryLabel = () => {
     if (!selectedCategory) return '';
     const labels = {
+      all: 'TUTTI I PREZZI',
       below_critical: 'SOTTO PUNTO CRITICO',
       critical_to_avg: 'TRA PC E MEDIO',
       above_avg: 'SOPRA MEDIO',
