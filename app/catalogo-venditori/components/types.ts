@@ -22,7 +22,7 @@ export interface CartProduct {
   product_id: number;
   product_name: string;
   quantity: number;
-  price?: number;                // Optional price from Odoo
+  price?: number;                // Optional price from Odoo or offer/urgent price
   confidence?: string;           // Optional confidence from AI matching
   reasoning?: string;            // Optional AI reasoning
   image_url?: string | null;     // Product image URL (from Odoo)
@@ -30,6 +30,7 @@ export interface CartProduct {
   uom_name?: string;             // Unit of measure (es: "kg", "pz", "lt")
   incoming_qty?: number;         // Incoming quantity (qty in arrivo)
   incoming_date?: string | null; // Expected arrival date for incoming stock
+  source?: 'offer' | 'urgent';   // Source of product (from offer or urgent products)
 }
 
 // Customer from Odoo

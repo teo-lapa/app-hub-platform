@@ -23,6 +23,8 @@ interface OrderLine {
   product_id: number;
   quantity: number;
   product_name?: string; // Optional, used for better error messages
+  price?: number; // Optional, used for offer/urgent products with custom price
+  source?: 'offer' | 'urgent'; // Optional, indicates if product is from offer or urgent
 }
 
 interface CreateOrderRequest {
@@ -296,12 +298,25 @@ export async function POST(request: NextRequest) {
     console.log('📝 [CREATE-ORDER-API] Creating order lines...');
 
     const orderLinePromises = orderLines.map(async (line) => {
-      const lineData = {
+      const lineData: any = {
         order_id: odooOrderId,
         product_id: line.product_id,
         product_uom_qty: line.quantity,
         company_id: 1, // LAPA - finest italian food GmbH
       };
+
+      // ✅ Se c'è un prezzo dall'offerta o urgente, usa quello
+      if (line.price !== undefined && line.price !== null) {
+        lineData.price_unit = line.price;
+        console.log(`✅ [CREATE-ORDER-API] Using custom price for product ${line.product_id}: CHF ${line.price.toFixed(2)}${line.source ? ` (from ${line.source})` : ''}`);
+      }
+
+      // ✅ Aggiungi badge per prodotti da offerta/urgente nella description
+      if (line.source) {
+        const badge = line.source === 'offer' ? '🏷️ OFFERTA' : '🔔 URGENTE';
+        lineData.name = `${badge} - ${line.product_name || `Product ${line.product_id}`}`;
+        console.log(`✅ [CREATE-ORDER-API] Added ${badge} badge to product ${line.product_id}`);
+      }
 
       return callOdoo(
         cookies,

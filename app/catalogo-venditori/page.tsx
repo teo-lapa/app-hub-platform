@@ -726,13 +726,15 @@ export default function CatalogoVenditoriPage() {
             product_id: urgentProduct.productId,
             product_name: urgentProduct.productName,
             quantity: quantity,
+            price: urgentProduct.suggestedPrice, // ✅ Passa il prezzo suggerito
             confidence: 'high',
             reasoning: `Prodotto urgente (scade: ${new Date(urgentProduct.expirationDate).toLocaleDateString('it-IT')}) - ${urgentProduct.note}`,
             image_url: urgentProduct.image ? `data:image/png;base64,${urgentProduct.image}` : null,
             qty_available: urgentProduct.quantity,
             uom_name: urgentProduct.uom,
             incoming_qty: 0,
-            incoming_date: null
+            incoming_date: null,
+            source: 'urgent' // ✅ Indica che proviene da urgente
           };
 
           setCartProducts(prev => {
@@ -766,13 +768,15 @@ export default function CatalogoVenditoriPage() {
             product_id: offerProduct.productId,
             product_name: offerProduct.productName,
             quantity: quantity,
+            price: offerProduct.offerPrice, // ✅ Passa il prezzo dell'offerta
             confidence: 'high',
             reasoning: `Prodotto in offerta - ${offerProduct.note}${offerProduct.offerPrice ? ` - Prezzo offerta: CHF ${offerProduct.offerPrice.toFixed(2)}` : ''}`,
             image_url: offerProduct.image ? `data:image/png;base64,${offerProduct.image}` : null,
             qty_available: offerProduct.quantity,
             uom_name: offerProduct.uom,
             incoming_qty: 0,
-            incoming_date: null
+            incoming_date: null,
+            source: 'offer' // ✅ Indica che proviene da offerta
           };
 
           setCartProducts(prev => {
