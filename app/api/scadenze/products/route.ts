@@ -341,7 +341,7 @@ async function getNoMovementProducts(
 
     const productMap = new Map(products.map((p: any) => [p.id, p]));
 
-    // STEP 3: Trova ultimo movimento per ogni prodotto
+    // STEP 3: Trova ultimo movimento per ogni prodotto (IN o OUT)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -350,23 +350,27 @@ async function getNoMovementProducts(
       [
         ['product_id', 'in', productIds],
         ['state', '=', 'done'],
-        ['picking_code', '=', 'outgoing'], // Solo movimenti in uscita (vendite)
+        // Consideriamo sia IN (incoming/arrivi) che OUT (outgoing/vendite)
       ],
-      ['id', 'product_id', 'date'],
+      ['id', 'product_id', 'date', 'picking_code'],
       0,
       'date desc'
     );
 
-    console.log(`✅ Trovate ${moveLines.length} move lines completate`);
+    console.log(`✅ Trovate ${moveLines.length} move lines completate (IN e OUT)`);
 
-    // Costruisci mappa prodotto -> ultima data movimento
+    // Costruisci mappa prodotto -> ultima data movimento (IN o OUT)
     const productLastMove = new Map<number, Date>();
     for (const move of moveLines) {
       const productId = move.product_id[0];
       const moveDate = new Date(move.date);
+      const pickingCode = move.picking_code;
 
-      if (!productLastMove.has(productId) || moveDate > productLastMove.get(productId)!) {
-        productLastMove.set(productId, moveDate);
+      // Consideriamo solo incoming (arrivi) e outgoing (vendite)
+      if (pickingCode === 'incoming' || pickingCode === 'outgoing') {
+        if (!productLastMove.has(productId) || moveDate > productLastMove.get(productId)!) {
+          productLastMove.set(productId, moveDate);
+        }
       }
     }
 

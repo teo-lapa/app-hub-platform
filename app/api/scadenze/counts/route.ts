@@ -184,32 +184,38 @@ export async function GET(request: NextRequest) {
     // Mappa prodotto -> ultimo movimento
     const productLastMove = new Map<number, Date>();
 
-    // Per ogni prodotto, trova l'ultima move line OUT (vendita/consegna)
+    // Per ogni prodotto, trova l'ultimo movimento (IN o OUT)
     if (allQuants.length > 0) {
       const allProductIds = Array.from(new Set(allQuants.map((q: any) => q.product_id[0])));
 
-      // Cerca move lines completate (done) per questi prodotti
+      // Cerca TUTTI i movimenti completati (incoming, outgoing, internal)
+      // per capire quando il prodotto è stato movimentato l'ultima volta
       const moveLines = await rpcClient.searchRead(
         'stock.move',
         [
           ['product_id', 'in', allProductIds],
           ['state', '=', 'done'],
-          ['picking_code', '=', 'outgoing'], // Solo movimenti in uscita (vendite)
+          // Consideriamo sia IN (incoming) che OUT (outgoing)
+          // Non includiamo 'internal' perché sono movimenti interni che non indicano vendita o carico
         ],
-        ['id', 'product_id', 'date'],
+        ['id', 'product_id', 'date', 'picking_code'],
         0,
         'date desc'
       );
 
-      console.log(`✅ Trovate ${moveLines.length} move lines completate`);
+      console.log(`✅ Trovate ${moveLines.length} move lines completate (IN e OUT)`);
 
-      // Costruisci mappa prodotto -> ultima data movimento
+      // Costruisci mappa prodotto -> ultima data movimento (qualsiasi tipo)
       for (const move of moveLines) {
         const productId = move.product_id[0];
         const moveDate = new Date(move.date);
+        const pickingCode = move.picking_code;
 
-        if (!productLastMove.has(productId) || moveDate > productLastMove.get(productId)!) {
-          productLastMove.set(productId, moveDate);
+        // Consideriamo solo incoming (arrivi) e outgoing (vendite)
+        if (pickingCode === 'incoming' || pickingCode === 'outgoing') {
+          if (!productLastMove.has(productId) || moveDate > productLastMove.get(productId)!) {
+            productLastMove.set(productId, moveDate);
+          }
         }
       }
     }
