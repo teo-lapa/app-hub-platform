@@ -88,6 +88,17 @@ export default function ScadenzePage() {
   const [urgentProductsCount, setUrgentProductsCount] = useState(0);
   const [offerProductsCount, setOfferProductsCount] = useState(0);
 
+  // Stati per prezzi dettagliati
+  const [loadingPrices, setLoadingPrices] = useState(false);
+  const [productPrices, setProductPrices] = useState<{
+    purchasePrice: number;
+    listPrice: number;
+    minPrice: number;
+    maxPrice: number;
+    avgPrice: number;
+    availableQuantity: number;
+  } | null>(null);
+
   const checkConnection = async () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -197,9 +208,36 @@ export default function ScadenzePage() {
     });
 
   // Click su card prodotto
-  const handleProductClick = (product: ExpiryProduct) => {
+  const handleProductClick = async (product: ExpiryProduct) => {
     setSelectedProduct(product);
     setShowProductModal(true);
+
+    // Carica prezzi dettagliati
+    await loadProductPrices(product.id);
+  };
+
+  // Carica prezzi dettagliati per un prodotto
+  const loadProductPrices = async (productId: number) => {
+    setLoadingPrices(true);
+    setProductPrices(null);
+
+    try {
+      const response = await fetch(`/api/scadenze/product-prices?productId=${productId}`, {
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.prices) {
+        setProductPrices(data.prices);
+      } else {
+        console.error('Errore caricamento prezzi:', data.error);
+      }
+    } catch (error) {
+      console.error('Errore fetch prezzi:', error);
+    } finally {
+      setLoadingPrices(false);
+    }
   };
 
   // Trasferisci a scarti
@@ -791,6 +829,42 @@ export default function ScadenzePage() {
                 </div>
               </div>
 
+              {/* Informazioni Prezzi */}
+              {loadingPrices ? (
+                <div className="glass p-4 rounded-lg mb-4">
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500" />
+                    <span className="ml-2 text-sm text-slate-400">Caricamento prezzi...</span>
+                  </div>
+                </div>
+              ) : productPrices ? (
+                <div className="glass p-4 rounded-lg mb-4 space-y-2">
+                  <h4 className="font-semibold text-sm mb-3 text-orange-400">📊 Informazioni Prezzi</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-slate-400">💰 Prezzo d'acquisto:</span>
+                      <p className="font-semibold text-yellow-400">CHF {productPrices.purchasePrice.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">📦 Quantità disponibile:</span>
+                      <p className="font-semibold text-green-400">{productPrices.availableQuantity.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">⬇️ Prezzo minimo:</span>
+                      <p className="font-semibold">CHF {productPrices.minPrice.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">⬆️ Prezzo massimo:</span>
+                      <p className="font-semibold">CHF {productPrices.maxPrice.toFixed(2)}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-slate-400">📊 Prezzo medio:</span>
+                      <p className="font-semibold text-blue-400">CHF {productPrices.avgPrice.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               {/* Textarea nota */}
               <div className="mb-4">
                 <label className="block text-sm font-semibold mb-2">
@@ -914,6 +988,42 @@ export default function ScadenzePage() {
                   </div>
                 </div>
               </div>
+
+              {/* Informazioni Prezzi */}
+              {loadingPrices ? (
+                <div className="glass p-4 rounded-lg mb-4">
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+                    <span className="ml-2 text-sm text-slate-400">Caricamento prezzi...</span>
+                  </div>
+                </div>
+              ) : productPrices ? (
+                <div className="glass p-4 rounded-lg mb-4 space-y-2">
+                  <h4 className="font-semibold text-sm mb-3 text-blue-400">📊 Informazioni Prezzi</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-slate-400">💰 Prezzo d'acquisto:</span>
+                      <p className="font-semibold text-yellow-400">CHF {productPrices.purchasePrice.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">📦 Quantità disponibile:</span>
+                      <p className="font-semibold text-green-400">{productPrices.availableQuantity.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">⬇️ Prezzo minimo:</span>
+                      <p className="font-semibold">CHF {productPrices.minPrice.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">⬆️ Prezzo massimo:</span>
+                      <p className="font-semibold">CHF {productPrices.maxPrice.toFixed(2)}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-slate-400">📊 Prezzo medio:</span>
+                      <p className="font-semibold text-blue-400">CHF {productPrices.avgPrice.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {/* Textarea nota */}
               <div className="mb-4">

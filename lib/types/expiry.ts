@@ -26,6 +26,14 @@ export interface ExpiryProduct {
 
   // Valore stimato (opzionale)
   estimatedValue?: number;
+
+  // Prezzi dettagliati (caricati on-demand)
+  purchasePrice?: number; // Prezzo d'acquisto
+  listPrice?: number; // Prezzo listino base
+  minPrice?: number; // Prezzo minimo tra listini
+  maxPrice?: number; // Prezzo massimo tra listini
+  avgPrice?: number; // Prezzo medio tra listini
+  availableQuantity?: number; // Quantità disponibile totale
 }
 
 export interface ExpiryZone {
