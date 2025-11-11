@@ -198,8 +198,14 @@ export async function POST(request: NextRequest) {
 
       if (!products || products.length === 0) {
         console.error('❌ [CREATE-ORDER-API] Product not found:', line.product_id);
+        const productName = line.product_name || `ID ${line.product_id}`;
         return NextResponse.json(
-          { success: false, error: `Product with ID ${line.product_id} not found` },
+          {
+            success: false,
+            error: `Il prodotto "${productName}" non è più disponibile in Odoo. Potrebbe essere stato archiviato o cancellato. Rimuovilo dal carrello e riprova.`,
+            productId: line.product_id,
+            productName: line.product_name
+          },
           { status: 404 }
         );
       }
