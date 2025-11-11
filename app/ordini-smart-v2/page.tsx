@@ -81,6 +81,7 @@ export default function SmartOrderingV2() {
   // Pre-orders state
   const [preOrderSuppliers, setPreOrderSuppliers] = useState<any[]>([]);
   const [loadingPreOrders, setLoadingPreOrders] = useState(false);
+  const [selectedPreOrder, setSelectedPreOrder] = useState<any | null>(null);
 
   // Cadence Management
   const [cadenceModal, setCadenceModal] = useState<{ supplier: Supplier | null; isOpen: boolean }>({
@@ -502,20 +503,7 @@ export default function SmartOrderingV2() {
               {preOrderSuppliers.map(supplier => (
                 <div
                   key={supplier.supplierId}
-                  onClick={() => {
-                    // Trova il fornitore nei suppliers e aprilo
-                    const fullSupplier = suppliers.find(s => s.id === supplier.supplierId);
-                    if (fullSupplier) {
-                      setSelectedSupplier(fullSupplier);
-
-                      // Auto-seleziona i prodotti pre-ordine
-                      const newMap = new Map();
-                      supplier.products.forEach((preOrderProduct: any) => {
-                        newMap.set(preOrderProduct.productId, preOrderProduct.totalQuantity);
-                      });
-                      setSelectedProducts(newMap);
-                    }
-                  }}
+                  onClick={() => setSelectedPreOrder(supplier)}
                   className="bg-purple-500/20 hover:bg-purple-500/30 backdrop-blur-sm rounded-xl p-4 cursor-pointer transition-all border border-purple-400/30 hover:scale-105"
                 >
                   <div className="flex items-start justify-between mb-3">
@@ -535,52 +523,10 @@ export default function SmartOrderingV2() {
                     <div className="text-white text-2xl font-bold">{supplier.totalQuantity}</div>
                   </div>
 
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-
-                      if (!confirm(`Creare ordini per ${supplier.supplierName}?\n\n${supplier.totalProducts} prodotti\n${supplier.totalCustomers} clienti\nQuantità totale: ${supplier.totalQuantity}`)) {
-                        return;
-                      }
-
-                      try {
-                        // Chiama l'API create-all-preorders esistente
-                        const response = await fetch('/api/smart-ordering-v2/create-all-preorders', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            products: supplier.products.map((p: any) => ({
-                              productId: p.productId,
-                              supplierId: supplier.supplierId,
-                              supplierName: supplier.supplierName,
-                              assignments: p.assignments.map((a: any) => ({
-                                customerId: a.customerId,
-                                customerName: a.customerName,
-                                quantity: a.quantity
-                              }))
-                            }))
-                          })
-                        });
-
-                        if (response.ok) {
-                          const result = await response.json();
-                          alert(`✅ Ordini creati con successo!\n\nPreventivi Clienti: ${result.customerQuotesCreated}\nPreventivi Fornitori: ${result.supplierQuotesCreated}`);
-                          // Ricarica i dati per aggiornare il dashboard
-                          await loadPreOrders();
-                          await loadData();
-                        } else {
-                          const error = await response.json();
-                          alert(`❌ Errore: ${error.error || 'Impossibile creare gli ordini'}`);
-                        }
-                      } catch (error) {
-                        console.error('Errore creazione ordini:', error);
-                        alert('❌ Errore nella creazione degli ordini');
-                      }
-                    }}
-                    className="w-full mt-3 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg transition-all font-semibold text-sm"
-                  >
-                    🚀 Crea Ordini
-                  </button>
+                  <div className="mt-3 text-center text-purple-200 text-xs flex items-center justify-center gap-1">
+                    <span>👆</span>
+                    <span>Clicca per vedere i dettagli</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1667,8 +1613,187 @@ export default function SmartOrderingV2() {
         )}
       </AnimatePresence>
 
-      {/* Pre-Order Modal */}
-      {/* PreOrderModal removed - now using dedicated page at /prodotti-preordine */}
+      {/* Pre-Order Details Modal */}
+      <AnimatePresence>
+        {selectedPreOrder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[80] overflow-auto"
+            onClick={() => setSelectedPreOrder(null)}
+          >
+            <div className="min-h-screen p-6 flex items-start justify-center">
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-gradient-to-br from-purple-900 to-indigo-900 rounded-3xl shadow-2xl max-w-6xl w-full border border-purple-400/30"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="p-6 border-b border-white/10 bg-gradient-to-r from-purple-500/20 to-indigo-500/20">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h2 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+                        📦 Pre-Ordine Programmato
+                        <div className="bg-purple-500 text-white text-sm px-3 py-1 rounded-full font-bold">
+                          PRE-ORDINE
+                        </div>
+                      </h2>
+                      <p className="text-2xl text-purple-200 font-semibold">{selectedPreOrder.supplierName}</p>
+                      <div className="flex gap-4 mt-3 text-purple-200">
+                        <span>{selectedPreOrder.totalProducts} prodotti</span>
+                        <span>•</span>
+                        <span>{selectedPreOrder.totalCustomers} clienti</span>
+                        <span>•</span>
+                        <span className="font-bold text-white">Quantità totale: {selectedPreOrder.totalQuantity}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedPreOrder(null)}
+                      className="text-white/60 hover:text-white transition-colors"
+                    >
+                      <XMarkIcon className="w-8 h-8" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Body - Products List */}
+                <div className="p-6 space-y-6 max-h-[70vh] overflow-auto">
+                  <div className="bg-white/5 rounded-xl p-6">
+                    <h3 className="text-white text-xl font-bold mb-4 flex items-center gap-2">
+                      <CubeIcon className="w-6 h-6 text-purple-400" />
+                      Prodotti Pre-Ordinati
+                    </h3>
+                    <div className="space-y-3">
+                      {selectedPreOrder.products.map((product: any) => (
+                        <div
+                          key={product.productId}
+                          className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-all"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <div className="text-white font-semibold text-lg mb-1">
+                                {product.productName}
+                              </div>
+                              <div className="text-purple-300 text-sm">
+                                ID Prodotto: {product.productId}
+                              </div>
+                            </div>
+                            <div className="bg-purple-500/20 px-4 py-2 rounded-lg border border-purple-400/30">
+                              <div className="text-purple-200 text-xs mb-1">Quantità Totale</div>
+                              <div className="text-white text-2xl font-bold text-center">
+                                {product.totalQuantity}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Customer Assignments */}
+                          <div className="mt-4 pt-4 border-t border-white/10">
+                            <h4 className="text-purple-200 font-semibold text-sm mb-3 flex items-center gap-2">
+                              👥 Assegnazioni Clienti ({product.assignments.length})
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {product.assignments.map((assignment: any, idx: number) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between bg-white/5 rounded-lg p-3"
+                                >
+                                  <div>
+                                    <div className="text-white text-sm font-medium">
+                                      {assignment.customerName}
+                                    </div>
+                                    <div className="text-purple-300 text-xs">
+                                      ID: {assignment.customerId}
+                                    </div>
+                                  </div>
+                                  <div className="text-purple-200 font-bold">
+                                    {assignment.quantity}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-xl p-4 border border-purple-400/30">
+                      <div className="text-purple-300 text-sm mb-1">Prodotti Unici</div>
+                      <div className="text-white text-3xl font-bold">{selectedPreOrder.totalProducts}</div>
+                    </div>
+                    <div className="bg-gradient-to-br from-indigo-500/20 to-indigo-600/20 rounded-xl p-4 border border-indigo-400/30">
+                      <div className="text-indigo-300 text-sm mb-1">Clienti Coinvolti</div>
+                      <div className="text-white text-3xl font-bold">{selectedPreOrder.totalCustomers}</div>
+                    </div>
+                    <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-xl p-4 border border-blue-400/30">
+                      <div className="text-blue-300 text-sm mb-1">Quantità Totale</div>
+                      <div className="text-white text-3xl font-bold">{selectedPreOrder.totalQuantity}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer - Actions */}
+                <div className="p-6 border-t border-white/10 bg-white/5 flex gap-3">
+                  <button
+                    onClick={() => setSelectedPreOrder(null)}
+                    className="px-6 py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all"
+                  >
+                    Chiudi
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!confirm(`Creare ordini per ${selectedPreOrder.supplierName}?\n\n${selectedPreOrder.totalProducts} prodotti\n${selectedPreOrder.totalCustomers} clienti\nQuantità totale: ${selectedPreOrder.totalQuantity}`)) {
+                        return;
+                      }
+
+                      try {
+                        const response = await fetch('/api/smart-ordering-v2/create-all-preorders', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            products: selectedPreOrder.products.map((p: any) => ({
+                              productId: p.productId,
+                              supplierId: selectedPreOrder.supplierId,
+                              supplierName: selectedPreOrder.supplierName,
+                              assignments: p.assignments.map((a: any) => ({
+                                customerId: a.customerId,
+                                customerName: a.customerName,
+                                quantity: a.quantity
+                              }))
+                            }))
+                          })
+                        });
+
+                        if (response.ok) {
+                          const result = await response.json();
+                          alert(`✅ Ordini creati con successo!\n\nPreventivi Clienti: ${result.customerQuotesCreated}\nPreventivi Fornitori: ${result.supplierQuotesCreated}`);
+                          setSelectedPreOrder(null);
+                          await loadPreOrders();
+                          await loadData();
+                        } else {
+                          const error = await response.json();
+                          alert(`❌ Errore: ${error.error || 'Impossibile creare gli ordini'}`);
+                        }
+                      } catch (error) {
+                        console.error('Errore creazione ordini:', error);
+                        alert('❌ Errore nella creazione degli ordini');
+                      }
+                    }}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl hover:from-purple-600 hover:to-indigo-600 transition-all font-semibold text-lg"
+                  >
+                    🚀 Crea Ordini
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
