@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Home, ShoppingCart, Sparkles, CheckCircle, AlertCircle, FileText, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Home, ShoppingCart, Sparkles, CheckCircle, AlertCircle, FileText, X, Loader2, Bell, Tag } from 'lucide-react';
 import CustomerSelector from './components/CustomerSelector';
 import AIOrderInput from './components/AIOrderInput';
 import SmartCart from './components/SmartCart';
@@ -10,6 +10,8 @@ import NotesInput from './components/NotesInput';
 import ManualProductSearch from './components/ManualProductSearch';
 import DeliveryDatePicker from './components/DeliveryDatePicker';
 import OdooOrderLink from './components/OdooOrderLink';
+import { UrgentProductsModal } from '@/components/maestro/UrgentProductsModal';
+import { OfferProductsModal } from '@/components/maestro/OfferProductsModal';
 import type { MatchedProduct, CartProduct } from './components/types';
 
 export default function CatalogoVenditoriPage() {
@@ -39,10 +41,38 @@ export default function CatalogoVenditoriPage() {
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
+  // Prodotti urgenti e offerte
+  const [showUrgentModal, setShowUrgentModal] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [urgentCount, setUrgentCount] = useState(0);
+  const [offerCount, setOfferCount] = useState(0);
+
   // Auto-scroll to top on mount (mobile optimization)
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    loadProductCounts(); // Carica conteggi prodotti urgenti e offerte
   }, []);
+
+  // Carica conteggi prodotti urgenti e offerte
+  const loadProductCounts = async () => {
+    try {
+      // Carica prodotti urgenti
+      const urgentResponse = await fetch('/api/urgent-products', { credentials: 'include' });
+      const urgentData = await urgentResponse.json();
+      if (urgentData.success) {
+        setUrgentCount(urgentData.count || 0);
+      }
+
+      // Carica prodotti in offerta
+      const offerResponse = await fetch('/api/offer-products', { credentials: 'include' });
+      const offerData = await offerResponse.json();
+      if (offerData.success) {
+        setOfferCount(offerData.count || 0);
+      }
+    } catch (error) {
+      console.error('Errore caricamento conteggi:', error);
+    }
+  };
 
   // Handle customer selection
   const handleCustomerSelect = (customerId: number, customerName: string) => {
@@ -295,6 +325,38 @@ export default function CatalogoVenditoriPage() {
               >
                 <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span className="text-xs sm:text-base font-medium hidden lg:inline">Ordini</span>
+              </button>
+
+              {/* Prodotti Urgenti Button */}
+              <button
+                onClick={() => setShowUrgentModal(true)}
+                className="relative flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-orange-600/80 hover:bg-orange-600 text-white rounded-lg border border-orange-500 transition-colors min-h-[44px] shrink-0"
+                aria-label="Urgenti"
+                title="Prodotti urgenti da vendere"
+              >
+                <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-base font-medium hidden lg:inline">Urgenti</span>
+                {urgentCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    {urgentCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Prodotti in Offerta Button */}
+              <button
+                onClick={() => setShowOfferModal(true)}
+                className="relative flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg border border-blue-500 transition-colors min-h-[44px] shrink-0"
+                aria-label="Offerte"
+                title="Prodotti in offerta"
+              >
+                <Tag className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-base font-medium hidden lg:inline">Offerte</span>
+                {offerCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-green-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    {offerCount}
+                  </span>
+                )}
               </button>
 
               {/* Revisione Prezzi Button */}
@@ -647,6 +709,24 @@ export default function CatalogoVenditoriPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Prodotti Urgenti */}
+      <UrgentProductsModal
+        isOpen={showUrgentModal}
+        onClose={() => {
+          setShowUrgentModal(false);
+          loadProductCounts(); // Ricarica conteggi quando chiude
+        }}
+      />
+
+      {/* Modal Prodotti in Offerta */}
+      <OfferProductsModal
+        isOpen={showOfferModal}
+        onClose={() => {
+          setShowOfferModal(false);
+          loadProductCounts(); // Ricarica conteggi quando chiude
+        }}
+      />
     </div>
   );
 }
