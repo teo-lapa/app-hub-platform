@@ -82,7 +82,8 @@ export async function GET(request: NextRequest) {
         ['lot_id', 'in', lotIds],
         ['quantity', '>', 0],
         ['location_id.usage', '=', 'internal'],
-        ['location_id', '!=', 648] // Escludi MERCE DETERIORATA (Scarti)
+        ['location_id', '!=', 648], // Escludi MERCE DETERIORATA (Scarti)
+        ['location_id.complete_name', 'not ilike', '%FURGONI%'] // Escludi ubicazioni furgoni
       ],
       ['id', 'product_id', 'lot_id', 'location_id', 'quantity'],
       0
@@ -307,7 +308,8 @@ async function getNoMovementProducts(
       [
         ['quantity', '>', 0],
         ['location_id.usage', '=', 'internal'],
-        ['location_id', '!=', 648] // Escludi MERCE DETERIORATA (Scarti)
+        ['location_id', '!=', 648], // Escludi MERCE DETERIORATA (Scarti)
+        ['location_id.complete_name', 'not ilike', '%FURGONI%'] // Escludi ubicazioni furgoni
       ],
       ['id', 'product_id', 'location_id', 'quantity'],
       0
