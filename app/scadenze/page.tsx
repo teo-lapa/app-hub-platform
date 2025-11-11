@@ -50,7 +50,7 @@ export default function ScadenzePage() {
 
   // Stati principali
   const [currentView, setCurrentView] = useState<'filter' | 'products' | 'zones'>('filter');
-  const [selectedUrgency, setSelectedUrgency] = useState<'expired' | 'expiring' | 'ok' | 'all' | null>(null);
+  const [selectedUrgency, setSelectedUrgency] = useState<'expired' | 'expiring' | 'ok' | 'all' | 'no-movement-30' | 'no-movement-90' | null>(null);
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [products, setProducts] = useState<ExpiryProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<ExpiryProduct | null>(null);
@@ -61,6 +61,8 @@ export default function ScadenzePage() {
     expiring: 0,
     ok: 0,
     all: 0,
+    'no-movement-30': 0,
+    'no-movement-90': 0,
   });
   const [zoneCounts, setZoneCounts] = useState<Record<string, number>>({});
 
@@ -108,7 +110,7 @@ export default function ScadenzePage() {
   };
 
   // Seleziona urgenza e mostra prodotti
-  const handleSelectUrgency = async (urgency: 'expired' | 'expiring' | 'ok' | 'all') => {
+  const handleSelectUrgency = async (urgency: 'expired' | 'expiring' | 'ok' | 'all' | 'no-movement-30' | 'no-movement-90') => {
     setSelectedUrgency(urgency);
     setCurrentView('products');
     setLoading(true);
@@ -126,6 +128,8 @@ export default function ScadenzePage() {
           expiring: 'IN SCADENZA',
           ok: 'OK >7gg',
           all: 'TUTTI',
+          'no-movement-30': 'FERMI 30GG',
+          'no-movement-90': 'FERMI 3 MESI',
         };
         toast.success(`${urgencyLabels[urgency]}: ${data.products?.length || 0} prodotti`);
       } else {
@@ -292,6 +296,8 @@ export default function ScadenzePage() {
       expiring: 'IN SCADENZA (7gg)',
       ok: 'OK (>7gg)',
       all: 'TUTTI',
+      'no-movement-30': 'FERMI 30 GIORNI',
+      'no-movement-90': 'FERMI 3 MESI',
     };
     return labels[selectedUrgency];
   };

@@ -40,7 +40,7 @@ export interface ExpiryZone {
 }
 
 export interface UrgencyCategory {
-  id: 'expired' | 'expiring' | 'ok' | 'all';
+  id: 'expired' | 'expiring' | 'ok' | 'all' | 'no-movement-30' | 'no-movement-90';
   name: string;
   icon: string;
   description: string;
@@ -75,7 +75,7 @@ export interface ExpiryReview {
 // Request/Response types per API
 
 export interface GetExpiryProductsRequest {
-  urgency?: 'expired' | 'expiring' | 'ok' | 'all';
+  urgency?: 'expired' | 'expiring' | 'ok' | 'all' | 'no-movement-30' | 'no-movement-90';
   zone?: string;
   days?: number; // Default 7
   limit?: number;
@@ -96,6 +96,8 @@ export interface GetExpiryCountsResponse {
       expiring: number;
       ok: number;
       all: number;
+      'no-movement-30': number;
+      'no-movement-90': number;
     };
     byZone: {
       [zoneId: string]: number;

@@ -9,8 +9,10 @@ interface UrgencyFilterBarProps {
     expiring: number;
     ok: number;
     all: number;
+    'no-movement-30': number;
+    'no-movement-90': number;
   };
-  onSelect: (urgency: 'expired' | 'expiring' | 'ok' | 'all') => void;
+  onSelect: (urgency: 'expired' | 'expiring' | 'ok' | 'all' | 'no-movement-30' | 'no-movement-90') => void;
 }
 
 const URGENCY_CATEGORIES: UrgencyCategory[] = [
@@ -37,6 +39,22 @@ const URGENCY_CATEGORIES: UrgencyCategory[] = [
     icon: '🟢',
     description: 'Monitoraggio',
     gradient: 'from-green-500 to-green-700',
+    count: 0,
+  },
+  {
+    id: 'no-movement-30',
+    name: 'FERMI 30GG',
+    icon: '⏸️',
+    description: 'Non venduti da 30gg',
+    gradient: 'from-purple-500 to-purple-700',
+    count: 0,
+  },
+  {
+    id: 'no-movement-90',
+    name: 'FERMI 3 MESI',
+    icon: '🛑',
+    description: 'Non venduti da 90gg',
+    gradient: 'from-pink-500 to-pink-700',
     count: 0,
   },
   {
@@ -77,7 +95,7 @@ export function UrgencyFilterBar({ counts, onSelect }: UrgencyFilterBarProps) {
       )}
 
       {/* Griglia filtri */}
-      <div className="grid grid-cols-2 gap-4 max-w-4xl mx-auto">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
         {URGENCY_CATEGORIES.map((category, index) => {
           const count = counts[category.id];
           const isHighlighted = count === maxCount && maxCount > 0;

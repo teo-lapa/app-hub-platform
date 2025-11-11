@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         {
           success: false,
           counts: {
-            byUrgency: { expired: 0, expiring: 0, ok: 0, all: 0 },
+            byUrgency: { expired: 0, expiring: 0, ok: 0, all: 0, 'no-movement-30': 0, 'no-movement-90': 0 },
             byZone: {}
           },
           error: 'Sessione non valida - effettua il login'
@@ -102,7 +102,9 @@ export async function GET(request: NextRequest) {
         expired: 0,
         expiring: 0,
         ok: 0,
-        all: 0
+        all: 0,
+        'no-movement-30': 0,
+        'no-movement-90': 0
       },
       byZone: {
         frigo: 0,
@@ -155,7 +157,83 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`✅ Conteggi calcolati:`, counts);
+    console.log(`✅ Conteggi calcolati (scadenze):`, counts);
+
+    // STEP 5: Calcola prodotti non movimentati (30 giorni e 90 giorni)
+    console.log('📊 Calcolo prodotti non movimentati...');
+
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const ninetyDaysAgo = new Date(today);
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    // Recupera tutti i prodotti con stock disponibile
+    const allQuants = await rpcClient.searchRead(
+      'stock.quant',
+      [
+        ['quantity', '>', 0],
+        ['location_id.usage', '=', 'internal'],
+        ['location_id', '!=', 648] // Escludi MERCE DETERIORATA (Scarti)
+      ],
+      ['id', 'product_id', 'location_id'],
+      0
+    );
+
+    console.log(`✅ Trovati ${allQuants.length} quants totali`);
+
+    // Mappa prodotto -> ultimo movimento
+    const productLastMove = new Map<number, Date>();
+
+    // Per ogni prodotto, trova l'ultima move line OUT (vendita/consegna)
+    if (allQuants.length > 0) {
+      const allProductIds = Array.from(new Set(allQuants.map((q: any) => q.product_id[0])));
+
+      // Cerca move lines completate (done) per questi prodotti
+      const moveLines = await rpcClient.searchRead(
+        'stock.move',
+        [
+          ['product_id', 'in', allProductIds],
+          ['state', '=', 'done'],
+          ['picking_code', '=', 'outgoing'], // Solo movimenti in uscita (vendite)
+        ],
+        ['id', 'product_id', 'date'],
+        0,
+        'date desc'
+      );
+
+      console.log(`✅ Trovate ${moveLines.length} move lines completate`);
+
+      // Costruisci mappa prodotto -> ultima data movimento
+      for (const move of moveLines) {
+        const productId = move.product_id[0];
+        const moveDate = new Date(move.date);
+
+        if (!productLastMove.has(productId) || moveDate > productLastMove.get(productId)!) {
+          productLastMove.set(productId, moveDate);
+        }
+      }
+    }
+
+    // Conta prodotti non movimentati
+    for (const quant of allQuants) {
+      const productId = quant.product_id[0];
+      const lastMoveDate = productLastMove.get(productId);
+
+      if (!lastMoveDate) {
+        // Nessun movimento registrato -> conta come 90+ giorni
+        counts.byUrgency['no-movement-90']++;
+      } else {
+        const daysSinceLastMove = Math.floor((today.getTime() - lastMoveDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (daysSinceLastMove >= 90) {
+          counts.byUrgency['no-movement-90']++;
+        } else if (daysSinceLastMove >= 30) {
+          counts.byUrgency['no-movement-30']++;
+        }
+      }
+    }
+
+    console.log(`✅ Conteggi finali (con non movimentati):`, counts);
 
     return NextResponse.json({
       success: true,
@@ -169,7 +247,7 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         counts: {
-          byUrgency: { expired: 0, expiring: 0, ok: 0, all: 0 },
+          byUrgency: { expired: 0, expiring: 0, ok: 0, all: 0, 'no-movement-30': 0, 'no-movement-90': 0 },
           byZone: {}
         },
         error: error.message || 'Errore interno del server'
