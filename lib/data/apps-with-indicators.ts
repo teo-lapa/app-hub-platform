@@ -642,6 +642,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-11-04'),
     updatedAt: new Date('2025-11-04'),
   },
+  {
+    id: 'prezzi1',
+    name: 'Controllo Prezzi',
+    description: 'Sistema di monitoraggio prezzi vendita. Visualizza prezzi sotto il punto critico, tra punto critico e media, sopra media. Approva richieste di blocco prezzo dai venditori. Dashboard completa per Paul e Laura.',
+    icon: '💰',
+    badge: 'PRO',
+    category: 'Finance',
+    url: '/controllo-prezzi',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-11-11'),
+    updatedAt: new Date('2025-11-11'),
+  },
 ];
 
 // Combina tutte le app
