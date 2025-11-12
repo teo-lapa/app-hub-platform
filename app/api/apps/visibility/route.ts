@@ -168,9 +168,11 @@ export async function GET(request: NextRequest) {
     // Ottieni il ruolo e userEmail dell'utente dalla query string (opzionale, per filtrare)
     const { searchParams } = new URL(request.url);
     const userRole = searchParams.get('role');
-    const userEmail = searchParams.get('userEmail'); // USA EMAIL invece di userId
+    const userEmailRaw = searchParams.get('userEmail');
+    // ✅ DECODIFICA l'email (paul%40lapa.ch -> paul@lapa.ch)
+    const userEmail = userEmailRaw ? decodeURIComponent(userEmailRaw) : null;
 
-    console.log(`📋 GET /api/apps/visibility - role: ${userRole}, userEmail: ${userEmail}`);
+    console.log(`📋 GET /api/apps/visibility - role: ${userRole}, userEmail: ${userEmail} (raw: ${userEmailRaw})`);
 
     const apps = allApps.map(app => {
       const appSettings = visibilitySettings[app.id];
