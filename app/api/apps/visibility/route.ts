@@ -81,7 +81,7 @@ async function saveVisibilitySettings(settings: Record<string, AppVisibilitySett
 }
 
 // Determina se un'app è visibile per un determinato ruolo utente
-function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRole: string, userEmail?: string): boolean {
+function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRole: string, userEmail: string | null): boolean {
   // Se non ci sono impostazioni, l'app è visibile di default
   if (!settings) return true;
 
@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
       // Se c'è un ruolo specificato, filtra le app in base alla visibilità
       // ✅ Se non ci sono impostazioni (appSettings === undefined), considera l'APP visibile di default
       const isVisible = userRole
-        ? (appSettings ? isAppVisibleForRole(settings, userRole, userEmail || undefined) : true)  // Se no settings → visible
+        ? (appSettings ? isAppVisibleForRole(settings, userRole, userEmail) : true)  // Se no settings → visible
         : settings.visible;
 
       // DEBUG per app "1"
