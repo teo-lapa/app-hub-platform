@@ -3,12 +3,12 @@ import { AppStore, App } from '@/lib/types';
 import { allApps as mockApps } from '@/lib/data/apps-with-indicators';
 
 // Carica le app filtrate in base all'utente corrente
-const loadAppsFromAPI = async (userRole?: string, userId?: number): Promise<App[]> => {
+const loadAppsFromAPI = async (userRole?: string, userEmail?: string): Promise<App[]> => {
   try {
     // Costruisci URL con parametri se disponibili
     const params = new URLSearchParams();
     if (userRole) params.append('role', userRole);
-    if (userId) params.append('userId', String(userId));
+    if (userEmail) params.append('userEmail', userEmail); // USA EMAIL invece di userId
 
     const url = `/api/apps/visibility${params.toString() ? `?${params.toString()}` : ''}`;
     console.log(`🔄 Loading apps from API: ${url}`);
@@ -86,8 +86,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   // Carica le app filtrate per l'utente corrente dall'API
-  loadAppsForUser: async (userRole?: string, userId?: number) => {
-    const apps = await loadAppsFromAPI(userRole, userId);
+  loadAppsForUser: async (userRole?: string, userEmail?: string) => {
+    const apps = await loadAppsFromAPI(userRole, userEmail);
     set({ apps });
     get().filterApps();
   },

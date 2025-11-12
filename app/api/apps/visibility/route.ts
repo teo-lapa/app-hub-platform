@@ -81,7 +81,7 @@ async function saveVisibilitySettings(settings: Record<string, AppVisibilitySett
 }
 
 // Determina se un'app è visibile per un determinato ruolo utente
-function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRole: string, userId?: number): boolean {
+function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRole: string, userEmail?: string): boolean {
   // Se non ci sono impostazioni, l'app è visibile di default
   if (!settings) return true;
 
@@ -90,13 +90,13 @@ function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRo
 
   // Se l'app è visibile a tutti
   if (settings.visibilityGroup === 'all') {
-    // Anche se visibile a tutti, controlla esclusioni specifiche
-    if (userId && settings.excludedUsers?.includes(String(userId))) {
-      console.log(`  ➜ User ${userId} is in excludedUsers - HIDDEN`);
+    // Anche se visibile a tutti, controlla esclusioni specifiche (usa EMAIL)
+    if (userEmail && settings.excludedUsers?.includes(userEmail)) {
+      console.log(`  ➜ User ${userEmail} is in excludedUsers - HIDDEN`);
       return false;
     }
-    if (userId && settings.excludedCustomers?.includes(String(userId))) {
-      console.log(`  ➜ User ${userId} is in excludedCustomers - HIDDEN`);
+    if (userEmail && settings.excludedCustomers?.includes(userEmail)) {
+      console.log(`  ➜ User ${userEmail} is in excludedCustomers - HIDDEN`);
       return false;
     }
     return true;
@@ -112,7 +112,7 @@ function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRo
                        userRole === 'customer' ||
                        userRole === 'portal_user';
 
-  console.log(`🔍 isAppVisibleForRole - userId: ${userId}, userRole: ${userRole}, isInternal: ${isInternalUser}, isPortal: ${isPortalUser}, visibilityGroup: ${settings.visibilityGroup}`);
+  console.log(`🔍 isAppVisibleForRole - userEmail: ${userEmail}, userRole: ${userRole}, isInternal: ${isInternalUser}, isPortal: ${isPortalUser}, visibilityGroup: ${settings.visibilityGroup}`);
 
   // Controlla la visibilità in base al gruppo
   if (settings.visibilityGroup === 'internal') {
@@ -122,9 +122,9 @@ function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRo
       return false;
     }
 
-    // Controlla esclusioni specifiche per dipendenti
-    if (userId && settings.excludedUsers?.includes(String(userId))) {
-      console.log(`  ➜ User ${userId} is in excludedUsers - HIDDEN`);
+    // Controlla esclusioni specifiche per dipendenti (usa EMAIL)
+    if (userEmail && settings.excludedUsers?.includes(userEmail)) {
+      console.log(`  ➜ User ${userEmail} is in excludedUsers - HIDDEN`);
       return false;
     }
 
@@ -139,9 +139,9 @@ function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRo
       return false;
     }
 
-    // Controlla esclusioni specifiche per clienti
-    if (userId && settings.excludedCustomers?.includes(String(userId))) {
-      console.log(`  ➜ User ${userId} is in excludedCustomers - HIDDEN`);
+    // Controlla esclusioni specifiche per clienti (usa EMAIL)
+    if (userEmail && settings.excludedCustomers?.includes(userEmail)) {
+      console.log(`  ➜ User ${userEmail} is in excludedCustomers - HIDDEN`);
       return false;
     }
 
@@ -157,13 +157,12 @@ export async function GET(request: NextRequest) {
   try {
     const visibilitySettings = await loadVisibilitySettings();
 
-    // Ottieni il ruolo e userId dell'utente dalla query string (opzionale, per filtrare)
+    // Ottieni il ruolo e userEmail dell'utente dalla query string (opzionale, per filtrare)
     const { searchParams } = new URL(request.url);
     const userRole = searchParams.get('role');
-    const userIdParam = searchParams.get('userId');
-    const userId = userIdParam ? parseInt(userIdParam, 10) : undefined;
+    const userEmail = searchParams.get('userEmail'); // USA EMAIL invece di userId
 
-    console.log(`📋 GET /api/apps/visibility - role: ${userRole}, userId: ${userId}`);
+    console.log(`📋 GET /api/apps/visibility - role: ${userRole}, userEmail: ${userEmail}`);
 
     const apps = allApps.map(app => {
       const appSettings = visibilitySettings[app.id];
@@ -179,7 +178,7 @@ export async function GET(request: NextRequest) {
       // Se c'è un ruolo specificato, filtra le app in base alla visibilità
       // ✅ Se non ci sono impostazioni (appSettings === undefined), considera l'APP visibile di default
       const isVisible = userRole
-        ? (appSettings ? isAppVisibleForRole(settings, userRole, userId) : true)  // Se no settings → visible
+        ? (appSettings ? isAppVisibleForRole(settings, userRole, userEmail) : true)  // Se no settings → visible
         : settings.visible;
 
       // Converti excludedUsers/excludedCustomers in formato groups per la pagina gestione

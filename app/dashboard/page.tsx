@@ -31,12 +31,12 @@ export default function HomePage() {
     if (user?.id || user?.email) {
       const userId = user.id || user.email;
       const userRole = user.role;
-      const userIdNum = typeof user.id === 'number' ? user.id : parseInt(user.id || '0', 10);
+      const userEmail = user.email; // USA EMAIL per filtrare le app
 
-      console.log('🔄 Loading apps for user:', { userId, userRole, userIdNum });
+      console.log('🔄 Loading apps for user:', { userId, userRole, userEmail });
 
-      // Carica le app filtrate per questo utente
-      loadAppsForUser(userRole, userIdNum);
+      // Carica le app filtrate per questo utente (usa EMAIL)
+      loadAppsForUser(userRole, userEmail);
 
       // Carica anche i preferiti
       loadUserFavorites(userId);
