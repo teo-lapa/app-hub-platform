@@ -78,58 +78,34 @@ export async function POST(request: NextRequest) {
       try {
         const uniqueImportId = generateUniqueImportId(transaction, accountInfo.iban)
 
-        // Prepara dati per Odoo
-        // SOLUZIONE: Odoo potrebbe prendere sempre il valore assoluto via API web
-        // Proviamo a passare amount come float esplicito
-
-        // Converti a numero e assicurati sia un float valido
+        // Prepara importo con segno corretto
+        // In Odoo: negativo = uscita, positivo = entrata
         let amountValue = parseFloat(String(transaction.amount))
 
-        // Se è NaN, salta questa transazione
+        // Valida amount
         if (isNaN(amountValue)) {
           console.error(`❌ [IMPORT-UBS] Amount non valido: ${transaction.amount}`)
           errors++
           continue
         }
 
-        console.log(`🔍 [IMPORT-UBS] DEBUG COMPLETO:`)
-        console.log(`   transaction.amount = ${transaction.amount} (tipo: ${typeof transaction.amount})`)
-        console.log(`   transaction.type = ${transaction.type}`)
-        console.log(`   amountValue convertito = ${amountValue}`)
-        console.log(`   amountValue è negativo? ${amountValue < 0}`)
-
-        // VERIFICA: Se l'amount è già negativo per le uscite, non fare nulla
-        // Se l'amount è positivo ma il tipo è expense, invertilo
+        // Forza segno corretto in base al tipo transazione
+        // Questo gestisce eventuali inconsistenze dal parsing
         if (transaction.type === 'expense') {
-          if (amountValue > 0) {
-            console.log(`⚠️ [IMPORT-UBS] BUG TROVATO! Expense ha amount positivo, inverto il segno`)
-            amountValue = -Math.abs(amountValue)  // Forza negativo
-          } else {
-            console.log(`✅ [IMPORT-UBS] Expense ha già amount negativo, OK`)
-          }
+          amountValue = -Math.abs(amountValue)  // Uscita: sempre negativo
         } else {
-          if (amountValue < 0) {
-            console.log(`⚠️ [IMPORT-UBS] BUG TROVATO! Income ha amount negativo, inverto il segno`)
-            amountValue = Math.abs(amountValue)  // Forza positivo
-          } else {
-            console.log(`✅ [IMPORT-UBS] Income ha già amount positivo, OK`)
-          }
+          amountValue = Math.abs(amountValue)   // Entrata: sempre positivo
         }
-
-        console.log(`   amountValue FINALE = ${amountValue}`)
 
         const lineData = {
           journal_id: journalId,
           date: transaction.date,
           payment_ref: transaction.description,
-          amount: amountValue,  // Dovrebbe essere negativo per expense, positivo per income
+          amount: amountValue,
           unique_import_id: uniqueImportId,
           partner_name: transaction.beneficiary !== 'N/A' ? transaction.beneficiary : false,
           ref: transaction.transactionNr || false
         }
-
-        console.log(`📝 [IMPORT-UBS] [${i + 1}/${transactions.length}] Importo movimento: ${transaction.amount} ${accountInfo.currency} (${transaction.type})`)
-        console.log(`📋 [IMPORT-UBS] Dati inviati a Odoo:`, JSON.stringify(lineData, null, 2))
 
         // Crea riga estratto conto in Odoo
         try {
@@ -143,23 +119,7 @@ export async function POST(request: NextRequest) {
 
           if (result) {
             imported++
-            console.log(`✅ [IMPORT-UBS] Movimento importato con ID: ${result}`)
-
-            // Leggi indietro il movimento per verificare che il segno sia preservato
-            try {
-              const savedMovement = await callOdoo(
-                odooCookies,
-                'account.bank.statement.line',
-                'read',
-                [[result], ['amount', 'payment_ref']],
-                {}
-              )
-              if (savedMovement && savedMovement.length > 0) {
-                console.log(`🔍 [IMPORT-UBS] Movimento salvato - Amount: ${savedMovement[0].amount} (originale era: ${transaction.amount})`)
-              }
-            } catch (readError) {
-              console.log(`⚠️ [IMPORT-UBS] Impossibile leggere movimento salvato`)
-            }
+            console.log(`✅ [IMPORT-UBS] Movimento ${i + 1}/${transactions.length} importato: ${amountValue > 0 ? '+' : ''}${amountValue} ${accountInfo.currency}`)
           }
         } catch (createError: any) {
           // Verifica se è un errore di duplicato (unique_import_id constraint)
