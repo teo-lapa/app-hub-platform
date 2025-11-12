@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent, BarChart } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent, BarChart, Building2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface KPICardProps {
@@ -28,6 +28,7 @@ function KPICard({ title, value, change, changeType, icon, gradient, subtitle, i
       case 'Orders': return '/super-dashboard/orders';
       case 'Customers': return '/super-dashboard/customers';
       case 'Analisi Prodotti': return '/analisi-prodotto';
+      case 'Banca': return '/import-movimenti-ubs';
       default: return '#';
     }
   };
@@ -306,6 +307,15 @@ export function KPISummarySection({ period }: KPISummarySectionProps) {
       icon: <Percent className="w-6 h-6 text-white" />,
       gradient: 'from-rose-500 to-pink-600',
       subtitle: kpiData.margins.subtitle,
+    },
+    {
+      title: 'Banca',
+      value: 'Carica CSV',
+      change: '',
+      changeType: 'neutral' as const,
+      icon: <Building2 className="w-6 h-6 text-white" />,
+      gradient: 'from-cyan-500 to-blue-600',
+      subtitle: 'Importa movimenti bancari da UBS',
     },
   ];
 
