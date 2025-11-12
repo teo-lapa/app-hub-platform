@@ -9,6 +9,9 @@ export interface ExpiryProduct {
   quantity: number;
   uom: string;
 
+  // Identificatore univoco riga stock Odoo
+  quantId?: number; // stock.quant.id (per prodotto+ubicazione+lotto specifico)
+
   // Lotto e scadenza
   lotId?: number;
   lotName?: string;
