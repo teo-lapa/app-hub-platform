@@ -165,6 +165,11 @@ export async function GET(request: NextRequest) {
   try {
     const visibilitySettings = await loadVisibilitySettings();
 
+    console.log('🔍 visibilitySettings caricati dal DB:', Object.keys(visibilitySettings).length);
+    if (visibilitySettings['1']) {
+      console.log('🔍 Settings per app "1":', visibilitySettings['1']);
+    }
+
     // Ottieni il ruolo e userEmail dell'utente dalla query string (opzionale, per filtrare)
     const { searchParams } = new URL(request.url);
     const userRole = searchParams.get('role');
