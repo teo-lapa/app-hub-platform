@@ -229,13 +229,10 @@ export async function GET(request: NextRequest) {
       console.log(`  groups.clienti.excludedEmails:`, groups.clienti.excludedEmails);
 
       return {
-        id: app.id,
-        name: app.name,
-        icon: app.icon,
-        category: app.category,
+        ...app,  // ✅ Restituisci TUTTI i campi dell'app (description, badge, url, etc.)
         visible: isVisible,
         visibilityGroup: settings.visibilityGroup,
-        developmentStatus: settings.developmentStatus || 'pronta',  // Restituisci stato sviluppo
+        developmentStatus: settings.developmentStatus || 'pronta',
         groups  // Aggiungi struttura groups per compatibilità con gestione-visibilita-app
       };
     });
