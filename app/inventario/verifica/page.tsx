@@ -296,31 +296,31 @@ export default function VerificaInventarioPage() {
       )}
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-24 sm:pb-6">
 
         {/* Zone Selector */}
         {showZoneSelector && (
           <div className="scale-in">
-            <h2 className="text-2xl font-bold mb-6 text-center">Seleziona Zona</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">Seleziona Zona</h2>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
               {ZONES.map(zone => (
                 <button
                   key={zone.id}
                   onClick={() => handleZoneSelect(zone)}
-                  className="glass-strong p-8 rounded-xl hover:bg-white/20 transition-all"
+                  className="glass-strong p-6 sm:p-8 rounded-xl hover:bg-white/20 transition-all active:scale-95"
                   style={{
                     borderLeft: `4px solid ${zone.color}`,
                     background: `linear-gradient(135deg, ${zone.color}10 0%, transparent 100%)`
                   }}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="text-4xl">{zone.icon}</div>
-                    <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm font-bold">
+                  <div className="flex items-start justify-between mb-3 sm:mb-4">
+                    <div className="text-3xl sm:text-4xl">{zone.icon}</div>
+                    <div className="bg-blue-500/20 text-blue-400 px-3 py-1.5 rounded-full text-sm font-bold min-w-[48px] text-center">
                       {zoneCounts[zone.id] || 0}
                     </div>
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">{zone.name}</h3>
+                  <h3 className="text-lg sm:text-xl font-semibold mb-1 sm:mb-2">{zone.name}</h3>
                   <p className="text-sm text-muted-foreground">
                     {zoneCounts[zone.id] || 0} prodotti da verificare
                   </p>
@@ -343,7 +343,7 @@ export default function VerificaInventarioPage() {
         {/* Location List View */}
         {showLocationList && (
           <div className="slide-in-right">
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <button
                 onClick={() => {
                   setShowLocationList(false);
@@ -351,27 +351,25 @@ export default function VerificaInventarioPage() {
                   setSelectedZone(null);
                   setLocationsWithCounts([]);
                 }}
-                className="glass px-4 py-2 rounded-lg hover:bg-white/20 transition-colors"
+                className="glass px-4 py-2.5 rounded-lg hover:bg-white/20 transition-colors active:scale-95 min-h-[44px]"
               >
                 ← Torna alle Zone
               </button>
             </div>
 
-            <div className="glass-strong rounded-xl p-6 mb-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"
-                    style={{ backgroundColor: `${selectedZone?.color}20` }}
-                  >
-                    {selectedZone?.icon}
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold">{selectedZone?.name}</h2>
-                    <p className="text-muted-foreground">
-                      {locationsWithCounts.length} ubicazioni - {zoneCounts[selectedZone?.id || ''] || 0} prodotti
-                    </p>
-                  </div>
+            <div className="glass-strong rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div
+                  className="w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-2xl sm:text-3xl flex-shrink-0"
+                  style={{ backgroundColor: `${selectedZone?.color}20` }}
+                >
+                  {selectedZone?.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xl sm:text-2xl font-bold truncate">{selectedZone?.name}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {locationsWithCounts.length} ubicazioni · {zoneCounts[selectedZone?.id || ''] || 0} prodotti
+                  </p>
                 </div>
               </div>
             </div>
@@ -379,36 +377,36 @@ export default function VerificaInventarioPage() {
             <div className="mb-4">
               <button
                 onClick={() => setShowQRScanner(true)}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 px-6 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-3"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-95 text-white py-3.5 sm:py-4 px-6 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 min-h-[56px]"
               >
-                <MapPin className="w-6 h-6" />
-                Scansiona QR Ubicazione
+                <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
+                <span className="text-base sm:text-lg">Scansiona QR Ubicazione</span>
               </button>
             </div>
 
-            <h3 className="text-xl font-semibold mb-4">Ubicazioni</h3>
+            <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Ubicazioni</h3>
 
             <div className="space-y-3">
               {locationsWithCounts.map((location) => (
                 <button
                   key={location.name}
                   onClick={() => handleLocationSelect(location.name)}
-                  className="w-full glass-strong p-6 rounded-xl hover:bg-white/10 transition-all text-left"
+                  className="w-full glass-strong p-4 sm:p-6 rounded-xl hover:bg-white/10 active:scale-98 transition-all text-left min-h-[72px]"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-                        <MapPin className="w-6 h-6 text-blue-400" />
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                        <MapPin className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-lg truncate">{location.name}</h4>
-                        <p className="text-sm text-muted-foreground">
+                        <h4 className="font-semibold text-base sm:text-lg truncate">{location.name}</h4>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
                           {location.count} {location.count === 1 ? 'prodotto' : 'prodotti'} da verificare
                         </p>
                       </div>
                     </div>
-                    <div className="flex-shrink-0 ml-4">
-                      <div className="bg-blue-500/20 text-blue-400 px-4 py-2 rounded-full text-lg font-bold">
+                    <div className="flex-shrink-0">
+                      <div className="bg-blue-500/20 text-blue-400 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-base sm:text-lg font-bold min-w-[44px] text-center">
                         {location.count}
                       </div>
                     </div>
@@ -432,7 +430,7 @@ export default function VerificaInventarioPage() {
         {/* Product List */}
         {showProductList && (
           <div className="slide-in-right">
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-4 sm:mb-6">
               <button
                 onClick={() => {
                   setShowProductList(false);
@@ -440,63 +438,65 @@ export default function VerificaInventarioPage() {
                   setLocationProducts([]);
                   setCurrentLocation('');
                 }}
-                className="glass px-4 py-2 rounded-lg hover:bg-white/20 transition-colors"
+                className="glass px-4 py-2.5 rounded-lg hover:bg-white/20 transition-colors active:scale-95 min-h-[44px]"
               >
                 ← Torna alle Ubicazioni
               </button>
+            </div>
 
-              <div className="flex items-center gap-2">
+            <div className="mb-4 sm:mb-6 glass-strong p-3 sm:p-4 rounded-xl">
+              <div className="flex flex-wrap items-center gap-2">
                 <div
-                  className="px-4 py-2 rounded-lg font-semibold"
+                  className="px-3 py-1.5 rounded-lg font-semibold text-sm sm:text-base"
                   style={{ backgroundColor: `${selectedZone?.color}20`, color: selectedZone?.color }}
                 >
                   {selectedZone?.name}
                 </div>
-                <div className="px-4 py-2 rounded-lg font-semibold bg-gray-700">
+                <div className="px-3 py-1.5 rounded-lg font-semibold bg-gray-700 text-sm sm:text-base truncate max-w-full">
                   📍 {currentLocation}
                 </div>
               </div>
             </div>
 
-            <h2 className="text-2xl font-bold mb-6">Prodotti da Verificare</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Prodotti da Verificare</h2>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {locationProducts.map((request) => (
                 <div
                   key={request.id}
-                  className="glass-strong p-6 rounded-xl hover:bg-white/10 transition-all cursor-pointer"
+                  className="glass-strong p-4 sm:p-6 rounded-xl hover:bg-white/10 active:scale-98 transition-all cursor-pointer min-h-[100px]"
                   onClick={() => handleProductClick(request)}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-2">{request.product_name}</h3>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-base sm:text-lg mb-2 break-words">{request.product_name}</h3>
 
                       {request.lot_name && (
-                        <p className="text-sm text-yellow-400 mb-1">
+                        <p className="text-xs sm:text-sm text-yellow-400 mb-1 truncate">
                           🏷️ Lotto: {request.lot_name}
                         </p>
                       )}
 
                       {request.expiry_date && (
-                        <p className="text-sm text-orange-400 mb-1">
+                        <p className="text-xs sm:text-sm text-orange-400 mb-1">
                           📅 Scadenza: {new Date(request.expiry_date).toLocaleDateString('it-IT')}
                         </p>
                       )}
 
-                      <p className="text-sm text-gray-400 mb-2">
+                      <p className="text-xs sm:text-sm text-gray-400 mb-2">
                         Quantità: {request.quantity}
                       </p>
 
                       {request.note && (
                         <div className="mt-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2">
-                          <p className="text-xs text-yellow-400">💬 {request.note}</p>
+                          <p className="text-xs text-yellow-400 break-words">💬 {request.note}</p>
                         </div>
                       )}
                     </div>
 
-                    <div className="flex-shrink-0 ml-4">
-                      <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center">
-                        <Package className="w-6 h-6 text-blue-400" />
+                    <div className="flex-shrink-0">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/20 rounded-full flex items-center justify-center">
+                        <Package className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
                       </div>
                     </div>
                   </div>
