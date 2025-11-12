@@ -591,7 +591,7 @@ export default function InventarioPage() {
             className="mb-6"
           >
             <button
-              onClick={() => setShowVerificationList(true)}
+              onClick={() => router.push('/inventario/verifica')}
               className="w-full relative flex items-center gap-2 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5 bg-gradient-to-br from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white rounded-xl transition-all shadow-lg hover:shadow-xl min-h-[60px]"
             >
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0">
