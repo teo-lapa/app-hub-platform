@@ -22,11 +22,15 @@ interface VerificationRequest {
   id: number;
   product_id: number;
   product_name: string;
+  product_code?: string;
+  product_image?: string;
+  quant_id?: number;
   lot_id: number | null;
   lot_name: string | null;
   location_id: number;
   location_name: string;
   quantity: number;
+  uom?: string;
   expiry_date: string | null;
   requested_at: string;
   requested_by: string | null;
@@ -45,6 +49,7 @@ interface ProductForModal {
   stockQuantity: number;
   countedQuantity: number;
   uom?: string;
+  quant_id?: number;
   lot?: {
     id: number;
     name: string;
@@ -189,12 +194,16 @@ export default function VerificaInventarioPage() {
   const handleProductClick = (request: VerificationRequest) => {
     setSelectedRequest(request);
 
+    // Costruisci oggetto product IDENTICO a quello dell'inventario normale
     const productForModal: ProductForModal = {
       id: request.product_id,
       name: request.product_name,
+      code: request.product_code || '',
+      image: request.product_image || undefined,
       stockQuantity: request.quantity,
       countedQuantity: request.quantity,
-      uom: 'PZ',
+      uom: request.uom || 'PZ',
+      quant_id: request.quant_id || undefined,
       lot: request.lot_id && request.lot_name ? {
         id: request.lot_id,
         name: request.lot_name,
@@ -223,7 +232,7 @@ export default function VerificaInventarioPage() {
         body: JSON.stringify({
           productId: selectedRequest.product_id,
           locationId: selectedRequest.location_id,
-          quantId: selectedProduct.lot?.id || null, // ID del quant/lotto specifico
+          quantId: selectedProduct.quant_id || null, // ⚠️ USA quant_id (NON lot.id!)
           quantity: data.quantity,
           lotName: data.lotName,
           expiryDate: data.expiryDate
