@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
       // Se c'è un ruolo specificato, filtra le app in base alla visibilità
       // ✅ Se non ci sono impostazioni (appSettings === undefined), considera l'APP visibile di default
       const isVisible = userRole
-        ? (appSettings ? isAppVisibleForRole(settings, userRole, userEmail) : true)  // Se no settings → visible
+        ? (appSettings ? isAppVisibleForRole(settings, userRole, userEmail || undefined) : true)  // Se no settings → visible
         : settings.visible;
 
       // Converti excludedUsers/excludedCustomers in formato groups per la pagina gestione
