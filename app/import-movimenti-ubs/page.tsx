@@ -37,81 +37,125 @@ interface ParseResult {
 }
 
 export default function ImportMovimentiUBS() {
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [parsing, setParsing] = useState(false)
   const [importing, setImporting] = useState(false)
-  const [parseResult, setParseResult] = useState<ParseResult | null>(null)
+  const [parseResults, setParseResults] = useState<ParseResult[]>([])
+  const [currentFileIndex, setCurrentFileIndex] = useState(0)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files
     if (selectedFiles && selectedFiles.length > 0) {
-      // Per ora prende il primo file (TODO: supporto multipli)
-      setFile(selectedFiles[0])
-      setParseResult(null)
+      // Prendi TUTTI i file selezionati
+      const filesArray = Array.from(selectedFiles)
+      setFiles(filesArray)
+      setParseResults([])
+      setCurrentFileIndex(0)
     }
   }
 
   const handleParse = async () => {
-    if (!file) return
+    if (files.length === 0) return
 
     setParsing(true)
-    const formData = new FormData()
-    formData.append('file', file)
+    const results: ParseResult[] = []
 
-    try {
-      const response = await fetch('/api/import-ubs/parse', {
-        method: 'POST',
-        body: formData
-      })
+    // Processa TUTTI i file uno per uno
+    for (let i = 0; i < files.length; i++) {
+      setCurrentFileIndex(i)
+      const file = files[i]
 
-      const result = await response.json()
-      setParseResult(result)
-    } catch (error) {
-      console.error('Errore parsing:', error)
-      setParseResult({
-        success: false,
-        errors: ['Errore durante il parsing del file']
-      })
-    } finally {
-      setParsing(false)
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const response = await fetch('/api/import-ubs/parse', {
+          method: 'POST',
+          body: formData
+        })
+
+        const result = await response.json()
+        results.push(result)
+      } catch (error) {
+        console.error(`Errore parsing file ${file.name}:`, error)
+        results.push({
+          success: false,
+          errors: [`Errore durante il parsing di ${file.name}`]
+        })
+      }
     }
+
+    setParseResults(results)
+    setParsing(false)
   }
 
   const handleImport = async () => {
-    if (!parseResult?.transactions) return
+    if (parseResults.length === 0) return
 
     setImporting(true)
 
-    try {
-      const response = await fetch('/api/import-ubs/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          accountInfo: parseResult.accountInfo,
-          transactions: parseResult.transactions
-        })
-      })
+    let totalImported = 0
+    let totalSkipped = 0
+    let totalErrors = 0
+    let totalTransactions = 0
 
-      const result = await response.json()
+    // Importa TUTTI i file processati
+    for (let i = 0; i < parseResults.length; i++) {
+      const parseResult = parseResults[i]
 
-      if (result.success) {
-        let message = `✅ Importati ${result.imported} movimenti su ${result.total}!`
-        if (result.skipped > 0) {
-          message += `\n\n⏭️  ${result.skipped} movimenti già presenti sono stati saltati (duplicati)`
-        }
-        alert(message)
-        // Reset
-        setFile(null)
-        setParseResult(null)
-      } else {
-        alert(`❌ Errore importazione: ${result.error}`)
+      if (!parseResult.success || !parseResult.transactions) {
+        totalErrors++
+        continue
       }
-    } catch (error) {
-      console.error('Errore importazione:', error)
-      alert('❌ Errore durante l\'importazione')
-    } finally {
-      setImporting(false)
+
+      setCurrentFileIndex(i)
+
+      try {
+        const response = await fetch('/api/import-ubs/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accountInfo: parseResult.accountInfo,
+            transactions: parseResult.transactions
+          })
+        })
+
+        const result = await response.json()
+
+        if (result.success) {
+          totalImported += result.imported || 0
+          totalSkipped += result.skipped || 0
+          totalErrors += result.errors || 0
+          totalTransactions += result.total || 0
+        } else {
+          totalErrors++
+        }
+      } catch (error) {
+        console.error(`Errore importazione file ${i + 1}:`, error)
+        totalErrors++
+      }
     }
+
+    // Mostra riepilogo finale
+    let message = `🎉 IMPORT COMPLETATO!\n\n`
+    message += `📊 File processati: ${parseResults.length}\n`
+    message += `✅ Movimenti importati: ${totalImported}/${totalTransactions}\n`
+
+    if (totalSkipped > 0) {
+      message += `⏭️  Duplicati saltati: ${totalSkipped}\n`
+    }
+
+    if (totalErrors > 0) {
+      message += `❌ Errori: ${totalErrors}\n`
+    }
+
+    alert(message)
+
+    // Reset
+    setFiles([])
+    setParseResults([])
+    setCurrentFileIndex(0)
+    setImporting(false)
   }
 
   return (
@@ -178,47 +222,56 @@ export default function ImportMovimentiUBS() {
                   <Upload className="w-16 h-16 text-blue-400" />
                   <div>
                     <p className="text-lg font-semibold text-gray-700">
-                      Click per selezionare il file CSV
+                      Click per selezionare i file CSV
                     </p>
                     <p className="text-sm text-gray-500 mt-1">
-                      Formato: transactions - YYYY-MM-DDTHHMM.csv
+                      Puoi selezionare più file contemporaneamente - verranno processati tutti insieme
                     </p>
                   </div>
                 </div>
               </label>
             </div>
 
-            {/* File Selected */}
-            {file && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-8 h-8 text-blue-600" />
-                    <div>
-                      <p className="font-semibold text-gray-800">{file.name}</p>
-                      <p className="text-sm text-gray-600">
-                        {(file.size / 1024).toFixed(2)} KB
-                      </p>
+            {/* Files Selected */}
+            {files.length > 0 && (
+              <div className="space-y-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-8 h-8 text-blue-600" />
+                      <div>
+                        <p className="font-semibold text-gray-800">
+                          {files.length} file selezionati
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {(files.reduce((acc, f) => acc + f.size, 0) / 1024).toFixed(2)} KB totali
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    onClick={handleParse}
-                    disabled={parsing}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50"
-                  >
-                    {parsing ? 'Analizzando...' : 'Analizza File'}
-                  </button>
+                    <button
+                      onClick={handleParse}
+                      disabled={parsing}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50"
+                    >
+                      {parsing ? `Analizzando ${currentFileIndex + 1}/${files.length}...` : `Analizza Tutti (${files.length})`}
+                    </button>
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Parse Result */}
-        {parseResult && (
+        {/* Parse Results */}
+        {parseResults.length > 0 && (
           <div className="space-y-6">
-            {/* Account Info */}
-            {parseResult.success && parseResult.accountInfo && (
+            {parseResults.map((parseResult, idx) => (
+              <div key={idx}>
+                <h3 className="text-lg font-bold text-gray-700 mb-3">
+                  File {idx + 1}/{parseResults.length}: {files[idx]?.name}
+                </h3>
+
+                {/* Account Info */}
+                {parseResult.success && parseResult.accountInfo && (
               <div className="bg-white rounded-2xl shadow-xl p-8 border border-green-100">
                 <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                   <CheckCircle className="w-6 h-6 text-green-600" />
@@ -284,19 +337,11 @@ export default function ImportMovimentiUBS() {
             {/* Transactions List */}
             {parseResult.success && parseResult.transactions && parseResult.transactions.length > 0 && (
               <div className="bg-white rounded-2xl shadow-xl p-8 border border-blue-100">
-                <div className="flex items-center justify-between mb-6">
+                <div className="mb-6">
                   <h2 className="text-xl font-bold flex items-center gap-2">
                     <FileText className="w-6 h-6 text-blue-600" />
                     Movimenti Trovati ({parseResult.transactions.length})
                   </h2>
-                  <button
-                    onClick={handleImport}
-                    disabled={importing}
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:shadow-xl transition-all disabled:opacity-50 flex items-center gap-2"
-                  >
-                    <Download className="w-5 h-5" />
-                    {importing ? 'Importando...' : 'Importa in Odoo'}
-                  </button>
                 </div>
 
                 <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -354,12 +399,28 @@ export default function ImportMovimentiUBS() {
                   ))}
                 </ul>
               </div>
+                )}
+              </div>
+            ))}
+
+            {/* Import All Button */}
+            {parseResults.some(r => r.success) && (
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={handleImport}
+                  disabled={importing}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-12 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all disabled:opacity-50 flex items-center gap-3"
+                >
+                  <Download className="w-6 h-6" />
+                  {importing ? `Importando ${currentFileIndex + 1}/${parseResults.length}...` : `Importa Tutti in Odoo (${parseResults.length} file)`}
+                </button>
+              </div>
             )}
           </div>
         )}
 
         {/* Instructions */}
-        {!parseResult && (
+        {parseResults.length === 0 && (
           <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-8 border border-blue-200">
             <h2 className="text-xl font-bold mb-4 text-gray-800">
               📖 Come usare
