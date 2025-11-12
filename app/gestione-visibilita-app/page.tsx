@@ -77,16 +77,64 @@ export default function GestioneVisibilitaAppPage() {
       const data = await response.json();
 
       if (data.success) {
+        // Carica dipendenti e clienti per convertire ID in email
+        console.log('🔄 Caricamento utenti per conversione ID -> Email...');
+        const [loadedEmployees, loadedCustomers] = await Promise.all([
+          loadEmployees(),
+          loadCustomers()
+        ]);
+
         // Assicurati che ogni app abbia la struttura groups
-        const normalizedApps = data.apps.map((app: any) => ({
-          ...app,
-          developmentStatus: app.developmentStatus || 'pronta',
-          visible: app.visible !== undefined ? app.visible : true,
-          groups: app.groups || {
-            dipendenti: { enabled: true, excluded: [] },
-            clienti: { enabled: true, excluded: [] }
+        const normalizedApps = data.apps.map((app: any) => {
+          console.log(`📥 Loading app ${app.id}:`, {
+            groups: app.groups,
+            dipendentiExcludedEmails: app.groups?.dipendenti?.excludedEmails,
+            clientiExcludedEmails: app.groups?.clienti?.excludedEmails
+          });
+
+          // Se excludedEmails è vuoto ma excluded ha valori, converti ID -> email
+          let dipendentiExcludedEmails = app.groups?.dipendenti?.excludedEmails || [];
+          if (dipendentiExcludedEmails.length === 0 && app.groups?.dipendenti?.excluded?.length > 0) {
+            console.log(`  🔄 Converting dipendenti IDs to emails for app ${app.id}`);
+            dipendentiExcludedEmails = app.groups.dipendenti.excluded
+              .map((id: number) => {
+                const emp = loadedEmployees.find((e: User) => e.id === id);
+                return emp?.email;
+              })
+              .filter((email: string | undefined) => email); // Remove undefined
+            console.log(`  ✅ Converted ${dipendentiExcludedEmails.length} dipendenti emails`);
           }
-        }));
+
+          let clientiExcludedEmails = app.groups?.clienti?.excludedEmails || [];
+          if (clientiExcludedEmails.length === 0 && app.groups?.clienti?.excluded?.length > 0) {
+            console.log(`  🔄 Converting clienti IDs to emails for app ${app.id}`);
+            clientiExcludedEmails = app.groups.clienti.excluded
+              .map((id: number) => {
+                const cust = loadedCustomers.find((c: User) => c.id === id);
+                return cust?.email;
+              })
+              .filter((email: string | undefined) => email); // Remove undefined
+            console.log(`  ✅ Converted ${clientiExcludedEmails.length} clienti emails`);
+          }
+
+          return {
+            ...app,
+            developmentStatus: app.developmentStatus || 'pronta',
+            visible: app.visible !== undefined ? app.visible : true,
+            groups: {
+              dipendenti: {
+                enabled: app.groups?.dipendenti?.enabled !== false,
+                excluded: app.groups?.dipendenti?.excluded || [],
+                excludedEmails: dipendentiExcludedEmails
+              },
+              clienti: {
+                enabled: app.groups?.clienti?.enabled !== false,
+                excluded: app.groups?.clienti?.excluded || [],
+                excludedEmails: clientiExcludedEmails
+              }
+            }
+          };
+        });
         setApps(normalizedApps);
       }
     } catch (error) {
@@ -97,7 +145,7 @@ export default function GestioneVisibilitaAppPage() {
   };
 
   const loadEmployees = async () => {
-    if (employees.length > 0) return; // Already loaded
+    if (employees.length > 0) return employees; // Already loaded
 
     setLoadingUsers(true);
     try {
@@ -106,16 +154,19 @@ export default function GestioneVisibilitaAppPage() {
 
       if (data.success) {
         setEmployees(data.data);
+        return data.data;
       }
+      return [];
     } catch (error) {
       console.error('Errore caricamento dipendenti:', error);
+      return [];
     } finally {
       setLoadingUsers(false);
     }
   };
 
   const loadCustomers = async () => {
-    if (customers.length > 0) return; // Already loaded
+    if (customers.length > 0) return customers; // Already loaded
 
     setLoadingUsers(true);
     try {
@@ -124,9 +175,12 @@ export default function GestioneVisibilitaAppPage() {
 
       if (data.success) {
         setCustomers(data.data);
+        return data.data;
       }
+      return [];
     } catch (error) {
       console.error('Errore caricamento clienti:', error);
+      return [];
     } finally {
       setLoadingUsers(false);
     }
@@ -167,6 +221,16 @@ export default function GestioneVisibilitaAppPage() {
   };
 
   const openExclusionModal = async (appId: string, type: 'dipendenti' | 'clienti') => {
+    console.log(`🔓 Opening exclusion modal for app ${appId}, type: ${type}`);
+
+    const app = apps.find(a => a.id === appId);
+    if (app) {
+      console.log(`  Current exclusions:`, {
+        excluded: app.groups[type].excluded,
+        excludedEmails: app.groups[type].excludedEmails
+      });
+    }
+
     setCurrentAppId(appId);
     setModalType(type);
 
