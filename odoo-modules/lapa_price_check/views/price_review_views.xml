@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_price_review_tree" model="ir.ui.view">
+        <field name="name">x.price.review.tree</field>
+        <field name="model">x.price.review</field>
+        <field name="arch" type="xml">
+            <tree string="Price Reviews" decoration-success="status=='reviewed'" decoration-warning="status=='pending'" decoration-danger="status=='blocked'">
+                <field name="create_date" string="Data Creazione"/>
+                <field name="product_code" string="Codice"/>
+                <field name="product_name" string="Prodotto"/>
+                <field name="order_name" string="Ordine"/>
+                <field name="customer_name" string="Cliente"/>
+                <field name="price_unit" string="Prezzo"/>
+                <field name="product_cost" string="Costo"/>
+                <field name="status" widget="badge" decoration-success="status=='reviewed'" decoration-warning="status=='pending'" decoration-danger="status=='blocked'"/>
+                <field name="reviewed_by" string="Controllato Da"/>
+                <field name="blocked_by" string="Bloccato Da"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_price_review_form" model="ir.ui.view">
+        <field name="name">x.price.review.form</field>
+        <field name="model">x.price.review</field>
+        <field name="arch" type="xml">
+            <form string="Price Review">
+                <header>
+                    <field name="status" widget="statusbar" statusbar_visible="pending,reviewed,blocked"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Prodotto">
+                            <field name="product_id"/>
+                            <field name="product_code"/>
+                            <field name="product_cost"/>
+                        </group>
+                        <group string="Ordine">
+                            <field name="order_id"/>
+                            <field name="order_line_id"/>
+                            <field name="customer_id"/>
+                            <field name="price_unit"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Review Info" attrs="{'invisible': [('status', '!=', 'reviewed')]}">
+                            <field name="reviewed_by"/>
+                            <field name="reviewed_at"/>
+                        </group>
+                        <group string="Block Info" attrs="{'invisible': [('status', '!=', 'blocked')]}">
+                            <field name="blocked_by"/>
+                            <field name="blocked_at"/>
+                        </group>
+                    </group>
+                    <group string="Note">
+                        <field name="note" nolabel="1" placeholder="Aggiungi note sul controllo..."/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_price_review_search" model="ir.ui.view">
+        <field name="name">x.price.review.search</field>
+        <field name="model">x.price.review</field>
+        <field name="arch" type="xml">
+            <search string="Search Price Reviews">
+                <field name="product_name"/>
+                <field name="product_code"/>
+                <field name="order_name"/>
+                <field name="customer_name"/>
+                <filter string="Da Controllare" name="pending" domain="[('status', '=', 'pending')]"/>
+                <filter string="Controllati" name="reviewed" domain="[('status', '=', 'reviewed')]"/>
+                <filter string="Bloccati" name="blocked" domain="[('status', '=', 'blocked')]"/>
+                <separator/>
+                <filter string="Questa Settimana" name="this_week" domain="[('create_date', '>=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Prodotto" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Cliente" name="group_customer" context="{'group_by': 'customer_id'}"/>
+                    <filter string="Data" name="group_date" context="{'group_by': 'create_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_price_review" model="ir.actions.act_window">
+        <field name="name">Price Reviews</field>
+        <field name="res_model">x.price.review</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Nessun controllo prezzo trovato
+            </p>
+            <p>
+                I controlli prezzi vengono creati automaticamente dall'app NextJS "Controllo Prezzi".
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_price_review_root" name="Price Reviews" sequence="10" web_icon="lapa_price_check,static/description/icon.png"/>
+    <menuitem id="menu_price_review" name="Controlli Prezzi" parent="menu_price_review_root" action="action_price_review" sequence="1"/>
+</odoo>

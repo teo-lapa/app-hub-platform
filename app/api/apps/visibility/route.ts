@@ -81,7 +81,7 @@ async function saveVisibilitySettings(settings: Record<string, AppVisibilitySett
 }
 
 // Determina se un'app è visibile per un determinato ruolo utente
-function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRole: string, userId?: number): boolean {
+function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRole: string, userEmail: string | null): boolean {
   // Se non ci sono impostazioni, l'app è visibile di default
   if (!settings) return true;
 
@@ -90,15 +90,26 @@ function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRo
 
   // Se l'app è visibile a tutti
   if (settings.visibilityGroup === 'all') {
-    // Anche se visibile a tutti, controlla esclusioni specifiche
-    if (userId && settings.excludedUsers?.includes(String(userId))) {
-      console.log(`  ➜ User ${userId} is in excludedUsers - HIDDEN`);
+    console.log(`🔍 Checking exclusions for visibilityGroup=all:`, {
+      userEmail,
+      excludedUsersExists: !!settings.excludedUsers,
+      excludedUsersLength: settings.excludedUsers?.length,
+      excludedUsersArray: settings.excludedUsers,
+      excludedCustomers: settings.excludedCustomers,
+      isInExcludedUsers: userEmail && settings.excludedUsers?.includes(userEmail),
+      isInExcludedCustomers: userEmail && settings.excludedCustomers?.includes(userEmail)
+    });
+
+    // Anche se visibile a tutti, controlla esclusioni specifiche (usa EMAIL)
+    if (userEmail && settings.excludedUsers?.includes(userEmail)) {
+      console.log(`  ➜ User ${userEmail} is in excludedUsers - HIDDEN`);
       return false;
     }
-    if (userId && settings.excludedCustomers?.includes(String(userId))) {
-      console.log(`  ➜ User ${userId} is in excludedCustomers - HIDDEN`);
+    if (userEmail && settings.excludedCustomers?.includes(userEmail)) {
+      console.log(`  ➜ User ${userEmail} is in excludedCustomers - HIDDEN`);
       return false;
     }
+    console.log(`  ➜ User ${userEmail} NOT in exclusions - VISIBLE`);
     return true;
   }
 
@@ -112,7 +123,7 @@ function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRo
                        userRole === 'customer' ||
                        userRole === 'portal_user';
 
-  console.log(`🔍 isAppVisibleForRole - userId: ${userId}, userRole: ${userRole}, isInternal: ${isInternalUser}, isPortal: ${isPortalUser}, visibilityGroup: ${settings.visibilityGroup}`);
+  console.log(`🔍 isAppVisibleForRole - userEmail: ${userEmail}, userRole: ${userRole}, isInternal: ${isInternalUser}, isPortal: ${isPortalUser}, visibilityGroup: ${settings.visibilityGroup}`);
 
   // Controlla la visibilità in base al gruppo
   if (settings.visibilityGroup === 'internal') {
@@ -122,9 +133,9 @@ function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRo
       return false;
     }
 
-    // Controlla esclusioni specifiche per dipendenti
-    if (userId && settings.excludedUsers?.includes(String(userId))) {
-      console.log(`  ➜ User ${userId} is in excludedUsers - HIDDEN`);
+    // Controlla esclusioni specifiche per dipendenti (usa EMAIL)
+    if (userEmail && settings.excludedUsers?.includes(userEmail)) {
+      console.log(`  ➜ User ${userEmail} is in excludedUsers - HIDDEN`);
       return false;
     }
 
@@ -139,9 +150,9 @@ function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRo
       return false;
     }
 
-    // Controlla esclusioni specifiche per clienti
-    if (userId && settings.excludedCustomers?.includes(String(userId))) {
-      console.log(`  ➜ User ${userId} is in excludedCustomers - HIDDEN`);
+    // Controlla esclusioni specifiche per clienti (usa EMAIL)
+    if (userEmail && settings.excludedCustomers?.includes(userEmail)) {
+      console.log(`  ➜ User ${userEmail} is in excludedCustomers - HIDDEN`);
       return false;
     }
 
@@ -157,13 +168,19 @@ export async function GET(request: NextRequest) {
   try {
     const visibilitySettings = await loadVisibilitySettings();
 
-    // Ottieni il ruolo e userId dell'utente dalla query string (opzionale, per filtrare)
+    console.log('🔍 visibilitySettings caricati dal DB:', Object.keys(visibilitySettings).length);
+    if (visibilitySettings['1']) {
+      console.log('🔍 Settings per app "1":', visibilitySettings['1']);
+    }
+
+    // Ottieni il ruolo e userEmail dell'utente dalla query string (opzionale, per filtrare)
     const { searchParams } = new URL(request.url);
     const userRole = searchParams.get('role');
-    const userIdParam = searchParams.get('userId');
-    const userId = userIdParam ? parseInt(userIdParam, 10) : undefined;
+    const userEmailRaw = searchParams.get('userEmail');
+    // ✅ DECODIFICA l'email (paul%40lapa.ch -> paul@lapa.ch)
+    const userEmail = userEmailRaw ? decodeURIComponent(userEmailRaw) : null;
 
-    console.log(`📋 GET /api/apps/visibility - role: ${userRole}, userId: ${userId}`);
+    console.log(`📋 GET /api/apps/visibility - role: ${userRole}, userEmail: ${userEmail} (raw: ${userEmailRaw})`);
 
     const apps = allApps.map(app => {
       const appSettings = visibilitySettings[app.id];
@@ -176,11 +193,27 @@ export async function GET(request: NextRequest) {
       };
       const settings = appSettings || defaultSettings;
 
+      // DEBUG per app "1"
+      if (app.id === '1') {
+        console.log(`🐛 DEBUG App 1:`, {
+          hasAppSettings: !!appSettings,
+          userRole,
+          userEmail,
+          settingsVisibilityGroup: settings.visibilityGroup,
+          settingsExcludedUsers: settings.excludedUsers
+        });
+      }
+
       // Se c'è un ruolo specificato, filtra le app in base alla visibilità
       // ✅ Se non ci sono impostazioni (appSettings === undefined), considera l'APP visibile di default
       const isVisible = userRole
-        ? (appSettings ? isAppVisibleForRole(settings, userRole, userId) : true)  // Se no settings → visible
+        ? (appSettings ? isAppVisibleForRole(settings, userRole, userEmail) : true)  // Se no settings → visible
         : settings.visible;
+
+      // DEBUG per app "1"
+      if (app.id === '1') {
+        console.log(`🐛 DEBUG App 1 - isVisible:`, isVisible);
+      }
 
       // Converti excludedUsers/excludedCustomers in formato groups per la pagina gestione
       // E converti visibilityGroup in enabled flags
@@ -229,13 +262,10 @@ export async function GET(request: NextRequest) {
       console.log(`  groups.clienti.excludedEmails:`, groups.clienti.excludedEmails);
 
       return {
-        id: app.id,
-        name: app.name,
-        icon: app.icon,
-        category: app.category,
+        ...app,  // ✅ Restituisci TUTTI i campi dell'app (description, badge, url, etc.)
         visible: isVisible,
         visibilityGroup: settings.visibilityGroup,
-        developmentStatus: settings.developmentStatus || 'pronta',  // Restituisci stato sviluppo
+        developmentStatus: settings.developmentStatus || 'pronta',
         groups  // Aggiungi struttura groups per compatibilità con gestione-visibilita-app
       };
     });

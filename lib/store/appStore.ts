@@ -2,6 +2,33 @@ import { create } from 'zustand';
 import { AppStore, App } from '@/lib/types';
 import { allApps as mockApps } from '@/lib/data/apps-with-indicators';
 
+// Carica le app filtrate in base all'utente corrente
+const loadAppsFromAPI = async (userRole?: string, userEmail?: string): Promise<App[]> => {
+  try {
+    // Costruisci URL con parametri se disponibili
+    const params = new URLSearchParams();
+    if (userRole) params.append('role', userRole);
+    if (userEmail) params.append('userEmail', userEmail); // USA EMAIL invece di userId
+
+    const url = `/api/apps/visibility${params.toString() ? `?${params.toString()}` : ''}`;
+    console.log(`🔄 Loading apps from API: ${url}`);
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.success && data.apps) {
+      console.log(`✅ Loaded ${data.apps.length} apps from API`);
+      return data.apps;
+    }
+
+    console.warn('⚠️ API returned no apps, falling back to mockApps');
+    return mockApps;
+  } catch (error) {
+    console.error('❌ Error loading apps from API, falling back to mockApps:', error);
+    return mockApps;
+  }
+};
+
 // Carica preferiti da Vercel KV tramite API
 const loadFavoritesFromAPI = async (userId: string): Promise<string[]> => {
   try {
@@ -58,6 +85,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ showUpgradeModal: show });
   },
 
+  // Carica le app filtrate per l'utente corrente dall'API
+  loadAppsForUser: async (userRole?: string, userEmail?: string) => {
+    const apps = await loadAppsFromAPI(userRole, userEmail);
+    set({ apps });
+    get().filterApps();
+  },
+
   // Carica i preferiti dell'utente dall'API
   loadUserFavorites: async (userId: string) => {
     const favorites = await loadFavoritesFromAPI(userId);
@@ -89,6 +123,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const { apps, selectedCategory, searchQuery, favoriteApps } = get();
 
     let filtered = apps;
+
+    // ✅ FILTRO VISIBILITÀ: Escludi app con visible: false
+    filtered = filtered.filter(app => app.visible !== false);
 
     // Filtro per categoria
     if (selectedCategory !== 'Tutti') {

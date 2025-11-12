@@ -40,6 +40,10 @@ export interface App {
   controlStatus?: AppControlStatus;
   createdAt: Date;
   updatedAt: Date;
+  visible?: boolean;  // Visibilità app (dall'API)
+  visibilityGroup?: string;  // Gruppo visibilità (dall'API)
+  developmentStatus?: string;  // Stato sviluppo (dall'API)
+  groups?: any;  // Dati gruppi per gestione visibilità
 }
 
 export interface AuthState {
@@ -85,6 +89,7 @@ export interface AppStore {
   setCategory: (category: string) => void;
   setSearchQuery: (query: string) => void;
   setShowUpgradeModal: (show: boolean) => void;
+  loadAppsForUser: (userRole?: string, userEmail?: string) => Promise<void>; // Carica app filtrate da API
   loadUserFavorites: (userId: string) => Promise<void>; // Carica preferiti da API
   toggleFavorite: (appId: string, userId?: string) => Promise<void>; // Aggiungi/rimuovi preferito
   isFavorite: (appId: string) => boolean; // Controlla se è preferito

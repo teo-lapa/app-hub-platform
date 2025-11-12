@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getOdooSession } from '@/lib/odoo-auth';
+import { PriceReviewService } from '@/lib/services/price-review-service';
 
 /**
  * POST /api/controllo-prezzi/mark-reviewed
@@ -11,6 +13,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { productId, orderId, reviewedBy, note } = body;
 
+    // Validation
     if (!productId || !orderId || !reviewedBy) {
       return NextResponse.json(
         {
@@ -21,17 +24,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Implementare la logica per:
-    // 1. Salvare in un custom model Odoo o in un file JSON:
-    //    - productId
-    //    - orderId
-    //    - reviewedBy
-    //    - reviewedAt (timestamp)
-    //    - note (opzionale)
-    //    - status = 'reviewed'
-    // 2. Questo serve per tracciare chi ha controllato quale prezzo
+    // Get Odoo session
+    const cookieHeader = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
 
-    console.log('Mark as reviewed:', { productId, orderId, reviewedBy, note });
+    if (!uid) {
+      return NextResponse.json(
+        { success: false, error: 'Sessione non valida' },
+        { status: 401 }
+      );
+    }
+
+    console.log(`📝 [MARK-REVIEWED-API] Product ${productId} in order ${orderId} by ${reviewedBy}`);
+
+    // Get order line ID
+    const service = new PriceReviewService();
+    const lineId = await service.getOrderLineId(cookies, productId, orderId);
+
+    if (!lineId) {
+      return NextResponse.json(
+        { success: false, error: 'Riga ordine non trovata' },
+        { status: 404 }
+      );
+    }
+
+    // Mark as reviewed
+    await service.markAsReviewed(
+      productId,
+      orderId,
+      lineId,
+      reviewedBy,
+      note
+    );
+
+    console.log(`✅ [MARK-REVIEWED-API] Successfully marked as reviewed`);
 
     return NextResponse.json({
       success: true,
@@ -39,7 +65,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Error in POST /api/controllo-prezzi/mark-reviewed:', error);
+    console.error('❌ [MARK-REVIEWED-API] Error:', error);
     return NextResponse.json(
       {
         success: false,

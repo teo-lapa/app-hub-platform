@@ -31,7 +31,14 @@
       "Bash(cat:*)",
       "Bash(node:*)",
       "Bash(git stash:*)",
-      "Bash(git stash pop:*)"
+      "Bash(git stash pop:*)",
+      "Bash(python test_quick.py:*)",
+      "Bash(python test_connection.py:*)",
+      "Bash(python:*)",
+      "Bash(set PYTHONIOENCODING=utf-8)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout /t 10 /nobreak)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
