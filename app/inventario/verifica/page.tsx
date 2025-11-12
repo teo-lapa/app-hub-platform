@@ -7,6 +7,7 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
 import { QRScanner } from '@/components/inventario/QRScanner';
 import { ProductEditModal } from '@/components/inventario/ProductEditModal';
+import { Calculator } from '@/components/inventario/Calculator';
 import toast from 'react-hot-toast';
 
 // Configurazione zone con bufferId da Odoo
@@ -72,6 +73,10 @@ export default function VerificaInventarioPage() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductForModal | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<VerificationRequest | null>(null);
+
+  // Stati calcolatrice
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [calculatorValue, setCalculatorValue] = useState('0');
 
   // Carica richieste all'avvio
   useEffect(() => {
@@ -198,6 +203,7 @@ export default function VerificaInventarioPage() {
     };
 
     setSelectedProduct(productForModal);
+    setCalculatorValue(request.quantity.toString());
     setShowProductModal(true);
   };
 
@@ -512,9 +518,22 @@ export default function VerificaInventarioPage() {
         product={selectedProduct}
         onConfirm={handleProductConfirm}
         onOpenCalculator={(value) => {
-          // Implementa calcolatrice se necessario
-          console.log('Calcolatrice:', value);
+          setCalculatorValue(value || '0');
+          setShowCalculator(true);
         }}
+        calculatorValue={calculatorValue}
+      />
+
+      {/* Calculator */}
+      <Calculator
+        isOpen={showCalculator}
+        onClose={() => setShowCalculator(false)}
+        onConfirm={(value) => {
+          setCalculatorValue(value);
+          setShowCalculator(false);
+        }}
+        title="Inserisci Quantità"
+        initialValue={calculatorValue}
       />
     </div>
   );
