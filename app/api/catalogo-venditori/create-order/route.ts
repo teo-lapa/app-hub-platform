@@ -27,6 +27,21 @@ interface OrderLine {
   source?: 'offer' | 'urgent'; // Optional, indicates if product is from offer or urgent
 }
 
+interface AIMatch {
+  richiesta_originale: string;
+  quantita: number;
+  product_id: number | null;
+  product_name: string | null;
+  confidence: string;
+  reasoning: string;
+}
+
+interface AIData {
+  transcription: string;
+  messageType: string;
+  matches: AIMatch[];
+}
+
 interface CreateOrderRequest {
   customerId: number;
   deliveryAddressId: number | null;
@@ -34,6 +49,7 @@ interface CreateOrderRequest {
   orderNotes?: string; // Customer-visible notes (goes to order.note field)
   warehouseNotes?: string; // Internal notes (goes to Chatter)
   deliveryDate?: string; // Format: YYYY-MM-DD
+  aiData?: AIData; // AI processing data (transcription, matches)
 }
 
 export async function POST(request: NextRequest) {
@@ -66,7 +82,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { customerId, deliveryAddressId, orderLines, orderNotes, warehouseNotes, deliveryDate } = body;
+    const { customerId, deliveryAddressId, orderLines, orderNotes, warehouseNotes, deliveryDate, aiData } = body;
 
     console.log('📋 [CREATE-ORDER-API] Request data:', {
       customerId,
@@ -74,7 +90,8 @@ export async function POST(request: NextRequest) {
       orderLinesCount: orderLines?.length,
       hasOrderNotes: !!orderNotes,
       hasWarehouseNotes: !!warehouseNotes,
-      deliveryDate: deliveryDate || 'not specified'
+      deliveryDate: deliveryDate || 'not specified',
+      hasAiData: !!aiData
     });
 
     // Validate input
@@ -439,6 +456,86 @@ export async function POST(request: NextRequest) {
         console.log('✅ [CREATE-ORDER-API] Warehouse notes posted to Chatter');
       } catch (notesError: any) {
         console.error('❌ [CREATE-ORDER-API] Failed to post warehouse notes to Chatter:', notesError.message);
+        // Continue anyway - not critical
+      }
+    }
+
+    // Post AI processing data to Chatter if provided
+    if (aiData && aiData.transcription) {
+      try {
+        console.log('📝 [CREATE-ORDER-API] Posting AI processing data to Chatter...');
+
+        const messageTypeLabels: Record<string, string> = {
+          'text': '💬 Messaggio Testo',
+          'audio': '🎤 Trascrizione Audio',
+          'image': '📷 Testo da Immagine',
+          'recording': '🎙️ Registrazione Vocale',
+          'document': '📄 Documento'
+        };
+
+        const messageTypeLabel = messageTypeLabels[aiData.messageType] || '📝 Messaggio';
+
+        // Separate found and not found products
+        const foundMatches = aiData.matches.filter(m => m.product_id !== null);
+        const notFoundMatches = aiData.matches.filter(m => m.product_id === null);
+
+        let aiMessage = `<p><strong>🤖 Elaborazione AI Ordine</strong></p>`;
+        aiMessage += `<p><strong>${messageTypeLabel}</strong></p>`;
+        aiMessage += `<blockquote style="background-color: #f3f4f6; padding: 12px; border-left: 4px solid #3b82f6; margin: 10px 0;">`;
+        aiMessage += `<em>${aiData.transcription.replace(/\n/g, '<br/>')}</em>`;
+        aiMessage += `</blockquote>`;
+
+        // Products found and added to order
+        if (foundMatches.length > 0) {
+          aiMessage += `<p><strong>✅ Prodotti Trovati e Aggiunti (${foundMatches.length})</strong></p><ul>`;
+          foundMatches.forEach(match => {
+            const confidenceBadge = match.confidence === 'ALTA' ? '🟢' :
+                                   match.confidence === 'MEDIA' ? '🟡' :
+                                   match.confidence === 'BASSA' ? '🟠' : '⚪';
+            aiMessage += `<li>${confidenceBadge} <strong>${match.product_name}</strong> - Quantità: ${match.quantita}`;
+            if (match.reasoning) {
+              aiMessage += `<br/><small style="color: #6b7280;">💡 ${match.reasoning}</small>`;
+            }
+            aiMessage += `</li>`;
+          });
+          aiMessage += `</ul>`;
+        }
+
+        // Products not found
+        if (notFoundMatches.length > 0) {
+          aiMessage += `<p><strong>❌ Prodotti NON Trovati (${notFoundMatches.length})</strong></p><ul>`;
+          notFoundMatches.forEach(match => {
+            aiMessage += `<li><strong>"${match.richiesta_originale}"</strong> - Quantità richiesta: ${match.quantita}`;
+            if (match.reasoning) {
+              aiMessage += `<br/><small style="color: #6b7280;">💡 ${match.reasoning}</small>`;
+            }
+            aiMessage += `</li>`;
+          });
+          aiMessage += `</ul>`;
+          aiMessage += `<p><em style="color: #dc2626;">⚠️ Questi prodotti NON sono stati aggiunti all'ordine perché non trovati nello storico del cliente</em></p>`;
+        }
+
+        aiMessage += `<p><em>Ordine elaborato con AI - Claude Sonnet 4 + Whisper</em></p>`;
+
+        await callOdoo(
+          cookies,
+          'mail.message',
+          'create',
+          [{
+            model: 'sale.order',
+            res_id: odooOrderId,
+            body: aiMessage,
+            message_type: 'comment',
+            subtype_id: 1, // mt_note (internal note)
+          }],
+          {}
+        );
+
+        console.log('✅ [CREATE-ORDER-API] AI processing data posted to Chatter');
+        console.log(`   - Found matches: ${foundMatches.length}`);
+        console.log(`   - Not found matches: ${notFoundMatches.length}`);
+      } catch (aiDataError: any) {
+        console.error('⚠️ [CREATE-ORDER-API] Failed to post AI data to Chatter:', aiDataError.message);
         // Continue anyway - not critical
       }
     }

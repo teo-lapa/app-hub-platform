@@ -6,7 +6,14 @@ import MediaUploadButtons from './MediaUploadButtons';
 
 interface AIOrderInputProps {
   customerId: number | null;
-  onProductsMatched: (products: MatchedProduct[]) => void;
+  onProductsMatched: (
+    products: MatchedProduct[],
+    aiData: {
+      transcription: string;
+      messageType: string;
+      allMatches: MatchedProduct[];
+    }
+  ) => void;
 }
 
 export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderInputProps) {
@@ -101,7 +108,14 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
 
       if (data.matches && data.matches.length > 0) {
         setResults(data.matches);
-        onProductsMatched(data.matches);
+
+        // Pass AI data to parent (including transcription and all matches)
+        onProductsMatched(data.matches, {
+          transcription: data.message_analyzed || messageText,
+          messageType: data.message_type || messageType,
+          allMatches: data.matches // Include all matches (found and not found)
+        });
+
         console.log(`✅ AI found ${data.matches.length} products`);
 
         // Clear input after successful processing

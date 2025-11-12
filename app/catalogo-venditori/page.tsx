@@ -36,6 +36,11 @@ export default function CatalogoVenditoriPage() {
   const [orderSuccess, setOrderSuccess] = useState<{ name: string; id: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // AI Processing data (for chatter logging)
+  const [aiTranscription, setAiTranscription] = useState<string | null>(null);
+  const [aiMessageType, setAiMessageType] = useState<string | null>(null);
+  const [aiMatches, setAiMatches] = useState<MatchedProduct[]>([]);
+
   // Orders modal state
   const [showOrdersModal, setShowOrdersModal] = useState(false);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
@@ -87,9 +92,29 @@ export default function CatalogoVenditoriPage() {
   };
 
   // Handle AI matched products
-  const handleProductsMatched = (products: MatchedProduct[]) => {
+  const handleProductsMatched = (
+    products: MatchedProduct[],
+    aiData: {
+      transcription: string;
+      messageType: string;
+      allMatches: MatchedProduct[];
+    }
+  ) => {
     // Clear previous order success when starting a new order
     setOrderSuccess(null);
+
+    // Save AI data for chatter logging
+    setAiTranscription(aiData.transcription);
+    setAiMessageType(aiData.messageType);
+    setAiMatches(aiData.allMatches);
+
+    console.log('📝 AI data saved for chatter:', {
+      transcription: aiData.transcription.substring(0, 100) + '...',
+      messageType: aiData.messageType,
+      totalMatches: aiData.allMatches.length,
+      foundMatches: aiData.allMatches.filter(m => m.product_id !== null).length,
+      notFoundMatches: aiData.allMatches.filter(m => m.product_id === null).length
+    });
 
     // Convert matched products to cart products
     const newCartProducts: CartProduct[] = products
@@ -218,7 +243,13 @@ export default function CatalogoVenditoriPage() {
           })),
           orderNotes: orderNotes || undefined,
           warehouseNotes: warehouseNotes || undefined,
-          deliveryDate: deliveryDate || undefined
+          deliveryDate: deliveryDate || undefined,
+          // ✅ Passa dati AI per il chatter
+          aiData: aiTranscription ? {
+            transcription: aiTranscription,
+            messageType: aiMessageType,
+            matches: aiMatches
+          } : undefined
         })
       });
 
@@ -251,6 +282,10 @@ export default function CatalogoVenditoriPage() {
     setOrderSuccess(null);
     setError(null);
     setDeliveryDate(getTomorrowDate());
+    // Reset AI data
+    setAiTranscription(null);
+    setAiMessageType(null);
+    setAiMatches([]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
