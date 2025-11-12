@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { X, Search, User, Building2 } from 'lucide-react';
 
 interface User {
@@ -18,8 +18,8 @@ interface ExclusionModalProps {
   onClose: () => void;
   title: string;
   users: User[];
-  excludedIds: number[]; // Still receive IDs for backward compatibility
-  excludedEmails?: string[]; // NEW: Also support emails
+  excludedIds: number[]; // DEPRECATED: Solo per backward compatibility
+  excludedEmails?: string[]; // PRIMARY: Usa sempre le email
   onSave: (excludedIds: number[], excludedEmails: string[]) => void; // Return both
   loading?: boolean;
   type: 'dipendenti' | 'clienti';
@@ -38,18 +38,17 @@ export default function ExclusionModal({
 }: ExclusionModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Initialize from emails if available, otherwise from IDs
-  const initialSelectedIds = excludedEmails.length > 0
-    ? users.filter(u => excludedEmails.includes(u.email)).map(u => u.id)
-    : excludedIds;
+  // ✅ NUOVO: Usa le EMAIL come chiave primaria invece degli ID
+  const [selectedEmails, setSelectedEmails] = useState<string[]>(excludedEmails);
 
-  const [selectedIds, setSelectedIds] = useState<number[]>(initialSelectedIds);
-
-  // Reset when opening
-  const handleOpen = () => {
-    setSelectedIds(excludedIds);
-    setSearchTerm('');
-  };
+  // Reset when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      console.log(`🔄 Modal opened - resetting selections to emails:`, excludedEmails);
+      setSelectedEmails(excludedEmails);
+      setSearchTerm('');
+    }
+  }, [isOpen, excludedEmails]);
 
   // Filter users based on search
   const filteredUsers = useMemo(() => {
@@ -64,40 +63,43 @@ export default function ExclusionModal({
     );
   }, [users, searchTerm]);
 
-  const toggleUser = (userId: number) => {
-    setSelectedIds(prev =>
-      prev.includes(userId)
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
+  // ✅ NUOVO: Toggle basato su email invece che su ID
+  const toggleUser = (userEmail: string) => {
+    setSelectedEmails(prev =>
+      prev.includes(userEmail)
+        ? prev.filter(email => email !== userEmail)
+        : [...prev, userEmail]
     );
   };
 
   const handleSave = () => {
-    // Get emails for selected IDs
-    const selectedEmails = users
-      .filter(u => selectedIds.includes(u.id))
-      .map(u => u.email);
+    // Converti le email in ID per backward compatibility (ma le email sono la fonte primaria)
+    const selectedIds = users
+      .filter(u => selectedEmails.includes(u.email))
+      .map(u => u.id);
 
     console.log('💾 Saving exclusions:', {
+      selectedEmails,
       selectedIds,
-      selectedEmails
+      usersAvailable: users.length
     });
 
+    // ✅ SALVA SEMPRE LE EMAIL come fonte primaria
     onSave(selectedIds, selectedEmails);
     onClose();
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.length === filteredUsers.length) {
+    if (selectedEmails.length === filteredUsers.length) {
       // Se tutti sono selezionati, deseleziona tutti
-      setSelectedIds([]);
+      setSelectedEmails([]);
     } else {
       // Altrimenti seleziona tutti
-      setSelectedIds(filteredUsers.map(u => u.id));
+      setSelectedEmails(filteredUsers.map(u => u.email));
     }
   };
 
-  const allSelected = filteredUsers.length > 0 && selectedIds.length === filteredUsers.length;
+  const allSelected = filteredUsers.length > 0 && selectedEmails.length === filteredUsers.length;
 
   if (!isOpen) return null;
 
@@ -143,7 +145,7 @@ export default function ExclusionModal({
             />
           </div>
           <div className="mt-2 text-sm text-slate-400">
-            {selectedIds.length} utenti esclusi
+            {selectedEmails.length} utenti esclusi
           </div>
         </div>
 
@@ -153,18 +155,25 @@ export default function ExclusionModal({
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
             </div>
+          ) : users.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-red-400 font-semibold mb-2">⚠️ Errore caricamento utenti</div>
+              <div className="text-slate-400 text-sm">
+                Impossibile caricare la lista utenti. Verifica di essere autenticato su Odoo.
+              </div>
+            </div>
           ) : filteredUsers.length === 0 ? (
             <div className="text-center py-12 text-slate-400">
-              Nessun utente trovato
+              Nessun utente trovato con questi criteri di ricerca
             </div>
           ) : (
             <div className="space-y-2">
               {filteredUsers.map(user => {
-                const isSelected = selectedIds.includes(user.id);
+                const isSelected = selectedEmails.includes(user.email);
                 return (
                   <div
                     key={user.id}
-                    onClick={() => toggleUser(user.id)}
+                    onClick={() => toggleUser(user.email)}
                     className={`p-4 rounded-lg border cursor-pointer transition-all ${
                       isSelected
                         ? 'bg-red-500/20 border-red-500/50 hover:bg-red-500/30'
@@ -236,7 +245,8 @@ export default function ExclusionModal({
 
             <button
               onClick={handleSave}
-              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-blue-600 transition-all"
+              disabled={users.length === 0}
+              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Salva Selezione
             </button>
