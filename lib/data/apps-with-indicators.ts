@@ -650,6 +650,7 @@ export const standaloneApps: App[] = [
     badge: 'PRO',
     category: 'Finance',
     url: '/controllo-prezzi',
+    requiredRole: 'admin',
     isNew: true,
     isPopular: true,
     controlStatus: 'approved',

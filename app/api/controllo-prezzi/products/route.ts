@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession } from '@/lib/odoo-auth';
 import { PriceReviewService } from '@/lib/services/price-review-service';
 
-// Import aggregate function (we'll call it internally)
-import { GET as getAggregate } from '../aggregate/route';
-
 /**
  * GET /api/controllo-prezzi/products
  *
@@ -32,16 +29,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 1. Call aggregate API to get all products
+    // 1. Call aggregate API via fetch to get all products
     console.log(`🔄 [PRODUCTS-API] Calling aggregate API...`);
-    const aggregateRequest = new NextRequest(
-      new URL('/api/controllo-prezzi/aggregate', request.url),
-      {
-        headers: { cookie: cookieHeader || '' }
-      }
-    );
 
-    const aggregateResponse = await getAggregate(aggregateRequest);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url.split('/api')[0];
+    const aggregateUrl = `${baseUrl}/api/controllo-prezzi/aggregate`;
+
+    const aggregateResponse = await fetch(aggregateUrl, {
+      method: 'GET',
+      headers: {
+        cookie: cookieHeader || ''
+      },
+      cache: 'no-store'
+    });
+
     const aggregateData = await aggregateResponse.json();
 
     if (!aggregateData.success) {
@@ -70,11 +71,11 @@ export async function GET(request: NextRequest) {
 
     // 3. Batch fetch review statuses from x.price.review
     const service = new PriceReviewService();
-    const productIds = [...new Set(products.map((p: any) => p.productId))];
-    const orderIds = [...new Set(products.map((p: any) => p.orderId))];
+    const productIds = Array.from(new Set(products.map((p: any) => p.productId))) as number[];
+    const orderIds = Array.from(new Set(products.map((p: any) => p.orderId))) as number[];
 
     console.log(`🔍 [PRODUCTS-API] Fetching review statuses for ${productIds.length} products...`);
-    const reviewMap = await service.batchFetchReviewStatuses(cookies, productIds, orderIds);
+    const reviewMap = await service.batchFetchReviewStatuses(productIds, orderIds);
 
     // 4. Enrich products with review status
     products = products.map((p: any) => {

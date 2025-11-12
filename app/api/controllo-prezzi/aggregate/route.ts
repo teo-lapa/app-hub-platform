@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
     }
 
     const orderIds = orders.map((o: any) => o.id);
-    const pricelistIds = [...new Set(orders.map((o: any) => o.pricelist_id?.[0]).filter(Boolean))];
+    const pricelistIds = Array.from(new Set(orders.map((o: any) => o.pricelist_id?.[0]).filter(Boolean)));
 
     console.log(`✅ Found ${orders.length} orders to analyze`);
 
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const productIds = [...new Set(orderLines.map((line: any) => line.product_id[0]))];
+    const productIds = Array.from(new Set(orderLines.map((line: any) => line.product_id[0])));
     console.log(`✅ Found ${orderLines.length} order lines with ${productIds.length} unique products`);
 
     // STEP 3: Batch fetch ALL products (SINGLE QUERY)
@@ -219,10 +219,10 @@ export async function GET(request: NextRequest) {
     };
 
     for (const line of orderLines) {
-      const order = orderMap.get(line.order_id[0]);
+      const order: any = orderMap.get(line.order_id[0]);
       if (!order) continue;
 
-      const product = productMap.get(line.product_id[0]);
+      const product: any = productMap.get(line.product_id[0]);
       if (!product) continue;
 
       const costPrice = product.standard_price || 0;

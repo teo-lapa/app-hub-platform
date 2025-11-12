@@ -50,7 +50,6 @@ export async function POST(request: NextRequest) {
 
     // Mark as reviewed
     await service.markAsReviewed(
-      cookies,
       productId,
       orderId,
       lineId,

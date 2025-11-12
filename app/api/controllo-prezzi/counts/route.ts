@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession } from '@/lib/odoo-auth';
 
-// Import aggregate function (we'll call it internally)
-import { GET as getAggregate } from '../aggregate/route';
-
 /**
  * GET /api/controllo-prezzi/counts
  *
@@ -25,16 +22,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Call aggregate API
+    // Call aggregate API via fetch
     console.log(`🔄 [COUNTS-API] Calling aggregate API...`);
-    const aggregateRequest = new NextRequest(
-      new URL('/api/controllo-prezzi/aggregate', request.url),
-      {
-        headers: { cookie: cookieHeader || '' }
-      }
-    );
 
-    const aggregateResponse = await getAggregate(aggregateRequest);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url.split('/api')[0];
+    const aggregateUrl = `${baseUrl}/api/controllo-prezzi/aggregate`;
+
+    const aggregateResponse = await fetch(aggregateUrl, {
+      method: 'GET',
+      headers: {
+        cookie: cookieHeader || ''
+      },
+      cache: 'no-store'
+    });
+
     const aggregateData = await aggregateResponse.json();
 
     if (!aggregateData.success) {

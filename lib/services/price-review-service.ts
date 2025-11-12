@@ -1,9 +1,11 @@
+import { sql } from '@vercel/postgres';
 import { callOdoo } from '@/lib/odoo-auth';
 
 /**
- * Service Layer per gestione Price Reviews in Odoo
+ * Service Layer per gestione Price Reviews in Vercel Postgres
  *
- * Gestisce tutte le operazioni CRUD su x.price.review e pricelist.item
+ * Gestisce tutte le operazioni CRUD su price_reviews (Postgres)
+ * e pricelist.item (Odoo) per blocco prezzi
  */
 export class PriceReviewService {
 
@@ -13,7 +15,6 @@ export class PriceReviewService {
    * @returns reviewId (number)
    */
   async findOrCreateReview(
-    cookies: string,
     productId: number,
     orderId: number,
     orderLineId: number
@@ -21,50 +22,34 @@ export class PriceReviewService {
 
     console.log(`🔍 [PriceReviewService] Finding review for product ${productId} in order ${orderId}`);
 
-    // Try to find existing
-    const existing = await callOdoo(
-      cookies,
-      'x.price.review',
-      'search_read',
-      [],
-      {
-        domain: [
-          ['product_id', '=', productId],
-          ['order_id', '=', orderId]
-        ],
-        fields: ['id'],
-        limit: 1
-      }
-    );
+    // Try to find existing by order_line_id (unique constraint)
+    const { rows } = await sql`
+      SELECT id FROM price_reviews
+      WHERE order_line_id = ${orderLineId}
+      LIMIT 1
+    `;
 
-    if (existing && existing.length > 0) {
-      console.log(`✅ [PriceReviewService] Found existing review ${existing[0].id}`);
-      return existing[0].id;
+    if (rows.length > 0) {
+      console.log(`✅ [PriceReviewService] Found existing review ${rows[0].id}`);
+      return rows[0].id;
     }
 
     // Create new
     console.log(`➕ [PriceReviewService] Creating new review`);
-    const reviewId = await callOdoo(
-      cookies,
-      'x.price.review',
-      'create',
-      [{
-        product_id: productId,
-        order_id: orderId,
-        order_line_id: orderLineId,
-        status: 'pending'
-      }]
-    );
+    const { rows: newRows } = await sql`
+      INSERT INTO price_reviews (product_id, order_id, order_line_id, status)
+      VALUES (${productId}, ${orderId}, ${orderLineId}, 'pending')
+      RETURNING id
+    `;
 
-    console.log(`✅ [PriceReviewService] Created review ${reviewId}`);
-    return reviewId;
+    console.log(`✅ [PriceReviewService] Created review ${newRows[0].id}`);
+    return newRows[0].id;
   }
 
   /**
    * Mark product as reviewed
    */
   async markAsReviewed(
-    cookies: string,
     productId: number,
     orderId: number,
     orderLineId: number,
@@ -74,27 +59,22 @@ export class PriceReviewService {
 
     console.log(`✅ [PriceReviewService] Marking as reviewed by ${reviewedBy}`);
 
-    const reviewId = await this.findOrCreateReview(
-      cookies, productId, orderId, orderLineId
-    );
+    const reviewId = await this.findOrCreateReview(productId, orderId, orderLineId);
 
-    await callOdoo(
-      cookies,
-      'x.price.review',
-      'write',
-      [[reviewId], {
-        status: 'reviewed',
-        reviewed_by: reviewedBy,
-        reviewed_at: new Date().toISOString(),
-        note: note || false
-      }]
-    );
+    await sql`
+      UPDATE price_reviews
+      SET status = 'reviewed',
+          reviewed_by = ${reviewedBy},
+          note = ${note || null},
+          updated_at = NOW()
+      WHERE id = ${reviewId}
+    `;
 
     console.log(`✅ [PriceReviewService] Review ${reviewId} marked as reviewed`);
   }
 
   /**
-   * Block price (mark as blocked + create pricelist item)
+   * Block price (mark as blocked + create pricelist item in Odoo)
    */
   async blockPrice(
     cookies: string,
@@ -109,29 +89,24 @@ export class PriceReviewService {
 
     console.log(`🔒 [PriceReviewService] Blocking price ${currentPrice} for product ${productId}`);
 
-    // 1. Mark as blocked in review
-    const reviewId = await this.findOrCreateReview(
-      cookies, productId, orderId, orderLineId
-    );
+    // 1. Mark as blocked in Postgres
+    const reviewId = await this.findOrCreateReview(productId, orderId, orderLineId);
 
-    await callOdoo(
-      cookies,
-      'x.price.review',
-      'write',
-      [[reviewId], {
-        status: 'blocked',
-        blocked_by: blockedBy,
-        blocked_at: new Date().toISOString(),
-        note: note || false
-      }]
-    );
+    await sql`
+      UPDATE price_reviews
+      SET status = 'blocked',
+          blocked_by = ${blockedBy},
+          note = ${note || null},
+          updated_at = NOW()
+      WHERE id = ${reviewId}
+    `;
 
     console.log(`✅ [PriceReviewService] Review ${reviewId} marked as blocked`);
 
-    // 2. Create or update fixed price in pricelist
+    // 2. Create or update fixed price in Odoo pricelist
     console.log(`📋 [PriceReviewService] Creating/updating pricelist item for pricelist ${pricelistId}`);
 
-    // First check if item already exists
+    // First check if item already exists in Odoo
     const existingItems = await callOdoo(
       cookies,
       'product.pricelist.item',
@@ -199,26 +174,21 @@ export class PriceReviewService {
 
     console.log(`⏳ [PriceReviewService] Marking as pending`);
 
-    const reviewId = await this.findOrCreateReview(
-      cookies, productId, orderId, orderLineId
-    );
+    const reviewId = await this.findOrCreateReview(productId, orderId, orderLineId);
 
-    await callOdoo(
-      cookies,
-      'x.price.review',
-      'write',
-      [[reviewId], {
-        status: 'pending',
-        reviewed_by: false,
-        reviewed_at: false,
-        blocked_by: false,
-        blocked_at: false
-      }]
-    );
+    await sql`
+      UPDATE price_reviews
+      SET status = 'pending',
+          reviewed_by = NULL,
+          blocked_by = NULL,
+          note = NULL,
+          updated_at = NOW()
+      WHERE id = ${reviewId}
+    `;
 
     console.log(`✅ [PriceReviewService] Review ${reviewId} reset to pending`);
 
-    // If was blocked, remove fixed price from pricelist
+    // If was blocked, remove fixed price from Odoo pricelist
     if (pricelistId) {
       console.log(`🗑️ [PriceReviewService] Removing fixed price from pricelist ${pricelistId}`);
 
@@ -256,7 +226,7 @@ export class PriceReviewService {
   }
 
   /**
-   * Get order line ID from product and order
+   * Get order line ID from product and order (from Odoo)
    */
   async getOrderLineId(
     cookies: string,
@@ -291,7 +261,7 @@ export class PriceReviewService {
   }
 
   /**
-   * Get pricelist ID from order
+   * Get pricelist ID from order (from Odoo)
    */
   async getPricelistId(
     cookies: string,
@@ -321,35 +291,45 @@ export class PriceReviewService {
    * Batch fetch review statuses for multiple products
    */
   async batchFetchReviewStatuses(
-    cookies: string,
     productIds: number[],
     orderIds: number[]
   ): Promise<Map<string, any>> {
 
     console.log(`📦 [PriceReviewService] Batch fetching reviews for ${productIds.length} products`);
 
-    const reviews = await callOdoo(
-      cookies,
-      'x.price.review',
-      'search_read',
-      [],
-      {
-        domain: [
-          ['product_id', 'in', productIds],
-          ['order_id', 'in', orderIds]
-        ],
-        fields: [
-          'product_id', 'order_id', 'status',
-          'reviewed_by', 'reviewed_at',
-          'blocked_by', 'blocked_at', 'note'
-        ]
-      }
+    if (productIds.length === 0) {
+      return new Map();
+    }
+
+    // Fetch reviews using parameterized query
+    // Note: Vercel Postgres doesn't support array parameters directly in template strings
+    // We need to use a workaround with JSON or multiple queries
+    // For now, we'll fetch all and filter in memory (optimization possible later)
+    const { rows: allRows } = await sql`
+      SELECT
+        product_id,
+        order_id,
+        order_line_id,
+        status,
+        reviewed_by,
+        blocked_by,
+        note,
+        created_at,
+        updated_at
+      FROM price_reviews
+    `;
+
+    // Filter in memory
+    const productIdSet = new Set(productIds);
+    const orderIdSet = new Set(orderIds);
+    const rows = allRows.filter((r: any) =>
+      productIdSet.has(r.product_id) && orderIdSet.has(r.order_id)
     );
 
     // Build map: "productId-orderId" -> review
     const reviewMap = new Map<string, any>();
-    reviews.forEach((r: any) => {
-      const key = `${r.product_id[0]}-${r.order_id[0]}`;
+    rows.forEach((r: any) => {
+      const key = `${r.product_id}-${r.order_id}`;
       reviewMap.set(key, r);
     });
 
