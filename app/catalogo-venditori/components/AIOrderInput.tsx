@@ -111,8 +111,8 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
 
         // Pass AI data to parent (including transcription and all matches)
         onProductsMatched(data.matches, {
-          transcription: data.message_analyzed || messageText,
-          messageType: data.message_type || messageType,
+          transcription: data.message_analyzed || message,
+          messageType: data.message_type || inputMode,
           allMatches: data.matches // Include all matches (found and not found)
         });
 

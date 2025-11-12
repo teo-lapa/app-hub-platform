@@ -61,6 +61,7 @@ export default function VerificaInventarioPage() {
   const [selectedZone, setSelectedZone] = useState<typeof ZONES[0] | null>(null);
   const [showZoneSelector, setShowZoneSelector] = useState(true);
   const [showLocationScanner, setShowLocationScanner] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [showProductList, setShowProductList] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>('');
   const [locationProducts, setLocationProducts] = useState<VerificationRequest[]>([]);
@@ -133,6 +134,9 @@ export default function VerificaInventarioPage() {
   };
 
   const handleLocationScan = (scannedCode: string) => {
+    // Chiudi scanner
+    setShowQRScanner(false);
+
     // Filtra prodotti per questa ubicazione e zona
     const productsForLocation = allRequests.filter(request => {
       const locationName = request.location_name?.toLowerCase() || '';
@@ -318,7 +322,7 @@ export default function VerificaInventarioPage() {
               </p>
 
               <button
-                onClick={() => setShowLocationScanner(true)}
+                onClick={() => setShowQRScanner(true)}
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 px-6 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-3"
               >
                 <MapPin className="w-6 h-6" />
@@ -421,10 +425,9 @@ export default function VerificaInventarioPage() {
 
       {/* QR Scanner per ubicazioni */}
       <QRScanner
-        isOpen={showLocationScanner && !showProductList}
-        onClose={() => setShowLocationScanner(false)}
+        isOpen={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
         onScan={handleLocationScan}
-        title="Scansiona Ubicazione"
       />
 
       {/* Product Edit Modal */}
