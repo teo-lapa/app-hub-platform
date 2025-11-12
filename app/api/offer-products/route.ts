@@ -121,12 +121,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`✅ Trovati ${productsArray.length} prodotti in offerta`);
+
+    // Filtra prodotti con giacenza disponibile <= 0 (venduti/esauriti)
+    const availableProducts = productsArray.filter(product => {
+      const availableQty = (product as any).availableQuantity;
+      // Se availableQuantity non è calcolato, usa quantity originale
+      const qty = availableQty !== undefined ? availableQty : product.quantity;
+
+      if (qty <= 0) {
+        console.log(`⚠️ Prodotto ${product.productName} escluso (giacenza: ${qty})`);
+        return false;
+      }
+      return true;
+    });
+
+    console.log(`✅ Trovati ${availableProducts.length} prodotti in offerta disponibili (${productsArray.length - availableProducts.length} esclusi per giacenza zero)`);
 
     return NextResponse.json<GetOfferProductsResponse>({
       success: true,
-      products: productsArray,
-      count: productsArray.length
+      products: availableProducts,
+      count: availableProducts.length
     });
 
   } catch (error: any) {
