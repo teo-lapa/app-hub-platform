@@ -15,16 +15,20 @@ const URGENT_PRODUCTS_KEY = 'urgent_products';
  * Calcola la quantità prenotata per un prodotto specifico
  * con lotto e ubicazione specifici usando stock.quant di Odoo
  */
-async function calculateReservedQuantity(
+/**
+ * Calcola quantità totale e prenotata per un prodotto con lotto/ubicazione specifici
+ * Legge da stock.quant di Odoo e restituisce total, reserved e available
+ */
+async function calculateStockQuantities(
   cookies: string,
   productId: number,
   lotId?: number,
   locationId?: number
-): Promise<number> {
+): Promise<{ total: number; reserved: number; available: number }> {
   try {
     if (!lotId && !locationId) {
-      // Se non c'è lotto/ubicazione specifica, non calcoliamo prenotazioni
-      return 0;
+      // Se non c'è lotto/ubicazione specifica, non possiamo calcolare
+      return { total: 0, reserved: 0, available: 0 };
     }
 
     // Costruisci domain per cercare il quant specifico
@@ -54,7 +58,7 @@ async function calculateReservedQuantity(
 
     if (!quants || quants.length === 0) {
       console.log(`📦 No quants found for product ${productId}, lot ${lotId}, location ${locationId}`);
-      return 0;
+      return { total: 0, reserved: 0, available: 0 };
     }
 
     // Somma tutte le quantità prenotate
@@ -65,11 +69,18 @@ async function calculateReservedQuantity(
       console.log(`📦 Quant ${quant.id}: ${reserved} reserved (${quant.quantity} total)`);
     }
 
-    console.log(`📊 Total reserved for product ${productId}: ${totalReserved}`);
-    return totalReserved;
+    // Calcola quantità totale
+    let totalQty = 0;
+    for (const quant of quants) {
+      totalQty += quant.quantity || 0;
+    }
+
+    const available = totalQty - totalReserved;
+    console.log(`📊 Product ${productId}: ${totalQty} total, ${totalReserved} reserved, ${available} available`);
+    return { total: totalQty, reserved: totalReserved, available };
   } catch (error) {
     console.error('❌ Error calculating reserved quantity:', error);
-    return 0; // In caso di errore, assumiamo 0 prenotato
+    return { total: 0, reserved: 0, available: 0 }; // In caso di errore
   }
 }
 
@@ -110,18 +121,19 @@ export async function GET(request: NextRequest) {
       console.log('🔍 Calcolo quantità prenotate per prodotti urgenti...');
 
       for (const product of productsArray) {
-        const reservedQty = await calculateReservedQuantity(
+        const stockQty = await calculateStockQuantities(
           cookies,
           product.productId,
           product.lotId,
           product.locationId
         );
 
-        // Aggiungi la quantità prenotata al prodotto
-        (product as any).reservedQuantity = reservedQty;
-        (product as any).availableQuantity = product.quantity - reservedQty;
+        // Aggiungi le quantità al prodotto
+        (product as any).reservedQuantity = stockQty.reserved;
+        (product as any).availableQuantity = stockQty.available;
+        (product as any).totalQuantity = stockQty.total;
 
-        console.log(`📊 Prodotto ${product.productName}: ${product.quantity} totali, ${reservedQty} prenotati, ${product.quantity - reservedQty} disponibili`);
+        console.log(`📊 Prodotto ${product.productName}: ${stockQty.total} totali da Odoo, ${stockQty.reserved} prenotati, ${stockQty.available} disponibili`);
       }
     }
 
