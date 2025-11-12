@@ -183,11 +183,27 @@ export async function GET(request: NextRequest) {
       };
       const settings = appSettings || defaultSettings;
 
+      // DEBUG per app "1"
+      if (app.id === '1') {
+        console.log(`🐛 DEBUG App 1:`, {
+          hasAppSettings: !!appSettings,
+          userRole,
+          userEmail,
+          settingsVisibilityGroup: settings.visibilityGroup,
+          settingsExcludedUsers: settings.excludedUsers
+        });
+      }
+
       // Se c'è un ruolo specificato, filtra le app in base alla visibilità
       // ✅ Se non ci sono impostazioni (appSettings === undefined), considera l'APP visibile di default
       const isVisible = userRole
         ? (appSettings ? isAppVisibleForRole(settings, userRole, userEmail || undefined) : true)  // Se no settings → visible
         : settings.visible;
+
+      // DEBUG per app "1"
+      if (app.id === '1') {
+        console.log(`🐛 DEBUG App 1 - isVisible:`, isVisible);
+      }
 
       // Converti excludedUsers/excludedCustomers in formato groups per la pagina gestione
       // E converti visibilityGroup in enabled flags
