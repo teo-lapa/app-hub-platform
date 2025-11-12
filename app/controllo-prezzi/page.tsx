@@ -15,17 +15,12 @@ export default function ControlloPrezziPage() {
   const router = useRouter();
   const { user } = useAuthStore();
 
-  // Controllo accesso: SOLO Paul e Laura
+  // Controllo accesso: SOLO Admin
   useEffect(() => {
-    if (user && user.email) {
-      const allowedEmails = [
-        'paul.diserens@gmail.com',
-        'laura.diserens@gmail.com',
-        'paul@lapa.ch',
-        'laura@lapa.ch'
-      ];
-      if (!allowedEmails.includes(user.email)) {
-        toast.error('Accesso negato: questa app è disponibile solo per Paul e Laura');
+    if (user) {
+      // Accetta solo utenti con ruolo admin
+      if (user.role !== 'admin') {
+        toast.error('Accesso negato: questa app è disponibile solo per amministratori');
         router.push('/');
       }
     }

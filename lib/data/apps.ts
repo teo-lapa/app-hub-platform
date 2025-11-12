@@ -302,7 +302,6 @@ export const mockApps: App[] = [
     badge: 'PRO',
     category: 'Business',
     url: '/controllo-prezzi',
-    requiredRole: 'cliente_premium',
     isNew: true,
     isPopular: true,
     controlStatus: 'approved',
