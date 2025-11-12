@@ -90,6 +90,14 @@ function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRo
 
   // Se l'app è visibile a tutti
   if (settings.visibilityGroup === 'all') {
+    console.log(`🔍 Checking exclusions for visibilityGroup=all:`, {
+      userEmail,
+      excludedUsers: settings.excludedUsers,
+      excludedCustomers: settings.excludedCustomers,
+      isInExcludedUsers: userEmail && settings.excludedUsers?.includes(userEmail),
+      isInExcludedCustomers: userEmail && settings.excludedCustomers?.includes(userEmail)
+    });
+
     // Anche se visibile a tutti, controlla esclusioni specifiche (usa EMAIL)
     if (userEmail && settings.excludedUsers?.includes(userEmail)) {
       console.log(`  ➜ User ${userEmail} is in excludedUsers - HIDDEN`);
