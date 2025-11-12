@@ -27,7 +27,11 @@
       "Bash(timeout 30 bash:*)",
       "Bash(timeout 120 bash:*)",
       "Bash(git revert:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(cat:*)",
+      "Bash(node:*)",
+      "Bash(git stash:*)",
+      "Bash(git stash pop:*)"
     ],
     "deny": [],
     "ask": []

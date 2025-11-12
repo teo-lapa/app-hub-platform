@@ -22,15 +22,11 @@ interface VerificationRequest {
   id: number;
   product_id: number;
   product_name: string;
-  product_code?: string;
-  product_image?: string;
-  quant_id?: number;
   lot_id: number | null;
   lot_name: string | null;
   location_id: number;
   location_name: string;
   quantity: number;
-  uom?: string;
   expiry_date: string | null;
   requested_at: string;
   requested_by: string | null;
@@ -49,7 +45,6 @@ interface ProductForModal {
   stockQuantity: number;
   countedQuantity: number;
   uom?: string;
-  quant_id?: number;
   lot?: {
     id: number;
     name: string;
@@ -194,16 +189,12 @@ export default function VerificaInventarioPage() {
   const handleProductClick = (request: VerificationRequest) => {
     setSelectedRequest(request);
 
-    // Costruisci oggetto product IDENTICO a quello dell'inventario normale
     const productForModal: ProductForModal = {
       id: request.product_id,
       name: request.product_name,
-      code: request.product_code || '',
-      image: request.product_image || undefined,
       stockQuantity: request.quantity,
       countedQuantity: request.quantity,
-      uom: request.uom || 'PZ',
-      quant_id: request.quant_id || undefined,
+      uom: 'PZ',
       lot: request.lot_id && request.lot_name ? {
         id: request.lot_id,
         name: request.lot_name,
@@ -212,7 +203,6 @@ export default function VerificaInventarioPage() {
     };
 
     setSelectedProduct(productForModal);
-    setCalculatorValue(request.quantity.toString());
     setShowProductModal(true);
   };
 
@@ -221,31 +211,10 @@ export default function VerificaInventarioPage() {
     lotName: string;
     expiryDate: string;
   }) => {
-    if (!selectedRequest || !selectedProduct) return;
+    if (!selectedRequest) return;
 
     try {
-      // STEP 1: Salva su Odoo la quantità, lotto e scadenza (come fa l'inventario normale)
-      const saveResponse = await fetch('/api/inventory/update-quantity', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          productId: selectedRequest.product_id,
-          locationId: selectedRequest.location_id,
-          quantId: selectedProduct.quant_id || null, // ⚠️ USA quant_id (NON lot.id!)
-          quantity: data.quantity,
-          lotName: data.lotName,
-          expiryDate: data.expiryDate
-        })
-      });
-
-      const saveData = await saveResponse.json();
-      if (!saveData.success) {
-        throw new Error(saveData.error || 'Errore salvataggio su Odoo');
-      }
-
-      // STEP 2: Marca la richiesta di verifica come completata
-      const completeResponse = await fetch('/api/verification-requests/complete', {
+      const response = await fetch('/api/verification-requests/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -255,10 +224,10 @@ export default function VerificaInventarioPage() {
         })
       });
 
-      const result = await completeResponse.json();
+      const result = await response.json();
 
       if (result.success) {
-        toast.success('✅ Prodotto verificato e salvato su Odoo!');
+        toast.success('Prodotto verificato con successo!');
 
         // Rimuovi dalla lista locale
         setLocationProducts(prev => prev.filter(p => p.id !== selectedRequest.id));
@@ -278,9 +247,9 @@ export default function VerificaInventarioPage() {
       } else {
         toast.error('Errore nel completamento della verifica');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Errore completamento verifica:', error);
-      toast.error('Errore: ' + error.message);
+      toast.error('Errore di connessione');
     }
   };
 
