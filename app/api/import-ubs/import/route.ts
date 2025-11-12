@@ -79,13 +79,23 @@ export async function POST(request: NextRequest) {
         const uniqueImportId = generateUniqueImportId(transaction, accountInfo.iban)
 
         // Prepara dati per Odoo
-        // IMPORTANTE: In Odoo, amount positivo = entrata, negativo = uscita
-        // Assicuriamoci che il segno sia preservato correttamente
+        // L'utente conferma che manualmente può inserire valori negativi in Odoo
+        // Quindi il problema è nella nostra chiamata API o serializzazione
+
+        // Forziamo esplicitamente il numero (potrebbe essere stringa)
+        const amountNumber = Number(transaction.amount)
+
+        console.log(`🔍 [IMPORT-UBS] DEBUG amount:`)
+        console.log(`   - Originale: ${transaction.amount} (tipo: ${typeof transaction.amount})`)
+        console.log(`   - Convertito: ${amountNumber} (tipo: ${typeof amountNumber})`)
+        console.log(`   - È negativo: ${amountNumber < 0}`)
+        console.log(`   - Math.sign: ${Math.sign(amountNumber)}`)
+
         const lineData = {
           journal_id: journalId,
           date: transaction.date,
           payment_ref: transaction.description,
-          amount: transaction.amount, // Mantiene il segno: positivo per entrate, negativo per uscite
+          amount: amountNumber, // Usa il numero esplicitamente convertito
           unique_import_id: uniqueImportId,
           partner_name: transaction.beneficiary !== 'N/A' ? transaction.beneficiary : false,
           ref: transaction.transactionNr || false
