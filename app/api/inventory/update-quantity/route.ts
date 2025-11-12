@@ -65,7 +65,10 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      await callOdoo('stock.quant', 'write', [[quantId], { inventory_quantity: quantity }]);
+      await callOdoo('stock.quant', 'write', [[quantId], {
+        inventory_quantity: quantity,
+        inventory_date: new Date().toISOString()
+      }]);
       console.log(`✅ Salvato`);
 
       return NextResponse.json({ success: true, message: 'Salvato con successo' });
@@ -102,14 +105,18 @@ export async function POST(req: NextRequest) {
     const quants = await callOdoo('stock.quant', 'search_read', [domain], { fields: ['id'], limit: 1 });
 
     if (quants?.length > 0) {
-      await callOdoo('stock.quant', 'write', [[quants[0].id], { inventory_quantity: quantity }]);
+      await callOdoo('stock.quant', 'write', [[quants[0].id], {
+        inventory_quantity: quantity,
+        inventory_date: new Date().toISOString()
+      }]);
       return NextResponse.json({ success: true, message: 'Salvato' });
     } else {
       await callOdoo('stock.quant', 'create', [[{
         product_id: productId,
         location_id: locationId,
         lot_id: actualLotId || false,
-        inventory_quantity: quantity
+        inventory_quantity: quantity,
+        inventory_date: new Date().toISOString()
       }]]);
       return NextResponse.json({ success: true, message: 'Creato' });
     }
