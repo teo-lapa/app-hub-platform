@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Upload, FileText, CheckCircle, XCircle, AlertCircle, Download, TrendingUp, TrendingDown } from 'lucide-react'
+import { Upload, FileText, CheckCircle, XCircle, AlertCircle, Download, TrendingUp, TrendingDown, ArrowLeft, Home } from 'lucide-react'
+import Link from 'next/link'
 
 interface Transaction {
   date: string
@@ -118,20 +119,38 @@ export default function ImportMovimentiUBS() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-blue-100">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-4 rounded-xl">
-              <FileText className="w-8 h-8 text-white" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-4 rounded-xl">
+                <FileText className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Import Movimenti UBS
+                </h1>
+                <p className="text-gray-600">
+                  Carica il file CSV esportato dalla tua UBS e-banking
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  v3.0 - Sistema anti-duplicati Odoo (unique_import_id)
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Import Movimenti UBS
-              </h1>
-              <p className="text-gray-600">
-                Carica il file CSV esportato dalla tua UBS e-banking
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                v3.0 - Sistema anti-duplicati Odoo (unique_import_id)
-              </p>
+
+            {/* Pulsanti Navigazione */}
+            <div className="flex items-center gap-3">
+              <Link href="/super-dashboard">
+                <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-lg font-semibold shadow-lg transition-all">
+                  <ArrowLeft className="w-5 h-5" />
+                  <span>Indietro</span>
+                </button>
+              </Link>
+              <Link href="/">
+                <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg font-semibold shadow-lg transition-all">
+                  <Home className="w-5 h-5" />
+                  <span>Home</span>
+                </button>
+              </Link>
             </div>
           </div>
         </div>
