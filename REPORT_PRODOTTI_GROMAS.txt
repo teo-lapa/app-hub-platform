@@ -1,0 +1,256 @@
+═══════════════════════════════════════════════════════════════════
+           REPORT COMPLETO PRODOTTI GROMAS
+═══════════════════════════════════════════════════════════════════
+
+Data: 07/11/2025, 17:18:43
+Fornitore: GROMAS s.r.l.
+Totale prodotti: 52
+Prodotti con problemi: 52
+
+═══════════════════════════════════════════════════════════════════
+                    RIEPILOGO PROBLEMI
+═══════════════════════════════════════════════════════════════════
+
+📊 STATISTICHE:
+
+   • Imposte acquisto da rimuovere:  52 prodotti
+   • Valuta CHF da cambiare in EUR:  41 prodotti
+   • UoM da verificare (PZ→CRT?):    32 prodotti
+   • Imballaggio da aggiungere:      10 prodotti
+
+═══════════════════════════════════════════════════════════════════
+              ELENCO DETTAGLIATO PRODOTTI CON PROBLEMI
+═══════════════════════════════════════════════════════════════════
+
+1. [01422] Pinsa Romana Di Marco Precotta 19x30cm 8x230g crt GROM
+   ID: 24334
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO
+
+2. [70121] Prosciutto Cotto Ghiotto Oro Intero - Qualità Superior GROM
+   ID: 24331
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO
+
+3. [21967] Prosciutto Crudo di Parma DOP Stagionato S/O 16/18 mesi GROM
+   ID: 24333
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO
+
+4. [50450] Prosciutto Crudo di Parma DOP stagionato 24 mesi Disossato Addobbo GROM
+   ID: 24332
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO
+
+5. [032124] Spugna Fibra Grossa ZIF - Confezione 50 pezzi
+   ID: 24277
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+6. [032123] Spugna in Acciaio Zincata 40g - Confezione 25 pezzi
+   ID: 24276
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+7. [32125] Panno in Microfibra Professionale Blu 32x32cm
+   ID: 24251
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR
+
+8. [032121] Manico in Metallo Plastificato 130cm ZIF
+   ID: 24254
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+9. [032120] Scopa Professionale Croma Rosso/Nero con Sistema ZIF
+   ID: 24279
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+10. [33947] Candeggina Classica Profumata 2L - Confezione 8 pezzi
+   ID: 24269
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+11. [NO-CODE] Candeggina Classica Profumata 2L - Confezione 8 pezzi
+   ID: 24286
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR
+
+12. [032323] Alzaimmondizia in Plastica Ecologica ZIF
+   ID: 24274
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+13. [NO-CODE] Alzaimmondizia in Plastica Ecologica ZIF
+   ID: 24281
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO
+
+14. [11576] Bomboletta Spray Antipolvere per Mobili in Legno 400ml
+   ID: 24270
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+15. [032133] Secchio rettangolare con strizzatore professionale 12L
+   ID: 24278
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+16. [70114] Detergente Igienizzante Multigen Efficace 750ml
+   ID: 24266
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+17. [31128] Ricambio Mop Sintetico per Pulizia Pavimenti
+   ID: 24247
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+18. [26425] Guanti in Nitrile Reflexx Monouso Neri Taglia M - Confezione 100pz
+   ID: 24258
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+19. [50004] Pellicola Film Trasparente per Alimenti 300m x 9cm - Champagne
+   ID: 24256
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+20. [11563] Puligen Disincrostante Professionale 1L
+   ID: 24249
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+21. [411024] Carta Multiuso Poliunto X2 Gromas - Rotolo 800 Strappi
+   ID: 24250
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+22. [NO-CODE] Carta Multiuso Poliunto X2 Gromas - Rotolo 800 Strappi
+   ID: 24287
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, AGGIUNGI_PACKAGING
+
+23. [31828] Ammorbidente Muschio Bianco - Tanica 5kg (Confezione 4 pezzi)
+   ID: 24272
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+24. [NO-CODE] Ammorbidente Muschio Bianco - Tanica 5kg (Confezione 4 pezzi)
+   ID: 24282
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, AGGIUNGI_PACKAGING
+
+25. [270424] Detergente multiuso EQO per vetri e superfici multiple - 750ml (confezione 6 pezzi)
+   ID: 24257
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VERIFICA_UOM
+
+26. [070822] Sac à poche monouso trasparente 55x27cm - Confezione 100pz
+   ID: 24244
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+27. [270422] EQO Sgrassatore Limone Spray 750ml - Confezione 6 pezzi
+   ID: 24259
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, AGGIUNGI_PACKAGING
+
+28. [51105] Lavatrice Muschio Bianco 5kg Professional
+   ID: 24255
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+29. [270423] EQO Detergente Anticalcare per Bagno 750ml - Confezione 6 pezzi
+   ID: 24265
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+30. [50000] Rotolo Alluminio Professionale 300mm x 1300g
+   ID: 24246
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+31. [270425] Detersivo per Lavastoviglie EQO Professional Tanica 5.5 kg (Confezione 2 pezzi)
+   ID: 24262
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+32. [50008] Asciugamani di Carta Piegati Ecolabel - Euro Fold 21x21cm
+   ID: 24267
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+33. [NO-CODE] Asciugamani di Carta Piegati Ecolabel - Euro Fold 21x21cm
+   ID: 24283
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, AGGIUNGI_PACKAGING
+
+34. [270426] Brillantante EQO Professional per Lavastoviglie - Tanica 5kg (Conf. 2pz)
+   ID: 24264
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+35. [NO-CODE] Brillantante EQO Professional per Lavastoviglie - Tanica 5kg (Conf. 2pz)
+   ID: 24285
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, AGGIUNGI_PACKAGING
+
+36. [270421] Detergente Pavimenti EQO Arancia-Limone 5kg
+   ID: 24261
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR
+
+37. [270420] Detersivo per Piatti EQO Profumazione Tan - Tanica 5kg
+   ID: 24260
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR
+
+38. [09632] NEOFORT RAPIDO Detergente Professionale 0,75L - Confezione 6 pezzi + 1 spruzzino
+   ID: 24253
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, AGGIUNGI_PACKAGING
+
+39. [09731] PULIVAT Detergente Professionale - Confezione 6 Flaconi da 750ml
+   ID: 24248
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, AGGIUNGI_PACKAGING
+
+40. [96855] Sacchetti in Carta Bianca 14x30cm - Confezione 1000pz
+   ID: 24242
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+41. [09733] UNI5 Sapone Mani con Igienizzante - Tanica 5kg (Confezione 4 pezzi)
+   ID: 24273
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+42. [39726] ARGONIT AF/2 Disinfettante Professionale 750ml - Confezione 6 pezzi
+   ID: 24271
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+43. [NO-CODE] ARGONIT AF/2 Disinfettante Professionale 750ml - Confezione 6 pezzi
+   ID: 24280
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, AGGIUNGI_PACKAGING
+
+44. [54114] UNI5 Piatti Interfoliati 5 kg - Confezione 4 pezzi
+   ID: 24263
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR
+
+45. [71005] Carta da forno professionale in fogli 40x60cm - Conf. 5kg
+   ID: 24268
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+46. [NO-CODE] Carta da forno professionale in fogli 40x60cm - Conf. 5kg
+   ID: 24288
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, AGGIUNGI_PACKAGING
+
+47. [90114] UNI5 Disincrostante Professionale per Lavastoviglie 5kg (2 pezzi)
+   ID: 24252
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+48. [NO-CODE] Bomboletta Spray Antipolvere per Mobili in Legno 400ml
+   ID: 24284
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, AGGIUNGI_PACKAGING
+
+49. [159988] Sacchi Bio per Pattumiera 72x110cm - Grigio - 30gr
+   ID: 24243
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+50. [53114] Detergente Lavabar Gel Syner Tecno - Confezione 2x6kg
+   ID: 24275
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+51. [50119] Rotolo Pellicola Alimentare Champagne 45cm x 1200m
+   ID: 24245
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+52. [03040] Tovaglietta monouso in carta avana 30x40cm - Confezione 500 pezzi
+   ID: 24241
+   Problemi: RIMUOVI_IMPOSTE_ACQUISTO, VALUTA_CHF->EUR, VERIFICA_UOM
+
+
+═══════════════════════════════════════════════════════════════════
+                      AZIONI CONSIGLIATE
+═══════════════════════════════════════════════════════════════════
+
+1. IMPOSTE ACQUISTO:
+   → Rimuovere imposte acquisto da TUTTI i prodotti GROMAS
+   → Motivo: Import/export - IVA gestita separatamente
+
+2. VALUTA:
+   → Cambiare da CHF a EUR per tutti i prezzi fornitore
+   → I prezzi sono già corretti, serve solo cambiare valuta
+
+3. UNITÀ DI MISURA:
+   → Verificare quali prodotti vendono a PEZZO ma acquistano a CARTONE
+   → Creare/usare UoM "CRT" dove necessario
+   → Esempio: NEOFORT (già fatto) - compra CRT, vende PZ
+
+4. IMBALLAGGI (PACKAGING):
+   → Aggiungere imballaggio "CARTONE" per prodotti con UoM acquisto CRT
+   → Specificare quantità per cartone (es: 6 pezzi per NEOFORT)
+   → Questo aiuta nella logistica e gestione ordini
+
+═══════════════════════════════════════════════════════════════════

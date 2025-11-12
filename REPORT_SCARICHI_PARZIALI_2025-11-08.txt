@@ -1,0 +1,720 @@
+═══════════════════════════════════════════════════════════════
+  REPORT SCARICHI PARZIALI - ORDINI OUT RESIDUI
+  Data analisi: 08/11/2025, 13:04:59
+  Totale ordini analizzati: 26
+═══════════════════════════════════════════════════════════════
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. ORDINE RESIDUO: WH/OUT/34446
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Sasà Gastro GmbH, PEPPINO BADEN (consegna)
+   • Data prevista: 07/11/2025
+   • Sales Order: S34476
+   • OUT Completato: WH/OUT/34436
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+      📅 Data: 07/11/2025, 12:51:59
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. ORDINE RESIDUO: WH/OUT/34443
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Amare Food Truck, Amare Food CONSEGNA
+   • Data prevista: 07/11/2025
+   • Sales Order: S34420
+   • OUT Completato: WH/OUT/34390
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Domingos Ferreira
+      📅 Data: 07/11/2025, 11:16:15
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+📦 PRODOTTI NON SCARICATI: 1
+
+   1. SALATINI 8 GUSTI 12G 4KG CRT SG
+      Richiesta: 1 CRT
+      Scaricata: 0 CRT
+      Mancante: 1 CRT
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. ORDINE RESIDUO: WH/OUT/34444
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Franco Martorelli Rest. La Vista, La Vista Feusisberg (CONSEGNA)
+   • Data prevista: 07/11/2025
+   • Sales Order: S34314
+   • OUT Completato: WH/OUT/34274
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+      📅 Data: 07/11/2025, 11:57:21
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Voia doar 1kg
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. ORDINE RESIDUO: WH/OUT/34464
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Grandin Trattoria Pizzeria, Grandin Trattoria Pizzeria - Tennis Club (CONSEGNA)
+   • Data prevista: 07/11/2025
+   • Sales Order: S34194
+   • OUT Completato: WH/OUT/34144
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+      📅 Data: 07/11/2025, 17:07:12
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Allesandro a detto
+
+📦 PRODOTTI NON SCARICATI: 2
+
+   1. GUANCIALE DI SUINO AL PEPE SV INTERO PZ CA 1.5KG SORR
+      Richiesta: 1 kg
+      Scaricata: 0 kg
+      Mancante: 1 kg
+
+   2. NUTELLA 1000G 6PZ CRT M
+      Richiesta: 1 PZ
+      Scaricata: 0 PZ
+      Mancante: 1 PZ
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. ORDINE RESIDUO: WH/OUT/34361
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: CASA COSI GMBH, Jason Chef (per Ordini)
+   • Data prevista: 05/11/2025
+   • Sales Order: S34369
+   • OUT Completato: WH/OUT/34318
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+      📅 Data: 05/11/2025, 13:49:04
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. ORDINE RESIDUO: WH/OUT/34352
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Cibo' Caffe' Ristorante Gmbh, Cibò Caffe Ristorante (consegna)
+   • Data prevista: 05/11/2025
+   • Sales Order: S34356
+   • OUT Completato: WH/OUT/34326
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+      📅 Data: 05/11/2025, 10:49:57
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Voia doar 2
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. ORDINE RESIDUO: WH/OUT/34344
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Siculus GmbH, Siculus Ristorante Pizzeria (Consegna)
+   • Data prevista: 05/11/2025
+   • Sales Order: S34367
+   • OUT Completato: WH/OUT/34317
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Ionut Zanfir
+      📅 Data: 05/11/2025, 09:38:54
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. ORDINE RESIDUO: WH/OUT/34353
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Emme Food GmbH, Emme l'Italia che ami
+   • Data prevista: 05/11/2025
+   • Sales Order: S34339
+   • OUT Completato: WH/OUT/34331
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+      📅 Data: 05/11/2025, 11:17:38
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. ORDINE RESIDUO: WH/OUT/34349
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: AnaMiRa GmbH, AnaMiRa (CONSEGNA)
+   • Data prevista: 05/11/2025
+   • Sales Order: S34374
+   • OUT Completato: WH/OUT/34336
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 2
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+      📅 Data: 05/11/2025, 10:16:25
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+   2. 👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+      📅 Data: 05/11/2025, 10:15:33
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. ORDINE RESIDUO: WH/OUT/34355
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Antonio Carbone GmbH, Carbone Locanda - Pasticceria (Consegna)
+   • Data prevista: 05/11/2025
+   • Sales Order: S34302
+   • OUT Completato: WH/OUT/34284
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Alexandru Dominte
+      📅 Data: 05/11/2025, 11:48:35
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Voleva 4 in piu di rosso piu
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11. ORDINE RESIDUO: WH/OUT/34292
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: DGD Gastro GmbH, KEK Restaurant Küsnacht C/o DGD GastroGmbH (Consegna)
+   • Data prevista: 04/11/2025
+   • Sales Order: S34309
+   • OUT Completato: WH/OUT/34269
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+      📅 Data: 04/11/2025, 11:22:45
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+📦 PRODOTTI NON SCARICATI: 1
+
+   1. LAVAVETRI SENZA MANICO (TIRA ACQUA) 1 PZ AL
+      Richiesta: 1 PZ
+      Scaricata: 0 PZ
+      Mancante: 1 PZ
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+12. ORDINE RESIDUO: WH/OUT/34297
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Caterina Gastro Group AG, Caterina (CONSEGNA)
+   • Data prevista: 04/11/2025
+   • Sales Order: S34293
+   • OUT Completato: WH/OUT/34256
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+      📅 Data: 04/11/2025, 14:43:14
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+📦 PRODOTTI NON SCARICATI: 2
+
+   1. GRAN CULATTA PULITO FIORE S.V. CULATTAPZ 4KG MV
+      Richiesta: 1 kg
+      Scaricata: 0 kg
+      Mancante: 1 kg
+
+   2. GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM
+      Richiesta: 1 kg
+      Scaricata: 0 kg
+      Mancante: 1 kg
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+13. ORDINE RESIDUO: WH/OUT/34251
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: lick n'love GmbH - Gelateria Artigianale, La Piazzetta (CONSEGNA)
+   • Data prevista: 03/11/2025
+   • Sales Order: S34262
+   • OUT Completato: WH/OUT/34218
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Alexandru Dominte
+      📅 Data: 03/11/2025, 12:11:46
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Non lo vuole
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+14. ORDINE RESIDUO: WH/OUT/34228
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: DGD Gastro GmbH, KEK Restaurant Küsnacht C/o DGD GastroGmbH (Consegna)
+   • Data prevista: 03/11/2025
+   • Sales Order: S34265
+   • OUT Completato: WH/OUT/34212
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+      📅 Data: 03/11/2025, 08:26:54
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+15. ORDINE RESIDUO: WH/OUT/34247
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Emme Food GmbH, Emme l'Italia che ami
+   • Data prevista: 03/11/2025
+   • Sales Order: S34247
+   • OUT Completato: WH/OUT/34221
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+      📅 Data: 03/11/2025, 11:20:16
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+📦 PRODOTTI NON SCARICATI: 1
+
+   1. FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB
+      Richiesta: 10 kg
+      Scaricata: 0 kg
+      Mancante: 10 kg
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+16. ORDINE RESIDUO: WH/OUT/34249
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: TERZOANGOLO GMBH, CON GUSTO PIZZERIA (CONSEGNA)
+   • Data prevista: 03/11/2025
+   • Sales Order: S34261
+   • OUT Completato: WH/OUT/34209
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+      📅 Data: 03/11/2025, 11:38:10
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+📦 PRODOTTI NON SCARICATI: 3
+
+   1. FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB
+      Richiesta: 4 kg
+      Scaricata: 0 kg
+      Mancante: 4 kg
+
+   2. SCHALE KRAFT CIOTOLA/PE 1000ML MARRONE 173X120X75MM  300PZ A CRT PACO*
+      Richiesta: 1 CRTc
+      Scaricata: 0 CRTc
+      Mancante: 1 CRTc
+
+   3. DECKEL KRAFT COPERCHIO PER CIOTOLA PLA MARRONE 300PZ A CRT PACO
+      Richiesta: 1 CRTc
+      Scaricata: 0 CRTc
+      Mancante: 1 CRTc
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+17. ORDINE RESIDUO: WH/OUT/34227
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: aMA PASTICCERIA AG, aMA Pasticceria AG (CONSEGNA)
+   • Data prevista: 03/11/2025
+   • Sales Order: S34259
+   • OUT Completato: WH/OUT/34220
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Alexandru Dominte
+      📅 Data: 03/11/2025, 08:14:52
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Ordine zbagliato e piu piccola
+
+📦 PRODOTTI NON SCARICATI: 3
+
+   1. SCATOLA PORTA TORTA 27X27X7H VERNICIATA BIANCA 50 PZ CRT CAR
+      Richiesta: 50 PZ
+      Scaricata: 0 PZ
+      Mancante: 50 PZ
+
+   2. VASSOIO CLASS ORO 3EUR/4 ITA 18X26 10 KG CRT CAR
+      Richiesta: 10 kg
+      Scaricata: 0 kg
+      Mancante: 10 kg
+
+   3. RUSTICO LECCESE PICCOLO 165G PZ 35PZ CRT CAT
+      Richiesta: 2 CRT
+      Scaricata: 0 CRT
+      Mancante: 2 CRT
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+18. ORDINE RESIDUO: WH/OUT/34201
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Sasà Gastro GmbH, PEPPINO BADEN (consegna)
+   • Data prevista: 01/11/2025
+   • Sales Order: S34228
+   • OUT Completato: WH/OUT/34179
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+      📅 Data: 01/11/2025, 13:24:55
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Dietro
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+19. ORDINE RESIDUO: WH/OUT/34199
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Sasà Gastro GmbH, PEPPINO BADEN (consegna)
+   • Data prevista: 01/11/2025
+   • Sales Order: S34227
+   • OUT Completato: WH/OUT/34178
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+      📅 Data: 01/11/2025, 11:33:29
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Dietro
+
+📦 PRODOTTI NON SCARICATI: 1
+
+   1. GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM
+      Richiesta: 2 kg
+      Scaricata: 0 kg
+      Mancante: 2 kg
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+20. ORDINE RESIDUO: WH/OUT/34196
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Etna Bar KLG, Etna Pasticceria - Tavola calda (Consegna)
+   • Data prevista: 01/11/2025
+   • Sales Order: S34200
+   • OUT Completato: WH/OUT/34180
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Alexandru Dominte
+      📅 Data: 01/11/2025, 10:11:37
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Ordine zbagliato
+
+📦 PRODOTTI NON SCARICATI: 1
+
+   1. ARANCIO A FILETTI CANDITA 6X6 KG 5 MIO
+      Richiesta: 5 kg
+      Scaricata: 0 kg
+      Mancante: 5 kg
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+21. ORDINE RESIDUO: WH/OUT/34194
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Gasthof Engel Mekhrishvili, Gasthof Engel Mekhrishvili (Consegna)
+   • Data prevista: 01/11/2025
+   • Sales Order: S34224
+   • OUT Completato: WH/OUT/34175
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+      📅 Data: 01/11/2025, 09:26:13
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Chamtely
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+22. ORDINE RESIDUO: WH/OUT/34145
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Caterina Gastro Group AG, Caterina (CONSEGNA)
+   • Data prevista: 31/10/2025
+   • Sales Order: S34175
+   • OUT Completato: WH/OUT/34127
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+      📅 Data: 31/10/2025, 09:24:51
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Scaduto
+
+📦 PRODOTTI NON SCARICATI: 4
+
+   1. GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM
+      Richiesta: 1 kg
+      Scaricata: 0 kg
+      Mancante: 1 kg
+
+   2. FARINA 00 VERACE SACCO CONF 25KG MEY
+      Richiesta: 1 PZ
+      Scaricata: 0 PZ
+      Mancante: 1 PZ
+
+   3. FINOCCHIONA IGP A META SV CA 1.5KG BG
+      Richiesta: 1 kg
+      Scaricata: 0 kg
+      Mancante: 1 kg
+
+   4. CANDEGGINA PROFUMATA 2LT 8PZ CRT MUS
+      Richiesta: 1 PZ
+      Scaricata: 0 PZ
+      Mancante: 1 PZ
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+23. ORDINE RESIDUO: WH/OUT/34149
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: Rössli Ristorante la Perla, Inh. Cricri, La Perla Ristorante (consegna)
+   • Data prevista: 31/10/2025
+   • Sales Order: S34072
+   • OUT Completato: WH/OUT/34007
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 2
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Alexandru Dominte
+      📅 Data: 31/10/2025, 11:04:17
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Mi manca il prodoto
+
+   2. 👤 Autore: LAPA - finest italian food GmbH, Alexandru Dominte
+      📅 Data: 31/10/2025, 11:02:19
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Manca il prodoto
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+24. ORDINE RESIDUO: WH/OUT/34108
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: NAPULE AG LACHEN, Napule Lachen
+   • Data prevista: 30/10/2025
+   • Sales Order: S34146
+   • OUT Completato: WH/OUT/34081
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+      📅 Data: 30/10/2025, 11:50:50
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Manca
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+25. ORDINE RESIDUO: WH/OUT/34098
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: DGD Gastro GmbH, KEK Restaurant Küsnacht C/o DGD GastroGmbH (Consegna)
+   • Data prevista: 30/10/2025
+   • Sales Order: S34043
+   • OUT Completato: WH/OUT/33972
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 1
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+      📅 Data: 30/10/2025, 09:03:50
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      📝 **Nota:**
+      Mancante
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+26. ORDINE RESIDUO: WH/OUT/34005
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI ORDINE:
+   • Cliente: WinCoGast GmbH, RESTAURANT CONCORDIA (CONSEGNA)
+   • Data prevista: 28/10/2025
+   • Sales Order: S34009
+   • OUT Completato: WH/OUT/33932
+
+⚠️  SCARICHI PARZIALI REGISTRATI: 2
+
+   1. 👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+      📅 Data: 28/10/2025, 12:52:49
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+   2. 👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+      📅 Data: 28/10/2025, 12:51:15
+      💬 Messaggio:
+      ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+      
+      🎤 **Audio registrato** (vedi allegato)
+
+✅ TUTTI I PRODOTTI SCARICATI CORRETTAMENTE
+
+
+
+═══════════════════════════════════════════════════════════════
+  RIEPILOGO STATISTICHE
+═══════════════════════════════════════════════════════════════
+
+📊 Ordini con messaggi di scarico parziale: 26
+📦 Ordini con prodotti non scaricati: 10
+✅ Ordini senza problemi registrati: 0
+📋 Totale ordini analizzati: 26
+

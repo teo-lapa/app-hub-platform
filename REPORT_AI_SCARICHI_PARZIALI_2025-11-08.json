@@ -1,0 +1,928 @@
+[
+  {
+    "numeroOrdineResiduo": "WH/OUT/34446",
+    "cliente": "Sasà Gastro GmbH, PEPPINO BADEN (consegna)",
+    "dataPrevisita": "2025-11-07 22:00:00",
+    "salesOrder": "S34476",
+    "outCompletato": "WH/OUT/34436",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-07 12:51:59",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-07 12:51:59",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34443",
+    "cliente": "Amare Food Truck, Amare Food CONSEGNA",
+    "dataPrevisita": "2025-11-07 18:53:10",
+    "salesOrder": "S34420",
+    "outCompletato": "WH/OUT/34390",
+    "prodottiNonScaricati": [
+      {
+        "nome": "SALATINI 8 GUSTI 12G 4KG CRT SG",
+        "quantitaRichiesta": 1,
+        "quantitaEffettiva": 0,
+        "uom": "CRT"
+      }
+    ],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Domingos Ferreira",
+        "data": "2025-11-07 11:16:15",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Domingos Ferreira",
+        "data": "2025-11-07 11:16:15",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34444",
+    "cliente": "Franco Martorelli Rest. La Vista, La Vista Feusisberg (CONSEGNA)",
+    "dataPrevisita": "2025-11-07 18:00:00",
+    "salesOrder": "S34314",
+    "outCompletato": "WH/OUT/34274",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-11-07 11:57:21",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nVoia doar 1kg",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-11-07 11:57:21",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nVoia doar 1kg",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34464",
+    "cliente": "Grandin Trattoria Pizzeria, Grandin Trattoria Pizzeria - Tennis Club (CONSEGNA)",
+    "dataPrevisita": "2025-11-07 09:00:00",
+    "salesOrder": "S34194",
+    "outCompletato": "WH/OUT/34144",
+    "prodottiNonScaricati": [
+      {
+        "nome": "GUANCIALE DI SUINO AL PEPE SV INTERO PZ CA 1.5KG SORR",
+        "quantitaRichiesta": 1,
+        "quantitaEffettiva": 0,
+        "uom": "kg"
+      },
+      {
+        "nome": "NUTELLA 1000G 6PZ CRT M",
+        "quantitaRichiesta": 1,
+        "quantitaEffettiva": 0,
+        "uom": "PZ"
+      }
+    ],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-11-07 17:07:12",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nAllesandro a detto",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-11-07 17:07:12",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nAllesandro a detto",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34361",
+    "cliente": "CASA COSI GMBH, Jason Chef (per Ordini)",
+    "dataPrevisita": "2025-11-05 21:00:00",
+    "salesOrder": "S34369",
+    "outCompletato": "WH/OUT/34318",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-05 13:49:04",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-05 13:49:04",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34352",
+    "cliente": "Cibo' Caffe' Ristorante Gmbh, Cibò Caffe Ristorante (consegna)",
+    "dataPrevisita": "2025-11-05 21:00:00",
+    "salesOrder": "S34356",
+    "outCompletato": "WH/OUT/34326",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-11-05 10:49:57",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nVoia doar 2",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-11-05 10:49:57",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nVoia doar 2",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34344",
+    "cliente": "Siculus GmbH, Siculus Ristorante Pizzeria (Consegna)",
+    "dataPrevisita": "2025-11-05 21:00:00",
+    "salesOrder": "S34367",
+    "outCompletato": "WH/OUT/34317",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Ionut Zanfir",
+        "data": "2025-11-05 09:38:54",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Ionut Zanfir",
+        "data": "2025-11-05 09:38:54",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34353",
+    "cliente": "Emme Food GmbH, Emme l'Italia che ami",
+    "dataPrevisita": "2025-11-05 16:00:00",
+    "salesOrder": "S34339",
+    "outCompletato": "WH/OUT/34331",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-05 11:17:38",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-05 11:17:38",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34349",
+    "cliente": "AnaMiRa GmbH, AnaMiRa (CONSEGNA)",
+    "dataPrevisita": "2025-11-05 10:00:00",
+    "salesOrder": "S34374",
+    "outCompletato": "WH/OUT/34336",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-05 10:16:25",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      },
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-05 10:15:33",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-05 10:16:25",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      },
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-05 10:15:33",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34355",
+    "cliente": "Antonio Carbone GmbH, Carbone Locanda - Pasticceria (Consegna)",
+    "dataPrevisita": "2025-11-05 06:00:00",
+    "salesOrder": "S34302",
+    "outCompletato": "WH/OUT/34284",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Alexandru Dominte",
+        "data": "2025-11-05 11:48:35",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nVoleva 4 in piu di rosso piu",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Alexandru Dominte",
+        "data": "2025-11-05 11:48:35",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nVoleva 4 in piu di rosso piu",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34292",
+    "cliente": "DGD Gastro GmbH, KEK Restaurant Küsnacht C/o DGD GastroGmbH (Consegna)",
+    "dataPrevisita": "2025-11-04 18:00:00",
+    "salesOrder": "S34309",
+    "outCompletato": "WH/OUT/34269",
+    "prodottiNonScaricati": [
+      {
+        "nome": "LAVAVETRI SENZA MANICO (TIRA ACQUA) 1 PZ AL",
+        "quantitaRichiesta": 1,
+        "quantitaEffettiva": 0,
+        "uom": "PZ"
+      }
+    ],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-04 11:22:45",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-04 11:22:45",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34297",
+    "cliente": "Caterina Gastro Group AG, Caterina (CONSEGNA)",
+    "dataPrevisita": "2025-11-04 16:00:00",
+    "salesOrder": "S34293",
+    "outCompletato": "WH/OUT/34256",
+    "prodottiNonScaricati": [
+      {
+        "nome": "GRAN CULATTA PULITO FIORE S.V. CULATTAPZ 4KG MV",
+        "quantitaRichiesta": 1,
+        "quantitaEffettiva": 0,
+        "uom": "kg"
+      },
+      {
+        "nome": "GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM",
+        "quantitaRichiesta": 1,
+        "quantitaEffettiva": 0,
+        "uom": "kg"
+      }
+    ],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-04 14:43:14",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-04 14:43:14",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34251",
+    "cliente": "lick n'love GmbH - Gelateria Artigianale, La Piazzetta (CONSEGNA)",
+    "dataPrevisita": "2025-11-03 21:00:00",
+    "salesOrder": "S34262",
+    "outCompletato": "WH/OUT/34218",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Alexandru Dominte",
+        "data": "2025-11-03 12:11:46",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nNon lo vuole",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Alexandru Dominte",
+        "data": "2025-11-03 12:11:46",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nNon lo vuole",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34228",
+    "cliente": "DGD Gastro GmbH, KEK Restaurant Küsnacht C/o DGD GastroGmbH (Consegna)",
+    "dataPrevisita": "2025-11-03 21:00:00",
+    "salesOrder": "S34265",
+    "outCompletato": "WH/OUT/34212",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-03 08:26:54",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-03 08:26:54",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34247",
+    "cliente": "Emme Food GmbH, Emme l'Italia che ami",
+    "dataPrevisita": "2025-11-03 19:00:00",
+    "salesOrder": "S34247",
+    "outCompletato": "WH/OUT/34221",
+    "prodottiNonScaricati": [
+      {
+        "nome": "FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB",
+        "quantitaRichiesta": 10,
+        "quantitaEffettiva": 0,
+        "uom": "kg"
+      }
+    ],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-03 11:20:16",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-03 11:20:16",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34249",
+    "cliente": "TERZOANGOLO GMBH, CON GUSTO PIZZERIA (CONSEGNA)",
+    "dataPrevisita": "2025-11-03 09:00:00",
+    "salesOrder": "S34261",
+    "outCompletato": "WH/OUT/34209",
+    "prodottiNonScaricati": [
+      {
+        "nome": "FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB",
+        "quantitaRichiesta": 4,
+        "quantitaEffettiva": 0,
+        "uom": "kg"
+      },
+      {
+        "nome": "SCHALE KRAFT CIOTOLA/PE 1000ML MARRONE 173X120X75MM  300PZ A CRT PACO*",
+        "quantitaRichiesta": 1,
+        "quantitaEffettiva": 0,
+        "uom": "CRTc"
+      },
+      {
+        "nome": "DECKEL KRAFT COPERCHIO PER CIOTOLA PLA MARRONE 300PZ A CRT PACO",
+        "quantitaRichiesta": 1,
+        "quantitaEffettiva": 0,
+        "uom": "CRTc"
+      }
+    ],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-03 11:38:10",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-11-03 11:38:10",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34227",
+    "cliente": "aMA PASTICCERIA AG, aMA Pasticceria AG (CONSEGNA)",
+    "dataPrevisita": "2025-11-03 08:00:00",
+    "salesOrder": "S34259",
+    "outCompletato": "WH/OUT/34220",
+    "prodottiNonScaricati": [
+      {
+        "nome": "SCATOLA PORTA TORTA 27X27X7H VERNICIATA BIANCA 50 PZ CRT CAR",
+        "quantitaRichiesta": 50,
+        "quantitaEffettiva": 0,
+        "uom": "PZ"
+      },
+      {
+        "nome": "VASSOIO CLASS ORO 3EUR/4 ITA 18X26 10 KG CRT CAR",
+        "quantitaRichiesta": 10,
+        "quantitaEffettiva": 0,
+        "uom": "kg"
+      },
+      {
+        "nome": "RUSTICO LECCESE PICCOLO 165G PZ 35PZ CRT CAT",
+        "quantitaRichiesta": 2,
+        "quantitaEffettiva": 0,
+        "uom": "CRT"
+      }
+    ],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Alexandru Dominte",
+        "data": "2025-11-03 08:14:52",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nOrdine zbagliato e piu piccola",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Alexandru Dominte",
+        "data": "2025-11-03 08:14:52",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nOrdine zbagliato e piu piccola",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34201",
+    "cliente": "Sasà Gastro GmbH, PEPPINO BADEN (consegna)",
+    "dataPrevisita": "2025-11-01 21:00:00",
+    "salesOrder": "S34228",
+    "outCompletato": "WH/OUT/34179",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-11-01 13:24:55",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nDietro",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-11-01 13:24:55",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nDietro",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34199",
+    "cliente": "Sasà Gastro GmbH, PEPPINO BADEN (consegna)",
+    "dataPrevisita": "2025-11-01 21:00:00",
+    "salesOrder": "S34227",
+    "outCompletato": "WH/OUT/34178",
+    "prodottiNonScaricati": [
+      {
+        "nome": "GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM",
+        "quantitaRichiesta": 2,
+        "quantitaEffettiva": 0,
+        "uom": "kg"
+      }
+    ],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-11-01 11:33:29",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nDietro",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-11-01 11:33:29",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nDietro",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34196",
+    "cliente": "Etna Bar KLG, Etna Pasticceria - Tavola calda (Consegna)",
+    "dataPrevisita": "2025-11-01 21:00:00",
+    "salesOrder": "S34200",
+    "outCompletato": "WH/OUT/34180",
+    "prodottiNonScaricati": [
+      {
+        "nome": "ARANCIO A FILETTI CANDITA 6X6 KG 5 MIO",
+        "quantitaRichiesta": 5,
+        "quantitaEffettiva": 0,
+        "uom": "kg"
+      }
+    ],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Alexandru Dominte",
+        "data": "2025-11-01 10:11:37",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nOrdine zbagliato",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Alexandru Dominte",
+        "data": "2025-11-01 10:11:37",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nOrdine zbagliato",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34194",
+    "cliente": "Gasthof Engel Mekhrishvili, Gasthof Engel Mekhrishvili (Consegna)",
+    "dataPrevisita": "2025-11-01 21:00:00",
+    "salesOrder": "S34224",
+    "outCompletato": "WH/OUT/34175",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-11-01 09:26:13",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nChamtely",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-11-01 09:26:13",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nChamtely",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34145",
+    "cliente": "Caterina Gastro Group AG, Caterina (CONSEGNA)",
+    "dataPrevisita": "2025-10-31 20:00:00",
+    "salesOrder": "S34175",
+    "outCompletato": "WH/OUT/34127",
+    "prodottiNonScaricati": [
+      {
+        "nome": "GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM",
+        "quantitaRichiesta": 1,
+        "quantitaEffettiva": 0,
+        "uom": "kg"
+      },
+      {
+        "nome": "FARINA 00 VERACE SACCO CONF 25KG MEY",
+        "quantitaRichiesta": 1,
+        "quantitaEffettiva": 0,
+        "uom": "PZ"
+      },
+      {
+        "nome": "FINOCCHIONA IGP A META SV CA 1.5KG BG",
+        "quantitaRichiesta": 1,
+        "quantitaEffettiva": 0,
+        "uom": "kg"
+      },
+      {
+        "nome": "CANDEGGINA PROFUMATA 2LT 8PZ CRT MUS",
+        "quantitaRichiesta": 1,
+        "quantitaEffettiva": 0,
+        "uom": "PZ"
+      }
+    ],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-10-31 09:24:51",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nScaduto",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-10-31 09:24:51",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nScaduto",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34149",
+    "cliente": "Rössli Ristorante la Perla, Inh. Cricri, La Perla Ristorante (consegna)",
+    "dataPrevisita": "2025-10-31 13:00:00",
+    "salesOrder": "S34072",
+    "outCompletato": "WH/OUT/34007",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Alexandru Dominte",
+        "data": "2025-10-31 11:04:17",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nMi manca il prodoto",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      },
+      {
+        "autore": "LAPA - finest italian food GmbH, Alexandru Dominte",
+        "data": "2025-10-31 11:02:19",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nManca il prodoto",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Alexandru Dominte",
+        "data": "2025-10-31 11:04:17",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nMi manca il prodoto",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      },
+      {
+        "autore": "LAPA - finest italian food GmbH, Alexandru Dominte",
+        "data": "2025-10-31 11:02:19",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nManca il prodoto",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34108",
+    "cliente": "NAPULE AG LACHEN, Napule Lachen",
+    "dataPrevisita": "2025-10-30 18:00:00",
+    "salesOrder": "S34146",
+    "outCompletato": "WH/OUT/34081",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-10-30 11:50:50",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nManca",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-10-30 11:50:50",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nManca",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34098",
+    "cliente": "DGD Gastro GmbH, KEK Restaurant Küsnacht C/o DGD GastroGmbH (Consegna)",
+    "dataPrevisita": "2025-10-30 18:00:00",
+    "salesOrder": "S34043",
+    "outCompletato": "WH/OUT/33972",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-10-30 09:03:50",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nMancante",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Stefan Cosmin Rusu",
+        "data": "2025-10-30 09:03:50",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n📝 **Nota:**\nMancante",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  },
+  {
+    "numeroOrdineResiduo": "WH/OUT/34005",
+    "cliente": "WinCoGast GmbH, RESTAURANT CONCORDIA (CONSEGNA)",
+    "dataPrevisita": "2025-10-28 20:00:00",
+    "salesOrder": "S34009",
+    "outCompletato": "WH/OUT/33932",
+    "prodottiNonScaricati": [],
+    "messaggiScaricoParziale": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-10-28 12:52:49",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      },
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-10-28 12:51:15",
+        "subject": "",
+        "messaggio": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "tipo": "comment",
+        "allegati": [],
+        "hasAudio": false
+      }
+    ],
+    "haScarichiParziali": true,
+    "analisiAllegati": [
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-10-28 12:52:49",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      },
+      {
+        "autore": "LAPA - finest italian food GmbH, Zamfir Traian Liviu",
+        "data": "2025-10-28 12:51:15",
+        "testoOriginale": "⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista\n\n🎤 **Audio registrato** (vedi allegato)",
+        "allegati": [],
+        "riassuntoAI": "❌ Impossibile analizzare: API key expired. Please renew the API key."
+      }
+    ]
+  }
+]

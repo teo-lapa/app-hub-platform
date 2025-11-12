@@ -1,10 +1,33 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Select-Object -First 1)",
-      "Bash(git merge:*)",
-      "Bash(npx vercel --prod --token=$VERCEL_TOKEN --yes)",
-      "Bash(npx vercel --prod --yes)"
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(timeout 3 bash:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c taskkill /PID 13548 /F)",
+      "Bash(npx vercel logs:*)",
+      "Bash(npx vercel:*)",
+      "Bash(git restore:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(tasklist:*)",
+      "Bash(timeout 90 bash -c:*)",
+      "Bash(powershell -Command:*)",
+      "Read(//c/Users/lapa/Downloads/sorrentino/**)",
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(xargs -I {} sh -c 'echo \"\"\"\"=== {} ===\"\"\"\" && head -20 \"\"\"\"{}\"\"\"\"')",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node -c:*)",
+      "Bash(timeout 30 bash -c \"npx vercel ls --scope lapa-app 2>&1 | head -20\":*)",
+      "Bash(timeout 30 bash:*)",
+      "Bash(timeout 120 bash:*)",
+      "Bash(git revert:*)",
+      "Bash(git merge:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,53 @@
+﻿ID Template,Codice,Nome Prodotto,Categoria,UoM Vendita,UoM Acquisto,Ha Imballaggio?,N° Imballaggi,Costo,Prezzo Vendita,Prezzo Fornitore,Valuta Fornitore,Imposte Vendita,Imposte Acquisto,Attivo,PROBLEMI,Azioni Necessarie
+24334,01422,Pinsa Romana Di Marco Precotta 19x30cm 8x230g crt GROM,Secco / Cereali / Panificati,PZ*,PZ*,SÌ,1,0.11,0.22,1.92,EUR,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO,DA SISTEMARE
+24331,70121,Prosciutto Cotto Ghiotto Oro Intero - Qualità Superior GROM,Frigo / Salumi / Cotti,kg,kg,NO,0,16.05,32.10,6.05,EUR,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO,DA SISTEMARE
+24333,21967,Prosciutto Crudo di Parma DOP Stagionato S/O 16/18 mesi GROM,Frigo / Salumi / Stagionati,kg,kg,NO,0,24.30,48.60,14.3,EUR,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO,DA SISTEMARE
+24332,50450,Prosciutto Crudo di Parma DOP stagionato 24 mesi Disossato Addobbo GROM,Frigo / Salumi / Stagionati,kg,kg,NO,0,25.96,51.92,15.96,EUR,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO,DA SISTEMARE
+24277,032124,Spugna Fibra Grossa ZIF - Confezione 50 pezzi,Non Food / Detergenza,PZ,PZ,NO,0,0.32,0.64,0.33,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24276,032123,Spugna in Acciaio Zincata 40g - Confezione 25 pezzi,Non Food / Detergenza,PZ,PZ,NO,0,0.44,0.88,0.45,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24251,32125,Panno in Microfibra Professionale Blu 32x32cm,Non Food / Detergenza,PZ*,PZ*,NO,0,0.97,1.94,1,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR,DA SISTEMARE
+24254,032121,Manico in Metallo Plastificato 130cm ZIF,Non Food / Attrezzature,PZ,PZ,NO,0,1.00,2.00,1.03,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24279,032120,Scopa Professionale Croma Rosso/Nero con Sistema ZIF,Non Food / Detergenza,PZ,PZ,NO,0,1.26,2.52,1.3,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24269,33947,Candeggina Classica Profumata 2L - Confezione 8 pezzi,Non Food / Detergenza,PZ,PZ,NO,0,1.65,2.55,1.7,CHF,SÌ,SÌ,NO,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24286,NO-CODE,Candeggina Classica Profumata 2L - Confezione 8 pezzi,Non Food / Detergenza,PZ*,PZ*,NO,0,1.64,3.28,1.7,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR,DA SISTEMARE
+24274,032323,Alzaimmondizia in Plastica Ecologica ZIF,Non Food / Detergenza,PZ,PZ,NO,0,1.84,2.85,1.9,CHF,SÌ,SÌ,NO,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24281,NO-CODE,Alzaimmondizia in Plastica Ecologica ZIF,Non Food / Detergenza,PZ*,PZ*,NO,0,1.84,3.68,1.9,EUR,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO,DA SISTEMARE
+24270,11576,Bomboletta Spray Antipolvere per Mobili in Legno 400ml,Non Food / Detergenza,PZ,PZ,NO,0,2.24,3.46,2.31,CHF,SÌ,SÌ,NO,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24278,032133,Secchio rettangolare con strizzatore professionale 12L,Non Food / Detergenza,PZ,PZ,NO,0,2.56,5.12,2.64,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24266,70114,Detergente Igienizzante Multigen Efficace 750ml,Non Food / Detergenza,PZ,PZ,NO,0,2.88,5.76,2.97,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24247,31128,Ricambio Mop Sintetico per Pulizia Pavimenti,Non Food / Detergenza,PZ,PZ,NO,0,3.05,6.10,3.14,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24258,26425,Guanti in Nitrile Reflexx Monouso Neri Taglia M - Confezione 100pz,Non Food / Attrezzature,PZ,PZ,NO,0,4.17,8.34,4.29,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24256,50004,Pellicola Film Trasparente per Alimenti 300m x 9cm - Champagne,Non Food / Attrezzature,PZ,PZ,NO,0,4.85,9.70,5,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24249,11563,Puligen Disincrostante Professionale 1L,Non Food / Detergenza,PZ,PZ,NO,0,5.33,10.66,5.5,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24250,411024,Carta Multiuso Poliunto X2 Gromas - Rotolo 800 Strappi,Non Food / Detergenza,PZ,PZ,NO,0,6.35,9.83,6.55,CHF,SÌ,SÌ,NO,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24287,NO-CODE,Carta Multiuso Poliunto X2 Gromas - Rotolo 800 Strappi,Non Food / Detergenza,CRTc,CRTc,NO,0,6.35,12.70,6.55,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | AGGIUNGI_PACKAGING,DA SISTEMARE
+24272,31828,Ammorbidente Muschio Bianco - Tanica 5kg (Confezione 4 pezzi),Non Food / Detergenza,PZ,PZ,NO,0,7.47,11.55,7.7,CHF,SÌ,SÌ,NO,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24282,NO-CODE,Ammorbidente Muschio Bianco - Tanica 5kg (Confezione 4 pezzi),Non Food / Detergenza,PZ*4,CRTc,NO,0,1.87,3.74,7.7,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | AGGIUNGI_PACKAGING,DA SISTEMARE
+24257,270424,Detergente multiuso EQO per vetri e superfici multiple - 750ml (confezione 6 pezzi),Non Food / Detergenza,PZ,PZ,NO,0,1.55,3.10,9.3,EUR,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VERIFICA_UOM,DA SISTEMARE
+24244,070822,Sac à poche monouso trasparente 55x27cm - Confezione 100pz,Non Food / Attrezzature,PZ,PZ,NO,0,9.13,18.26,9.41,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24259,270422,EQO Sgrassatore Limone Spray 750ml - Confezione 6 pezzi,Non Food / Detergenza,CONF6,CONF6,NO,0,9.60,19.20,9.9,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | AGGIUNGI_PACKAGING,DA SISTEMARE
+24255,51105,Lavatrice Muschio Bianco 5kg Professional,Non Food / Detergenza,PZ,PZ,NO,0,10.67,21.34,11,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24265,270423,EQO Detergente Anticalcare per Bagno 750ml - Confezione 6 pezzi,Non Food / Detergenza / Prodotti per il bagno,PZ,PZ,NO,0,10.88,21.76,11.22,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24246,50000,Rotolo Alluminio Professionale 300mm x 1300g,Non Food,PZ,PZ,NO,0,11.20,22.40,11.55,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24262,270425,Detersivo per Lavastoviglie EQO Professional Tanica 5.5 kg (Confezione 2 pezzi),Non Food / Detergenza,PZ,PZ,NO,0,12.71,25.42,13.1,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24267,50008,Asciugamani di Carta Piegati Ecolabel - Euro Fold 21x21cm,Non Food / Detergenza,PZ,PZ,NO,0,12.80,18.50,13.2,CHF,SÌ,SÌ,NO,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24283,NO-CODE,Asciugamani di Carta Piegati Ecolabel - Euro Fold 21x21cm,Non Food / Detergenza,CRTc,CRTc,NO,0,12.80,25.60,13.2,EUR,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | AGGIUNGI_PACKAGING,DA SISTEMARE
+24264,270426,Brillantante EQO Professional per Lavastoviglie - Tanica 5kg (Conf. 2pz),Non Food / Detergenza,PZ,PZ,NO,0,14.63,21.11,15.08,CHF,SÌ,SÌ,NO,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24285,NO-CODE,Brillantante EQO Professional per Lavastoviglie - Tanica 5kg (Conf. 2pz),Non Food / Detergenza,PZ*2,CRTc,NO,0,7.31,14.62,15.08,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | AGGIUNGI_PACKAGING,DA SISTEMARE
+24261,270421,Detergente Pavimenti EQO Arancia-Limone 5kg,Non Food / Detergenza,PZ*,PZ*,NO,0,15.36,30.72,15.84,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR,DA SISTEMARE
+24260,270420,Detersivo per Piatti EQO Profumazione Tan - Tanica 5kg,Non Food / Detergenza,PZ*,PZ*,NO,0,17.46,34.92,18,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR,DA SISTEMARE
+24253,09632,"NEOFORT RAPIDO Detergente Professionale 0,75L - Confezione 6 pezzi + 1 spruzzino",Non Food / Detergenza,PZ,CRT,NO,0,2.92,35.04,18.06,EUR,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | AGGIUNGI_PACKAGING,DA SISTEMARE
+24248,09731,PULIVAT Detergente Professionale - Confezione 6 Flaconi da 750ml,Non Food / Detergenza,CONF6,CONF6,NO,0,17.93,35.86,18.48,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | AGGIUNGI_PACKAGING,DA SISTEMARE
+24242,96855,Sacchetti in Carta Bianca 14x30cm - Confezione 1000pz,Non Food / Attrezzature,PZ,PZ,NO,0,18.67,37.34,19.25,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24273,09733,UNI5 Sapone Mani con Igienizzante - Tanica 5kg (Confezione 4 pezzi),Non Food / Detergenza,PZ,PZ,NO,0,18.96,37.92,19.55,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24271,39726,ARGONIT AF/2 Disinfettante Professionale 750ml - Confezione 6 pezzi,Non Food / Detergenza,PZ,PZ,NO,0,19.21,27.72,19.8,CHF,SÌ,SÌ,NO,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24280,NO-CODE,ARGONIT AF/2 Disinfettante Professionale 750ml - Confezione 6 pezzi,Non Food / Detergenza,PZ*6,CRTc,NO,0,3.20,6.40,19.8,EUR,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | AGGIUNGI_PACKAGING,DA SISTEMARE
+24263,54114,UNI5 Piatti Interfoliati 5 kg - Confezione 4 pezzi,Non Food / Attrezzature,PZ*,PZ*,NO,0,21.24,42.48,21.9,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR,DA SISTEMARE
+24268,71005,Carta da forno professionale in fogli 40x60cm - Conf. 5kg,Non Food / Attrezzature,PZ,PZ,NO,0,22.94,34.29,23.65,CHF,SÌ,SÌ,NO,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24288,NO-CODE,Carta da forno professionale in fogli 40x60cm - Conf. 5kg,Non Food / Attrezzature,CRTc,CRTc,NO,0,22.94,45.88,23.65,EUR,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | AGGIUNGI_PACKAGING,DA SISTEMARE
+24252,90114,UNI5 Disincrostante Professionale per Lavastoviglie 5kg (2 pezzi),Non Food / Detergenza,PZ,PZ,NO,0,26.09,52.18,26.9,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24284,NO-CODE,Bomboletta Spray Antipolvere per Mobili in Legno 400ml,Non Food / Detergenza,PZ12*,CRTc,NO,0,2.24,4.48,27.72,EUR,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | AGGIUNGI_PACKAGING,DA SISTEMARE
+24243,159988,Sacchi Bio per Pattumiera 72x110cm - Grigio - 30gr,Non Food / Attrezzature,PZ,PZ,NO,0,29.77,59.54,30.69,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24275,53114,Detergente Lavabar Gel Syner Tecno - Confezione 2x6kg,Non Food / Detergenza,PZ,PZ,NO,0,30.94,61.88,31.9,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24245,50119,Rotolo Pellicola Alimentare Champagne 45cm x 1200m,Non Food / Attrezzature,PZ,PZ,NO,0,31.91,63.82,32.9,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE
+24241,03040,Tovaglietta monouso in carta avana 30x40cm - Confezione 500 pezzi,Non Food / Attrezzature,PZ,PZ,NO,0,45.40,90.80,46.8,CHF,SÌ,SÌ,SÌ,RIMUOVI_IMPOSTE_ACQUISTO | VALUTA_CHF->EUR | VERIFICA_UOM,DA SISTEMARE

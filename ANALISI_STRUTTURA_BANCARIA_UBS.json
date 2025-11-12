@@ -1,0 +1,1433 @@
+{
+  "timestamp": "2025-11-11T05:27:16.284Z",
+  "database": "lapadevadmin-lapa-v2-staging-2406-25408900",
+  "uid": 7,
+  "analisi": {
+    "giornali_bancari": [
+      {
+        "id": 9,
+        "name": "UBS CHF 701J",
+        "code": "BNK1",
+        "type": "bank",
+        "bank_account_id": [
+          6,
+          "CH02 0027 8278 1220 8701 J - UBS"
+        ],
+        "bank_id": [
+          3,
+          "UBS - BSWCHZH80A"
+        ],
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          176,
+          "1024 UBS-CHF, 278-122087.01J"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 53,
+        "name": "Bank",
+        "code": "BNK1",
+        "type": "bank",
+        "bank_account_id": [
+          595,
+          "CH66 0027 8278 1335 5760 Q - UBS ITAEMPIRE EUR"
+        ],
+        "bank_id": [
+          16,
+          "UBS ITAEMPIRE EUR - UBSWCHZH80A"
+        ],
+        "currency_id": [
+          1,
+          "EUR"
+        ],
+        "company_id": [
+          6,
+          "ItaEmpire S.r.l."
+        ],
+        "default_account_id": [
+          1146,
+          "182004 Bank"
+        ],
+        "suspense_account_id": [
+          1140,
+          "182001 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 20,
+        "name": "5565 CARTA CREDITO EUR LAURA",
+        "code": "BNK10",
+        "type": "bank",
+        "bank_account_id": [
+          16,
+          "4857458008028280 - UBS"
+        ],
+        "bank_id": [
+          3,
+          "UBS - BSWCHZH80A"
+        ],
+        "currency_id": [
+          1,
+          "EUR"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          190,
+          "10213 CRT. CREDIT UBS LAURA 8280"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 21,
+        "name": "0280 CARTA CREDITO CHF LAURA",
+        "code": "BNK11",
+        "type": "bank",
+        "bank_account_id": [
+          17,
+          "4857520004000280 - UBS"
+        ],
+        "bank_id": [
+          3,
+          "UBS - BSWCHZH80A"
+        ],
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          191,
+          "10214 CRT. CREDIT UBS LAURA 0280"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 22,
+        "name": "CARTA CREDITO UBS CHF NON USO",
+        "code": "BNK12",
+        "type": "bank",
+        "bank_account_id": [
+          18,
+          "4857520008435367 - UBS"
+        ],
+        "bank_id": [
+          3,
+          "UBS - BSWCHZH80A"
+        ],
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          192,
+          "10215 CRT. CREDIT UBS PAUL 5367"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 23,
+        "name": "0063 CARTA CREDITO EUR PAUL",
+        "code": "BNK13",
+        "type": "bank",
+        "bank_account_id": [
+          19,
+          "4857458006360063 - UBS"
+        ],
+        "bank_id": [
+          3,
+          "UBS - BSWCHZH80A"
+        ],
+        "currency_id": [
+          1,
+          "EUR"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          193,
+          "10216 CRT. CREDIT UBS PAUL 0063"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 57,
+        "name": "CARTA CREDITO UBS USD",
+        "code": "BNK16",
+        "type": "bank",
+        "bank_account_id": false,
+        "bank_id": false,
+        "currency_id": [
+          2,
+          "USD"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          1158,
+          "10222 CARTA CREDITO UBS USD (copia)"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 60,
+        "name": "1112 CARTA DEBITO CHF AUTISTI",
+        "code": "BNK17",
+        "type": "bank",
+        "bank_account_id": false,
+        "bank_id": false,
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          1165,
+          "10224 UBS, CHF COVID-KONTO"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 11,
+        "name": "UBS EUR 08760A",
+        "code": "BNK2",
+        "type": "bank",
+        "bank_account_id": [
+          7,
+          "CH25 0027 8278 1220 8760 A - UBS EUR"
+        ],
+        "bank_id": [
+          4,
+          "UBS EUR - UBSWCHZH80A"
+        ],
+        "currency_id": [
+          1,
+          "EUR"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          181,
+          "1025 EUR-UBS, 278-122087.60A"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 55,
+        "name": "QONTO Itaempire Italia EUR",
+        "code": "BNK2",
+        "type": "bank",
+        "bank_account_id": [
+          596,
+          "IT29 T360 9201 6005 6732 6415 137 - BANCA CONTO IT MILANO"
+        ],
+        "bank_id": [
+          17,
+          "BANCA CONTO IT MILANO - QNTOITM2XXX"
+        ],
+        "currency_id": false,
+        "company_id": [
+          6,
+          "ItaEmpire S.r.l."
+        ],
+        "default_account_id": [
+          1152,
+          "182005 IT29T3609201600567326415137"
+        ],
+        "suspense_account_id": [
+          1140,
+          "182001 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 12,
+        "name": "Credit Suisse SA 751000(da mettere tag extra)",
+        "code": "BNK3",
+        "type": "bank",
+        "bank_account_id": [
+          8,
+          "CH62 0483 5397 7497 5100 0 - CREDIT SUISSE"
+        ],
+        "bank_id": [
+          5,
+          "CREDIT SUISSE - CRESCHZZ80A"
+        ],
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          182,
+          "1026 CHF-CRS PRINCIPALE, 3977497-51"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Credit Suisse 0.1 751001",
+        "code": "BNK4",
+        "type": "bank",
+        "bank_account_id": [
+          9,
+          "CH35 0483 5397 7497 5100 1 - CREDIT SUISSE"
+        ],
+        "bank_id": [
+          5,
+          "CREDIT SUISSE - CRESCHZZ80A"
+        ],
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          183,
+          "1027 CH3504835397749751001"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 14,
+        "name": "8596 CARTA DEBITO CHF AUTISTI",
+        "code": "BNK5",
+        "type": "bank",
+        "bank_account_id": [
+          10,
+          "5574880670518596 - CREDIT SUISSE"
+        ],
+        "bank_id": [
+          5,
+          "CREDIT SUISSE - CRESCHZZ80A"
+        ],
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          184,
+          "1028 CRT. CS CHF AUTISTI 8596"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 15,
+        "name": "5820 CARTA DEBITO CHF AUTISTI",
+        "code": "BNK6",
+        "type": "bank",
+        "bank_account_id": [
+          11,
+          "5574880030845820 - CREDIT SUISSE"
+        ],
+        "bank_id": [
+          5,
+          "CREDIT SUISSE - CRESCHZZ80A"
+        ],
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          185,
+          "1029 CRT. CS CHF AUTISTI 5820"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 16,
+        "name": "2152 CARTA DEBITO CHF AUTISTI",
+        "code": "BNK7",
+        "type": "bank",
+        "bank_account_id": [
+          12,
+          "5574880760282152 - CREDIT SUISSE"
+        ],
+        "bank_id": [
+          5,
+          "CREDIT SUISSE - CRESCHZZ80A"
+        ],
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          186,
+          "10210 CRT. CS CHF AUTISTI 2152"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 17,
+        "name": "0084 CARTA DEBITO CHF AUTISTI",
+        "code": "BNK8",
+        "type": "bank",
+        "bank_account_id": [
+          13,
+          "5574880378030084 - CREDIT SUISSE"
+        ],
+        "bank_id": [
+          5,
+          "CREDIT SUISSE - CRESCHZZ80A"
+        ],
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          187,
+          "10211 CRT. CS CHF AUTISTI 1112"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 19,
+        "name": "1312 CARTA DEBITO CHF AUTISTI",
+        "code": "BNK9",
+        "type": "bank",
+        "bank_account_id": [
+          15,
+          "5574880557241312 - CREDIT SUISSE"
+        ],
+        "bank_id": [
+          5,
+          "CREDIT SUISSE - CRESCHZZ80A"
+        ],
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          189,
+          "10212 CRT. CS CHF AUTISTI 1312"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 6,
+        "name": "3587 CARTA DEBITO CHF VENDITORE(COSIMO)",
+        "code": "BNKS",
+        "type": "bank",
+        "bank_account_id": [
+          447,
+          "557488xxxxxx3587 - CREDIT SUISSE"
+        ],
+        "bank_id": [
+          5,
+          "CREDIT SUISSE - CRESCHZZ80A"
+        ],
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          209,
+          "10220 CRT. CS VENDITORI 3587"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 27,
+        "name": "1475 CARTA DEBITO CHF VENDITORE (MARCO)",
+        "code": "BNKS1",
+        "type": "bank",
+        "bank_account_id": [
+          585,
+          "5574880747101475 - CREDIT SUISSE"
+        ],
+        "bank_id": [
+          5,
+          "CREDIT SUISSE - CRESCHZZ80A"
+        ],
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          210,
+          "10230 USD-UBS, 278-122087.61V "
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 59,
+        "name": "4338 CARTA DEBITO CHF VENDITORE (ALESSANDRO)",
+        "code": "BNKS2",
+        "type": "bank",
+        "bank_account_id": false,
+        "bank_id": false,
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          1164,
+          "5574880538714338 4338 CARTA VENDITORE ALESSANDRO (annullata)"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 26,
+        "name": "CARBONARIUM PAYMENT",
+        "code": "CARBP",
+        "type": "bank",
+        "bank_account_id": false,
+        "bank_id": false,
+        "currency_id": false,
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "default_account_id": [
+          196,
+          "10219 CARBONARIUM PAYMENT"
+        ],
+        "suspense_account_id": [
+          170,
+          "1021 Bank Suspense Account"
+        ]
+      },
+      {
+        "id": 54,
+        "name": "Salaries",
+        "code": "SLR",
+        "type": "bank",
+        "bank_account_id": false,
+        "bank_id": false,
+        "currency_id": false,
+        "company_id": [
+          6,
+          "ItaEmpire S.r.l."
+        ],
+        "default_account_id": [
+          1152,
+          "182005 IT29T3609201600567326415137"
+        ],
+        "suspense_account_id": [
+          1140,
+          "182001 Bank Suspense Account"
+        ]
+      }
+    ],
+    "account_bank_statement_fields": {
+      "name": {
+        "readonly": false,
+        "required": false,
+        "string": "Reference",
+        "type": "char"
+      },
+      "date": {
+        "readonly": true,
+        "required": false,
+        "string": "Date",
+        "type": "date"
+      },
+      "balance_start": {
+        "readonly": false,
+        "required": false,
+        "string": "Starting Balance",
+        "type": "monetary"
+      },
+      "balance_end_real": {
+        "readonly": false,
+        "required": false,
+        "string": "Ending Balance",
+        "type": "monetary"
+      },
+      "journal_id": {
+        "readonly": true,
+        "relation": "account.journal",
+        "required": false,
+        "string": "Journal",
+        "type": "many2one"
+      },
+      "company_id": {
+        "help": "Company related to this journal",
+        "readonly": true,
+        "relation": "res.company",
+        "required": false,
+        "string": "Company",
+        "type": "many2one"
+      },
+      "line_ids": {
+        "readonly": false,
+        "relation": "account.bank.statement.line",
+        "required": true,
+        "string": "Statement lines",
+        "type": "one2many"
+      },
+      "currency_id": {
+        "readonly": true,
+        "relation": "res.currency",
+        "required": false,
+        "string": "Currency",
+        "type": "many2one"
+      },
+      "is_complete": {
+        "readonly": true,
+        "required": false,
+        "string": "Is Complete",
+        "type": "boolean"
+      },
+      "is_valid": {
+        "readonly": true,
+        "required": false,
+        "string": "Is Valid",
+        "type": "boolean"
+      }
+    },
+    "account_bank_statement_line_fields": {
+      "date": {
+        "readonly": false,
+        "required": true,
+        "string": "Date",
+        "type": "date"
+      },
+      "payment_ref": {
+        "readonly": false,
+        "required": false,
+        "string": "Label",
+        "type": "char"
+      },
+      "ref": {
+        "readonly": false,
+        "required": false,
+        "string": "Reference",
+        "type": "char"
+      },
+      "partner_id": {
+        "readonly": false,
+        "relation": "res.partner",
+        "required": false,
+        "string": "Partner",
+        "type": "many2one"
+      },
+      "amount": {
+        "readonly": false,
+        "required": false,
+        "string": "Amount",
+        "type": "monetary"
+      },
+      "foreign_currency_id": {
+        "help": "The optional other currency if it is a multi-currency entry.",
+        "readonly": false,
+        "relation": "res.currency",
+        "required": false,
+        "string": "Foreign Currency",
+        "type": "many2one"
+      },
+      "amount_currency": {
+        "help": "The amount expressed in an optional other currency if it is a multi-currency entry.",
+        "readonly": false,
+        "required": false,
+        "string": "Amount in Currency",
+        "type": "monetary"
+      },
+      "statement_id": {
+        "readonly": false,
+        "relation": "account.bank.statement",
+        "required": false,
+        "string": "Statement",
+        "type": "many2one"
+      },
+      "journal_id": {
+        "readonly": false,
+        "relation": "account.journal",
+        "required": true,
+        "string": "Journal",
+        "type": "many2one"
+      },
+      "move_id": {
+        "readonly": true,
+        "relation": "account.move",
+        "required": true,
+        "string": "Journal Entry",
+        "type": "many2one"
+      },
+      "company_id": {
+        "readonly": false,
+        "relation": "res.company",
+        "required": false,
+        "string": "Company",
+        "type": "many2one"
+      },
+      "currency_id": {
+        "readonly": true,
+        "relation": "res.currency",
+        "required": false,
+        "string": "Journal Currency",
+        "type": "many2one"
+      },
+      "account_number": {
+        "readonly": false,
+        "required": false,
+        "string": "Bank Account Number",
+        "type": "char"
+      },
+      "partner_name": {
+        "readonly": false,
+        "required": false,
+        "string": "Partner Name",
+        "type": "char"
+      },
+      "transaction_type": {
+        "readonly": false,
+        "required": false,
+        "string": "Transaction Type",
+        "type": "char"
+      },
+      "narration": {
+        "readonly": false,
+        "required": false,
+        "string": "Terms and Conditions",
+        "type": "html"
+      },
+      "running_balance": {
+        "readonly": true,
+        "required": false,
+        "string": "Running Balance",
+        "type": "monetary"
+      },
+      "is_reconciled": {
+        "readonly": true,
+        "required": false,
+        "string": "Is Reconciled",
+        "type": "boolean"
+      },
+      "to_check": {
+        "help": "If this checkbox is ticked, it means that the user was not sure of all the related information at the time of the creation of the move and that the move needs to be checked again.",
+        "readonly": false,
+        "required": false,
+        "string": "To Check",
+        "type": "boolean"
+      }
+    },
+    "estratti_conto_esempio": [
+      {
+        "id": 128,
+        "name": false,
+        "date": false,
+        "balance_start": 0,
+        "balance_end_real": 0,
+        "journal_id": false,
+        "company_id": false
+      },
+      {
+        "id": 133,
+        "name": false,
+        "date": false,
+        "balance_start": -17505.41,
+        "balance_end_real": -127046.82,
+        "journal_id": false,
+        "company_id": false
+      },
+      {
+        "id": 30,
+        "name": false,
+        "date": false,
+        "balance_start": 0,
+        "balance_end_real": 0,
+        "journal_id": false,
+        "company_id": false
+      },
+      {
+        "id": 16,
+        "name": false,
+        "date": false,
+        "balance_start": -2717.86,
+        "balance_end_real": -5435.72,
+        "journal_id": false,
+        "company_id": false
+      },
+      {
+        "id": 18,
+        "name": false,
+        "date": false,
+        "balance_start": 0,
+        "balance_end_real": -2717.86,
+        "journal_id": false,
+        "company_id": false
+      },
+      {
+        "id": 151,
+        "name": false,
+        "date": false,
+        "balance_start": 19975.19,
+        "balance_end_real": -980024.81,
+        "journal_id": false,
+        "company_id": false
+      },
+      {
+        "id": 25,
+        "name": false,
+        "date": false,
+        "balance_start": -5435.72,
+        "balance_end_real": -8153.58,
+        "journal_id": false,
+        "company_id": false
+      },
+      {
+        "id": 22,
+        "name": false,
+        "date": false,
+        "balance_start": -2717.86,
+        "balance_end_real": -5435.72,
+        "journal_id": false,
+        "company_id": false
+      },
+      {
+        "id": 20,
+        "name": false,
+        "date": false,
+        "balance_start": 0,
+        "balance_end_real": -2717.86,
+        "journal_id": false,
+        "company_id": false
+      },
+      {
+        "id": 38,
+        "name": false,
+        "date": false,
+        "balance_start": 0,
+        "balance_end_real": -5688.38,
+        "journal_id": false,
+        "company_id": false
+      }
+    ],
+    "righe_movimento_esempio": [
+      {
+        "id": 65787,
+        "date": "2025-11-11",
+        "payment_ref": "INV/2025/02622",
+        "partner_id": [
+          900,
+          "EMMA'S CAFE' GMBH"
+        ],
+        "amount": 401.94,
+        "statement_id": false,
+        "journal_id": [
+          8,
+          "Cash"
+        ],
+        "is_reconciled": true
+      },
+      {
+        "id": 65786,
+        "date": "2025-11-11",
+        "payment_ref": "INV/2025/02807",
+        "partner_id": [
+          7730,
+          "M. & S. Gastro GmbH"
+        ],
+        "amount": 146.42,
+        "statement_id": false,
+        "journal_id": [
+          8,
+          "Cash"
+        ],
+        "is_reconciled": true
+      },
+      {
+        "id": 65917,
+        "date": "2025-11-07",
+        "payment_ref": "Covabaga GmbH;Kirchgasse 32; CH/Lenzburg 5600 Gutschrift Zahlung INV/2025/02423",
+        "partner_id": [
+          9457,
+          "Covabaga GmbH"
+        ],
+        "amount": 4987.21,
+        "statement_id": [
+          1075,
+          "Import da Task: UBS CHF 7.11.2025"
+        ],
+        "journal_id": [
+          9,
+          "UBS CHF 701J"
+        ],
+        "is_reconciled": true
+      },
+      {
+        "id": 65916,
+        "date": "2025-11-07",
+        "payment_ref": "Napule AG;Alte Landstrasse 94; CH/Zollikon 8702 Gutschrift Zahlung 30.09.2025 INV/2025/02433",
+        "partner_id": [
+          9145,
+          "NAPULE AG EFFRETIKON (PRODUZIONE/SCUOLA)"
+        ],
+        "amount": 4345.03,
+        "statement_id": [
+          1075,
+          "Import da Task: UBS CHF 7.11.2025"
+        ],
+        "journal_id": [
+          9,
+          "UBS CHF 701J"
+        ],
+        "is_reconciled": true
+      },
+      {
+        "id": 65915,
+        "date": "2025-11-07",
+        "payment_ref": "Napule AG;Alte Landstrasse 94; CH/Zollikon 8702 Gutschrift Zahlung 30.09.2025 INV/2025/02507",
+        "partner_id": [
+          999,
+          "NAPULE AG ZOLLIKON"
+        ],
+        "amount": 3268.28,
+        "statement_id": [
+          1075,
+          "Import da Task: UBS CHF 7.11.2025"
+        ],
+        "journal_id": [
+          9,
+          "UBS CHF 701J"
+        ],
+        "is_reconciled": true
+      },
+      {
+        "id": 65914,
+        "date": "2025-11-07",
+        "payment_ref": "Napule AG;Alte Landstrasse 94; CH/Zollikon 8702 Gutschrift Zahlung 30.09.2025 INV/2025/02505",
+        "partner_id": [
+          997,
+          "NAPULE AG MEILEN"
+        ],
+        "amount": 2036.14,
+        "statement_id": [
+          1075,
+          "Import da Task: UBS CHF 7.11.2025"
+        ],
+        "journal_id": [
+          9,
+          "UBS CHF 701J"
+        ],
+        "is_reconciled": true
+      },
+      {
+        "id": 65913,
+        "date": "2025-11-07",
+        "payment_ref": "Napule AG;Alte Landstrasse 94; CH/Zollikon 8702 Gutschrift Zahlung 30.09.2025 INV/2025/02504",
+        "partner_id": [
+          996,
+          "NAPULE AG JOSEFSTRASSE"
+        ],
+        "amount": 2028.61,
+        "statement_id": [
+          1075,
+          "Import da Task: UBS CHF 7.11.2025"
+        ],
+        "journal_id": [
+          9,
+          "UBS CHF 701J"
+        ],
+        "is_reconciled": true
+      },
+      {
+        "id": 65912,
+        "date": "2025-11-07",
+        "payment_ref": "Napule AG;Alte Landstrasse 94; CH/Zollikon 8702 Gutschrift Zahlung 30.09.2025 INV/2025/02506",
+        "partner_id": [
+          998,
+          "NAPULE AG NETSTAL"
+        ],
+        "amount": 1623.14,
+        "statement_id": [
+          1075,
+          "Import da Task: UBS CHF 7.11.2025"
+        ],
+        "journal_id": [
+          9,
+          "UBS CHF 701J"
+        ],
+        "is_reconciled": true
+      },
+      {
+        "id": 65911,
+        "date": "2025-11-07",
+        "payment_ref": "Napule AG;Alte Landstrasse 94; CH/Zollikon 8702 Gutschrift Zahlung 30.09.2025 INV/2025/02503",
+        "partner_id": [
+          5877,
+          "NAPULE AG DIETIKON"
+        ],
+        "amount": 1569.02,
+        "statement_id": [
+          1075,
+          "Import da Task: UBS CHF 7.11.2025"
+        ],
+        "journal_id": [
+          9,
+          "UBS CHF 701J"
+        ],
+        "is_reconciled": true
+      },
+      {
+        "id": 65910,
+        "date": "2025-11-07",
+        "payment_ref": "IYOKI GmbH;Seestrasse 93; CH/Uster 8610 Gutschrift Zahlung INV/2025/02726",
+        "partner_id": [
+          6150,
+          "IYOKI GmbH"
+        ],
+        "amount": 916.92,
+        "statement_id": [
+          1075,
+          "Import da Task: UBS CHF 7.11.2025"
+        ],
+        "journal_id": [
+          9,
+          "UBS CHF 701J"
+        ],
+        "is_reconciled": true
+      }
+    ],
+    "conti_bancari": [
+      {
+        "id": 175,
+        "code": "1001",
+        "name": "Cash",
+        "account_type": "asset_cash",
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 194,
+        "code": "10217",
+        "name": "4397430192950584",
+        "account_type": "asset_cash",
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 195,
+        "code": "10218",
+        "name": "17460916-0",
+        "account_type": "asset_cash",
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 196,
+        "code": "10219",
+        "name": "CARBONARIUM PAYMENT",
+        "account_type": "asset_cash",
+        "currency_id": false,
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 1158,
+        "code": "10222",
+        "name": "CARTA CREDITO UBS USD (copia)",
+        "account_type": "asset_cash",
+        "currency_id": [
+          2,
+          "USD"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 1163,
+        "code": "10223",
+        "name": "CRT. CS VENDITORE 4338",
+        "account_type": "asset_cash",
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 1165,
+        "code": "10224",
+        "name": "UBS, CHF COVID-KONTO",
+        "account_type": "asset_cash",
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 210,
+        "code": "10230",
+        "name": "USD-UBS, 278-122087.61V ",
+        "account_type": "asset_cash",
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 176,
+        "code": "1024",
+        "name": "UBS-CHF, 278-122087.01J",
+        "account_type": "asset_cash",
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 181,
+        "code": "1025",
+        "name": "EUR-UBS, 278-122087.60A",
+        "account_type": "asset_cash",
+        "currency_id": [
+          1,
+          "EUR"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 182,
+        "code": "1026",
+        "name": "CHF-CRS PRINCIPALE, 3977497-51",
+        "account_type": "asset_cash",
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 183,
+        "code": "1027",
+        "name": "CH3504835397749751001",
+        "account_type": "asset_cash",
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 1169,
+        "code": "1034",
+        "name": "UBS-CHF, 278-122087.02U",
+        "account_type": "asset_cash",
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 1156,
+        "code": "1038",
+        "name": "5574880670518596",
+        "account_type": "asset_cash",
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "company_id": [
+          1,
+          "LAPA - finest italian food GmbH"
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 1145,
+        "code": "180001",
+        "name": "Cash",
+        "account_type": "asset_cash",
+        "currency_id": [
+          1,
+          "EUR"
+        ],
+        "company_id": [
+          6,
+          "ItaEmpire S.r.l."
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 1146,
+        "code": "182004",
+        "name": "Bank",
+        "account_type": "asset_cash",
+        "currency_id": [
+          1,
+          "EUR"
+        ],
+        "company_id": [
+          6,
+          "ItaEmpire S.r.l."
+        ],
+        "reconcile": false
+      },
+      {
+        "id": 1152,
+        "code": "182005",
+        "name": "IT29T3609201600567326415137",
+        "account_type": "asset_cash",
+        "currency_id": false,
+        "company_id": [
+          6,
+          "ItaEmpire S.r.l."
+        ],
+        "reconcile": false
+      }
+    ],
+    "moduli_bancari": [
+      {
+        "id": 910,
+        "name": "account_bank_statement_import",
+        "shortdesc": "Account Bank Statement Import",
+        "summary": ""
+      },
+      {
+        "id": 814,
+        "name": "account_bank_statement_import_camt",
+        "shortdesc": "Import CAMT Bank Statement",
+        "summary": ""
+      },
+      {
+        "id": 821,
+        "name": "account_bank_statement_import_csv",
+        "shortdesc": "Import CSV Bank Statement",
+        "summary": ""
+      },
+      {
+        "id": 118,
+        "name": "account_bank_statement_import_ofx",
+        "shortdesc": "Import OFX Bank Statement",
+        "summary": ""
+      }
+    ],
+    "import_wizard": {
+      "error": "XML-RPC fault: L'oggetto account.bank.statement.import non esiste"
+    },
+    "aziende": [
+      {
+        "id": 6,
+        "name": "ItaEmpire S.r.l.",
+        "currency_id": [
+          1,
+          "EUR"
+        ],
+        "country_id": [
+          109,
+          "Italy"
+        ]
+      },
+      {
+        "id": 1,
+        "name": "LAPA - finest italian food GmbH",
+        "currency_id": [
+          5,
+          "CHF"
+        ],
+        "country_id": [
+          43,
+          "Switzerland"
+        ]
+      }
+    ],
+    "campi_obbligatori": {
+      "statement": [
+        {
+          "campo": "line_ids",
+          "tipo": "one2many",
+          "label": "Statement lines"
+        }
+      ],
+      "line": [
+        {
+          "campo": "date",
+          "tipo": "date",
+          "label": "Date"
+        },
+        {
+          "campo": "journal_id",
+          "tipo": "many2one",
+          "label": "Journal"
+        },
+        {
+          "campo": "move_id",
+          "tipo": "many2one",
+          "label": "Journal Entry"
+        }
+      ]
+    }
+  }
+}

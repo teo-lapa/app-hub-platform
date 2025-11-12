@@ -14,6 +14,7 @@ import { LotManager } from '@/components/inventario/LotManager';
 import { ProductList } from '@/components/inventario/ProductList';
 import { ProductEditModal } from '@/components/inventario/ProductEditModal';
 import { ConnectionStatus } from '@/components/inventario/ConnectionStatus';
+import { VerificationListModal } from '@/components/inventario/VerificationListModal';
 import { getInventoryClient } from '@/lib/odoo/inventoryClient';
 import { Location, Product, BasicProduct, AppState, InventoryConfig } from '@/lib/types/inventory';
 import toast from 'react-hot-toast';
@@ -61,6 +62,11 @@ export default function InventarioPage() {
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
 
+  // Stati per richieste di verifica
+  const [showVerificationList, setShowVerificationList] = useState(false);
+  const [verificationRequestsCount, setVerificationRequestsCount] = useState(0);
+  const [verificationRequests, setVerificationRequests] = useState<any[]>([]);
+
   // Form fields
   const [locationCode, setLocationCode] = useState('');
   const [lotNumber, setLotNumber] = useState('');
@@ -75,7 +81,23 @@ export default function InventarioPage() {
   useEffect(() => {
     setAppState(prev => ({ ...prev, currentUser: user }));
     checkConnection();
+    loadVerificationRequests();
   }, [user]);
+
+  // Carica richieste di verifica
+  const loadVerificationRequests = async () => {
+    try {
+      const response = await fetch('/api/verification-requests', { credentials: 'include' });
+      const data = await response.json();
+
+      if (data.success) {
+        setVerificationRequestsCount(data.count || 0);
+        setVerificationRequests(data.requests || []);
+      }
+    } catch (error) {
+      console.error('Errore caricamento richieste verifica:', error);
+    }
+  };
 
   // Funzioni di utilità
   const showNotification = (message: string, type: 'success' | 'error' | 'info') => {
@@ -561,6 +583,39 @@ export default function InventarioPage() {
           </div>
         </div>
 
+        {/* Pulsante Richieste Verifica */}
+        {verificationRequestsCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-6"
+          >
+            <button
+              onClick={() => setShowVerificationList(true)}
+              className="w-full relative flex items-center gap-2 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5 bg-gradient-to-br from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white rounded-xl transition-all shadow-lg hover:shadow-xl min-h-[60px]"
+            >
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                <Package className="h-6 w-6" />
+              </div>
+              <div className="flex-1 text-left">
+                <h3 className="text-lg sm:text-xl font-bold">Richieste di Verifica</h3>
+                <p className="text-xs sm:text-sm text-white/80">
+                  Prodotti che richiedono controllo fisico
+                </p>
+              </div>
+              {verificationRequestsCount > 0 && (
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  className="bg-white/30 backdrop-blur-sm px-4 py-3 rounded-full shrink-0"
+                >
+                  <span className="text-2xl font-bold">{verificationRequestsCount}</span>
+                </motion.div>
+              )}
+            </button>
+          </motion.div>
+        )}
+
         {/* Location Info */}
         {appState.currentLocation && (
           <motion.div
@@ -907,6 +962,14 @@ export default function InventarioPage() {
 
       {/* Mobile Home Button */}
       <MobileHomeButton />
+
+      {/* Modal Richieste Verifica */}
+      <VerificationListModal
+        isOpen={showVerificationList}
+        onClose={() => setShowVerificationList(false)}
+        requests={verificationRequests}
+        onRefresh={loadVerificationRequests}
+      />
     </div>
   );
 } 

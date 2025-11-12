@@ -1,0 +1,244 @@
+[
+  {
+    "ordine": "WH/OUT/34443",
+    "cliente": "Amare Food Truck, Amare Food CONSEGNA",
+    "data": "2025-11-07 18:53:10",
+    "salesOrder": "S34420",
+    "autista": "Domingos",
+    "prodotti": [
+      {
+        "id": null,
+        "nome": "SALATINI 8 GUSTI 12G 4KG CRT SG",
+        "qty": 1,
+        "uom": "CRT",
+        "ubicazione_attuale": "Furgone/Domingos",
+        "ubicazione_destinazione": "Buffer/Pingu"
+      }
+    ]
+  },
+  {
+    "ordine": "WH/OUT/34464",
+    "cliente": "Grandin Trattoria Pizzeria, Grandin Trattoria Pizzeria - Tennis Club (CONSEGNA)",
+    "data": "2025-11-07 09:00:00",
+    "salesOrder": "S34194",
+    "autista": "Stefan",
+    "prodotti": [
+      {
+        "id": null,
+        "nome": "GUANCIALE DI SUINO AL PEPE SV INTERO PZ CA 1.5KG SORR",
+        "qty": 1,
+        "uom": "kg",
+        "ubicazione_attuale": "Furgone/Stefan",
+        "ubicazione_destinazione": "Buffer/Frigo"
+      },
+      {
+        "id": null,
+        "nome": "NUTELLA 1000G 6PZ CRT M",
+        "qty": 1,
+        "uom": "PZ",
+        "ubicazione_attuale": "Furgone/Stefan",
+        "ubicazione_destinazione": "Buffer/Sopra"
+      }
+    ]
+  },
+  {
+    "ordine": "WH/OUT/34292",
+    "cliente": "DGD Gastro GmbH, KEK Restaurant Küsnacht C/o DGD GastroGmbH (Consegna)",
+    "data": "2025-11-04 18:00:00",
+    "salesOrder": "S34309",
+    "autista": "Liviu",
+    "prodotti": [
+      {
+        "id": null,
+        "nome": "LAVAVETRI SENZA MANICO (TIRA ACQUA) 1 PZ AL",
+        "qty": 1,
+        "uom": "PZ",
+        "ubicazione_attuale": "Furgone/Liviu",
+        "ubicazione_destinazione": "Buffer/Sopra"
+      }
+    ]
+  },
+  {
+    "ordine": "WH/OUT/34297",
+    "cliente": "Caterina Gastro Group AG, Caterina (CONSEGNA)",
+    "data": "2025-11-04 16:00:00",
+    "salesOrder": "S34293",
+    "autista": "Liviu",
+    "prodotti": [
+      {
+        "id": null,
+        "nome": "GRAN CULATTA PULITO FIORE S.V. CULATTAPZ 4KG MV",
+        "qty": 1,
+        "uom": "kg",
+        "ubicazione_attuale": "Furgone/Liviu",
+        "ubicazione_destinazione": "Buffer/Frigo"
+      },
+      {
+        "id": null,
+        "nome": "GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM",
+        "qty": 1,
+        "uom": "kg",
+        "ubicazione_attuale": "Furgone/Liviu",
+        "ubicazione_destinazione": "Buffer/Frigo"
+      }
+    ]
+  },
+  {
+    "ordine": "WH/OUT/34247",
+    "cliente": "Emme Food GmbH, Emme l'Italia che ami",
+    "data": "2025-11-03 19:00:00",
+    "salesOrder": "S34247",
+    "autista": "Liviu",
+    "prodotti": [
+      {
+        "id": null,
+        "nome": "FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB",
+        "qty": 10,
+        "uom": "kg",
+        "ubicazione_attuale": "Furgone/Liviu",
+        "ubicazione_destinazione": "Buffer/Frigo"
+      }
+    ]
+  },
+  {
+    "ordine": "WH/OUT/34249",
+    "cliente": "TERZOANGOLO GMBH, CON GUSTO PIZZERIA (CONSEGNA)",
+    "data": "2025-11-03 09:00:00",
+    "salesOrder": "S34261",
+    "autista": "Liviu",
+    "prodotti": [
+      {
+        "id": null,
+        "nome": "FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB",
+        "qty": 4,
+        "uom": "kg",
+        "ubicazione_attuale": "Furgone/Liviu",
+        "ubicazione_destinazione": "Buffer/Frigo"
+      },
+      {
+        "id": null,
+        "nome": "SCHALE KRAFT CIOTOLA/PE 1000ML MARRONE 173X120X75MM  300PZ A CRT PACO*",
+        "qty": 1,
+        "uom": "CRTc",
+        "ubicazione_attuale": "Furgone/Liviu",
+        "ubicazione_destinazione": "Buffer/Sopra"
+      },
+      {
+        "id": null,
+        "nome": "DECKEL KRAFT COPERCHIO PER CIOTOLA PLA MARRONE 300PZ A CRT PACO",
+        "qty": 1,
+        "uom": "CRTc",
+        "ubicazione_attuale": "Furgone/Liviu",
+        "ubicazione_destinazione": "Buffer/Sopra"
+      }
+    ]
+  },
+  {
+    "ordine": "WH/OUT/34227",
+    "cliente": "aMA PASTICCERIA AG, aMA Pasticceria AG (CONSEGNA)",
+    "data": "2025-11-03 08:00:00",
+    "salesOrder": "S34259",
+    "autista": "Alexandru",
+    "prodotti": [
+      {
+        "id": null,
+        "nome": "SCATOLA PORTA TORTA 27X27X7H VERNICIATA BIANCA 50 PZ CRT CAR",
+        "qty": 50,
+        "uom": "PZ",
+        "ubicazione_attuale": "Furgone/Alexandru",
+        "ubicazione_destinazione": "Buffer/Sopra"
+      },
+      {
+        "id": null,
+        "nome": "VASSOIO CLASS ORO 3EUR/4 ITA 18X26 10 KG CRT CAR",
+        "qty": 10,
+        "uom": "kg",
+        "ubicazione_attuale": "Furgone/Alexandru",
+        "ubicazione_destinazione": "Buffer/Sopra"
+      },
+      {
+        "id": null,
+        "nome": "RUSTICO LECCESE PICCOLO 165G PZ 35PZ CRT CAT",
+        "qty": 2,
+        "uom": "CRT",
+        "ubicazione_attuale": "Furgone/Alexandru",
+        "ubicazione_destinazione": "Buffer/Sopra"
+      }
+    ]
+  },
+  {
+    "ordine": "WH/OUT/34199",
+    "cliente": "Sasà Gastro GmbH, PEPPINO BADEN (consegna)",
+    "data": "2025-11-01 21:00:00",
+    "salesOrder": "S34227",
+    "autista": "Stefan",
+    "prodotti": [
+      {
+        "id": null,
+        "nome": "GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM",
+        "qty": 2,
+        "uom": "kg",
+        "ubicazione_attuale": "Furgone/Stefan",
+        "ubicazione_destinazione": "Buffer/Frigo"
+      }
+    ]
+  },
+  {
+    "ordine": "WH/OUT/34196",
+    "cliente": "Etna Bar KLG, Etna Pasticceria - Tavola calda (Consegna)",
+    "data": "2025-11-01 21:00:00",
+    "salesOrder": "S34200",
+    "autista": "Alexandru",
+    "prodotti": [
+      {
+        "id": null,
+        "nome": "ARANCIO A FILETTI CANDITA 6X6 KG 5 MIO",
+        "qty": 5,
+        "uom": "kg",
+        "ubicazione_attuale": "Furgone/Alexandru",
+        "ubicazione_destinazione": "Buffer/Sopra"
+      }
+    ]
+  },
+  {
+    "ordine": "WH/OUT/34145",
+    "cliente": "Caterina Gastro Group AG, Caterina (CONSEGNA)",
+    "data": "2025-10-31 20:00:00",
+    "salesOrder": "S34175",
+    "autista": "Stefan",
+    "prodotti": [
+      {
+        "id": null,
+        "nome": "GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM",
+        "qty": 1,
+        "uom": "kg",
+        "ubicazione_attuale": "Furgone/Stefan",
+        "ubicazione_destinazione": "Buffer/Frigo"
+      },
+      {
+        "id": null,
+        "nome": "FARINA 00 VERACE SACCO CONF 25KG MEY",
+        "qty": 1,
+        "uom": "PZ",
+        "ubicazione_attuale": "Furgone/Stefan",
+        "ubicazione_destinazione": "Buffer/Sopra"
+      },
+      {
+        "id": null,
+        "nome": "FINOCCHIONA IGP A META SV CA 1.5KG BG",
+        "qty": 1,
+        "uom": "kg",
+        "ubicazione_attuale": "Furgone/Stefan",
+        "ubicazione_destinazione": "Buffer/Frigo"
+      },
+      {
+        "id": null,
+        "nome": "CANDEGGINA PROFUMATA 2LT 8PZ CRT MUS",
+        "qty": 1,
+        "uom": "PZ",
+        "ubicazione_attuale": "Furgone/Stefan",
+        "ubicazione_destinazione": "Buffer/Sopra"
+      }
+    ]
+  }
+]

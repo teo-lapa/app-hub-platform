@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Riunione Venditori - 10/11/2025</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header .date {
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .venditore-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .venditore-header {
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .venditore-header h2 {
+            color: #667eea;
+            font-size: 2em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 4px solid #667eea;
+            padding-left: 15px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .metric-sub {
+            font-size: 0.85em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .crescita-positiva {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .crescita-negativa {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        tbody tr:hover {
+            background: #e9ecef;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .badge-success {
+            background: #38ef7d;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #f093fb;
+            color: white;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .venditore-card {
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Report Riunione Venditori</h1>
+            <div class="date">📅 lunedì 10 novembre 2025</div>
+        </div>
+
+        
+        <div class="venditore-card">
+            <div class="venditore-header">
+                <h2>👤 Mihai Nita</h2>
+                <p style="color: #666; font-size: 0.9em; margin-top: 8px;">👥 Team: <strong>La Squadra del Successo</strong></p>
+            </div>
+
+            <!-- ANDAMENTO VENDITE -->
+            <div class="section">
+                <h3 class="section-title">📈 Andamento Vendite</h3>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">🗓️ Mese Corrente</div>
+                        <div class="metric-value">28.877,43 €</div>
+                        <div class="metric-sub">52 ordini</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">🗓️ Mese Scorso</div>
+                        <div class="metric-value">91.059,90 €</div>
+                        <div class="metric-sub">194 ordini</div>
+                    </div>
+
+                    <div class="metric-card crescita-negativa">
+                        <div class="metric-label">📊 Crescita Mensile</div>
+                        <div class="metric-value">-68.3% 📉</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">📅 Ultimi 3 Mesi</div>
+                        <div class="metric-value">309.234,10 €</div>
+                        <div class="metric-sub">673 ordini</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">📆 Anno Corrente</div>
+                        <div class="metric-value">1.441.248,52 €</div>
+                        <div class="metric-sub">2984 ordini</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">💰 Media Ordine</div>
+                        <div class="metric-value">482,99 €</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CLIENTI -->
+            <div class="section">
+                <h3 class="section-title">👥 Clienti</h3>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">🆕 Nuovi Quest'Anno</div>
+                        <div class="metric-value">5</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">🆕 Nuovi Ultimi 3 Mesi</div>
+                        <div class="metric-value">0</div>
+                    </div>
+                </div>
+
+                
+
+                
+                <h4 style="margin-top: 30px; margin-bottom: 10px; color: #666;">💎 Top Clienti (per fatturato anno)</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Cliente</th>
+                            <th>Ordini</th>
+                            <th>Fatturato Totale</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td><strong>1</strong></td>
+                            <td><strong>HALTEN GASTRO GMBH</strong></td>
+                            <td>164</td>
+                            <td><strong>162.425,53 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>2</strong></td>
+                            <td><strong>CAMILLA AG</strong></td>
+                            <td>116</td>
+                            <td><strong>107.509,10 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>3</strong></td>
+                            <td><strong>CASA COSI GMBH, Jason Chef (per Ordini)</strong></td>
+                            <td>199</td>
+                            <td><strong>107.428,17 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>4</strong></td>
+                            <td><strong>IL BASILICO GMBH</strong></td>
+                            <td>124</td>
+                            <td><strong>91.242,19 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>5</strong></td>
+                            <td><strong>aMA PASTICCERIA AG</strong></td>
+                            <td>120</td>
+                            <td><strong>78.620,95 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>6</strong></td>
+                            <td><strong>CAMILLA AG OPFIKON</strong></td>
+                            <td>105</td>
+                            <td><strong>70.398,90 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>7</strong></td>
+                            <td><strong>ALLIA GIOVANNI PIZZERIA STEAKERIA DA GIO</strong></td>
+                            <td>87</td>
+                            <td><strong>68.375,64 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>8</strong></td>
+                            <td><strong>AUTOGRILL SCHWEIZ AG CH1000TBS3</strong></td>
+                            <td>49</td>
+                            <td><strong>63.073,01 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>9</strong></td>
+                            <td><strong>CASA COSI GMBH</strong></td>
+                            <td>119</td>
+                            <td><strong>60.520,80 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>10</strong></td>
+                            <td><strong>PIZZERIA M2 GMBH</strong></td>
+                            <td>88</td>
+                            <td><strong>39.826,94 €</strong></td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+                
+            </div>
+
+            <!-- TOP PRODOTTI -->
+            
+            <div class="section">
+                <h3 class="section-title">🏆 Top Prodotti (per fatturato anno)</h3>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Prodotto</th>
+                            <th>Quantità Venduta</th>
+                            <th>Fatturato</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td><strong>1</strong></td>
+                            <td><strong>FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB</strong></td>
+                            <td>11310 unità</td>
+                            <td><strong>98.026,52 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>2</strong></td>
+                            <td><strong>FARINA 00 VERACE SACCO CONF 25KG MEY</strong></td>
+                            <td>1244 unità</td>
+                            <td><strong>56.001,82 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>3</strong></td>
+                            <td><strong>FIORDILATTE JULIENNE LINEA PROFESSIONALE VASC DA 2.5KG KG10 4PZ CRT TAMB</strong></td>
+                            <td>5642 unità</td>
+                            <td><strong>46.571,59 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>4</strong></td>
+                            <td><strong>FIORDILATTE BOCCONCINO PER PIZZERIA 500G VASCH 3KG TAMB</strong></td>
+                            <td>4203 unità</td>
+                            <td><strong>41.438,29 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>5</strong></td>
+                            <td><strong>GRANA PADANO DOP GRATTUGIATO FRESCO 1KG 10KG CRT LSM</strong></td>
+                            <td>2481 unità</td>
+                            <td><strong>38.680,91 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>6</strong></td>
+                            <td><strong>POMODORI PELATI 6X2500G SICA BLU SI</strong></td>
+                            <td>7426 unità</td>
+                            <td><strong>33.090,29 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>7</strong></td>
+                            <td><strong>OLIO EXTRAVERGINE DI OLIVA PALLADE 5L 2PZ CRT ZUCCHI</strong></td>
+                            <td>462 unità</td>
+                            <td><strong>20.774,82 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>8</strong></td>
+                            <td><strong>BURRATA 2X125G VASC 250G 6PZ 1.5KG CRT TAMB</strong></td>
+                            <td>1197 unità</td>
+                            <td><strong>20.679,96 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>9</strong></td>
+                            <td><strong>PANNA INTERA 35% VOLLRAHM 12L CRT PR</strong></td>
+                            <td>2567 unità</td>
+                            <td><strong>19.290,55 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>10</strong></td>
+                            <td><strong>OLIO DI GIRASOLE ALTOLEICO ZETA PET 10L 2PZ CRT ZUCCHI</strong></td>
+                            <td>282 unità</td>
+                            <td><strong>18.319,39 €</strong></td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+            </div>
+            
+        </div>
+        
+        <div class="venditore-card">
+            <div class="venditore-header">
+                <h2>👤 Gregorio Buccolieri</h2>
+                <p style="color: #666; font-size: 0.9em; margin-top: 8px;">👥 Team: <strong>I Campioni del Gusto</strong></p>
+            </div>
+
+            <!-- ANDAMENTO VENDITE -->
+            <div class="section">
+                <h3 class="section-title">📈 Andamento Vendite</h3>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">🗓️ Mese Corrente</div>
+                        <div class="metric-value">31.471,29 €</div>
+                        <div class="metric-sub">95 ordini</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">🗓️ Mese Scorso</div>
+                        <div class="metric-value">85.984,01 €</div>
+                        <div class="metric-sub">304 ordini</div>
+                    </div>
+
+                    <div class="metric-card crescita-negativa">
+                        <div class="metric-label">📊 Crescita Mensile</div>
+                        <div class="metric-value">-63.4% 📉</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">📅 Ultimi 3 Mesi</div>
+                        <div class="metric-value">280.230,60 €</div>
+                        <div class="metric-sub">927 ordini</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">📆 Anno Corrente</div>
+                        <div class="metric-value">824.982,49 €</div>
+                        <div class="metric-sub">2969 ordini</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">💰 Media Ordine</div>
+                        <div class="metric-value">277,87 €</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CLIENTI -->
+            <div class="section">
+                <h3 class="section-title">👥 Clienti</h3>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">🆕 Nuovi Quest'Anno</div>
+                        <div class="metric-value">11</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">🆕 Nuovi Ultimi 3 Mesi</div>
+                        <div class="metric-value">5</div>
+                    </div>
+                </div>
+
+                
+                <h4 style="margin-top: 20px; margin-bottom: 10px; color: #666;">📋 Ultimi Clienti Acquisiti</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Data Acquisizione</th>
+                            <th>Email</th>
+                            <th>Telefono</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td><strong>Burro Concept Globus Bellevue</strong></td>
+                            <td>09/11/2025</td>
+                            <td>N/A</td>
+                            <td>N/A</td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>CREAM HOUSE A. Fonso</strong></td>
+                            <td>03/09/2025</td>
+                            <td>caprarella79@gmail.com</td>
+                            <td>N/A</td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>Tennis Club Meilen</strong></td>
+                            <td>27/08/2025</td>
+                            <td>gianpaolosecci72@gmail.com</td>
+                            <td>N/A</td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>Dagia Ristorante Pizzeria</strong></td>
+                            <td>27/08/2025</td>
+                            <td>gianpaolosecci72@gmail.com</td>
+                            <td>+41 77 921 47 98</td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>Thach restaurant - CONSEGNA 2</strong></td>
+                            <td>15/09/2025</td>
+                            <td>N/A</td>
+                            <td>+41 78 645 01 08</td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+                
+
+                
+                <h4 style="margin-top: 30px; margin-bottom: 10px; color: #666;">💎 Top Clienti (per fatturato anno)</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Cliente</th>
+                            <th>Ordini</th>
+                            <th>Fatturato Totale</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td><strong>1</strong></td>
+                            <td><strong>Maliqi Systemgastronomie AG</strong></td>
+                            <td>86</td>
+                            <td><strong>56.547,95 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>2</strong></td>
+                            <td><strong>Imperial Food AG</strong></td>
+                            <td>120</td>
+                            <td><strong>38.431,05 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>3</strong></td>
+                            <td><strong>Marina Gastro AG Osteria Vista, Saber Salih</strong></td>
+                            <td>52</td>
+                            <td><strong>37.476,16 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>4</strong></td>
+                            <td><strong>TERZOANGOLO GMBH, Rosario</strong></td>
+                            <td>75</td>
+                            <td><strong>32.679,15 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>5</strong></td>
+                            <td><strong>Grandin Trattoria Pizzeria</strong></td>
+                            <td>118</td>
+                            <td><strong>31.414,39 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>6</strong></td>
+                            <td><strong>PRIMOGUSTO GMBH, CON GUSTO (consegna)</strong></td>
+                            <td>82</td>
+                            <td><strong>30.804,22 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>7</strong></td>
+                            <td><strong>Franco Martorelli Rest. La Vista</strong></td>
+                            <td>95</td>
+                            <td><strong>26.411,97 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>8</strong></td>
+                            <td><strong>Cigro Gmbh</strong></td>
+                            <td>61</td>
+                            <td><strong>26.067,46 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>9</strong></td>
+                            <td><strong>AL DENTE GASTRO AG</strong></td>
+                            <td>79</td>
+                            <td><strong>25.440,66 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>10</strong></td>
+                            <td><strong>BRANDY'S PIZZA GMBH</strong></td>
+                            <td>42</td>
+                            <td><strong>21.378,63 €</strong></td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+                
+            </div>
+
+            <!-- TOP PRODOTTI -->
+            
+            <div class="section">
+                <h3 class="section-title">🏆 Top Prodotti (per fatturato anno)</h3>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Prodotto</th>
+                            <th>Quantità Venduta</th>
+                            <th>Fatturato</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td><strong>1</strong></td>
+                            <td><strong>FIORDILATTE JULIENNE LINEA PROFESSIONALE VASC DA 2.5KG KG10 4PZ CRT TAMB</strong></td>
+                            <td>5433 unità</td>
+                            <td><strong>41.470,19 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>2</strong></td>
+                            <td><strong>GRANA PADANO DOP GRATTUGIATO FRESCO 1KG 10KG CRT LSM</strong></td>
+                            <td>2362 unità</td>
+                            <td><strong>34.152,65 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>3</strong></td>
+                            <td><strong>OLIO EXTRAVERGINE DI OLIVA PALLADE 5L 2PZ CRT ZUCCHI</strong></td>
+                            <td>581 unità</td>
+                            <td><strong>24.280,18 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>4</strong></td>
+                            <td><strong>MOZZARELLA DI BUFALA CAMPANA DOP 125G 1.5KG CRT SRI</strong></td>
+                            <td>1309 unità</td>
+                            <td><strong>22.400,74 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>5</strong></td>
+                            <td><strong>CARTONI PIZZA  330X330X40 CON GUSTO LAPA 100PZ CONF LINER</strong></td>
+                            <td>64427 unità</td>
+                            <td><strong>18.037,56 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>6</strong></td>
+                            <td><strong>POMODORI PELATI 6X2500G SICA BLU SI</strong></td>
+                            <td>3566 unità</td>
+                            <td><strong>16.258,58 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>7</strong></td>
+                            <td><strong>FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB</strong></td>
+                            <td>1942 unità</td>
+                            <td><strong>16.233,15 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>8</strong></td>
+                            <td><strong>FARINA 00 CAPUTO BLU PIZZERIA 25KG FERR</strong></td>
+                            <td>298 unità</td>
+                            <td><strong>14.036,95 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>9</strong></td>
+                            <td><strong>FUNGHI PORCINI CONG. INTERI EXTRA TOP BUSTA 1KG 6KG CRT MF</strong></td>
+                            <td>684 unità</td>
+                            <td><strong>13.348,22 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>10</strong></td>
+                            <td><strong>FARINA 00 VERACE SACCO CONF 25KG MEY</strong></td>
+                            <td>312 unità</td>
+                            <td><strong>13.226,00 €</strong></td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+            </div>
+            
+        </div>
+        
+        <div class="venditore-card">
+            <div class="venditore-header">
+                <h2>👤 Alessandro Motta</h2>
+                <p style="color: #666; font-size: 0.9em; margin-top: 8px;">👥 Team: <strong>I Campioni del Gusto</strong></p>
+            </div>
+
+            <!-- ANDAMENTO VENDITE -->
+            <div class="section">
+                <h3 class="section-title">📈 Andamento Vendite</h3>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">🗓️ Mese Corrente</div>
+                        <div class="metric-value">31.471,29 €</div>
+                        <div class="metric-sub">95 ordini</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">🗓️ Mese Scorso</div>
+                        <div class="metric-value">85.984,01 €</div>
+                        <div class="metric-sub">304 ordini</div>
+                    </div>
+
+                    <div class="metric-card crescita-negativa">
+                        <div class="metric-label">📊 Crescita Mensile</div>
+                        <div class="metric-value">-63.4% 📉</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">📅 Ultimi 3 Mesi</div>
+                        <div class="metric-value">280.230,60 €</div>
+                        <div class="metric-sub">927 ordini</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">📆 Anno Corrente</div>
+                        <div class="metric-value">824.982,49 €</div>
+                        <div class="metric-sub">2969 ordini</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">💰 Media Ordine</div>
+                        <div class="metric-value">277,87 €</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CLIENTI -->
+            <div class="section">
+                <h3 class="section-title">👥 Clienti</h3>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">🆕 Nuovi Quest'Anno</div>
+                        <div class="metric-value">11</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">🆕 Nuovi Ultimi 3 Mesi</div>
+                        <div class="metric-value">5</div>
+                    </div>
+                </div>
+
+                
+                <h4 style="margin-top: 20px; margin-bottom: 10px; color: #666;">📋 Ultimi Clienti Acquisiti</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Data Acquisizione</th>
+                            <th>Email</th>
+                            <th>Telefono</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td><strong>Burro Concept Globus Bellevue</strong></td>
+                            <td>09/11/2025</td>
+                            <td>N/A</td>
+                            <td>N/A</td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>CREAM HOUSE A. Fonso</strong></td>
+                            <td>03/09/2025</td>
+                            <td>caprarella79@gmail.com</td>
+                            <td>N/A</td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>Tennis Club Meilen</strong></td>
+                            <td>27/08/2025</td>
+                            <td>gianpaolosecci72@gmail.com</td>
+                            <td>N/A</td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>Dagia Ristorante Pizzeria</strong></td>
+                            <td>27/08/2025</td>
+                            <td>gianpaolosecci72@gmail.com</td>
+                            <td>+41 77 921 47 98</td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>Thach restaurant - CONSEGNA 2</strong></td>
+                            <td>15/09/2025</td>
+                            <td>N/A</td>
+                            <td>+41 78 645 01 08</td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+                
+
+                
+                <h4 style="margin-top: 30px; margin-bottom: 10px; color: #666;">💎 Top Clienti (per fatturato anno)</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Cliente</th>
+                            <th>Ordini</th>
+                            <th>Fatturato Totale</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td><strong>1</strong></td>
+                            <td><strong>Maliqi Systemgastronomie AG</strong></td>
+                            <td>86</td>
+                            <td><strong>56.547,95 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>2</strong></td>
+                            <td><strong>Imperial Food AG</strong></td>
+                            <td>120</td>
+                            <td><strong>38.431,05 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>3</strong></td>
+                            <td><strong>Marina Gastro AG Osteria Vista, Saber Salih</strong></td>
+                            <td>52</td>
+                            <td><strong>37.476,16 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>4</strong></td>
+                            <td><strong>TERZOANGOLO GMBH, Rosario</strong></td>
+                            <td>75</td>
+                            <td><strong>32.679,15 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>5</strong></td>
+                            <td><strong>Grandin Trattoria Pizzeria</strong></td>
+                            <td>118</td>
+                            <td><strong>31.414,39 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>6</strong></td>
+                            <td><strong>PRIMOGUSTO GMBH, CON GUSTO (consegna)</strong></td>
+                            <td>82</td>
+                            <td><strong>30.804,22 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>7</strong></td>
+                            <td><strong>Franco Martorelli Rest. La Vista</strong></td>
+                            <td>95</td>
+                            <td><strong>26.411,97 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>8</strong></td>
+                            <td><strong>Cigro Gmbh</strong></td>
+                            <td>61</td>
+                            <td><strong>26.067,46 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>9</strong></td>
+                            <td><strong>AL DENTE GASTRO AG</strong></td>
+                            <td>79</td>
+                            <td><strong>25.440,66 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>10</strong></td>
+                            <td><strong>BRANDY'S PIZZA GMBH</strong></td>
+                            <td>42</td>
+                            <td><strong>21.378,63 €</strong></td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+                
+            </div>
+
+            <!-- TOP PRODOTTI -->
+            
+            <div class="section">
+                <h3 class="section-title">🏆 Top Prodotti (per fatturato anno)</h3>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Prodotto</th>
+                            <th>Quantità Venduta</th>
+                            <th>Fatturato</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td><strong>1</strong></td>
+                            <td><strong>FIORDILATTE JULIENNE LINEA PROFESSIONALE VASC DA 2.5KG KG10 4PZ CRT TAMB</strong></td>
+                            <td>5433 unità</td>
+                            <td><strong>41.470,19 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>2</strong></td>
+                            <td><strong>GRANA PADANO DOP GRATTUGIATO FRESCO 1KG 10KG CRT LSM</strong></td>
+                            <td>2362 unità</td>
+                            <td><strong>34.152,65 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>3</strong></td>
+                            <td><strong>OLIO EXTRAVERGINE DI OLIVA PALLADE 5L 2PZ CRT ZUCCHI</strong></td>
+                            <td>581 unità</td>
+                            <td><strong>24.280,18 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>4</strong></td>
+                            <td><strong>MOZZARELLA DI BUFALA CAMPANA DOP 125G 1.5KG CRT SRI</strong></td>
+                            <td>1309 unità</td>
+                            <td><strong>22.400,74 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>5</strong></td>
+                            <td><strong>CARTONI PIZZA  330X330X40 CON GUSTO LAPA 100PZ CONF LINER</strong></td>
+                            <td>64427 unità</td>
+                            <td><strong>18.037,56 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>6</strong></td>
+                            <td><strong>POMODORI PELATI 6X2500G SICA BLU SI</strong></td>
+                            <td>3566 unità</td>
+                            <td><strong>16.258,58 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>7</strong></td>
+                            <td><strong>FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB</strong></td>
+                            <td>1942 unità</td>
+                            <td><strong>16.233,15 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>8</strong></td>
+                            <td><strong>FARINA 00 CAPUTO BLU PIZZERIA 25KG FERR</strong></td>
+                            <td>298 unità</td>
+                            <td><strong>14.036,95 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>9</strong></td>
+                            <td><strong>FUNGHI PORCINI CONG. INTERI EXTRA TOP BUSTA 1KG 6KG CRT MF</strong></td>
+                            <td>684 unità</td>
+                            <td><strong>13.348,22 €</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td><strong>10</strong></td>
+                            <td><strong>FARINA 00 VERACE SACCO CONF 25KG MEY</strong></td>
+                            <td>312 unità</td>
+                            <td><strong>13.226,00 €</strong></td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+            </div>
+            
+        </div>
+        
+    </div>
+</body>
+</html>

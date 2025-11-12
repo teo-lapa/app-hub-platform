@@ -1,0 +1,1968 @@
+{
+  "timestamp": "2025-11-10T09:56:14.574Z",
+  "total_ids_found": 3360,
+  "total_analyzed": 100,
+  "by_type": {
+    "aziende": 29,
+    "contatti": 71
+  },
+  "by_team": {
+    "Nessun team": [
+      {
+        "id": 2898,
+        "name": "1A Mietwagen",
+        "email": "N/A",
+        "city": "Dällikon",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 5485,
+        "name": "1Password",
+        "email": "N/A",
+        "city": "Toronto",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2423,
+        "name": "CUOCO",
+        "email": "N/A",
+        "city": "WINTERTHUR",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 8120,
+        "name": "Gianluca",
+        "email": "N/A",
+        "city": "WINTERTHUR",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 9515,
+        "name": "72gege@gmail.com",
+        "email": "72gege@gmail.com",
+        "city": "N/A",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 9891,
+        "name": "96.oscarcattorini@gmail.com",
+        "email": "96.oscarcattorini@gmail.com",
+        "city": "N/A",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1994,
+        "name": "A TAVOLA JEANNERET",
+        "email": "info@epicerieatavola.ch",
+        "city": "PESEUX",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2425,
+        "name": "FRéDéERIC JEANNERET - GROSJEAN",
+        "email": "N/A",
+        "city": "PESEUX",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2424,
+        "name": "MARIA JEANNERET - GROSJEAN",
+        "email": "N/A",
+        "city": "PESEUX",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 6190,
+        "name": "Francesco D'Agostino",
+        "email": "N/A",
+        "city": "WINTERTHUR",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 6191,
+        "name": "Luana D'Agostino",
+        "email": "N/A",
+        "city": "WINTERTHUR",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 9616,
+        "name": "Aydin Yildirim",
+        "email": "N/A",
+        "city": "Zürich",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2015,
+        "name": "A-IMMOBILIER SÀRL",
+        "email": "maxime@aiamercato.ch",
+        "city": "MORGES",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2427,
+        "name": "AURORE MUELLER",
+        "email": "N/A",
+        "city": "MORGES",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2071,
+        "name": "MAXIME DIGNOTI",
+        "email": "maxime.dignoti@gmail.com",
+        "city": "MORGES",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2899,
+        "name": "A. MARCHON SA - KUKISSIMA",
+        "email": "info@marchon.ch",
+        "city": "ROSSENS",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2982,
+        "name": "Michel Castelli",
+        "email": "michel.castelli@marchon.ch",
+        "city": "ROSSENS",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 9357,
+        "name": "A.I.A. AGRICOLA ITALIANA ALIMENTARE S.P.A.",
+        "email": "Andrea.Tonetti@negroni.com",
+        "city": "SAN MARTINO BUON ALBERGO VR",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 9358,
+        "name": "Andrea Tonetti",
+        "email": "Andrea.Tonetti@negroni.com",
+        "city": "SAN MARTINO BUON ALBERGO VR",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2076,
+        "name": "Alessandro Longo",
+        "email": "tigellabellanyon@gmail.com",
+        "city": "NYON",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2581,
+        "name": "CLEMENTE SIGNORE",
+        "email": "N/A",
+        "city": "NYON",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 830,
+        "name": "ACCADEMIA DEL GUSTO GMBH",
+        "email": "INFO@ACCADEMIADELGUSTO.CH",
+        "city": "ZUERICH",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 5141,
+        "name": "MARIANA PISCOPO",
+        "email": "+41442416243",
+        "city": "ZUERICH",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 5140,
+        "name": "STEFANO PISCOPO",
+        "email": "+41442416243",
+        "city": "ZUERICH",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1552,
+        "name": "ACETAIA TERRA DEL TUONO SOCIETA' AGRICOLA S.R.L.",
+        "email": "ROBERTO@TERRADELTUONO.IT",
+        "city": "MODENA MO",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1801,
+        "name": "Roberto Zini",
+        "email": "roberto@terradeltuono.it",
+        "city": "MODENA MO",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 5540,
+        "name": "ADA Gastro GmbH",
+        "email": "pronto-pratteln@gmx.ch",
+        "city": "Rickenbach",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 5613,
+        "name": "Admira Vigorito",
+        "email": "N/A",
+        "city": "Rickenbach",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 5541,
+        "name": "Florio Vigorito",
+        "email": "pronto-pratteln@gmx.ch",
+        "city": "Rickenbach",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 5283,
+        "name": "AFFINITIS SARL",
+        "email": "info@affinitis.ch",
+        "city": "Grimisuat",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 7837,
+        "name": "AFFINITIS SARL ‒ CHE-381.460.973",
+        "email": "N/A",
+        "city": "N/A",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 8161,
+        "name": "DIEGO MONZILLO",
+        "email": "diego@affinitis.ch",
+        "city": "Grimisuat",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 5284,
+        "name": "Vito Saponara",
+        "email": "vito@affinitis.ch",
+        "city": "Grimisuat",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 7197,
+        "name": "AGENZIA DELLE ENTRATE",
+        "email": "N/A",
+        "city": "ROMA RM",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1521,
+        "name": "AGENZIA LOMBARDA RAPPRESENTANZE E DEPOSITI SRL",
+        "email": "ORDINI@AGENZIALOMBARDA.COM",
+        "city": "NOVATE MILANESE MI",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1803,
+        "name": "SIG. ROMANO",
+        "email": "ordini@agenzialombarda.com",
+        "city": "NOVATE MILANESE MI",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1836,
+        "name": "GIANLUCA GHIZZI",
+        "email": "N/A",
+        "city": "WALLISELLEN",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1649,
+        "name": "AGRANO AG",
+        "email": "INFO@ARGANO.CH",
+        "city": "ALLSCHWILL",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1571,
+        "name": "AGRICOLA TERRE D ABRUZZO LUMACA NATURALE",
+        "email": "INFO@LUMACA-BIO.IT",
+        "city": "NOTARESCO",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1805,
+        "name": "Fernando de Laurentis",
+        "email": "N/A",
+        "city": "NOTARESCO",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1546,
+        "name": "AGUGIARO & FIGNA MOLINI S.P.A.",
+        "email": "F.COBIANCHI@AGUGIAROFIGNA.COM",
+        "city": "COLLECCHIO PR",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1806,
+        "name": "FILIPPO COBIANCHI",
+        "email": "F.COBIANCHI@AGUGIAROFIGNA.COM",
+        "city": "COLLECCHIO PR",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1807,
+        "name": "SANDRA ZILIOTTI",
+        "email": "S.ZILIOTTI@AGUGIAROFIGNA.COM",
+        "city": "COLLECCHIO PR",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 9684,
+        "name": "AI Assistente Acquisti",
+        "email": "ai.acquisti@bot.local",
+        "city": "N/A",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 9681,
+        "name": "AI Assistente Magazzino e Logistica",
+        "email": "ai.magazzino@bot.local",
+        "city": "N/A",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 6508,
+        "name": "AKCAKAYA",
+        "email": "info@capri-adliswil.ch",
+        "city": "Adliswil",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1995,
+        "name": "AL MERCATO SARL",
+        "email": "A.JANIN@ICLOUD.COM",
+        "city": "CAROUGE",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2708,
+        "name": "ALEXANDRE JANIN",
+        "email": "a.janin@icloud.com",
+        "city": "CAROUGE",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2709,
+        "name": "JEAN-PIERRE JANIN",
+        "email": "N/A",
+        "city": "CAROUGE",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 7372,
+        "name": "ROMAIN",
+        "email": "N/A",
+        "city": "CAROUGE",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 5474,
+        "name": "ALBERGHI E PRANZI",
+        "email": "N/A",
+        "city": "N/A",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 5496,
+        "name": "LUIGI GRECO",
+        "email": "N/A",
+        "city": "NETSTAL",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2302,
+        "name": "ALBERTO PRIVATO",
+        "email": "N/A",
+        "city": "N/A",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1532,
+        "name": "ALCAR UNO S.P.A.",
+        "email": "INFO@ALCARUNO.IT;BARBARA.CORI@ALCARUNO.IT",
+        "city": "CASTELNUOVO RANGONE",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1808,
+        "name": "BARBARA CORI",
+        "email": "N/A",
+        "city": "CASTELNUOVO RANGONE",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1650,
+        "name": "ALDI SUISSE",
+        "email": "N/A",
+        "city": "horgen",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1592,
+        "name": "ALEARDI AG",
+        "email": "N/A",
+        "city": "ZUERICH",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1472,
+        "name": "ALEFRI SRL",
+        "email": "ELISA.ALEFRI@GMAIL.COM",
+        "city": "CASTELNUOVO SCRIVIA",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1835,
+        "name": "DAVIDE",
+        "email": "ELISA.ALEFRI@GMAIL.COM",
+        "city": "CASTELNUOVO SCRIVIA",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 3086,
+        "name": "ALEN GROUP S.R.L. UNICO SOCIO",
+        "email": "alengroupsrl@libero.it",
+        "city": "TORRE DEL GRECO NA",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1593,
+        "name": "ALIGRO Demaurex & Cie SA",
+        "email": "WARENRESERVATIONZH@ALIGRO.CH;LILIANE.ZIMMERMANN@ALIGRO.CH",
+        "city": "SCHLIEREN",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 8790,
+        "name": "SIMONA PALANO",
+        "email": "simona.palano@aligro.ch",
+        "city": "SCHLIEREN",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 8795,
+        "name": "SOSTITUTO SIMONA PALANO",
+        "email": "REZ-ZZH@ALIGRO.CH",
+        "city": "SCHLIEREN",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1529,
+        "name": "ALIMENTIS SRL",
+        "email": "DELCARLOANDREA@GMAIL.COM",
+        "city": "COMMESSAGGIO",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2983,
+        "name": "Alimentis Commerciale",
+        "email": "U.COMMERCIALE2@ALIMENTIS.IT",
+        "city": "COMMESSAGGIO",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1840,
+        "name": "CRISTINA PAROLINI",
+        "email": "QUALITY@ALIMENTIS.IT",
+        "city": "COMMESSAGGIO",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1838,
+        "name": "DEL CARLO ANDREA",
+        "email": "DELCARLOANDREA@GMAIL.COM",
+        "city": "COMMESSAGGIO",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1839,
+        "name": "MIRKO CONTESINI",
+        "email": "M.CONTESINI@ALIMENTIS.IT",
+        "city": "COMMESSAGGIO",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 3051,
+        "name": "NICOLA MAURIZIO",
+        "email": "minimaxnicola3@gmail.com",
+        "city": "BONFOL",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2430,
+        "name": "ANGELA FERSULA",
+        "email": "N/A",
+        "city": "YVERDON-LES-BAINS",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2079,
+        "name": "JONATHAN COHEN",
+        "email": "contact@sansergio.ch",
+        "city": "YVERDON-LES-BAINS",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2431,
+        "name": "SALVATORE PRINCIPE",
+        "email": "N/A",
+        "city": "YVERDON-LES-BAINS",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 8463,
+        "name": "ALPENZU SRL",
+        "email": "export@alpenzu.com",
+        "city": "ARNAD AO",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 5706,
+        "name": "ALTENBURGER LTD LEGAL",
+        "email": "N/A",
+        "city": "KüSNACHT",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 6130,
+        "name": "Figundio Niccolò Avocato",
+        "email": "figundio@altenburger.ch",
+        "city": "KüSNACHT",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 6476,
+        "name": "Isabelle Meyer",
+        "email": "meyer@altenburger.ch",
+        "city": "KüSNACHT",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 5756,
+        "name": "MASSIMO CALDERAN",
+        "email": "calderan@altenburger.ch",
+        "city": "KüSNACHT",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2090,
+        "name": "ALTERSGERECHTES WOHEN WOLLISHOFEN",
+        "email": "bas.hendriksen@wollishofer-heime.ch",
+        "city": "ZUERICH",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2847,
+        "name": "BAS HENDRIKSEN",
+        "email": "bas.hendriksen@wollishofer-heime.ch",
+        "city": "ZUERICH",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2850,
+        "name": "CHRISTIAN ANDREAS FREI",
+        "email": "N/A",
+        "city": "ZUERICH",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2851,
+        "name": "MARCO ALEXANDER KäGI",
+        "email": "N/A",
+        "city": "ZUERICH",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2852,
+        "name": "MARIE LOUISE STIERLI-EGLI",
+        "email": "N/A",
+        "city": "ZUERICH",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2849,
+        "name": "MARTIN WANNER",
+        "email": "N/A",
+        "city": "ZUERICH",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 2853,
+        "name": "URSULA BRIGITTE ENZ",
+        "email": "N/A",
+        "city": "ZUERICH",
+        "is_company": false,
+        "type": "contact",
+        "team_id": null
+      },
+      {
+        "id": 1678,
+        "name": "AMAZON",
+        "email": "N/A",
+        "city": "N/A",
+        "is_company": true,
+        "type": "contact",
+        "team_id": null
+      }
+    ],
+    "Vendite Azienda (parte francese)": [
+      {
+        "id": 1770,
+        "name": "CLAUDIU COTARLICI",
+        "email": "cc@luigia.ch",
+        "city": "GINEVRA",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 8
+      },
+      {
+        "id": 1802,
+        "name": "CUOCO",
+        "email": "N/A",
+        "city": "GINEVRA",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 8
+      },
+      {
+        "id": 8445,
+        "name": "Ermal",
+        "email": "N/A",
+        "city": "GINEVRA",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 8
+      },
+      {
+        "id": 1772,
+        "name": "KEOMA BIGON",
+        "email": "keoma.bigon@luigia.ch",
+        "city": "GINEVRA",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 8
+      },
+      {
+        "id": 3062,
+        "name": "GIANNI NARDI",
+        "email": "nardi.gianni@luigia.ch",
+        "city": "Meyrin",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 8
+      },
+      {
+        "id": 1747,
+        "name": "MICHELE COPPOLA",
+        "email": "michele.coppola@luigia.ch",
+        "city": "Meyrin",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 8
+      }
+    ],
+    "I Maestri del Sapore": [
+      {
+        "id": 9128,
+        "name": "Vincenzo Pellerito",
+        "email": "N/A",
+        "city": "HöRI",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 1
+      }
+    ],
+    "I Campioni del Gusto": [
+      {
+        "id": 2307,
+        "name": "DENIS DENNIS",
+        "email": "INFO@RISTORANTE-ALDENTE.CH",
+        "city": "GLATTBRUGG OPFIKON",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 9
+      },
+      {
+        "id": 9333,
+        "name": "Eli",
+        "email": "N/A",
+        "city": "GLATTBRUGG OPFIKON",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 9
+      },
+      {
+        "id": 8890,
+        "name": "Luca",
+        "email": "N/A",
+        "city": "GLATTBRUGG OPFIKON",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 9
+      },
+      {
+        "id": 9123,
+        "name": "Michele",
+        "email": "N/A",
+        "city": "GLATTBRUGG OPFIKON",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 9
+      },
+      {
+        "id": 10007,
+        "name": "SIMON",
+        "email": "N/A",
+        "city": "GLATTBRUGG OPFIKON",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 9
+      },
+      {
+        "id": 1786,
+        "name": "Shamir Ahamed Concerto",
+        "email": "N/A",
+        "city": "GLATTBRUGG OPFIKON",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 9
+      }
+    ],
+    "La Squadra del Successo": [
+      {
+        "id": 2531,
+        "name": "GIOVANNI ALLIA",
+        "email": "N/A",
+        "city": "EMBRACH",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 5
+      },
+      {
+        "id": 2532,
+        "name": "GIUSEPPINA ALLIA",
+        "email": "N/A",
+        "city": "EMBRACH",
+        "is_company": false,
+        "type": "contact",
+        "team_id": 5
+      }
+    ]
+  },
+  "sample_clients": [
+    {
+      "id": 2898,
+      "name": "1A Mietwagen",
+      "email": false,
+      "city": "Dällikon",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 5485,
+      "name": "1Password",
+      "email": false,
+      "city": "Toronto",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2423,
+      "name": "CUOCO",
+      "email": false,
+      "city": "WINTERTHUR",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 8120,
+      "name": "Gianluca",
+      "email": false,
+      "city": "WINTERTHUR",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 9515,
+      "name": "72gege@gmail.com",
+      "email": "72gege@gmail.com",
+      "city": false,
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 9891,
+      "name": "96.oscarcattorini@gmail.com",
+      "email": "96.oscarcattorini@gmail.com",
+      "city": false,
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1994,
+      "name": "A TAVOLA JEANNERET",
+      "email": "info@epicerieatavola.ch",
+      "city": "PESEUX",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2425,
+      "name": "FRéDéERIC JEANNERET - GROSJEAN",
+      "email": false,
+      "city": "PESEUX",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2424,
+      "name": "MARIA JEANNERET - GROSJEAN",
+      "email": false,
+      "city": "PESEUX",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 6190,
+      "name": "Francesco D'Agostino",
+      "email": false,
+      "city": "WINTERTHUR",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 6191,
+      "name": "Luana D'Agostino",
+      "email": false,
+      "city": "WINTERTHUR",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 9616,
+      "name": "Aydin Yildirim",
+      "email": false,
+      "city": "Zürich",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2015,
+      "name": "A-IMMOBILIER SÀRL",
+      "email": "maxime@aiamercato.ch",
+      "city": "MORGES",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2427,
+      "name": "AURORE MUELLER",
+      "email": false,
+      "city": "MORGES",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2071,
+      "name": "MAXIME DIGNOTI",
+      "email": "maxime.dignoti@gmail.com",
+      "city": "MORGES",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2899,
+      "name": "A. MARCHON SA - KUKISSIMA",
+      "email": "info@marchon.ch",
+      "city": "ROSSENS",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2982,
+      "name": "Michel Castelli",
+      "email": "michel.castelli@marchon.ch",
+      "city": "ROSSENS",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 9357,
+      "name": "A.I.A. AGRICOLA ITALIANA ALIMENTARE S.P.A.",
+      "email": "Andrea.Tonetti@negroni.com",
+      "city": "SAN MARTINO BUON ALBERGO VR",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 9358,
+      "name": "Andrea Tonetti",
+      "email": "Andrea.Tonetti@negroni.com",
+      "city": "SAN MARTINO BUON ALBERGO VR",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2076,
+      "name": "Alessandro Longo",
+      "email": "tigellabellanyon@gmail.com",
+      "city": "NYON",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2581,
+      "name": "CLEMENTE SIGNORE",
+      "email": false,
+      "city": "NYON",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 830,
+      "name": "ACCADEMIA DEL GUSTO GMBH",
+      "email": "INFO@ACCADEMIADELGUSTO.CH",
+      "city": "ZUERICH",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 5141,
+      "name": "MARIANA PISCOPO",
+      "email": "+41442416243",
+      "city": "ZUERICH",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 5140,
+      "name": "STEFANO PISCOPO",
+      "email": "+41442416243",
+      "city": "ZUERICH",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1552,
+      "name": "ACETAIA TERRA DEL TUONO SOCIETA' AGRICOLA S.R.L.",
+      "email": "ROBERTO@TERRADELTUONO.IT",
+      "city": "MODENA MO",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1801,
+      "name": "Roberto Zini",
+      "email": "roberto@terradeltuono.it",
+      "city": "MODENA MO",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 5540,
+      "name": "ADA Gastro GmbH",
+      "email": "pronto-pratteln@gmx.ch",
+      "city": "Rickenbach",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 5613,
+      "name": "Admira Vigorito",
+      "email": false,
+      "city": "Rickenbach",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 5541,
+      "name": "Florio Vigorito",
+      "email": "pronto-pratteln@gmx.ch",
+      "city": "Rickenbach",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1770,
+      "name": "CLAUDIU COTARLICI",
+      "email": "cc@luigia.ch",
+      "city": "GINEVRA",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        8,
+        "Vendite Azienda (parte francese)"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 1802,
+      "name": "CUOCO",
+      "email": false,
+      "city": "GINEVRA",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        8,
+        "Vendite Azienda (parte francese)"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 8445,
+      "name": "Ermal",
+      "email": false,
+      "city": "GINEVRA",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        8,
+        "Vendite Azienda (parte francese)"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 1772,
+      "name": "KEOMA BIGON",
+      "email": "keoma.bigon@luigia.ch",
+      "city": "GINEVRA",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        8,
+        "Vendite Azienda (parte francese)"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 5283,
+      "name": "AFFINITIS SARL",
+      "email": "info@affinitis.ch",
+      "city": "Grimisuat",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 7837,
+      "name": "AFFINITIS SARL ‒ CHE-381.460.973",
+      "email": false,
+      "city": false,
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 8161,
+      "name": "DIEGO MONZILLO",
+      "email": "diego@affinitis.ch",
+      "city": "Grimisuat",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 5284,
+      "name": "Vito Saponara",
+      "email": "vito@affinitis.ch",
+      "city": "Grimisuat",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 7197,
+      "name": "AGENZIA DELLE ENTRATE",
+      "email": false,
+      "city": "ROMA RM",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1521,
+      "name": "AGENZIA LOMBARDA RAPPRESENTANZE E DEPOSITI SRL",
+      "email": "ORDINI@AGENZIALOMBARDA.COM",
+      "city": "NOVATE MILANESE MI",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1803,
+      "name": "SIG. ROMANO",
+      "email": "ordini@agenzialombarda.com",
+      "city": "NOVATE MILANESE MI",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 3062,
+      "name": "GIANNI NARDI",
+      "email": "nardi.gianni@luigia.ch",
+      "city": "Meyrin",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        8,
+        "Vendite Azienda (parte francese)"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 1747,
+      "name": "MICHELE COPPOLA",
+      "email": "michele.coppola@luigia.ch",
+      "city": "Meyrin",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        8,
+        "Vendite Azienda (parte francese)"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 1836,
+      "name": "GIANLUCA GHIZZI",
+      "email": false,
+      "city": "WALLISELLEN",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1649,
+      "name": "AGRANO AG",
+      "email": "INFO@ARGANO.CH",
+      "city": "ALLSCHWILL",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1571,
+      "name": "AGRICOLA TERRE D ABRUZZO LUMACA NATURALE",
+      "email": "INFO@LUMACA-BIO.IT",
+      "city": "NOTARESCO",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1805,
+      "name": "Fernando de Laurentis",
+      "email": false,
+      "city": "NOTARESCO",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1546,
+      "name": "AGUGIARO & FIGNA MOLINI S.P.A.",
+      "email": "F.COBIANCHI@AGUGIAROFIGNA.COM",
+      "city": "COLLECCHIO PR",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1806,
+      "name": "FILIPPO COBIANCHI",
+      "email": "F.COBIANCHI@AGUGIAROFIGNA.COM",
+      "city": "COLLECCHIO PR",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1807,
+      "name": "SANDRA ZILIOTTI",
+      "email": "S.ZILIOTTI@AGUGIAROFIGNA.COM",
+      "city": "COLLECCHIO PR",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 9684,
+      "name": "AI Assistente Acquisti",
+      "email": "ai.acquisti@bot.local",
+      "city": false,
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 9681,
+      "name": "AI Assistente Magazzino e Logistica",
+      "email": "ai.magazzino@bot.local",
+      "city": false,
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 6508,
+      "name": "AKCAKAYA",
+      "email": "info@capri-adliswil.ch",
+      "city": "Adliswil",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 9128,
+      "name": "Vincenzo Pellerito",
+      "email": false,
+      "city": "HöRI",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        1,
+        "I Maestri del Sapore"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 2307,
+      "name": "DENIS DENNIS",
+      "email": "INFO@RISTORANTE-ALDENTE.CH",
+      "city": "GLATTBRUGG OPFIKON",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        9,
+        "I Campioni del Gusto"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 9333,
+      "name": "Eli",
+      "email": false,
+      "city": "GLATTBRUGG OPFIKON",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        9,
+        "I Campioni del Gusto"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 8890,
+      "name": "Luca",
+      "email": false,
+      "city": "GLATTBRUGG OPFIKON",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        9,
+        "I Campioni del Gusto"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 9123,
+      "name": "Michele",
+      "email": false,
+      "city": "GLATTBRUGG OPFIKON",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        9,
+        "I Campioni del Gusto"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 10007,
+      "name": "SIMON",
+      "email": false,
+      "city": "GLATTBRUGG OPFIKON",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        9,
+        "I Campioni del Gusto"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 1786,
+      "name": "Shamir Ahamed Concerto",
+      "email": false,
+      "city": "GLATTBRUGG OPFIKON",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        9,
+        "I Campioni del Gusto"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 1995,
+      "name": "AL MERCATO SARL",
+      "email": "A.JANIN@ICLOUD.COM",
+      "city": "CAROUGE",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2708,
+      "name": "ALEXANDRE JANIN",
+      "email": "a.janin@icloud.com",
+      "city": "CAROUGE",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2709,
+      "name": "JEAN-PIERRE JANIN",
+      "email": false,
+      "city": "CAROUGE",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 7372,
+      "name": "ROMAIN",
+      "email": false,
+      "city": "CAROUGE",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 5474,
+      "name": "ALBERGHI E PRANZI",
+      "email": false,
+      "city": false,
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 5496,
+      "name": "LUIGI GRECO",
+      "email": false,
+      "city": "NETSTAL",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2302,
+      "name": "ALBERTO PRIVATO",
+      "email": false,
+      "city": false,
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1532,
+      "name": "ALCAR UNO S.P.A.",
+      "email": "INFO@ALCARUNO.IT;BARBARA.CORI@ALCARUNO.IT",
+      "city": "CASTELNUOVO RANGONE",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1808,
+      "name": "BARBARA CORI",
+      "email": false,
+      "city": "CASTELNUOVO RANGONE",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1650,
+      "name": "ALDI SUISSE",
+      "email": false,
+      "city": "horgen",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1592,
+      "name": "ALEARDI AG",
+      "email": false,
+      "city": "ZUERICH",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1472,
+      "name": "ALEFRI SRL",
+      "email": "ELISA.ALEFRI@GMAIL.COM",
+      "city": "CASTELNUOVO SCRIVIA",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1835,
+      "name": "DAVIDE",
+      "email": "ELISA.ALEFRI@GMAIL.COM",
+      "city": "CASTELNUOVO SCRIVIA",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 3086,
+      "name": "ALEN GROUP S.R.L. UNICO SOCIO",
+      "email": "alengroupsrl@libero.it",
+      "city": "TORRE DEL GRECO NA",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1593,
+      "name": "ALIGRO Demaurex & Cie SA",
+      "email": "WARENRESERVATIONZH@ALIGRO.CH;LILIANE.ZIMMERMANN@ALIGRO.CH",
+      "city": "SCHLIEREN",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 8790,
+      "name": "SIMONA PALANO",
+      "email": "simona.palano@aligro.ch",
+      "city": "SCHLIEREN",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 8795,
+      "name": "SOSTITUTO SIMONA PALANO",
+      "email": "REZ-ZZH@ALIGRO.CH",
+      "city": "SCHLIEREN",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1529,
+      "name": "ALIMENTIS SRL",
+      "email": "DELCARLOANDREA@GMAIL.COM",
+      "city": "COMMESSAGGIO",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2983,
+      "name": "Alimentis Commerciale",
+      "email": "U.COMMERCIALE2@ALIMENTIS.IT",
+      "city": "COMMESSAGGIO",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1840,
+      "name": "CRISTINA PAROLINI",
+      "email": "QUALITY@ALIMENTIS.IT",
+      "city": "COMMESSAGGIO",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1838,
+      "name": "DEL CARLO ANDREA",
+      "email": "DELCARLOANDREA@GMAIL.COM",
+      "city": "COMMESSAGGIO",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1839,
+      "name": "MIRKO CONTESINI",
+      "email": "M.CONTESINI@ALIMENTIS.IT",
+      "city": "COMMESSAGGIO",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 3051,
+      "name": "NICOLA MAURIZIO",
+      "email": "minimaxnicola3@gmail.com",
+      "city": "BONFOL",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2531,
+      "name": "GIOVANNI ALLIA",
+      "email": false,
+      "city": "EMBRACH",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        5,
+        "La Squadra del Successo"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 2532,
+      "name": "GIUSEPPINA ALLIA",
+      "email": false,
+      "city": "EMBRACH",
+      "is_company": false,
+      "type": "contact",
+      "team_id": [
+        5,
+        "La Squadra del Successo"
+      ],
+      "customer_rank": 0
+    },
+    {
+      "id": 2430,
+      "name": "ANGELA FERSULA",
+      "email": false,
+      "city": "YVERDON-LES-BAINS",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2079,
+      "name": "JONATHAN COHEN",
+      "email": "contact@sansergio.ch",
+      "city": "YVERDON-LES-BAINS",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2431,
+      "name": "SALVATORE PRINCIPE",
+      "email": false,
+      "city": "YVERDON-LES-BAINS",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 8463,
+      "name": "ALPENZU SRL",
+      "email": "export@alpenzu.com",
+      "city": "ARNAD AO",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 5706,
+      "name": "ALTENBURGER LTD LEGAL",
+      "email": false,
+      "city": "KüSNACHT",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 6130,
+      "name": "Figundio Niccolò Avocato",
+      "email": "figundio@altenburger.ch",
+      "city": "KüSNACHT",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 6476,
+      "name": "Isabelle Meyer",
+      "email": "meyer@altenburger.ch",
+      "city": "KüSNACHT",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 5756,
+      "name": "MASSIMO CALDERAN",
+      "email": "calderan@altenburger.ch",
+      "city": "KüSNACHT",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2090,
+      "name": "ALTERSGERECHTES WOHEN WOLLISHOFEN",
+      "email": "bas.hendriksen@wollishofer-heime.ch",
+      "city": "ZUERICH",
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2847,
+      "name": "BAS HENDRIKSEN",
+      "email": "bas.hendriksen@wollishofer-heime.ch",
+      "city": "ZUERICH",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2850,
+      "name": "CHRISTIAN ANDREAS FREI",
+      "email": false,
+      "city": "ZUERICH",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2851,
+      "name": "MARCO ALEXANDER KäGI",
+      "email": false,
+      "city": "ZUERICH",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2852,
+      "name": "MARIE LOUISE STIERLI-EGLI",
+      "email": false,
+      "city": "ZUERICH",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2849,
+      "name": "MARTIN WANNER",
+      "email": false,
+      "city": "ZUERICH",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 2853,
+      "name": "URSULA BRIGITTE ENZ",
+      "email": false,
+      "city": "ZUERICH",
+      "is_company": false,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    },
+    {
+      "id": 1678,
+      "name": "AMAZON",
+      "email": false,
+      "city": false,
+      "is_company": true,
+      "type": "contact",
+      "team_id": false,
+      "customer_rank": 0
+    }
+  ]
+}

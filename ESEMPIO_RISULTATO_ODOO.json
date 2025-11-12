@@ -1,0 +1,64 @@
+{
+  "_note": "Questo è un esempio di come sarebbe il risultato con connessione Odoo reale",
+  "_differenze": "Con Odoo reale avremmo: ID prodotti veri, ubicazioni furgone precise, categorie Odoo",
+  "esempio_con_odoo": {
+    "ordine": "WH/OUT/34443",
+    "cliente": "Amare Food Truck, Amare Food CONSEGNA",
+    "data": "2025-11-07 18:53:10",
+    "salesOrder": "S34420",
+    "autista": "Domingos",
+    "prodotti": [
+      {
+        "id": 24567,
+        "nome": "SALATINI 8 GUSTI 12G 4KG CRT SG",
+        "qty": 1,
+        "uom": "CRT",
+        "ubicazione_attuale": "Physical Locations/LAPA/Furgone/Domingos",
+        "ubicazione_destinazione": "Physical Locations/LAPA/Buffer/Pingu",
+        "categoria_odoo": "Prodotti Surgelati",
+        "stock_disponibile": 15.0,
+        "reserved_qty": 0.0
+      }
+    ]
+  },
+  "esempio_simulato_corrente": {
+    "ordine": "WH/OUT/34443",
+    "cliente": "Amare Food Truck, Amare Food CONSEGNA",
+    "data": "2025-11-07 18:53:10",
+    "salesOrder": "S34420",
+    "autista": "Domingos",
+    "prodotti": [
+      {
+        "id": null,
+        "nome": "SALATINI 8 GUSTI 12G 4KG CRT SG",
+        "qty": 1,
+        "uom": "CRT",
+        "ubicazione_attuale": "Furgone/Domingos",
+        "ubicazione_destinazione": "Buffer/Pingu"
+      }
+    ]
+  },
+  "note_implementazione": {
+    "quando_odoo_disponibile": [
+      "Eseguire: node analizza-scarichi-parziali-ubicazioni.js",
+      "Lo script si connetterà a Odoo staging",
+      "Otterrà gli ID reali dei prodotti",
+      "Cercherà le ubicazioni esatte nei furgoni tramite stock.quant",
+      "Determinerà il buffer dalla categoria Odoo del prodotto"
+    ],
+    "vantaggi_versione_odoo": [
+      "ID prodotti reali per creare i trasferimenti",
+      "Ubicazioni precise (es: Furgone/Domingos/Frigo invece di solo Furgone/Domingos)",
+      "Categorie Odoo per classificazione buffer più accurata",
+      "Quantità esatte disponibili in stock",
+      "Possibilità di creare direttamente i picking in Odoo"
+    ],
+    "vantaggi_versione_simulata": [
+      "Funziona senza connessione Odoo",
+      "Veloce da eseguire",
+      "Logica di business basata su pattern nomi prodotti",
+      "Identifica autista dai messaggi di scarico parziale",
+      "Sufficiente per pianificazione manuale"
+    ]
+  }
+}
