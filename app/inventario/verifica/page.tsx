@@ -60,11 +60,12 @@ export default function VerificaInventarioPage() {
   const [zoneCounts, setZoneCounts] = useState<ZoneCounts>({});
   const [selectedZone, setSelectedZone] = useState<typeof ZONES[0] | null>(null);
   const [showZoneSelector, setShowZoneSelector] = useState(true);
-  const [showLocationScanner, setShowLocationScanner] = useState(false);
+  const [showLocationList, setShowLocationList] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showProductList, setShowProductList] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>('');
   const [locationProducts, setLocationProducts] = useState<VerificationRequest[]>([]);
+  const [locationsWithCounts, setLocationsWithCounts] = useState<Array<{name: string, count: number}>>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Stati modal
@@ -130,33 +131,54 @@ export default function VerificaInventarioPage() {
   const handleZoneSelect = (zone: typeof ZONES[0]) => {
     setSelectedZone(zone);
     setShowZoneSelector(false);
-    setShowLocationScanner(true);
+
+    // Calcola ubicazioni uniche per questa zona con conteggio
+    const zoneRequests = allRequests.filter(req => {
+      const locationName = req.location_name?.toLowerCase() || '';
+      return locationName.includes(zone.name.toLowerCase());
+    });
+
+    const locationMap = new Map<string, number>();
+    zoneRequests.forEach(req => {
+      const count = locationMap.get(req.location_name) || 0;
+      locationMap.set(req.location_name, count + 1);
+    });
+
+    const locations = Array.from(locationMap.entries()).map(([name, count]) => ({
+      name,
+      count
+    }));
+
+    setLocationsWithCounts(locations);
+    setShowLocationList(true);
+  };
+
+  const handleLocationSelect = (locationName: string) => {
+    const productsForLocation = allRequests.filter(request =>
+      request.location_name === locationName
+    );
+
+    setCurrentLocation(locationName);
+    setLocationProducts(productsForLocation);
+    setShowLocationList(false);
+    setShowProductList(true);
   };
 
   const handleLocationScan = (scannedCode: string) => {
     // Chiudi scanner
     setShowQRScanner(false);
 
-    // Filtra prodotti per questa ubicazione e zona
-    const productsForLocation = allRequests.filter(request => {
-      const locationName = request.location_name?.toLowerCase() || '';
-      const zoneMatches = selectedZone && locationName.includes(selectedZone.name.toLowerCase());
-      const locationMatches = request.location_name?.includes(scannedCode) ||
-                             scannedCode.includes(request.location_name || '');
+    // Cerca l'ubicazione nella lista che matcha il codice scansionato
+    const matchingLocation = locationsWithCounts.find(loc =>
+      loc.name.includes(scannedCode) || scannedCode.includes(loc.name)
+    );
 
-      return zoneMatches && locationMatches;
-    });
-
-    if (productsForLocation.length === 0) {
-      toast.error('Nessun prodotto da verificare in questa ubicazione');
-      return;
+    if (matchingLocation) {
+      handleLocationSelect(matchingLocation.name);
+      toast.success(`${matchingLocation.count} prodotti da verificare`);
+    } else {
+      toast.error('Ubicazione non trovata nella zona selezionata');
     }
-
-    setCurrentLocation(scannedCode);
-    setLocationProducts(productsForLocation);
-    setShowLocationScanner(false);
-    setShowProductList(true);
-    toast.success(`${productsForLocation.length} prodotti da verificare`);
   };
 
   const handleProductClick = (request: VerificationRequest) => {
@@ -211,11 +233,11 @@ export default function VerificaInventarioPage() {
         setSelectedProduct(null);
         setSelectedRequest(null);
 
-        // Se non ci sono più prodotti, torna allo scanner ubicazione
+        // Se non ci sono più prodotti, torna alla lista ubicazioni
         if (locationProducts.length <= 1) {
           setShowProductList(false);
-          setShowLocationScanner(true);
-          toast('Ubicazione completata! Scansiona la prossima ubicazione', { icon: '✅' });
+          setShowLocationList(true);
+          toast('Ubicazione completata! Seleziona la prossima ubicazione', { icon: '✅' });
         }
       } else {
         toast.error('Errore nel completamento della verifica');
@@ -292,15 +314,16 @@ export default function VerificaInventarioPage() {
           </div>
         )}
 
-        {/* Location Scanner View */}
-        {showLocationScanner && (
+        {/* Location List View */}
+        {showLocationList && (
           <div className="slide-in-right">
             <div className="mb-6">
               <button
                 onClick={() => {
-                  setShowLocationScanner(false);
+                  setShowLocationList(false);
                   setShowZoneSelector(true);
                   setSelectedZone(null);
+                  setLocationsWithCounts([]);
                 }}
                 className="glass px-4 py-2 rounded-lg hover:bg-white/20 transition-colors"
               >
@@ -308,27 +331,75 @@ export default function VerificaInventarioPage() {
               </button>
             </div>
 
-            <div className="glass-strong rounded-xl p-8 text-center">
-              <div
-                className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center text-4xl"
-                style={{ backgroundColor: `${selectedZone?.color}20` }}
-              >
-                {selectedZone?.icon}
+            <div className="glass-strong rounded-xl p-6 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"
+                    style={{ backgroundColor: `${selectedZone?.color}20` }}
+                  >
+                    {selectedZone?.icon}
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold">{selectedZone?.name}</h2>
+                    <p className="text-muted-foreground">
+                      {locationsWithCounts.length} ubicazioni - {zoneCounts[selectedZone?.id || ''] || 0} prodotti
+                    </p>
+                  </div>
+                </div>
               </div>
+            </div>
 
-              <h2 className="text-2xl font-bold mb-2">{selectedZone?.name}</h2>
-              <p className="text-muted-foreground mb-8">
-                {zoneCounts[selectedZone?.id || ''] || 0} prodotti da verificare
-              </p>
-
+            <div className="mb-4">
               <button
                 onClick={() => setShowQRScanner(true)}
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 px-6 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-3"
               >
                 <MapPin className="w-6 h-6" />
-                Scansiona Ubicazione
+                Scansiona QR Ubicazione
               </button>
             </div>
+
+            <h3 className="text-xl font-semibold mb-4">Ubicazioni</h3>
+
+            <div className="space-y-3">
+              {locationsWithCounts.map((location) => (
+                <button
+                  key={location.name}
+                  onClick={() => handleLocationSelect(location.name)}
+                  className="w-full glass-strong p-6 rounded-xl hover:bg-white/10 transition-all text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                        <MapPin className="w-6 h-6 text-blue-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-lg truncate">{location.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {location.count} {location.count === 1 ? 'prodotto' : 'prodotti'} da verificare
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 ml-4">
+                      <div className="bg-blue-500/20 text-blue-400 px-4 py-2 rounded-full text-lg font-bold">
+                        {location.count}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {locationsWithCounts.length === 0 && (
+              <div className="glass-strong rounded-xl p-12 text-center">
+                <CheckCircle2 className="w-16 h-16 text-green-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Nessuna ubicazione</h3>
+                <p className="text-muted-foreground">
+                  Non ci sono ubicazioni da verificare in questa zona
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -339,13 +410,13 @@ export default function VerificaInventarioPage() {
               <button
                 onClick={() => {
                   setShowProductList(false);
-                  setShowLocationScanner(true);
+                  setShowLocationList(true);
                   setLocationProducts([]);
                   setCurrentLocation('');
                 }}
                 className="glass px-4 py-2 rounded-lg hover:bg-white/20 transition-colors"
               >
-                ← Torna allo Scanner
+                ← Torna alle Ubicazioni
               </button>
 
               <div className="flex items-center gap-2">
