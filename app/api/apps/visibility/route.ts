@@ -92,7 +92,9 @@ function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRo
   if (settings.visibilityGroup === 'all') {
     console.log(`🔍 Checking exclusions for visibilityGroup=all:`, {
       userEmail,
-      excludedUsers: settings.excludedUsers,
+      excludedUsersExists: !!settings.excludedUsers,
+      excludedUsersLength: settings.excludedUsers?.length,
+      excludedUsersArray: settings.excludedUsers,
       excludedCustomers: settings.excludedCustomers,
       isInExcludedUsers: userEmail && settings.excludedUsers?.includes(userEmail),
       isInExcludedCustomers: userEmail && settings.excludedCustomers?.includes(userEmail)
@@ -107,6 +109,7 @@ function isAppVisibleForRole(settings: AppVisibilitySettings | undefined, userRo
       console.log(`  ➜ User ${userEmail} is in excludedCustomers - HIDDEN`);
       return false;
     }
+    console.log(`  ➜ User ${userEmail} NOT in exclusions - VISIBLE`);
     return true;
   }
 
