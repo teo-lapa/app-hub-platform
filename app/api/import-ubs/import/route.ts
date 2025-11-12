@@ -79,23 +79,50 @@ export async function POST(request: NextRequest) {
         const uniqueImportId = generateUniqueImportId(transaction, accountInfo.iban)
 
         // Prepara dati per Odoo
-        // L'utente conferma che manualmente può inserire valori negativi in Odoo
-        // Quindi il problema è nella nostra chiamata API o serializzazione
+        // SOLUZIONE: Odoo potrebbe prendere sempre il valore assoluto via API web
+        // Proviamo a passare amount come float esplicito
 
-        // Forziamo esplicitamente il numero (potrebbe essere stringa)
-        const amountNumber = Number(transaction.amount)
+        // Converti a numero e assicurati sia un float valido
+        let amountValue = parseFloat(String(transaction.amount))
 
-        console.log(`🔍 [IMPORT-UBS] DEBUG amount:`)
-        console.log(`   - Originale: ${transaction.amount} (tipo: ${typeof transaction.amount})`)
-        console.log(`   - Convertito: ${amountNumber} (tipo: ${typeof amountNumber})`)
-        console.log(`   - È negativo: ${amountNumber < 0}`)
-        console.log(`   - Math.sign: ${Math.sign(amountNumber)}`)
+        // Se è NaN, salta questa transazione
+        if (isNaN(amountValue)) {
+          console.error(`❌ [IMPORT-UBS] Amount non valido: ${transaction.amount}`)
+          errors++
+          continue
+        }
+
+        console.log(`🔍 [IMPORT-UBS] DEBUG COMPLETO:`)
+        console.log(`   transaction.amount = ${transaction.amount} (tipo: ${typeof transaction.amount})`)
+        console.log(`   transaction.type = ${transaction.type}`)
+        console.log(`   amountValue convertito = ${amountValue}`)
+        console.log(`   amountValue è negativo? ${amountValue < 0}`)
+
+        // VERIFICA: Se l'amount è già negativo per le uscite, non fare nulla
+        // Se l'amount è positivo ma il tipo è expense, invertilo
+        if (transaction.type === 'expense') {
+          if (amountValue > 0) {
+            console.log(`⚠️ [IMPORT-UBS] BUG TROVATO! Expense ha amount positivo, inverto il segno`)
+            amountValue = -Math.abs(amountValue)  // Forza negativo
+          } else {
+            console.log(`✅ [IMPORT-UBS] Expense ha già amount negativo, OK`)
+          }
+        } else {
+          if (amountValue < 0) {
+            console.log(`⚠️ [IMPORT-UBS] BUG TROVATO! Income ha amount negativo, inverto il segno`)
+            amountValue = Math.abs(amountValue)  // Forza positivo
+          } else {
+            console.log(`✅ [IMPORT-UBS] Income ha già amount positivo, OK`)
+          }
+        }
+
+        console.log(`   amountValue FINALE = ${amountValue}`)
 
         const lineData = {
           journal_id: journalId,
           date: transaction.date,
           payment_ref: transaction.description,
-          amount: amountNumber, // Usa il numero esplicitamente convertito
+          amount: amountValue,  // Dovrebbe essere negativo per expense, positivo per income
           unique_import_id: uniqueImportId,
           partner_name: transaction.beneficiary !== 'N/A' ? transaction.beneficiary : false,
           ref: transaction.transactionNr || false
