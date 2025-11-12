@@ -1,0 +1,664 @@
+{
+  "data_analisi": "2025-11-07T16:24:53.237Z",
+  "fattura": "2715",
+  "fornitore": "GROMAS s.r.l.",
+  "totale_prodotti": 26,
+  "prodotti_ok": 0,
+  "prodotti_da_sistemare": 20,
+  "prodotti_non_trovati": 6,
+  "azioni_per_tipo": {
+    "AGGIORNA_COSTO": 17,
+    "RIMUOVI_IMPOSTE_ACQUISTO": 20,
+    "CAMBIA_VALUTA_FORNITORE": 17,
+    "VERIFICA_PACKAGING": 13,
+    "CAMBIA_UOM_VENDITA": 4,
+    "CAMBIA_UOM_ACQUISTO": 12,
+    "PRODOTTO_NON_ESISTE": 6
+  },
+  "dettaglio_prodotti": [
+    {
+      "trovato": true,
+      "codice": "26425",
+      "descrizione": "GUANTI NERI M NITRILE REFLEXX 100 PZ",
+      "tipo": "SINGOLO",
+      "pezzi_per_cartone": 0,
+      "odoo_id": 24258,
+      "odoo_name": "Guanti in Nitrile Reflexx Monouso Neri Taglia M - Confezione 100pz",
+      "azioni": [
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE"
+      ],
+      "dettagli": {
+        "costo": {
+          "attuale": 4.17,
+          "desiderato": 4.29
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        }
+      },
+      "supplier_info_id": 56394
+    },
+    {
+      "trovato": true,
+      "codice": "032133",
+      "descrizione": "SECCHIO CON STRIZZATORE RETT 12LT ZIF",
+      "tipo": "SINGOLO",
+      "pezzi_per_cartone": 0,
+      "odoo_id": 24278,
+      "odoo_name": "Secchio rettangolare con strizzatore professionale 12L",
+      "azioni": [
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE"
+      ],
+      "dettagli": {
+        "costo": {
+          "attuale": 2.56,
+          "desiderato": 2.64
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        }
+      },
+      "supplier_info_id": 56409
+    },
+    {
+      "trovato": true,
+      "codice": "09632",
+      "descrizione": "NEOFORT RAPIDO LT 0.75X6 +1SP",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 6,
+      "odoo_id": 24253,
+      "odoo_name": "NEOFORT RAPIDO Detergente Professionale 0,75L - Confezione 6 pezzi + 1 spruzzino",
+      "azioni": [
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "packaging": {
+          "pezzi": 6
+        }
+      },
+      "supplier_info_id": 56438
+    },
+    {
+      "trovato": true,
+      "codice": "09731",
+      "descrizione": "PULIVAT CONF 750 ML X 6 PZ",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 6,
+      "odoo_id": 24248,
+      "odoo_name": "PULIVAT Detergente Professionale - Confezione 6 Flaconi da 750ml",
+      "azioni": [
+        "CAMBIA_UOM_VENDITA",
+        "CAMBIA_UOM_ACQUISTO",
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "uom_vendita": {
+          "attuale": "CONF6",
+          "desiderata": "PZ"
+        },
+        "uom_acquisto": {
+          "attuale": "CONF6",
+          "desiderata": "CRT"
+        },
+        "costo": {
+          "attuale": 17.93,
+          "desiderato": 3.08
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        },
+        "packaging": {
+          "pezzi": 6
+        }
+      },
+      "supplier_info_id": 56398
+    },
+    {
+      "trovato": true,
+      "codice": "09733",
+      "descrizione": "UNI5 SOAP IGIENIZZANTE BIANCO MANI 5KGX4",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 4,
+      "odoo_id": 24273,
+      "odoo_name": "UNI5 Sapone Mani con Igienizzante - Tanica 5kg (Confezione 4 pezzi)",
+      "azioni": [
+        "CAMBIA_UOM_ACQUISTO",
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "uom_acquisto": {
+          "attuale": "PZ",
+          "desiderata": "CRT"
+        },
+        "costo": {
+          "attuale": 18.96,
+          "desiderato": 4.8875
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        },
+        "packaging": {
+          "pezzi": 4
+        }
+      },
+      "supplier_info_id": 56415
+    },
+    {
+      "trovato": true,
+      "codice": "11563",
+      "descrizione": "PULIGEN DISINCROSTANTE FLAC 1LT X12",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 12,
+      "odoo_id": 24249,
+      "odoo_name": "Puligen Disincrostante Professionale 1L",
+      "azioni": [
+        "CAMBIA_UOM_ACQUISTO",
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "uom_acquisto": {
+          "attuale": "PZ",
+          "desiderata": "CRT"
+        },
+        "costo": {
+          "attuale": 5.33,
+          "desiderato": 0.4583333333333333
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        },
+        "packaging": {
+          "pezzi": 12
+        }
+      },
+      "supplier_info_id": 56401
+    },
+    {
+      "trovato": true,
+      "codice": "270420",
+      "descrizione": "EQO PIATTI A MANO TAN KG 5X4 INTER",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 4,
+      "odoo_id": 24260,
+      "odoo_name": "Detersivo per Piatti EQO Profumazione Tan - Tanica 5kg",
+      "azioni": [
+        "CAMBIA_UOM_VENDITA",
+        "CAMBIA_UOM_ACQUISTO",
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "uom_vendita": {
+          "attuale": "PZ*",
+          "desiderata": "PZ"
+        },
+        "uom_acquisto": {
+          "attuale": "PZ*",
+          "desiderata": "CRT"
+        },
+        "costo": {
+          "attuale": 17.46,
+          "desiderato": 4.5
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        },
+        "packaging": {
+          "pezzi": 4
+        }
+      },
+      "supplier_info_id": 56391
+    },
+    {
+      "trovato": true,
+      "codice": "270421",
+      "descrizione": "EQO PAVIMENTI ARANCIA-LIM KG 5X4 INTER",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 4,
+      "odoo_id": 24261,
+      "odoo_name": "Detergente Pavimenti EQO Arancia-Limone 5kg",
+      "azioni": [
+        "CAMBIA_UOM_VENDITA",
+        "CAMBIA_UOM_ACQUISTO",
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "uom_vendita": {
+          "attuale": "PZ*",
+          "desiderata": "PZ"
+        },
+        "uom_acquisto": {
+          "attuale": "PZ*",
+          "desiderata": "CRT"
+        },
+        "costo": {
+          "attuale": 15.36,
+          "desiderato": 3.96
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        },
+        "packaging": {
+          "pezzi": 4
+        }
+      },
+      "supplier_info_id": 56388
+    },
+    {
+      "trovato": true,
+      "codice": "270423",
+      "descrizione": "EQO BAGNO ANTICALCARE LT0.75X6+6SP INTER",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 6,
+      "odoo_id": 24265,
+      "odoo_name": "EQO Detergente Anticalcare per Bagno 750ml - Confezione 6 pezzi",
+      "azioni": [
+        "CAMBIA_UOM_ACQUISTO",
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "uom_acquisto": {
+          "attuale": "PZ",
+          "desiderata": "CRT"
+        },
+        "costo": {
+          "attuale": 10.88,
+          "desiderato": 1.87
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        },
+        "packaging": {
+          "pezzi": 6
+        }
+      },
+      "supplier_info_id": 56392
+    },
+    {
+      "trovato": true,
+      "codice": "270425",
+      "descrizione": "EQO LAVASTOVIGLIE TAN KG 5.5 X 2 INTER",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 2,
+      "odoo_id": 24262,
+      "odoo_name": "Detersivo per Lavastoviglie EQO Professional Tanica 5.5 kg (Confezione 2 pezzi)",
+      "azioni": [
+        "CAMBIA_UOM_ACQUISTO",
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "uom_acquisto": {
+          "attuale": "PZ",
+          "desiderata": "CRT"
+        },
+        "costo": {
+          "attuale": 12.71,
+          "desiderato": 6.55
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        },
+        "packaging": {
+          "pezzi": 2
+        }
+      },
+      "supplier_info_id": 56390
+    },
+    {
+      "trovato": true,
+      "codice": "31128",
+      "descrizione": "RICAMBIO MOP SINTETICO",
+      "tipo": "SINGOLO",
+      "pezzi_per_cartone": 0,
+      "odoo_id": 24247,
+      "odoo_name": "Ricambio Mop Sintetico per Pulizia Pavimenti",
+      "azioni": [
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE"
+      ],
+      "dettagli": {
+        "costo": {
+          "attuale": 3.0500000000000003,
+          "desiderato": 3.14
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        }
+      },
+      "supplier_info_id": 56402
+    },
+    {
+      "trovato": false,
+      "codice": "26424",
+      "azioni": [
+        "PRODOTTO_NON_ESISTE"
+      ]
+    },
+    {
+      "trovato": true,
+      "codice": "50004",
+      "descrizione": "PELLICOLA SUPERPACK 300 MT CHAMPAGNE BOX",
+      "tipo": "SINGOLO",
+      "pezzi_per_cartone": 0,
+      "odoo_id": 24256,
+      "odoo_name": "Pellicola Film Trasparente per Alimenti 300m x 9cm - Champagne",
+      "azioni": [
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE"
+      ],
+      "dettagli": {
+        "costo": {
+          "attuale": 4.8500000000000005,
+          "desiderato": 5
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        }
+      },
+      "supplier_info_id": 56400
+    },
+    {
+      "trovato": true,
+      "codice": "70114",
+      "descrizione": "EFFICACE MULTIGEN IGIENIZZANTE 0.75LT X6",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 6,
+      "odoo_id": 24266,
+      "odoo_name": "Detergente Igienizzante Multigen Efficace 750ml",
+      "azioni": [
+        "CAMBIA_UOM_ACQUISTO",
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "uom_acquisto": {
+          "attuale": "PZ",
+          "desiderata": "CRT"
+        },
+        "costo": {
+          "attuale": 2.88,
+          "desiderato": 0.49500000000000005
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        },
+        "packaging": {
+          "pezzi": 6
+        }
+      },
+      "supplier_info_id": 56386
+    },
+    {
+      "trovato": true,
+      "codice": "96855",
+      "descrizione": "SACCHETTI CARTA BIANCO 14X30 B35 1000PZ",
+      "tipo": "SINGOLO",
+      "pezzi_per_cartone": 0,
+      "odoo_id": 24242,
+      "odoo_name": "Sacchetti in Carta Bianca 14x30cm - Confezione 1000pz",
+      "azioni": [
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE"
+      ],
+      "dettagli": {
+        "costo": {
+          "attuale": 18.67,
+          "desiderato": 19.25
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        }
+      },
+      "supplier_info_id": 56406
+    },
+    {
+      "trovato": false,
+      "codice": "39726",
+      "azioni": [
+        "PRODOTTO_NON_ESISTE"
+      ]
+    },
+    {
+      "trovato": false,
+      "codice": "31828",
+      "azioni": [
+        "PRODOTTO_NON_ESISTE"
+      ]
+    },
+    {
+      "trovato": false,
+      "codice": "270426",
+      "azioni": [
+        "PRODOTTO_NON_ESISTE"
+      ]
+    },
+    {
+      "trovato": false,
+      "codice": "411024",
+      "azioni": [
+        "PRODOTTO_NON_ESISTE"
+      ]
+    },
+    {
+      "trovato": false,
+      "codice": "26426",
+      "azioni": [
+        "PRODOTTO_NON_ESISTE"
+      ]
+    },
+    {
+      "trovato": true,
+      "codice": "26423",
+      "descrizione": "GUANTI NERI XL NITRILE REFLEX 100 PZ",
+      "tipo": "SINGOLO",
+      "pezzi_per_cartone": 0,
+      "odoo_id": 24422,
+      "odoo_name": "Guanti Monouso in Nitrile Nero Reflex - Taglia XL - Confezione da 100 Pezzi",
+      "azioni": [
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO"
+      ],
+      "dettagli": {
+        "costo": {
+          "attuale": 0,
+          "desiderato": 4.29
+        }
+      },
+      "supplier_info_id": null
+    },
+    {
+      "trovato": true,
+      "codice": "270424",
+      "descrizione": "EQO VETRI E MULT LT 0.75X6+6SP INTER",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 6,
+      "odoo_id": 24257,
+      "odoo_name": "Detergente multiuso EQO per vetri e superfici multiple - 750ml (confezione 6 pezzi)",
+      "azioni": [
+        "CAMBIA_UOM_ACQUISTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "uom_acquisto": {
+          "attuale": "PZ",
+          "desiderata": "CRT"
+        },
+        "packaging": {
+          "pezzi": 6
+        }
+      },
+      "supplier_info_id": 56389
+    },
+    {
+      "trovato": true,
+      "codice": "032123",
+      "descrizione": "SPUGNA ZINCATA ACCIAIO 40GR x 25 pz ZIF",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 25,
+      "odoo_id": 24276,
+      "odoo_name": "Spugna in Acciaio Zincata 40g - Confezione 25 pezzi",
+      "azioni": [
+        "CAMBIA_UOM_ACQUISTO",
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "uom_acquisto": {
+          "attuale": "PZ",
+          "desiderata": "CRT"
+        },
+        "costo": {
+          "attuale": 0.44,
+          "desiderato": 0.0176
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        },
+        "packaging": {
+          "pezzi": 25
+        }
+      },
+      "supplier_info_id": 56440
+    },
+    {
+      "trovato": true,
+      "codice": "270422",
+      "descrizione": "EQO SGRASSATORE LIM LT 0.75X6+6SP INTER",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 6,
+      "odoo_id": 24259,
+      "odoo_name": "EQO Sgrassatore Limone Spray 750ml - Confezione 6 pezzi",
+      "azioni": [
+        "CAMBIA_UOM_VENDITA",
+        "CAMBIA_UOM_ACQUISTO",
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "uom_vendita": {
+          "attuale": "CONF6",
+          "desiderata": "PZ"
+        },
+        "uom_acquisto": {
+          "attuale": "CONF6",
+          "desiderata": "CRT"
+        },
+        "costo": {
+          "attuale": 9.6,
+          "desiderato": 1.6500000000000001
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        },
+        "packaging": {
+          "pezzi": 6
+        }
+      },
+      "supplier_info_id": 56393
+    },
+    {
+      "trovato": true,
+      "codice": "032120",
+      "descrizione": "SCOPA CROMA ROSSO/NERO ZIF",
+      "tipo": "SINGOLO",
+      "pezzi_per_cartone": 0,
+      "odoo_id": 24279,
+      "odoo_name": "Scopa Professionale Croma Rosso/Nero con Sistema ZIF",
+      "azioni": [
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE"
+      ],
+      "dettagli": {
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        }
+      },
+      "supplier_info_id": 56441
+    },
+    {
+      "trovato": true,
+      "codice": "032124",
+      "descrizione": "SPUGNA FIBRA 50PZ GROSSA ZIF",
+      "tipo": "CARTONE",
+      "pezzi_per_cartone": 50,
+      "odoo_id": 24277,
+      "odoo_name": "Spugna Fibra Grossa ZIF - Confezione 50 pezzi",
+      "azioni": [
+        "CAMBIA_UOM_ACQUISTO",
+        "AGGIORNA_COSTO",
+        "RIMUOVI_IMPOSTE_ACQUISTO",
+        "CAMBIA_VALUTA_FORNITORE",
+        "VERIFICA_PACKAGING"
+      ],
+      "dettagli": {
+        "uom_acquisto": {
+          "attuale": "PZ",
+          "desiderata": "CRT"
+        },
+        "costo": {
+          "attuale": 0.32,
+          "desiderato": 0.0066
+        },
+        "valuta": {
+          "attuale": "CHF",
+          "desiderata": "EUR"
+        },
+        "packaging": {
+          "pezzi": 50
+        }
+      },
+      "supplier_info_id": 56410
+    }
+  ]
+}

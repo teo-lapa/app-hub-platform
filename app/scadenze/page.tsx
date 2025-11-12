@@ -10,6 +10,7 @@ import { ExpiryProductCard } from '@/components/scadenze/ExpiryProductCard';
 import { UrgencyFilterBar } from '@/components/scadenze/UrgencyFilterBar';
 import { WasteTransferModal } from '@/components/inventario/WasteTransferModal';
 import { ProductManagementModal } from '@/components/maestro/ProductManagementModal';
+import { VerificationRequestsModal } from '@/components/scadenze/VerificationRequestsModal';
 import { ExpiryProduct } from '@/lib/types/expiry';
 import toast from 'react-hot-toast';
 
@@ -88,6 +89,11 @@ export default function ScadenzePage() {
   const [urgentProductsCount, setUrgentProductsCount] = useState(0);
   const [offerProductsCount, setOfferProductsCount] = useState(0);
 
+  // Stati per richieste di verifica
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [verificationRequestsCount, setVerificationRequestsCount] = useState(0);
+  const [verificationRequests, setVerificationRequests] = useState<any[]>([]);
+
   // Stati per prezzi dettagliati
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [productPrices, setProductPrices] = useState<{
@@ -129,19 +135,25 @@ export default function ScadenzePage() {
   // Carica conteggi prodotti urgenti e offerte
   const loadManagementCounts = async () => {
     try {
-      const [urgentRes, offerRes] = await Promise.all([
+      const [urgentRes, offerRes, verificationRes] = await Promise.all([
         fetch('/api/urgent-products', { credentials: 'include' }),
-        fetch('/api/offer-products', { credentials: 'include' })
+        fetch('/api/offer-products', { credentials: 'include' }),
+        fetch('/api/verification-requests', { credentials: 'include' })
       ]);
 
       const urgentData = await urgentRes.json();
       const offerData = await offerRes.json();
+      const verificationData = await verificationRes.json();
 
       if (urgentData.success) {
         setUrgentProductsCount(urgentData.count || 0);
       }
       if (offerData.success) {
         setOfferProductsCount(offerData.count || 0);
+      }
+      if (verificationData.success) {
+        setVerificationRequestsCount(verificationData.count || 0);
+        setVerificationRequests(verificationData.requests || []);
       }
     } catch (error) {
       console.error('Errore caricamento conteggi gestione:', error);
@@ -246,33 +258,35 @@ export default function ScadenzePage() {
     setShowWasteTransferModal(true);
   };
 
-  // Marca come verificato
-  const handleMarkAsReviewed = async () => {
+  // Chiedi verifica
+  const handleRequestVerification = async () => {
     if (!selectedProduct) return;
 
     try {
-      const response = await fetch('/api/scadenze/mark-reviewed', {
+      const response = await fetch('/api/verification-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           productId: selectedProduct.id,
+          productName: selectedProduct.name,
           lotId: selectedProduct.lotId,
+          lotName: selectedProduct.lotName,
           locationId: selectedProduct.locationId,
-          reviewedBy: user?.email || 'unknown',
-          note: 'Verificato fisicamente',
+          locationName: selectedProduct.locationName,
+          quantity: selectedProduct.quantity,
+          expiryDate: selectedProduct.expirationDate,
+          requestedBy: user?.email || 'unknown',
+          note: `Richiesta verifica da scadenze - ${selectedProduct.name}`,
         }),
       });
 
       const data = await response.json();
       if (data.success) {
-        toast.success('✅ Prodotto marcato come verificato');
+        toast.success('✅ Richiesta di verifica inviata');
         setShowProductModal(false);
-
-        // Rimuovi da lista se necessario
-        setProducts(prev => prev.filter(p => p.id !== selectedProduct.id));
       } else {
-        toast.error(data.error || 'Errore durante verifica');
+        toast.error(data.error || 'Errore durante richiesta');
       }
     } catch (error: any) {
       toast.error('Errore: ' + error.message);
@@ -463,6 +477,8 @@ export default function ScadenzePage() {
               onManagementClick={() => setShowManagementModal(true)}
               urgentCount={urgentProductsCount}
               offerCount={offerProductsCount}
+              onVerificationClick={() => setShowVerificationModal(true)}
+              verificationCount={verificationRequestsCount}
             />
           </motion.div>
         )}
@@ -710,22 +726,22 @@ export default function ScadenzePage() {
                   <ArrowLeft className="w-5 h-5 rotate-180 text-slate-400 group-hover:translate-x-1 transition-transform" />
                 </button>
 
-                {/* Marca come verificato */}
+                {/* Chiedi Verifica */}
                 <button
-                  onClick={handleMarkAsReviewed}
-                  className="w-full glass-strong p-4 rounded-lg hover:bg-green-500/20 transition-all
-                           flex items-center justify-between group"
+                  onClick={handleRequestVerification}
+                  className="w-full glass-strong p-4 rounded-lg hover:bg-purple-500/20 transition-all
+                           flex items-center justify-between group border-2 border-purple-500/50"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                      <CheckCircle className="w-5 h-5 text-green-400" />
+                    <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                      <CheckCircle className="w-5 h-5 text-purple-400" />
                     </div>
                     <div className="text-left">
-                      <div className="font-semibold">Marca come Verificato</div>
-                      <div className="text-xs text-slate-400">Controllo fisico completato</div>
+                      <div className="font-semibold text-purple-400">Chiedi Verifica</div>
+                      <div className="text-xs text-slate-400">Richiedi controllo fisico inventario</div>
                     </div>
                   </div>
-                  <ArrowLeft className="w-5 h-5 rotate-180 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                  <ArrowLeft className="w-5 h-5 rotate-180 text-purple-400 group-hover:translate-x-1 transition-transform" />
                 </button>
 
                 {/* Vendi Urgentemente */}
@@ -936,6 +952,14 @@ export default function ScadenzePage() {
           // Ricarica conteggi quando si chiude il modal
           loadManagementCounts();
         }}
+      />
+
+      {/* Modal Richieste di Verifica */}
+      <VerificationRequestsModal
+        isOpen={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+        requests={verificationRequests}
+        onRefresh={loadManagementCounts}
       />
 
       {/* Modal Metti in Offerta */}

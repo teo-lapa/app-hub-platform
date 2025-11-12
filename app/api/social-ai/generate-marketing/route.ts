@@ -34,6 +34,7 @@ interface GenerateMarketingRequest {
   contentType: 'image' | 'video' | 'both';
   tone?: 'professional' | 'casual' | 'fun' | 'luxury';
   targetAudience?: string;
+  videoStyle?: 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic';
 }
 
 interface MarketingResult {
@@ -70,7 +71,8 @@ export async function POST(request: NextRequest) {
       socialPlatform,
       contentType,
       tone = 'professional',
-      targetAudience = 'pubblico generale'
+      targetAudience = 'pubblico generale',
+      videoStyle = 'default'
     } = body;
 
     // Validazione
@@ -154,7 +156,8 @@ export async function POST(request: NextRequest) {
           productDescription,
           platform: socialPlatform,
           aspectRatio,
-          productImageBase64: cleanBase64
+          productImageBase64: cleanBase64,
+          videoStyle
         })
       );
     } else {
@@ -381,6 +384,7 @@ async function generateMarketingVideo(
     platform: string;
     aspectRatio: string;
     productImageBase64: string;
+    videoStyle?: string;
   }
 ): Promise<{ operationId: string; status: string; estimatedTime: number } | null> {
 
@@ -395,49 +399,51 @@ async function generateMarketingVideo(
   // Crea client dedicato per Veo con la sua API key
   const veoAI = new GoogleGenAI({ apiKey: veoApiKey });
 
-  // Prompt potenziato per video fotorealistici basati sull'immagine del prodotto
-  const prompt = `Create a premium, hyper-realistic product video for ${params.platform} social media advertising.
+  const style = params.videoStyle || 'default';
 
+  // Prompt diversi per ogni stile
+  const stylePrompts = {
+    default: `Create a premium, hyper-realistic product video for ${params.platform} social media advertising.
 PRODUCT: ${params.productName}
-${params.productDescription ? `DESCRIPTION: ${params.productDescription}` : ''}
+Use the provided product image as EXACT visual reference. The product MUST look identical to the reference photo.
+CAMERA: Smooth, natural movement that showcases the product elegantly.
+LIGHTING: Professional studio lighting with soft shadows.
+STYLE: Clean, premium commercial photography in motion.`,
 
-CRITICAL INSTRUCTIONS - FOLLOW EXACTLY THE PRODUCT IMAGE:
-- Use the provided product image as the EXACT visual reference
-- Recreate the EXACT product shown in the image (same colors, textures, shape, packaging)
-- Maintain the EXACT appearance from the photo - this is crucial
-- The product MUST look identical to the reference image
+    zoom: `Create a premium product video with SLOW ZOOM IN effect for ${params.platform}.
+PRODUCT: ${params.productName}
+Use the provided product image as EXACT visual reference.
+CAMERA MOVEMENT: Start with medium shot, slowly zoom in to close-up revealing product details.
+The zoom should be smooth, slow, and elegant - like a luxury commercial.
+LIGHTING: Professional studio lighting that highlights product features.
+STYLE: High-end commercial with emphasis on product details.`,
 
-CAMERA MOVEMENT (choose ONE that best showcases the product):
-1. Smooth 360° rotation around the product (professional product showcase)
-2. Slow zoom in from medium shot to close-up (reveal details)
-3. Dolly in with slight parallax (cinematic approach)
-4. Elegant vertical pan from bottom to top (hero product reveal)
+    rotate: `Create a premium 360-DEGREE ROTATION product video for ${params.platform}.
+PRODUCT: ${params.productName}
+Use the provided product image as EXACT visual reference.
+CAMERA MOVEMENT: Smooth 360° horizontal rotation around the product at constant speed.
+Professional turntable showcase style - camera orbits the product showing it from all angles.
+LIGHTING: Studio lighting with consistent illumination from all angles.
+STYLE: Classic product showcase rotation - professional and elegant.`,
 
-LIGHTING & ATMOSPHERE:
-- Professional studio lighting setup
-- Soft shadows and highlights that enhance product features
-- Clean, premium aesthetic
-- High-end commercial photography style
+    dynamic: `Create a DYNAMIC, ENERGETIC product video for ${params.platform}.
+PRODUCT: ${params.productName}
+Use the provided product image as EXACT visual reference.
+CAMERA MOVEMENT: Fast, energetic movements - quick zoom in combined with slight rotation.
+Dynamic angles that create excitement and grab attention.
+LIGHTING: High contrast, vibrant lighting with bold shadows.
+STYLE: Modern, high-energy commercial - fast-paced and attention-grabbing.`,
 
-ENVIRONMENT:
-- Elegant, minimal background that doesn't distract from product
-- Subtle depth of field (product in focus, background slightly blurred)
-- Premium surface (marble, wood, or neutral backdrop as appropriate)
+    cinematic: `Create a CINEMATIC, HOLLYWOOD-STYLE product video for ${params.platform}.
+PRODUCT: ${params.productName}
+Use the provided product image as EXACT visual reference.
+CAMERA MOVEMENT: Professional dolly-in shot with subtle parallax effect.
+Slow, controlled push toward product with slight vertical rise - hero angle.
+LIGHTING: Dramatic cinematic lighting with rim lights and atmospheric haze.
+STYLE: Blockbuster film quality - epic, dramatic product reveal with depth and atmosphere.`
+  };
 
-VISUAL QUALITY:
-- Photorealistic 3D rendering quality
-- Sharp focus on product
-- Natural color grading
-- Commercial advertising standard
-
-MOTION:
-- Smooth, fluid camera movement
-- No jerky or sudden movements
-- Professional gimbal-style stabilization
-- Slow-motion emphasis on key product features
-
-DURATION: 6 seconds of premium content
-STYLE: Luxury commercial product photography in motion`;
+  const fullPrompt = stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.default;
 
   try {
     // Converti l'aspect ratio per Veo (solo 16:9 o 9:16)
@@ -456,7 +462,7 @@ STYLE: Luxury commercial product photography in motion`;
     const operation = await veoAI.models.generateVideos({
       model: 'veo-3.1-generate-preview', // Latest Veo model
       source: {
-        prompt: prompt,
+        prompt: fullPrompt,
         image: {
           imageBytes: params.productImageBase64,
           mimeType: 'image/jpeg'

@@ -1,0 +1,329 @@
+/**
+ * ESEMPIO: Componente React per visualizzare il riepilogo pre-ordini
+ *
+ * Usa l'API /api/smart-ordering-v2/pre-orders-summary
+ */
+
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, Package, Users, TrendingUp, Euro } from 'lucide-react';
+
+interface Assignment {
+  customerId: number;
+  customerName: string;
+  quantity: number;
+  notes?: string;
+}
+
+interface Product {
+  productId: number;
+  productName: string;
+  productCode: string;
+  unitPrice: number;
+  uom: string;
+  totalQuantity: number;
+  customerCount: number;
+  estimatedValue: number;
+  assignments: Assignment[];
+}
+
+interface SupplierSummary {
+  supplierId: number;
+  supplierName: string;
+  products: Product[];
+  totalProducts: number;
+  totalCustomers: number;
+  totalQuantity: number;
+  estimatedValue: number;
+}
+
+interface Stats {
+  totalSuppliers: number;
+  totalProducts: number;
+  totalCustomers: number;
+  totalAssignments: number;
+  totalQuantity: number;
+  totalEstimatedValue: number;
+}
+
+interface ApiResponse {
+  success: boolean;
+  preOrderSuppliers: SupplierSummary[];
+  stats: Stats;
+  generatedAt: string;
+}
+
+export default function PreOrdersSummaryPage() {
+  const [data, setData] = useState<ApiResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<number | null>(null);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/smart-ordering-v2/pre-orders-summary');
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Errore sconosciuto');
+      }
+
+      setData(result);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+        <span className="ml-3 text-lg">Caricamento pre-ordini...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <Card className="border-red-500">
+          <CardContent className="pt-6">
+            <p className="text-red-500">❌ Errore: {error}</p>
+            <Button onClick={loadData} className="mt-4">
+              Riprova
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!data || data.preOrderSuppliers.length === 0) {
+    return (
+      <div className="p-8">
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <Package className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <p className="text-lg text-gray-600">Nessun pre-ordine con clienti assegnati</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const selectedSupplierData = selectedSupplier
+    ? data.preOrderSuppliers.find(s => s.supplierId === selectedSupplier)
+    : null;
+
+  return (
+    <div className="p-8 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Riepilogo Pre-Ordini per Fornitore</h1>
+          <p className="text-gray-600 mt-1">
+            Aggiornato il {new Date(data.generatedAt).toLocaleString('it-IT')}
+          </p>
+        </div>
+        <Button onClick={loadData} variant="outline">
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Aggiorna
+        </Button>
+      </div>
+
+      {/* Statistiche Globali */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Fornitori</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.stats.totalSuppliers}</div>
+            <p className="text-xs text-muted-foreground">
+              {data.stats.totalProducts} prodotti totali
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Clienti</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.stats.totalCustomers}</div>
+            <p className="text-xs text-muted-foreground">
+              {data.stats.totalAssignments} assegnazioni
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Quantità Totale</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.stats.totalQuantity.toFixed(0)}</div>
+            <p className="text-xs text-muted-foreground">unità da ordinare</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valore Stimato</CardTitle>
+            <Euro className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              €{data.stats.totalEstimatedValue.toLocaleString('it-IT', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">valore complessivo</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Lista Fornitori */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Colonna sinistra: Lista fornitori */}
+        <div className="lg:col-span-1 space-y-4">
+          <h2 className="text-xl font-semibold">Fornitori ({data.preOrderSuppliers.length})</h2>
+          {data.preOrderSuppliers.map((supplier) => (
+            <Card
+              key={supplier.supplierId}
+              className={`cursor-pointer transition-all ${
+                selectedSupplier === supplier.supplierId
+                  ? 'border-blue-500 shadow-lg'
+                  : 'hover:border-gray-400'
+              }`}
+              onClick={() => setSelectedSupplier(supplier.supplierId)}
+            >
+              <CardHeader>
+                <CardTitle className="text-lg">{supplier.supplierName}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Prodotti:</span>
+                  <Badge variant="secondary">{supplier.totalProducts}</Badge>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Clienti:</span>
+                  <Badge variant="secondary">{supplier.totalCustomers}</Badge>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Quantità:</span>
+                  <Badge>{supplier.totalQuantity.toFixed(0)}</Badge>
+                </div>
+                <div className="flex justify-between text-sm font-semibold">
+                  <span className="text-gray-600">Valore:</span>
+                  <span className="text-green-600">
+                    €{supplier.estimatedValue.toLocaleString('it-IT', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Colonna destra: Dettaglio fornitore selezionato */}
+        <div className="lg:col-span-2">
+          {selectedSupplierData ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {selectedSupplierData.supplierName} - Dettaglio Prodotti
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {selectedSupplierData.products.map((product) => (
+                    <Card key={product.productId} className="border-gray-200">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-base">{product.productName}</CardTitle>
+                            {product.productCode && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                Codice: {product.productCode}
+                              </p>
+                            )}
+                          </div>
+                          <Badge variant="outline">
+                            {product.totalQuantity.toFixed(2)} {product.uom}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-600">Prezzo unitario:</span>
+                            <p className="font-medium">€{product.unitPrice.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Clienti:</span>
+                            <p className="font-medium">{product.customerCount}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Valore stimato:</span>
+                            <p className="font-medium text-green-600">
+                              €{product.estimatedValue.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Lista assegnazioni */}
+                        <div className="mt-4">
+                          <p className="text-sm font-medium mb-2">Assegnazioni clienti:</p>
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {product.assignments.map((assignment) => (
+                              <div
+                                key={assignment.customerId}
+                                className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm"
+                              >
+                                <span className="font-medium">{assignment.customerName}</span>
+                                <Badge variant="secondary">
+                                  {assignment.quantity.toFixed(2)} {product.uom}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="h-full flex items-center justify-center">
+              <CardContent className="text-center py-12">
+                <Package className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600">Seleziona un fornitore per vedere i dettagli</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

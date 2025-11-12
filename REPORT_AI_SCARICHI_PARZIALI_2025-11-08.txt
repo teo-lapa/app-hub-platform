@@ -1,0 +1,794 @@
+═════════════════════════════════════════════════════════════════
+  REPORT ANALISI INTELLIGENTE SCARICHI PARZIALI
+  Data: 08/11/2025, 13:12:20
+  Ordini analizzati: 26
+═════════════════════════════════════════════════════════════════
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. ORDINE: WH/OUT/34446
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Sasà Gastro GmbH, PEPPINO BADEN (consegna)
+   Sales Order: S34476
+   OUT Completato: WH/OUT/34436
+   Data prevista: 07/11/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+   📅 Data: 07/11/2025, 12:51:59
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. ORDINE: WH/OUT/34443
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Amare Food Truck, Amare Food CONSEGNA
+   Sales Order: S34420
+   OUT Completato: WH/OUT/34390
+   Data prevista: 07/11/2025
+
+📦 PRODOTTI NON SCARICATI (1):
+   1. SALATINI 8 GUSTI 12G 4KG CRT SG
+      Richiesta: 1 CRT
+      Mancante: 1 CRT
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Domingos Ferreira
+   📅 Data: 07/11/2025, 11:16:15
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. ORDINE: WH/OUT/34444
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Franco Martorelli Rest. La Vista, La Vista Feusisberg (CONSEGNA)
+   Sales Order: S34314
+   OUT Completato: WH/OUT/34274
+   Data prevista: 07/11/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+   📅 Data: 07/11/2025, 11:57:21
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Voia doar 1kg
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. ORDINE: WH/OUT/34464
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Grandin Trattoria Pizzeria, Grandin Trattoria Pizzeria - Tennis Club (CONSEGNA)
+   Sales Order: S34194
+   OUT Completato: WH/OUT/34144
+   Data prevista: 07/11/2025
+
+📦 PRODOTTI NON SCARICATI (2):
+   1. GUANCIALE DI SUINO AL PEPE SV INTERO PZ CA 1.5KG SORR
+      Richiesta: 1 kg
+      Mancante: 1 kg
+   2. NUTELLA 1000G 6PZ CRT M
+      Richiesta: 1 PZ
+      Mancante: 1 PZ
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+   📅 Data: 07/11/2025, 17:07:12
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Allesandro a detto
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. ORDINE: WH/OUT/34361
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: CASA COSI GMBH, Jason Chef (per Ordini)
+   Sales Order: S34369
+   OUT Completato: WH/OUT/34318
+   Data prevista: 05/11/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+   📅 Data: 05/11/2025, 13:49:04
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. ORDINE: WH/OUT/34352
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Cibo' Caffe' Ristorante Gmbh, Cibò Caffe Ristorante (consegna)
+   Sales Order: S34356
+   OUT Completato: WH/OUT/34326
+   Data prevista: 05/11/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+   📅 Data: 05/11/2025, 10:49:57
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Voia doar 2
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. ORDINE: WH/OUT/34344
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Siculus GmbH, Siculus Ristorante Pizzeria (Consegna)
+   Sales Order: S34367
+   OUT Completato: WH/OUT/34317
+   Data prevista: 05/11/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Ionut Zanfir
+   📅 Data: 05/11/2025, 09:38:54
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. ORDINE: WH/OUT/34353
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Emme Food GmbH, Emme l'Italia che ami
+   Sales Order: S34339
+   OUT Completato: WH/OUT/34331
+   Data prevista: 05/11/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+   📅 Data: 05/11/2025, 11:17:38
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. ORDINE: WH/OUT/34349
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: AnaMiRa GmbH, AnaMiRa (CONSEGNA)
+   Sales Order: S34374
+   OUT Completato: WH/OUT/34336
+   Data prevista: 05/11/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+   📅 Data: 05/11/2025, 10:16:25
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+   Messaggio 2:
+   👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+   📅 Data: 05/11/2025, 10:15:33
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. ORDINE: WH/OUT/34355
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Antonio Carbone GmbH, Carbone Locanda - Pasticceria (Consegna)
+   Sales Order: S34302
+   OUT Completato: WH/OUT/34284
+   Data prevista: 05/11/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Alexandru Dominte
+   📅 Data: 05/11/2025, 11:48:35
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Voleva 4 in piu di rosso piu
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11. ORDINE: WH/OUT/34292
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: DGD Gastro GmbH, KEK Restaurant Küsnacht C/o DGD GastroGmbH (Consegna)
+   Sales Order: S34309
+   OUT Completato: WH/OUT/34269
+   Data prevista: 04/11/2025
+
+📦 PRODOTTI NON SCARICATI (1):
+   1. LAVAVETRI SENZA MANICO (TIRA ACQUA) 1 PZ AL
+      Richiesta: 1 PZ
+      Mancante: 1 PZ
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+   📅 Data: 04/11/2025, 11:22:45
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+12. ORDINE: WH/OUT/34297
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Caterina Gastro Group AG, Caterina (CONSEGNA)
+   Sales Order: S34293
+   OUT Completato: WH/OUT/34256
+   Data prevista: 04/11/2025
+
+📦 PRODOTTI NON SCARICATI (2):
+   1. GRAN CULATTA PULITO FIORE S.V. CULATTAPZ 4KG MV
+      Richiesta: 1 kg
+      Mancante: 1 kg
+   2. GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM
+      Richiesta: 1 kg
+      Mancante: 1 kg
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+   📅 Data: 04/11/2025, 14:43:14
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+13. ORDINE: WH/OUT/34251
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: lick n'love GmbH - Gelateria Artigianale, La Piazzetta (CONSEGNA)
+   Sales Order: S34262
+   OUT Completato: WH/OUT/34218
+   Data prevista: 03/11/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Alexandru Dominte
+   📅 Data: 03/11/2025, 12:11:46
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Non lo vuole
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+14. ORDINE: WH/OUT/34228
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: DGD Gastro GmbH, KEK Restaurant Küsnacht C/o DGD GastroGmbH (Consegna)
+   Sales Order: S34265
+   OUT Completato: WH/OUT/34212
+   Data prevista: 03/11/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+   📅 Data: 03/11/2025, 08:26:54
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+15. ORDINE: WH/OUT/34247
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Emme Food GmbH, Emme l'Italia che ami
+   Sales Order: S34247
+   OUT Completato: WH/OUT/34221
+   Data prevista: 03/11/2025
+
+📦 PRODOTTI NON SCARICATI (1):
+   1. FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB
+      Richiesta: 10 kg
+      Mancante: 10 kg
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+   📅 Data: 03/11/2025, 11:20:16
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+16. ORDINE: WH/OUT/34249
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: TERZOANGOLO GMBH, CON GUSTO PIZZERIA (CONSEGNA)
+   Sales Order: S34261
+   OUT Completato: WH/OUT/34209
+   Data prevista: 03/11/2025
+
+📦 PRODOTTI NON SCARICATI (3):
+   1. FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5KG KG10 4PZ CRT TAMB
+      Richiesta: 4 kg
+      Mancante: 4 kg
+   2. SCHALE KRAFT CIOTOLA/PE 1000ML MARRONE 173X120X75MM  300PZ A CRT PACO*
+      Richiesta: 1 CRTc
+      Mancante: 1 CRTc
+   3. DECKEL KRAFT COPERCHIO PER CIOTOLA PLA MARRONE 300PZ A CRT PACO
+      Richiesta: 1 CRTc
+      Mancante: 1 CRTc
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+   📅 Data: 03/11/2025, 11:38:10
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+17. ORDINE: WH/OUT/34227
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: aMA PASTICCERIA AG, aMA Pasticceria AG (CONSEGNA)
+   Sales Order: S34259
+   OUT Completato: WH/OUT/34220
+   Data prevista: 03/11/2025
+
+📦 PRODOTTI NON SCARICATI (3):
+   1. SCATOLA PORTA TORTA 27X27X7H VERNICIATA BIANCA 50 PZ CRT CAR
+      Richiesta: 50 PZ
+      Mancante: 50 PZ
+   2. VASSOIO CLASS ORO 3EUR/4 ITA 18X26 10 KG CRT CAR
+      Richiesta: 10 kg
+      Mancante: 10 kg
+   3. RUSTICO LECCESE PICCOLO 165G PZ 35PZ CRT CAT
+      Richiesta: 2 CRT
+      Mancante: 2 CRT
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Alexandru Dominte
+   📅 Data: 03/11/2025, 08:14:52
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Ordine zbagliato e piu piccola
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+18. ORDINE: WH/OUT/34201
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Sasà Gastro GmbH, PEPPINO BADEN (consegna)
+   Sales Order: S34228
+   OUT Completato: WH/OUT/34179
+   Data prevista: 01/11/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+   📅 Data: 01/11/2025, 13:24:55
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Dietro
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+19. ORDINE: WH/OUT/34199
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Sasà Gastro GmbH, PEPPINO BADEN (consegna)
+   Sales Order: S34227
+   OUT Completato: WH/OUT/34178
+   Data prevista: 01/11/2025
+
+📦 PRODOTTI NON SCARICATI (1):
+   1. GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM
+      Richiesta: 2 kg
+      Mancante: 2 kg
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+   📅 Data: 01/11/2025, 11:33:29
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Dietro
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+20. ORDINE: WH/OUT/34196
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Etna Bar KLG, Etna Pasticceria - Tavola calda (Consegna)
+   Sales Order: S34200
+   OUT Completato: WH/OUT/34180
+   Data prevista: 01/11/2025
+
+📦 PRODOTTI NON SCARICATI (1):
+   1. ARANCIO A FILETTI CANDITA 6X6 KG 5 MIO
+      Richiesta: 5 kg
+      Mancante: 5 kg
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Alexandru Dominte
+   📅 Data: 01/11/2025, 10:11:37
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Ordine zbagliato
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+21. ORDINE: WH/OUT/34194
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Gasthof Engel Mekhrishvili, Gasthof Engel Mekhrishvili (Consegna)
+   Sales Order: S34224
+   OUT Completato: WH/OUT/34175
+   Data prevista: 01/11/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+   📅 Data: 01/11/2025, 09:26:13
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Chamtely
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+22. ORDINE: WH/OUT/34145
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Caterina Gastro Group AG, Caterina (CONSEGNA)
+   Sales Order: S34175
+   OUT Completato: WH/OUT/34127
+   Data prevista: 31/10/2025
+
+📦 PRODOTTI NON SCARICATI (4):
+   1. GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM
+      Richiesta: 1 kg
+      Mancante: 1 kg
+   2. FARINA 00 VERACE SACCO CONF 25KG MEY
+      Richiesta: 1 PZ
+      Mancante: 1 PZ
+   3. FINOCCHIONA IGP A META SV CA 1.5KG BG
+      Richiesta: 1 kg
+      Mancante: 1 kg
+   4. CANDEGGINA PROFUMATA 2LT 8PZ CRT MUS
+      Richiesta: 1 PZ
+      Mancante: 1 PZ
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+   📅 Data: 31/10/2025, 09:24:51
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Scaduto
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+23. ORDINE: WH/OUT/34149
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: Rössli Ristorante la Perla, Inh. Cricri, La Perla Ristorante (consegna)
+   Sales Order: S34072
+   OUT Completato: WH/OUT/34007
+   Data prevista: 31/10/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Alexandru Dominte
+   📅 Data: 31/10/2025, 11:04:17
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Mi manca il prodoto
+
+   Messaggio 2:
+   👤 Autore: LAPA - finest italian food GmbH, Alexandru Dominte
+   📅 Data: 31/10/2025, 11:02:19
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Manca il prodoto
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+24. ORDINE: WH/OUT/34108
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: NAPULE AG LACHEN, Napule Lachen
+   Sales Order: S34146
+   OUT Completato: WH/OUT/34081
+   Data prevista: 30/10/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+   📅 Data: 30/10/2025, 11:50:50
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Manca
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+25. ORDINE: WH/OUT/34098
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: DGD Gastro GmbH, KEK Restaurant Küsnacht C/o DGD GastroGmbH (Consegna)
+   Sales Order: S34043
+   OUT Completato: WH/OUT/33972
+   Data prevista: 30/10/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Stefan Cosmin Rusu
+   📅 Data: 30/10/2025, 09:03:50
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   📝 **Nota:**
+   Mancante
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+26. ORDINE: WH/OUT/34005
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMAZIONI:
+   Cliente: WinCoGast GmbH, RESTAURANT CONCORDIA (CONSEGNA)
+   Sales Order: S34009
+   OUT Completato: WH/OUT/33932
+   Data prevista: 28/10/2025
+
+🤖 ANALISI AI MESSAGGI AUTISTA:
+
+   Messaggio 1:
+   👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+   📅 Data: 28/10/2025, 12:52:49
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+   Messaggio 2:
+   👤 Autore: LAPA - finest italian food GmbH, Zamfir Traian Liviu
+   📅 Data: 28/10/2025, 12:51:15
+
+   💡 RIASSUNTO AI:
+   ❌ Impossibile analizzare: API key expired. Please renew the API key.
+
+   📝 Testo originale:
+   ⚠️ **SCARICO PARZIALE** - Giustificazione autista Autista
+   
+   🎤 **Audio registrato** (vedi allegato)
+
+
+
+═════════════════════════════════════════════════════════════════
+  STATISTICHE
+═════════════════════════════════════════════════════════════════
+
+📊 Ordini con scarichi parziali: 26/26
+📦 Totale prodotti non scaricati: 19
+🤖 Messaggi analizzati con AI
+

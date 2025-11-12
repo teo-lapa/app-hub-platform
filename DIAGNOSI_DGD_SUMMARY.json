@@ -1,0 +1,221 @@
+{
+  "diagnosi": {
+    "data": "2025-11-10",
+    "problema": "DGD Gastro GmbH non viene trovato dalla ricerca",
+    "causa": "Filtro customer_rank > 0 blocca clienti con customer_rank = 0",
+    "impatto": {
+      "clienti_bloccati_totali": 3360,
+      "percentuale_database": "~50-70%",
+      "aziende_bloccate": 29,
+      "contatti_bloccati": 71,
+      "campione_analizzato": 100
+    }
+  },
+  "dgd_gastro_gmbh": {
+    "id": 10136,
+    "name": "DGD Gastro GmbH",
+    "customer_rank": 0,
+    "is_company": true,
+    "type": "contact",
+    "active": true,
+    "team_id": [9, "I Campioni del Gusto"],
+    "email": "info@pizza-amore.ch",
+    "city": "Rüschlikon",
+    "problema": "customer_rank = 0 blocca la ricerca"
+  },
+  "test_diagnostici": {
+    "test_1_base": {
+      "descrizione": "Ricerca BASE - Solo nome DGD",
+      "domain": [["name", "ilike", "DGD"]],
+      "risultato": "PASS",
+      "record_trovati": 3
+    },
+    "test_2_customer_rank": {
+      "descrizione": "Ricerca con customer_rank > 0",
+      "domain": [["name", "ilike", "DGD"], ["customer_rank", ">", 0]],
+      "risultato": "FAIL",
+      "record_trovati": 0,
+      "diagnosi": "Il filtro customer_rank > 0 BLOCCA il risultato"
+    },
+    "test_3_is_company": {
+      "descrizione": "Ricerca con is_company = true",
+      "domain": [["name", "ilike", "DGD"], ["is_company", "=", true]],
+      "risultato": "PASS",
+      "record_trovati": 1
+    },
+    "test_4_type": {
+      "descrizione": "Ricerca con type = contact",
+      "domain": [["name", "ilike", "DGD"], ["type", "=", "contact"]],
+      "risultato": "PASS",
+      "record_trovati": 1
+    },
+    "test_5_active": {
+      "descrizione": "Ricerca con active = true",
+      "domain": [["name", "ilike", "DGD"], ["active", "=", true]],
+      "risultato": "PASS",
+      "record_trovati": 3
+    },
+    "test_6_combinazione": {
+      "descrizione": "Combinazione customer_rank > 0 AND is_company = true",
+      "domain": [["name", "ilike", "DGD"], ["customer_rank", ">", 0], ["is_company", "=", true]],
+      "risultato": "FAIL",
+      "record_trovati": 0,
+      "diagnosi": "customer_rank > 0 BLOCCA"
+    },
+    "test_7_domain_complesso": {
+      "descrizione": "Domain COMPLESSO (API route attuale)",
+      "risultato": "FAIL",
+      "record_trovati": 0,
+      "diagnosi": "customer_rank > 0 all'inizio del domain BLOCCA tutto"
+    }
+  },
+  "filtri_bloccanti": {
+    "customer_rank": {
+      "blocca": true,
+      "motivo": "DGD Gastro GmbH ha customer_rank = 0"
+    },
+    "is_company": {
+      "blocca": false,
+      "motivo": "DGD Gastro GmbH ha is_company = true"
+    },
+    "type": {
+      "blocca": false,
+      "motivo": "DGD Gastro GmbH ha type = contact"
+    },
+    "active": {
+      "blocca": false,
+      "motivo": "DGD Gastro GmbH ha active = true"
+    }
+  },
+  "soluzione": {
+    "opzione_1": {
+      "descrizione": "Rimuovere completamente il filtro customer_rank > 0 (CONSIGLIATA)",
+      "file": "app/api/clienti/search/route.ts",
+      "riga": 114,
+      "azione": "Eliminare la riga: ['customer_rank', '>', 0],",
+      "pro": [
+        "Semplice da implementare",
+        "Trova TUTTI i clienti",
+        "Nessuna modifica UI necessaria"
+      ],
+      "contro": [
+        "Potrebbe mostrare clienti mai usati"
+      ]
+    },
+    "opzione_2": {
+      "descrizione": "Rendere il filtro opzionale con toggle UI",
+      "file": "app/api/clienti/search/route.ts + CustomerSelector.tsx",
+      "azione": "Aggiungere parametro active_only alla query",
+      "pro": [
+        "Mantiene possibilità di filtrare",
+        "Più controllo per l'utente"
+      ],
+      "contro": [
+        "Richiede modifiche backend + frontend",
+        "Più complesso"
+      ]
+    }
+  },
+  "query_corretta": {
+    "minimalista": [
+      ["name", "ilike", "DGD"],
+      ["is_company", "=", true]
+    ],
+    "completa_senza_customer_rank": [
+      "|",
+      ["is_company", "=", true],
+      "&",
+      ["is_company", "=", false],
+      ["type", "=", "contact"],
+      "|", "|", "|", "|",
+      ["name", "ilike", "DGD"],
+      ["email", "ilike", "DGD"],
+      ["phone", "ilike", "DGD"],
+      ["mobile", "ilike", "DGD"],
+      ["city", "ilike", "DGD"]
+    ]
+  },
+  "file_generati": {
+    "report": [
+      {
+        "nome": "INDEX_DIAGNOSI_DGD.md",
+        "dimensione": "4.3KB",
+        "descrizione": "Indice navigabile di tutti i file generati"
+      },
+      {
+        "nome": "RIEPILOGO_DIAGNOSI_DGD.txt",
+        "dimensione": "6.3KB",
+        "descrizione": "Riepilogo testuale completo"
+      },
+      {
+        "nome": "REPORT_DIAGNOSI_DGD_GASTRO.md",
+        "dimensione": "8.1KB",
+        "descrizione": "Report dettagliato in Markdown"
+      },
+      {
+        "nome": "FIX_RICERCA_CLIENTI.md",
+        "dimensione": "6.6KB",
+        "descrizione": "Guida implementazione fix"
+      }
+    ],
+    "dati": [
+      {
+        "nome": "DIAGNOSI_DGD_GASTRO.json",
+        "dimensione": "1.2MB",
+        "descrizione": "Dati completi tutte le ricerche"
+      },
+      {
+        "nome": "CLIENTI_BLOCCATI_customer_rank_0.json",
+        "dimensione": "45KB",
+        "descrizione": "Lista primi 100 clienti bloccati"
+      },
+      {
+        "nome": "DIAGNOSI_DGD_SUMMARY.json",
+        "dimensione": "~8KB",
+        "descrizione": "Questo file - Riepilogo JSON"
+      }
+    ],
+    "script": [
+      {
+        "nome": "diagnosi-dgd-gastro-v2.js",
+        "dimensione": "17KB",
+        "descrizione": "Script diagnostico completo"
+      },
+      {
+        "nome": "trova-altri-clienti-bloccati.js",
+        "dimensione": "5.3KB",
+        "descrizione": "Script per trovare tutti i clienti bloccati"
+      }
+    ]
+  },
+  "statistiche": {
+    "tempo_diagnosi": "~10 minuti",
+    "test_eseguiti": 7,
+    "file_generati": 9,
+    "dimensione_totale": "~1.3MB",
+    "clienti_analizzati": 100,
+    "clienti_totali_bloccati": 3360
+  },
+  "prossimi_passi": [
+    "1. Leggere INDEX_DIAGNOSI_DGD.md per navigare i file",
+    "2. Leggere FIX_RICERCA_CLIENTI.md per implementare la fix",
+    "3. Rimuovere riga 114 da app/api/clienti/search/route.ts",
+    "4. Testare che DGD Gastro GmbH sia ora ricercabile",
+    "5. (Opzionale) Implementare toggle UI per filtro clienti attivi"
+  ],
+  "esempi_clienti_bloccati": [
+    "DGD Gastro GmbH (Rüschlikon)",
+    "A TAVOLA JEANNERET (Peseux)",
+    "ADA Gastro GmbH (Rickenbach)",
+    "ACCADEMIA DEL GUSTO GMBH (Zürich)",
+    "AFFINITIS SARL (Grimisuat)",
+    "ALIGRO Demaurex & Cie SA (Schlieren)",
+    "E altri 3354..."
+  ],
+  "metadata": {
+    "generated_by": "Claude Code Agent",
+    "timestamp": "2025-11-10T10:00:00Z",
+    "odoo_instance": "lapadevadmin-lapa-v2-main-7268478.dev.odoo.com",
+    "odoo_database": "lapadevadmin-lapa-v2-main-7268478"
+  }
+}

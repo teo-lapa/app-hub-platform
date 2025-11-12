@@ -1,0 +1,65 @@
+{
+  "success": true,
+  "stats": {
+    "sotto_pc": 12,
+    "tra_pc_medio": 25,
+    "sopra_medio": 48,
+    "richieste_blocco": 3,
+    "total_products": 85,
+    "total_orders": 15
+  },
+  "products": [
+    {
+      "orderId": 12345,
+      "orderName": "SO0123",
+      "customerId": 567,
+      "customerName": "Ristorante Da Mario",
+      "lineId": 9876,
+      "productId": 4321,
+      "productName": "Spaghetti Barilla 500g",
+      "productCode": "BAR-SPA-500",
+      "quantity": 10,
+      "currentPriceUnit": 1.20,
+      "costPrice": 0.85,
+      "avgSellingPrice": 1.45,
+      "criticalPoint": 1.19,
+      "category": "tra_pc_medio",
+      "isLocked": false
+    },
+    {
+      "orderId": 12346,
+      "orderName": "SO0124",
+      "customerId": 789,
+      "customerName": "Pizzeria Bella Napoli",
+      "lineId": 9877,
+      "productId": 4322,
+      "productName": "Mozzarella Bufala 250g",
+      "productCode": "MOZ-BUF-250",
+      "quantity": 5,
+      "currentPriceUnit": 3.80,
+      "costPrice": 2.90,
+      "avgSellingPrice": 4.50,
+      "criticalPoint": 4.06,
+      "category": "sotto_pc",
+      "isLocked": false
+    },
+    {
+      "orderId": 12347,
+      "orderName": "SO0125",
+      "customerId": 890,
+      "customerName": "Hotel Grand Paradiso",
+      "lineId": 9878,
+      "productId": 4323,
+      "productName": "Prosciutto Crudo DOP",
+      "productCode": "PRO-CRU-DOP",
+      "quantity": 2,
+      "currentPriceUnit": 18.50,
+      "costPrice": 12.00,
+      "avgSellingPrice": 16.80,
+      "criticalPoint": 16.80,
+      "category": "sopra_medio",
+      "isLocked": true
+    }
+  ],
+  "timestamp": "2025-11-11T14:30:00.000Z"
+}

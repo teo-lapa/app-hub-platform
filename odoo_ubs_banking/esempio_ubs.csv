@@ -1,0 +1,9 @@
+Bewertungsdatum;Bankbeziehung;Portfolio;Produkt;IBAN;Whrg.
+11.11.2025;12345678;Portfolio Standard;Privatkonto;CH02 0027 8278 1220 8701 J;CHF
+
+Datum von;Datum bis;Beschreibung;Abschlussdatum;Buchungsdatum;Valuta;Beschreibung 1;Beschreibung 2;Beschreibung 3;Transaktions-Nr.;Devisenkurs zum Originalbetrag in Abrechnungswährung;Einzelbetrag;Belastung;Gutschrift;Saldo
+01.11.2025;11.11.2025;Überweisung;;07.11.2025;07.11.2025;"Pagamento fattura INV/2025/02500";"Cliente Test SA";"Riferimento: TEST-001";TRX001;;4987,21;;4987,21;104'987,21
+01.11.2025;11.11.2025;Lastschrift;;08.11.2025;08.11.2025;"Affitto ufficio novembre";"Immobiliare GmbH";"Contratto: AFF-2025";TRX002;;1'200,00;1'200,00;;103'787,21
+01.11.2025;11.11.2025;Gehalt;;09.11.2025;09.11.2025;"Stipendio dipendente";"Rossi Mario";"Periodo: 11/2025";TRX003;;3'500,00;3'500,00;;100'287,21
+01.11.2025;11.11.2025;Überweisung;;10.11.2025;10.11.2025;"Bonifico da cliente";"ACME Corporation";"Fattura: INV-2025-125";TRX004;;8'500,50;;8'500,50;108'787,71
+01.11.2025;11.11.2025;Kartenzahlung;;11.11.2025;11.11.2025;"Acquisto materiale ufficio";"Office Supplies SA";"";TRX005;;256,75;256,75;;108'530,96

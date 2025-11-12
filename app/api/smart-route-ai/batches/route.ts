@@ -83,10 +83,10 @@ export async function GET(request: NextRequest) {
             const moves = await rpcClient.callKw(
               'stock.move',
               'read',
-              [allMoveIds, ['id', 'product_uom_qty']]
+              [allMoveIds, ['id', 'weight']]
             );
 
-            totalWeight = moves.reduce((sum: number, move: any) => sum + (move.product_uom_qty || 0), 0);
+            totalWeight = moves.reduce((sum: number, move: any) => sum + (move.weight || 0), 0);
           }
         }
 

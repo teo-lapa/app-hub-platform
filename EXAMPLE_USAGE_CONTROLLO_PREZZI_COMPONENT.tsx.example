@@ -1,0 +1,333 @@
+/**
+ * Example Usage - Controllo Prezzi Dashboard Component
+ *
+ * This is a complete example showing how to use the aggregate API
+ * in a Next.js/React component for the "Controllo Prezzi" app.
+ *
+ * File: app/controllo-prezzi/page.tsx
+ */
+
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Loader2, AlertCircle, DollarSign, TrendingDown, TrendingUp, Award } from 'lucide-react';
+
+// TypeScript Types (from API)
+interface ProductAnalysis {
+  orderId: number;
+  orderName: string;
+  customerId: number;
+  customerName: string;
+  lineId: number;
+  productId: number;
+  productName: string;
+  productCode: string;
+  quantity: number;
+  currentPriceUnit: number;
+  costPrice: number;
+  avgSellingPrice: number;
+  criticalPoint: number;
+  category: 'sotto_pc' | 'tra_pc_medio' | 'sopra_medio';
+  isLocked: boolean;
+}
+
+interface AggregateStats {
+  sotto_pc: number;
+  tra_pc_medio: number;
+  sopra_medio: number;
+  richieste_blocco: number;
+  total_products: number;
+  total_orders: number;
+}
+
+interface AggregateResponse {
+  success: boolean;
+  stats: AggregateStats;
+  products: ProductAnalysis[];
+  timestamp: string;
+}
+
+// Main Component
+export default function ControlloPrezziPage() {
+  const [data, setData] = useState<AggregateResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'sotto_pc' | 'tra_pc_medio' | 'sopra_medio'>('all');
+
+  // Fetch data from API
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch('/api/controllo-prezzi/aggregate', {
+        credentials: 'include'
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Errore nel caricamento dati');
+      }
+
+      setData(result);
+    } catch (err: any) {
+      console.error('❌ Error loading price data:', err);
+      setError(err.message || 'Errore nel caricamento');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter products by category
+  const filteredProducts = data?.products.filter(p =>
+    selectedCategory === 'all' || p.category === selectedCategory
+  ) || [];
+
+  // Loading State
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-blue-500 animate-spin mx-auto mb-4" />
+          <p className="text-white text-lg">Caricamento dati prezzi...</p>
+          <p className="text-slate-400 text-sm mt-2">Può richiedere fino a 30 secondi</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error State
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-red-500/20 border-2 border-red-500 rounded-xl p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <AlertCircle className="h-6 w-6 text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-lg font-bold text-red-400 mb-1">Errore</h3>
+              <p className="text-sm text-red-300">{error || 'Errore sconosciuto'}</p>
+            </div>
+          </div>
+          <button
+            onClick={loadData}
+            className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+          >
+            Riprova
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Main Dashboard
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Header */}
+      <header className="bg-slate-900/95 backdrop-blur-xl border-b border-slate-700 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-r from-green-500 to-blue-500 p-2.5 rounded-xl">
+                <DollarSign className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Controllo Prezzi</h1>
+                <p className="text-sm text-slate-300">Dashboard Aggregata Ordini in Revisione</p>
+              </div>
+            </div>
+            <button
+              onClick={loadData}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              Aggiorna
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          {/* Sotto PC - CRITICAL */}
+          <div
+            className={`bg-gradient-to-br from-red-500/20 to-red-600/20 border-2 rounded-xl p-4 cursor-pointer transition-all ${
+              selectedCategory === 'sotto_pc' ? 'border-red-500 ring-2 ring-red-500 shadow-xl' : 'border-red-500/30'
+            }`}
+            onClick={() => setSelectedCategory(selectedCategory === 'sotto_pc' ? 'all' : 'sotto_pc')}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-red-400">Sotto PC</h3>
+              <TrendingDown className="h-5 w-5 text-red-400" />
+            </div>
+            <p className="text-3xl font-bold text-red-500">{data.stats.sotto_pc}</p>
+            <p className="text-xs text-red-300 mt-1">Prodotti critici</p>
+          </div>
+
+          {/* Tra PC e Medio - WARNING */}
+          <div
+            className={`bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border-2 rounded-xl p-4 cursor-pointer transition-all ${
+              selectedCategory === 'tra_pc_medio' ? 'border-yellow-500 ring-2 ring-yellow-500 shadow-xl' : 'border-yellow-500/30'
+            }`}
+            onClick={() => setSelectedCategory(selectedCategory === 'tra_pc_medio' ? 'all' : 'tra_pc_medio')}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-yellow-400">PC - Medio</h3>
+              <TrendingUp className="h-5 w-5 text-yellow-400" />
+            </div>
+            <p className="text-3xl font-bold text-yellow-500">{data.stats.tra_pc_medio}</p>
+            <p className="text-xs text-yellow-300 mt-1">In attenzione</p>
+          </div>
+
+          {/* Sopra Medio - OK */}
+          <div
+            className={`bg-gradient-to-br from-green-500/20 to-green-600/20 border-2 rounded-xl p-4 cursor-pointer transition-all ${
+              selectedCategory === 'sopra_medio' ? 'border-green-500 ring-2 ring-green-500 shadow-xl' : 'border-green-500/30'
+            }`}
+            onClick={() => setSelectedCategory(selectedCategory === 'sopra_medio' ? 'all' : 'sopra_medio')}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-green-400">Sopra Medio</h3>
+              <Award className="h-5 w-5 text-green-400" />
+            </div>
+            <p className="text-3xl font-bold text-green-500">{data.stats.sopra_medio}</p>
+            <p className="text-xs text-green-300 mt-1">Prezzi OK</p>
+          </div>
+
+          {/* Richieste Blocco */}
+          <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 border-2 border-purple-500/30 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-purple-400">Richieste</h3>
+              <AlertCircle className="h-5 w-5 text-purple-400" />
+            </div>
+            <p className="text-3xl font-bold text-purple-500">{data.stats.richieste_blocco}</p>
+            <p className="text-xs text-purple-300 mt-1">Da approvare</p>
+          </div>
+        </div>
+
+        {/* Summary Info */}
+        <div className="bg-slate-800 rounded-lg p-4 border border-slate-700 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-400">Totale Ordini in Revisione</p>
+              <p className="text-2xl font-bold text-white">{data.stats.total_orders}</p>
+            </div>
+            <div>
+              <p className="text-sm text-slate-400">Totale Prodotti</p>
+              <p className="text-2xl font-bold text-white">{data.stats.total_products}</p>
+            </div>
+            <div>
+              <p className="text-sm text-slate-400">Ultimo Aggiornamento</p>
+              <p className="text-sm text-white">{new Date(data.timestamp).toLocaleString('it-IT')}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Products List */}
+        <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+          <div className="p-4 border-b border-slate-700">
+            <h2 className="text-xl font-bold text-white">
+              {selectedCategory === 'all'
+                ? 'Tutti i Prodotti'
+                : selectedCategory === 'sotto_pc'
+                ? 'Prodotti Sotto Punto Critico'
+                : selectedCategory === 'tra_pc_medio'
+                ? 'Prodotti tra PC e Medio'
+                : 'Prodotti Sopra Medio'}
+            </h2>
+            <p className="text-sm text-slate-400 mt-1">
+              {filteredProducts.length} prodotti trovati
+            </p>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-700/50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-300">Ordine</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-300">Cliente</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-300">Prodotto</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-300">Qtà</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-300">Prezzo</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-300">Costo</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-300">PC</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-300">Medio</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-slate-300">Categoria</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-slate-300">Stato</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700">
+                {filteredProducts.map((product) => (
+                  <tr key={product.lineId} className="hover:bg-slate-700/30 transition-colors">
+                    <td className="px-4 py-3 text-sm text-white">{product.orderName}</td>
+                    <td className="px-4 py-3 text-sm text-slate-300 max-w-[200px] truncate">
+                      {product.customerName}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="max-w-[300px]">
+                        <p className="text-sm text-white truncate">{product.productName}</p>
+                        {product.productCode && (
+                          <p className="text-xs text-slate-400">{product.productCode}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-white">{product.quantity}</td>
+                    <td className="px-4 py-3 text-sm text-right font-semibold text-white">
+                      {product.currentPriceUnit.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-slate-400">
+                      {product.costPrice.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-yellow-400">
+                      {product.criticalPoint.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-blue-400">
+                      {product.avgSellingPrice > 0 ? product.avgSellingPrice.toFixed(2) : 'N/D'}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${
+                          product.category === 'sotto_pc'
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            : product.category === 'tra_pc_medio'
+                            ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                            : 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        }`}
+                      >
+                        {product.category === 'sotto_pc'
+                          ? 'Critico'
+                          : product.category === 'tra_pc_medio'
+                          ? 'Attenzione'
+                          : 'OK'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {product.isLocked ? (
+                        <span className="text-xs text-red-400">🔒 Bloccato</span>
+                      ) : (
+                        <span className="text-xs text-green-400">🔓 Libero</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* No Results */}
+          {filteredProducts.length === 0 && (
+            <div className="p-8 text-center">
+              <p className="text-slate-400">Nessun prodotto trovato</p>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

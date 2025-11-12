@@ -16,6 +16,8 @@ interface UrgencyFilterBarProps {
   onManagementClick?: () => void; // Callback per aprire modal gestione
   urgentCount?: number; // Conteggio prodotti urgenti
   offerCount?: number; // Conteggio prodotti in offerta
+  onVerificationClick?: () => void; // Callback per aprire modal richieste verifica
+  verificationCount?: number; // Conteggio richieste di verifica
 }
 
 const URGENCY_CATEGORIES: UrgencyCategory[] = [
@@ -75,7 +77,9 @@ export function UrgencyFilterBar({
   onSelect,
   onManagementClick,
   urgentCount = 0,
-  offerCount = 0
+  offerCount = 0,
+  onVerificationClick,
+  verificationCount = 0
 }: UrgencyFilterBarProps) {
   // Trova il massimo per evidenziare
   const maxCount = Math.max(counts.expired, counts.expiring, counts.ok);
@@ -144,6 +148,47 @@ export function UrgencyFilterBar({
               className="bg-white/30 backdrop-blur-sm px-4 py-3 rounded-full"
             >
               <span className="text-2xl font-bold">{totalManagementCount}</span>
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Card Richieste di Verifica */}
+      {onVerificationClick && verificationCount > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="glass-strong p-6 rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 cursor-pointer relative text-white transition-all shadow-lg hover:shadow-xl"
+          onClick={onVerificationClick}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <div className="text-3xl">✅</div>
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold mb-1">RICHIESTE DI VERIFICA</h3>
+                <p className="text-sm text-white/80">
+                  Prodotti che richiedono un controllo fisico inventario
+                </p>
+                <div className="flex gap-4 mt-2">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-white/70">📦 Da verificare:</span>
+                    <span className="font-bold text-purple-200">{verificationCount}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Badge conteggio con animazione pulsante */}
+            <motion.div
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="bg-white/30 backdrop-blur-sm px-4 py-3 rounded-full"
+            >
+              <span className="text-2xl font-bold">{verificationCount}</span>
             </motion.div>
           </div>
         </motion.div>

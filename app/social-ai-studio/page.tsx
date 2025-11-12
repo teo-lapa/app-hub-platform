@@ -15,6 +15,7 @@ import ShareMenu from '@/components/social-ai/ShareMenu';
 type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
 type ContentType = 'image' | 'video' | 'both';
 type Tone = 'professional' | 'casual' | 'fun' | 'luxury';
+type VideoStyle = 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic';
 
 interface MarketingResult {
   copywriting: {
@@ -46,6 +47,7 @@ export default function SocialAIStudioPage() {
   const [contentType, setContentType] = useState<ContentType>('both');
   const [tone, setTone] = useState<Tone>('professional');
   const [targetAudience, setTargetAudience] = useState('');
+  const [videoStyle, setVideoStyle] = useState<VideoStyle>('default');
 
   // Generation states
   const [isGenerating, setIsGenerating] = useState(false);
@@ -218,7 +220,8 @@ export default function SocialAIStudioPage() {
           socialPlatform,
           contentType,
           tone,
-          targetAudience: targetAudience || undefined
+          targetAudience: targetAudience || undefined,
+          videoStyle: videoStyle || 'default'
         })
       });
 
@@ -556,6 +559,81 @@ export default function SocialAIStudioPage() {
                 ))}
               </div>
             </div>
+
+            {/* Video Style - mostra solo se video o both */}
+            {(contentType === 'video' || contentType === 'both') && (
+              <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
+                <label className="block text-sm font-medium text-purple-300 mb-3">
+                  Stile Video
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setVideoStyle('default')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      videoStyle === 'default'
+                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="font-semibold">Standard</div>
+                    <div className="text-xs opacity-75">Movimento naturale</div>
+                  </button>
+
+                  <button
+                    onClick={() => setVideoStyle('zoom')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      videoStyle === 'zoom'
+                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="font-semibold">Zoom In</div>
+                    <div className="text-xs opacity-75">Avvicinamento lento</div>
+                  </button>
+
+                  <button
+                    onClick={() => setVideoStyle('rotate')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      videoStyle === 'rotate'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="font-semibold">Rotazione 360°</div>
+                    <div className="text-xs opacity-75">Gira intorno prodotto</div>
+                  </button>
+
+                  <button
+                    onClick={() => setVideoStyle('dynamic')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      videoStyle === 'dynamic'
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="font-semibold">Dinamico</div>
+                    <div className="text-xs opacity-75">Movimento veloce</div>
+                  </button>
+
+                  <button
+                    onClick={() => setVideoStyle('cinematic')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      videoStyle === 'cinematic'
+                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50 col-span-2`}
+                  >
+                    <div className="font-semibold">Cinematico</div>
+                    <div className="text-xs opacity-75">Stile film professionale</div>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Tone & Target */}
             <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
