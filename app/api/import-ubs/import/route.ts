@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import xmlrpc from 'xmlrpc'
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth'
 
 interface Transaction {
   date: string
@@ -23,18 +23,12 @@ interface AccountInfo {
   transactionCount: number
 }
 
-// Configurazione Odoo da variabili ambiente
-const ODOO_URL = process.env.ODOO_URL_STAGING || process.env.ODOO_URL || ''
-const ODOO_DB = process.env.ODOO_DB_STAGING || process.env.ODOO_DB || ''
-const ODOO_USERNAME = process.env.ODOO_USERNAME || ''
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || ''
-
-// Giornale bancario UBS (da config)
+// Giornali bancari UBS
 const UBS_CHF_JOURNAL_ID = 9
 const UBS_EUR_JOURNAL_ID = 11
 
 /**
- * Genera unique_import_id per evitare duplicati
+ * Genera unique_import_id per evitare duplicati in Odoo
  */
 function generateUniqueImportId(transaction: Transaction, iban: string): string {
   // Formato: IBAN-DATE-AMOUNT-TXNR
@@ -45,87 +39,10 @@ function generateUniqueImportId(transaction: Transaction, iban: string): string 
   return `${iban}-${dateStr}-${amountStr}-${txNr}`
 }
 
-/**
- * Connette a Odoo e autentica
- */
-async function connectOdoo(): Promise<{ uid: number; models: any } | null> {
-  return new Promise((resolve) => {
-    const commonClient = xmlrpc.createSecureClient({
-      host: ODOO_URL.replace(/^https?:\/\//, '').split('/')[0],
-      port: 443,
-      path: '/xmlrpc/2/common'
-    })
-
-    commonClient.methodCall('authenticate', [
-      ODOO_DB,
-      ODOO_USERNAME,
-      ODOO_PASSWORD,
-      {}
-    ], (error, uid: number) => {
-      if (error || !uid) {
-        console.error('Errore autenticazione Odoo:', error)
-        resolve(null)
-        return
-      }
-
-      const modelsClient = xmlrpc.createSecureClient({
-        host: ODOO_URL.replace(/^https?:\/\//, '').split('/')[0],
-        port: 443,
-        path: '/xmlrpc/2/object'
-      })
-
-      resolve({ uid, models: modelsClient })
-    })
-  })
-}
-
-/**
- * Crea una riga di estratto conto bancario in Odoo
- */
-async function createBankStatementLine(
-  models: any,
-  uid: number,
-  journalId: number,
-  transaction: Transaction,
-  uniqueImportId: string
-): Promise<number | null> {
-  return new Promise((resolve) => {
-    const data = {
-      journal_id: journalId,
-      date: transaction.date,
-      payment_ref: transaction.description,
-      partner_name: transaction.beneficiary !== 'N/A' ? transaction.beneficiary : false,
-      amount: transaction.amount,
-      unique_import_id: uniqueImportId,
-      ref: transaction.transactionNr || false
-    }
-
-    models.methodCall('execute_kw', [
-      ODOO_DB,
-      uid,
-      ODOO_PASSWORD,
-      'account.bank.statement.line',
-      'create',
-      [[data]]
-    ], (error: any, id: number) => {
-      if (error) {
-        console.error('Errore creazione movimento:', error)
-        // Se errore è per unique_import_id duplicato, ritorna 0 (saltato)
-        if (error.faultString?.includes('unique_import_id')) {
-          resolve(0)
-          return
-        }
-        resolve(null)
-        return
-      }
-
-      resolve(id)
-    })
-  })
-}
-
 export async function POST(request: NextRequest) {
   try {
+    console.log('🏦 [IMPORT-UBS] Inizio import movimenti bancari...')
+
     const body = await request.json()
     const { accountInfo, transactions } = body as { accountInfo: AccountInfo; transactions: Transaction[] }
 
@@ -136,50 +53,82 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Verifica configurazione Odoo
-    if (!ODOO_URL || !ODOO_DB || !ODOO_USERNAME || !ODOO_PASSWORD) {
-      return NextResponse.json({
-        success: false,
-        error: 'Configurazione Odoo mancante. Verifica le variabili d\'ambiente.'
-      }, { status: 500 })
-    }
+    console.log(`📊 [IMPORT-UBS] Ricevute ${transactions.length} transazioni`)
+    console.log(`💰 [IMPORT-UBS] Valuta: ${accountInfo.currency}`)
 
-    // Connetti a Odoo
-    const odoo = await connectOdoo()
-    if (!odoo) {
-      return NextResponse.json({
-        success: false,
-        error: 'Impossibile connettersi a Odoo. Verifica credenziali.'
-      }, { status: 500 })
-    }
+    // Ottieni la sessione Odoo dai cookies dell'utente
+    const cookieHeader = request.headers.get('cookie')
+    const { cookies: odooCookies, uid } = await getOdooSession(cookieHeader || undefined)
 
-    const { uid, models } = odoo
+    console.log(`✅ [IMPORT-UBS] Autenticato con Odoo (UID: ${uid})`)
 
     // Determina giornale in base a valuta
     const journalId = accountInfo.currency === 'EUR' ? UBS_EUR_JOURNAL_ID : UBS_CHF_JOURNAL_ID
+    console.log(`📁 [IMPORT-UBS] Giornale selezionato: ${journalId} (${accountInfo.currency})`)
 
-    // Importa transazioni
+    // Importa transazioni una per una
     let imported = 0
     let skipped = 0
     let errors = 0
+    const errorDetails: string[] = []
 
-    for (const transaction of transactions) {
+    for (let i = 0; i < transactions.length; i++) {
+      const transaction = transactions[i]
+
       try {
         const uniqueImportId = generateUniqueImportId(transaction, accountInfo.iban)
-        const result = await createBankStatementLine(models, uid, journalId, transaction, uniqueImportId)
 
-        if (result === null) {
-          errors++
-        } else if (result === 0) {
-          skipped++ // Duplicato
-        } else {
-          imported++
+        // Prepara dati per Odoo
+        const lineData = {
+          journal_id: journalId,
+          date: transaction.date,
+          payment_ref: transaction.description,
+          amount: transaction.amount,
+          unique_import_id: uniqueImportId,
+          partner_name: transaction.beneficiary !== 'N/A' ? transaction.beneficiary : false,
+          ref: transaction.transactionNr || false
         }
-      } catch (error) {
-        console.error('Errore importazione transazione:', error)
+
+        console.log(`📝 [IMPORT-UBS] [${i + 1}/${transactions.length}] Importo movimento: ${transaction.amount} ${accountInfo.currency}`)
+
+        // Crea riga estratto conto in Odoo
+        try {
+          const result = await callOdoo(
+            odooCookies,
+            'account.bank.statement.line',
+            'create',
+            [[lineData]],
+            {}
+          )
+
+          if (result) {
+            imported++
+            console.log(`✅ [IMPORT-UBS] Movimento importato con ID: ${result}`)
+          }
+        } catch (createError: any) {
+          // Verifica se è un errore di duplicato (unique_import_id constraint)
+          if (createError.message?.includes('unique_import_id') ||
+              createError.message?.includes('already exists') ||
+              createError.message?.includes('duplicate')) {
+            skipped++
+            console.log(`⏭️  [IMPORT-UBS] Movimento duplicato saltato: ${uniqueImportId}`)
+          } else {
+            errors++
+            const errorMsg = `Riga ${i + 1}: ${createError.message}`
+            errorDetails.push(errorMsg)
+            console.error(`❌ [IMPORT-UBS] Errore creazione movimento:`, createError.message)
+          }
+        }
+
+      } catch (error: any) {
         errors++
+        const errorMsg = `Riga ${i + 1}: ${error.message}`
+        errorDetails.push(errorMsg)
+        console.error(`❌ [IMPORT-UBS] Errore generico:`, error.message)
       }
     }
+
+    console.log(`📈 [IMPORT-UBS] RIEPILOGO: ${imported} importati, ${skipped} duplicati, ${errors} errori`)
 
     return NextResponse.json({
       success: true,
@@ -187,14 +136,15 @@ export async function POST(request: NextRequest) {
       imported,
       skipped,
       errors,
+      errorDetails: errors > 0 ? errorDetails : undefined,
       message: `Importati ${imported} movimenti, ${skipped} duplicati saltati, ${errors} errori`
     })
 
-  } catch (error) {
-    console.error('Errore import UBS:', error)
+  } catch (error: any) {
+    console.error('❌ [IMPORT-UBS] Errore critico:', error)
     return NextResponse.json({
       success: false,
-      error: 'Errore durante l\'importazione: ' + (error as Error).message
+      error: 'Errore durante l\'importazione: ' + error.message
     }, { status: 500 })
   }
 }
