@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store/appStore';
-import { categories } from '@/lib/data/apps';
+import { categories } from '@/lib/data/apps-with-indicators';
 
 export function CategoryFilter() {
   const { selectedCategory, setCategory } = useAppStore();
