@@ -212,10 +212,31 @@ export default function VerificaInventarioPage() {
     lotName: string;
     expiryDate: string;
   }) => {
-    if (!selectedRequest) return;
+    if (!selectedRequest || !selectedProduct) return;
 
     try {
-      const response = await fetch('/api/verification-requests/complete', {
+      // STEP 1: Salva su Odoo la quantità, lotto e scadenza (come fa l'inventario normale)
+      const saveResponse = await fetch('/api/inventory/update-quantity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          productId: selectedRequest.product_id,
+          locationId: selectedRequest.location_id,
+          quantId: selectedProduct.lot?.id || null, // ID del quant/lotto specifico
+          quantity: data.quantity,
+          lotName: data.lotName,
+          expiryDate: data.expiryDate
+        })
+      });
+
+      const saveData = await saveResponse.json();
+      if (!saveData.success) {
+        throw new Error(saveData.error || 'Errore salvataggio su Odoo');
+      }
+
+      // STEP 2: Marca la richiesta di verifica come completata
+      const completeResponse = await fetch('/api/verification-requests/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -225,10 +246,10 @@ export default function VerificaInventarioPage() {
         })
       });
 
-      const result = await response.json();
+      const result = await completeResponse.json();
 
       if (result.success) {
-        toast.success('Prodotto verificato con successo!');
+        toast.success('✅ Prodotto verificato e salvato su Odoo!');
 
         // Rimuovi dalla lista locale
         setLocationProducts(prev => prev.filter(p => p.id !== selectedRequest.id));
@@ -248,9 +269,9 @@ export default function VerificaInventarioPage() {
       } else {
         toast.error('Errore nel completamento della verifica');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Errore completamento verifica:', error);
-      toast.error('Errore di connessione');
+      toast.error('Errore: ' + error.message);
     }
   };
 
