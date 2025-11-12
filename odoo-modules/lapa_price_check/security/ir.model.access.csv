@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_price_review_user,access_price_review_user,model_x_price_review,base.group_user,1,1,1,0
+access_price_review_manager,access_price_review_manager,model_x_price_review,sales_team.group_sale_manager,1,1,1,1

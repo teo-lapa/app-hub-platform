@@ -129,3 +129,36 @@ CREATE INDEX IF NOT EXISTS idx_reservations_created ON product_reservations(crea
 CREATE TRIGGER update_product_reservations_updated_at
 BEFORE UPDATE ON product_reservations
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- CONTROLLO PREZZI: Price Reviews
+-- ============================================
+
+-- Table: Price Reviews (tracking stato controllo prezzi)
+CREATE TABLE IF NOT EXISTS price_reviews (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER NOT NULL, -- ID prodotto Odoo
+  order_id INTEGER NOT NULL, -- ID ordine Odoo
+  order_line_id INTEGER NOT NULL, -- ID order line Odoo (identifica univocamente la riga)
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'blocked')),
+  reviewed_by TEXT, -- Chi ha marcato come controllato
+  blocked_by TEXT, -- Chi ha bloccato il prezzo
+  note TEXT, -- Note opzionali
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Indici per performance
+CREATE INDEX IF NOT EXISTS idx_price_reviews_product ON price_reviews(product_id);
+CREATE INDEX IF NOT EXISTS idx_price_reviews_order ON price_reviews(order_id);
+CREATE INDEX IF NOT EXISTS idx_price_reviews_order_line ON price_reviews(order_line_id);
+CREATE INDEX IF NOT EXISTS idx_price_reviews_status ON price_reviews(status);
+CREATE INDEX IF NOT EXISTS idx_price_reviews_created ON price_reviews(created_at DESC);
+
+-- Unique constraint: una sola review per order line
+CREATE UNIQUE INDEX IF NOT EXISTS idx_price_reviews_unique_line ON price_reviews(order_line_id);
+
+-- Trigger per auto-update updated_at
+CREATE TRIGGER update_price_reviews_updated_at
+BEFORE UPDATE ON price_reviews
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
