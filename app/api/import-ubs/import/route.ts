@@ -79,17 +79,20 @@ export async function POST(request: NextRequest) {
         const uniqueImportId = generateUniqueImportId(transaction, accountInfo.iban)
 
         // Prepara dati per Odoo
+        // IMPORTANTE: In Odoo, amount positivo = entrata, negativo = uscita
+        // Assicuriamoci che il segno sia preservato correttamente
         const lineData = {
           journal_id: journalId,
           date: transaction.date,
           payment_ref: transaction.description,
-          amount: transaction.amount,
+          amount: transaction.amount, // Mantiene il segno: positivo per entrate, negativo per uscite
           unique_import_id: uniqueImportId,
           partner_name: transaction.beneficiary !== 'N/A' ? transaction.beneficiary : false,
           ref: transaction.transactionNr || false
         }
 
-        console.log(`📝 [IMPORT-UBS] [${i + 1}/${transactions.length}] Importo movimento: ${transaction.amount} ${accountInfo.currency}`)
+        console.log(`📝 [IMPORT-UBS] [${i + 1}/${transactions.length}] Importo movimento: ${transaction.amount} ${accountInfo.currency} (${transaction.type})`)
+        console.log(`📋 [IMPORT-UBS] Dati inviati a Odoo:`, JSON.stringify(lineData, null, 2))
 
         // Crea riga estratto conto in Odoo
         try {
@@ -104,6 +107,22 @@ export async function POST(request: NextRequest) {
           if (result) {
             imported++
             console.log(`✅ [IMPORT-UBS] Movimento importato con ID: ${result}`)
+
+            // Leggi indietro il movimento per verificare che il segno sia preservato
+            try {
+              const savedMovement = await callOdoo(
+                odooCookies,
+                'account.bank.statement.line',
+                'read',
+                [[result], ['amount', 'payment_ref']],
+                {}
+              )
+              if (savedMovement && savedMovement.length > 0) {
+                console.log(`🔍 [IMPORT-UBS] Movimento salvato - Amount: ${savedMovement[0].amount} (originale era: ${transaction.amount})`)
+              }
+            } catch (readError) {
+              console.log(`⚠️ [IMPORT-UBS] Impossibile leggere movimento salvato`)
+            }
           }
         } catch (createError: any) {
           // Verifica se è un errore di duplicato (unique_import_id constraint)
