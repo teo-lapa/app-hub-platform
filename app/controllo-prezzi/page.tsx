@@ -18,7 +18,12 @@ export default function ControlloPrezziPage() {
   // Controllo accesso: SOLO Paul e Laura
   useEffect(() => {
     if (user && user.email) {
-      const allowedEmails = ['paul.diserens@gmail.com', 'laura.diserens@gmail.com'];
+      const allowedEmails = [
+        'paul.diserens@gmail.com',
+        'laura.diserens@gmail.com',
+        'paul@lapa.ch',
+        'laura@lapa.ch'
+      ];
       if (!allowedEmails.includes(user.email)) {
         toast.error('Accesso negato: questa app è disponibile solo per Paul e Laura');
         router.push('/');
