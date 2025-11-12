@@ -222,7 +222,7 @@ export default function VerificaInventarioPage() {
         body: JSON.stringify({
           productId: selectedRequest.product_id,
           locationId: selectedRequest.location_id,
-          quantId: selectedProduct.lot?.id || null,
+          quantId: null, // L'API cerca il quant automaticamente
           quantity: data.quantity,
           lotName: data.lotName,
           expiryDate: data.expiryDate
