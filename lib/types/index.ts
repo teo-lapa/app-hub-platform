@@ -40,6 +40,10 @@ export interface App {
   controlStatus?: AppControlStatus;
   createdAt: Date;
   updatedAt: Date;
+  visible?: boolean;  // Visibilità app (dall'API)
+  visibilityGroup?: string;  // Gruppo visibilità (dall'API)
+  developmentStatus?: string;  // Stato sviluppo (dall'API)
+  groups?: any;  // Dati gruppi per gestione visibilità
 }
 
 export interface AuthState {

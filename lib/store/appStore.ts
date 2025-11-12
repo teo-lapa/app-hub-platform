@@ -124,6 +124,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
     let filtered = apps;
 
+    // ✅ FILTRO VISIBILITÀ: Escludi app con visible: false
+    filtered = filtered.filter(app => app.visible !== false);
+
     // Filtro per categoria
     if (selectedCategory !== 'Tutti') {
       filtered = filtered.filter(app => app.category === selectedCategory);

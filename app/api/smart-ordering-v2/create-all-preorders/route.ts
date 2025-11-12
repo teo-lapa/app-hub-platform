@@ -184,24 +184,43 @@ export async function POST(request: NextRequest) {
             const products = await rpc.searchRead(
               'product.product',
               [['id', '=', product.productId]],
-              ['name', 'uom_id', 'list_price', 'default_code'],
+              ['name', 'display_name', 'uom_id', 'list_price', 'default_code'],
               1
             );
 
             if (products && products.length > 0) {
               const productData = products[0];
-              productNamesMap.set(product.productId, productData.name); // Store name for chatter
+              const fullProductName = productData.display_name || productData.name;
+              productNamesMap.set(product.productId, fullProductName); // Store name for chatter
+
+              // Get the correct price from customer's pricelist
+              let priceUnit = productData.list_price || 0;
+              try {
+                // Use Odoo's pricelist calculation to get the correct price for this customer
+                const priceResult = await rpc.callKw('product.pricelist', 'get_product_price', [], {
+                  product_id: product.productId,
+                  quantity: product.quantity,
+                  partner_id: customerId,
+                  uom_id: productData.uom_id[0]
+                });
+                if (priceResult && typeof priceResult === 'number') {
+                  priceUnit = priceResult;
+                  console.log(`  💰 Applied pricelist price: ${priceUnit} for customer ${customerId}`);
+                }
+              } catch (priceError) {
+                console.warn(`  ⚠️ Could not fetch pricelist price, using list_price:`, priceError);
+              }
 
               orderLines.push([0, 0, {
                 product_id: product.productId,
                 product_uom_qty: product.quantity,
                 product_uom: productData.uom_id[0],
-                price_unit: productData.list_price || 0,
-                name: productData.name,
+                price_unit: priceUnit,
+                name: fullProductName,
                 customer_lead: 0
               }]);
 
-              console.log(`  ✅ Added product: ${productData.name} x ${product.quantity}`);
+              console.log(`  ✅ Added product: ${fullProductName} x ${product.quantity} @ ${priceUnit}€`);
             }
           } catch (productError) {
             console.error(`  ❌ Failed to fetch product ${product.productId}:`, productError);
@@ -279,24 +298,25 @@ ${productDetailsHtml}
             const products = await rpc.searchRead(
               'product.product',
               [['id', '=', product.productId]],
-              ['name', 'uom_id', 'standard_price', 'list_price', 'default_code'],
+              ['name', 'display_name', 'uom_id', 'standard_price', 'list_price', 'default_code'],
               1
             );
 
             if (products && products.length > 0) {
               const productData = products[0];
-              productNamesMap.set(product.productId, productData.name); // Store name for chatter
+              const fullProductName = productData.display_name || productData.name;
+              productNamesMap.set(product.productId, fullProductName); // Store name for chatter
 
               orderLines.push([0, 0, {
                 product_id: product.productId,
                 product_qty: product.totalQuantity,
                 product_uom: productData.uom_id[0],
                 price_unit: productData.standard_price || productData.list_price || 0,
-                name: productData.name,
+                name: fullProductName,
                 date_planned: tomorrowDate
               }]);
 
-              console.log(`  ✅ Added product: ${productData.name} x ${product.totalQuantity}`);
+              console.log(`  ✅ Added product: ${fullProductName} x ${product.totalQuantity}`);
             }
           } catch (productError) {
             console.error(`  ❌ Failed to fetch product ${product.productId}:`, productError);
