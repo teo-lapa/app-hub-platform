@@ -85,6 +85,7 @@ export interface AppStore {
   setCategory: (category: string) => void;
   setSearchQuery: (query: string) => void;
   setShowUpgradeModal: (show: boolean) => void;
+  loadAppsForUser: (userRole?: string, userId?: number) => Promise<void>; // Carica app filtrate da API
   loadUserFavorites: (userId: string) => Promise<void>; // Carica preferiti da API
   toggleFavorite: (appId: string, userId?: string) => Promise<void>; // Aggiungi/rimuovi preferito
   isFavorite: (appId: string) => boolean; // Controlla se è preferito

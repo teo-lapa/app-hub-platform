@@ -18,7 +18,7 @@ import JokeBanner from '../components/JokeBanner';
 
 export default function HomePage() {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
-  const { loadUserFavorites } = useAppStore();
+  const { loadUserFavorites, loadAppsForUser } = useAppStore();
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -26,13 +26,22 @@ export default function HomePage() {
     checkAuth();
   }, [checkAuth]);
 
-  // Carica i preferiti quando l'utente è autenticato
+  // Carica le app filtrate e i preferiti quando l'utente è autenticato
   useEffect(() => {
     if (user?.id || user?.email) {
       const userId = user.id || user.email;
+      const userRole = user.role;
+      const userIdNum = typeof user.id === 'number' ? user.id : parseInt(user.id || '0', 10);
+
+      console.log('🔄 Loading apps for user:', { userId, userRole, userIdNum });
+
+      // Carica le app filtrate per questo utente
+      loadAppsForUser(userRole, userIdNum);
+
+      // Carica anche i preferiti
       loadUserFavorites(userId);
     }
-  }, [user, loadUserFavorites]);
+  }, [user, loadUserFavorites, loadAppsForUser]);
 
   // Ricarica dati solo quando l'app torna visibile dopo essere stata nascosta
   // (evita reload eccessivi che interferiscono con la navigazione)

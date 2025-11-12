@@ -2,6 +2,33 @@ import { create } from 'zustand';
 import { AppStore, App } from '@/lib/types';
 import { allApps as mockApps } from '@/lib/data/apps-with-indicators';
 
+// Carica le app filtrate in base all'utente corrente
+const loadAppsFromAPI = async (userRole?: string, userId?: number): Promise<App[]> => {
+  try {
+    // Costruisci URL con parametri se disponibili
+    const params = new URLSearchParams();
+    if (userRole) params.append('role', userRole);
+    if (userId) params.append('userId', String(userId));
+
+    const url = `/api/apps/visibility${params.toString() ? `?${params.toString()}` : ''}`;
+    console.log(`🔄 Loading apps from API: ${url}`);
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.success && data.apps) {
+      console.log(`✅ Loaded ${data.apps.length} apps from API`);
+      return data.apps;
+    }
+
+    console.warn('⚠️ API returned no apps, falling back to mockApps');
+    return mockApps;
+  } catch (error) {
+    console.error('❌ Error loading apps from API, falling back to mockApps:', error);
+    return mockApps;
+  }
+};
+
 // Carica preferiti da Vercel KV tramite API
 const loadFavoritesFromAPI = async (userId: string): Promise<string[]> => {
   try {
@@ -56,6 +83,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   setShowUpgradeModal: (show: boolean) => {
     set({ showUpgradeModal: show });
+  },
+
+  // Carica le app filtrate per l'utente corrente dall'API
+  loadAppsForUser: async (userRole?: string, userId?: number) => {
+    const apps = await loadAppsFromAPI(userRole, userId);
+    set({ apps });
+    get().filterApps();
   },
 
   // Carica i preferiti dell'utente dall'API
