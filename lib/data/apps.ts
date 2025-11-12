@@ -294,21 +294,6 @@ export const mockApps: App[] = [
     createdAt: new Date('2025-11-11'),
     updatedAt: new Date('2025-11-11'),
   },
-  {
-    id: 'prezzi1',
-    name: 'Controllo Prezzi',
-    description: 'Sistema di monitoraggio prezzi vendita. Visualizza prezzi sotto il punto critico, tra punto critico e media, sopra media. Approva richieste di blocco prezzo dai venditori. Dashboard completa per Paul e Laura.',
-    icon: '💰',
-    badge: 'PRO',
-    category: 'Business',
-    url: '/controllo-prezzi',
-    requiredRole: 'cliente_premium',
-    isNew: true,
-    isPopular: true,
-    controlStatus: 'approved',
-    createdAt: new Date('2025-11-11'),
-    updatedAt: new Date('2025-11-11'),
-  },
 ];
 
 export const categories = [
