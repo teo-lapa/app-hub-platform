@@ -106,8 +106,18 @@ async function extractTextFromMedia(
         console.log(`📝 [GEMINI] Preview: ${extractedText.substring(0, 200)}...`);
         return extractedText;
       } catch (geminiError: any) {
-        console.error(`❌ [GEMINI] Error:`, geminiError);
-        throw new Error(`Gemini extraction failed: ${geminiError?.message || geminiError}`);
+        console.error(`❌ [GEMINI] Error details:`, {
+          message: geminiError?.message,
+          status: geminiError?.status,
+          statusText: geminiError?.statusText,
+          name: geminiError?.name,
+          code: geminiError?.code
+        });
+
+        // Log the full error object for debugging
+        console.error(`❌ [GEMINI] Full error:`, geminiError);
+
+        throw new Error(`Gemini extraction failed: ${geminiError?.message || 'Unknown error'}`);
       }
     } else if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
       // Use OpenAI Whisper for audio/video (better format support)
