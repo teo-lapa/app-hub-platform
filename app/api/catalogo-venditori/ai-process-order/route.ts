@@ -309,7 +309,9 @@ async function fetchCustomerHistory(
   console.log(`✅ Found ${orders?.length || 0} orders in last ${months} months`);
 
   if (!orders || orders.length === 0) {
-    throw new Error(`Nessun ordine trovato per ${customer.name} negli ultimi ${months} mesi`);
+    console.warn(`⚠️ Nessun ordine trovato per ${customer.name} negli ultimi ${months} mesi - continuo senza storia prodotti`);
+    // Return empty product history but allow processing to continue
+    return { customer, productHistory: [] };
   }
 
   // Get all order lines (products purchased)
