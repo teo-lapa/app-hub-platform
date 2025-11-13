@@ -218,8 +218,27 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
                         CHF {product.list_price.toFixed(2)}
                       </div>
                     )}
-                    {product.last_purchase_date && (
+                  </div>
+                  {/* Giacenza e Unità di Misura */}
+                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                    <div className="text-xs font-semibold flex items-center gap-1" style={{ fontSize: '12px', lineHeight: '1.5', color: product.qty_available && product.qty_available > 0 ? '#10b981' : '#f59e0b' }}>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                      Giacenza: {product.qty_available !== undefined ? product.qty_available.toFixed(2) : '0.00'}
+                      {product.uom_id && Array.isArray(product.uom_id) && ` ${product.uom_id[1]}`}
+                    </div>
+                    {product.incoming_qty && product.incoming_qty > 0 && (
                       <div className="text-xs text-blue-400 flex items-center gap-1" style={{ fontSize: '12px', lineHeight: '1.5' }}>
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                        </svg>
+                        In arrivo: {product.incoming_qty.toFixed(2)}
+                        {product.incoming_date && ` il ${new Date(product.incoming_date).toLocaleDateString('it-CH', { day: '2-digit', month: '2-digit', year: 'numeric' })}`}
+                      </div>
+                    )}
+                    {product.last_purchase_date && (
+                      <div className="text-xs text-purple-400 flex items-center gap-1" style={{ fontSize: '12px', lineHeight: '1.5' }}>
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
