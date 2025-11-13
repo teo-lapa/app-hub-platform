@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { MatchedProduct } from './types';
 import MediaUploadButtons from './MediaUploadButtons';
+import { addMessage } from '../lib/aiMessagesStorage';
 
 interface AIOrderInputProps {
   customerId: number | null;
@@ -117,6 +118,17 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
         });
 
         console.log(`✅ AI found ${data.matches.length} products`);
+
+        // Salva messaggio nel localStorage
+        addMessage(
+          customerId,
+          'Cliente', // Il nome verrà aggiornato dal parent
+          {
+            messageType: inputMode,
+            transcription: data.message_analyzed || message,
+            matches: data.matches
+          }
+        );
 
         // Clear input after successful processing
         setMessage('');

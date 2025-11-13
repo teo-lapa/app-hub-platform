@@ -13,6 +13,7 @@ import OdooOrderLink from './components/OdooOrderLink';
 import { UrgentProductsModal } from '@/components/maestro/UrgentProductsModal';
 import { OfferProductsModal } from '@/components/maestro/OfferProductsModal';
 import type { MatchedProduct, CartProduct } from './components/types';
+import { getMessagesForCustomer, clearMessagesForCustomer, clearAllMessages } from './lib/aiMessagesStorage';
 
 export default function CatalogoVenditoriPage() {
   const router = useRouter();
@@ -84,6 +85,30 @@ export default function CatalogoVenditoriPage() {
     setSelectedCustomerId(customerId);
     setSelectedCustomerName(customerName);
     setError(null);
+
+    // Carica messaggi salvati dal localStorage per questo cliente
+    const savedMessages = getMessagesForCustomer(customerId);
+    if (savedMessages.length > 0) {
+      console.log(`📦 Caricati ${savedMessages.length} messaggi salvati per cliente ${customerName}`);
+
+      // Concatena tutte le trascrizioni
+      const allTranscriptions = savedMessages.map(m => m.transcription).join('\n\n---\n\n');
+
+      // Unisci tutti i matches
+      const allMatches = savedMessages.flatMap(m => m.matches);
+
+      // Aggiorna lo stato AI con i dati accumulati
+      setAiTranscription(allTranscriptions);
+      setAiMessageType('multi-message'); // Indica messaggi multipli
+      setAiMatches(allMatches);
+
+      console.log(`✅ Caricati ${allMatches.length} prodotti totali da ${savedMessages.length} messaggi`);
+    } else {
+      // Reset AI data se non ci sono messaggi salvati
+      setAiTranscription(null);
+      setAiMessageType(null);
+      setAiMatches([]);
+    }
   };
 
   // Handle delivery address selection
@@ -244,12 +269,21 @@ export default function CatalogoVenditoriPage() {
           orderNotes: orderNotes || undefined,
           warehouseNotes: warehouseNotes || undefined,
           deliveryDate: deliveryDate || undefined,
-          // ✅ Passa dati AI per il chatter
-          aiData: aiTranscription ? {
-            transcription: aiTranscription,
-            messageType: aiMessageType,
-            matches: aiMatches
-          } : undefined
+          // ✅ Passa TUTTI i messaggi AI salvati per il chatter
+          aiData: selectedCustomerId ? (() => {
+            const savedMessages = getMessagesForCustomer(selectedCustomerId);
+            if (savedMessages.length > 0) {
+              return {
+                messages: savedMessages.map(msg => ({
+                  timestamp: msg.timestamp,
+                  messageType: msg.messageType,
+                  transcription: msg.transcription,
+                  matches: msg.matches
+                }))
+              };
+            }
+            return undefined;
+          })() : undefined
         })
       });
 
@@ -259,7 +293,13 @@ export default function CatalogoVenditoriPage() {
         throw new Error(data.error || 'Errore nella creazione dell\'ordine');
       }
 
-      // Success! Redirect to price review page
+      // Success! Pulisci messaggi salvati per questo cliente
+      if (selectedCustomerId) {
+        clearMessagesForCustomer(selectedCustomerId);
+        console.log('✅ Messaggi salvati trasferiti e puliti dal localStorage');
+      }
+
+      // Redirect to price review page
       console.log('✅ Order created, redirecting to price review:', data.orderId);
       router.push(`/catalogo-venditori/review-prices/${data.orderId}`);
 
@@ -273,6 +313,10 @@ export default function CatalogoVenditoriPage() {
 
   // Handle new order - reset EVERYTHING
   const handleNewOrder = () => {
+    // Pulisci tutto il localStorage (anche messaggi non completati)
+    clearAllMessages();
+    console.log('🧹 Storage localStorage pulito (Nuovo Ordine)');
+
     setSelectedCustomerId(null);
     setSelectedCustomerName('');
     setSelectedAddressId(null);

@@ -36,10 +36,20 @@ interface AIMatch {
   reasoning: string;
 }
 
-interface AIData {
-  transcription: string;
+interface AIMessage {
+  timestamp: number;
   messageType: string;
+  transcription: string;
   matches: AIMatch[];
+}
+
+interface AIData {
+  // Legacy single message format (backwards compatible)
+  transcription?: string;
+  messageType?: string;
+  matches?: AIMatch[];
+  // New multi-message format
+  messages?: AIMessage[];
 }
 
 interface CreateOrderRequest {
@@ -461,7 +471,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Post AI processing data to Chatter if provided
-    if (aiData && aiData.transcription) {
+    if (aiData && (aiData.messages || aiData.transcription)) {
       try {
         console.log('📝 [CREATE-ORDER-API] Posting AI processing data to Chatter...');
 
@@ -473,46 +483,110 @@ export async function POST(request: NextRequest) {
           'document': '📄 Documento'
         };
 
-        const messageTypeLabel = messageTypeLabels[aiData.messageType] || '📝 Messaggio';
-
-        // Separate found and not found products
-        const foundMatches = aiData.matches.filter(m => m.product_id !== null);
-        const notFoundMatches = aiData.matches.filter(m => m.product_id === null);
-
-        let aiMessage = `<p><strong>🤖 Elaborazione AI Ordine</strong></p>`;
-        aiMessage += `<p><strong>${messageTypeLabel}</strong></p>`;
-        aiMessage += `<blockquote style="background-color: #f3f4f6; padding: 12px; border-left: 4px solid #3b82f6; margin: 10px 0;">`;
-        aiMessage += `<em>${aiData.transcription.replace(/\n/g, '<br/>')}</em>`;
-        aiMessage += `</blockquote>`;
-
-        // Products found and added to order
-        if (foundMatches.length > 0) {
-          aiMessage += `<p><strong>✅ Prodotti Trovati e Aggiunti (${foundMatches.length})</strong></p><ul>`;
-          foundMatches.forEach(match => {
-            const confidenceBadge = match.confidence === 'ALTA' ? '🟢' :
-                                   match.confidence === 'MEDIA' ? '🟡' :
-                                   match.confidence === 'BASSA' ? '🟠' : '⚪';
-            aiMessage += `<li>${confidenceBadge} <strong>${match.product_name}</strong> - Quantità: ${match.quantita}`;
-            if (match.reasoning) {
-              aiMessage += `<br/><small style="color: #6b7280;">💡 ${match.reasoning}</small>`;
-            }
-            aiMessage += `</li>`;
-          });
-          aiMessage += `</ul>`;
+        // Get messages array (either new format or legacy single message)
+        let messages: AIMessage[] = [];
+        if (aiData.messages && aiData.messages.length > 0) {
+          // New multi-message format
+          messages = aiData.messages;
+        } else if (aiData.transcription && aiData.messageType && aiData.matches) {
+          // Legacy single message format - convert to array
+          messages = [{
+            timestamp: Date.now(),
+            messageType: aiData.messageType,
+            transcription: aiData.transcription,
+            matches: aiData.matches
+          }];
         }
 
-        // Products not found
-        if (notFoundMatches.length > 0) {
-          aiMessage += `<p><strong>❌ Prodotti NON Trovati (${notFoundMatches.length})</strong></p><ul>`;
-          notFoundMatches.forEach(match => {
-            aiMessage += `<li><strong>"${match.richiesta_originale}"</strong> - Quantità richiesta: ${match.quantita}`;
-            if (match.reasoning) {
-              aiMessage += `<br/><small style="color: #6b7280;">💡 ${match.reasoning}</small>`;
-            }
-            aiMessage += `</li>`;
+        if (messages.length === 0) {
+          console.log('⚠️ [CREATE-ORDER-API] No AI messages to post');
+          return;
+        }
+
+        // Build comprehensive AI message for chatter
+        let aiMessage = `<p><strong>🤖 ORDINE CREATO CON AI - ${messages.length} ${messages.length === 1 ? 'messaggio processato' : 'messaggi processati'}</strong></p>`;
+        aiMessage += `<hr style="border: 1px solid #e5e7eb; margin: 10px 0;" />`;
+
+        // Process each message
+        messages.forEach((msg, index) => {
+          const messageNumber = index + 1;
+          const messageTypeLabel = messageTypeLabels[msg.messageType] || '📝 Messaggio';
+          const messageDate = new Date(msg.timestamp);
+          const formattedDate = messageDate.toLocaleDateString('it-IT', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
           });
+          const formattedTime = messageDate.toLocaleTimeString('it-IT', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+
+          // Message header
+          aiMessage += `<div style="background-color: #f9fafb; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #3b82f6;">`;
+          aiMessage += `<p><strong>Messaggio ${messageNumber} di ${messages.length}</strong></p>`;
+          aiMessage += `<p><strong>Tipo:</strong> ${messageTypeLabel}</p>`;
+          aiMessage += `<p><strong>Orario:</strong> ${formattedDate} ${formattedTime}</p>`;
+
+          // Transcription
+          aiMessage += `<blockquote style="background-color: #ffffff; padding: 12px; border-left: 4px solid #3b82f6; margin: 10px 0;">`;
+          aiMessage += `<em>${msg.transcription.replace(/\n/g, '<br/>')}</em>`;
+          aiMessage += `</blockquote>`;
+
+          // Separate found and not found products
+          const foundMatches = msg.matches.filter(m => m.product_id !== null);
+          const notFoundMatches = msg.matches.filter(m => m.product_id === null);
+
+          // Products found
+          if (foundMatches.length > 0) {
+            aiMessage += `<p><strong>✅ Prodotti Trovati: ${foundMatches.length}</strong></p><ul>`;
+            foundMatches.forEach(match => {
+              const confidenceBadge = match.confidence === 'ALTA' ? '🟢' :
+                                     match.confidence === 'MEDIA' ? '🟡' :
+                                     match.confidence === 'BASSA' ? '🟠' : '⚪';
+              aiMessage += `<li>${confidenceBadge} <strong>${match.product_name}</strong> - Quantità: ${match.quantita}`;
+              if (match.reasoning) {
+                aiMessage += `<br/><small style="color: #6b7280;">💡 ${match.reasoning}</small>`;
+              }
+              aiMessage += `</li>`;
+            });
+            aiMessage += `</ul>`;
+          } else {
+            aiMessage += `<p><em>Nessun prodotto trovato in questo messaggio</em></p>`;
+          }
+
+          // Products not found
+          if (notFoundMatches.length > 0) {
+            aiMessage += `<p><strong>❌ Prodotti NON Trovati: ${notFoundMatches.length}</strong></p><ul>`;
+            notFoundMatches.forEach(match => {
+              aiMessage += `<li><strong>"${match.richiesta_originale}"</strong> - Quantità richiesta: ${match.quantita}`;
+              if (match.reasoning) {
+                aiMessage += `<br/><small style="color: #6b7280;">💡 ${match.reasoning}</small>`;
+              }
+              aiMessage += `</li>`;
+            });
+            aiMessage += `</ul>`;
+          }
+
+          aiMessage += `</div>`;
+        });
+
+        // Summary footer
+        const totalFoundProducts = messages.reduce((sum, msg) =>
+          sum + msg.matches.filter(m => m.product_id !== null).length, 0);
+        const totalNotFoundProducts = messages.reduce((sum, msg) =>
+          sum + msg.matches.filter(m => m.product_id === null).length, 0);
+
+        aiMessage += `<hr style="border: 1px solid #e5e7eb; margin: 10px 0;" />`;
+        aiMessage += `<p><strong>📊 RIEPILOGO TOTALE</strong></p><ul>`;
+        aiMessage += `<li><strong>Messaggi processati:</strong> ${messages.length}</li>`;
+        aiMessage += `<li><strong>✅ Prodotti trovati e aggiunti:</strong> ${totalFoundProducts}</li>`;
+        if (totalNotFoundProducts > 0) {
+          aiMessage += `<li><strong>❌ Prodotti NON trovati:</strong> ${totalNotFoundProducts}</li>`;
+          aiMessage += `</ul><p><em style="color: #dc2626;">⚠️ I prodotti non trovati NON sono stati aggiunti all'ordine</em></p>`;
+        } else {
           aiMessage += `</ul>`;
-          aiMessage += `<p><em style="color: #dc2626;">⚠️ Questi prodotti NON sono stati aggiunti all'ordine perché non trovati nello storico del cliente</em></p>`;
         }
 
         aiMessage += `<p><em>Ordine elaborato con AI - Claude Sonnet 4 + Whisper</em></p>`;
@@ -532,8 +606,9 @@ export async function POST(request: NextRequest) {
         );
 
         console.log('✅ [CREATE-ORDER-API] AI processing data posted to Chatter');
-        console.log(`   - Found matches: ${foundMatches.length}`);
-        console.log(`   - Not found matches: ${notFoundMatches.length}`);
+        console.log(`   - Messages processed: ${messages.length}`);
+        console.log(`   - Total found matches: ${totalFoundProducts}`);
+        console.log(`   - Total not found matches: ${totalNotFoundProducts}`);
       } catch (aiDataError: any) {
         console.error('⚠️ [CREATE-ORDER-API] Failed to post AI data to Chatter:', aiDataError.message);
         // Continue anyway - not critical
