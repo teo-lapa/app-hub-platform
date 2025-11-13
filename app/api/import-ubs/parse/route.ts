@@ -250,10 +250,18 @@ export async function POST(request: NextRequest) {
 
         if (amount === 0) continue // Salta righe senza importo
 
+        // Estrai il nome del beneficiario da Beschreibung1 (prima parte prima del ;)
+        let beneficiary = 'N/A'
+        if (beschreibung1) {
+          const namePart = beschreibung1.split(';')[0]?.trim()
+          if (namePart) {
+            beneficiary = namePart
+          }
+        }
+
         // Combina descrizioni
         const descriptionParts = [beschreibung1, beschreibung2, beschreibung3].filter(d => d && d !== '')
         const description = descriptionParts.join('; ')
-        const beneficiary = beschreibung2 || beschreibung1 || 'N/A'
 
         // Estrai Zahlungsgrund da Beschreibung3
         const paymentReason = extractPaymentReason(beschreibung3)
