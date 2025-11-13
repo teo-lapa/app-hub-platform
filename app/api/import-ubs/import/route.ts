@@ -10,6 +10,7 @@ interface Transaction {
   balance: number
   transactionNr: string
   type: 'income' | 'expense'
+  paymentReason?: string // Zahlungsgrund - motivo di pagamento
 }
 
 interface AccountInfo {
@@ -97,14 +98,21 @@ export async function POST(request: NextRequest) {
           amountValue = Math.abs(amountValue)   // Entrata: sempre positivo
         }
 
+        // Componi payment_ref includendo Zahlungsgrund se presente
+        let paymentRef = transaction.description
+        if (transaction.paymentReason) {
+          paymentRef = `${transaction.description} | Zahlungsgrund: ${transaction.paymentReason}`
+        }
+
         const lineData = {
           journal_id: journalId,
           date: transaction.date,
-          payment_ref: transaction.description,
+          payment_ref: paymentRef,
           amount: amountValue,
           unique_import_id: uniqueImportId,
           partner_name: transaction.beneficiary !== 'N/A' ? transaction.beneficiary : false,
-          ref: transaction.transactionNr || false
+          ref: transaction.transactionNr || false,
+          narration: transaction.paymentReason || false // Campo note per Zahlungsgrund
         }
 
         // Crea riga estratto conto in Odoo

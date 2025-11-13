@@ -13,6 +13,7 @@ interface Transaction {
   balance: number
   transactionNr: string
   type: 'income' | 'expense'
+  paymentReason?: string // Zahlungsgrund - motivo di pagamento
 }
 
 interface ParseResult {
@@ -367,6 +368,9 @@ export default function ImportMovimentiUBS() {
                           <div className="flex items-center gap-4 text-xs text-gray-500">
                             <span>📅 {tx.date}</span>
                             <span>🏦 {tx.transactionNr}</span>
+                            {tx.paymentReason && (
+                              <span className="font-semibold text-blue-700">💳 Zahlungsgrund: {tx.paymentReason}</span>
+                            )}
                           </div>
                         </div>
                         <div className="text-right">

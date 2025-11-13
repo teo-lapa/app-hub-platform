@@ -9,6 +9,7 @@ interface Transaction {
   balance: number
   transactionNr: string
   type: 'income' | 'expense'
+  paymentReason?: string // Zahlungsgrund - motivo di pagamento
 }
 
 // Helper functions - Updated 2025-11-11
@@ -63,6 +64,18 @@ function extractTransactionNr(text: string): string {
 
   const dncsMatch = text.match(/(DNCS-\d{8}-[A-Z0-9]+)/)
   if (dncsMatch) return dncsMatch[1]
+
+  return ''
+}
+
+function extractPaymentReason(text: string): string {
+  // Estrae il Zahlungsgrund dal campo Beschreibung3
+  if (!text) return ''
+
+  const match = text.match(/Zahlungsgrund:\s*([^;]+)/)
+  if (match) {
+    return match[1].trim()
+  }
 
   return ''
 }
@@ -225,6 +238,9 @@ export async function POST(request: NextRequest) {
         const description = descriptionParts.join('; ')
         const beneficiary = beschreibung2 || beschreibung1 || 'N/A'
 
+        // Estrai Zahlungsgrund da Beschreibung3
+        const paymentReason = extractPaymentReason(beschreibung3)
+
         const balance = parseFloat(saldo.replace(',', '.') || '0')
 
         transactions.push({
@@ -235,7 +251,8 @@ export async function POST(request: NextRequest) {
           amount,
           balance,
           transactionNr: transaktionsNr,
-          type
+          type,
+          paymentReason: paymentReason || undefined
         })
         } catch (error) {
           console.error('Errore parsing riga UBS:', error)
@@ -295,6 +312,9 @@ export async function POST(request: NextRequest) {
 
           const balance = saldo && saldo !== '' ? parseFloat(saldo.replace(/'/g, '').replace(',', '.')) : 0
 
+          // Estrai Zahlungsgrund anche per Credit Suisse (potrebbe essere nel campo testo)
+          const paymentReason = extractPaymentReason(testo)
+
           transactions.push({
             date: convertDateFormat(dataRegistrazione),
             valutaDate: convertDateFormat(dataValuta),
@@ -303,7 +323,8 @@ export async function POST(request: NextRequest) {
             amount,
             balance,
             transactionNr: extractTransactionNr(testo),
-            type
+            type,
+            paymentReason: paymentReason || undefined
           })
         } catch (error) {
           console.error('Errore parsing riga Credit Suisse:', error)
