@@ -119,63 +119,92 @@ async function extractTextFromMedia(
         throw new Error(`Gemini PDF extraction failed: ${geminiError?.message || 'Unknown error'}`);
       }
     } else if (mimeType.startsWith('image/')) {
-      // Use GPT-4 Vision for images (OCR) - more reliable than Gemini
-      console.log(`🖼️ [GPT-VISION] Using GPT-4 Vision for image OCR`);
-      console.log(`🔍 [GPT-VISION] API Key configured: ${!!process.env.OPENAI_API_KEY}`);
-      console.log(`🔍 [GPT-VISION] Image mimeType: ${mimeType}`);
-      console.log(`🔍 [GPT-VISION] Image size (base64): ${fileBase64.length} chars (~${Math.round(fileBase64.length * 0.75 / 1024)} KB)`);
+      // Try GPT-4 Vision first, fallback to Gemini if it fails
+      console.log(`🖼️ [IMAGE-OCR] Processing image with GPT-4 Vision (fallback to Gemini if needed)`);
+      console.log(`🔍 [IMAGE-OCR] Image mimeType: ${mimeType}`);
+      console.log(`🔍 [IMAGE-OCR] Image size (base64): ${fileBase64.length} chars (~${Math.round(fileBase64.length * 0.75 / 1024)} KB)`);
 
-      if (!process.env.OPENAI_API_KEY) {
-        throw new Error('OPENAI_API_KEY not configured');
-      }
-
-      try {
-        console.log(`📤 [GPT-VISION] Sending image to OpenAI GPT-4 Vision...`);
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o',
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  {
-                    type: 'text',
-                    text: 'Estrai il testo completo da questa immagine. Se è un ordine scritto a mano o digitato, trascrivi tutto il testo esattamente come appare. Includi quantità, nomi prodotti, note. Rispondi SOLO con il testo estratto, senza commenti aggiuntivi.',
-                  },
-                  {
-                    type: 'image_url',
-                    image_url: {
-                      url: `data:${mimeType};base64,${fileBase64}`,
+      // Try GPT-4 Vision first
+      if (process.env.OPENAI_API_KEY) {
+        try {
+          console.log(`📤 [GPT-VISION] Attempting GPT-4 Vision...`);
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'text',
+                      text: 'Estrai il testo completo da questa immagine. Se è un ordine scritto a mano o digitato, trascrivi tutto il testo esattamente come appare. Includi quantità, nomi prodotti, note. Rispondi SOLO con il testo estratto, senza commenti aggiuntivi.',
                     },
-                  },
-                ],
-              },
-            ],
-            max_tokens: 1000,
-          }),
-        });
+                    {
+                      type: 'image_url',
+                      image_url: {
+                        url: `data:${mimeType};base64,${fileBase64}`,
+                      },
+                    },
+                  ],
+                },
+              ],
+              max_tokens: 1000,
+            }),
+          });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`❌ [GPT-VISION] API error: ${response.status} - ${errorText}`);
-          throw new Error(`GPT-4 Vision API error: ${response.status} - ${errorText}`);
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`❌ [GPT-VISION] API error: ${response.status} - ${errorText}`);
+            throw new Error(`GPT-4 Vision API error: ${response.status}`);
+          }
+
+          const result = await response.json();
+          const extractedText = result.choices[0].message.content;
+
+          console.log(`✅ [GPT-VISION] Success! Text extracted (${extractedText.length} chars)`);
+          console.log(`📝 [GPT-VISION] Preview: ${extractedText.substring(0, 200)}...`);
+          return extractedText;
+        } catch (visionError: any) {
+          console.warn(`⚠️ [GPT-VISION] Failed, falling back to Gemini:`, visionError.message);
+          // Fall through to Gemini fallback below
         }
-
-        const result = await response.json();
-        const extractedText = result.choices[0].message.content;
-
-        console.log(`✅ [GPT-VISION] Text extracted (${extractedText.length} chars)`);
-        console.log(`📝 [GPT-VISION] Preview: ${extractedText.substring(0, 200)}...`);
-        return extractedText;
-      } catch (visionError: any) {
-        console.error(`❌ [GPT-VISION] Error:`, visionError);
-        throw new Error(`GPT-4 Vision OCR failed: ${visionError?.message || visionError}`);
+      } else {
+        console.warn(`⚠️ [GPT-VISION] OPENAI_API_KEY not configured, using Gemini fallback`);
       }
+
+      // Fallback to Gemini
+      if (process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY) {
+        try {
+          console.log(`📤 [GEMINI-FALLBACK] Using Gemini for image OCR...`);
+          const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+          const result = await model.generateContent([
+            {
+              inlineData: {
+                data: fileBase64,
+                mimeType: mimeType,
+              },
+            },
+            'Estrai il testo completo da questa immagine. Se è un ordine scritto a mano o digitato, trascrivi tutto il testo esattamente come appare. Includi quantità, nomi prodotti, note. Rispondi SOLO con il testo estratto, senza commenti aggiuntivi.',
+          ]);
+
+          const extractedText = result.response.text();
+
+          console.log(`✅ [GEMINI-FALLBACK] Success! Text extracted (${extractedText.length} chars)`);
+          console.log(`📝 [GEMINI-FALLBACK] Preview: ${extractedText.substring(0, 200)}...`);
+          return extractedText;
+        } catch (geminiError: any) {
+          console.error(`❌ [GEMINI-FALLBACK] Error:`, geminiError);
+          throw new Error(`Both GPT-4 Vision and Gemini failed for image OCR`);
+        }
+      }
+
+      throw new Error('No OCR service available (both OPENAI_API_KEY and GEMINI_API_KEY missing)');
     } else if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
       // Use OpenAI Whisper for audio/video (better format support)
       console.log(`🎤 [WHISPER] Using Whisper for audio transcription`);
