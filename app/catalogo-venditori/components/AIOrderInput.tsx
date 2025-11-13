@@ -24,12 +24,28 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
   const [results, setResults] = useState<MatchedProduct[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [inputMode, setInputMode] = useState<'text' | 'image' | 'audio' | 'recording' | 'document'>('text');
+  const [fileBase64, setFileBase64] = useState<string | null>(null);
 
-  const handleFileSelected = (file: File, type: 'image' | 'audio' | 'document') => {
+  const handleFileSelected = async (file: File, type: 'image' | 'audio' | 'document') => {
     setSelectedFile(file);
     setInputMode(type);
     setError(null);
     console.log(`📎 File selected: ${file.name} (${file.type})`);
+
+    // Convert file to base64 for storage
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target?.result as string;
+        // Remove data URL prefix (data:image/png;base64,)
+        const base64Data = base64.split(',')[1];
+        setFileBase64(base64Data);
+        console.log(`✅ File converted to base64: ${base64Data.length} chars`);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('❌ Error converting file to base64:', err);
+    }
   };
 
   const handleRecordingStart = () => {
@@ -38,11 +54,25 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
     console.log('🎤 Recording started');
   };
 
-  const handleRecordingStop = (audioBlob: Blob) => {
+  const handleRecordingStop = async (audioBlob: Blob) => {
     const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
     setSelectedFile(audioFile);
     setInputMode('audio');
     console.log('🎤 Recording stopped, file created');
+
+    // Convert audio blob to base64 for storage
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target?.result as string;
+        const base64Data = base64.split(',')[1];
+        setFileBase64(base64Data);
+        console.log(`✅ Audio recording converted to base64: ${base64Data.length} chars`);
+      };
+      reader.readAsDataURL(audioBlob);
+    } catch (err) {
+      console.error('❌ Error converting recording to base64:', err);
+    }
   };
 
   const handleProcess = async () => {
@@ -119,21 +149,30 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
 
         console.log(`✅ AI found ${data.matches.length} products`);
 
-        // Salva messaggio nel localStorage
+        // Salva messaggio nel localStorage con file base64 se presente
         addMessage(
           customerId,
           'Cliente', // Il nome verrà aggiornato dal parent
           {
             messageType: inputMode,
             transcription: data.message_analyzed || message,
-            matches: data.matches
+            matches: data.matches,
+            fileData: selectedFile && fileBase64 ? {
+              base64: fileBase64,
+              mimeType: selectedFile.type,
+              fileName: selectedFile.name,
+              size: selectedFile.size
+            } : undefined
           }
         );
+
+        console.log(`✅ Message saved to localStorage${selectedFile ? ' with file attachment' : ''}`);
 
         // Clear input after successful processing
         setMessage('');
         setSelectedFile(null);
         setInputMode('text');
+        setFileBase64(null);
       } else {
         setError('Nessun prodotto trovato nel messaggio');
       }
@@ -203,6 +242,7 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
               onClick={() => {
                 setSelectedFile(null);
                 setInputMode('text');
+                setFileBase64(null);
               }}
               className="text-slate-400 hover:text-red-400 transition-colors"
             >

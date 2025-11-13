@@ -269,16 +269,19 @@ export default function CatalogoVenditoriPage() {
           orderNotes: orderNotes || undefined,
           warehouseNotes: warehouseNotes || undefined,
           deliveryDate: deliveryDate || undefined,
-          // ✅ Passa TUTTI i messaggi AI salvati per il chatter
+          // ✅ Passa TUTTI i messaggi AI salvati per il chatter (inclusi file allegati)
           aiData: selectedCustomerId ? (() => {
             const savedMessages = getMessagesForCustomer(selectedCustomerId);
             if (savedMessages.length > 0) {
+              console.log(`📤 Sending ${savedMessages.length} messages to Odoo (${savedMessages.filter(m => m.fileData).length} with attachments)`);
               return {
                 messages: savedMessages.map(msg => ({
+                  id: msg.id,
                   timestamp: msg.timestamp,
                   messageType: msg.messageType,
                   transcription: msg.transcription,
-                  matches: msg.matches
+                  matches: msg.matches,
+                  fileData: msg.fileData // ✅ Include file base64 data
                 }))
               };
             }

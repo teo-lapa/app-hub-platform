@@ -6,6 +6,13 @@ export interface StoredAIMessage {
   messageType: 'text' | 'audio' | 'image' | 'recording' | 'document';
   transcription: string;
   matches: MatchedProduct[];
+  // File originale salvato come base64
+  fileData?: {
+    base64: string;
+    mimeType: string;
+    fileName: string;
+    size: number;
+  };
 }
 
 export interface CustomerAIStorage {

@@ -68,11 +68,11 @@ export default function NotesInput({
 
   return (
     <div className="space-y-6">
-      {/* ORDER NOTES (Customer-visible) */}
+      {/* ORDER NOTES (Customer-visible - goes to Chatter) */}
       <div className="space-y-3">
         <label className="block text-sm font-medium text-slate-300 flex items-center justify-between" style={{ fontSize: '14px', lineHeight: '1.5' }}>
           <span>
-            Note Ordine
+            Note Venditore
             <span className="text-slate-500 ml-2">(visibili al cliente)</span>
           </span>
           <span className={`text-xs font-semibold px-2 py-1 rounded ${getCharCountColor(orderCharCount)} bg-slate-900`} style={{ fontSize: '12px', lineHeight: '1.5' }}>
@@ -103,17 +103,17 @@ export default function NotesInput({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
           </svg>
           <p style={{ fontSize: '14px', lineHeight: '1.5' }}>
-            Queste note saranno visibili al cliente nell'ordine
+            Queste note saranno visibili al cliente nel chatter dell'ordine
           </p>
         </div>
       </div>
 
-      {/* WAREHOUSE NOTES (Internal) */}
+      {/* WAREHOUSE NOTES (Internal - goes to internal_note field) */}
       <div className="space-y-3">
         <label className="block text-sm font-medium text-slate-300 flex items-center justify-between" style={{ fontSize: '14px', lineHeight: '1.5' }}>
           <span>
             Note Magazzino
-            <span className="text-slate-500 ml-2">(interne)</span>
+            <span className="text-slate-500 ml-2">(solo uso interno)</span>
           </span>
           <span className={`text-xs font-semibold px-2 py-1 rounded ${getCharCountColor(warehouseCharCount)} bg-slate-900`} style={{ fontSize: '12px', lineHeight: '1.5' }}>
             {warehouseCharCount}/{maxChars}
@@ -143,7 +143,7 @@ export default function NotesInput({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <p style={{ fontSize: '14px', lineHeight: '1.5' }}>
-            Note interne per il magazzino (non visibili al cliente)
+            Note interne solo per il team LAPA (non visibili al cliente in nessun modo)
           </p>
         </div>
       </div>

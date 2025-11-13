@@ -37,10 +37,17 @@ interface AIMatch {
 }
 
 interface AIMessage {
+  id: string; // UUID
   timestamp: number;
   messageType: string;
   transcription: string;
   matches: AIMatch[];
+  fileData?: {
+    base64: string;
+    mimeType: string;
+    fileName: string;
+    size: number;
+  };
 }
 
 interface AIData {
@@ -56,8 +63,8 @@ interface CreateOrderRequest {
   customerId: number;
   deliveryAddressId: number | null;
   orderLines: OrderLine[];
-  orderNotes?: string; // Customer-visible notes (goes to order.note field)
-  warehouseNotes?: string; // Internal notes (goes to Chatter)
+  orderNotes?: string; // Customer-visible notes (goes to Chatter via message_post)
+  warehouseNotes?: string; // Internal notes (goes to internal_note field)
   deliveryDate?: string; // Format: YYYY-MM-DD
   aiData?: AIData; // AI processing data (transcription, matches)
 }
@@ -292,10 +299,10 @@ export async function POST(request: NextRequest) {
       company_id: 1, // LAPA - finest italian food GmbH
     };
 
-    // Add order notes (customer-visible) to the note field
-    if (orderNotes && orderNotes.trim()) {
-      orderData.note = orderNotes.trim();
-      console.log('✅ [CREATE-ORDER-API] Order notes added to note field');
+    // Add warehouse notes (internal) to the internal_note field
+    if (warehouseNotes && warehouseNotes.trim()) {
+      orderData.internal_note = warehouseNotes.trim();
+      console.log('✅ [CREATE-ORDER-API] Warehouse notes added to internal_note field');
     }
 
     // Add delivery date if provided (Odoo field: commitment_date or requested_date)
@@ -442,38 +449,36 @@ export async function POST(request: NextRequest) {
       // Continue anyway - not critical
     }
 
-    // Post warehouse notes to Chatter if provided
-    if (warehouseNotes && warehouseNotes.trim()) {
+    // Post order notes (customer-visible) to Chatter if provided
+    if (orderNotes && orderNotes.trim()) {
       try {
-        console.log('📝 [CREATE-ORDER-API] Posting warehouse notes to Chatter...');
+        console.log('📝 [CREATE-ORDER-API] Posting order notes to Chatter...');
 
-        const notesMessage = `<p><strong>📦 Note per il Magazzino</strong></p><p>${warehouseNotes.replace(/\n/g, '<br/>')}</p><p><em>Note interne inserite dal venditore</em></p>`;
+        const notesMessage = `<p><strong>💬 Note Ordine dal Cliente</strong></p><p>${orderNotes.replace(/\n/g, '<br/>')}</p><p><em>Inserite dal venditore tramite Catalogo Venditori</em></p>`;
 
         await callOdoo(
           cookies,
-          'mail.message',
-          'create',
-          [{
-            model: 'sale.order',
-            res_id: odooOrderId,
+          'sale.order',
+          'message_post',
+          [[odooOrderId]],
+          {
             body: notesMessage,
             message_type: 'comment',
-            subtype_id: 1, // mt_note (internal note)
-          }],
-          {}
+            subtype_xmlid: 'mail.mt_comment', // Public message (visible to customer)
+          }
         );
 
-        console.log('✅ [CREATE-ORDER-API] Warehouse notes posted to Chatter');
+        console.log('✅ [CREATE-ORDER-API] Order notes posted to Chatter (customer-visible)');
       } catch (notesError: any) {
-        console.error('❌ [CREATE-ORDER-API] Failed to post warehouse notes to Chatter:', notesError.message);
+        console.error('❌ [CREATE-ORDER-API] Failed to post order notes to Chatter:', notesError.message);
         // Continue anyway - not critical
       }
     }
 
-    // Post AI processing data to Chatter if provided
+    // Post AI processing data to Chatter and upload file attachments if provided
     if (aiData && (aiData.messages || aiData.transcription)) {
       try {
-        console.log('📝 [CREATE-ORDER-API] Posting AI processing data to Chatter...');
+        console.log('📝 [CREATE-ORDER-API] Posting AI processing data to Chatter and uploading file attachments...');
 
         const messageTypeLabels: Record<string, string> = {
           'text': '💬 Messaggio Testo',
@@ -491,6 +496,7 @@ export async function POST(request: NextRequest) {
         } else if (aiData.transcription && aiData.messageType && aiData.matches) {
           // Legacy single message format - convert to array
           messages = [{
+            id: 'legacy-' + Date.now(), // Generate ID for legacy messages
             timestamp: Date.now(),
             messageType: aiData.messageType,
             transcription: aiData.transcription,
@@ -528,6 +534,11 @@ export async function POST(request: NextRequest) {
           aiMessage += `<p><strong>Messaggio ${messageNumber} di ${messages.length}</strong></p>`;
           aiMessage += `<p><strong>Tipo:</strong> ${messageTypeLabel}</p>`;
           aiMessage += `<p><strong>Orario:</strong> ${formattedDate} ${formattedTime}</p>`;
+
+          // File attachment indicator
+          if (msg.fileData) {
+            aiMessage += `<p><strong>📎 File Allegato:</strong> ${msg.fileData.fileName} (${(msg.fileData.size / 1024).toFixed(1)} KB)</p>`;
+          }
 
           // Transcription
           aiMessage += `<blockquote style="background-color: #ffffff; padding: 12px; border-left: 4px solid #3b82f6; margin: 10px 0;">`;
@@ -609,6 +620,52 @@ export async function POST(request: NextRequest) {
         console.log(`   - Messages processed: ${messages.length}`);
         console.log(`   - Total found matches: ${totalFoundProducts}`);
         console.log(`   - Total not found matches: ${totalNotFoundProducts}`);
+
+        // Upload file attachments for each message that has fileData
+        let filesUploaded = 0;
+        for (const msg of messages) {
+          if (msg.fileData && msg.fileData.base64) {
+            try {
+              console.log(`📎 [CREATE-ORDER-API] Uploading file attachment: ${msg.fileData.fileName} (${(msg.fileData.size / 1024).toFixed(1)} KB)`);
+
+              const messageDate = new Date(msg.timestamp);
+              const formattedDate = messageDate.toLocaleDateString('it-IT', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              });
+
+              // Create ir.attachment in Odoo
+              const attachmentId = await callOdoo(
+                cookies,
+                'ir.attachment',
+                'create',
+                [{
+                  name: msg.fileData.fileName,
+                  datas: msg.fileData.base64, // Odoo expects base64 without prefix
+                  res_model: 'sale.order',
+                  res_id: odooOrderId,
+                  mimetype: msg.fileData.mimeType,
+                  description: `File originale AI - ${messageTypeLabels[msg.messageType] || msg.messageType} - ${formattedDate}`,
+                }],
+                {}
+              );
+
+              filesUploaded++;
+              console.log(`✅ [CREATE-ORDER-API] File attachment uploaded: ${msg.fileData.fileName} (ID: ${attachmentId})`);
+            } catch (fileError: any) {
+              console.error(`⚠️ [CREATE-ORDER-API] Failed to upload file ${msg.fileData.fileName}:`, fileError.message);
+              // Continue with other files even if one fails
+            }
+          }
+        }
+
+        if (filesUploaded > 0) {
+          console.log(`✅ [CREATE-ORDER-API] Total file attachments uploaded: ${filesUploaded}/${messages.length}`);
+        }
+
       } catch (aiDataError: any) {
         console.error('⚠️ [CREATE-ORDER-API] Failed to post AI data to Chatter:', aiDataError.message);
         // Continue anyway - not critical

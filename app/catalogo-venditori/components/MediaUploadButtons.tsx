@@ -129,7 +129,7 @@ export default function MediaUploadButtons({
       <input
         ref={documentInputRef}
         type="file"
-        accept=".pdf,.doc,.docx,.txt"
+        accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.pdf,.doc,.docx,.txt,.xls,.xlsx"
         onChange={handleDocumentChange}
         className="hidden"
       />

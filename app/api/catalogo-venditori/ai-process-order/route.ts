@@ -246,6 +246,64 @@ async function extractTextFromMedia(
       console.log(`📝 [WHISPER] Preview: ${transcription.substring(0, 200)}...`);
 
       return transcription;
+    } else if (mimeType === 'text/plain') {
+      // Handle plain text files
+      console.log(`📄 [TEXT] Processing plain text file`);
+
+      // Decode base64 to text
+      const buffer = Buffer.from(fileBase64, 'base64');
+      const textContent = buffer.toString('utf-8');
+
+      console.log(`✅ [TEXT] Text extracted (${textContent.length} chars)`);
+      console.log(`📝 [TEXT] Preview: ${textContent.substring(0, 200)}...`);
+
+      return textContent;
+    } else if (
+      mimeType === 'application/msword' ||
+      mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      mimeType === 'application/vnd.ms-excel' ||
+      mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ) {
+      // Use Gemini for Word/Excel documents (supports these formats)
+      console.log(`📄 [GEMINI] Using Gemini for document extraction (${mimeType})`);
+      console.log(`🔍 [GEMINI] API Key configured: ${!!(process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY)}`);
+      console.log(`🔍 [GEMINI] File size (base64): ${fileBase64.length} chars (~${Math.round(fileBase64.length * 0.75 / 1024)} KB)`);
+
+      if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_GEMINI_API_KEY) {
+        throw new Error('GEMINI_API_KEY not configured');
+      }
+
+      try {
+        console.log(`📤 [GEMINI] Sending document to Gemini...`);
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+        const result = await model.generateContent([
+          {
+            inlineData: {
+              data: fileBase64,
+              mimeType: mimeType,
+            },
+          },
+          'Estrai il testo completo da questo documento. Se è un ordine o lista prodotti, trascrivi tutto esattamente come appare. Includi quantità, nomi prodotti, note. Se ci sono tabelle, mantieni la struttura leggibile. Rispondi SOLO con il testo estratto, senza commenti aggiuntivi.',
+        ]);
+
+        const extractedText = result.response.text();
+
+        console.log(`✅ [GEMINI] Text extracted (${extractedText.length} chars)`);
+        console.log(`📝 [GEMINI] Preview: ${extractedText.substring(0, 200)}...`);
+        return extractedText;
+      } catch (geminiError: any) {
+        console.error(`❌ [GEMINI] Error details:`, {
+          message: geminiError?.message,
+          status: geminiError?.status,
+          statusText: geminiError?.statusText,
+          name: geminiError?.name,
+          code: geminiError?.code
+        });
+
+        console.error(`❌ [GEMINI] Full error:`, geminiError);
+        throw new Error(`Gemini document extraction failed: ${geminiError?.message || 'Unknown error'}`);
+      }
     } else {
       throw new Error(`Unsupported mime type: ${mimeType}`);
     }
@@ -865,7 +923,12 @@ export async function GET(request: NextRequest) {
         status: isConfigured ? 'operational' : 'not_configured',
         model: 'claude-sonnet-4-20250514',
         max_duration: 90,
-        supported_message_types: ['text', 'audio', 'image', 'pdf', 'document'],
+        supported_message_types: ['text', 'audio', 'image', 'recording', 'document'],
+        supported_file_formats: {
+          documents: ['PDF', 'DOC', 'DOCX', 'TXT', 'XLS', 'XLSX'],
+          images: ['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'],
+          audio: ['MP3', 'WAV', 'M4A', 'WEBM', 'OGG']
+        },
         features: [
           'Customer purchase history analysis (6 months)',
           'Smart fuzzy product matching',

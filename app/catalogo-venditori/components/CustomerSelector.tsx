@@ -261,12 +261,6 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
               </h3>
               <div className="space-y-2 text-sm text-slate-300">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-slate-400" style={{ fontSize: '14px', lineHeight: '1.5' }}>Codice:</span>
-                  <span className="font-mono bg-slate-900 px-2 py-1 rounded" style={{ fontSize: '14px' }}>
-                    {selectedCustomer.ref}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-slate-400" style={{ fontSize: '14px', lineHeight: '1.5' }}>Città:</span>
                   <span style={{ fontSize: '14px', lineHeight: '1.5' }}>{selectedCustomer.city}</span>
                 </div>
