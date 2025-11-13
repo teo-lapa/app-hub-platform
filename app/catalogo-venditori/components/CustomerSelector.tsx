@@ -23,6 +23,17 @@ interface CustomerSelectorProps {
   onAddressSelect: (addressId: number | null) => void;
 }
 
+interface CustomerStats {
+  totalRevenue: number;
+  averageOrderValue: number;
+  orderCount: number;
+}
+
+interface GlobalStats {
+  averageOrderValue: number;
+  orderCount: number;
+}
+
 export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: CustomerSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
@@ -32,7 +43,10 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
   const [showDropdown, setShowDropdown] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customerStats, setCustomerStats] = useState<CustomerStats | null>(null);
+  const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout>();
@@ -168,13 +182,99 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
     }
   };
 
+  // Fetch global stats (once)
+  useEffect(() => {
+    const fetchGlobalStats = async () => {
+      try {
+        const response = await fetch('/api/catalogo-venditori/global-stats');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.stats) {
+            setGlobalStats(data.stats);
+            console.log('✅ Statistiche globali caricate:', data.stats);
+          }
+        }
+      } catch (err) {
+        console.error('❌ Error loading global stats:', err);
+      }
+    };
+    fetchGlobalStats();
+  }, []);
+
+  // Fetch customer stats when customer is selected
+  const fetchCustomerStats = async (customerId: number) => {
+    setLoadingStats(true);
+    try {
+      const response = await fetch(`/api/catalogo-venditori/customer-stats?customerId=${customerId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.stats) {
+          setCustomerStats(data.stats);
+          console.log('✅ Statistiche cliente caricate:', data.stats);
+        } else {
+          setCustomerStats(null);
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error loading customer stats:', err);
+      setCustomerStats(null);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  // Calculate customer position (same logic as review-prices)
+  const getCustomerPosition = () => {
+    if (!customerStats || !globalStats || globalStats.averageOrderValue === 0) {
+      return null;
+    }
+
+    const ratio = customerStats.averageOrderValue / globalStats.averageOrderValue;
+
+    let position;
+    let label;
+    let color;
+
+    if (ratio < 0.5) {
+      position = ratio * 40; // 0-20%
+      label = 'Molto Sotto Media';
+      color = 'rgb(239, 68, 68)'; // red
+    } else if (ratio < 0.9) {
+      position = 20 + ((ratio - 0.5) / 0.4) * 25; // 20-45%
+      label = 'Sotto Media';
+      color = 'rgb(251, 191, 36)'; // yellow
+    } else if (ratio < 1.1) {
+      position = 45 + ((ratio - 0.9) / 0.2) * 10; // 45-55%
+      label = 'Media';
+      color = 'rgb(59, 130, 246)'; // blue
+    } else if (ratio < 1.5) {
+      position = 55 + ((ratio - 1.1) / 0.4) * 25; // 55-80%
+      label = 'Sopra Media';
+      color = 'rgb(34, 197, 94)'; // green
+    } else {
+      position = 80 + Math.min((ratio - 1.5) / 1.5 * 20, 20); // 80-100%
+      label = 'Molto Sopra Media';
+      color = 'rgb(168, 85, 247)'; // purple
+    }
+
+    return {
+      position: Math.min(Math.max(position, 0), 100),
+      label,
+      color,
+      customerAvg: customerStats.averageOrderValue,
+      globalAvg: globalStats.averageOrderValue
+    };
+  };
+
   const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomer(customer);
     setSearchTerm(customer.name);
     setShowDropdown(false);
     setSelectedAddressId(null);
+    setCustomerStats(null); // Reset stats
     onCustomerSelect(customer.id, customer.name);
     fetchAddresses(customer.id);
+    fetchCustomerStats(customer.id); // Load stats
   };
 
   const handleAddressChange = (addressId: string) => {
@@ -278,6 +378,71 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
                   <span className="text-slate-400" style={{ fontSize: '14px', lineHeight: '1.5' }}>Telefono:</span>
                   <span style={{ fontSize: '14px', lineHeight: '1.5' }}>{selectedCustomer.phone}</span>
                 </div>
+
+                {/* Customer Importance Bar */}
+                {(() => {
+                  const position = getCustomerPosition();
+                  if (!position && !loadingStats) return null;
+
+                  if (loadingStats) {
+                    return (
+                      <div className="mt-3 flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs text-slate-400">Caricamento importanza cliente...</span>
+                      </div>
+                    );
+                  }
+
+                  if (!position) return null;
+
+                  return (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-slate-400" style={{ fontSize: '12px', lineHeight: '1.5' }}>
+                          Importanza Cliente (ultimi 3 mesi)
+                        </p>
+                        <p className="text-xs text-slate-400" style={{ fontSize: '11px', lineHeight: '1.5' }}>
+                          CHF {position.customerAvg.toFixed(0)} vs {position.globalAvg.toFixed(0)}
+                        </p>
+                      </div>
+
+                      {/* Position Bar */}
+                      <div className="relative h-3 bg-slate-700/50 rounded-full overflow-hidden border border-slate-600">
+                        {/* Gradient background */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-yellow-500 via-blue-500 via-green-500 to-purple-500 opacity-40"></div>
+
+                        {/* Customer position marker */}
+                        <div
+                          className="absolute top-0 bottom-0 w-1 -ml-0.5 transition-all duration-300"
+                          style={{
+                            left: `${position.position}%`,
+                            backgroundColor: position.color,
+                            boxShadow: `0 0 8px ${position.color}`
+                          }}
+                        />
+                      </div>
+
+                      {/* Label */}
+                      <div className="flex items-center justify-between mt-0.5">
+                        <p className="text-[10px] text-slate-500">Molto Sotto</p>
+                        <p
+                          className="text-xs font-bold"
+                          style={{ color: position.color, fontSize: '11px', lineHeight: '1.5' }}
+                        >
+                          {position.label}
+                        </p>
+                        <p className="text-[10px] text-slate-500">Molto Sopra</p>
+                      </div>
+
+                      {/* Additional stats */}
+                      {customerStats && customerStats.orderCount > 0 && (
+                        <div className="mt-2 text-[10px] text-slate-400 bg-slate-700/30 rounded px-2 py-1">
+                          {customerStats.orderCount} ordini • CHF {customerStats.totalRevenue.toFixed(0)} totale
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             <button
