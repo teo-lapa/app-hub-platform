@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { callOdoo } from '@/lib/odoo-auth';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -31,10 +30,20 @@ export async function GET(request: NextRequest) {
 
     console.log(`🚚 [LAST-DELIVERY] Recupero ultima consegna per cliente ${customerIdNum}`);
 
-    const cookieStore = cookies();
+    // Get user session
+    const cookieHeader = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
+
+    if (!uid) {
+      console.error('❌ [LAST-DELIVERY] No valid user session');
+      return NextResponse.json(
+        { success: false, error: 'User session not valid' },
+        { status: 401 }
+      );
+    }
 
     // Cerca l'ultimo ordine confermato con data di consegna
-    const orders = await callOdoo(cookieStore, 'sale.order', 'search_read', [], {
+    const orders = await callOdoo(cookies, 'sale.order', 'search_read', [], {
       domain: [
         ['partner_id', '=', customerIdNum],
         ['state', 'in', ['sale', 'done']], // Solo ordini confermati o completati
