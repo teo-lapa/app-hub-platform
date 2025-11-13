@@ -150,7 +150,8 @@ export async function GET(request: NextRequest) {
           'child_ids',
           'type',           // Per vedere se è contact/delivery/invoice
           'is_company',     // Per vedere se è azienda o contatto
-          'parent_id'       // Per vedere se è figlio di un'azienda
+          'parent_id',      // Per vedere se è figlio di un'azienda
+          'property_product_pricelist'  // Lista prezzi (livello cliente)
         ],
         limit: 50, // Massimo 50 risultati
         order: 'name asc'
@@ -175,7 +176,9 @@ export async function GET(request: NextRequest) {
       hasChildren: (company.child_ids || []).length > 0,
       isCompany: company.is_company,
       type: company.type,
-      parentId: company.parent_id ? company.parent_id[0] : null
+      parentId: company.parent_id ? company.parent_id[0] : null,
+      pricelist: company.property_product_pricelist ? company.property_product_pricelist[1] : null,
+      pricelistId: company.property_product_pricelist ? company.property_product_pricelist[0] : null
     }));
 
     return NextResponse.json({

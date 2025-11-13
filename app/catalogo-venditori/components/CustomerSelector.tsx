@@ -8,6 +8,7 @@ interface Customer {
   ref: string;
   city: string;
   phone: string;
+  pricelist?: string;
 }
 
 interface DeliveryAddress {
@@ -67,7 +68,8 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
           name: c.name,
           ref: c.id.toString(),
           city: c.city || '',
-          phone: c.phone || ''
+          phone: c.phone || '',
+          pricelist: c.pricelist || null
         }));
 
         console.log('📋 Clienti trasformati:', transformedCustomers);
@@ -260,6 +262,14 @@ export default function CustomerSelector({ onCustomerSelect, onAddressSelect }: 
                 {selectedCustomer.name}
               </h3>
               <div className="space-y-2 text-sm text-slate-300">
+                {selectedCustomer.pricelist && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-slate-400" style={{ fontSize: '14px', lineHeight: '1.5' }}>Livello:</span>
+                    <span className="font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded" style={{ fontSize: '14px', lineHeight: '1.5' }}>
+                      {selectedCustomer.pricelist}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-slate-400" style={{ fontSize: '14px', lineHeight: '1.5' }}>Città:</span>
                   <span style={{ fontSize: '14px', lineHeight: '1.5' }}>{selectedCustomer.city}</span>

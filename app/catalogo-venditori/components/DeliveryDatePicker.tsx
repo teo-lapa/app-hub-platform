@@ -5,9 +5,42 @@ import { useState, useEffect } from 'react';
 interface DeliveryDatePickerProps {
   value: string;
   onChange: (date: string) => void;
+  customerId?: number | null;
 }
 
-export default function DeliveryDatePicker({ value, onChange }: DeliveryDatePickerProps) {
+export default function DeliveryDatePicker({ value, onChange, customerId }: DeliveryDatePickerProps) {
+  const [lastDeliveryDate, setLastDeliveryDate] = useState<string | null>(null);
+  const [loadingLastDelivery, setLoadingLastDelivery] = useState(false);
+
+  // Fetch last delivery date when customerId changes
+  useEffect(() => {
+    if (!customerId) {
+      setLastDeliveryDate(null);
+      return;
+    }
+
+    const fetchLastDelivery = async () => {
+      setLoadingLastDelivery(true);
+      try {
+        const response = await fetch(`/api/catalogo-venditori/last-delivery?customerId=${customerId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.lastDeliveryDate) {
+            setLastDeliveryDate(data.lastDeliveryDate);
+          } else {
+            setLastDeliveryDate(null);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching last delivery:', error);
+        setLastDeliveryDate(null);
+      } finally {
+        setLoadingLastDelivery(false);
+      }
+    };
+
+    fetchLastDelivery();
+  }, [customerId]);
   // Get tomorrow's date as default
   const getTomorrowDate = () => {
     const tomorrow = new Date();
@@ -66,6 +99,20 @@ export default function DeliveryDatePicker({ value, onChange }: DeliveryDatePick
           </div>
         )}
       </div>
+
+      {/* Last delivery info */}
+      {lastDeliveryDate && (
+        <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
+          <div className="flex items-start gap-2 text-slate-300">
+            <svg className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-xs" style={{ fontSize: '12px', lineHeight: '1.5' }}>
+              Ultima consegna: <strong className="text-white">{formatDateForDisplay(lastDeliveryDate)}</strong>
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Info card */}
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">

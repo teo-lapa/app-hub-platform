@@ -538,6 +538,7 @@ export default function CatalogoVenditoriPage() {
               <DeliveryDatePicker
                 value={deliveryDate}
                 onChange={setDeliveryDate}
+                customerId={selectedCustomerId}
               />
 
               {/* Odoo Order Link - Only shown after order confirmation */}

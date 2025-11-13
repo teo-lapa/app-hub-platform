@@ -1116,6 +1116,13 @@ export default function ReviewPricesPage({ params }: RouteParams) {
             <div>
               <p className="text-[10px] sm:text-sm text-slate-400 mb-0.5">Cliente</p>
               <p className="text-xs sm:text-lg font-semibold text-white truncate">{orderData.customerName}</p>
+              {orderData.pricelist && (
+                <p className="text-[10px] sm:text-xs text-emerald-400 mt-1">
+                  <span className="bg-emerald-500/10 px-2 py-0.5 rounded">
+                    {orderData.pricelist.name}
+                  </span>
+                </p>
+              )}
             </div>
             <div>
               <p className="text-[10px] sm:text-sm text-slate-400 mb-0.5">Consegna</p>
