@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
       [],
       {
         domain: [['id', '=', customerId]],
-        fields: ['id', 'name', 'email', 'property_payment_term_id', 'customer_rank'],
+        fields: ['id', 'name', 'email', 'property_payment_term_id', 'customer_rank', 'property_product_pricelist'],
         limit: 1
       }
     );
@@ -299,6 +299,12 @@ export async function POST(request: NextRequest) {
       company_id: 1, // LAPA - finest italian food GmbH
     };
 
+    // Add pricelist (which includes currency) from customer if available
+    if (customer.property_product_pricelist && customer.property_product_pricelist[0]) {
+      orderData.pricelist_id = customer.property_product_pricelist[0];
+      console.log('✅ [CREATE-ORDER-API] Pricelist ID added from customer:', customer.property_product_pricelist[0]);
+    }
+
     // Add warehouse notes (internal) to the internal_note field
     if (warehouseNotes && warehouseNotes.trim()) {
       orderData.internal_note = warehouseNotes.trim();
@@ -342,7 +348,7 @@ export async function POST(request: NextRequest) {
       // ✅ Se c'è un prezzo dall'offerta o urgente, usa quello
       if (line.price !== undefined && line.price !== null) {
         lineData.price_unit = line.price;
-        console.log(`✅ [CREATE-ORDER-API] Using custom price for product ${line.product_id}: CHF ${line.price.toFixed(2)}${line.source ? ` (from ${line.source})` : ''}`);
+        console.log(`✅ [CREATE-ORDER-API] Using custom price for product ${line.product_id}: ${line.price.toFixed(2)}${line.source ? ` (from ${line.source})` : ''}`);
       }
 
       // ✅ Aggiungi badge per prodotti da offerta/urgente nella description
@@ -685,7 +691,7 @@ export async function POST(request: NextRequest) {
         if (urgentProducts.length > 0) {
           specialProductsMessage += '<li><strong>🔔 Prodotti Urgenti:</strong> ' + urgentProducts.length;
           urgentProducts.forEach(p => {
-            const priceInfo = p.price ? ` - CHF ${p.price.toFixed(2)}` : '';
+            const priceInfo = p.price ? ` - ${p.price.toFixed(2)}` : '';
             specialProductsMessage += `<br/>• ${p.product_name} (x${p.quantity}${priceInfo})`;
           });
           specialProductsMessage += '</li>';
@@ -694,7 +700,7 @@ export async function POST(request: NextRequest) {
         if (offerProducts.length > 0) {
           specialProductsMessage += '<li><strong>🏷️ Prodotti in Offerta:</strong> ' + offerProducts.length;
           offerProducts.forEach(p => {
-            const priceInfo = p.price ? ` - CHF ${p.price.toFixed(2)}` : '';
+            const priceInfo = p.price ? ` - ${p.price.toFixed(2)}` : '';
             specialProductsMessage += `<br/>• ${p.product_name} (x${p.quantity}${priceInfo})`;
           });
           specialProductsMessage += '</li>';
