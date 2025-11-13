@@ -72,6 +72,22 @@ export default function ScartiDashboard() {
     loadDashboard();
   }, []);
 
+  // Refresh dashboard when page becomes visible again
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Page is now visible, reload dashboard
+        loadDashboard();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   const loadDashboard = async () => {
     setLoading(true);
     try {
