@@ -199,7 +199,24 @@ export async function POST(request: NextRequest) {
         const line = lines[i].trim()
         if (!line) continue
 
-        const parts = line.split(';')
+        // Parse CSV con punto e virgola (gestisce valori tra virgolette)
+        const parts: string[] = []
+        let current = ''
+        let inQuotes = false
+
+        for (let j = 0; j < line.length; j++) {
+          const char = line[j]
+          if (char === '"') {
+            inQuotes = !inQuotes
+          } else if (char === ';' && !inQuotes) {
+            parts.push(current.trim())
+            current = ''
+          } else {
+            current += char
+          }
+        }
+        parts.push(current.trim())
+
         if (parts.length < 14) continue
 
         try {
@@ -240,6 +257,13 @@ export async function POST(request: NextRequest) {
 
         // Estrai Zahlungsgrund da Beschreibung3
         const paymentReason = extractPaymentReason(beschreibung3)
+
+        // Debug log
+        if (paymentReason) {
+          console.log(`✅ Zahlungsgrund trovato: "${paymentReason}" da: ${beschreibung3.substring(0, 100)}`)
+        } else {
+          console.log(`⚠️ Zahlungsgrund NON trovato in: ${beschreibung3.substring(0, 100)}`)
+        }
 
         const balance = parseFloat(saldo.replace(',', '.') || '0')
 
