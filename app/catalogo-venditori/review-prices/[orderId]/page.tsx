@@ -1601,14 +1601,16 @@ export default function ReviewPricesPage({ params }: RouteParams) {
           </div>
         </div>
 
-        {/* Product Search */}
-        <div className="bg-slate-800 rounded-lg p-2 sm:p-4 border border-slate-700 shadow-lg mb-2">
-          <h3 className="text-sm sm:text-xl font-bold text-white mb-1.5 sm:mb-3">Aggiungi Prodotto</h3>
-          <ManualProductSearch
-            customerId={orderData.customerId}
-            onProductAdd={handleAddProduct}
-          />
-        </div>
+        {/* Product Search - Only show in draft/sent state */}
+        {canEditOrder && (
+          <div className="bg-slate-800 rounded-lg p-2 sm:p-4 border border-slate-700 shadow-lg mb-2">
+            <h3 className="text-sm sm:text-xl font-bold text-white mb-1.5 sm:mb-3">Aggiungi Prodotto</h3>
+            <ManualProductSearch
+              customerId={orderData.customerId}
+              onProductAdd={handleAddProduct}
+            />
+          </div>
+        )}
       </main>
 
       {/* Fixed Bottom Actions */}
