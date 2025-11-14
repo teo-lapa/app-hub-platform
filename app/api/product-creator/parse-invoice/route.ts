@@ -5,9 +5,28 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Configura timeout più lungo per Vercel Pro
-export const maxDuration = 60; // 60 secondi per piano Pro
+// Configura timeout più lungo per Vercel Pro - aumentato per PDF grandi
+export const maxDuration = 300; // 5 minuti per PDF con molte pagine
 export const dynamic = 'force-dynamic';
+
+// Helper function to validate file size
+function validateFileSize(size: number): { valid: boolean; message?: string } {
+  const maxSize = 10 * 1024 * 1024; // 10 MB
+  const warningSize = 5 * 1024 * 1024; // 5 MB
+
+  if (size > maxSize) {
+    return {
+      valid: false,
+      message: `File troppo grande (${(size / 1024 / 1024).toFixed(2)} MB). Dimensione massima: 10 MB.`
+    };
+  }
+
+  if (size > warningSize) {
+    console.warn(`⚠️ File grande (${(size / 1024 / 1024).toFixed(2)} MB) - il parsing potrebbe richiedere più tempo`);
+  }
+
+  return { valid: true };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,6 +52,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('📄 File ricevuto:', file.name, 'Type:', file.type, 'Size:', (file.size / 1024).toFixed(2), 'KB');
+
+    // Validate file size server-side
+    const sizeValidation = validateFileSize(file.size);
+    if (!sizeValidation.valid) {
+      console.error('❌ File troppo grande:', sizeValidation.message);
+      return NextResponse.json(
+        { success: false, error: sizeValidation.message },
+        { status: 400 }
+      );
+    }
+
     // Convert file to base64
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -54,10 +85,10 @@ export async function POST(request: NextRequest) {
     console.log('📄 Parsing invoice with Claude Vision...');
     console.log('📎 File type:', mediaType, '| Size:', (file.size / 1024).toFixed(2), 'KB');
 
-    // Use Claude Sonnet with PDF support
+    // Use Claude Sonnet with PDF support - aumentato max_tokens per PDF grandi
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 8192, // Piano Vercel Pro: possiamo usare più token
+      max_tokens: 16384, // Aumentato per gestire PDF con molte pagine
       messages: [
         {
           role: 'user',
@@ -72,7 +103,11 @@ export async function POST(request: NextRequest) {
             },
             {
               type: 'text',
-              text: `Analizza questa fattura e estrai TUTTI i prodotti presenti.
+              text: `Analizza questo documento e estrai TUTTI i prodotti dalla fattura.
+
+IMPORTANTE: Il documento potrebbe contenere più pagine. Alcune pagine potrebbero essere documenti preliminari (CRC, note, etc).
+Cerca la FATTURA VERA E PROPRIA e concentrati SOLO su quella per estrarre i prodotti.
+Ignora qualsiasi altra pagina che non contenga la lista prodotti della fattura.
 
 Per ogni prodotto, estrai:
 - nome: il nome completo del prodotto
