@@ -153,8 +153,9 @@ export default function PickResiduiPage() {
   const [groups, setGroups] = useState<Map<string, GroupData>>(new Map());
 
   // Info prodotti: disponibilità e arrivi
-  const [productStock, setProductStock] = useState<Record<number, Array<{location: string, qty: number}>>>({});
+  const [productStock, setProductStock] = useState<Record<number, Array<{location: string, qty: number, reserved: number}>>>({});
   const [productIncoming, setProductIncoming] = useState<Record<number, Array<{name: string, qty: number, date: string}>>>({});
+  const [productReservations, setProductReservations] = useState<Record<number, Array<{customer: string, qty: number, picking: string}>>>({});
 
   // Quick Add Modal
   const [showModal, setShowModal] = useState(false);
@@ -349,7 +350,7 @@ export default function PickResiduiPage() {
     try {
       const productIds = Array.from(new Set(movesData.map(m => m.product_id[0])));
 
-      // 1. Carica stock per ubicazione (solo ubicazioni interne)
+      // 1. Carica stock per ubicazione (solo ubicazioni interne) CON reserved_quantity
       const quants = await searchRead<any>(
         'stock.quant',
         [
@@ -357,17 +358,18 @@ export default function PickResiduiPage() {
           ['quantity', '>', 0],
           ['location_id.usage', '=', 'internal']
         ],
-        ['product_id', 'location_id', 'quantity'],
+        ['product_id', 'location_id', 'quantity', 'reserved_quantity'],
         0
       );
 
-      const stockByProduct: Record<number, Array<{location: string, qty: number}>> = {};
+      const stockByProduct: Record<number, Array<{location: string, qty: number, reserved: number}>> = {};
       quants.forEach((q: any) => {
         const productId = q.product_id[0];
         if (!stockByProduct[productId]) stockByProduct[productId] = [];
         stockByProduct[productId].push({
           location: q.location_id[1],
-          qty: q.quantity
+          qty: q.quantity,
+          reserved: q.reserved_quantity || 0
         });
       });
 
@@ -394,8 +396,62 @@ export default function PickResiduiPage() {
         });
       });
 
+      // 3. Carica prenotazioni (stock.move.line con reserved_quantity > 0)
+      const reservations = await searchRead<any>(
+        'stock.move.line',
+        [
+          ['product_id', 'in', productIds],
+          ['reserved_uom_qty', '>', 0],
+          ['state', 'not in', ['done', 'cancel']],
+          ['location_id.usage', '=', 'internal']
+        ],
+        ['product_id', 'picking_id', 'reserved_uom_qty'],
+        0
+      );
+
+      // Carica info picking per ottenere i clienti
+      const pickingIdsForReservations = Array.from(new Set(
+        reservations
+          .filter((r: any) => r.picking_id)
+          .map((r: any) => r.picking_id[0])
+      ));
+
+      const pickingsForReservations = pickingIdsForReservations.length > 0
+        ? await searchRead<any>(
+            'stock.picking',
+            [['id', 'in', pickingIdsForReservations]],
+            ['id', 'name', 'partner_id'],
+            0
+          )
+        : [];
+
+      const pickingMap = new Map(
+        pickingsForReservations.map((p: any) => [
+          p.id,
+          {
+            name: p.name,
+            customer: p.partner_id ? p.partner_id[1] : 'N/A'
+          }
+        ])
+      );
+
+      const reservationsByProduct: Record<number, Array<{customer: string, qty: number, picking: string}>> = {};
+      reservations.forEach((r: any) => {
+        const productId = r.product_id[0];
+        const pickingId = r.picking_id ? r.picking_id[0] : null;
+        const pickingInfo = pickingId ? pickingMap.get(pickingId) : null;
+
+        if (!reservationsByProduct[productId]) reservationsByProduct[productId] = [];
+        reservationsByProduct[productId].push({
+          customer: pickingInfo?.customer || 'N/A',
+          qty: r.reserved_uom_qty,
+          picking: pickingInfo?.name || r.picking_id ? r.picking_id[1] : 'N/A'
+        });
+      });
+
       setProductStock(stockByProduct);
       setProductIncoming(incomingByProduct);
+      setProductReservations(reservationsByProduct);
 
     } catch (error) {
       console.error('Errore caricamento info prodotti:', error);
@@ -774,10 +830,11 @@ export default function PickResiduiPage() {
     const uom = move.product_uom ? move.product_uom[1] : '-';
     const ubic = bestLocationForMove(move.id);
 
-    // Info prodotto: stock e arrivi
+    // Info prodotto: stock, arrivi e prenotazioni
     const productId = move.product_id[0];
     const stock = productStock[productId] || [];
     const incoming = productIncoming[productId] || [];
+    const reservations = productReservations[productId] || [];
 
     return (
       <div key={move.id} className="row" data-move={move.id}>
@@ -803,9 +860,30 @@ export default function PickResiduiPage() {
           {/* Disponibilità ubicazioni */}
           {stock.length > 0 && (
             <div className="sub" style={{ marginTop: '6px', color: 'var(--accent)' }}>
-              📍 Disponibile: {stock.map((s, i) => (
+              📍 Disponibile: {stock.map((s, i) => {
+                const available = s.qty - s.reserved;
+                return (
+                  <span key={i}>
+                    <b>{s.location}</b> ({s.qty} {uom}
+                    {s.reserved > 0 && (
+                      <span style={{ color: '#f59e0b' }}> - Riservato: {s.reserved} {uom}</span>
+                    )}
+                    {available > 0 && (
+                      <span style={{ color: '#16a34a', fontWeight: '700' }}> = Libero: {available.toFixed(1)} {uom}</span>
+                    )}
+                    ){i < stock.length - 1 ? ', ' : ''}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Prenotazioni (da chi) */}
+          {reservations.length > 0 && (
+            <div className="sub" style={{ marginTop: '4px', color: '#dc2626' }}>
+              🔒 Prenotato: {reservations.map((res, i) => (
                 <span key={i}>
-                  <b>{s.location}</b> ({s.qty} {uom}){i < stock.length - 1 ? ', ' : ''}
+                  <b>{res.qty} {uom}</b> da <b>{res.customer}</b> ({res.picking}){i < reservations.length - 1 ? ', ' : ''}
                 </span>
               ))}
             </div>
