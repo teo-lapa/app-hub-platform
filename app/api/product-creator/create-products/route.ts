@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 interface ProductData {
   nome?: string;
   nome_completo: string;
+  nome_fornitore?: string;
   descrizione_breve?: string;
   descrizione_dettagliata?: string;
   categoria?: string;
@@ -27,6 +28,9 @@ interface ProductData {
   tags?: string[];
   fornitore_odoo_id?: number | null;
   immagine_search_query?: string;
+  shelf_life_days?: number | null;
+  expiry_warning_days?: number | null;
+  removal_days?: number | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -107,16 +111,25 @@ export async function POST(request: NextRequest) {
           odooProduct.hs_code = product.codice_sa; // Harmonized System Code
         }
 
-        // TRACCIABILITÀ: Attiva per prodotti FRIGO (freschi)
-        const isFrigo = product.categoria_nome?.toLowerCase().includes('frigo') ||
-                       product.categoria_nome?.toLowerCase().includes('lattic') ||
-                       product.categoria_nome?.toLowerCase().includes('mozzarell') ||
-                       product.nome_completo?.toLowerCase().includes('fresc');
-
-        if (isFrigo) {
+        // TRACCIABILITÀ: Attiva sempre con data scadenza se shelf_life_days è specificato
+        if (product.shelf_life_days && product.shelf_life_days > 0) {
           odooProduct.tracking = 'lot'; // Tracciabilità per lotti
           odooProduct.use_expiration_date = true; // Data scadenza
-          console.log(`   🧊 Prodotto FRIGO - Tracciabilità attivata`);
+
+          // Imposta i giorni di shelf life
+          odooProduct.expiration_time = product.shelf_life_days;
+
+          // Giorni di avviso prima della scadenza (default: 5)
+          if (product.expiry_warning_days && product.expiry_warning_days > 0) {
+            odooProduct.alert_time = product.expiry_warning_days;
+          }
+
+          // Giorni prima della scadenza per rimozione (default: 1)
+          if (product.removal_days && product.removal_days > 0) {
+            odooProduct.removal_time = product.removal_days;
+          }
+
+          console.log(`   📅 Tracciabilità attivata - Shelf life: ${product.shelf_life_days} giorni, Avviso: ${product.expiry_warning_days || 5} giorni, Rimozione: ${product.removal_days || 1} giorni`);
         }
 
         // IVA: Get tax IDs for customer and supplier
@@ -274,9 +287,9 @@ export async function POST(request: NextRequest) {
                 currency_id: eurId, // SEMPRE EUR
               };
 
-              // Add supplier product name and code from invoice
-              if (product.nome || product.nome_completo) {
-                priceListData.product_name = product.nome || product.nome_completo;
+              // Add supplier product name (PULITO) and code from invoice
+              if (product.nome_fornitore || product.nome || product.nome_completo) {
+                priceListData.product_name = product.nome_fornitore || product.nome || product.nome_completo;
               }
               if (product.codice_ean) {
                 priceListData.product_code = product.codice_ean;

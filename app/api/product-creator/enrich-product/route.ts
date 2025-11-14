@@ -189,11 +189,15 @@ Analizza il prodotto e genera i seguenti dati.
 10. **tags**: Array di tag per ricerca
 11. **uom_odoo_id**: ID dell'unità di misura (default: cerca "Unità(i)" o "pz" se non sei sicuro)
 12. **uom_nome**: Nome unità scelta
-13. **peso**: Peso unitario stimato in KG (per singolo pezzo/unità venduta) - se non sei sicuro metti 0.1
+13. **peso**: Peso unitario in KG (per singolo pezzo/unità venduta). IMPORTANTE: estrai dal nome il peso REALE (es: "2.5 KG" → 2.5, "500g" → 0.5). Se non trovi peso esplicito, stima in base al prodotto.
 14. **dimensioni**: Dimensioni stimate (solo se chiaramente identificabili, altrimenti null)
 15. **immagine_search_query**: Query breve per generare immagine (es: "detergente spray bottiglia")
 16. **codice_sa**: Codice SA (Sistema Armonizzato) se lo conosci, altrimenti null
 17. **fornitore_odoo_id**: ID fornitore da contesto sopra (o null se non trovato)
+18. **nome_fornitore**: Nome PULITO del prodotto per fornitore (SENZA lotto, scadenza, pallet, codici - solo nome prodotto base)
+19. **shelf_life_days**: Giorni di shelf life totale dalla produzione (es: 365 per prodotti lunghi, 30 per freschi, 730 per surgelati). null se non applicabile.
+20. **expiry_warning_days**: Giorni prima della scadenza per avviso (suggerito: 5-7 giorni). null se non applicabile.
+21. **removal_days**: Giorni prima della scadenza per rimozione (suggerito: 1 giorno). null se non applicabile.
 
 LOGICA INTELLIGENTE:
 - **Categoria**: SEMPRE scegli tra Frigo/Secco/Pingu/Non-Food come prima scelta
@@ -239,7 +243,11 @@ Rispondi SOLO con JSON valido:
   "dimensioni": "...",
   "immagine_search_query": "...",
   "codice_sa": "...",
-  "fornitore_odoo_id": 123 o null
+  "fornitore_odoo_id": 123 o null,
+  "nome_fornitore": "...",
+  "shelf_life_days": 365 o null,
+  "expiry_warning_days": 5 o null,
+  "removal_days": 1 o null
 }`,
         },
       ],
