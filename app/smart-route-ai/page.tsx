@@ -64,6 +64,7 @@ export default function SmartRouteAIPage() {
   const [toast, setToast] = useState<{message: string, type: string} | null>(null);
   const [optimizationTime, setOptimizationTime] = useState<string>('-');
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [vehiclesExpanded, setVehiclesExpanded] = useState(false);
   const [batches, setBatches] = useState<Array<{id: number, name: string, state: string, vehicleName: string | null, driverName: string | null, totalWeight: number, pickingCount: number}>>([]);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [selectedPickingForMove, setSelectedPickingForMove] = useState<{id: number, currentBatch: string, date: string} | null>(null);
@@ -760,70 +761,76 @@ export default function SmartRouteAIPage() {
             </div>
           </div>
 
-          {/* Vehicles List */}
+          {/* Vehicles List - Collapsible */}
           <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <span>🚛</span> Flotta Veicoli
-            </h3>
-            <div className="max-h-64 overflow-y-auto space-y-2 mb-3">
-              {vehicles.length === 0 ? (
-                <div className="text-center text-gray-500 text-sm py-8">
-                  Nessun veicolo disponibile
-                </div>
-              ) : (
-                vehicles.map(vehicle => (
-                  <div
-                    key={vehicle.id}
-                    onClick={() => {
-    setSelectedVehicleForBatch(vehicle);
-    setShowVehicleBatchModal(true);
-  }}
-                    className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                      vehicle.selected
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={vehicle.selected}
-                        onChange={() => {}}
-                        className="w-4 h-4"
-                      />
-                      <div className="flex-1">
-                        <div className={`font-semibold text-sm ${vehicle.selected ? 'text-indigo-900' : 'text-gray-900'}`}>
-                          {(() => {
-                            // Extract model from name (first part before /)
-                            const nameParts = vehicle.name.split('/');
-                            const model = nameParts[0]?.trim() || 'Veicolo';
-                            return `${model} ${vehicle.plate}`;
-                          })()}
+            <button
+              onClick={() => setVehiclesExpanded(!vehiclesExpanded)}
+              className="w-full flex items-center justify-between hover:bg-gray-50 rounded-lg p-2 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span>🚛</span>
+                <span className="font-semibold text-gray-900">Flotta Veicoli</span>
+                <span className="text-xs text-gray-500">({vehicles.length})</span>
+              </div>
+              <span className="text-gray-400">
+                {vehiclesExpanded ? '▼' : '▶'}
+              </span>
+            </button>
+
+            {vehiclesExpanded && (
+              <div className="max-h-64 overflow-y-auto space-y-2 mt-3">
+                {vehicles.length === 0 ? (
+                  <div className="text-center text-gray-500 text-sm py-8">
+                    Nessun veicolo disponibile
+                  </div>
+                ) : (
+                  vehicles.map(vehicle => (
+                    <div
+                      key={vehicle.id}
+                      onClick={() => {
+                        setSelectedVehicleForBatch(vehicle);
+                        setShowVehicleBatchModal(true);
+                      }}
+                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                        vehicle.selected
+                          ? 'border-indigo-500 bg-indigo-50'
+                          : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={vehicle.selected}
+                          onChange={() => {}}
+                          className="w-4 h-4"
+                        />
+                        <div className="flex-1">
+                          <div className={`font-semibold text-sm ${vehicle.selected ? 'text-indigo-900' : 'text-gray-900'}`}>
+                            {(() => {
+                              // Extract model from name (first part before /)
+                              const nameParts = vehicle.name.split('/');
+                              const model = nameParts[0]?.trim() || 'Veicolo';
+                              return `${model} ${vehicle.plate}`;
+                            })()}
+                          </div>
+                          <div className={`text-xs ${vehicle.selected ? 'text-indigo-700' : 'text-gray-600'}`}>
+                            {(() => {
+                              // Format: "COMPANY, FirstName LastName" -> extract full name
+                              const parts = vehicle.driver.split(',');
+                              const namePart = parts.length > 1 ? parts[1].trim() : vehicle.driver;
+                              return namePart;
+                            })()}
+                          </div>
                         </div>
-                        <div className={`text-xs ${vehicle.selected ? 'text-indigo-700' : 'text-gray-600'}`}>
-                          {(() => {
-                            // Format: "COMPANY, FirstName LastName" -> extract full name
-                            const parts = vehicle.driver.split(',');
-                            const namePart = parts.length > 1 ? parts[1].trim() : vehicle.driver;
-                            return namePart;
-                          })()}
+                        <div className="text-xs bg-cyan-500 text-white px-2 py-1 rounded-full font-semibold">
+                          {dynamicCapacity} kg
                         </div>
-                      </div>
-                      <div className="text-xs bg-cyan-500 text-white px-2 py-1 rounded-full font-semibold">
-                        {dynamicCapacity} kg
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <button
-              onClick={loadVehicles}
-              disabled={loading}
-              className="w-full px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition-colors disabled:opacity-50"
-            >
-              🔄 Carica Veicoli
-            </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           {/* Batch List */}
