@@ -591,7 +591,7 @@ export default function SmartRouteAIPage() {
                 <div className="text-xs text-white/80">Ordini</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">{stats.totalWeight}</div>
+                <div className="text-2xl font-bold">{stats.totalWeight.toFixed(2)}</div>
                 <div className="text-xs text-white/80">Peso (kg)</div>
               </div>
               <div className="text-center">
@@ -748,10 +748,10 @@ export default function SmartRouteAIPage() {
                         </div>
                         <div className={`text-xs ${vehicle.selected ? 'text-indigo-700' : 'text-gray-600'}`}>
                           {(() => {
-                            // Format: "COMPANY, FirstName LastName" -> extract "FirstName"
+                            // Format: "COMPANY, FirstName LastName" -> extract full name
                             const parts = vehicle.driver.split(',');
                             const namePart = parts.length > 1 ? parts[1].trim() : vehicle.driver;
-                            return namePart.split(' ')[0];
+                            return namePart;
                           })()}
                         </div>
                       </div>
@@ -846,75 +846,6 @@ export default function SmartRouteAIPage() {
             </div>
           )}
 
-          {/* Optimization */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <span>🎯</span> Ottimizzazione
-            </h3>
-
-            {/* Algorithm Selector */}
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              <button
-                onClick={() => setSelectedAlgorithm('geographic')}
-                className={`px-2 py-2 text-xs font-semibold rounded-lg border-2 transition-all ${
-                  selectedAlgorithm === 'geographic'
-                    ? 'border-indigo-500 bg-indigo-500 text-white'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                📍 Geografico
-              </button>
-              <button
-                onClick={() => setSelectedAlgorithm('clarke-wright')}
-                className={`px-2 py-2 text-xs font-semibold rounded-lg border-2 transition-all ${
-                  selectedAlgorithm === 'clarke-wright'
-                    ? 'border-indigo-500 bg-indigo-500 text-white'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                🔗 C-W
-              </button>
-              <button
-                onClick={() => setSelectedAlgorithm('nearest')}
-                className={`px-2 py-2 text-xs font-semibold rounded-lg border-2 transition-all ${
-                  selectedAlgorithm === 'nearest'
-                    ? 'border-indigo-500 bg-indigo-500 text-white'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                📏 Nearest
-              </button>
-            </div>
-
-            <div className="flex gap-2 mb-3">
-              <button
-                onClick={optimizeRoutes}
-                disabled={loading || pickings.length === 0}
-                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                <Zap className="h-4 w-4" />
-                Ottimizza
-              </button>
-              <button
-                onClick={clearRoutes}
-                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors"
-              >
-                🗑️ Pulisci
-              </button>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Non assegnati:</span>
-                <span className="font-semibold text-gray-900">{stats.unassignedOrders}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Percorsi creati:</span>
-                <span className="font-semibold text-gray-900">{stats.createdRoutes}</span>
-              </div>
-            </div>
-          </div>
-
           {/* Create Batches */}
           {routes.length > 0 && (
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg shadow p-4">
@@ -967,14 +898,6 @@ export default function SmartRouteAIPage() {
               </div>
             </div>
           )}
-
-          {/* Debug Toggle */}
-          <button
-            onClick={() => setDebugMode(!debugMode)}
-            className="w-full px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-semibold hover:bg-gray-900 transition-colors"
-          >
-            🐛 {debugMode ? 'Nascondi' : 'Mostra'} Debug
-          </button>
         </div>
         )}
 
