@@ -301,39 +301,45 @@ export class PriceReviewService {
       return new Map();
     }
 
-    // Fetch reviews using parameterized query
-    // Note: Vercel Postgres doesn't support array parameters directly in template strings
-    // We need to use a workaround with JSON or multiple queries
-    // For now, we'll fetch all and filter in memory (optimization possible later)
-    const { rows: allRows } = await sql`
-      SELECT
-        product_id,
-        order_id,
-        order_line_id,
-        status,
-        reviewed_by,
-        blocked_by,
-        note,
-        created_at,
-        updated_at
-      FROM price_reviews
-    `;
+    try {
+      // Fetch reviews using parameterized query
+      // Note: Vercel Postgres doesn't support array parameters directly in template strings
+      // We need to use a workaround with JSON or multiple queries
+      // For now, we'll fetch all and filter in memory (optimization possible later)
+      const { rows: allRows } = await sql`
+        SELECT
+          product_id,
+          order_id,
+          order_line_id,
+          status,
+          reviewed_by,
+          blocked_by,
+          note,
+          created_at,
+          updated_at
+        FROM price_reviews
+      `;
 
-    // Filter in memory
-    const productIdSet = new Set(productIds);
-    const orderIdSet = new Set(orderIds);
-    const rows = allRows.filter((r: any) =>
-      productIdSet.has(r.product_id) && orderIdSet.has(r.order_id)
-    );
+      // Filter in memory
+      const productIdSet = new Set(productIds);
+      const orderIdSet = new Set(orderIds);
+      const rows = allRows.filter((r: any) =>
+        productIdSet.has(r.product_id) && orderIdSet.has(r.order_id)
+      );
 
-    // Build map: "productId-orderId" -> review
-    const reviewMap = new Map<string, any>();
-    rows.forEach((r: any) => {
-      const key = `${r.product_id}-${r.order_id}`;
-      reviewMap.set(key, r);
-    });
+      // Build map: "productId-orderId" -> review
+      const reviewMap = new Map<string, any>();
+      rows.forEach((r: any) => {
+        const key = `${r.product_id}-${r.order_id}`;
+        reviewMap.set(key, r);
+      });
 
-    console.log(`✅ [PriceReviewService] Found ${reviewMap.size} reviews`);
-    return reviewMap;
+      console.log(`✅ [PriceReviewService] Found ${reviewMap.size} reviews`);
+      return reviewMap;
+    } catch (error: any) {
+      // If table doesn't exist or other DB error, return empty map
+      console.warn(`⚠️ [PriceReviewService] Failed to fetch reviews (table may not exist):`, error.message);
+      return new Map();
+    }
   }
 }
