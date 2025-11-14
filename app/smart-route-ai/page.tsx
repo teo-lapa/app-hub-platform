@@ -397,7 +397,7 @@ export default function SmartRouteAIPage() {
         partnerName: p.partnerName,
         scheduledDate: p.scheduledDate,
         weight: p.weight,
-        products: p.products
+        products: [] // I prodotti non sono disponibili nei picking caricati
       }));
 
     setBatchPickings(batchPickingsFiltered);
