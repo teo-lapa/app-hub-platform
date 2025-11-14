@@ -685,58 +685,6 @@ export default function SmartRouteAIPage() {
             z-[1000]
           ">
 
-          {/* Statistics */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <span>📊</span> Statistiche Giri
-            </h3>
-
-            {/* Global Stats */}
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg p-4 mb-3">
-              <div className="text-sm opacity-90 mb-2">Totale Tutti i Giri:</div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <div className="text-2xl font-bold">{batches.reduce((sum, b) => sum + b.totalWeight, 0)}</div>
-                  <div className="text-xs opacity-75">kg</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{batches.reduce((sum, b) => sum + b.totalDistance, 0).toFixed(1)}</div>
-                  <div className="text-xs opacity-75">km</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{Math.floor(batches.reduce((sum, b) => sum + b.estimatedTime, 0) / 60)}h {batches.reduce((sum, b) => sum + b.estimatedTime, 0) % 60}m</div>
-                  <div className="text-xs opacity-75">tempo</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Per Batch Stats */}
-            {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').length > 0 && (
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                <div className="text-xs font-semibold text-gray-600 mb-2">Per Giro:</div>
-                {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').map((batch) => (
-                  <div key={batch.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                    <div className="font-semibold text-sm text-gray-900 mb-2">{batch.name}</div>
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                      <div>
-                        <div className="font-bold text-gray-900">{batch.totalWeight}</div>
-                        <div className="text-gray-500">kg</div>
-                      </div>
-                      <div>
-                        <div className="font-bold text-gray-900">{batch.totalDistance.toFixed(1)}</div>
-                        <div className="text-gray-500">km</div>
-                      </div>
-                      <div>
-                        <div className="font-bold text-gray-900">{Math.floor(batch.estimatedTime / 60)}h {batch.estimatedTime % 60}m</div>
-                        <div className="text-gray-500">tempo</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Import Pickings */}
           <div className="bg-white rounded-lg shadow p-4">
             <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
