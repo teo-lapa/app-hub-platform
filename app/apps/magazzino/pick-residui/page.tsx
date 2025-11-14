@@ -398,22 +398,21 @@ export default function PickResiduiPage() {
         });
       });
 
-      // 3. Carica prenotazioni (stock.move.line con reserved_quantity > 0)
-      const reservations = await searchRead<any>(
-        'stock.move.line',
+      // 3. Carica prenotazioni (stock.move in stato assigned = riservato)
+      const reservedMoves = await searchRead<any>(
+        'stock.move',
         [
           ['product_id', 'in', productIds],
-          ['reserved_uom_qty', '>', 0],
-          ['state', 'not in', ['done', 'cancel']],
-          ['location_id.usage', '=', 'internal']
+          ['state', '=', 'assigned'],  // assigned = riservato/disponibile
+          ['picking_code', '=', 'outgoing']  // Solo uscite (non arrivi)
         ],
-        ['product_id', 'picking_id', 'reserved_uom_qty'],
+        ['product_id', 'picking_id', 'product_uom_qty'],
         0
       );
 
       // Carica info picking per ottenere i clienti
       const pickingIdsForReservations = Array.from(new Set(
-        reservations
+        reservedMoves
           .filter((r: any) => r.picking_id)
           .map((r: any) => r.picking_id[0])
       ));
@@ -438,7 +437,7 @@ export default function PickResiduiPage() {
       );
 
       const reservationsByProduct: Record<number, Array<{customer: string, qty: number, picking: string}>> = {};
-      reservations.forEach((r: any) => {
+      reservedMoves.forEach((r: any) => {
         const productId = r.product_id[0];
         const pickingId = r.picking_id ? r.picking_id[0] : null;
         const pickingInfo = pickingId ? pickingMap.get(pickingId) : null;
@@ -446,7 +445,7 @@ export default function PickResiduiPage() {
         if (!reservationsByProduct[productId]) reservationsByProduct[productId] = [];
         reservationsByProduct[productId].push({
           customer: pickingInfo?.customer || 'N/A',
-          qty: r.reserved_uom_qty,
+          qty: r.product_uom_qty,
           picking: pickingInfo?.name || r.picking_id ? r.picking_id[1] : 'N/A'
         });
       });
