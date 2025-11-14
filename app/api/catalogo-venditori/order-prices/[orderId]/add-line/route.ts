@@ -151,40 +151,27 @@ export async function POST(
       console.log(`✅ [ADD-LINE-API] Found ${companyTaxIds.length} taxes for company 1`);
     }
 
-    // Get price from pricelist if available
-    let priceUnit = product.list_price;
-    if (order.pricelist_id && order.pricelist_id[0]) {
-      console.log('🔍 [ADD-LINE-API] Getting price from pricelist...');
-      try {
-        const pricelistPrice = await callOdoo(
-          cookies,
-          'product.pricelist',
-          'get_product_price',
-          [order.pricelist_id[0], productId, quantity, order.partner_id[0]]
-        );
-        if (pricelistPrice && pricelistPrice > 0) {
-          priceUnit = pricelistPrice;
-          console.log(`✅ [ADD-LINE-API] Using pricelist price: ${priceUnit}`);
-        }
-      } catch (error) {
-        console.warn('⚠️ [ADD-LINE-API] Could not get pricelist price, using list price');
-      }
-    }
-
-    // Create order line in Odoo
+    // Create order line in Odoo WITHOUT price_unit
+    // Let Odoo calculate the correct price based on pricelist, customer rules, etc.
     console.log('➕ [ADD-LINE-API] Creating order line in Odoo...');
-    const lineData = {
+    const lineData: any = {
       order_id: orderId,
       product_id: productId,
-      name: product.name,
       product_uom_qty: quantity,
-      price_unit: priceUnit,
       product_uom: product.uom_id ? product.uom_id[0] : 1,
       company_id: 1, // LAPA - finest italian food GmbH
       tax_id: companyTaxIds.length > 0
         ? [[6, 0, companyTaxIds]]
         : false
     };
+
+    // DO NOT set price_unit - let Odoo compute it automatically
+    // This ensures Odoo uses:
+    // 1. Customer pricelist
+    // 2. Locked prices (if any)
+    // 3. Product-specific customer prices
+    // 4. Promotions and rules
+    console.log('ℹ️ [ADD-LINE-API] Letting Odoo auto-calculate price based on customer pricelist');
 
     const newLineId = await callOdoo(
       cookies,
