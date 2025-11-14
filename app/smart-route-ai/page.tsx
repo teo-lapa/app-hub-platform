@@ -561,46 +561,42 @@ export default function SmartRouteAIPage() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
       {/* Header */}
       <header className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-2">
             {/* Title */}
-            <div className="flex items-center gap-4">
-              <Link href="/" className="hover:bg-white/10 p-2 rounded-lg transition-colors">
-                <ArrowLeft className="h-6 w-6" />
+            <div className="flex items-center gap-2">
+              <Link href="/" className="hover:bg-white/10 p-1.5 sm:p-2 rounded-lg transition-colors">
+                <ArrowLeft className="h-4 w-4 sm:h-6 sm:w-6" />
               </Link>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+                <h1 className="text-base sm:text-xl md:text-2xl font-bold flex items-center gap-1">
                   🚚 Smart Route AI
                 </h1>
-                <p className="text-sm text-white/80">Ottimizzazione Percorsi con Odoo</p>
+                <p className="text-[10px] sm:text-xs text-white/80 hidden sm:block">Ottimizzazione Percorsi con Odoo</p>
               </div>
             </div>
 
             {/* Connection Status */}
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] sm:text-xs font-semibold ${
               odooConnected ? 'bg-green-500' : 'bg-red-500'
             }`}>
               <span>{odooConnected ? '✓' : '⚠️'}</span>
-              <span>{odooConnected ? 'Connesso' : 'Non connesso'}</span>
+              <span className="hidden sm:inline">{odooConnected ? 'Connesso' : 'Non connesso'}</span>
             </div>
 
             {/* Stats Bar */}
-            <div className="flex gap-6 text-sm">
+            <div className="flex gap-2 sm:gap-4 text-[10px] sm:text-xs">
               <div className="text-center">
-                <div className="text-2xl font-bold">{stats.totalOrders}</div>
-                <div className="text-xs text-white/80">Ordini</div>
+                <div className="text-sm sm:text-xl font-bold">{stats.totalOrders}</div>
+                <div className="text-[8px] sm:text-[10px] text-white/80">Ordini</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">{stats.totalWeight.toFixed(2)}</div>
-                <div className="text-xs text-white/80">Peso (kg)</div>
+                <div className="text-sm sm:text-xl font-bold">{stats.totalWeight.toFixed(2)}</div>
+                <div className="text-[8px] sm:text-[10px] text-white/80">Peso</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{stats.totalVehicles}</div>
-                <div className="text-xs text-white/80">Veicoli</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{optimizationTime}</div>
-                <div className="text-xs text-white/80">Tempo Ottim.</div>
+              <div className="text-center hidden sm:block">
+                <div className="text-xl font-bold">{stats.totalVehicles}</div>
+                <div className="text-[10px] text-white/80">Veicoli</div>
               </div>
             </div>
           </div>
@@ -608,14 +604,14 @@ export default function SmartRouteAIPage() {
       </header>
 
       {/* Main Content */}
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-88px)] relative">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-60px)] sm:h-[calc(100vh-70px)] md:h-[calc(100vh-88px)] relative">
         {/* Toggle Button for Mobile/Desktop */}
         <button
           onClick={() => setSidebarVisible(!sidebarVisible)}
-          className="fixed top-20 left-4 z-[1001] bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-all lg:top-24"
+          className="fixed top-14 sm:top-16 md:top-20 left-2 sm:left-4 z-[1001] bg-indigo-600 text-white p-2 sm:p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-all"
           aria-label="Toggle Sidebar"
         >
-          {sidebarVisible ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {sidebarVisible ? <X className="h-4 w-4 sm:h-5 sm:w-5" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5" />}
         </button>
 
         {/* Sidebar */}
