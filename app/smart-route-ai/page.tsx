@@ -70,7 +70,8 @@ export default function SmartRouteAIPage() {
   const [showVehicleBatchModal, setShowVehicleBatchModal] = useState(false);
   const [selectedVehicleForBatch, setSelectedVehicleForBatch] = useState<{id: number, name: string, plate: string, driver: string, driverId: number, employeeId: number | null} | null>(null);
   const [showBatchStateModal, setShowBatchStateModal] = useState(false);
-  const [selectedBatchForStateChange, setSelectedBatchForStateChange] = useState<{id: number, name: string, currentState: string, nextState: string} | null>(null);
+  const [selectedBatchForStateChange, setSelectedBatchForStateChange] = useState<{id: number, name: string, currentState: string, nextState: string, hasVehicle: boolean} | null>(null);
+  const [selectedVehicleForStateChange, setSelectedVehicleForStateChange] = useState<{id: number, name: string, plate: string, driver: string, driverId: number, employeeId: number | null} | null>(null);
 
   // Route colors - well distinguished colors
   const ROUTE_COLORS = [
@@ -380,7 +381,7 @@ export default function SmartRouteAIPage() {
   }
 
   // Handle batch click to advance state
-  async function handleBatchClick(batch: {id: number, name: string, state: string}) {
+  async function handleBatchClick(batch: {id: number, name: string, state: string, vehicleName: string | null, driverName: string | null}) {
     // Determine next state
     let nextState: string;
     let nextStateLabel: string;
@@ -396,13 +397,18 @@ export default function SmartRouteAIPage() {
       return;
     }
 
+    // Check if batch has vehicle assigned
+    const hasVehicle = !!batch.vehicleName;
+
     // Show confirmation modal
     setSelectedBatchForStateChange({
       id: batch.id,
       name: batch.name,
       currentState: batch.state,
-      nextState: nextStateLabel
+      nextState: nextStateLabel,
+      hasVehicle: hasVehicle
     });
+    setSelectedVehicleForStateChange(null); // Reset vehicle selection
     setShowBatchStateModal(true);
   }
 
@@ -410,10 +416,36 @@ export default function SmartRouteAIPage() {
   async function confirmBatchStateChange() {
     if (!selectedBatchForStateChange) return;
 
+    // If changing from draft to in_progress and no vehicle assigned, require vehicle selection
+    if (selectedBatchForStateChange.currentState === 'draft' &&
+        !selectedBatchForStateChange.hasVehicle &&
+        !selectedVehicleForStateChange) {
+      showToast('Seleziona un veicolo prima di confermare', 'warning');
+      return;
+    }
+
     try {
       debugLog(`Advancing batch ${selectedBatchForStateChange.id} to ${selectedBatchForStateChange.nextState}...`, 'info');
       setLoading(true);
 
+      // First, assign vehicle if selected
+      if (selectedVehicleForStateChange) {
+        const assignResponse = await fetch('/api/smart-route-ai/batches/assign-vehicle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            batchId: selectedBatchForStateChange.id,
+            vehicleId: selectedVehicleForStateChange.id,
+            driverId: selectedVehicleForStateChange.driverId,
+            employeeId: selectedVehicleForStateChange.employeeId
+          })
+        });
+
+        if (!assignResponse.ok) throw new Error('Error assigning vehicle');
+        debugLog('Vehicle assigned to batch', 'success');
+      }
+
+      // Then update batch state
       const response = await fetch('/api/smart-route-ai/batches/update-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -434,6 +466,7 @@ export default function SmartRouteAIPage() {
 
       setShowBatchStateModal(false);
       setSelectedBatchForStateChange(null);
+      setSelectedVehicleForStateChange(null);
 
     } catch (error: any) {
       debugLog(`Error updating batch state: ${error.message}`, 'error');
@@ -1071,7 +1104,7 @@ export default function SmartRouteAIPage() {
                 </div>
               </div>
 
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border-2 border-blue-200">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border-2 border-blue-200 mb-4">
                 <div className="flex items-center justify-center gap-4">
                   <div className="text-center">
                     <div className="text-xs text-gray-500 mb-1">Stato attuale</div>
@@ -1092,6 +1125,70 @@ export default function SmartRouteAIPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Vehicle Selection - Show only if changing from draft and no vehicle assigned */}
+              {selectedBatchForStateChange.currentState === 'draft' && !selectedBatchForStateChange.hasVehicle && (
+                <div className="mb-4">
+                  <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <span>🚗</span> Seleziona veicolo e autista:
+                  </div>
+                  {selectedVehicleForStateChange ? (
+                    <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200 relative">
+                      <button
+                        onClick={() => setSelectedVehicleForStateChange(null)}
+                        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                      <div className="font-bold text-indigo-900">
+                        {(() => {
+                          const nameParts = selectedVehicleForStateChange.name.split('/');
+                          const model = nameParts[0]?.trim() || 'Veicolo';
+                          return `${model} ${selectedVehicleForStateChange.plate}`;
+                        })()}
+                      </div>
+                      <div className="text-sm text-indigo-700 mt-1">
+                        Autista: {(() => {
+                          const parts = selectedVehicleForStateChange.driver.split(',');
+                          const namePart = parts.length > 1 ? parts[1].trim() : selectedVehicleForStateChange.driver;
+                          return namePart;
+                        })()}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="max-h-48 overflow-y-auto space-y-2">
+                      {vehicles.length === 0 ? (
+                        <div className="text-center text-gray-500 py-4 text-sm">
+                          Nessun veicolo disponibile
+                        </div>
+                      ) : (
+                        vehicles.map(vehicle => (
+                          <button
+                            key={vehicle.id}
+                            onClick={() => setSelectedVehicleForStateChange(vehicle)}
+                            className="w-full p-3 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all"
+                          >
+                            <div className="font-semibold text-sm text-gray-900">
+                              {(() => {
+                                const nameParts = vehicle.name.split('/');
+                                const model = nameParts[0]?.trim() || 'Veicolo';
+                                return `${model} ${vehicle.plate}`;
+                              })()}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {(() => {
+                                const parts = vehicle.driver.split(',');
+                                const namePart = parts.length > 1 ? parts[1].trim() : vehicle.driver;
+                                return namePart;
+                              })()}
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3">
