@@ -346,11 +346,11 @@ export default function UbicazioniPage() {
     setSelectedSupplier('ALL');
   };
 
-  // Ottieni lista fornitori unici
-  const uniqueSuppliers = Array.from(
+  // Ottieni lista fornitori unici (filtra null/undefined e assicura string[])
+  const uniqueSuppliers: string[] = Array.from(
     new Set(
       bufferProducts
-        .filter(p => p.supplier_name)
+        .filter((p): p is BufferProduct & { supplier_name: string } => !!p.supplier_name)
         .map(p => p.supplier_name)
     )
   ).sort();
