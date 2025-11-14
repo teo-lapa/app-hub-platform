@@ -384,22 +384,25 @@ export default function SmartRouteAIPage() {
     }
   }
 
-  // Load pickings for a batch
-  async function loadBatchPickings(batchId: number) {
-    try {
-      setLoadingPickings(true);
-      const response = await fetch(`/api/smart-route-ai/batches/${batchId}/pickings`);
-      if (!response.ok) throw new Error('Error loading batch pickings');
+  // Load pickings for a batch - filtra dai picking già caricati
+  function loadBatchPickings(batchId: number) {
+    setLoadingPickings(true);
 
-      const data = await response.json();
-      setBatchPickings(data.pickings || []);
-      setExpandedPickingId(null);
-    } catch (error: any) {
-      debugLog(`Error loading batch pickings: ${error.message}`, 'error');
-      showToast('Errore caricamento consegne', 'error');
-    } finally {
-      setLoadingPickings(false);
-    }
+    // Filtra i picking già caricati che appartengono a questo batch
+    const batchPickingsFiltered = pickings
+      .filter(p => p.batchId === batchId)
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        partnerName: p.partnerName,
+        scheduledDate: p.scheduledDate,
+        weight: p.weight,
+        products: p.products
+      }));
+
+    setBatchPickings(batchPickingsFiltered);
+    setExpandedPickingId(null);
+    setLoadingPickings(false);
   }
 
   // Handle batch click to advance state
@@ -433,7 +436,7 @@ export default function SmartRouteAIPage() {
     setSelectedVehicleForStateChange(null); // Reset vehicle selection
 
     // Load pickings for this batch
-    await loadBatchPickings(batch.id);
+    loadBatchPickings(batch.id);
 
     setShowBatchStateModal(true);
   }
