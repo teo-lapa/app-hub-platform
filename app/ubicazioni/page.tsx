@@ -67,6 +67,8 @@ interface BufferProduct {
   lot_id?: number;
   lot_name?: string;
   expiration_date?: string;
+  supplier_id?: number | null;
+  supplier_name?: string | null;
 }
 
 export default function UbicazioniPage() {
@@ -79,6 +81,7 @@ export default function UbicazioniPage() {
   const [bufferProducts, setBufferProducts] = useState<BufferProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<BufferProduct | null>(null);
   const [zoneCounts, setZoneCounts] = useState<Record<string, number>>({});
+  const [selectedSupplier, setSelectedSupplier] = useState<string>('ALL');
 
   // Stati form
   const [lotNumber, setLotNumber] = useState('');
@@ -340,7 +343,22 @@ export default function UbicazioniPage() {
     setSelectedProduct(null);
     setLocationData(null);
     setBufferProducts([]);
+    setSelectedSupplier('ALL');
   };
+
+  // Ottieni lista fornitori unici (filtra null/undefined e assicura string[])
+  const uniqueSuppliers: string[] = Array.from(
+    new Set(
+      bufferProducts
+        .filter((p): p is BufferProduct & { supplier_name: string } => !!p.supplier_name)
+        .map(p => p.supplier_name)
+    )
+  ).sort();
+
+  // Filtra prodotti per fornitore selezionato
+  const filteredProducts = selectedSupplier === 'ALL'
+    ? bufferProducts
+    : bufferProducts.filter(p => p.supplier_name === selectedSupplier);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -489,13 +507,42 @@ export default function UbicazioniPage() {
             {/* Griglia prodotti buffer */}
             {bufferProducts.length > 0 && (
               <div className="glass-strong rounded-xl p-6 mb-6">
-                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <Package className="w-6 h-6 text-blue-400" />
-                  Prodotti disponibili in {ZONES.find(z => z.id === selectedZone)?.bufferName}
-                </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Package className="w-6 h-6 text-blue-400" />
+                    Prodotti disponibili in {ZONES.find(z => z.id === selectedZone)?.bufferName}
+                  </h3>
+
+                  {/* Filtro Fornitore */}
+                  {uniqueSuppliers.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-semibold text-muted-foreground whitespace-nowrap">
+                        🏭 Fornitore:
+                      </label>
+                      <select
+                        value={selectedSupplier}
+                        onChange={(e) => setSelectedSupplier(e.target.value)}
+                        className="bg-slate-700 text-white px-4 py-2 rounded-lg border-2 border-slate-500 focus:border-blue-500 focus:outline-none font-semibold min-w-[200px]"
+                        style={{ color: 'white', backgroundColor: '#334155' }}
+                      >
+                        <option value="ALL" style={{ backgroundColor: '#1e293b', color: 'white' }}>
+                          TUTTI ({bufferProducts.length})
+                        </option>
+                        {uniqueSuppliers.map((supplier) => {
+                          const count = bufferProducts.filter(p => p.supplier_name === supplier).length;
+                          return (
+                            <option key={supplier} value={supplier} style={{ backgroundColor: '#1e293b', color: 'white' }}>
+                              {supplier} ({count})
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
-                  {bufferProducts.map((product) => (
+                  {filteredProducts.map((product) => (
                     <div
                       key={`${product.id}-${product.lot_name}`}
                       className="glass p-3 rounded-xl cursor-pointer active:scale-95 hover:scale-105 transition-transform touch-manipulation"
