@@ -84,7 +84,11 @@ export class PickingOdooClient {
   private lotCache: Map<number, any> = new Map();
 
   constructor() {
-    this.odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
+    // Usa sempre la variabile d'ambiente - non fare fallback a staging!
+    this.odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || '';
+    if (!this.odooUrl) {
+      console.error('⚠️ NEXT_PUBLIC_ODOO_URL non configurata!');
+    }
   }
 
 
