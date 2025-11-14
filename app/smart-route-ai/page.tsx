@@ -157,6 +157,13 @@ export default function SmartRouteAIPage() {
     setDateTo(today);
   }, []);
 
+  // Auto-load today's pickings when connected and dates are set
+  useEffect(() => {
+    if (odooConnected && dateFrom && dateTo && pickings.length === 0) {
+      importPickings();
+    }
+  }, [odooConnected, dateFrom, dateTo]);
+
   // Expose showBatchSelector to global window for map popup
   useEffect(() => {
     (window as any).showBatchSelector = (pickingId: number, currentBatch: string, date: string) => {
