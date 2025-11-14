@@ -507,7 +507,7 @@ export default function UbicazioniPage() {
             {/* Griglia prodotti buffer */}
             {bufferProducts.length > 0 && (
               <div className="glass-strong rounded-xl p-6 mb-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <div className="flex flex-col gap-3 mb-4">
                   <h3 className="text-xl font-bold flex items-center gap-2">
                     <Package className="w-6 h-6 text-blue-400" />
                     Prodotti disponibili in {ZONES.find(z => z.id === selectedZone)?.bufferName}
@@ -515,14 +515,14 @@ export default function UbicazioniPage() {
 
                   {/* Filtro Fornitore */}
                   {uniqueSuppliers.length > 0 && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                       <label className="text-sm font-semibold text-muted-foreground whitespace-nowrap">
                         🏭 Fornitore:
                       </label>
                       <select
                         value={selectedSupplier}
                         onChange={(e) => setSelectedSupplier(e.target.value)}
-                        className="bg-slate-700 text-white px-4 py-2 rounded-lg border-2 border-slate-500 focus:border-blue-500 focus:outline-none font-semibold min-w-[200px]"
+                        className="bg-slate-700 text-white px-4 py-2 rounded-lg border-2 border-slate-500 focus:border-blue-500 focus:outline-none font-semibold w-full sm:w-auto sm:min-w-[200px]"
                         style={{ color: 'white', backgroundColor: '#334155' }}
                       >
                         <option value="ALL" style={{ backgroundColor: '#1e293b', color: 'white' }}>
