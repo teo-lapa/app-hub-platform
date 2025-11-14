@@ -34,7 +34,7 @@ interface Picking {
   batchDriverName: string | null;
   scheduledDate: string;
   state: string;
-  products?: Array<{productId: number | null, productName: string, quantity: number}>;
+  products?: Array<{productId: number | null, productName: string, quantity: number, weight?: number, uom?: string}>;
 }
 
 interface Route {
@@ -402,8 +402,8 @@ export default function SmartRouteAIPage() {
           id: prod.productId || 0,
           productName: prod.productName,
           quantity: prod.quantity,
-          uom: 'Unità', // Default UoM
-          weight: 0 // Weight per product non disponibile
+          uom: prod.uom || 'Unità',
+          weight: prod.weight || 0
         }))
       }));
 
