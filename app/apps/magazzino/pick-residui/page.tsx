@@ -16,6 +16,7 @@ interface StockPicking {
   sale_id: [number, string] | false;
   origin: string | false;
   group_id: [number, string] | false;
+  scheduled_date: string | false;
 }
 
 interface StockMove {
@@ -253,7 +254,7 @@ export default function PickResiduiPage() {
           ['name', 'ilike', 'PICK'],
           ['state', 'not in', ['done', 'cancel']],
         ],
-        ['id', 'name', 'state', 'partner_id', 'driver_id', 'carrier_id', 'sale_id', 'origin', 'group_id'],
+        ['id', 'name', 'state', 'partner_id', 'driver_id', 'carrier_id', 'sale_id', 'origin', 'group_id', 'scheduled_date'],
         0,
         'name asc'
       );
@@ -611,9 +612,6 @@ export default function PickResiduiPage() {
         <div className="ghead">
           <span className="pill strong">👤 {grp.driver}</span>
           <span className="pill strong">🧭 {grp.carrier}</span>
-          <button className="btn slim blue" type="button" onClick={() => handleSaveGroup(key)}>
-            SALVA GRUPPO
-          </button>
         </div>
         {grp.pickings.map((pick) => renderPicking(pick))}
       </div>
@@ -624,6 +622,15 @@ export default function PickResiduiPage() {
     const saleName = pick.sale_id ? pick.sale_id[1] : pick.origin || '-';
     const righe = moves.filter((m) => m.picking_id && m.picking_id[0] === pick.id);
 
+    // Formatta data di consegna
+    const deliveryDate = pick.scheduled_date
+      ? new Date(pick.scheduled_date).toLocaleDateString('it-IT', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        })
+      : '-';
+
     return (
       <div key={pick.id} className="card">
         <div className="pick-head">
@@ -633,12 +640,15 @@ export default function PickResiduiPage() {
           <span className="pill">
             Cliente: <b>{pick.partner_id ? pick.partner_id[1] : '-'}</b>
           </span>
+          <span className="pill">
+            📅 Consegna: <b>{deliveryDate}</b>
+          </span>
           <span className="pill">{pick.state}</span>
           <span className="pill">
             🧾 Ordine: <b>{saleName || '-'}</b>
           </span>
           <button
-            className="btn slim ghost"
+            className="btn slim blue"
             type="button"
             onClick={() => handleOpenQuickAdd(pick.id)}
             disabled={!saleName || saleName === '-'}
