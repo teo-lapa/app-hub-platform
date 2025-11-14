@@ -57,21 +57,41 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Smart Route AI] Found ${batches.length} batches`);
 
-    // Calculate total weight for each batch by summing picking weights
+    // Helper function to calculate distance between two coordinates (Haversine formula)
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+      const R = 6371; // Earth radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    };
+
+    // Depot coordinates (LAPA Embrach)
+    const DEPOT_LAT = 47.5168872;
+    const DEPOT_LNG = 8.5971149;
+
+    // Calculate total weight and distance for each batch
     const batchesWithWeights = await Promise.all(
       batches.map(async (b: any) => {
         let totalWeight = 0;
+        let totalDistance = 0;
 
         if (b.picking_ids && b.picking_ids.length > 0) {
-          // Fetch all pickings for this batch
+          // Fetch all pickings with coordinates
           const pickings = await rpcClient.callKw(
             'stock.picking',
             'read',
-            [b.picking_ids, ['id', 'move_ids_without_package']]
+            [b.picking_ids, ['id', 'move_ids_without_package', 'x_studio_latitudine', 'x_studio_longitudine']]
           );
 
-          // Collect all move IDs
+          // Collect all move IDs and calculate distance
           const allMoveIds: number[] = [];
+          const validPickings = pickings.filter((p: any) => p.x_studio_latitudine && p.x_studio_longitudine);
+
           for (const picking of pickings) {
             if (picking.move_ids_without_package && picking.move_ids_without_package.length > 0) {
               allMoveIds.push(...picking.move_ids_without_package);
@@ -88,7 +108,41 @@ export async function GET(request: NextRequest) {
 
             totalWeight = moves.reduce((sum: number, move: any) => sum + (move.weight || 0), 0);
           }
+
+          // Calculate total distance: depot -> pickings -> depot
+          if (validPickings.length > 0) {
+            // Distance from depot to first picking
+            totalDistance += calculateDistance(
+              DEPOT_LAT,
+              DEPOT_LNG,
+              validPickings[0].x_studio_latitudine,
+              validPickings[0].x_studio_longitudine
+            );
+
+            // Distance between consecutive pickings
+            for (let i = 0; i < validPickings.length - 1; i++) {
+              totalDistance += calculateDistance(
+                validPickings[i].x_studio_latitudine,
+                validPickings[i].x_studio_longitudine,
+                validPickings[i + 1].x_studio_latitudine,
+                validPickings[i + 1].x_studio_longitudine
+              );
+            }
+
+            // Distance from last picking back to depot
+            totalDistance += calculateDistance(
+              validPickings[validPickings.length - 1].x_studio_latitudine,
+              validPickings[validPickings.length - 1].x_studio_longitudine,
+              DEPOT_LAT,
+              DEPOT_LNG
+            );
+          }
         }
+
+        // Estimate time: distance / average speed (35 km/h) * 60 min + 10 min per delivery
+        const estimatedTime = (b.picking_ids || []).length > 0
+          ? Math.round((totalDistance / 35) * 60) + ((b.picking_ids || []).length * 10)
+          : 0;
 
         return {
           id: b.id,
@@ -101,7 +155,9 @@ export async function GET(request: NextRequest) {
           userName: b.user_id ? b.user_id[1] : null,
           vehicleName: b.x_studio_auto_del_giro ? b.x_studio_auto_del_giro[1] : null,
           driverName: b.x_studio_autista_del_giro ? b.x_studio_autista_del_giro[1] : null,
-          totalWeight: Math.round(totalWeight)
+          totalWeight: Math.round(totalWeight),
+          totalDistance: Math.round(totalDistance * 10) / 10, // Round to 1 decimal
+          estimatedTime: estimatedTime
         };
       })
     );

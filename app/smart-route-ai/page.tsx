@@ -65,7 +65,7 @@ export default function SmartRouteAIPage() {
   const [optimizationTime, setOptimizationTime] = useState<string>('-');
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [vehiclesExpanded, setVehiclesExpanded] = useState(false);
-  const [batches, setBatches] = useState<Array<{id: number, name: string, state: string, vehicleName: string | null, driverName: string | null, totalWeight: number, pickingCount: number}>>([]);
+  const [batches, setBatches] = useState<Array<{id: number, name: string, state: string, vehicleName: string | null, driverName: string | null, totalWeight: number, pickingCount: number, totalDistance: number, estimatedTime: number}>>([]);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [selectedPickingForMove, setSelectedPickingForMove] = useState<{id: number, currentBatch: string, date: string} | null>(null);
   const [showVehicleBatchModal, setShowVehicleBatchModal] = useState(false);
@@ -685,31 +685,56 @@ export default function SmartRouteAIPage() {
             z-[1000]
           ">
 
-          {/* Dynamic Capacity */}
+          {/* Statistics */}
           <div className="bg-white rounded-lg shadow p-4">
             <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <span>⚖️</span> Capacità Dinamica
+              <span>📊</span> Statistiche Giri
             </h3>
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg p-4 text-center mb-3">
-              <div className="text-3xl font-bold">{dynamicCapacity}</div>
-              <div className="text-sm opacity-90">kg per veicolo</div>
-              <div className="text-xs opacity-75 mt-1">(Peso totale ÷ Veicoli) + 10%</div>
+
+            {/* Global Stats */}
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg p-4 mb-3">
+              <div className="text-sm opacity-90 mb-2">Totale Tutti i Giri:</div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-2xl font-bold">{batches.reduce((sum, b) => sum + b.totalWeight, 0)}</div>
+                  <div className="text-xs opacity-75">kg</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{batches.reduce((sum, b) => sum + b.totalDistance, 0).toFixed(1)}</div>
+                  <div className="text-xs opacity-75">km</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{Math.floor(batches.reduce((sum, b) => sum + b.estimatedTime, 0) / 60)}h {batches.reduce((sum, b) => sum + b.estimatedTime, 0) % 60}m</div>
+                  <div className="text-xs opacity-75">tempo</div>
+                </div>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={capacityInput}
-                onChange={(e) => setCapacityInput(e.target.value)}
-                placeholder="Override manuale"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-              <button
-                onClick={updateCapacity}
-                className="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-semibold hover:bg-yellow-600 transition-colors"
-              >
-                ✏️
-              </button>
-            </div>
+
+            {/* Per Batch Stats */}
+            {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').length > 0 && (
+              <div className="max-h-64 overflow-y-auto space-y-2">
+                <div className="text-xs font-semibold text-gray-600 mb-2">Per Giro:</div>
+                {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').map((batch) => (
+                  <div key={batch.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div className="font-semibold text-sm text-gray-900 mb-2">{batch.name}</div>
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div>
+                        <div className="font-bold text-gray-900">{batch.totalWeight}</div>
+                        <div className="text-gray-500">kg</div>
+                      </div>
+                      <div>
+                        <div className="font-bold text-gray-900">{batch.totalDistance.toFixed(1)}</div>
+                        <div className="text-gray-500">km</div>
+                      </div>
+                      <div>
+                        <div className="font-bold text-gray-900">{Math.floor(batch.estimatedTime / 60)}h {batch.estimatedTime % 60}m</div>
+                        <div className="text-gray-500">tempo</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Import Pickings */}
