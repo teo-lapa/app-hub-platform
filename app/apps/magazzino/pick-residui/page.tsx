@@ -16,6 +16,7 @@ interface StockPicking {
   sale_id: [number, string] | false;
   origin: string | false;
   group_id: [number, string] | false;
+  scheduled_date: string | false;
 }
 
 interface StockMove {
@@ -151,6 +152,11 @@ export default function PickResiduiPage() {
   const [lineInfoByMove, setLineInfoByMove] = useState<Record<number, LineInfo[]>>({});
   const [groups, setGroups] = useState<Map<string, GroupData>>(new Map());
 
+  // Info prodotti: disponibilità e arrivi
+  const [productStock, setProductStock] = useState<Record<number, Array<{location: string, qty: number, reserved: number}>>>({});
+  const [productIncoming, setProductIncoming] = useState<Record<number, Array<{name: string, qty: number, date: string}>>>({});
+  const [productReservations, setProductReservations] = useState<Record<number, Array<{customer: string, qty: number, picking: string}>>>({});
+
   // Quick Add Modal
   const [showModal, setShowModal] = useState(false);
   const [modalOrder, setModalOrder] = useState<SaleOrder | null>(null);
@@ -253,7 +259,7 @@ export default function PickResiduiPage() {
           ['name', 'ilike', 'PICK'],
           ['state', 'not in', ['done', 'cancel']],
         ],
-        ['id', 'name', 'state', 'partner_id', 'driver_id', 'carrier_id', 'sale_id', 'origin', 'group_id'],
+        ['id', 'name', 'state', 'partner_id', 'driver_id', 'carrier_id', 'sale_id', 'origin', 'group_id', 'scheduled_date'],
         0,
         'name asc'
       );
@@ -328,11 +334,132 @@ export default function PickResiduiPage() {
       setLineInfoByMove(newLineInfoByMove);
       setGroups(newGroups);
       setStatusMessage(`Caricati ${picksData.length} pick residui`);
+
+      // Carica info prodotti (stock e arrivi) in background
+      loadProductsInfo(movesData);
     } catch (error: any) {
       setStatusMessage(`Errore: ${error.message}`);
       showToastMessage(`Errore: ${error.message}`);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Carica disponibilità e arrivi per i prodotti
+  const loadProductsInfo = async (movesData: StockMove[]) => {
+    try {
+      const productIds = Array.from(new Set(movesData.map(m => m.product_id[0])));
+      console.log('🔍 Caricamento info per prodotti:', productIds);
+
+      // 1. Carica stock per ubicazione (solo ubicazioni interne) CON reserved_quantity
+      const quants = await searchRead<any>(
+        'stock.quant',
+        [
+          ['product_id', 'in', productIds],
+          ['quantity', '>', 0],
+          ['location_id.usage', '=', 'internal']
+        ],
+        ['product_id', 'location_id', 'quantity', 'reserved_quantity'],
+        0
+      );
+      console.log('📦 Quants trovati:', quants.length);
+
+      const stockByProduct: Record<number, Array<{location: string, qty: number, reserved: number}>> = {};
+      quants.forEach((q: any) => {
+        const productId = q.product_id[0];
+        if (!stockByProduct[productId]) stockByProduct[productId] = [];
+        stockByProduct[productId].push({
+          location: q.location_id[1],
+          qty: q.quantity,
+          reserved: q.reserved_quantity || 0
+        });
+      });
+
+      // 2. Carica arrivi in corso (stock.move in entrata, non done/cancel)
+      const incomingMoves = await searchRead<any>(
+        'stock.move',
+        [
+          ['product_id', 'in', productIds],
+          ['state', 'not in', ['done', 'cancel']],
+          ['picking_code', '=', 'incoming'] // Solo arrivi
+        ],
+        ['product_id', 'picking_id', 'product_uom_qty', 'date'],
+        0
+      );
+
+      const incomingByProduct: Record<number, Array<{name: string, qty: number, date: string}>> = {};
+      incomingMoves.forEach((m: any) => {
+        const productId = m.product_id[0];
+        if (!incomingByProduct[productId]) incomingByProduct[productId] = [];
+        incomingByProduct[productId].push({
+          name: m.picking_id ? m.picking_id[1] : 'Arrivo',
+          qty: m.product_uom_qty,
+          date: m.date || ''
+        });
+      });
+
+      // 3. Carica prenotazioni (stock.move in stato assigned = riservato)
+      const reservedMoves = await searchRead<any>(
+        'stock.move',
+        [
+          ['product_id', 'in', productIds],
+          ['state', '=', 'assigned'],  // assigned = riservato/disponibile
+          ['picking_code', '=', 'outgoing']  // Solo uscite (non arrivi)
+        ],
+        ['product_id', 'picking_id', 'product_uom_qty'],
+        0
+      );
+
+      // Carica info picking per ottenere i clienti
+      const pickingIdsForReservations = Array.from(new Set(
+        reservedMoves
+          .filter((r: any) => r.picking_id)
+          .map((r: any) => r.picking_id[0])
+      ));
+
+      const pickingsForReservations = pickingIdsForReservations.length > 0
+        ? await searchRead<any>(
+            'stock.picking',
+            [['id', 'in', pickingIdsForReservations]],
+            ['id', 'name', 'partner_id'],
+            0
+          )
+        : [];
+
+      const pickingMap = new Map(
+        pickingsForReservations.map((p: any) => [
+          p.id,
+          {
+            name: p.name,
+            customer: p.partner_id ? p.partner_id[1] : 'N/A'
+          }
+        ])
+      );
+
+      const reservationsByProduct: Record<number, Array<{customer: string, qty: number, picking: string}>> = {};
+      reservedMoves.forEach((r: any) => {
+        const productId = r.product_id[0];
+        const pickingId = r.picking_id ? r.picking_id[0] : null;
+        const pickingInfo = pickingId ? pickingMap.get(pickingId) : null;
+
+        if (!reservationsByProduct[productId]) reservationsByProduct[productId] = [];
+        reservationsByProduct[productId].push({
+          customer: pickingInfo?.customer || 'N/A',
+          qty: r.product_uom_qty,
+          picking: pickingInfo?.name || r.picking_id ? r.picking_id[1] : 'N/A'
+        });
+      });
+
+      console.log('✅ Stock by product:', stockByProduct);
+      console.log('✅ Incoming by product:', incomingByProduct);
+      console.log('✅ Reservations by product:', reservationsByProduct);
+
+      setProductStock(stockByProduct);
+      setProductIncoming(incomingByProduct);
+      setProductReservations(reservationsByProduct);
+
+    } catch (error) {
+      console.error('❌ Errore caricamento info prodotti:', error);
     }
   };
 
@@ -342,11 +469,13 @@ export default function PickResiduiPage() {
 
   const updateOne = async (moveId: number, value: number): Promise<void> => {
     try {
+      const m = metaByMove[moveId];
+      const oldValue = doneByMove[moveId] || 0;
+
       let lineIds = linesByMove[moveId] || [];
       if (lineIds.length) {
         await callKw('stock.move.line', 'write', [[lineIds[0]], { qty_done: value }]);
       } else {
-        const m = metaByMove[moveId];
         const vals = {
           move_id: moveId,
           picking_id: m.picking_id[0],
@@ -360,9 +489,40 @@ export default function PickResiduiPage() {
         setLinesByMove((prev) => ({ ...prev, [moveId]: [newId] }));
       }
       setDoneByMove((prev) => ({ ...prev, [moveId]: value }));
+
+      // Traccia nel chatter del picking
+      await logToChatter(m.picking_id[0], m.product_id[1], oldValue, value);
+
     } catch (error: any) {
       showToastMessage(`Errore: ${error.message}`);
       throw error;
+    }
+  };
+
+  // Tracciamento nel chatter del picking
+  const logToChatter = async (pickingId: number, productName: string, oldQty: number, newQty: number) => {
+    try {
+      const userName = 'Operatore'; // Potresti passare il nome utente vero se disponibile
+      const timestamp = new Date().toLocaleString('it-IT');
+
+      const message = `
+        <p><strong>✏️ Modifica quantità residui</strong></p>
+        <ul>
+          <li><strong>Prodotto:</strong> ${productName}</li>
+          <li><strong>Da:</strong> ${oldQty} → <strong>A:</strong> ${newQty}</li>
+          <li><strong>Modificato da:</strong> ${userName}</li>
+          <li><strong>Data:</strong> ${timestamp}</li>
+        </ul>
+      `;
+
+      await callKw('stock.picking', 'message_post', [[pickingId]], {
+        body: message,
+        message_type: 'comment',
+        subtype_xmlid: 'mail.mt_note'
+      });
+    } catch (error) {
+      console.error('Errore log chatter:', error);
+      // Non bloccare l'operazione se il log fallisce
     }
   };
 
@@ -611,9 +771,6 @@ export default function PickResiduiPage() {
         <div className="ghead">
           <span className="pill strong">👤 {grp.driver}</span>
           <span className="pill strong">🧭 {grp.carrier}</span>
-          <button className="btn slim blue" type="button" onClick={() => handleSaveGroup(key)}>
-            SALVA GRUPPO
-          </button>
         </div>
         {grp.pickings.map((pick) => renderPicking(pick))}
       </div>
@@ -624,6 +781,15 @@ export default function PickResiduiPage() {
     const saleName = pick.sale_id ? pick.sale_id[1] : pick.origin || '-';
     const righe = moves.filter((m) => m.picking_id && m.picking_id[0] === pick.id);
 
+    // Formatta data di consegna
+    const deliveryDate = pick.scheduled_date
+      ? new Date(pick.scheduled_date).toLocaleDateString('it-IT', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        })
+      : '-';
+
     return (
       <div key={pick.id} className="card">
         <div className="pick-head">
@@ -633,12 +799,15 @@ export default function PickResiduiPage() {
           <span className="pill">
             Cliente: <b>{pick.partner_id ? pick.partner_id[1] : '-'}</b>
           </span>
+          <span className="pill">
+            📅 Consegna: <b>{deliveryDate}</b>
+          </span>
           <span className="pill">{pick.state}</span>
           <span className="pill">
             🧾 Ordine: <b>{saleName || '-'}</b>
           </span>
           <button
-            className="btn slim ghost"
+            className="btn slim blue"
             type="button"
             onClick={() => handleOpenQuickAdd(pick.id)}
             disabled={!saleName || saleName === '-'}
@@ -666,13 +835,78 @@ export default function PickResiduiPage() {
     const uom = move.product_uom ? move.product_uom[1] : '-';
     const ubic = bestLocationForMove(move.id);
 
+    // Info prodotto: stock, arrivi e prenotazioni
+    const productId = move.product_id[0];
+    const stock = productStock[productId] || [];
+    const incoming = productIncoming[productId] || [];
+    const reservations = productReservations[productId] || [];
+
     return (
       <div key={move.id} className="row" data-move={move.id}>
         <div className="prod">
-          {move.product_id[1]}
-          <div className="sub">
-            U.M.: <b>{uom}</b> — Ubic.: <b>{ubic}</b>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span>{move.product_id[1]}</span>
+            <span style={{
+              display: 'inline-block',
+              background: 'var(--chip)',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              fontWeight: '700',
+              color: 'var(--accent)'
+            }}>
+              {uom}
+            </span>
           </div>
+          <div className="sub">
+            Ubic.: <b>{ubic}</b>
+          </div>
+
+          {/* Disponibilità ubicazioni */}
+          {stock.length > 0 && (
+            <div className="sub" style={{ marginTop: '6px', color: 'var(--accent)' }}>
+              📍 Disponibile: {stock.map((s, i) => {
+                const available = s.qty - s.reserved;
+                return (
+                  <span key={i}>
+                    <b>{s.location}</b> ({s.qty} {uom}
+                    {s.reserved > 0 && (
+                      <span style={{ color: '#f59e0b' }}> - Riservato: {s.reserved} {uom}</span>
+                    )}
+                    {available > 0 && (
+                      <span style={{ color: '#16a34a', fontWeight: '700' }}> = Libero: {available.toFixed(1)} {uom}</span>
+                    )}
+                    ){i < stock.length - 1 ? ', ' : ''}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Prenotazioni (da chi) */}
+          {reservations.length > 0 && (
+            <div className="sub" style={{ marginTop: '4px', color: '#dc2626' }}>
+              🔒 Prenotato: {reservations.map((res, i) => (
+                <span key={i}>
+                  <b>{res.qty} {uom}</b> da <b>{res.customer}</b> ({res.picking}){i < reservations.length - 1 ? ', ' : ''}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Arrivi in corso */}
+          {incoming.length > 0 && (
+            <div className="sub" style={{ marginTop: '4px', color: '#f59e0b' }}>
+              🚚 Arrivi: {incoming.map((inc, i) => {
+                const date = inc.date ? new Date(inc.date).toLocaleDateString('it-IT') : '';
+                return (
+                  <span key={i}>
+                    <b>{inc.qty} {uom}</b> ({inc.name}{date ? ` - ${date}` : ''}){i < incoming.length - 1 ? ', ' : ''}
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="qty">
           Previsto: <b>{plan}</b>
@@ -1013,17 +1247,17 @@ export default function PickResiduiPage() {
         .qa-dialog {
           width: 720px;
           max-width: 95vw;
-          background: #0b1220;
-          color: #e5e7eb;
-          border: 1px solid #26314a;
+          background: #f8fafc;
+          color: #0f172a;
+          border: 1px solid #cbd5e1;
           border-radius: 14px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
         }
 
         [data-theme='light'] .qa-dialog {
-          background: #0b1220;
-          color: #e5e7eb;
-          border-color: #26314a;
+          background: #f8fafc;
+          color: #0f172a;
+          border-color: #cbd5e1;
         }
 
         .qa-head {
@@ -1031,7 +1265,9 @@ export default function PickResiduiPage() {
           align-items: center;
           gap: 10px;
           padding: 14px 16px;
-          border-bottom: 1px solid #1f2a44;
+          border-bottom: 1px solid #e2e8f0;
+          background: #ffffff;
+          border-radius: 14px 14px 0 0;
         }
 
         .qa-head h3 {
@@ -1053,18 +1289,18 @@ export default function PickResiduiPage() {
           flex: 1;
           padding: 10px 12px;
           border-radius: 10px;
-          border: 1px solid #334061;
-          background: #0f172a;
-          color: #e5e7eb;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          color: #0f172a;
         }
 
         .qa-search input[type='number'] {
           width: 110px;
           padding: 10px 12px;
           border-radius: 10px;
-          border: 1px solid #334061;
-          background: #0f172a;
-          color: #e5e7eb;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          color: #0f172a;
         }
 
         .qa-suggest {
@@ -1082,16 +1318,18 @@ export default function PickResiduiPage() {
           text-align: left;
           padding: 12px;
           border-radius: 10px;
-          border: 1px solid #2b3755;
-          background: #101a33;
-          color: #e5e7eb;
+          border: 1px solid #e2e8f0;
+          background: #ffffff;
+          color: #0f172a;
           cursor: pointer;
+          transition: all 0.15s;
         }
 
         .qa-sugg:hover,
         .qa-sugg.active {
-          border-color: #4f46e5;
-          background: #121f3f;
+          border-color: #3b82f6;
+          background: #eff6ff;
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
         }
 
         .qa-sugg .name {
@@ -1099,7 +1337,22 @@ export default function PickResiduiPage() {
         }
         .qa-sugg .meta {
           font-size: 12px;
-          color: #b6c2da;
+          color: #64748b;
+        }
+        .qa-sugg .stock-info {
+          font-size: 11px;
+          margin-top: 6px;
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        .qa-sugg .stock-available {
+          color: #16a34a;
+          font-weight: 600;
+        }
+        .qa-sugg .stock-incoming {
+          color: #f59e0b;
+          font-weight: 600;
         }
 
         .qa-foot {
@@ -1107,22 +1360,27 @@ export default function PickResiduiPage() {
           justify-content: flex-end;
           gap: 8px;
           padding: 12px 16px;
-          border-top: 1px solid #1f2a44;
+          border-top: 1px solid #e2e8f0;
+          background: #f8fafc;
+          border-radius: 0 0 14px 14px;
         }
 
         .btn.light {
-          background: #1f2a44;
-          border-color: #1f2a44;
-          color: #e5e7eb;
+          background: #e2e8f0;
+          border-color: #cbd5e1;
+          color: #475569;
         }
 
         .qa-close {
           background: transparent;
           border: none;
-          color: #94a3b8;
+          color: #64748b;
           cursor: pointer;
           font-weight: 700;
           font-size: 20px;
+        }
+        .qa-close:hover {
+          color: #0f172a;
         }
 
         @media (max-width: 1024px) {
@@ -1139,6 +1397,13 @@ export default function PickResiduiPage() {
           .row .bar {
             grid-column: 1 / -1;
           }
+          .qa-dialog {
+            width: 95vw;
+            max-height: 85vh;
+          }
+          .qa-suggest {
+            max-height: 40vh;
+          }
         }
 
         @media (max-width: 768px) {
@@ -1147,13 +1412,75 @@ export default function PickResiduiPage() {
           }
           .btn {
             padding: 8px 10px;
+            font-size: 13px;
           }
           .btn.slim {
-            padding: 5px 9px;
-            font-size: 10.5px;
+            padding: 6px 10px;
+            font-size: 11px;
           }
           input[type='number'] {
-            width: 110px;
+            width: 90px;
+            padding: 8px 10px;
+          }
+          .topbar {
+            gap: 6px;
+            padding: 10px 12px;
+          }
+          .title {
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 6px;
+          }
+          .pill {
+            font-size: 11px;
+            padding: 5px 8px;
+          }
+          .pick-head {
+            gap: 6px;
+          }
+          .ghead {
+            gap: 6px;
+          }
+          .info {
+            font-size: 11px;
+          }
+          .list .row {
+            grid-template-columns: 1fr;
+            gap: 8px;
+            padding: 8px;
+          }
+          .prod {
+            font-size: 13px;
+          }
+          .sub {
+            font-size: 11px;
+          }
+          .qa-dialog {
+            width: 96vw;
+            max-height: 90vh;
+          }
+          .qa-head h3 {
+            font-size: 15px;
+          }
+          .qa-search input[type='text'] {
+            font-size: 14px;
+            padding: 10px;
+          }
+          .qa-search input[type='number'] {
+            width: 80px;
+            padding: 10px;
+          }
+          .qa-sugg {
+            padding: 10px;
+          }
+          .qa-sugg .name {
+            font-size: 13px;
+          }
+          .qa-sugg .meta {
+            font-size: 11px;
+          }
+          .qa-sugg .stock-info {
+            font-size: 10px;
           }
         }
       `}</style>
@@ -1181,9 +1508,6 @@ export default function PickResiduiPage() {
             </button>
             <button className="btn green" type="button" onClick={handleLoad} disabled={isLoading}>
               {isLoading ? <span className="loading"></span> : 'CERCA'}
-            </button>
-            <button className="btn blue" type="button" onClick={handleSaveAll} disabled={isLoading}>
-              SALVA TUTTO
             </button>
             <div className="info">
               Invio salva la riga • Raggruppo per <b>Autista</b> e <b>Giro</b>
@@ -1244,6 +1568,11 @@ export default function PickResiduiPage() {
                 const uom = prod.uom_id ? prod.uom_id[1] : '';
                 const code = prod.default_code ? ` • Cod.: ${prod.default_code}` : '';
                 const bar = prod.barcode ? ` • Barcode: ${prod.barcode}` : '';
+
+                // Info stock e arrivi per questo prodotto
+                const stock = productStock[prod.id] || [];
+                const incoming = productIncoming[prod.id] || [];
+
                 return (
                   <button
                     key={prod.id}
@@ -1257,6 +1586,22 @@ export default function PickResiduiPage() {
                       {code}
                       {bar}
                     </div>
+
+                    {/* Info disponibilità e arrivi */}
+                    {(stock.length > 0 || incoming.length > 0) && (
+                      <div className="stock-info">
+                        {stock.length > 0 && (
+                          <span className="stock-available">
+                            📍 Disp: {stock.reduce((sum, s) => sum + s.qty, 0).toFixed(1)} {uom}
+                          </span>
+                        )}
+                        {incoming.length > 0 && (
+                          <span className="stock-incoming">
+                            🚚 Arrivi: {incoming.reduce((sum, inc) => sum + inc.qty, 0).toFixed(1)} {uom}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </button>
                 );
               })}
