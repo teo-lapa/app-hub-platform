@@ -45,23 +45,51 @@ export async function GET(
       throw new Error('Cannot connect to Odoo');
     }
 
-    // Fetch pickings for this batch
-    const pickings = await rpcClient.searchRead(
+    // First, fetch the batch to get its picking_ids
+    const batches = await rpcClient.callKw(
+      'stock.picking.batch',
+      'read',
+      [[batchId], ['id', 'name', 'picking_ids']]
+    );
+
+    if (!batches || batches.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'Batch not found',
+        pickings: []
+      }, { status: 404 });
+    }
+
+    const batch = batches[0];
+    const pickingIds = batch.picking_ids || [];
+
+    console.log(`[Smart Route AI] Batch ${batchId} has ${pickingIds.length} picking IDs`);
+
+    if (pickingIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        pickings: []
+      });
+    }
+
+    // Fetch pickings using the IDs from the batch
+    const pickings = await rpcClient.callKw(
       'stock.picking',
-      [['batch_id', '=', batchId]],
+      'read',
       [
-        'id',
-        'name',
-        'partner_id',
-        'scheduled_date',
-        'x_studio_indirizzo_completo',
-        'x_studio_latitudine',
-        'x_studio_longitudine',
-        'move_ids_without_package',
-        'state'
-      ],
-      1000,
-      'scheduled_date'
+        pickingIds,
+        [
+          'id',
+          'name',
+          'partner_id',
+          'scheduled_date',
+          'x_studio_indirizzo_completo',
+          'x_studio_latitudine',
+          'x_studio_longitudine',
+          'move_ids_without_package',
+          'state'
+        ]
+      ]
     );
 
     console.log(`[Smart Route AI] Found ${pickings.length} pickings in batch ${batchId}`);
