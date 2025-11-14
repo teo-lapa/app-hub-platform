@@ -561,7 +561,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       setTaskNote('');
 
       // Show success message
-      alert(`✅ Richiesta inviata a Laura per il prodotto: ${taskRequestLine.productName.split(' - ')[0]}`);
+      alert(`✅ Richiesta inviata a Laura per il prodotto: ${taskRequestLine.productName.split('**')[0].split(' - ')[0].trim()}`);
 
     } catch (error) {
       console.error('❌ Error creating task:', error);
@@ -1340,7 +1340,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-1 mb-0.5">
                       <h3 className="text-xs sm:text-base font-bold text-white line-clamp-2 leading-tight">
-                        {line.productName.split(' - ')[0]}
+                        {line.productName.split('**')[0].split(' - ')[0].trim()}
                       </h3>
                       <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0">
                         {/* History Button */}
@@ -1698,7 +1698,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                     Richiedi Blocco Prezzo
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-300 line-clamp-2 mt-1">
-                    {taskRequestLine.productName.split(' - ')[0]}
+                    {taskRequestLine.productName.split('**')[0].split(' - ')[0].trim()}
                   </p>
                   {taskRequestLine.productCode && (
                     <p className="text-[10px] sm:text-xs text-slate-400">
@@ -1871,7 +1871,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                     Storico Prezzi
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-300 line-clamp-1">
-                    {selectedProduct.productName.split(' - ')[0]}
+                    {selectedProduct.productName.split('**')[0].split(' - ')[0].trim()}
                   </p>
                   {selectedProduct.productCode && (
                     <p className="text-[10px] sm:text-xs text-slate-400">
