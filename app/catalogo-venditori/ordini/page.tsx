@@ -341,11 +341,11 @@ export default function OrdiniPage() {
                             <span>{formatDate(order.delivery_date)}</span>
                           </div>
                         )}
+                      </div>
 
-                        <div className="flex items-center gap-2 text-slate-400">
-                          <span className="font-semibold text-slate-300">Venditore:</span>
-                          <span>{order.salesperson}</span>
-                        </div>
+                      {/* Salesperson - small and discrete */}
+                      <div className="mt-2 text-xs text-slate-500">
+                        Inserito da: {order.salesperson}
                       </div>
                     </div>
 
