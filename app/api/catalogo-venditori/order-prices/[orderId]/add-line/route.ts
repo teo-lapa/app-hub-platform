@@ -151,50 +151,48 @@ export async function POST(
       console.log(`✅ [ADD-LINE-API] Found ${companyTaxIds.length} taxes for company 1`);
     }
 
-    // Use onchange to get the correct price from Odoo's pricelist logic
-    console.log('🔍 [ADD-LINE-API] Calling onchange to get correct price from pricelist...');
+    // Get correct price using pricelist method
+    console.log('🔍 [ADD-LINE-API] Getting price from pricelist...');
 
-    // Call product_id_change to get the correct price, name, and other fields
     let priceUnit = product.list_price;
     let productName = product.name;
 
-    try {
-      const onchangeResult = await callOdoo(
-        cookies,
-        'sale.order.line',
-        'onchange',
-        [
-          [], // ids (empty for new record)
-          {
-            order_id: orderId,
-            product_id: productId,
-            product_uom_qty: quantity,
-            product_uom: product.uom_id ? product.uom_id[0] : 1,
-            company_id: 1,
-          },
-          'product_id', // field that triggered the onchange
-          {
-            product_id: '1',
-            product_uom_qty: '1',
-            order_id: '1',
-          }
-        ]
-      );
+    // Get price from customer's pricelist
+    if (order.pricelist_id && order.pricelist_id[0]) {
+      const pricelistId = order.pricelist_id[0];
+      const partnerId = order.partner_id[0];
 
-      console.log('✅ [ADD-LINE-API] Onchange result:', onchangeResult);
+      console.log('🔍 [ADD-LINE-API] Calling get_product_price_rule...', {
+        pricelistId,
+        productId,
+        quantity,
+        partnerId
+      });
 
-      // Extract values from onchange result
-      if (onchangeResult && onchangeResult.value) {
-        if (onchangeResult.value.price_unit !== undefined) {
-          priceUnit = onchangeResult.value.price_unit;
-          console.log(`✅ [ADD-LINE-API] Using pricelist price from onchange: CHF ${priceUnit}`);
+      try {
+        // Use get_product_price_rule to get the exact price with all rules applied
+        const priceResult = await callOdoo(
+          cookies,
+          'product.pricelist',
+          'get_product_price_rule',
+          [pricelistId, productId, quantity, partnerId]
+        );
+
+        console.log('✅ [ADD-LINE-API] Price result:', priceResult);
+
+        // get_product_price_rule returns [price, rule_id]
+        if (priceResult && Array.isArray(priceResult) && priceResult[0] !== undefined) {
+          priceUnit = priceResult[0];
+          console.log(`✅ [ADD-LINE-API] Using pricelist price: CHF ${priceUnit} (rule: ${priceResult[1]})`);
+        } else if (typeof priceResult === 'number') {
+          priceUnit = priceResult;
+          console.log(`✅ [ADD-LINE-API] Using pricelist price: CHF ${priceUnit}`);
         }
-        if (onchangeResult.value.name) {
-          productName = onchangeResult.value.name;
-        }
+      } catch (error) {
+        console.warn('⚠️ [ADD-LINE-API] Failed to get pricelist price, using list price:', error);
       }
-    } catch (error) {
-      console.warn('⚠️ [ADD-LINE-API] Onchange failed, using list price:', error);
+    } else {
+      console.log('ℹ️ [ADD-LINE-API] No pricelist found, using standard list price');
     }
 
     // Create order line in Odoo with the correct price from onchange
