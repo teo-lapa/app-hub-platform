@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       ],
       [
         'id', 'name', 'partner_id',
-        'scheduled_date', 'state', 'move_ids_without_package', 'batch_id'
+        'scheduled_date', 'state', 'move_ids_without_package', 'batch_id', 'weight'
       ],
       500,
       'scheduled_date'
@@ -114,29 +114,33 @@ export async function POST(request: NextRequest) {
       console.log(`[Smart Route AI] Caricati ${partners.length} partner con coordinate`);
     }
 
-    // Fetch all moves in ONE bulk request using RPC client
-    let movesMap: Record<number, number> = {};
+    // Fetch all moves with product details in ONE bulk request using RPC client
+    let movesMap: Record<number, any[]> = {};
     if (allMoveIds.length > 0) {
-      console.log(`[Smart Route AI] Caricamento ${allMoveIds.length} move in bulk...`);
+      console.log(`[Smart Route AI] Caricamento ${allMoveIds.length} move con dettagli prodotto in bulk...`);
 
       const moves = await rpcClient.callKw(
         'stock.move',
         'read',
-        [allMoveIds, ['id', 'product_uom_qty', 'picking_id']]
+        [allMoveIds, ['id', 'product_uom_qty', 'picking_id', 'product_id', 'name']]
       );
 
-      // Create map: pickingId -> total weight
+      // Create map: pickingId -> array of product details
       for (const move of moves) {
         const pickingId = move.picking_id ? move.picking_id[0] : null;
         if (pickingId) {
           if (!movesMap[pickingId]) {
-            movesMap[pickingId] = 0;
+            movesMap[pickingId] = [];
           }
-          movesMap[pickingId] += (move.product_uom_qty || 0);
+          movesMap[pickingId].push({
+            productId: move.product_id ? move.product_id[0] : null,
+            productName: move.product_id ? move.product_id[1] : move.name || 'Prodotto sconosciuto',
+            quantity: move.product_uom_qty || 0
+          });
         }
       }
 
-      console.log(`[Smart Route AI] Calcolati pesi per ${Object.keys(movesMap).length} picking`);
+      console.log(`[Smart Route AI] Caricati dettagli prodotto per ${Object.keys(movesMap).length} picking`);
     }
 
     const formattedPickings = [];
@@ -149,7 +153,8 @@ export async function POST(request: NextRequest) {
       // Only include pickings with coordinates (from partner data)
       if (partner && partner.partner_latitude && partner.partner_longitude) {
         withCoordinates++;
-        const totalWeight = movesMap[picking.id] || 0;
+        const totalWeight = picking.weight || 0;
+        const products = movesMap[picking.id] || [];
 
         // Build address from partner data
         const addressParts = [
@@ -178,7 +183,8 @@ export async function POST(request: NextRequest) {
           batchId: batchId,
           batchName: picking.batch_id ? picking.batch_id[1] : null,
           batchVehicleName: batch?.x_studio_auto_del_giro ? batch.x_studio_auto_del_giro[1] : null,
-          batchDriverName: batch?.x_studio_autista_del_giro ? batch.x_studio_autista_del_giro[1] : null
+          batchDriverName: batch?.x_studio_autista_del_giro ? batch.x_studio_autista_del_giro[1] : null,
+          products: products
         });
       }
     }
