@@ -763,10 +763,11 @@ export default function SmartRouteAIPage() {
                   };
                 });
 
-                // Calculate global totals
-                const globalWeight = batchStats.reduce((sum, b) => sum + b.totalWeight, 0);
-                const globalDistance = batchStats.reduce((sum, b) => sum + b.totalDistance, 0);
-                const globalTime = batchStats.reduce((sum, b) => sum + b.estimatedTime, 0);
+                // Calculate global totals (exclude done and cancelled batches)
+                const activeBatches = batchStats.filter(b => b.state !== 'done' && b.state !== 'cancel');
+                const globalWeight = activeBatches.reduce((sum, b) => sum + b.totalWeight, 0);
+                const globalDistance = activeBatches.reduce((sum, b) => sum + b.totalDistance, 0);
+                const globalTime = activeBatches.reduce((sum, b) => sum + b.estimatedTime, 0);
 
                 return (
                   <>
