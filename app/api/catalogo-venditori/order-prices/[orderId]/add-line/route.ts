@@ -191,6 +191,24 @@ export async function POST(
 
     console.log(`✅ [ADD-LINE-API] Order line created successfully with ID: ${newLineId}`);
 
+    // Trigger price calculation by calling product_id_change
+    // This simulates what happens in the Odoo UI when you select a product
+    try {
+      console.log('🔄 [ADD-LINE-API] Triggering product_id_change to calculate price...');
+
+      await callOdoo(
+        cookies,
+        'sale.order.line',
+        'product_id_change',
+        [[newLineId]]
+      );
+
+      console.log('✅ [ADD-LINE-API] Price calculation triggered successfully');
+    } catch (error) {
+      console.warn('⚠️ [ADD-LINE-API] Could not trigger product_id_change:', error);
+      // Continue anyway - the line was created
+    }
+
     // Fetch the newly created line with all details
     console.log('🔍 [ADD-LINE-API] Fetching created line details...');
     const createdLines = await callOdoo(
