@@ -151,27 +151,66 @@ export async function POST(
       console.log(`✅ [ADD-LINE-API] Found ${companyTaxIds.length} taxes for company 1`);
     }
 
-    // Create order line in Odoo WITHOUT price_unit
-    // Let Odoo calculate the correct price based on pricelist, customer rules, etc.
+    // Use onchange to get the correct price from Odoo's pricelist logic
+    console.log('🔍 [ADD-LINE-API] Calling onchange to get correct price from pricelist...');
+
+    // Call product_id_change to get the correct price, name, and other fields
+    let priceUnit = product.list_price;
+    let productName = product.name;
+
+    try {
+      const onchangeResult = await callOdoo(
+        cookies,
+        'sale.order.line',
+        'onchange',
+        [
+          [], // ids (empty for new record)
+          {
+            order_id: orderId,
+            product_id: productId,
+            product_uom_qty: quantity,
+            product_uom: product.uom_id ? product.uom_id[0] : 1,
+            company_id: 1,
+          },
+          'product_id', // field that triggered the onchange
+          {
+            product_id: '1',
+            product_uom_qty: '1',
+            order_id: '1',
+          }
+        ]
+      );
+
+      console.log('✅ [ADD-LINE-API] Onchange result:', onchangeResult);
+
+      // Extract values from onchange result
+      if (onchangeResult && onchangeResult.value) {
+        if (onchangeResult.value.price_unit !== undefined) {
+          priceUnit = onchangeResult.value.price_unit;
+          console.log(`✅ [ADD-LINE-API] Using pricelist price from onchange: CHF ${priceUnit}`);
+        }
+        if (onchangeResult.value.name) {
+          productName = onchangeResult.value.name;
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ [ADD-LINE-API] Onchange failed, using list price:', error);
+    }
+
+    // Create order line in Odoo with the correct price from onchange
     console.log('➕ [ADD-LINE-API] Creating order line in Odoo...');
     const lineData: any = {
       order_id: orderId,
       product_id: productId,
+      name: productName,
       product_uom_qty: quantity,
+      price_unit: priceUnit,
       product_uom: product.uom_id ? product.uom_id[0] : 1,
       company_id: 1, // LAPA - finest italian food GmbH
       tax_id: companyTaxIds.length > 0
         ? [[6, 0, companyTaxIds]]
         : false
     };
-
-    // DO NOT set price_unit - let Odoo compute it automatically
-    // This ensures Odoo uses:
-    // 1. Customer pricelist
-    // 2. Locked prices (if any)
-    // 3. Product-specific customer prices
-    // 4. Promotions and rules
-    console.log('ℹ️ [ADD-LINE-API] Letting Odoo auto-calculate price based on customer pricelist');
 
     const newLineId = await callOdoo(
       cookies,
