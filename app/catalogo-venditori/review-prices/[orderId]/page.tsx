@@ -389,11 +389,29 @@ export default function ReviewPricesPage({ params }: RouteParams) {
 
   // Handle quantity change
   const handleQuantityChange = (lineId: number, value: string) => {
-    const quantity = parseInt(value) || 0;
-    if (quantity > 0) {
+    // Allow empty string
+    if (value === '') {
       const newQuantityValues = new Map(quantityValues);
-      newQuantityValues.set(lineId, quantity);
+      newQuantityValues.set(lineId, 0);
       setQuantityValues(newQuantityValues);
+      return;
+    }
+
+    // Replace comma with dot for parseFloat
+    const normalizedValue = value.replace(',', '.');
+
+    // Validate and parse - allow decimals
+    if (/^[0-9]*\.?[0-9]*$/.test(normalizedValue)) {
+      const quantity = parseFloat(normalizedValue);
+      if (!isNaN(quantity) && quantity >= 0) {
+        const newQuantityValues = new Map(quantityValues);
+        newQuantityValues.set(lineId, quantity);
+        setQuantityValues(newQuantityValues);
+      } else if (normalizedValue === '0' || normalizedValue === '.') {
+        const newQuantityValues = new Map(quantityValues);
+        newQuantityValues.set(lineId, 0);
+        setQuantityValues(newQuantityValues);
+      }
     }
   };
 
@@ -1378,11 +1396,13 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                       <span>Qtà:</span>
                       {editingQuantity === line.id && canEditOrder ? (
                         <input
-                          type="number"
-                          inputMode="numeric"
-                          value={quantityValues.get(line.id) || line.quantity}
+                          type="text"
+                          inputMode="decimal"
+                          pattern="[0-9]*[.,]?[0-9]*"
+                          value={quantityValues.get(line.id) !== undefined ? quantityValues.get(line.id) : line.quantity}
                           onChange={(e) => handleQuantityChange(line.id, e.target.value)}
                           onBlur={() => setEditingQuantity(null)}
+                          onFocus={(e) => e.target.select()}
                           autoFocus
                           className="w-16 px-1.5 py-0.5 bg-slate-700 border border-blue-500 rounded text-white font-semibold text-xs"
                         />
