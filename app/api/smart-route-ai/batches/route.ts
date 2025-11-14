@@ -63,31 +63,15 @@ export async function GET(request: NextRequest) {
         let totalWeight = 0;
 
         if (b.picking_ids && b.picking_ids.length > 0) {
-          // Fetch all pickings
+          // Fetch all pickings with weight
           const pickings = await rpcClient.callKw(
             'stock.picking',
             'read',
-            [b.picking_ids, ['id', 'move_ids_without_package']]
+            [b.picking_ids, ['id', 'weight']]
           );
 
-          // Collect all move IDs
-          const allMoveIds: number[] = [];
-          for (const picking of pickings) {
-            if (picking.move_ids_without_package && picking.move_ids_without_package.length > 0) {
-              allMoveIds.push(...picking.move_ids_without_package);
-            }
-          }
-
-          // Fetch weights from moves
-          if (allMoveIds.length > 0) {
-            const moves = await rpcClient.callKw(
-              'stock.move',
-              'read',
-              [allMoveIds, ['id', 'weight']]
-            );
-
-            totalWeight = moves.reduce((sum: number, move: any) => sum + (move.weight || 0), 0);
-          }
+          // Sum weights from pickings
+          totalWeight = pickings.reduce((sum: number, picking: any) => sum + (picking.weight || 0), 0);
         }
 
         return {
