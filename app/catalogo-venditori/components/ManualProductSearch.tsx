@@ -28,6 +28,7 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
+  const [quantityInput, setQuantityInput] = useState<string>('1');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -115,6 +116,31 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
     setSearchQuery(product.name);
     setIsDropdownOpen(false);
     setQuantity(1);
+    setQuantityInput('1');
+  };
+
+  // Handle quantity input change
+  const handleQuantityChange = (value: string) => {
+    setQuantityInput(value);
+
+    // Allow empty string
+    if (value === '') {
+      setQuantity(0);
+      return;
+    }
+
+    // Replace comma with dot for parseFloat
+    const normalizedValue = value.replace(',', '.');
+
+    // Validate and parse
+    if (/^[0-9]*\.?[0-9]*$/.test(normalizedValue)) {
+      const qty = parseFloat(normalizedValue);
+      if (!isNaN(qty) && qty >= 0) {
+        setQuantity(qty);
+      } else if (normalizedValue === '0' || normalizedValue === '.') {
+        setQuantity(0);
+      }
+    }
   };
 
   // Handle add to cart
@@ -124,8 +150,8 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
       return;
     }
 
-    if (quantity < 1) {
-      setError('La quantità deve essere almeno 1');
+    if (quantity <= 0) {
+      setError('La quantità deve essere maggiore di 0');
       return;
     }
 
@@ -135,6 +161,7 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
     setSelectedProduct(null);
     setSearchQuery('');
     setQuantity(1);
+    setQuantityInput('1');
     setSearchResults([]);
     setError(null);
     setIsDropdownOpen(false);
@@ -300,10 +327,13 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
               Quantità:
             </label>
             <input
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+              type="text"
+              inputMode="decimal"
+              pattern="[0-9]*[.,]?[0-9]*"
+              value={quantityInput}
+              onChange={(e) => handleQuantityChange(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              placeholder="1"
               className="w-24 min-h-[48px] px-3 py-2 bg-slate-700 text-white text-center rounded-lg border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
               style={{
                 fontSize: '16px',
@@ -311,7 +341,6 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
                 touchAction: 'manipulation',
                 WebkitTapHighlightColor: 'transparent',
               }}
-              inputMode="numeric"
             />
             <button
               onClick={handleAddToCart}

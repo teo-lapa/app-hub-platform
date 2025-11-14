@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
           ['name', 'ilike', searchQuery],
           ['default_code', 'ilike', searchQuery],
           ['sale_ok', '=', true], // Only products that can be sold
+          ['active', '=', true], // Only active products (not archived)
         ],
         fields: [
           'id',

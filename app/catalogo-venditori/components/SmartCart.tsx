@@ -39,19 +39,27 @@ export default function SmartCart({
 
   const handleQuantityChange = (index: number, newQty: string) => {
     // Allow empty string (when user deletes all)
-    if (newQty === '' || newQty === '0') {
+    if (newQty === '') {
       onQuantityChange(index, 0);
       return;
     }
 
-    // Allow decimals with both comma and dot (2,5 or 2.5)
+    // Allow any valid number format: 0, 01, 0.5, 0,5, 2.5, 2,5, etc.
     // Replace comma with dot for parseFloat
     const normalizedQty = newQty.replace(',', '.');
-    const qty = parseFloat(normalizedQty);
 
-    // Only update if it's a valid positive number
-    if (!isNaN(qty) && qty >= 0) {
-      onQuantityChange(index, qty);
+    // Check if it's a valid number (including leading zeros, decimals)
+    // Allow patterns like: 0, 01, 0.5, 1.5, etc.
+    if (/^[0-9]*\.?[0-9]*$/.test(normalizedQty) || normalizedQty === '.') {
+      const qty = parseFloat(normalizedQty);
+
+      // Only update if it's a valid number (not NaN)
+      if (!isNaN(qty) && qty >= 0) {
+        onQuantityChange(index, qty);
+      } else if (normalizedQty === '0' || normalizedQty === '.') {
+        // Allow typing "0" or "." as intermediate states
+        onQuantityChange(index, 0);
+      }
     }
   };
 
