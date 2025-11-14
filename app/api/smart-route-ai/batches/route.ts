@@ -57,13 +57,13 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Smart Route AI] Found ${batches.length} batches`);
 
-    // Calculate total weight for each batch by summing picking weights
+    // Calculate total weight for each batch
     const batchesWithWeights = await Promise.all(
       batches.map(async (b: any) => {
         let totalWeight = 0;
 
         if (b.picking_ids && b.picking_ids.length > 0) {
-          // Fetch all pickings for this batch
+          // Fetch all pickings
           const pickings = await rpcClient.callKw(
             'stock.picking',
             'read',

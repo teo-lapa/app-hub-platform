@@ -64,13 +64,18 @@ export default function SmartRouteAIPage() {
   const [toast, setToast] = useState<{message: string, type: string} | null>(null);
   const [optimizationTime, setOptimizationTime] = useState<string>('-');
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [vehiclesExpanded, setVehiclesExpanded] = useState(false);
   const [batches, setBatches] = useState<Array<{id: number, name: string, state: string, vehicleName: string | null, driverName: string | null, totalWeight: number, pickingCount: number}>>([]);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [selectedPickingForMove, setSelectedPickingForMove] = useState<{id: number, currentBatch: string, date: string} | null>(null);
   const [showVehicleBatchModal, setShowVehicleBatchModal] = useState(false);
   const [selectedVehicleForBatch, setSelectedVehicleForBatch] = useState<{id: number, name: string, plate: string, driver: string, driverId: number, employeeId: number | null} | null>(null);
   const [showBatchStateModal, setShowBatchStateModal] = useState(false);
-  const [selectedBatchForStateChange, setSelectedBatchForStateChange] = useState<{id: number, name: string, currentState: string, nextState: string} | null>(null);
+  const [selectedBatchForStateChange, setSelectedBatchForStateChange] = useState<{id: number, name: string, currentState: string, nextState: string, hasVehicle: boolean} | null>(null);
+  const [selectedVehicleForStateChange, setSelectedVehicleForStateChange] = useState<{id: number, name: string, plate: string, driver: string, driverId: number, employeeId: number | null} | null>(null);
+  const [batchPickings, setBatchPickings] = useState<Array<{id: number, name: string, partnerName: string, scheduledDate: string, weight: number, products: Array<{id: number, productName: string, quantity: number, uom: string, weight: number}>}>>([]);
+  const [expandedPickingId, setExpandedPickingId] = useState<number | null>(null);
+  const [loadingPickings, setLoadingPickings] = useState(false);
 
   // Route colors - well distinguished colors
   const ROUTE_COLORS = [
@@ -156,6 +161,13 @@ export default function SmartRouteAIPage() {
     setDateFrom(today);
     setDateTo(today);
   }, []);
+
+  // Auto-load today's pickings when connected and dates are set
+  useEffect(() => {
+    if (odooConnected && dateFrom && dateTo && pickings.length === 0) {
+      importPickings();
+    }
+  }, [odooConnected, dateFrom, dateTo]);
 
   // Expose showBatchSelector to global window for map popup
   useEffect(() => {
@@ -372,8 +384,26 @@ export default function SmartRouteAIPage() {
     }
   }
 
+  // Load pickings for a batch
+  async function loadBatchPickings(batchId: number) {
+    try {
+      setLoadingPickings(true);
+      const response = await fetch(`/api/smart-route-ai/batches/${batchId}/pickings`);
+      if (!response.ok) throw new Error('Error loading batch pickings');
+
+      const data = await response.json();
+      setBatchPickings(data.pickings || []);
+      setExpandedPickingId(null);
+    } catch (error: any) {
+      debugLog(`Error loading batch pickings: ${error.message}`, 'error');
+      showToast('Errore caricamento consegne', 'error');
+    } finally {
+      setLoadingPickings(false);
+    }
+  }
+
   // Handle batch click to advance state
-  async function handleBatchClick(batch: {id: number, name: string, state: string}) {
+  async function handleBatchClick(batch: {id: number, name: string, state: string, vehicleName: string | null, driverName: string | null}) {
     // Determine next state
     let nextState: string;
     let nextStateLabel: string;
@@ -389,13 +419,22 @@ export default function SmartRouteAIPage() {
       return;
     }
 
+    // Check if batch has vehicle assigned
+    const hasVehicle = !!batch.vehicleName;
+
     // Show confirmation modal
     setSelectedBatchForStateChange({
       id: batch.id,
       name: batch.name,
       currentState: batch.state,
-      nextState: nextStateLabel
+      nextState: nextStateLabel,
+      hasVehicle: hasVehicle
     });
+    setSelectedVehicleForStateChange(null); // Reset vehicle selection
+
+    // Load pickings for this batch
+    await loadBatchPickings(batch.id);
+
     setShowBatchStateModal(true);
   }
 
@@ -403,10 +442,36 @@ export default function SmartRouteAIPage() {
   async function confirmBatchStateChange() {
     if (!selectedBatchForStateChange) return;
 
+    // If changing from draft to in_progress and no vehicle assigned, require vehicle selection
+    if (selectedBatchForStateChange.currentState === 'draft' &&
+        !selectedBatchForStateChange.hasVehicle &&
+        !selectedVehicleForStateChange) {
+      showToast('Seleziona un veicolo prima di confermare', 'warning');
+      return;
+    }
+
     try {
       debugLog(`Advancing batch ${selectedBatchForStateChange.id} to ${selectedBatchForStateChange.nextState}...`, 'info');
       setLoading(true);
 
+      // First, assign vehicle if selected
+      if (selectedVehicleForStateChange) {
+        const assignResponse = await fetch('/api/smart-route-ai/batches/assign-vehicle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            batchId: selectedBatchForStateChange.id,
+            vehicleId: selectedVehicleForStateChange.id,
+            driverId: selectedVehicleForStateChange.driverId,
+            employeeId: selectedVehicleForStateChange.employeeId
+          })
+        });
+
+        if (!assignResponse.ok) throw new Error('Error assigning vehicle');
+        debugLog('Vehicle assigned to batch', 'success');
+      }
+
+      // Then update batch state
       const response = await fetch('/api/smart-route-ai/batches/update-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -427,6 +492,7 @@ export default function SmartRouteAIPage() {
 
       setShowBatchStateModal(false);
       setSelectedBatchForStateChange(null);
+      setSelectedVehicleForStateChange(null);
 
     } catch (error: any) {
       debugLog(`Error updating batch state: ${error.message}`, 'error');
@@ -554,46 +620,42 @@ export default function SmartRouteAIPage() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
       {/* Header */}
       <header className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-2">
             {/* Title */}
-            <div className="flex items-center gap-4">
-              <Link href="/" className="hover:bg-white/10 p-2 rounded-lg transition-colors">
-                <ArrowLeft className="h-6 w-6" />
+            <div className="flex items-center gap-2">
+              <Link href="/" className="hover:bg-white/10 p-1.5 sm:p-2 rounded-lg transition-colors">
+                <ArrowLeft className="h-4 w-4 sm:h-6 sm:w-6" />
               </Link>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+                <h1 className="text-base sm:text-xl md:text-2xl font-bold flex items-center gap-1">
                   🚚 Smart Route AI
                 </h1>
-                <p className="text-sm text-white/80">Ottimizzazione Percorsi con Odoo</p>
+                <p className="text-[10px] sm:text-xs text-white/80 hidden sm:block">Ottimizzazione Percorsi con Odoo</p>
               </div>
             </div>
 
             {/* Connection Status */}
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] sm:text-xs font-semibold ${
               odooConnected ? 'bg-green-500' : 'bg-red-500'
             }`}>
               <span>{odooConnected ? '✓' : '⚠️'}</span>
-              <span>{odooConnected ? 'Connesso' : 'Non connesso'}</span>
+              <span className="hidden sm:inline">{odooConnected ? 'Connesso' : 'Non connesso'}</span>
             </div>
 
             {/* Stats Bar */}
-            <div className="flex gap-6 text-sm">
+            <div className="flex gap-2 sm:gap-4 text-[10px] sm:text-xs">
               <div className="text-center">
-                <div className="text-2xl font-bold">{stats.totalOrders}</div>
-                <div className="text-xs text-white/80">Ordini</div>
+                <div className="text-sm sm:text-xl font-bold">{stats.totalOrders}</div>
+                <div className="text-[8px] sm:text-[10px] text-white/80">Ordini</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">{stats.totalWeight}</div>
-                <div className="text-xs text-white/80">Peso (kg)</div>
+                <div className="text-sm sm:text-xl font-bold">{stats.totalWeight.toFixed(2)}</div>
+                <div className="text-[8px] sm:text-[10px] text-white/80">Peso</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{stats.totalVehicles}</div>
-                <div className="text-xs text-white/80">Veicoli</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{optimizationTime}</div>
-                <div className="text-xs text-white/80">Tempo Ottim.</div>
+              <div className="text-center hidden sm:block">
+                <div className="text-xl font-bold">{stats.totalVehicles}</div>
+                <div className="text-[10px] text-white/80">Veicoli</div>
               </div>
             </div>
           </div>
@@ -601,14 +663,14 @@ export default function SmartRouteAIPage() {
       </header>
 
       {/* Main Content */}
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-88px)] relative">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-60px)] sm:h-[calc(100vh-70px)] md:h-[calc(100vh-88px)] relative">
         {/* Toggle Button for Mobile/Desktop */}
         <button
           onClick={() => setSidebarVisible(!sidebarVisible)}
-          className="fixed top-20 left-4 z-[1001] bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-all lg:top-24"
+          className="fixed top-14 sm:top-16 md:top-20 left-2 sm:left-4 z-[1001] bg-indigo-600 text-white p-2 sm:p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-all"
           aria-label="Toggle Sidebar"
         >
-          {sidebarVisible ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {sidebarVisible ? <X className="h-4 w-4 sm:h-5 sm:w-5" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5" />}
         </button>
 
         {/* Sidebar */}
@@ -623,32 +685,130 @@ export default function SmartRouteAIPage() {
             z-[1000]
           ">
 
-          {/* Dynamic Capacity */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <span>⚖️</span> Capacità Dinamica
-            </h3>
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg p-4 text-center mb-3">
-              <div className="text-3xl font-bold">{dynamicCapacity}</div>
-              <div className="text-sm opacity-90">kg per veicolo</div>
-              <div className="text-xs opacity-75 mt-1">(Peso totale ÷ Veicoli) + 10%</div>
+          {/* Statistics */}
+          {batches.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-4">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <span>📊</span> Statistiche Giri
+              </h3>
+
+              {(() => {
+                // Helper: Haversine distance calculation
+                const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+                  const R = 6371; // Earth radius in km
+                  const dLat = (lat2 - lat1) * Math.PI / 180;
+                  const dLon = (lon2 - lon1) * Math.PI / 180;
+                  const a =
+                    Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+                  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                  return R * c;
+                };
+
+                // Depot coordinates (LAPA Embrach)
+                const DEPOT_LAT = 47.5168872;
+                const DEPOT_LNG = 8.5971149;
+
+                // Calculate stats for each batch
+                const batchStats = batches.map(batch => {
+                  // Get pickings for this batch
+                  const batchPickings = pickings.filter(p =>
+                    p.batchId === batch.id && p.lat && p.lng
+                  );
+
+                  let totalDistance = 0;
+                  if (batchPickings.length > 0) {
+                    // Distance from depot to first picking
+                    totalDistance += calculateDistance(
+                      DEPOT_LAT, DEPOT_LNG,
+                      batchPickings[0].lat, batchPickings[0].lng
+                    );
+
+                    // Distance between consecutive pickings
+                    for (let i = 0; i < batchPickings.length - 1; i++) {
+                      totalDistance += calculateDistance(
+                        batchPickings[i].lat, batchPickings[i].lng,
+                        batchPickings[i + 1].lat, batchPickings[i + 1].lng
+                      );
+                    }
+
+                    // Distance from last picking back to depot
+                    totalDistance += calculateDistance(
+                      batchPickings[batchPickings.length - 1].lat,
+                      batchPickings[batchPickings.length - 1].lng,
+                      DEPOT_LAT, DEPOT_LNG
+                    );
+                  }
+
+                  // Estimate time: distance / average speed (35 km/h) * 60 min + 10 min per delivery
+                  const estimatedTime = batchPickings.length > 0
+                    ? Math.round((totalDistance / 35) * 60) + (batchPickings.length * 10)
+                    : 0;
+
+                  return {
+                    ...batch,
+                    totalDistance,
+                    estimatedTime
+                  };
+                });
+
+                // Calculate global totals
+                const globalWeight = batchStats.reduce((sum, b) => sum + b.totalWeight, 0);
+                const globalDistance = batchStats.reduce((sum, b) => sum + b.totalDistance, 0);
+                const globalTime = batchStats.reduce((sum, b) => sum + b.estimatedTime, 0);
+
+                return (
+                  <>
+                    {/* Global Stats */}
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg p-4 mb-3">
+                      <div className="text-sm opacity-90 mb-2">Totale Tutti i Giri:</div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div>
+                          <div className="text-2xl font-bold">{globalWeight}</div>
+                          <div className="text-xs opacity-75">kg</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold">{globalDistance.toFixed(1)}</div>
+                          <div className="text-xs opacity-75">km</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold">{Math.floor(globalTime / 60)}h {globalTime % 60}m</div>
+                          <div className="text-xs opacity-75">tempo</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Per Batch Stats */}
+                    {batchStats.filter(b => b.state !== 'done' && b.state !== 'cancel').length > 0 && (
+                      <div className="max-h-64 overflow-y-auto space-y-2">
+                        <div className="text-xs font-semibold text-gray-600 mb-2">Per Giro:</div>
+                        {batchStats.filter(b => b.state !== 'done' && b.state !== 'cancel').map((batch) => (
+                          <div key={batch.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                            <div className="font-semibold text-sm text-gray-900 mb-2">{batch.name}</div>
+                            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                              <div>
+                                <div className="font-bold text-gray-900">{batch.totalWeight}</div>
+                                <div className="text-gray-500">kg</div>
+                              </div>
+                              <div>
+                                <div className="font-bold text-gray-900">{batch.totalDistance.toFixed(1)}</div>
+                                <div className="text-gray-500">km</div>
+                              </div>
+                              <div>
+                                <div className="font-bold text-gray-900">{Math.floor(batch.estimatedTime / 60)}h {batch.estimatedTime % 60}m</div>
+                                <div className="text-gray-500">tempo</div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={capacityInput}
-                onChange={(e) => setCapacityInput(e.target.value)}
-                placeholder="Override manuale"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-              <button
-                onClick={updateCapacity}
-                className="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-semibold hover:bg-yellow-600 transition-colors"
-              >
-                ✏️
-              </button>
-            </div>
-          </div>
+          )}
 
           {/* Import Pickings */}
           <div className="bg-white rounded-lg shadow p-4">
@@ -699,70 +859,76 @@ export default function SmartRouteAIPage() {
             </div>
           </div>
 
-          {/* Vehicles List */}
+          {/* Vehicles List - Collapsible */}
           <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <span>🚛</span> Flotta Veicoli
-            </h3>
-            <div className="max-h-64 overflow-y-auto space-y-2 mb-3">
-              {vehicles.length === 0 ? (
-                <div className="text-center text-gray-500 text-sm py-8">
-                  Nessun veicolo disponibile
-                </div>
-              ) : (
-                vehicles.map(vehicle => (
-                  <div
-                    key={vehicle.id}
-                    onClick={() => {
-    setSelectedVehicleForBatch(vehicle);
-    setShowVehicleBatchModal(true);
-  }}
-                    className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                      vehicle.selected
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={vehicle.selected}
-                        onChange={() => {}}
-                        className="w-4 h-4"
-                      />
-                      <div className="flex-1">
-                        <div className={`font-semibold text-sm ${vehicle.selected ? 'text-indigo-900' : 'text-gray-900'}`}>
-                          {(() => {
-                            // Extract model from name (first part before /)
-                            const nameParts = vehicle.name.split('/');
-                            const model = nameParts[0]?.trim() || 'Veicolo';
-                            return `${model} ${vehicle.plate}`;
-                          })()}
+            <button
+              onClick={() => setVehiclesExpanded(!vehiclesExpanded)}
+              className="w-full flex items-center justify-between hover:bg-gray-50 rounded-lg p-2 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span>🚛</span>
+                <span className="font-semibold text-gray-900">Flotta Veicoli</span>
+                <span className="text-xs text-gray-500">({vehicles.length})</span>
+              </div>
+              <span className="text-gray-400">
+                {vehiclesExpanded ? '▼' : '▶'}
+              </span>
+            </button>
+
+            {vehiclesExpanded && (
+              <div className="max-h-64 overflow-y-auto space-y-2 mt-3">
+                {vehicles.length === 0 ? (
+                  <div className="text-center text-gray-500 text-sm py-8">
+                    Nessun veicolo disponibile
+                  </div>
+                ) : (
+                  vehicles.map(vehicle => (
+                    <div
+                      key={vehicle.id}
+                      onClick={() => {
+                        setSelectedVehicleForBatch(vehicle);
+                        setShowVehicleBatchModal(true);
+                      }}
+                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                        vehicle.selected
+                          ? 'border-indigo-500 bg-indigo-50'
+                          : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={vehicle.selected}
+                          onChange={() => {}}
+                          className="w-4 h-4"
+                        />
+                        <div className="flex-1">
+                          <div className={`font-semibold text-sm ${vehicle.selected ? 'text-indigo-900' : 'text-gray-900'}`}>
+                            {(() => {
+                              // Extract model from name (first part before /)
+                              const nameParts = vehicle.name.split('/');
+                              const model = nameParts[0]?.trim() || 'Veicolo';
+                              return `${model} ${vehicle.plate}`;
+                            })()}
+                          </div>
+                          <div className={`text-xs ${vehicle.selected ? 'text-indigo-700' : 'text-gray-600'}`}>
+                            {(() => {
+                              // Format: "COMPANY, FirstName LastName" -> extract full name
+                              const parts = vehicle.driver.split(',');
+                              const namePart = parts.length > 1 ? parts[1].trim() : vehicle.driver;
+                              return namePart;
+                            })()}
+                          </div>
                         </div>
-                        <div className={`text-xs ${vehicle.selected ? 'text-indigo-700' : 'text-gray-600'}`}>
-                          {(() => {
-                            // Format: "COMPANY, FirstName LastName" -> extract "FirstName"
-                            const parts = vehicle.driver.split(',');
-                            const namePart = parts.length > 1 ? parts[1].trim() : vehicle.driver;
-                            return namePart.split(' ')[0];
-                          })()}
+                        <div className="text-xs bg-cyan-500 text-white px-2 py-1 rounded-full font-semibold">
+                          {dynamicCapacity} kg
                         </div>
-                      </div>
-                      <div className="text-xs bg-cyan-500 text-white px-2 py-1 rounded-full font-semibold">
-                        {dynamicCapacity} kg
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <button
-              onClick={loadVehicles}
-              disabled={loading}
-              className="w-full px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition-colors disabled:opacity-50"
-            >
-              🔄 Carica Veicoli
-            </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           {/* Batch List */}
@@ -839,75 +1005,6 @@ export default function SmartRouteAIPage() {
             </div>
           )}
 
-          {/* Optimization */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <span>🎯</span> Ottimizzazione
-            </h3>
-
-            {/* Algorithm Selector */}
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              <button
-                onClick={() => setSelectedAlgorithm('geographic')}
-                className={`px-2 py-2 text-xs font-semibold rounded-lg border-2 transition-all ${
-                  selectedAlgorithm === 'geographic'
-                    ? 'border-indigo-500 bg-indigo-500 text-white'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                📍 Geografico
-              </button>
-              <button
-                onClick={() => setSelectedAlgorithm('clarke-wright')}
-                className={`px-2 py-2 text-xs font-semibold rounded-lg border-2 transition-all ${
-                  selectedAlgorithm === 'clarke-wright'
-                    ? 'border-indigo-500 bg-indigo-500 text-white'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                🔗 C-W
-              </button>
-              <button
-                onClick={() => setSelectedAlgorithm('nearest')}
-                className={`px-2 py-2 text-xs font-semibold rounded-lg border-2 transition-all ${
-                  selectedAlgorithm === 'nearest'
-                    ? 'border-indigo-500 bg-indigo-500 text-white'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                📏 Nearest
-              </button>
-            </div>
-
-            <div className="flex gap-2 mb-3">
-              <button
-                onClick={optimizeRoutes}
-                disabled={loading || pickings.length === 0}
-                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                <Zap className="h-4 w-4" />
-                Ottimizza
-              </button>
-              <button
-                onClick={clearRoutes}
-                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors"
-              >
-                🗑️ Pulisci
-              </button>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Non assegnati:</span>
-                <span className="font-semibold text-gray-900">{stats.unassignedOrders}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Percorsi creati:</span>
-                <span className="font-semibold text-gray-900">{stats.createdRoutes}</span>
-              </div>
-            </div>
-          </div>
-
           {/* Create Batches */}
           {routes.length > 0 && (
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg shadow p-4">
@@ -960,14 +1057,6 @@ export default function SmartRouteAIPage() {
               </div>
             </div>
           )}
-
-          {/* Debug Toggle */}
-          <button
-            onClick={() => setDebugMode(!debugMode)}
-            className="w-full px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-semibold hover:bg-gray-900 transition-colors"
-          >
-            🐛 {debugMode ? 'Nascondi' : 'Mostra'} Debug
-          </button>
         </div>
         )}
 
@@ -1122,8 +1211,8 @@ export default function SmartRouteAIPage() {
 
       {/* Batch State Change Confirmation Modal */}
       {showBatchStateModal && selectedBatchForStateChange && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000]" onClick={() => setShowBatchStateModal(false)}>
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000] p-4 overflow-y-auto" onClick={() => setShowBatchStateModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full my-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">Conferma Cambio Stato</h3>
               <button
@@ -1145,7 +1234,7 @@ export default function SmartRouteAIPage() {
                 </div>
               </div>
 
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border-2 border-blue-200">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border-2 border-blue-200 mb-4">
                 <div className="flex items-center justify-center gap-4">
                   <div className="text-center">
                     <div className="text-xs text-gray-500 mb-1">Stato attuale</div>
@@ -1165,6 +1254,135 @@ export default function SmartRouteAIPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Vehicle Selection - Show only if changing from draft and no vehicle assigned */}
+              {selectedBatchForStateChange.currentState === 'draft' && !selectedBatchForStateChange.hasVehicle && (
+                <div className="mb-4">
+                  <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <span>🚗</span> Seleziona veicolo e autista:
+                  </div>
+                  {selectedVehicleForStateChange ? (
+                    <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200 relative">
+                      <button
+                        onClick={() => setSelectedVehicleForStateChange(null)}
+                        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                      <div className="font-bold text-indigo-900">
+                        {(() => {
+                          const nameParts = selectedVehicleForStateChange.name.split('/');
+                          const model = nameParts[0]?.trim() || 'Veicolo';
+                          return `${model} ${selectedVehicleForStateChange.plate}`;
+                        })()}
+                      </div>
+                      <div className="text-sm text-indigo-700 mt-1">
+                        Autista: {(() => {
+                          const parts = selectedVehicleForStateChange.driver.split(',');
+                          const namePart = parts.length > 1 ? parts[1].trim() : selectedVehicleForStateChange.driver;
+                          return namePart;
+                        })()}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="max-h-48 overflow-y-auto space-y-2">
+                      {vehicles.length === 0 ? (
+                        <div className="text-center text-gray-500 py-4 text-sm">
+                          Nessun veicolo disponibile
+                        </div>
+                      ) : (
+                        vehicles.map(vehicle => (
+                          <button
+                            key={vehicle.id}
+                            onClick={() => setSelectedVehicleForStateChange(vehicle)}
+                            className="w-full p-3 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all"
+                          >
+                            <div className="font-semibold text-sm text-gray-900">
+                              {(() => {
+                                const nameParts = vehicle.name.split('/');
+                                const model = nameParts[0]?.trim() || 'Veicolo';
+                                return `${model} ${vehicle.plate}`;
+                              })()}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {(() => {
+                                const parts = vehicle.driver.split(',');
+                                const namePart = parts.length > 1 ? parts[1].trim() : vehicle.driver;
+                                return namePart;
+                              })()}
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Batch Pickings List */}
+              <div className="mb-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <span>📦</span> Consegne in questo batch ({batchPickings.length}):
+                </div>
+                {loadingPickings ? (
+                  <div className="text-center text-gray-500 py-4 text-sm">
+                    <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    Caricamento consegne...
+                  </div>
+                ) : batchPickings.length === 0 ? (
+                  <div className="text-center text-gray-500 py-4 text-sm">
+                    Nessuna consegna in questo batch
+                  </div>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto space-y-2">
+                    {batchPickings.map((picking) => (
+                      <div key={picking.id} className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => setExpandedPickingId(expandedPickingId === picking.id ? null : picking.id)}
+                          className="w-full p-3 text-left hover:bg-gray-50 transition-all"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="font-semibold text-sm text-gray-900">
+                              {picking.partnerName}
+                            </div>
+                            <div className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full font-semibold">
+                              {picking.weight} kg
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            📅 {new Date(picking.scheduledDate).toLocaleDateString('it-IT')}
+                          </div>
+                          <div className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+                            {expandedPickingId === picking.id ? '▼' : '▶'}
+                            {picking.products.length} prodotti
+                          </div>
+                        </button>
+
+                        {/* Expanded Product List */}
+                        {expandedPickingId === picking.id && (
+                          <div className="border-t-2 border-gray-200 bg-gray-50 p-3 space-y-2">
+                            {picking.products.map((product) => (
+                              <div key={product.id} className="flex items-center justify-between text-xs p-2 bg-white rounded border border-gray-200">
+                                <div className="flex-1">
+                                  <div className="font-semibold text-gray-900">
+                                    {product.productName}
+                                  </div>
+                                  <div className="text-gray-600">
+                                    Quantità: {product.quantity} {product.uom}
+                                  </div>
+                                </div>
+                                <div className="text-gray-700 font-semibold">
+                                  {product.weight.toFixed(2)} kg
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

@@ -71,6 +71,8 @@ export default function MapComponent({ pickings, routes, vehicles, batches, batc
   const markersRef = useRef<L.Marker[]>([]);
   const routeLayersRef = useRef<L.Polyline[]>([]);
   const depotMarkerRef = useRef<L.Marker | null>(null);
+  const userInteractedRef = useRef(false);
+  const isFirstLoadRef = useRef(true);
 
   // Initialize map
   useEffect(() => {
@@ -115,6 +117,11 @@ export default function MapComponent({ pickings, routes, vehicles, batches, batc
 
     depotMarkerRef.current = depotMarker;
     mapRef.current = map;
+
+    // Track user interactions (drag, zoom) to prevent auto-fitBounds
+    map.on('dragstart zoomstart', () => {
+      userInteractedRef.current = true;
+    });
 
     // Cleanup
     return () => {
@@ -374,13 +381,14 @@ export default function MapComponent({ pickings, routes, vehicles, batches, batc
       });
     });
 
-    // Fit bounds to show all markers
-    if (pickings.length > 0 && depotMarkerRef.current) {
+    // Fit bounds to show all markers only on first load or if user hasn't interacted
+    if (pickings.length > 0 && depotMarkerRef.current && !userInteractedRef.current && isFirstLoadRef.current) {
       const bounds = L.latLngBounds([
         [DEPOT.lat, DEPOT.lng],
         ...pickings.map(p => [p.lat, p.lng] as [number, number])
       ]);
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+      isFirstLoadRef.current = false;
     }
   }, [pickings, routes, batchColorMap, routeColors]);
 
