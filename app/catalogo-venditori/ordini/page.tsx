@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, FileText, CheckCircle, Clock, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, CheckCircle, Clock, RefreshCw, Search } from 'lucide-react';
 
 interface Order {
   id: number;
@@ -33,6 +33,7 @@ export default function OrdiniPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('month');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch orders based on selected period
   const fetchOrders = async (period: Period) => {
@@ -95,6 +96,21 @@ export default function OrdiniPage() {
   const handleOrderClick = (orderId: number) => {
     router.push(`/catalogo-venditori/review-prices/${orderId}`);
   };
+
+  // Filter orders based on search query
+  const filteredOrders = orders.filter(order => {
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase().trim();
+
+    // Search in order number (e.g., "S34804")
+    if (order.name.toLowerCase().includes(query)) return true;
+
+    // Search in customer name (e.g., "Imperial Food AG")
+    if (order.partner_name.toLowerCase().includes(query)) return true;
+
+    return false;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -173,6 +189,40 @@ export default function OrdiniPage() {
           </div>
         </div>
 
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cerca per numero ordine (es. S34804) o nome cliente (es. Imperial Food)..."
+              className="w-full pl-12 pr-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+              style={{
+                fontSize: '16px',
+                lineHeight: '1.5',
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-700 rounded transition-colors"
+                title="Cancella ricerca"
+              >
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <p className="text-sm text-slate-400 mt-2">
+              {filteredOrders.length} {filteredOrders.length === 1 ? 'risultato trovato' : 'risultati trovati'}
+            </p>
+          )}
+        </div>
+
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -238,19 +288,23 @@ export default function OrdiniPage() {
         )}
 
         {/* Orders List */}
-        {!loading && !error && orders.length === 0 && (
+        {!loading && !error && filteredOrders.length === 0 && (
           <div className="bg-slate-800 rounded-lg border border-slate-700 p-12 text-center">
             <FileText className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">Nessun ordine trovato</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">
+              {searchQuery ? 'Nessun risultato' : 'Nessun ordine trovato'}
+            </h3>
             <p className="text-slate-400">
-              Non ci sono ordini per il periodo selezionato.
+              {searchQuery
+                ? `Nessun ordine corrisponde alla ricerca "${searchQuery}"`
+                : 'Non ci sono ordini per il periodo selezionato.'}
             </p>
           </div>
         )}
 
-        {!loading && !error && orders.length > 0 && (
+        {!loading && !error && filteredOrders.length > 0 && (
           <div className="space-y-3">
-            {orders.map((order) => {
+            {filteredOrders.map((order) => {
               const stateInfo = getStateInfo(order.state);
               return (
                 <div
