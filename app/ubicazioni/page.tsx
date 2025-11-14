@@ -522,13 +522,16 @@ export default function UbicazioniPage() {
                       <select
                         value={selectedSupplier}
                         onChange={(e) => setSelectedSupplier(e.target.value)}
-                        className="glass px-4 py-2 rounded-lg border-2 border-white/20 focus:border-blue-500 focus:outline-none font-semibold min-w-[200px]"
+                        className="bg-slate-700 text-white px-4 py-2 rounded-lg border-2 border-slate-500 focus:border-blue-500 focus:outline-none font-semibold min-w-[200px]"
+                        style={{ color: 'white', backgroundColor: '#334155' }}
                       >
-                        <option value="ALL">TUTTI ({bufferProducts.length})</option>
+                        <option value="ALL" style={{ backgroundColor: '#1e293b', color: 'white' }}>
+                          TUTTI ({bufferProducts.length})
+                        </option>
                         {uniqueSuppliers.map((supplier) => {
                           const count = bufferProducts.filter(p => p.supplier_name === supplier).length;
                           return (
-                            <option key={supplier} value={supplier}>
+                            <option key={supplier} value={supplier} style={{ backgroundColor: '#1e293b', color: 'white' }}>
                               {supplier} ({count})
                             </option>
                           );
