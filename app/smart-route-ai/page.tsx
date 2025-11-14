@@ -72,6 +72,9 @@ export default function SmartRouteAIPage() {
   const [showBatchStateModal, setShowBatchStateModal] = useState(false);
   const [selectedBatchForStateChange, setSelectedBatchForStateChange] = useState<{id: number, name: string, currentState: string, nextState: string, hasVehicle: boolean} | null>(null);
   const [selectedVehicleForStateChange, setSelectedVehicleForStateChange] = useState<{id: number, name: string, plate: string, driver: string, driverId: number, employeeId: number | null} | null>(null);
+  const [batchPickings, setBatchPickings] = useState<Array<{id: number, name: string, partnerName: string, scheduledDate: string, weight: number, products: Array<{id: number, productName: string, quantity: number, uom: string, weight: number}>}>>([]);
+  const [expandedPickingId, setExpandedPickingId] = useState<number | null>(null);
+  const [loadingPickings, setLoadingPickings] = useState(false);
 
   // Route colors - well distinguished colors
   const ROUTE_COLORS = [
@@ -380,6 +383,24 @@ export default function SmartRouteAIPage() {
     }
   }
 
+  // Load pickings for a batch
+  async function loadBatchPickings(batchId: number) {
+    try {
+      setLoadingPickings(true);
+      const response = await fetch(`/api/smart-route-ai/batches/${batchId}/pickings`);
+      if (!response.ok) throw new Error('Error loading batch pickings');
+
+      const data = await response.json();
+      setBatchPickings(data.pickings || []);
+      setExpandedPickingId(null);
+    } catch (error: any) {
+      debugLog(`Error loading batch pickings: ${error.message}`, 'error');
+      showToast('Errore caricamento consegne', 'error');
+    } finally {
+      setLoadingPickings(false);
+    }
+  }
+
   // Handle batch click to advance state
   async function handleBatchClick(batch: {id: number, name: string, state: string, vehicleName: string | null, driverName: string | null}) {
     // Determine next state
@@ -409,6 +430,10 @@ export default function SmartRouteAIPage() {
       hasVehicle: hasVehicle
     });
     setSelectedVehicleForStateChange(null); // Reset vehicle selection
+
+    // Load pickings for this batch
+    await loadBatchPickings(batch.id);
+
     setShowBatchStateModal(true);
   }
 
@@ -1081,8 +1106,8 @@ export default function SmartRouteAIPage() {
 
       {/* Batch State Change Confirmation Modal */}
       {showBatchStateModal && selectedBatchForStateChange && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000]" onClick={() => setShowBatchStateModal(false)}>
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000] p-4 overflow-y-auto" onClick={() => setShowBatchStateModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full my-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">Conferma Cambio Stato</h3>
               <button
@@ -1189,6 +1214,71 @@ export default function SmartRouteAIPage() {
                   )}
                 </div>
               )}
+
+              {/* Batch Pickings List */}
+              <div className="mb-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <span>📦</span> Consegne in questo batch ({batchPickings.length}):
+                </div>
+                {loadingPickings ? (
+                  <div className="text-center text-gray-500 py-4 text-sm">
+                    <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    Caricamento consegne...
+                  </div>
+                ) : batchPickings.length === 0 ? (
+                  <div className="text-center text-gray-500 py-4 text-sm">
+                    Nessuna consegna in questo batch
+                  </div>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto space-y-2">
+                    {batchPickings.map((picking) => (
+                      <div key={picking.id} className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => setExpandedPickingId(expandedPickingId === picking.id ? null : picking.id)}
+                          className="w-full p-3 text-left hover:bg-gray-50 transition-all"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="font-semibold text-sm text-gray-900">
+                              {picking.partnerName}
+                            </div>
+                            <div className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full font-semibold">
+                              {picking.weight} kg
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            📅 {new Date(picking.scheduledDate).toLocaleDateString('it-IT')}
+                          </div>
+                          <div className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+                            {expandedPickingId === picking.id ? '▼' : '▶'}
+                            {picking.products.length} prodotti
+                          </div>
+                        </button>
+
+                        {/* Expanded Product List */}
+                        {expandedPickingId === picking.id && (
+                          <div className="border-t-2 border-gray-200 bg-gray-50 p-3 space-y-2">
+                            {picking.products.map((product) => (
+                              <div key={product.id} className="flex items-center justify-between text-xs p-2 bg-white rounded border border-gray-200">
+                                <div className="flex-1">
+                                  <div className="font-semibold text-gray-900">
+                                    {product.productName}
+                                  </div>
+                                  <div className="text-gray-600">
+                                    Quantità: {product.quantity} {product.uom}
+                                  </div>
+                                </div>
+                                <div className="text-gray-700 font-semibold">
+                                  {product.weight.toFixed(2)} kg
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex gap-3">
