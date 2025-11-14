@@ -349,6 +349,7 @@ export default function PickResiduiPage() {
   const loadProductsInfo = async (movesData: StockMove[]) => {
     try {
       const productIds = Array.from(new Set(movesData.map(m => m.product_id[0])));
+      console.log('🔍 Caricamento info per prodotti:', productIds);
 
       // 1. Carica stock per ubicazione (solo ubicazioni interne) CON reserved_quantity
       const quants = await searchRead<any>(
@@ -361,6 +362,7 @@ export default function PickResiduiPage() {
         ['product_id', 'location_id', 'quantity', 'reserved_quantity'],
         0
       );
+      console.log('📦 Quants trovati:', quants.length);
 
       const stockByProduct: Record<number, Array<{location: string, qty: number, reserved: number}>> = {};
       quants.forEach((q: any) => {
@@ -449,12 +451,16 @@ export default function PickResiduiPage() {
         });
       });
 
+      console.log('✅ Stock by product:', stockByProduct);
+      console.log('✅ Incoming by product:', incomingByProduct);
+      console.log('✅ Reservations by product:', reservationsByProduct);
+
       setProductStock(stockByProduct);
       setProductIncoming(incomingByProduct);
       setProductReservations(reservationsByProduct);
 
     } catch (error) {
-      console.error('Errore caricamento info prodotti:', error);
+      console.error('❌ Errore caricamento info prodotti:', error);
     }
   };
 
