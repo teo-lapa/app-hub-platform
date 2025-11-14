@@ -38,7 +38,9 @@
       "Bash(set PYTHONIOENCODING=utf-8)",
       "Bash(npm run dev:*)",
       "Bash(timeout /t 10 /nobreak)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git merge staging -m \"$(cat <<''EOF''\nMerge staging into main - Smart Route AI: Statistiche giri dinamiche\n\nIncludes:\n- fix(smart-route-ai): Rimuovi sezione statistiche con campi inesistenti\n- feat(smart-route-ai): Aggiungi statistiche giri calcolate dinamicamente\n\nFeatures:\n- Statistiche globali: peso, km, tempo totali di tutti i batch\n- Statistiche per batch: peso, km, tempo individuali\n- Calcolo dinamico usando coordinate pickings (no campi aggiuntivi ai batch)\n- Formula Haversine per distanze depot -> consegne -> depot\n- Stima tempo: (km / 35 km/h) * 60 min + 10 min/consegna\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
