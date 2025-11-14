@@ -782,9 +782,22 @@ export default function PickResiduiPage() {
     return (
       <div key={move.id} className="row" data-move={move.id}>
         <div className="prod">
-          {move.product_id[1]}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span>{move.product_id[1]}</span>
+            <span style={{
+              display: 'inline-block',
+              background: 'var(--chip)',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              fontWeight: '700',
+              color: 'var(--accent)'
+            }}>
+              {uom}
+            </span>
+          </div>
           <div className="sub">
-            U.M.: <b>{uom}</b> — Ubic.: <b>{ubic}</b>
+            Ubic.: <b>{ubic}</b>
           </div>
 
           {/* Disponibilità ubicazioni */}
