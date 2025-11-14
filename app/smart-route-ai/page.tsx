@@ -65,7 +65,7 @@ export default function SmartRouteAIPage() {
   const [optimizationTime, setOptimizationTime] = useState<string>('-');
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [vehiclesExpanded, setVehiclesExpanded] = useState(false);
-  const [batches, setBatches] = useState<Array<{id: number, name: string, state: string, vehicleName: string | null, driverName: string | null, totalWeight: number, pickingCount: number, totalDistance: number, estimatedTime: number}>>([]);
+  const [batches, setBatches] = useState<Array<{id: number, name: string, state: string, vehicleName: string | null, driverName: string | null, totalWeight: number, pickingCount: number}>>([]);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [selectedPickingForMove, setSelectedPickingForMove] = useState<{id: number, currentBatch: string, date: string} | null>(null);
   const [showVehicleBatchModal, setShowVehicleBatchModal] = useState(false);
@@ -684,6 +684,131 @@ export default function SmartRouteAIPage() {
             overflow-y-auto p-4 space-y-4
             z-[1000]
           ">
+
+          {/* Statistics */}
+          {batches.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-4">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <span>📊</span> Statistiche Giri
+              </h3>
+
+              {(() => {
+                // Helper: Haversine distance calculation
+                const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+                  const R = 6371; // Earth radius in km
+                  const dLat = (lat2 - lat1) * Math.PI / 180;
+                  const dLon = (lon2 - lon1) * Math.PI / 180;
+                  const a =
+                    Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+                  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                  return R * c;
+                };
+
+                // Depot coordinates (LAPA Embrach)
+                const DEPOT_LAT = 47.5168872;
+                const DEPOT_LNG = 8.5971149;
+
+                // Calculate stats for each batch
+                const batchStats = batches.map(batch => {
+                  // Get pickings for this batch
+                  const batchPickings = pickings.filter(p =>
+                    p.batchId === batch.id && p.lat && p.lng
+                  );
+
+                  let totalDistance = 0;
+                  if (batchPickings.length > 0) {
+                    // Distance from depot to first picking
+                    totalDistance += calculateDistance(
+                      DEPOT_LAT, DEPOT_LNG,
+                      batchPickings[0].lat, batchPickings[0].lng
+                    );
+
+                    // Distance between consecutive pickings
+                    for (let i = 0; i < batchPickings.length - 1; i++) {
+                      totalDistance += calculateDistance(
+                        batchPickings[i].lat, batchPickings[i].lng,
+                        batchPickings[i + 1].lat, batchPickings[i + 1].lng
+                      );
+                    }
+
+                    // Distance from last picking back to depot
+                    totalDistance += calculateDistance(
+                      batchPickings[batchPickings.length - 1].lat,
+                      batchPickings[batchPickings.length - 1].lng,
+                      DEPOT_LAT, DEPOT_LNG
+                    );
+                  }
+
+                  // Estimate time: distance / average speed (35 km/h) * 60 min + 10 min per delivery
+                  const estimatedTime = batchPickings.length > 0
+                    ? Math.round((totalDistance / 35) * 60) + (batchPickings.length * 10)
+                    : 0;
+
+                  return {
+                    ...batch,
+                    totalDistance,
+                    estimatedTime
+                  };
+                });
+
+                // Calculate global totals
+                const globalWeight = batchStats.reduce((sum, b) => sum + b.totalWeight, 0);
+                const globalDistance = batchStats.reduce((sum, b) => sum + b.totalDistance, 0);
+                const globalTime = batchStats.reduce((sum, b) => sum + b.estimatedTime, 0);
+
+                return (
+                  <>
+                    {/* Global Stats */}
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg p-4 mb-3">
+                      <div className="text-sm opacity-90 mb-2">Totale Tutti i Giri:</div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div>
+                          <div className="text-2xl font-bold">{globalWeight}</div>
+                          <div className="text-xs opacity-75">kg</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold">{globalDistance.toFixed(1)}</div>
+                          <div className="text-xs opacity-75">km</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold">{Math.floor(globalTime / 60)}h {globalTime % 60}m</div>
+                          <div className="text-xs opacity-75">tempo</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Per Batch Stats */}
+                    {batchStats.filter(b => b.state !== 'done' && b.state !== 'cancel').length > 0 && (
+                      <div className="max-h-64 overflow-y-auto space-y-2">
+                        <div className="text-xs font-semibold text-gray-600 mb-2">Per Giro:</div>
+                        {batchStats.filter(b => b.state !== 'done' && b.state !== 'cancel').map((batch) => (
+                          <div key={batch.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                            <div className="font-semibold text-sm text-gray-900 mb-2">{batch.name}</div>
+                            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                              <div>
+                                <div className="font-bold text-gray-900">{batch.totalWeight}</div>
+                                <div className="text-gray-500">kg</div>
+                              </div>
+                              <div>
+                                <div className="font-bold text-gray-900">{batch.totalDistance.toFixed(1)}</div>
+                                <div className="text-gray-500">km</div>
+                              </div>
+                              <div>
+                                <div className="font-bold text-gray-900">{Math.floor(batch.estimatedTime / 60)}h {batch.estimatedTime % 60}m</div>
+                                <div className="text-gray-500">tempo</div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          )}
 
           {/* Import Pickings */}
           <div className="bg-white rounded-lg shadow p-4">
