@@ -608,7 +608,8 @@ export default function ScadenzePage() {
             onClick={() => setShowProductModal(false)}
           >
             <motion.div
-              className="glass-strong rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="glass-strong rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y"
+              style={{ WebkitOverflowScrolling: 'touch' }}
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -805,7 +806,8 @@ export default function ScadenzePage() {
             onClick={() => setShowUrgentNoteModal(false)}
           >
             <motion.div
-              className="glass-strong rounded-2xl p-6 max-w-lg w-full"
+              className="glass-strong rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y"
+              style={{ WebkitOverflowScrolling: 'touch' }}
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -973,7 +975,8 @@ export default function ScadenzePage() {
             onClick={() => setShowOfferModal(false)}
           >
             <motion.div
-              className="glass-strong rounded-2xl p-6 max-w-lg w-full"
+              className="glass-strong rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y"
+              style={{ WebkitOverflowScrolling: 'touch' }}
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
