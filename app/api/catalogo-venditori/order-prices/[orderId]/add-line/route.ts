@@ -151,64 +151,28 @@ export async function POST(
       console.log(`✅ [ADD-LINE-API] Found ${companyTaxIds.length} taxes for company 1`);
     }
 
-    // Get correct price using pricelist method
-    console.log('🔍 [ADD-LINE-API] Getting price from pricelist...');
-
-    let priceUnit = product.list_price;
-    let productName = product.name;
-
-    // Get price from customer's pricelist
-    if (order.pricelist_id && order.pricelist_id[0]) {
-      const pricelistId = order.pricelist_id[0];
-      const partnerId = order.partner_id[0];
-
-      console.log('🔍 [ADD-LINE-API] Calling get_product_price_rule...', {
-        pricelistId,
-        productId,
-        quantity,
-        partnerId
-      });
-
-      try {
-        // Use get_product_price_rule to get the exact price with all rules applied
-        const priceResult = await callOdoo(
-          cookies,
-          'product.pricelist',
-          'get_product_price_rule',
-          [pricelistId, productId, quantity, partnerId]
-        );
-
-        console.log('✅ [ADD-LINE-API] Price result:', priceResult);
-
-        // get_product_price_rule returns [price, rule_id]
-        if (priceResult && Array.isArray(priceResult) && priceResult[0] !== undefined) {
-          priceUnit = priceResult[0];
-          console.log(`✅ [ADD-LINE-API] Using pricelist price: CHF ${priceUnit} (rule: ${priceResult[1]})`);
-        } else if (typeof priceResult === 'number') {
-          priceUnit = priceResult;
-          console.log(`✅ [ADD-LINE-API] Using pricelist price: CHF ${priceUnit}`);
-        }
-      } catch (error) {
-        console.warn('⚠️ [ADD-LINE-API] Failed to get pricelist price, using list price:', error);
-      }
-    } else {
-      console.log('ℹ️ [ADD-LINE-API] No pricelist found, using standard list price');
-    }
-
-    // Create order line in Odoo with the correct price from onchange
-    console.log('➕ [ADD-LINE-API] Creating order line in Odoo...');
+    // Create order line in Odoo WITHOUT price_unit
+    // Let Odoo automatically calculate the price from customer's pricelist
+    // This is the same approach used by create-order API which works correctly
+    console.log('➕ [ADD-LINE-API] Creating order line (Odoo will calculate price from pricelist)...');
     const lineData: any = {
       order_id: orderId,
       product_id: productId,
-      name: productName,
       product_uom_qty: quantity,
-      price_unit: priceUnit,
       product_uom: product.uom_id ? product.uom_id[0] : 1,
       company_id: 1, // LAPA - finest italian food GmbH
       tax_id: companyTaxIds.length > 0
         ? [[6, 0, companyTaxIds]]
         : false
     };
+
+    // DO NOT set price_unit - Odoo will automatically use the customer's pricelist
+    // when the line is created. This ensures correct prices for:
+    // - Customer pricelists
+    // - Locked prices
+    // - Promotions
+    // - Volume discounts
+    console.log('ℹ️ [ADD-LINE-API] Not setting price_unit - Odoo will calculate from pricelist automatically');
 
     const newLineId = await callOdoo(
       cookies,
