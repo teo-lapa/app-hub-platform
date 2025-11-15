@@ -364,6 +364,134 @@ app.get('/api/v1/ocr/queue', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/v1/chat
+ * Chat with Ollama AI
+ */
+app.post('/api/v1/chat', async (req, res) => {
+  try {
+    const { message, conversation = [] } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'Message required' });
+    }
+
+    logger.info(`Chat request: ${message.substring(0, 50)}...`);
+
+    const response = await classifierService.chat(message, conversation);
+
+    res.json({
+      success: true,
+      message: response.message,
+      conversation: response.conversation
+    });
+
+  } catch (error) {
+    logger.error('Chat error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/extract-data
+ * Extract structured data from document
+ */
+app.post('/api/v1/extract-data', upload.single('file'), async (req, res) => {
+  let tempFilePath = null;
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    tempFilePath = req.file.path;
+    logger.info(`Data extraction request: ${req.file.originalname}`);
+
+    // Step 1: OCR
+    const ocrResult = await ocrService.extractText(tempFilePath, {
+      lang: req.body.language || 'ita+eng',
+      psm: '3'
+    });
+
+    if (!ocrResult.success) {
+      throw new Error(`OCR failed: ${ocrResult.error}`);
+    }
+
+    // Step 2: Extract structured data with AI
+    const extractedData = await classifierService.extractData(ocrResult.text);
+
+    // Cleanup
+    await fs.unlink(tempFilePath);
+
+    res.json({
+      success: true,
+      filename: req.file.originalname,
+      data: extractedData,
+      extractedText: ocrResult.text.substring(0, 500)
+    });
+
+  } catch (error) {
+    logger.error('Data extraction error:', error);
+    if (tempFilePath) {
+      try { await fs.unlink(tempFilePath); } catch (e) {}
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/ask-document
+ * Ask questions about a document
+ */
+app.post('/api/v1/ask-document', upload.single('file'), async (req, res) => {
+  let tempFilePath = null;
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const { question } = req.body;
+    if (!question) {
+      return res.status(400).json({ error: 'Question required' });
+    }
+
+    tempFilePath = req.file.path;
+    logger.info(`Q&A request: ${question}`);
+
+    // Step 1: OCR
+    const ocrResult = await ocrService.extractText(tempFilePath, {
+      lang: req.body.language || 'ita+eng',
+      psm: '3'
+    });
+
+    if (!ocrResult.success) {
+      throw new Error(`OCR failed: ${ocrResult.error}`);
+    }
+
+    // Step 2: Ask AI about the document
+    const answer = await classifierService.askDocument(ocrResult.text, question);
+
+    // Cleanup
+    await fs.unlink(tempFilePath);
+
+    res.json({
+      success: true,
+      filename: req.file.originalname,
+      question,
+      answer: answer.answer,
+      confidence: answer.confidence
+    });
+
+  } catch (error) {
+    logger.error('Document Q&A error:', error);
+    if (tempFilePath) {
+      try { await fs.unlink(tempFilePath); } catch (e) {}
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============================================
 // ERROR HANDLERS
 // ============================================

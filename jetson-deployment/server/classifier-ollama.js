@@ -288,6 +288,145 @@ Respond ONLY with the JSON classification, nothing else.`;
   }
 
   /**
+   * Chat with Ollama
+   */
+  async chat(message, conversation = []) {
+    try {
+      if (!this.initialized) {
+        throw new Error('Classifier not initialized');
+      }
+
+      // Build conversation context
+      let prompt = 'You are a helpful AI assistant. ';
+
+      if (conversation.length > 0) {
+        prompt += 'Previous conversation:\n';
+        conversation.forEach(msg => {
+          prompt += `${msg.role}: ${msg.content}\n`;
+        });
+      }
+
+      prompt += `\nUser: ${message}\nAssistant:`;
+
+      const response = await this.callOllama(prompt, { temperature: 0.7, num_predict: 2048 });
+
+      const updatedConversation = [
+        ...conversation,
+        { role: 'user', content: message },
+        { role: 'assistant', content: response }
+      ];
+
+      return {
+        message: response,
+        conversation: updatedConversation
+      };
+
+    } catch (error) {
+      throw new Error(`Chat error: ${error.message}`);
+    }
+  }
+
+  /**
+   * Extract structured data from document
+   */
+  async extractData(text) {
+    try {
+      if (!this.initialized) {
+        throw new Error('Classifier not initialized');
+      }
+
+      const limitedText = text.substring(0, 6000);
+
+      const prompt = `Extract ALL data from this document into structured JSON format.
+
+DOCUMENT TEXT:
+${limitedText}
+
+Extract:
+- Document type
+- Supplier/Vendor name
+- Customer name
+- Document number
+- Date (YYYY-MM-DD format)
+- Total amount and currency
+- ALL product lines with: description, quantity, unit price, total price
+
+Respond ONLY with valid JSON in this format:
+{
+  "type": "invoice",
+  "supplier": "Company Name",
+  "customer": "Customer Name",
+  "number": "DOC-123",
+  "date": "2025-01-15",
+  "amount": 1234.56,
+  "currency": "EUR",
+  "items": [
+    {
+      "description": "Product name",
+      "quantity": 10,
+      "unitPrice": 5.50,
+      "total": 55.00
+    }
+  ]
+}
+
+Extract EVERY product line you find. Respond with ONLY the JSON.`;
+
+      const response = await this.callOllama(prompt);
+
+      // Parse JSON
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+
+      const data = JSON.parse(jsonMatch[0]);
+
+      return {
+        ...data,
+        details: this.sanitizeDetails(data)
+      };
+
+    } catch (error) {
+      throw new Error(`Data extraction error: ${error.message}`);
+    }
+  }
+
+  /**
+   * Ask question about document
+   */
+  async askDocument(text, question) {
+    try {
+      if (!this.initialized) {
+        throw new Error('Classifier not initialized');
+      }
+
+      const limitedText = text.substring(0, 8000);
+
+      const prompt = `Answer the question about this document.
+
+DOCUMENT TEXT:
+${limitedText}
+
+QUESTION: ${question}
+
+Provide a clear, concise answer based ONLY on the information in the document. If the information is not in the document, say "Non trovato nel documento".
+
+Answer:`;
+
+      const response = await this.callOllama(prompt, { temperature: 0.3, num_predict: 1024 });
+
+      return {
+        answer: response.trim(),
+        confidence: 85
+      };
+
+    } catch (error) {
+      throw new Error(`Document Q&A error: ${error.message}`);
+    }
+  }
+
+  /**
    * Quick keyword-based classification (fallback, no API call)
    */
   quickClassify(text) {
