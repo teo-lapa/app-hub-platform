@@ -52,6 +52,17 @@ interface BlockRequestsResponse {
 
 /**
  * Parse HTML note to extract proposed price and seller notes
+ *
+ * Expected format (from Odoo mail.activity note field):
+ * ```
+ * <p>...
+ * - Prezzo Proposto: CHF 75.27
+ * ...
+ * 📝 Note del Venditore:
+ * MI BLOCCHI PREZZO
+ * ...
+ * </p>
+ * ```
  */
 function parseActivityNote(htmlNote: string): { proposedPrice: number; sellerNotes: string } {
   console.log('📝 [BLOCK-REQUESTS] Parsing HTML note...');
@@ -60,51 +71,34 @@ function parseActivityNote(htmlNote: string): { proposedPrice: number; sellerNot
   let sellerNotes = '';
 
   try {
-    // Extract "Prezzo Proposto" - various possible formats
-    // Look for patterns like: "Prezzo Proposto: 123.45" or "Prezzo Proposto:</strong> 123.45"
-    const pricePatterns = [
-      /Prezzo\s+Proposto[:\s]*<\/?\w*>\s*([\d.,]+)/i,
-      /Prezzo\s+Proposto[:\s]*([\d.,]+)/i,
-      /proposto[:\s]*<\/?\w*>\s*([\d.,]+)/i
-    ];
+    // Extract "Prezzo Proposto: CHF XXX.XX"
+    // The actual format in Odoo is plain text with "CHF " prefix before the price
+    // Example: "- Prezzo Proposto: CHF 75.27"
+    const pricePattern = /Prezzo\s+Proposto:\s*CHF\s+([0-9]+(?:[.,][0-9]{2})?)/;
+    const priceMatch = htmlNote.match(pricePattern);
 
-    for (const pattern of pricePatterns) {
-      const priceMatch = htmlNote.match(pattern);
-      if (priceMatch) {
-        const priceStr = priceMatch[1].replace(',', '.');
-        proposedPrice = parseFloat(priceStr);
-        console.log(`✅ [BLOCK-REQUESTS] Found proposed price: ${proposedPrice}`);
-        break;
-      }
+    if (priceMatch) {
+      const priceStr = priceMatch[1].replace(',', '.');
+      proposedPrice = parseFloat(priceStr);
+      console.log(`✅ [BLOCK-REQUESTS] Found proposed price: CHF ${proposedPrice}`);
+    } else {
+      console.warn('⚠️ [BLOCK-REQUESTS] Could not extract proposed price from note');
+      console.debug('[BLOCK-REQUESTS] Note content:', htmlNote.substring(0, 300));
     }
 
-    // Extract "Note del Venditore" - look for text after this label
-    const notesPatterns = [
-      /Note\s+del\s+Venditore[:\s]*<\/?\w*>\s*([^<]+)/i,
-      /Note\s+Venditore[:\s]*<\/?\w*>\s*([^<]+)/i,
-      /Note[:\s]*<\/?\w*>\s*([^<]+)/i
-    ];
+    // Extract "Note del Venditore" - everything after the label until next section
+    // Pattern: "Note del Venditore:" followed by newline and text until:
+    //   - Double newline (next section)
+    //   - Warning emoji (⚠️)
+    //   - End of string
+    const notesPattern = /Note\s+del\s+Venditore:\s*\n(.+?)(?=\n\n|⚠️|$)/s;
+    const notesMatch = htmlNote.match(notesPattern);
 
-    for (const pattern of notesPatterns) {
-      const notesMatch = htmlNote.match(pattern);
-      if (notesMatch) {
-        sellerNotes = notesMatch[1].trim();
-        console.log(`✅ [BLOCK-REQUESTS] Found seller notes: ${sellerNotes.substring(0, 50)}...`);
-        break;
-      }
-    }
-
-    // If no structured notes found, try to extract plain text from HTML
-    if (!sellerNotes) {
-      // Remove HTML tags and extract text
-      const plainText = htmlNote.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-      // Get text after "Note" if present, otherwise use full text (limited)
-      const noteIndex = plainText.toLowerCase().indexOf('note');
-      if (noteIndex >= 0) {
-        sellerNotes = plainText.substring(noteIndex + 4).trim().substring(0, 200);
-      } else {
-        sellerNotes = plainText.substring(0, 200);
-      }
+    if (notesMatch) {
+      sellerNotes = notesMatch[1].trim();
+      console.log(`✅ [BLOCK-REQUESTS] Found seller notes: "${sellerNotes}"`);
+    } else {
+      console.warn('⚠️ [BLOCK-REQUESTS] Could not extract seller notes from note');
     }
 
   } catch (error: any) {
