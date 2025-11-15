@@ -14,8 +14,15 @@ const fs = require('fs').promises;
 const pino = require('pino');
 
 const ocrService = require('./ocr');
-const classifierService = require('./classifier');
+// Load correct classifier based on USE_OLLAMA env variable
+const USE_OLLAMA = process.env.USE_OLLAMA === 'true';
+const classifierService = USE_OLLAMA
+  ? require('./classifier-ollama')
+  : require('./classifier');
 const queueManager = require('./queue');
+
+// Log which classifier is being used
+console.log(`🤖 AI Classifier: ${USE_OLLAMA ? 'Ollama Llama 3.2 3B (Local)' : 'Cloud API'}`);
 
 // Initialize logger
 const logger = pino({
@@ -101,8 +108,15 @@ app.get('/api/v1/health', async (req, res) => {
     // Check Redis connection
     const redisOk = await queueManager.healthCheck();
 
-    // Check disk space
+    // Check Ollama status (if using local AI)
+    const ollamaStatus = USE_OLLAMA ? await checkOllamaStatus() : 'disabled';
+
+    // Check disk space and memory
     const storageInfo = await getStorageInfo();
+    const memoryInfo = getMemoryInfo();
+
+    // Get queue metrics
+    const metrics = await queueManager.getMetrics();
 
     const status = tesseractOk && redisOk ? 'healthy' : 'degraded';
 
@@ -113,9 +127,15 @@ app.get('/api/v1/health', async (req, res) => {
       services: {
         tesseract: tesseractOk ? 'ok' : 'error',
         redis: redisOk ? 'ok' : 'error',
-        kimiK2: process.env.KIMI_K2_API_KEY ? 'configured' : 'missing'
+        ollama: ollamaStatus
       },
       storage: storageInfo,
+      memory: memoryInfo,
+      metrics: {
+        processed: metrics.completed,
+        failed: metrics.failed,
+        pending: metrics.pending
+      },
       uptime: process.uptime()
     });
   } catch (error) {
@@ -196,8 +216,8 @@ app.post('/api/v1/ocr/analyze', upload.single('file'), async (req, res) => {
 
     logger.info(`OCR completed: ${ocrResult.text.length} chars extracted in ${ocrResult.duration}ms`);
 
-    // Step 2: Classification - Classify document with Kimi K2
-    logger.info('Step 2: Classifying document...');
+    // Step 2: AI Classification - Classify document type
+    logger.info('Step 2: Classifying document with AI...');
     const classification = await classifierService.classify(ocrResult.text);
 
     logger.info(`Classification: ${classification.type} (${classification.confidence}% confidence)`);
@@ -369,19 +389,71 @@ app.use((err, req, res, next) => {
 // HELPER FUNCTIONS
 // ============================================
 
+async function checkOllamaStatus() {
+  try {
+    const ollamaURL = process.env.OLLAMA_URL || 'http://localhost:11434';
+    const response = await fetch(`${ollamaURL}/api/tags`, {
+      signal: AbortSignal.timeout(3000) // 3s timeout
+    });
+
+    if (!response.ok) {
+      return 'error';
+    }
+
+    const data = await response.json();
+    const model = process.env.OLLAMA_MODEL || 'llama3.2:3b';
+    const hasModel = data.models?.some(m => m.name === model);
+
+    return hasModel ? 'ok' : 'model-missing';
+  } catch (error) {
+    return 'offline';
+  }
+}
+
+function getMemoryInfo() {
+  const totalMem = require('os').totalmem();
+  const freeMem = require('os').freemem();
+  const usedMem = totalMem - freeMem;
+
+  return {
+    total: Math.round(totalMem / 1024 / 1024), // MB
+    used: Math.round(usedMem / 1024 / 1024), // MB
+    free: Math.round(freeMem / 1024 / 1024), // MB
+    usagePercent: Math.round((usedMem / totalMem) * 100)
+  };
+}
+
 async function getStorageInfo() {
   try {
-    const storagePath = path.join(__dirname, '../storage');
-    const stats = await fs.stat(storagePath);
+    const { exec } = require('child_process');
+    const { promisify } = require('util');
+    const execAsync = promisify(exec);
 
-    // Simple size calculation (would need better implementation for actual disk space)
+    // Get disk space info using df command (Linux)
+    const { stdout } = await execAsync('df -BM / | tail -1');
+    const parts = stdout.trim().split(/\s+/);
+
+    // df output: Filesystem  1M-blocks  Used Available Use% Mounted
+    const total = parts[1]; // e.g., "30000M"
+    const used = parts[2];
+    const available = parts[3];
+    const usagePercent = parts[4]; // e.g., "45%"
+
     return {
-      path: storagePath,
-      available: 'N/A', // Would need disk-space package
-      used: 'N/A'
+      total,
+      used,
+      available,
+      usagePercent
     };
   } catch (error) {
-    return { error: error.message };
+    // Fallback if df command fails
+    return {
+      total: 'N/A',
+      used: 'N/A',
+      available: 'N/A',
+      usagePercent: 'N/A',
+      error: error.message
+    };
   }
 }
 
