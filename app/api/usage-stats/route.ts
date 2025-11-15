@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
       userName: stat.userName,
       userEmail: stat.userEmail,
       totalSessions: stat.totalSessions,
-      appsUsed: Array.from(stat.appsSet),
+      appsUsed: Array.from(stat.appsSet) as string[],
     })).sort((a, b) => b.totalSessions - a.totalSessions);
 
     const timeline = Array.from(timelineMap.entries())
