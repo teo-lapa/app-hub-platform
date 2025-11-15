@@ -22,27 +22,35 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Call aggregate API via fetch
-    console.log(`🔄 [COUNTS-API] Calling aggregate API...`);
+    // Call aggregate API and block-requests API in parallel
+    console.log(`🔄 [COUNTS-API] Calling aggregate and block-requests APIs...`);
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url.split('/api')[0];
     const aggregateUrl = `${baseUrl}/api/controllo-prezzi/aggregate`;
+    const blockRequestsUrl = `${baseUrl}/api/controllo-prezzi/block-requests`;
 
-    const aggregateResponse = await fetch(aggregateUrl, {
-      method: 'GET',
-      headers: {
-        cookie: cookieHeader || ''
-      },
-      cache: 'no-store'
-    });
+    const [aggregateResponse, blockRequestsResponse] = await Promise.all([
+      fetch(aggregateUrl, {
+        method: 'GET',
+        headers: { cookie: cookieHeader || '' },
+        cache: 'no-store'
+      }),
+      fetch(blockRequestsUrl, {
+        method: 'GET',
+        headers: { cookie: cookieHeader || '' },
+        cache: 'no-store'
+      })
+    ]);
 
     const aggregateData = await aggregateResponse.json();
+    const blockRequestsData = await blockRequestsResponse.json();
 
     if (!aggregateData.success) {
       throw new Error('Failed to fetch aggregate data');
     }
 
     const { stats } = aggregateData;
+    const blockRequestsCount = blockRequestsData.success ? blockRequestsData.requests.length : 0;
 
     // Map to expected format
     const counts = {
@@ -50,7 +58,7 @@ export async function GET(request: NextRequest) {
         below_critical: stats.sotto_pc || 0,
         critical_to_avg: stats.tra_pc_medio || 0,
         above_avg: stats.sopra_medio || 0,
-        blocked: stats.richieste_blocco || 0,
+        blocked: blockRequestsCount,
         all: stats.total_products || 0
       }
     };
