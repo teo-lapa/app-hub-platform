@@ -83,10 +83,23 @@ export async function POST(request: NextRequest) {
         const classifiedType = ocrResult.result?.type || 'other';
         const typeName = DOCUMENT_TYPE_NAMES[classifiedType] || 'ALTRO';
 
-        // Generate new name
+        // Extract supplier/customer name from OCR details
+        const details = ocrResult.result?.details || {};
+        const supplierName = details.supplier || details.customer || '';
+
+        // Clean supplier name (remove special chars, keep only alphanumeric + Italian accents)
+        const cleanSupplier = supplierName
+          .replace(/[^a-zA-Z0-9àèéìòù\s]/g, '')  // Remove special chars
+          .replace(/\s+/g, '')  // Remove all spaces
+          .substring(0, 30);  // Max 30 chars
+
+        // Generate new name with format: TIPO_FORNITORE_originalName.pdf
         const originalName = attachment.name;
         const nameWithoutExt = originalName.replace(/\.pdf$/i, '');
-        const newName = `${typeName}_${nameWithoutExt}.pdf`;
+
+        const newName = cleanSupplier
+          ? `${typeName}_${cleanSupplier}_${nameWithoutExt}.pdf`
+          : `${typeName}_${nameWithoutExt}.pdf`;  // Fallback if no supplier found
 
         // Rename in Odoo
         await callOdoo(cookies, 'ir.attachment', 'write', [
