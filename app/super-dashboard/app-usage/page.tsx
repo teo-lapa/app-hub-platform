@@ -222,11 +222,14 @@ export default function AppUsagePage() {
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Smartphone className="w-5 h-5 text-teal-400" />
                   Statistiche per App
+                  <span className="text-sm font-normal text-slate-400 ml-2">
+                    ({usageStats.appStats.length} app)
+                  </span>
                 </h2>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                 <table className="w-full">
-                  <thead className="bg-slate-900/50">
+                  <thead className="bg-slate-900/50 sticky top-0 z-10">
                     <tr>
                       <th className="text-left px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                         App
@@ -255,9 +258,9 @@ export default function AppUsagePage() {
                           transition={{ delay: index * 0.05 }}
                           className="hover:bg-slate-700/30 transition-colors"
                         >
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
+                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
                                 <Smartphone className="w-5 h-5 text-white" />
                               </div>
                               <div>
@@ -266,18 +269,18 @@ export default function AppUsagePage() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-6 py-3 text-right">
                             <div className="text-white font-semibold">{app.openCount}</div>
                           </td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-6 py-3 text-right">
                             <div className="text-white font-semibold">{app.uniqueUsers}</div>
                           </td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-6 py-3 text-right">
                             <div className="text-white font-semibold">
                               {formatDuration(app.totalDuration)}
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-6 py-3 text-right">
                             <div className="text-teal-400 font-semibold">
                               {formatDuration(app.avgDuration)}
                             </div>
@@ -307,11 +310,14 @@ export default function AppUsagePage() {
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Users className="w-5 h-5 text-purple-400" />
                   Statistiche per Utente
+                  <span className="text-sm font-normal text-slate-400 ml-2">
+                    ({usageStats.userStats.length} utent{usageStats.userStats.length === 1 ? 'e' : 'i'})
+                  </span>
                 </h2>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                 <table className="w-full">
-                  <thead className="bg-slate-900/50">
+                  <thead className="bg-slate-900/50 sticky top-0 z-10">
                     <tr>
                       <th className="text-left px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                         Utente
@@ -334,9 +340,9 @@ export default function AppUsagePage() {
                           transition={{ delay: index * 0.05 }}
                           className="hover:bg-slate-700/30 transition-colors"
                         >
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
                                 <span className="text-white font-bold text-sm">
                                   {user.userName.substring(0, 2).toUpperCase()}
                                 </span>
@@ -347,10 +353,10 @@ export default function AppUsagePage() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-6 py-3 text-right">
                             <div className="text-white font-semibold">{user.totalSessions}</div>
                           </td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-6 py-3 text-right">
                             <div className="text-purple-400 font-semibold">{user.appsUsed.length}</div>
                           </td>
                         </motion.tr>
