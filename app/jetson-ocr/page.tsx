@@ -135,8 +135,8 @@ export default function JetsonOCRPage() {
                   <span className="font-medium">{jetsonStatus.jetson.services?.redis || 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Kimi K2:</span>{' '}
-                  <span className="font-medium">{jetsonStatus.jetson.services?.kimiK2 || 'N/A'}</span>
+                  <span className="text-gray-500">Ollama AI:</span>{' '}
+                  <span className="font-medium">{jetsonStatus.jetson.services?.ollama || 'N/A'}</span>
                 </div>
               </div>
             )}
