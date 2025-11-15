@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent, BarChart, Building2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent, BarChart, Building2, Activity } from 'lucide-react';
 import Link from 'next/link';
 
 interface KPICardProps {
@@ -29,6 +29,7 @@ function KPICard({ title, value, change, changeType, icon, gradient, subtitle, i
       case 'Customers': return '/super-dashboard/customers';
       case 'Analisi Prodotti': return '/analisi-prodotto';
       case 'Banca': return '/import-movimenti-ubs';
+      case 'App Usage': return '/super-dashboard/app-usage';
       default: return '#';
     }
   };
@@ -316,6 +317,15 @@ export function KPISummarySection({ period }: KPISummarySectionProps) {
       icon: <Building2 className="w-6 h-6 text-white" />,
       gradient: 'from-cyan-500 to-blue-600',
       subtitle: 'Importa movimenti bancari da UBS',
+    },
+    {
+      title: 'App Usage',
+      value: 'Analytics',
+      change: '',
+      changeType: 'neutral' as const,
+      icon: <Activity className="w-6 h-6 text-white" />,
+      gradient: 'from-teal-500 to-cyan-600',
+      subtitle: 'Monitora utilizzo delle app e statistiche',
     },
   ];
 
