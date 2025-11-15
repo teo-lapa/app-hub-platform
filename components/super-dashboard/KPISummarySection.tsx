@@ -24,12 +24,10 @@ function KPICard({ title, value, change, changeType, icon, gradient, subtitle, i
   const getCardLink = () => {
     switch (title) {
       case 'Margini': return '/super-dashboard/margini';
-      case 'Revenue': return '/super-dashboard/revenue';
-      case 'Orders': return '/super-dashboard/orders';
-      case 'Customers': return '/super-dashboard/customers';
       case 'Analisi Prodotti': return '/analisi-prodotto';
       case 'Banca': return '/import-movimenti-ubs';
       case 'App Usage': return '/super-dashboard/app-usage';
+      // Revenue, Orders, Customers pages non ancora implementate
       default: return '#';
     }
   };

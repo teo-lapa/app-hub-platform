@@ -59,9 +59,17 @@ export async function GET(request: NextRequest) {
     const timelineMap = new Map<string, { openCount: number; usersSet: Set<string> }>();
 
     for (const date of dates) {
-      // Recupera tutte le chiavi per questa data
+      // Recupera tutte le chiavi per questa data usando SCAN invece di KEYS
       const pattern = `usage:${date}:*`;
-      const keys = await kv.keys(pattern);
+      const keys: string[] = [];
+
+      // Usa SCAN per recuperare tutte le chiavi (gestisce database grandi)
+      let cursor: string | number = 0;
+      do {
+        const result: [string | number, string[]] = await kv.scan(cursor, { match: pattern, count: 100 }) as any;
+        cursor = result[0];
+        keys.push(...result[1]);
+      } while (cursor !== 0 && cursor !== '0');
 
       if (keys.length > 0) {
         // Recupera eventi in batch (max 100 per volta per performance)
