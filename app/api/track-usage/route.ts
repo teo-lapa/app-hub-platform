@@ -7,7 +7,7 @@ import jwt from 'jsonwebtoken';
  * NON blocca l'apertura delle app - Fire and forget
  */
 
-export const runtime = 'edge'; // Edge runtime per performance ottimali
+export const dynamic = 'force-dynamic';
 
 interface UsageEvent {
   userId: string;
