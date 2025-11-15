@@ -34,11 +34,36 @@ export async function POST(request: NextRequest) {
 
     console.log(`📄 [CLASSIFY] Classificazione allegati per picking ${picking_id}`);
 
-    // Get all PDF attachments for this picking
+    // First, get the picking to find the purchase order
+    const pickings = await callOdoo(cookies, 'stock.picking', 'search_read', [
+      [['id', '=', picking_id]],
+      ['purchase_id', 'origin']
+    ]);
+
+    if (!pickings || pickings.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'Picking non trovato'
+      }, { status: 404 });
+    }
+
+    const picking = pickings[0];
+    const purchaseOrderId = picking.purchase_id?.[0]; // purchase_id is [id, "name"]
+
+    if (!purchaseOrderId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Nessun ordine d\'acquisto collegato a questo arrivo'
+      }, { status: 404 });
+    }
+
+    console.log(`📦 Picking ${picking_id} → Purchase Order ${purchaseOrderId}`);
+
+    // Get all PDF attachments for the purchase order
     const attachments = await callOdoo(cookies, 'ir.attachment', 'search_read', [
       [
-        ['res_model', '=', 'stock.picking'],
-        ['res_id', '=', picking_id],
+        ['res_model', '=', 'purchase.order'],
+        ['res_id', '=', purchaseOrderId],
         ['mimetype', '=', 'application/pdf']
       ],
       ['id', 'name', 'datas']
