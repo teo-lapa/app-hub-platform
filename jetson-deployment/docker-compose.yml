@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  ocr-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jetson-ocr-server
+    restart: unless-stopped
+
+    # GPU access (NVIDIA Jetson)
+    runtime: nvidia
+
+    ports:
+      - "3100:3100"
+
+    environment:
+      - NODE_ENV=production
+      - PORT=3100
+      - KIMI_K2_API_KEY=${KIMI_K2_API_KEY}
+      - ODOO_WEBHOOK_SECRET=${ODOO_WEBHOOK_SECRET}
+      - MAX_CONCURRENT_JOBS=4
+      - OCR_LANGUAGE=ita+eng
+      - LOG_LEVEL=info
+      - REDIS_URL=redis://redis:6379
+
+    volumes:
+      # Persistent storage
+      - ./storage/uploads:/app/storage/uploads
+      - ./storage/processed:/app/storage/processed
+      - ./storage/cache:/app/storage/cache
+      - ./logs:/app/logs
+      # Tesseract training data
+      - /usr/share/tesseract-ocr:/usr/share/tesseract-ocr:ro
+
+    depends_on:
+      - redis
+
+    networks:
+      - ocr-network
+
+    # Resource limits (Jetson Orin Nano has 8GB RAM)
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  # Redis for caching and job queue
+  redis:
+    image: redis:7-alpine
+    container_name: jetson-redis
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis-data:/data
+
+    networks:
+      - ocr-network
+
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+
+  # nginx reverse proxy (optional, for HTTPS)
+  nginx:
+    image: nginx:alpine
+    container_name: jetson-nginx
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+
+    depends_on:
+      - ocr-server
+
+    networks:
+      - ocr-network
+
+networks:
+  ocr-network:
+    driver: bridge
+
+volumes:
+  redis-data:
