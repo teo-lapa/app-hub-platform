@@ -77,11 +77,16 @@ export async function GET(request: NextRequest) {
     console.log(`🔍 [PRODUCTS-API] Fetching review statuses for ${productIds.length} products...`);
     const reviewMap = await service.batchFetchReviewStatuses(productIds, orderIds);
 
-    // 4. Enrich products with review status
+    // 4. Enrich products with review status and transform field names
     products = products.map((p: any) => {
       const review = reviewMap.get(`${p.productId}-${p.orderId}`);
       return {
         ...p,
+        // Transform field names to match frontend expectations
+        soldPrice: p.currentPriceUnit || 0,
+        criticalPrice: p.criticalPoint || 0,
+        discount: p.discount || 0,
+        // Add review status
         status: review?.status || 'pending',
         reviewedBy: review?.reviewed_by,
         reviewedAt: review?.reviewed_at,

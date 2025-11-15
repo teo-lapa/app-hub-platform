@@ -259,6 +259,7 @@ export async function GET(request: NextRequest) {
         productCode: product.default_code || '',
         quantity: line.product_uom_qty,
         currentPriceUnit: currentPrice,
+        discount: line.discount || 0,
         costPrice,
         avgSellingPrice,
         criticalPoint,
