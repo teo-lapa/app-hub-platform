@@ -21,6 +21,7 @@ export default function JetsonChat() {
     try {
       const res = await fetch('/api/jetson/ocr');
       const data = await res.json();
+      console.log('Jetson Status:', data);
       setJetsonStatus(data);
     } catch (err) {
       console.error('Failed to check Jetson status:', err);
