@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DollarSign, ArrowLeft, TrendingUp, TrendingDown, Lock, CheckCircle, SkipForward, X, Search, AlertCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -385,7 +385,7 @@ export default function ControlloPrezziPage() {
     const costPrice = product.costPrice;
     const criticalPrice = product.criticalPrice;
     const avgSellingPrice = product.avgSellingPrice;
-    const value = 'soldPrice' in product ? product.soldPrice : (product.proposedPrice || 0);
+    const value = 'soldPrice' in product ? (product.soldPrice || 0) : (product.proposedPrice || 0);
 
     const min = costPrice * 1.05; // +5% margine minimo
     const max = avgSellingPrice > 0 ? avgSellingPrice * 2.5 : costPrice * 4.2;
