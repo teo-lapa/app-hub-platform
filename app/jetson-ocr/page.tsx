@@ -72,10 +72,26 @@ export default function JetsonOCRPage() {
     formData.append('file', file);
 
     try {
-      const response = await fetch('/api/jetson/ocr', {
-        method: 'POST',
-        body: formData,
-      });
+      // Vercel ha limite 4.5 MB - se file è > 4 MB, upload diretto al Jetson
+      const fileSizeMB = file.size / (1024 * 1024);
+      const useDirectUpload = fileSizeMB > 4 && jetsonStatus?.tunnel?.url;
+
+      let response;
+
+      if (useDirectUpload) {
+        console.log(`📦 File grande (${fileSizeMB.toFixed(2)} MB) - upload diretto al Jetson`);
+        // Upload diretto al Jetson via Cloudflare Tunnel (supporta fino a 50 MB)
+        response = await fetch(`${jetsonStatus.tunnel.url}/api/v1/ocr/analyze`, {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        // Upload tramite API Vercel (per file piccoli)
+        response = await fetch('/api/jetson/ocr', {
+          method: 'POST',
+          body: formData,
+        });
+      }
 
       const data = await response.json();
 
