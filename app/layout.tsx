@@ -6,6 +6,7 @@ import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistr
 import { PWAInstaller } from '@/components/pwa/PWAInstaller';
 import { Toaster } from 'react-hot-toast';
 import { OfflineIndicator } from '@/components/maestro/OfflineIndicator';
+import { GlobalAppTracker } from '@/components/GlobalAppTracker';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -63,6 +64,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <>
+            <GlobalAppTracker />
             {children}
             <OfflineIndicator />
             <Toaster position="top-right" />
