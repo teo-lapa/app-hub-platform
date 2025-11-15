@@ -81,18 +81,33 @@ export async function GET(request: NextRequest) {
     products = products.map((p: any) => {
       const review = reviewMap.get(`${p.productId}-${p.orderId}`);
       return {
-        ...p,
-        // Transform field names to match frontend expectations
+        // Map to correct field names matching PriceCheckProduct interface
+        id: p.productId,
+        name: p.productName,
+        code: p.productCode || '',
         soldPrice: p.currentPriceUnit || 0,
         criticalPrice: p.criticalPoint || 0,
         discount: p.discount || 0,
-        // Add review status
+        costPrice: p.costPrice || 0,
+        avgSellingPrice: p.avgSellingPrice || 0,
+        listPrice: 0, // TODO: add from aggregate if available
+
+        orderId: p.orderId,
+        orderName: p.orderName,
+        orderDate: p.orderDate || '', // Use from order data
+        customerId: p.customerId,
+        customerName: p.customerName,
+        quantity: p.quantity || 0,
+        uom: '', // TODO: add from order line if needed
+
         status: review?.status || 'pending',
         reviewedBy: review?.reviewed_by,
         reviewedAt: review?.reviewed_at,
         blockedBy: review?.blocked_by,
         blockedAt: review?.blocked_at,
-        note: review?.note
+        note: review?.note,
+
+        priceCategory: p.category
       };
     });
 
