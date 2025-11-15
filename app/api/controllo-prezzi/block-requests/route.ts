@@ -141,10 +141,10 @@ async function calculateAveragePrice(
         fields: ['product_id', 'price_unit:avg'],
         groupby: ['product_id']
       }
-    );
+    ) as any[];
 
     if (avgPrices && avgPrices.length > 0) {
-      return avgPrices[0].price_unit || 0;
+      return (avgPrices[0] as any).price_unit || 0;
     }
 
     return 0;
@@ -208,7 +208,7 @@ export async function GET(request: NextRequest) {
         fields: ['id', 'summary', 'note', 'state', 'res_id', 'res_model', 'date_deadline', 'user_id'],
         order: 'date_deadline ASC'
       }
-    );
+    ) as any[];
 
     if (!activities || activities.length === 0) {
       console.log('ℹ️ [BLOCK-REQUESTS-API] No pending price block requests found');
@@ -248,7 +248,7 @@ export async function GET(request: NextRequest) {
         domain: [['id', 'in', orderIds]],
         fields: ['id', 'name', 'partner_id']
       }
-    );
+    ) as any[];
 
     const orderMap = new Map(orders.map((o: any) => [o.id, o]));
     console.log(`✅ [BLOCK-REQUESTS-API] Fetched ${orders.length} orders`);
@@ -265,7 +265,7 @@ export async function GET(request: NextRequest) {
         domain: [['order_id', 'in', orderIds]],
         fields: ['id', 'order_id', 'product_id', 'name', 'price_unit']
       }
-    );
+    ) as any[];
 
     // Group order lines by order_id
     const orderLinesMap = new Map<number, any[]>();
@@ -295,7 +295,7 @@ export async function GET(request: NextRequest) {
         ],
         fields: ['id', 'name', 'default_code', 'standard_price']
       }
-    );
+    ) as any[];
 
     const productMap = new Map(products.map((p: any) => [p.id, p]));
     console.log(`✅ [BLOCK-REQUESTS-API] Fetched ${products.length} products`);
@@ -321,7 +321,7 @@ export async function GET(request: NextRequest) {
         fields: ['product_id', 'price_unit:avg'],
         groupby: ['product_id']
       }
-    );
+    ) as any[];
 
     const avgPriceMap = new Map(
       avgPrices.map((item: any) => [item.product_id[0], item.price_unit || 0])
@@ -335,10 +335,11 @@ export async function GET(request: NextRequest) {
 
     for (const activity of saleOrderActivities) {
       try {
+        const activityData = activity as any;
         // Get order
-        const order = orderMap.get(activity.res_id);
+        const order = orderMap.get(activityData.res_id) as any;
         if (!order) {
-          console.warn(`⚠️ [BLOCK-REQUESTS-API] Order ${activity.res_id} not found for activity ${activity.id}`);
+          console.warn(`⚠️ [BLOCK-REQUESTS-API] Order ${activityData.res_id} not found for activity ${activityData.id}`);
           continue;
         }
 
@@ -351,17 +352,17 @@ export async function GET(request: NextRequest) {
 
         // For now, take the first line (you may want to refine this logic)
         // In a real scenario, you might need to identify which line the request is about
-        const line = lines[0];
+        const line = lines[0] as any;
 
         // Get product
-        const product = productMap.get(line.product_id[0]);
+        const product = productMap.get(line.product_id[0]) as any;
         if (!product) {
           console.warn(`⚠️ [BLOCK-REQUESTS-API] Product ${line.product_id[0]} not found`);
           continue;
         }
 
         // Parse activity note
-        const { proposedPrice, sellerNotes } = parseActivityNote(activity.note || '');
+        const { proposedPrice, sellerNotes } = parseActivityNote(activityData.note || '');
 
         // Get average selling price
         const avgSellingPrice = avgPriceMap.get(product.id) || 0;
@@ -374,14 +375,14 @@ export async function GET(request: NextRequest) {
           : 0;
 
         // Determine state
-        const state = determineActivityState(activity.date_deadline);
+        const state = determineActivityState(activityData.date_deadline);
 
         // Build request object
         const blockRequest: BlockRequest = {
-          activityId: activity.id,
+          activityId: activityData.id,
           state,
-          dueDate: activity.date_deadline,
-          assignedTo: activity.user_id ? activity.user_id[1] : 'Unassigned',
+          dueDate: activityData.date_deadline,
+          assignedTo: activityData.user_id ? activityData.user_id[1] : 'Unassigned',
 
           proposedPrice,
           sellerNotes,
@@ -401,10 +402,10 @@ export async function GET(request: NextRequest) {
         };
 
         requests.push(blockRequest);
-        console.log(`✅ [BLOCK-REQUESTS-API] Processed activity ${activity.id} - ${product.name}`);
+        console.log(`✅ [BLOCK-REQUESTS-API] Processed activity ${activityData.id} - ${product.name}`);
 
       } catch (activityError: any) {
-        console.error(`❌ [BLOCK-REQUESTS-API] Error processing activity ${activity.id}:`, activityError.message);
+        console.error(`❌ [BLOCK-REQUESTS-API] Error processing activity ${(activity as any).id}:`, activityError.message);
         // Continue processing other activities
         continue;
       }
