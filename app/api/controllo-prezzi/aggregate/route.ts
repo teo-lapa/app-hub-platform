@@ -26,6 +26,7 @@ interface ProductAnalysis {
   productCode: string;
   quantity: number;
   currentPriceUnit: number;
+  discount: number;
   costPrice: number;
   avgSellingPrice: number;
   criticalPoint: number; // costPrice * 1.4
