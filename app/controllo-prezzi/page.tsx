@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DollarSign, ArrowLeft, TrendingUp, TrendingDown, Lock, CheckCircle, SkipForward, X, Search } from 'lucide-react';
+import { DollarSign, ArrowLeft, TrendingUp, TrendingDown, Lock, CheckCircle, SkipForward, X, Search, AlertCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -10,6 +10,27 @@ import { PriceCheckProductCard } from '@/components/controllo-prezzi/PriceCheckP
 import { PriceCategoryFilterBar } from '@/components/controllo-prezzi/PriceCategoryFilterBar';
 import { PriceCheckProduct } from '@/lib/types/price-check';
 import toast from 'react-hot-toast';
+
+// Block Request interface (matches API response)
+interface BlockRequest {
+  activityId: number;
+  state: 'overdue' | 'today' | 'planned';
+  dueDate: string;
+  assignedTo: string;
+  proposedPrice: number;
+  sellerNotes: string;
+  productId: number;
+  productName: string;
+  productCode: string;
+  orderId: number;
+  orderName: string;
+  customerId: number;
+  customerName: string;
+  costPrice: number;
+  avgSellingPrice: number;
+  criticalPrice: number;
+  marginPercent: number;
+}
 
 export default function ControlloPrezziPage() {
   const router = useRouter();
@@ -32,6 +53,11 @@ export default function ControlloPrezziPage() {
   const [products, setProducts] = useState<PriceCheckProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<PriceCheckProduct | null>(null);
 
+  // Block requests state
+  const [blockRequests, setBlockRequests] = useState<BlockRequest[]>([]);
+  const [loadingBlockRequests, setLoadingBlockRequests] = useState(false);
+  const [selectedBlockRequest, setSelectedBlockRequest] = useState<BlockRequest | null>(null);
+
   // Conteggi
   const [categoryCounts, setCategoryCounts] = useState({
     below_critical: 0,
@@ -44,6 +70,7 @@ export default function ControlloPrezziPage() {
   // Stati UI
   const [loading, setLoading] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showBlockRequestModal, setShowBlockRequestModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Carica conteggi per categoria
@@ -68,35 +95,62 @@ export default function ControlloPrezziPage() {
     loadCounts();
   }, []);
 
-  // Seleziona categoria e mostra prodotti
-  const handleSelectCategory = async (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all') => {
-    setSelectedCategory(category);
-    setCurrentView('products');
-    setLoading(true);
-
+  // Fetch block requests
+  const loadBlockRequests = async () => {
+    setLoadingBlockRequests(true);
     try {
-      const response = await fetch(`/api/controllo-prezzi/products?category=${category}&days=7`, {
+      const response = await fetch('/api/controllo-prezzi/block-requests', {
         credentials: 'include',
       });
 
       const data = await response.json();
       if (data.success) {
-        setProducts(data.products || []);
-        const categoryLabels = {
-          all: 'TUTTI I PREZZI',
-          below_critical: 'SOTTO PUNTO CRITICO',
-          critical_to_avg: 'TRA PC E MEDIO',
-          above_avg: 'SOPRA MEDIO',
-          blocked: 'RICHIESTE BLOCCO',
-        };
-        toast.success(`${categoryLabels[category]}: ${data.products?.length || 0} prodotti`);
+        setBlockRequests(data.requests || []);
+        toast.success(`RICHIESTE BLOCCO: ${data.requests?.length || 0} richieste`);
       } else {
-        toast.error(data.error || 'Errore caricamento prodotti');
+        toast.error(data.error || 'Errore caricamento richieste blocco');
       }
     } catch (error: any) {
       toast.error('Errore: ' + error.message);
     } finally {
-      setLoading(false);
+      setLoadingBlockRequests(false);
+    }
+  };
+
+  // Seleziona categoria e mostra prodotti/richieste
+  const handleSelectCategory = async (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all') => {
+    setSelectedCategory(category);
+    setCurrentView('products');
+
+    // If category is 'blocked', load block requests instead of products
+    if (category === 'blocked') {
+      await loadBlockRequests();
+    } else {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/controllo-prezzi/products?category=${category}&days=7`, {
+          credentials: 'include',
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          setProducts(data.products || []);
+          const categoryLabels = {
+            all: 'TUTTI I PREZZI',
+            below_critical: 'SOTTO PUNTO CRITICO',
+            critical_to_avg: 'TRA PC E MEDIO',
+            above_avg: 'SOPRA MEDIO',
+            blocked: 'RICHIESTE BLOCCO',
+          };
+          toast.success(`${categoryLabels[category]}: ${data.products?.length || 0} prodotti`);
+        } else {
+          toast.error(data.error || 'Errore caricamento prodotti');
+        }
+      } catch (error: any) {
+        toast.error('Errore: ' + error.message);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -112,10 +166,97 @@ export default function ControlloPrezziPage() {
     );
   });
 
+  // Block requests filtrati per ricerca
+  const filteredBlockRequests = blockRequests.filter(br => {
+    if (!searchQuery || searchQuery.length < 3) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      br.productName.toLowerCase().includes(query) ||
+      br.productCode?.toLowerCase().includes(query) ||
+      br.customerName?.toLowerCase().includes(query) ||
+      br.orderName?.toLowerCase().includes(query) ||
+      br.sellerNotes?.toLowerCase().includes(query)
+    );
+  });
+
   // Click su card prodotto
   const handleProductClick = (product: PriceCheckProduct) => {
     setSelectedProduct(product);
     setShowProductModal(true);
+  };
+
+  // Click su card richiesta blocco
+  const handleBlockRequestClick = (blockRequest: BlockRequest) => {
+    setSelectedBlockRequest(blockRequest);
+    setShowBlockRequestModal(true);
+  };
+
+  // Approve block request
+  const handleApproveBlock = async () => {
+    if (!selectedBlockRequest) return;
+
+    try {
+      const response = await fetch('/api/controllo-prezzi/approve-block', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          activityId: selectedBlockRequest.activityId,
+          feedback: 'Prezzo bloccato approvato dal supervisore',
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Richiesta blocco prezzo approvata');
+        setShowBlockRequestModal(false);
+        // Rimuovi dalla lista
+        setBlockRequests(prev => prev.filter(br => br.activityId !== selectedBlockRequest.activityId));
+        // Reload counts
+        loadCounts();
+      } else {
+        toast.error(data.error || 'Errore durante approvazione');
+      }
+    } catch (error: any) {
+      toast.error('Errore: ' + error.message);
+    }
+  };
+
+  // Reject block request
+  const handleRejectBlock = async () => {
+    if (!selectedBlockRequest) return;
+
+    const reason = prompt('Inserisci il motivo del rifiuto:');
+    if (!reason || reason.trim() === '') {
+      toast.error('Motivo del rifiuto obbligatorio');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/controllo-prezzi/reject-block', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          activityId: selectedBlockRequest.activityId,
+          reason: reason.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Richiesta blocco prezzo rifiutata');
+        setShowBlockRequestModal(false);
+        // Rimuovi dalla lista
+        setBlockRequests(prev => prev.filter(br => br.activityId !== selectedBlockRequest.activityId));
+        // Reload counts
+        loadCounts();
+      } else {
+        toast.error(data.error || 'Errore durante rifiuto');
+      }
+    } catch (error: any) {
+      toast.error('Errore: ' + error.message);
+    }
   };
 
   // Marca come controllato
@@ -136,7 +277,7 @@ export default function ControlloPrezziPage() {
 
       const data = await response.json();
       if (data.success) {
-        toast.success('✅ Prezzo marcato come controllato');
+        toast.success('Prezzo marcato come controllato');
         setShowProductModal(false);
         // Rimuovi da lista
         setProducts(prev => prev.filter(p => p.id !== selectedProduct.id || p.orderId !== selectedProduct.orderId));
@@ -167,7 +308,7 @@ export default function ControlloPrezziPage() {
 
       const data = await response.json();
       if (data.success) {
-        toast.success('🔒 Prezzo bloccato - non apparirà più nella lista');
+        toast.success('Prezzo bloccato - non apparira piu nella lista');
         setShowProductModal(false);
         // Rimuovi da lista
         setProducts(prev => prev.filter(p => p.id !== selectedProduct.id || p.orderId !== selectedProduct.orderId));
@@ -196,7 +337,7 @@ export default function ControlloPrezziPage() {
 
       const data = await response.json();
       if (data.success) {
-        toast.success('⏳ Prezzo riportato a "Da Controllare"');
+        toast.success('Prezzo riportato a "Da Controllare"');
         setShowProductModal(false);
         // Aggiorna stato in lista
         setProducts(prev =>
@@ -220,6 +361,7 @@ export default function ControlloPrezziPage() {
       setCurrentView('filter');
       setSelectedCategory(null);
       setProducts([]);
+      setBlockRequests([]);
       loadCounts(); // Ricarica conteggi aggiornati
     } else {
       router.back();
@@ -239,17 +381,50 @@ export default function ControlloPrezziPage() {
   };
 
   // Calcola posizione marker su slider
-  const getPriceSliderPosition = (product: PriceCheckProduct): { value: number; critical: number; avg: number; min: number; max: number } => {
-    const min = product.costPrice * 1.05; // +5% margine minimo
-    const max = product.avgSellingPrice > 0 ? product.avgSellingPrice * 2.5 : product.costPrice * 4.2;
+  const getPriceSliderPosition = (product: PriceCheckProduct | { soldPrice?: number; costPrice: number; criticalPrice: number; avgSellingPrice: number; proposedPrice?: number }): { value: number; critical: number; avg: number; min: number; max: number } => {
+    const costPrice = product.costPrice;
+    const criticalPrice = product.criticalPrice;
+    const avgSellingPrice = product.avgSellingPrice;
+    const value = 'soldPrice' in product ? (product.soldPrice || 0) : (product.proposedPrice || 0);
+
+    const min = costPrice * 1.05; // +5% margine minimo
+    const max = avgSellingPrice > 0 ? avgSellingPrice * 2.5 : costPrice * 4.2;
 
     return {
-      value: product.soldPrice,
-      critical: product.criticalPrice,
-      avg: product.avgSellingPrice,
+      value,
+      critical: criticalPrice,
+      avg: avgSellingPrice,
       min,
       max
     };
+  };
+
+  // Get state badge class for block requests
+  const getBlockRequestStateBadgeClass = (state: 'overdue' | 'today' | 'planned'): string => {
+    switch (state) {
+      case 'overdue':
+        return 'bg-red-500/20 text-red-400 border border-red-500';
+      case 'today':
+        return 'bg-orange-500/20 text-orange-400 border border-orange-500';
+      case 'planned':
+        return 'bg-blue-500/20 text-blue-400 border border-blue-500';
+      default:
+        return 'bg-slate-500/20 text-slate-400 border border-slate-500';
+    }
+  };
+
+  // Format state badge for block requests
+  const formatBlockRequestStateBadge = (state: 'overdue' | 'today' | 'planned'): string => {
+    switch (state) {
+      case 'overdue':
+        return 'SCADUTO';
+      case 'today':
+        return 'OGGI';
+      case 'planned':
+        return 'PIANIFICATO';
+      default:
+        return 'SCONOSCIUTO';
+    }
   };
 
   return (
@@ -270,7 +445,7 @@ export default function ControlloPrezziPage() {
           >
             <div className="text-center mb-8">
               <h1 className="text-3xl sm:text-4xl font-bold mb-2">
-                💰 Controllo Prezzi
+                Controllo Prezzi
               </h1>
               <p className="text-slate-400">
                 Monitora i prezzi di vendita rispetto al Punto Critico e alla Media
@@ -284,7 +459,7 @@ export default function ControlloPrezziPage() {
           </motion.div>
         )}
 
-        {/* Vista: Lista Prodotti */}
+        {/* Vista: Lista Prodotti o Richieste Blocco */}
         {currentView === 'products' && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -297,14 +472,18 @@ export default function ControlloPrezziPage() {
                 <div>
                   <h2 className="text-xl font-bold">{getCategoryLabel()}</h2>
                   <p className="text-sm text-slate-400">
-                    {filteredProducts.length} prodotti
+                    {selectedCategory === 'blocked'
+                      ? `${filteredBlockRequests.length} richieste`
+                      : `${filteredProducts.length} prodotti`}
                     {searchQuery.length >= 3 && ` • Ricerca: "${searchQuery}"`}
                   </p>
                 </div>
 
                 {/* Badge totale */}
                 <div className="px-4 py-2 bg-blue-500/20 rounded-full border border-blue-500">
-                  <span className="font-bold text-blue-400">{filteredProducts.length}</span>
+                  <span className="font-bold text-blue-400">
+                    {selectedCategory === 'blocked' ? filteredBlockRequests.length : filteredProducts.length}
+                  </span>
                 </div>
               </div>
 
@@ -330,35 +509,63 @@ export default function ControlloPrezziPage() {
                 </div>
                 {searchQuery.length > 0 && searchQuery.length < 3 && (
                   <p className="text-xs text-orange-400 mt-1 ml-1">
-                    ⚠️ Inserisci almeno 3 caratteri per cercare
+                    Inserisci almeno 3 caratteri per cercare
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Griglia prodotti */}
-            {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
-              </div>
-            ) : filteredProducts.length === 0 ? (
-              <div className="glass p-12 rounded-xl text-center">
-                <div className="text-6xl mb-4">📦</div>
-                <h3 className="text-xl font-bold mb-2">Nessun prodotto trovato</h3>
-                <p className="text-slate-400">
-                  Ottimo! Nessun prodotto in questa categoria
-                </p>
-              </div>
+            {/* Griglia prodotti o richieste blocco */}
+            {selectedCategory === 'blocked' ? (
+              // Block Requests Grid
+              loadingBlockRequests ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+                </div>
+              ) : filteredBlockRequests.length === 0 ? (
+                <div className="glass p-12 rounded-xl text-center">
+                  <div className="text-6xl mb-4">🔓</div>
+                  <h3 className="text-xl font-bold mb-2">Nessuna richiesta di blocco</h3>
+                  <p className="text-slate-400">
+                    Ottimo! Nessuna richiesta in attesa
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+                  {filteredBlockRequests.map((blockRequest) => (
+                    <BlockRequestCard
+                      key={blockRequest.activityId}
+                      blockRequest={blockRequest}
+                      onClick={() => handleBlockRequestClick(blockRequest)}
+                    />
+                  ))}
+                </div>
+              )
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
-                {filteredProducts.map((product) => (
-                  <PriceCheckProductCard
-                    key={`${product.id}-${product.orderId}`}
-                    product={product}
-                    onClick={() => handleProductClick(product)}
-                  />
-                ))}
-              </div>
+              // Products Grid
+              loading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="glass p-12 rounded-xl text-center">
+                  <div className="text-6xl mb-4">📦</div>
+                  <h3 className="text-xl font-bold mb-2">Nessun prodotto trovato</h3>
+                  <p className="text-slate-400">
+                    Ottimo! Nessun prodotto in questa categoria
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+                  {filteredProducts.map((product) => (
+                    <PriceCheckProductCard
+                      key={`${product.id}-${product.orderId}`}
+                      product={product}
+                      onClick={() => handleProductClick(product)}
+                    />
+                  ))}
+                </div>
+              )
             )}
           </motion.div>
         )}
@@ -585,6 +792,279 @@ export default function ControlloPrezziPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Modal Dettaglio Richiesta Blocco */}
+      <AnimatePresence>
+        {showBlockRequestModal && selectedBlockRequest && (
+          <motion.div
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowBlockRequestModal(false)}
+          >
+            <motion.div
+              className="glass-strong rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close button */}
+              <button
+                onClick={() => setShowBlockRequestModal(false)}
+                className="absolute top-4 right-4 min-w-[48px] min-h-[48px] rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20"
+              >
+                ✕
+              </button>
+
+              {/* Header con badge stato */}
+              <div className="text-center mb-6">
+                <div className={`inline-block text-xs font-bold px-4 py-2 rounded-full mb-3 ${getBlockRequestStateBadgeClass(selectedBlockRequest.state)}`}>
+                  {formatBlockRequestStateBadge(selectedBlockRequest.state)}
+                </div>
+                <h2 className="text-2xl font-bold mb-1">{selectedBlockRequest.productName}</h2>
+                <p className="text-slate-400">COD: {selectedBlockRequest.productCode}</p>
+              </div>
+
+              {/* Info card */}
+              <div className="glass p-4 rounded-lg space-y-3 mb-6">
+                {/* Prezzo proposto */}
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Prezzo Proposto:</span>
+                  <span className="font-bold text-2xl text-blue-400">
+                    CHF {selectedBlockRequest.proposedPrice.toFixed(2)}
+                  </span>
+                </div>
+
+                {/* Margine */}
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Margine:</span>
+                  <span className={`font-bold ${selectedBlockRequest.marginPercent < 40 ? 'text-red-400' : 'text-green-400'}`}>
+                    {selectedBlockRequest.marginPercent.toFixed(1)}%
+                  </span>
+                </div>
+
+                {/* Cliente e Ordine */}
+                <div className="pt-2 border-t border-slate-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-slate-400">Cliente:</span>
+                    <span className="font-semibold">{selectedBlockRequest.customerName}</span>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-slate-400">Ordine:</span>
+                    <span className="font-semibold">{selectedBlockRequest.orderName}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Scadenza:</span>
+                    <span className="font-semibold">{new Date(selectedBlockRequest.dueDate).toLocaleDateString('it-IT')}</span>
+                  </div>
+                </div>
+
+                {/* Note venditore */}
+                {selectedBlockRequest.sellerNotes && (
+                  <div className="pt-2 border-t border-slate-700">
+                    <span className="text-slate-400 text-sm">Note Venditore:</span>
+                    <p className="text-yellow-400 mt-1">{selectedBlockRequest.sellerNotes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Slider Prezzi */}
+              <div className="glass p-4 rounded-lg mb-6">
+                <h3 className="font-bold mb-3">Analisi Prezzi</h3>
+
+                {/* Prezzi di riferimento */}
+                <div className="grid grid-cols-3 gap-3 mb-4 text-xs">
+                  <div className="text-center">
+                    <div className="text-slate-400">Punto Critico</div>
+                    <div className="font-bold text-yellow-400">
+                      CHF {selectedBlockRequest.criticalPrice.toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-slate-400">Medio</div>
+                    <div className="font-bold text-blue-400">
+                      CHF {selectedBlockRequest.avgSellingPrice.toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-slate-400">Costo</div>
+                    <div className="font-bold text-red-400">
+                      CHF {selectedBlockRequest.costPrice.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Slider visuale */}
+                <div className="relative h-12 bg-slate-700/50 rounded-lg overflow-hidden">
+                  {(() => {
+                    const { value, critical, avg, min, max } = getPriceSliderPosition(selectedBlockRequest);
+                    const criticalPos = ((critical - min) / (max - min)) * 100;
+                    const avgPos = ((avg - min) / (max - min)) * 100;
+                    const valuePos = ((value - min) / (max - min)) * 100;
+
+                    return (
+                      <>
+                        {/* Gradiente di sfondo */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 to-blue-500 opacity-30" />
+
+                        {/* Marker Punto Critico */}
+                        <div
+                          className="absolute top-0 bottom-0 w-1 bg-yellow-500"
+                          style={{ left: `${criticalPos}%` }}
+                        >
+                          <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs text-yellow-400 font-bold whitespace-nowrap">
+                            PC
+                          </div>
+                        </div>
+
+                        {/* Marker Medio */}
+                        {avg > 0 && (
+                          <div
+                            className="absolute top-0 bottom-0 w-1 bg-blue-500"
+                            style={{ left: `${avgPos}%` }}
+                          >
+                            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs text-blue-400 font-bold whitespace-nowrap">
+                              Medio
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Marker Prezzo Proposto */}
+                        <div
+                          className="absolute top-0 bottom-0 w-2 bg-white shadow-lg"
+                          style={{ left: `${valuePos}%` }}
+                        >
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-2 border-blue-500" />
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Azioni */}
+              <div className="space-y-3">
+                <h3 className="font-bold text-lg mb-3">Azioni Disponibili</h3>
+
+                {/* Approva */}
+                <button
+                  onClick={handleApproveBlock}
+                  className="w-full glass-strong p-4 rounded-lg hover:bg-green-500/20 transition-all
+                           flex items-center justify-between group border-2 border-green-500/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <ThumbsUp className="w-5 h-5 text-green-400" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-green-400">Approva</div>
+                      <div className="text-xs text-slate-400">Approva la richiesta di blocco prezzo</div>
+                    </div>
+                  </div>
+                  <ArrowLeft className="w-5 h-5 rotate-180 text-green-400 group-hover:translate-x-1 transition-transform" />
+                </button>
+
+                {/* Rifiuta */}
+                <button
+                  onClick={handleRejectBlock}
+                  className="w-full glass-strong p-4 rounded-lg hover:bg-red-500/20 transition-all
+                           flex items-center justify-between group border-2 border-red-500/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                      <ThumbsDown className="w-5 h-5 text-red-400" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-red-400">Rifiuta</div>
+                      <div className="text-xs text-slate-400">Rifiuta la richiesta con motivazione</div>
+                    </div>
+                  </div>
+                  <ArrowLeft className="w-5 h-5 rotate-180 text-red-400 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+// Block Request Card Component
+function BlockRequestCard({ blockRequest, onClick }: { blockRequest: BlockRequest; onClick: () => void }) {
+  const getStateBadgeClass = (state: 'overdue' | 'today' | 'planned'): string => {
+    switch (state) {
+      case 'overdue':
+        return 'bg-red-500/20 text-red-400 border border-red-500';
+      case 'today':
+        return 'bg-orange-500/20 text-orange-400 border border-orange-500';
+      case 'planned':
+        return 'bg-blue-500/20 text-blue-400 border border-blue-500';
+      default:
+        return 'bg-slate-500/20 text-slate-400 border border-slate-500';
+    }
+  };
+
+  const formatStateBadge = (state: 'overdue' | 'today' | 'planned'): string => {
+    switch (state) {
+      case 'overdue':
+        return 'SCADUTO';
+      case 'today':
+        return 'OGGI';
+      case 'planned':
+        return 'PIANIFICATO';
+      default:
+        return 'SCONOSCIUTO';
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      className="glass p-3 rounded-xl cursor-pointer transition-all"
+      onClick={onClick}
+    >
+      {/* Icona prodotto */}
+      <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto mb-2 rounded-lg overflow-hidden bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-3xl">
+        🔒
+      </div>
+
+      {/* Nome prodotto */}
+      <h3 className="text-xs sm:text-sm font-semibold mt-2 line-clamp-2 text-center min-h-[2.5rem]">
+        {blockRequest.productName}
+      </h3>
+
+      {/* Badge stato */}
+      <div className={`text-xs font-bold mt-2 text-center px-2 py-1 rounded-full ${getStateBadgeClass(blockRequest.state)}`}>
+        {formatStateBadge(blockRequest.state)}
+      </div>
+
+      {/* Prezzo proposto */}
+      <div className="mt-2 text-center">
+        <div className="text-sm font-bold text-blue-400">
+          CHF {blockRequest.proposedPrice.toFixed(2)}
+        </div>
+        <div className={`text-xs ${blockRequest.marginPercent < 40 ? 'text-red-400' : 'text-green-400'}`}>
+          {blockRequest.marginPercent.toFixed(1)}% margine
+        </div>
+      </div>
+
+      {/* Cliente */}
+      <div className="text-xs text-slate-400 mt-2 text-center truncate">
+        {blockRequest.customerName}
+      </div>
+
+      {/* Note venditore se presenti */}
+      {blockRequest.sellerNotes && (
+        <div className="text-xs text-yellow-400 mt-1 text-center truncate">
+          {blockRequest.sellerNotes}
+        </div>
+      )}
+    </motion.div>
   );
 }
