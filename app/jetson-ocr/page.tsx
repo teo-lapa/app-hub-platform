@@ -30,13 +30,22 @@ export default function JetsonChat() {
   const handleChatSend = async () => {
     if (!chatInput.trim()) return;
 
+    // Check if Jetson is online
+    if (!jetsonStatus || jetsonStatus.tunnel?.status !== 'online') {
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '⚠️ Jetson non disponibile. Assicurati che il Jetson sia acceso e il tunnel Cloudflare sia attivo.'
+      }]);
+      return;
+    }
+
     const userMessage = chatInput.trim();
     setChatInput('');
     setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setChatLoading(true);
 
     try {
-      const response = await fetch(`${jetsonStatus?.tunnel?.url || ''}/api/v1/chat`, {
+      const response = await fetch(`${jetsonStatus.tunnel.url}/api/v1/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
