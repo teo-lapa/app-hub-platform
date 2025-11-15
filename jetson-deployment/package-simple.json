@@ -1,0 +1,25 @@
+{
+  "name": "jetson-ocr-server-simple",
+  "version": "1.0.0",
+  "description": "Simplified OCR server for ARM64/Jetson",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4",
+    "multer": "^1.4.5-lts.1",
+    "bull": "^4.12.0",
+    "ioredis": "^5.3.2",
+    "pino": "^8.17.2",
+    "pino-pretty": "^10.3.1",
+    "dotenv": "^16.3.1",
+    "joi": "^17.11.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
