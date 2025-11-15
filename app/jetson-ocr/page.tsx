@@ -42,7 +42,7 @@ interface ChatMessage {
 
 export default function JetsonAIHub() {
   const [activeTab, setActiveTab] = useState<Tab>('chat');
-  const [jetsonStatus, setJetsonStatus] = useState<any>(null);
+  const [jetsonStatus, setJetsonStatus] = useState<any>(null); // Jetson status check
 
   // Chat State
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
