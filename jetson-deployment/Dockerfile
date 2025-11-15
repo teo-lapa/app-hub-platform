@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y \
     && cd /usr/share/tesseract-ocr/4.00/tessdata \
     && wget -q https://github.com/tesseract-ocr/tessdata/raw/main/ita.traineddata \
     && wget -q https://github.com/tesseract-ocr/tessdata/raw/main/eng.traineddata \
+    && wget -q https://github.com/tesseract-ocr/tessdata/raw/main/deu.traineddata \
     && ls -la *.traineddata \
     # Cleanup
     && apt-get clean \

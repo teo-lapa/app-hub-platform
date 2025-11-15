@@ -34,11 +34,12 @@ interface OCRResult {
 }
 
 export default function JetsonOCRPage() {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<OCRResult | null>(null);
+  const [results, setResults] = useState<OCRResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [jetsonStatus, setJetsonStatus] = useState<any>(null);
+  const [currentProcessing, setCurrentProcessing] = useState<number>(0);
 
   const checkJetsonStatus = async () => {
     try {
@@ -51,43 +52,73 @@ export default function JetsonOCRPage() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      setFiles(Array.from(e.target.files));
       setError(null);
-      setResult(null);
+      setResults([]);
     }
   };
 
   const handleUpload = async () => {
-    if (!file) {
-      setError('Seleziona un PDF prima di continuare');
+    if (files.length === 0) {
+      setError('Seleziona almeno un PDF prima di continuare');
       return;
     }
 
     setLoading(true);
     setError(null);
-    setResult(null);
+    setResults([]);
+    setCurrentProcessing(0);
 
-    const formData = new FormData();
-    formData.append('file', file);
+    const processedResults: OCRResult[] = [];
 
     try {
-      const response = await fetch('/api/jetson/ocr', {
-        method: 'POST',
-        body: formData,
-      });
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setCurrentProcessing(i + 1);
 
-      const data = await response.json();
+        console.log(`📄 Elaborazione ${i + 1}/${files.length}: ${file.name}`);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Errore durante l\'elaborazione');
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Vercel ha limite 4.5 MB - se file è > 4 MB, upload diretto al Jetson
+        const fileSizeMB = file.size / (1024 * 1024);
+        const useDirectUpload = fileSizeMB > 4 && jetsonStatus?.tunnel?.url;
+
+        let response;
+
+        if (useDirectUpload) {
+          console.log(`📦 File grande (${fileSizeMB.toFixed(2)} MB) - upload diretto al Jetson`);
+          // Upload diretto al Jetson via Cloudflare Tunnel (supporta fino a 50 MB)
+          response = await fetch(`${jetsonStatus.tunnel.url}/api/v1/ocr/analyze`, {
+            method: 'POST',
+            body: formData,
+          });
+        } else {
+          // Upload tramite API Vercel (per file piccoli)
+          response = await fetch('/api/jetson/ocr', {
+            method: 'POST',
+            body: formData,
+          });
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(`${file.name}: ${data.error || 'Errore durante l\'elaborazione'}`);
+        }
+
+        processedResults.push(data);
+        setResults([...processedResults]); // Aggiorna progressivamente i risultati
       }
 
-      setResult(data);
+      console.log(`✅ Elaborazione completata: ${processedResults.length}/${files.length} file`);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
+      setCurrentProcessing(0);
     }
   };
 
@@ -135,8 +166,8 @@ export default function JetsonOCRPage() {
                   <span className="font-medium">{jetsonStatus.jetson.services?.redis || 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Kimi K2:</span>{' '}
-                  <span className="font-medium">{jetsonStatus.jetson.services?.kimiK2 || 'N/A'}</span>
+                  <span className="text-gray-500">Ollama AI:</span>{' '}
+                  <span className="font-medium">{jetsonStatus.jetson.services?.ollama || 'N/A'}</span>
                 </div>
               </div>
             )}
@@ -152,21 +183,36 @@ export default function JetsonOCRPage() {
               onChange={handleFileChange}
               className="hidden"
               id="pdf-upload"
+              multiple
             />
             <label htmlFor="pdf-upload" className="cursor-pointer">
               <div className="text-6xl mb-4">📄</div>
               <p className="text-lg font-semibold text-gray-700 mb-2">
-                {file ? file.name : 'Clicca per selezionare un PDF'}
+                {files.length > 0 ? `${files.length} PDF selezionati` : 'Clicca per selezionare PDF (anche multipli)'}
               </p>
               <p className="text-sm text-gray-500">
-                {file ? `${(file.size / 1024).toFixed(2)} KB` : 'Supporto per fatture, ordini, ricevute, DDT, ecc.'}
+                {files.length > 0
+                  ? `${(files.reduce((sum, f) => sum + f.size, 0) / 1024).toFixed(2)} KB totali`
+                  : 'Supporto per fatture, ordini, ricevute, DDT, ecc.'}
               </p>
             </label>
           </div>
 
+          {/* Lista file selezionati */}
+          {files.length > 0 && (
+            <div className="mt-4 max-h-40 overflow-y-auto bg-gray-50 rounded-lg p-3">
+              {files.map((file, idx) => (
+                <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-200 last:border-b-0">
+                  <span className="text-sm text-gray-700 truncate flex-1">{file.name}</span>
+                  <span className="text-xs text-gray-500 ml-2">{(file.size / 1024).toFixed(2)} KB</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           <button
             onClick={handleUpload}
-            disabled={!file || loading}
+            disabled={files.length === 0 || loading}
             className="w-full mt-6 bg-gradient-to-r from-indigo-600 to-pink-600 text-white py-4 px-8 rounded-lg font-semibold text-lg hover:from-indigo-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
           >
             {loading ? (
@@ -175,10 +221,10 @@ export default function JetsonOCRPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Elaborazione in corso...
+                Elaborazione {currentProcessing}/{files.length}...
               </span>
             ) : (
-              '🚀 Analizza Documento'
+              `🚀 Analizza ${files.length > 1 ? `${files.length} Documenti` : 'Documento'}`
             )}
           </button>
         </div>
@@ -191,11 +237,14 @@ export default function JetsonOCRPage() {
         )}
 
         {/* Results */}
-        {result && (
-          <div className="bg-white rounded-xl shadow-lg p-8 space-y-6">
+        {results.length > 0 && results.map((result, resultIdx) => (
+          <div key={resultIdx} className="bg-white rounded-xl shadow-lg p-8 space-y-6 mb-6">
             {/* Document Type Badge */}
             <div className="flex items-center justify-between">
               <div>
+                <div className="text-xs text-gray-500 mb-1">
+                  Documento {resultIdx + 1}/{results.length}: {result.filename}
+                </div>
                 <div className="inline-block px-6 py-3 bg-gradient-to-r from-indigo-600 to-pink-600 text-white rounded-lg text-2xl font-bold">
                   {result.result.typeName}
                 </div>
@@ -309,7 +358,7 @@ export default function JetsonOCRPage() {
               </div>
             </div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

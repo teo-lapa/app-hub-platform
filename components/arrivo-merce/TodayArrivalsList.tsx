@@ -11,7 +11,8 @@ import {
   CheckCircle,
   AlertTriangle,
   Loader,
-  ChevronRight
+  ChevronRight,
+  Zap
 } from 'lucide-react';
 
 interface Arrival {
@@ -41,6 +42,7 @@ export default function TodayArrivalsList({ onSelectArrival }: TodayArrivalsList
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [classifying, setClassifying] = useState<number | null>(null);
 
   useEffect(() => {
     loadArrivals();
@@ -81,6 +83,46 @@ export default function TodayArrivalsList({ onSelectArrival }: TodayArrivalsList
 
     setSelectedId(arrival.id);
     onSelectArrival(arrival);
+  };
+
+  const handleClassifyDocuments = async (e: React.MouseEvent, arrivalId: number, arrivalName: string) => {
+    e.stopPropagation(); // Non triggerare onSelectArrival
+
+    const confirm = window.confirm(
+      `Vuoi classificare tutti i documenti PDF di ${arrivalName} con AI?\n\nQuesto rinominerà i file in base al tipo (FATTURA, ORDINE, DDT, etc.)`
+    );
+
+    if (!confirm) return;
+
+    setClassifying(arrivalId);
+
+    try {
+      const response = await fetch('/api/arrivo-merce/classify-attachments', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ picking_id: arrivalId })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante la classificazione');
+      }
+
+      alert(data.message || 'Documenti classificati con successo!');
+
+      // Ricarica gli arrivi per mostrare i nuovi nomi
+      loadArrivals();
+
+    } catch (error: any) {
+      console.error('Errore classificazione:', error);
+      alert(error.message || 'Errore durante la classificazione dei documenti');
+    } finally {
+      setClassifying(null);
+    }
   };
 
   // 🆕 Funzione per aprire link Odoo
@@ -263,11 +305,31 @@ export default function TodayArrivalsList({ onSelectArrival }: TodayArrivalsList
                   </div>
                 )}
 
-                {/* Allegati */}
+                {/* Allegati + Pulsante Classifica */}
                 {arrival.has_attachments ? (
-                  <div className="flex items-center gap-1 text-green-600">
-                    <CheckCircle size={14} />
-                    <span>{arrival.attachments_count} allegati 📎</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 text-green-600">
+                      <CheckCircle size={14} />
+                      <span>{arrival.attachments_count} allegati 📎</span>
+                    </div>
+                    <button
+                      onClick={(e) => handleClassifyDocuments(e, arrival.id, arrival.name)}
+                      disabled={classifying === arrival.id}
+                      className="flex items-center gap-1 px-2 py-1 bg-purple-600 text-white rounded text-xs font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      title="Classifica i documenti PDF con AI"
+                    >
+                      {classifying === arrival.id ? (
+                        <>
+                          <Loader size={12} className="animate-spin" />
+                          <span>Classificando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={12} />
+                          <span>Classifica</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 text-yellow-600">

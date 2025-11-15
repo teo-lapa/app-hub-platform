@@ -17,10 +17,14 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3100
+      # AI Classifier: Use Ollama (local) or Kimi K2 (cloud)
+      - USE_OLLAMA=true
+      - OLLAMA_URL=http://172.17.0.1:11434
+      - OLLAMA_MODEL=llama3.2:3b
       - KIMI_K2_API_KEY=${KIMI_K2_API_KEY}
       - ODOO_WEBHOOK_SECRET=${ODOO_WEBHOOK_SECRET}
       - MAX_CONCURRENT_JOBS=4
-      - OCR_LANGUAGE=ita+eng
+      - OCR_LANGUAGE=ita+eng+deu
       - LOG_LEVEL=info
       - REDIS_URL=redis://redis:6379
 
@@ -30,8 +34,6 @@ services:
       - ./storage/processed:/app/storage/processed
       - ./storage/cache:/app/storage/cache
       - ./logs:/app/logs
-      # Tesseract training data
-      - /usr/share/tesseract-ocr:/usr/share/tesseract-ocr:ro
 
     depends_on:
       - redis
