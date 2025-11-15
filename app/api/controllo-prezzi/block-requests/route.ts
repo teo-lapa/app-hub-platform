@@ -12,8 +12,8 @@ export const maxDuration = 60;
  *
  * Returns enriched data for each request including:
  * - Activity metadata (due date, assignee, status)
- * - Parsed data from HTML note (proposed price, seller notes)
- * - Live Odoo data (product, customer, order details)
+ * - Parsed data from HTML note (seller notes)
+ * - Live Odoo data (product, customer, order details, proposed price from order line)
  * - Calculated metrics (cost, avg price, margin, critical price)
  */
 
@@ -23,8 +23,10 @@ interface BlockRequest {
   dueDate: string;
   assignedTo: string;
 
-  // From parsing note
+  // From order line
   proposedPrice: number;
+
+  // From parsing note
   sellerNotes: string;
 
   // Live data from Odoo
@@ -51,41 +53,23 @@ interface BlockRequestsResponse {
 }
 
 /**
- * Parse HTML note to extract proposed price and seller notes
+ * Parse HTML note to extract seller notes only
  *
  * Expected format (from Odoo mail.activity note field):
  * ```
  * <p>...
- * - Prezzo Proposto: CHF 75.27
- * ...
  * 📝 Note del Venditore:
  * MI BLOCCHI PREZZO
  * ...
  * </p>
  * ```
  */
-function parseActivityNote(htmlNote: string): { proposedPrice: number; sellerNotes: string } {
+function parseActivityNote(htmlNote: string): { sellerNotes: string } {
   console.log('📝 [BLOCK-REQUESTS] Parsing HTML note...');
 
-  let proposedPrice = 0;
   let sellerNotes = '';
 
   try {
-    // Extract "Prezzo Proposto: CHF XXX.XX"
-    // The actual format in Odoo is plain text with "CHF " prefix before the price
-    // Example: "- Prezzo Proposto: CHF 75.27"
-    const pricePattern = /Prezzo\s+Proposto:\s*CHF\s+([0-9]+(?:[.,][0-9]{2})?)/;
-    const priceMatch = htmlNote.match(pricePattern);
-
-    if (priceMatch) {
-      const priceStr = priceMatch[1].replace(',', '.');
-      proposedPrice = parseFloat(priceStr);
-      console.log(`✅ [BLOCK-REQUESTS] Found proposed price: CHF ${proposedPrice}`);
-    } else {
-      console.warn('⚠️ [BLOCK-REQUESTS] Could not extract proposed price from note');
-      console.debug('[BLOCK-REQUESTS] Note content:', htmlNote.substring(0, 300));
-    }
-
     // Extract "Note del Venditore" - everything after the label until next section
     // Pattern: "Note del Venditore:" followed by newline and text until:
     //   - Double newline (next section)
@@ -105,7 +89,7 @@ function parseActivityNote(htmlNote: string): { proposedPrice: number; sellerNot
     console.error('❌ [BLOCK-REQUESTS] Error parsing note:', error.message);
   }
 
-  return { proposedPrice, sellerNotes };
+  return { sellerNotes };
 }
 
 /**
@@ -355,8 +339,11 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Parse activity note
-        const { proposedPrice, sellerNotes } = parseActivityNote(activityData.note || '');
+        // Parse activity note for seller notes only
+        const { sellerNotes } = parseActivityNote(activityData.note || '');
+
+        // Get proposed price from order line price_unit
+        const proposedPrice = line.price_unit || 0;
 
         // Get average selling price
         const avgSellingPrice = avgPriceMap.get(product.id) || 0;
