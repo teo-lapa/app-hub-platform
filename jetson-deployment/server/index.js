@@ -22,7 +22,7 @@ const classifierService = USE_OLLAMA
 const queueManager = require('./queue');
 
 // Log which classifier is being used
-console.log(`🤖 AI Classifier: ${USE_OLLAMA ? 'Ollama (Local)' : 'Kimi K2 (Cloud)'}`);
+console.log(`🤖 AI Classifier: ${USE_OLLAMA ? 'Ollama Llama 3.2 3B (Local)' : 'Cloud API'}`);
 
 // Initialize logger
 const logger = pino({
@@ -216,8 +216,8 @@ app.post('/api/v1/ocr/analyze', upload.single('file'), async (req, res) => {
 
     logger.info(`OCR completed: ${ocrResult.text.length} chars extracted in ${ocrResult.duration}ms`);
 
-    // Step 2: Classification - Classify document with Kimi K2
-    logger.info('Step 2: Classifying document...');
+    // Step 2: AI Classification - Classify document type
+    logger.info('Step 2: Classifying document with AI...');
     const classification = await classifierService.classify(ocrResult.text);
 
     logger.info(`Classification: ${classification.type} (${classification.confidence}% confidence)`);
