@@ -36,6 +36,9 @@ export interface PriceCheckProduct {
 
   // Categoria prezzo
   priceCategory: 'below_critical' | 'critical_to_avg' | 'above_avg';
+
+  // Prezzo bloccato nel listino cliente
+  isLocked: boolean; // true = prezzo fisso nel listino cliente (da NON mostrare in dashboard)
 }
 
 export interface PriceCategory {

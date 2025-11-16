@@ -107,13 +107,14 @@ export async function GET(request: NextRequest) {
         blockedAt: review?.blocked_at,
         note: review?.note,
 
-        priceCategory: p.category
+        priceCategory: p.category,
+        isLocked: p.isLocked || false
       };
     });
 
     console.log(`✅ [PRODUCTS-API] Enriched products with review data`);
 
-    // 5. Filter by category
+    // 5. Filter by category and exclude locked prices and reviewed products
     if (category !== 'all') {
       const categoryMap: Record<string, string> = {
         'below_critical': 'sotto_pc',
@@ -125,24 +126,29 @@ export async function GET(request: NextRequest) {
         // Special case: filter by status
         products = products.filter((p: any) => p.status === 'blocked');
       } else if (categoryMap[category]) {
+        // Filter by category AND exclude:
+        // 1. Locked prices (prezzi fissi nel listino cliente)
+        // 2. Already reviewed products (già controllati)
         products = products.filter((p: any) =>
-          p.category === categoryMap[category]
+          p.priceCategory === categoryMap[category] &&
+          !p.isLocked &&
+          p.status !== 'reviewed'
         );
       }
 
-      console.log(`🎯 [PRODUCTS-API] Filtered to ${products.length} products (category: ${category})`);
+      console.log(`🎯 [PRODUCTS-API] Filtered to ${products.length} products (category: ${category}, excluding locked and reviewed)`);
     }
 
     // 6. Calculate summary
     const summary = {
       total: products.length,
       totalRevenue: products.reduce((sum: number, p: any) =>
-        sum + (p.currentPriceUnit * p.quantity), 0
+        sum + (p.soldPrice * p.quantity), 0
       ),
       byCategory: {
-        below_critical: products.filter((p: any) => p.category === 'sotto_pc').length,
-        critical_to_avg: products.filter((p: any) => p.category === 'tra_pc_medio').length,
-        above_avg: products.filter((p: any) => p.category === 'sopra_medio').length
+        below_critical: products.filter((p: any) => p.priceCategory === 'sotto_pc').length,
+        critical_to_avg: products.filter((p: any) => p.priceCategory === 'tra_pc_medio').length,
+        above_avg: products.filter((p: any) => p.priceCategory === 'sopra_medio').length
       },
       byStatus: {
         pending: products.filter((p: any) => p.status === 'pending').length,
