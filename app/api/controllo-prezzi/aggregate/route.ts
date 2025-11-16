@@ -61,8 +61,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // STEP 1: Fetch ALL orders in draft/sent (SINGLE QUERY)
-    console.log('🔍 [AGGREGATE-PRICES-API] Fetching orders...');
+    // STEP 1: Fetch ALL confirmed/delivered orders (SINGLE QUERY)
+    console.log('🔍 [AGGREGATE-PRICES-API] Fetching confirmed orders...');
     const orders = await callOdoo(
       cookies,
       'sale.order',
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
       {
         domain: [
           ['company_id', '=', 1],
-          ['state', 'in', ['draft', 'sent']]
+          ['state', 'in', ['sale', 'done']]  // Solo ordini confermati/consegnati
         ],
         fields: ['id', 'name', 'partner_id', 'pricelist_id', 'date_order'],
         order: 'date_order DESC'
