@@ -128,7 +128,7 @@ export default function ControlloPrezziPage() {
     } else {
       setLoading(true);
       try {
-        const response = await fetch(`/api/controllo-prezzi/products?category=${category}&days=7`, {
+        const response = await fetch(`/api/controllo-prezzi/products?category=${category}&days=28`, {
           credentials: 'include',
         });
 
@@ -165,6 +165,99 @@ export default function ControlloPrezziPage() {
       p.orderName?.toLowerCase().includes(query)
     );
   });
+
+  // Raggruppa prodotti per settimana e giorno
+  const groupProductsByWeekAndDay = (products: PriceCheckProduct[]) => {
+    const today = new Date();
+    const weeks: {
+      weekNumber: number;
+      weekLabel: string;
+      days: {
+        date: string;
+        dayLabel: string;
+        products: PriceCheckProduct[];
+      }[];
+    }[] = [];
+
+    // Raggruppa per data
+    const productsByDate = new Map<string, PriceCheckProduct[]>();
+
+    products.forEach(p => {
+      const date = p.orderDate || today.toISOString().split('T')[0];
+      if (!productsByDate.has(date)) {
+        productsByDate.set(date, []);
+      }
+      productsByDate.get(date)!.push(p);
+    });
+
+    // Crea settimane (ultime 4)
+    for (let weekOffset = 0; weekOffset < 4; weekOffset++) {
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - (today.getDay() || 7) + 1 - (weekOffset * 7)); // Lunedì
+
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6); // Domenica
+
+      const weekNumber = getWeekNumber(weekStart);
+      const weekLabel = `Settimana ${weekNumber} (${formatDate(weekStart, 'short')} - ${formatDate(weekEnd, 'short')})`;
+
+      const days: {
+        date: string;
+        dayLabel: string;
+        products: PriceCheckProduct[];
+      }[] = [];
+
+      // Crea giorni della settimana
+      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+        const currentDay = new Date(weekStart);
+        currentDay.setDate(weekStart.getDate() + dayOffset);
+
+        const dateStr = currentDay.toISOString().split('T')[0];
+        const dayProducts = productsByDate.get(dateStr) || [];
+
+        if (dayProducts.length > 0) {
+          days.push({
+            date: dateStr,
+            dayLabel: formatDate(currentDay, 'full'),
+            products: dayProducts
+          });
+        }
+      }
+
+      if (days.length > 0) {
+        weeks.push({
+          weekNumber,
+          weekLabel,
+          days
+        });
+      }
+    }
+
+    return weeks;
+  };
+
+  // Ottieni numero settimana
+  const getWeekNumber = (date: Date): number => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  };
+
+  // Formatta data
+  const formatDate = (date: Date, format: 'short' | 'full'): string => {
+    const days = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+    const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+
+    if (format === 'short') {
+      return `${date.getDate()} ${months[date.getMonth()]}`;
+    } else {
+      return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+    }
+  };
+
+  const groupedProducts = groupProductsByWeekAndDay(filteredProducts);
 
   // Block requests filtrati per ricerca
   const filteredBlockRequests = blockRequests.filter(br => {
@@ -555,7 +648,68 @@ export default function ControlloPrezziPage() {
                     Ottimo! Nessun prodotto in questa categoria
                   </p>
                 </div>
+              ) : selectedCategory === 'below_critical' ? (
+                // Vista raggruppata per settimana/giorno (solo per below_critical)
+                <div className="space-y-6">
+                  {groupedProducts.map((week, weekIndex) => (
+                    <motion.div
+                      key={`week-${week.weekNumber}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: weekIndex * 0.1 }}
+                      className="glass p-6 rounded-xl"
+                    >
+                      {/* Header Settimana */}
+                      <h3 className="text-2xl font-bold mb-4 flex items-center gap-3">
+                        <span className="text-blue-400">📅</span>
+                        {week.weekLabel}
+                        <span className="ml-auto text-sm font-normal text-slate-400">
+                          {week.days.reduce((sum, day) => sum + day.products.length, 0)} prodotti
+                        </span>
+                      </h3>
+
+                      {/* Giorni */}
+                      <div className="space-y-4">
+                        {week.days.map((day, dayIndex) => (
+                          <div key={`day-${day.date}`} className="glass-strong p-4 rounded-lg">
+                            {/* Header Giorno */}
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="text-lg font-semibold text-slate-200">
+                                {day.dayLabel}
+                              </h4>
+                              <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-sm font-bold">
+                                {day.products.length} {day.products.length === 1 ? 'prodotto' : 'prodotti'}
+                              </span>
+                            </div>
+
+                            {/* Griglia prodotti del giorno */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+                              {day.products.map((product) => (
+                                <PriceCheckProductCard
+                                  key={`${product.id}-${product.orderId}`}
+                                  product={product}
+                                  onClick={() => handleProductClick(product)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {groupedProducts.length === 0 && (
+                    <div className="glass p-12 rounded-xl text-center">
+                      <div className="text-6xl mb-4">✅</div>
+                      <h3 className="text-xl font-bold mb-2">Nessun prodotto sotto punto critico</h3>
+                      <p className="text-slate-400">
+                        Ottimo! Nessun prodotto nelle ultime 4 settimane
+                      </p>
+                    </div>
+                  )}
+                </div>
               ) : (
+                // Vista normale griglia (altre categorie)
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
                   {filteredProducts.map((product) => (
                     <PriceCheckProductCard
