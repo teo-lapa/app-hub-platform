@@ -78,7 +78,8 @@ export async function GET(request: NextRequest) {
         domain: [
           ['company_id', '=', 1],
           ['state', 'in', ['sale', 'done']],  // Solo ordini confermati/consegnati
-          ['commitment_date', '>=', dateFromStr]  // Consegna negli ultimi 28 giorni
+          ['commitment_date', '>=', dateFromStr],  // Consegna negli ultimi 28 giorni
+          ['picking_ids', '!=', false]  // DEVE avere consegne (esclude preventivi confermati)
         ],
         fields: ['id', 'name', 'partner_id', 'pricelist_id', 'date_order', 'commitment_date'],
         order: 'commitment_date DESC'
