@@ -194,13 +194,26 @@ export default function ControlloPrezziPage() {
       productsByDate.get(date)!.push(p);
     });
 
-    // Crea settimane (ultime 4)
-    for (let weekOffset = 0; weekOffset < 4; weekOffset++) {
+    // Trova data minima e massima dai prodotti (invece di assumere 4 settimane)
+    const allDates = Array.from(productsByDate.keys()).sort();
+    if (allDates.length === 0) return weeks;
+
+    const minDate = new Date(allDates[0]);
+    const maxDate = new Date(allDates[allDates.length - 1]);
+
+    // Calcola quante settimane servono per coprire tutte le date
+    const weeksDiff = Math.ceil((maxDate.getTime() - minDate.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+
+    // Crea settimane dinamicamente basate sulle date effettive
+    for (let weekOffset = 0; weekOffset < Math.max(weeksDiff, 4); weekOffset++) {
       const weekStart = new Date(today);
       weekStart.setDate(today.getDate() - (today.getDay() || 7) + 1 - (weekOffset * 7)); // Lunedì
 
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6); // Domenica
+
+      // Salta settimane future
+      if (weekStart > today) continue;
 
       const weekNumber = getWeekNumber(weekStart);
       const weekLabel = `Settimana ${weekNumber} (${formatDate(weekStart, 'short')} - ${formatDate(weekEnd, 'short')})`;
