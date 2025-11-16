@@ -105,6 +105,12 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   const [urgentCount, setUrgentCount] = useState(0);
   const [offerCount, setOfferCount] = useState(0);
 
+  // Below Critical Price explanation modal state
+  const [showBelowPCModal, setShowBelowPCModal] = useState(false);
+  const [belowPCProducts, setBelowPCProducts] = useState<Array<{ lineId: number; productName: string; newPrice: number; pc: number }>>([]);
+  const [belowPCExplanation, setBelowPCExplanation] = useState('');
+  const [savingWithExplanation, setSavingWithExplanation] = useState(false);
+
   // Check if order can be edited (draft and sent states allow editing)
   const canEditOrder = orderData?.state === 'draft' || orderData?.state === 'sent';
 
@@ -667,10 +673,41 @@ export default function ReviewPricesPage({ params }: RouteParams) {
   };
 
   // Save all changes (quantities and prices)
-  const handleSavePrices = async () => {
+  const handleSavePrices = async (skipPCCheck = false) => {
     if (editedLines.size === 0 && quantityValues.size === 0) {
       setError('Nessuna modifica da salvare');
       return;
+    }
+
+    // Check if any edited prices are below Critical Price (PC = cost * 1.4)
+    if (!skipPCCheck && editedLines.size > 0 && orderData) {
+      const productsBelowPC: Array<{ lineId: number; productName: string; newPrice: number; pc: number }> = [];
+
+      for (const [lineId, values] of editedLines.entries()) {
+        const line = orderData.lines.find(l => l.id === lineId);
+        if (line) {
+          const pc = line.costPrice * 1.4; // Punto Critico
+          const newPrice = values.priceUnit;
+
+          // Check if user MODIFIED the price and it's now below PC
+          // (If it was already below PC, don't ask for explanation)
+          if (newPrice < pc && newPrice !== line.currentPriceUnit) {
+            productsBelowPC.push({
+              lineId: line.id,
+              productName: line.productName,
+              newPrice: newPrice,
+              pc: pc
+            });
+          }
+        }
+      }
+
+      // If there are products below PC, show explanation modal
+      if (productsBelowPC.length > 0) {
+        setBelowPCProducts(productsBelowPC);
+        setShowBelowPCModal(true);
+        return; // Don't save yet, wait for explanation
+      }
     }
 
     try {
@@ -746,6 +783,52 @@ export default function ReviewPricesPage({ params }: RouteParams) {
       setError(err.message || 'Errore nel salvataggio modifiche');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Save prices with explanation for below PC products
+  const handleSavePricesWithExplanation = async () => {
+    if (!belowPCExplanation.trim()) {
+      setError('Devi fornire una spiegazione per i prezzi sotto il Punto Critico');
+      return;
+    }
+
+    try {
+      setSavingWithExplanation(true);
+      setError(null);
+
+      // 1. Save explanation as message in order
+      const messageResponse = await fetch('/api/catalogo-venditori/add-order-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: orderId,
+          message: `⚠️ PREZZI SOTTO PUNTO CRITICO\n\nProdotti:\n${belowPCProducts.map(p => `- ${p.productName}: CHF ${p.newPrice.toFixed(2)} (PC: CHF ${p.pc.toFixed(2)})`).join('\n')}\n\nSpiegazione:\n${belowPCExplanation.trim()}`,
+          messageType: 'comment'
+        })
+      });
+
+      const messageData = await messageResponse.json();
+
+      if (!messageData.success) {
+        throw new Error(messageData.error || 'Errore nel salvataggio della spiegazione');
+      }
+
+      console.log('✅ Below PC explanation saved as order message');
+
+      // 2. Close modal
+      setShowBelowPCModal(false);
+      setBelowPCExplanation('');
+      setBelowPCProducts([]);
+
+      // 3. Now save prices with skipPCCheck=true
+      await handleSavePrices(true);
+
+    } catch (err: any) {
+      console.error('❌ Error saving with explanation:', err);
+      setError(err.message || 'Errore nel salvataggio con spiegazione');
+    } finally {
+      setSavingWithExplanation(false);
     }
   };
 
@@ -1847,6 +1930,118 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                   <>
                     <X className="h-4 w-4 sm:h-5 sm:w-5" />
                     Conferma Annullamento
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Below Critical Price Explanation Modal */}
+      {showBelowPCModal && (
+        <div
+          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
+          onClick={() => {
+            setShowBelowPCModal(false);
+            setBelowPCExplanation('');
+            setBelowPCProducts([]);
+          }}
+        >
+          <div
+            className="bg-slate-800 rounded-lg p-3 sm:p-6 max-w-xl w-full border border-yellow-500/30 shadow-2xl my-auto max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start gap-1.5 sm:gap-3 mb-3 sm:mb-4">
+              <div className="bg-yellow-500/20 p-1.5 sm:p-2.5 rounded-lg border border-yellow-500/30">
+                <AlertCircle className="h-4 w-4 sm:h-6 sm:w-6 text-yellow-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm sm:text-xl font-bold text-white">
+                  ⚠️ Prezzi Sotto Punto Critico
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1">
+                  È richiesta una spiegazione
+                </p>
+              </div>
+            </div>
+
+            {/* Warning Message */}
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 sm:p-4 mb-4">
+              <p className="text-xs sm:text-sm text-slate-200 font-semibold mb-2">
+                I seguenti prodotti hanno prezzi sotto il Punto Critico (Costo + 40%):
+              </p>
+              <div className="space-y-1.5">
+                {belowPCProducts.map((product, index) => (
+                  <div key={index} className="bg-slate-700/50 rounded p-2">
+                    <p className="text-xs sm:text-sm text-white font-medium">
+                      {product.productName}
+                    </p>
+                    <div className="flex items-center gap-4 mt-1">
+                      <span className="text-[10px] sm:text-xs text-red-400">
+                        Nuovo: CHF {product.newPrice.toFixed(2)}
+                      </span>
+                      <span className="text-[10px] sm:text-xs text-yellow-400">
+                        PC: CHF {product.pc.toFixed(2)}
+                      </span>
+                      <span className="text-[10px] sm:text-xs text-slate-400">
+                        Scostamento: -{((1 - product.newPrice / product.pc) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Explanation Input */}
+            <div className="mb-4">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-300 mb-2">
+                Spiega il motivo dei prezzi sotto il Punto Critico <span className="text-red-400">*</span>
+              </label>
+              <textarea
+                value={belowPCExplanation}
+                onChange={(e) => setBelowPCExplanation(e.target.value)}
+                placeholder="Es: Cliente importante con contratto pluriennale, promozione speciale, smaltimento prodotto, ecc..."
+                className="w-full min-h-[140px] sm:min-h-[120px] px-3 py-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20 outline-none transition-all resize-none text-sm touch-manipulation"
+                required
+                style={{
+                  fontSize: '16px',
+                  lineHeight: '1.5',
+                }}
+              />
+              <p className="text-[10px] sm:text-xs text-slate-400 mt-2">
+                Questa spiegazione verrà salvata come messaggio nell'ordine per tracciabilità.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 sm:gap-3">
+              <button
+                onClick={() => {
+                  setShowBelowPCModal(false);
+                  setBelowPCExplanation('');
+                  setBelowPCProducts([]);
+                }}
+                className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors min-h-[48px] text-sm sm:text-base"
+                disabled={savingWithExplanation}
+              >
+                Annulla
+              </button>
+              <button
+                onClick={handleSavePricesWithExplanation}
+                disabled={savingWithExplanation || !belowPCExplanation.trim()}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-yellow-600 hover:bg-yellow-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors min-h-[48px] text-sm sm:text-base"
+              >
+                {savingWithExplanation ? (
+                  <>
+                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                    Salvataggio...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                    Salva con Spiegazione
                   </>
                 )}
               </button>
