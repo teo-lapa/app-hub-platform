@@ -132,7 +132,7 @@ export default function ControlloPrezziPage() {
     } else {
       setLoading(true);
       try {
-        const response = await fetch(`/api/controllo-prezzi/products?category=${category}&days=28`, {
+        const response = await fetch(`/api/controllo-prezzi/products?category=${category}&days=90`, {
           credentials: 'include',
         });
 
