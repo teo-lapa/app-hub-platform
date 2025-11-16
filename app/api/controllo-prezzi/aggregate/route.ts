@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
     console.log('📊 [AGGREGATE-PRICES-API] Calculating average prices with read_group...');
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    const dateFromStr = threeMonthsAgo.toISOString().split('T')[0];
+    const threeMonthsDateStr = threeMonthsAgo.toISOString().split('T')[0];
 
     const avgPrices = await callOdoo(
       cookies,
@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
         domain: [
           ['product_id', 'in', productIds],
           ['state', 'in', ['sale', 'done']],
-          ['create_date', '>=', dateFromStr]
+          ['create_date', '>=', threeMonthsDateStr]
         ],
         fields: ['product_id', 'price_unit:avg'],
         groupby: ['product_id']
