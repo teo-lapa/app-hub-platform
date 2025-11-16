@@ -34,6 +34,16 @@ function formatOrderDate(dateStr: string): string {
 export function PriceCheckProductCard({ product, onClick }: PriceCheckProductCardProps) {
   const shortName = extractShortName(product.name);
 
+  // Costruisci URL ordine Odoo
+  const odooBaseUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+  const orderUrl = `${odooBaseUrl}/web#id=${product.orderId}&model=sale.order&view_type=form`;
+
+  // Handler click: apri ordine Odoo in nuova tab
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.open(orderUrl, '_blank');
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -41,7 +51,7 @@ export function PriceCheckProductCard({ product, onClick }: PriceCheckProductCar
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       className="glass p-3 rounded-xl cursor-pointer transition-all"
-      onClick={onClick}
+      onClick={handleClick}
     >
       {/* Nome prodotto (senza immagine, solo nome breve) */}
       <h3 className="text-xs sm:text-sm font-semibold mt-2 line-clamp-3 text-center min-h-[3rem]">
@@ -68,6 +78,11 @@ export function PriceCheckProductCard({ product, onClick }: PriceCheckProductCar
       {/* Cliente */}
       <div className="text-xs text-slate-400 mt-2 text-center truncate">
         👤 {product.customerName}
+      </div>
+
+      {/* Numero ordine (cliccabile) */}
+      <div className="text-xs text-blue-400 mt-1 text-center hover:text-blue-300 transition-colors">
+        🔗 {product.orderName}
       </div>
 
       {/* Data creazione ordine */}
