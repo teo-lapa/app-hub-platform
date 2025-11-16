@@ -34,15 +34,37 @@ function formatOrderDate(dateStr: string): string {
 export function PriceCheckProductCard({ product, onClick }: PriceCheckProductCardProps) {
   const shortName = extractShortName(product.name);
 
+  // Calcola grado di criticità basato su margine
+  const calculateCriticality = () => {
+    const margin = ((product.soldPrice - product.costPrice) / product.costPrice) * 100;
+
+    if (margin < 30) {
+      return { level: 'CRITICO', color: 'bg-red-500/80 text-white border-red-500', icon: '🔥', emoji: '🔴' };
+    } else if (margin < 40) {
+      return { level: 'ALTO', color: 'bg-orange-500/80 text-white border-orange-500', icon: '⚠️', emoji: '🟠' };
+    } else if (margin < 50) {
+      return { level: 'MEDIO', color: 'bg-yellow-500/80 text-gray-900 border-yellow-500', icon: '⚡', emoji: '🟡' };
+    } else {
+      return { level: 'OK', color: 'bg-green-500/80 text-white border-green-500', icon: '✓', emoji: '🟢' };
+    }
+  };
+
+  const criticality = calculateCriticality();
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      className="glass p-3 rounded-xl cursor-pointer transition-all"
+      className="glass p-3 rounded-xl cursor-pointer transition-all relative"
       onClick={onClick}
     >
+      {/* Badge Criticità in alto a destra */}
+      <div className={`absolute -top-2 -right-2 px-2 py-1 rounded-full text-xs font-bold border-2 ${criticality.color} shadow-lg z-10`}>
+        {criticality.icon} {criticality.level}
+      </div>
+
       {/* Nome prodotto (senza immagine, solo nome breve) */}
       <h3 className="text-xs sm:text-sm font-semibold mt-2 line-clamp-3 text-center min-h-[3rem]">
         {shortName}
