@@ -32,8 +32,13 @@ export async function GET(request: NextRequest) {
     // 1. Call aggregate API via fetch to get all products
     console.log(`🔄 [PRODUCTS-API] Calling aggregate API...`);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url.split('/api')[0];
+    // Fix per Vercel: usa VERCEL_URL se disponibile, altrimenti costruisci da request.url
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    const host = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_APP_URL || request.headers.get('host') || 'localhost:3000';
+    const baseUrl = host.startsWith('http') ? host : `${protocol}://${host}`;
     const aggregateUrl = `${baseUrl}/api/controllo-prezzi/aggregate`;
+
+    console.log(`🔗 [PRODUCTS-API] Aggregate URL: ${aggregateUrl}`);
 
     const aggregateResponse = await fetch(aggregateUrl, {
       method: 'GET',
@@ -43,14 +48,23 @@ export async function GET(request: NextRequest) {
       cache: 'no-store'
     });
 
+    if (!aggregateResponse.ok) {
+      console.error(`❌ [PRODUCTS-API] Aggregate API failed: ${aggregateResponse.status}`);
+      const errorText = await aggregateResponse.text();
+      console.error(`❌ [PRODUCTS-API] Error response: ${errorText.substring(0, 200)}`);
+      throw new Error(`Aggregate API returned ${aggregateResponse.status}`);
+    }
+
     const aggregateData = await aggregateResponse.json();
 
     if (!aggregateData.success) {
+      console.error(`❌ [PRODUCTS-API] Aggregate data not successful:`, aggregateData);
       throw new Error('Failed to fetch aggregate data');
     }
 
     let products = aggregateData.products;
     console.log(`✅ [PRODUCTS-API] Got ${products.length} products from aggregate`);
+    console.log(`📊 [PRODUCTS-API] Sample product orderDate:`, products[0]?.orderDate);
 
     // 2. Filter by days (order date)
     if (days > 0) {
