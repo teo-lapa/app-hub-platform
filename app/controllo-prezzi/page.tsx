@@ -393,13 +393,16 @@ export default function ControlloPrezziPage() {
         credentials: 'include',
         body: JSON.stringify({
           activityId: selectedBlockRequest.activityId,
+          productId: selectedBlockRequest.productId,
+          orderId: selectedBlockRequest.orderId,
+          proposedPrice: selectedBlockRequest.proposedPrice,
           feedback: 'Prezzo bloccato approvato dal supervisore',
         }),
       });
 
       const data = await response.json();
       if (data.success) {
-        toast.success('Richiesta blocco prezzo approvata');
+        toast.success('Richiesta blocco prezzo approvata e prezzo fisso creato nel listino');
         setShowBlockRequestModal(false);
         // Rimuovi dalla lista
         setBlockRequests(prev => prev.filter(br => br.activityId !== selectedBlockRequest.activityId));

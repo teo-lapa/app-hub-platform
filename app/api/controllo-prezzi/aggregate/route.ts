@@ -61,13 +61,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // STEP 1: Fetch confirmed/delivered orders with delivery in last 28 days (SINGLE QUERY)
+    // STEP 1: Fetch confirmed/delivered orders with delivery in last 90 days (SINGLE QUERY)
     console.log('🔍 [AGGREGATE-PRICES-API] Fetching confirmed orders with recent delivery...');
 
-    // Calcola data 28 giorni fa
-    const twentyEightDaysAgo = new Date();
-    twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
-    const dateFromStr = twentyEightDaysAgo.toISOString().split('T')[0];
+    // Calcola data 90 giorni fa (3 mesi)
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const dateFromStr = ninetyDaysAgo.toISOString().split('T')[0];
 
     const orders = await callOdoo(
       cookies,
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
         domain: [
           ['company_id', '=', 1],
           ['state', 'in', ['sale', 'done']],  // Solo ordini confermati/consegnati
-          ['commitment_date', '>=', dateFromStr],  // Consegna negli ultimi 28 giorni
+          ['commitment_date', '>=', dateFromStr],  // Consegna negli ultimi 90 giorni (3 mesi)
           ['picking_ids', '!=', false]  // DEVE avere consegne (esclude preventivi confermati)
         ],
         fields: ['id', 'name', 'partner_id', 'pricelist_id', 'date_order', 'commitment_date'],
