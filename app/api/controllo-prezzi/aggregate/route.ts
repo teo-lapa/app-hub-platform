@@ -18,7 +18,7 @@ export const maxDuration = 60; // Reduced from 120s due to optimization
 interface ProductAnalysis {
   orderId: number;
   orderName: string;
-  orderDate: string; // YYYY-MM-DD format
+  orderDate: string; // YYYY-MM-DD format (data consegna / commitment_date)
   customerId: number;
   customerName: string;
   lineId: number;
@@ -73,8 +73,8 @@ export async function GET(request: NextRequest) {
           ['company_id', '=', 1],
           ['state', 'in', ['sale', 'done']]  // Solo ordini confermati/consegnati
         ],
-        fields: ['id', 'name', 'partner_id', 'pricelist_id', 'date_order'],
-        order: 'date_order DESC'
+        fields: ['id', 'name', 'partner_id', 'pricelist_id', 'date_order', 'commitment_date'],
+        order: 'commitment_date DESC'
       }
     );
 
@@ -253,7 +253,7 @@ export async function GET(request: NextRequest) {
       allProducts.push({
         orderId: order.id,
         orderName: order.name,
-        orderDate: order.date_order || '',
+        orderDate: order.commitment_date || order.date_order || '', // Usa data consegna, altrimenti data creazione
         customerId: order.partner_id[0],
         customerName: order.partner_id[1],
         lineId: line.id,
