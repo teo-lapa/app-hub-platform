@@ -240,11 +240,7 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
                         Cod: {product.default_code}
                       </div>
                     )}
-                    {product.list_price && (
-                      <div className="text-sm text-emerald-400 font-semibold" style={{ fontSize: '14px', lineHeight: '1.5' }}>
-                        CHF {product.list_price.toFixed(2)}
-                      </div>
-                    )}
+                    {/* Prezzo rimosso - gestito separatamente */}
                   </div>
                   {/* Giacenza e Unità di Misura */}
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
@@ -313,11 +309,7 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
               <div className="font-semibold text-white" style={{ fontSize: '16px', lineHeight: '1.5' }}>
                 {selectedProduct.name}
               </div>
-              {selectedProduct.list_price && (
-                <div className="text-sm text-emerald-400" style={{ fontSize: '14px', lineHeight: '1.5' }}>
-                  CHF {selectedProduct.list_price.toFixed(2)}
-                </div>
-              )}
+              {/* Prezzo rimosso - gestito separatamente */}
             </div>
           </div>
 
