@@ -44,18 +44,25 @@ interface SalesTimelineData {
 }
 
 interface SalesOrdersTimelineSectionProps {
-  period: string;
-  groupBy: 'day' | 'week' | 'month' | 'team';
+  groupBy?: 'day' | 'week' | 'month' | 'team';
 }
 
 type SortField = 'salesperson' | 'orderCount' | 'totalValue' | 'avgOrderValue' | 'conversionRate';
 type SortDirection = 'asc' | 'desc';
 
-export function SalesOrdersTimelineSection({ period, groupBy }: SalesOrdersTimelineSectionProps) {
+const groupByLabels = {
+  day: 'Giorno',
+  week: 'Settimana',
+  month: 'Mese',
+  team: 'Team',
+};
+
+export function SalesOrdersTimelineSection({ groupBy = 'week' }: SalesOrdersTimelineSectionProps) {
   const [data, setData] = useState<SalesTimelineData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'timeline' | 'team'>('timeline');
+  const [selectedPeriod, setSelectedPeriod] = useState('week');
   const [selectedGroupBy, setSelectedGroupBy] = useState(groupBy);
   const [sortField, setSortField] = useState<SortField>('totalValue');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -67,7 +74,7 @@ export function SalesOrdersTimelineSection({ period, groupBy }: SalesOrdersTimel
         setError(null);
 
         const response = await fetch(
-          `/api/super-dashboard/sales-timeline?period=${period}&groupBy=${selectedGroupBy}`
+          `/api/super-dashboard/sales-timeline?period=${selectedPeriod}&groupBy=${selectedGroupBy}`
         );
 
         if (!response.ok) {
@@ -90,7 +97,7 @@ export function SalesOrdersTimelineSection({ period, groupBy }: SalesOrdersTimel
     }
 
     fetchData();
-  }, [period, selectedGroupBy]);
+  }, [selectedPeriod, selectedGroupBy]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -130,11 +137,47 @@ export function SalesOrdersTimelineSection({ period, groupBy }: SalesOrdersTimel
         className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 shadow-xl"
       >
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-blue-400" />
-            Timeline Ordini Vendita
-            <span className="text-sm font-normal text-slate-400 ml-2">• Caricamento...</span>
-          </h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+              <Calendar className="w-6 h-6 text-blue-400" />
+              Timeline Ordini Vendita
+              <span className="text-sm font-normal text-slate-400 ml-2">• Caricamento...</span>
+            </h2>
+
+            <div className="flex items-center gap-4">
+              {/* Period Dropdown */}
+              <div className="flex items-center gap-2">
+                <label className="text-slate-400 text-sm">Periodo:</label>
+                <select
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value)}
+                  className="bg-slate-900/50 text-white border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="today">Oggi</option>
+                  <option value="week">Questa Settimana</option>
+                  <option value="month">Questo Mese</option>
+                  <option value="quarter">Questo Trimestre</option>
+                  <option value="year">Quest'Anno</option>
+                </select>
+              </div>
+
+              {/* Group By Dropdown */}
+              <div className="flex items-center gap-2">
+                <label className="text-slate-400 text-sm">Raggruppa per:</label>
+                <select
+                  value={selectedGroupBy}
+                  onChange={(e) => setSelectedGroupBy(e.target.value as any)}
+                  className="bg-slate-900/50 text-white border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Object.entries(groupByLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Loading Skeletons */}
@@ -165,10 +208,46 @@ export function SalesOrdersTimelineSection({ period, groupBy }: SalesOrdersTimel
         className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 shadow-xl"
       >
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-blue-400" />
-            Timeline Ordini Vendita
-          </h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+              <Calendar className="w-6 h-6 text-blue-400" />
+              Timeline Ordini Vendita
+            </h2>
+
+            <div className="flex items-center gap-4">
+              {/* Period Dropdown */}
+              <div className="flex items-center gap-2">
+                <label className="text-slate-400 text-sm">Periodo:</label>
+                <select
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value)}
+                  className="bg-slate-900/50 text-white border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="today">Oggi</option>
+                  <option value="week">Questa Settimana</option>
+                  <option value="month">Questo Mese</option>
+                  <option value="quarter">Questo Trimestre</option>
+                  <option value="year">Quest'Anno</option>
+                </select>
+              </div>
+
+              {/* Group By Dropdown */}
+              <div className="flex items-center gap-2">
+                <label className="text-slate-400 text-sm">Raggruppa per:</label>
+                <select
+                  value={selectedGroupBy}
+                  onChange={(e) => setSelectedGroupBy(e.target.value as any)}
+                  className="bg-slate-900/50 text-white border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Object.entries(groupByLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="bg-red-900/20 border border-red-500/50 rounded-xl p-6">
           <div className="flex items-center gap-3 text-red-400">
@@ -182,13 +261,6 @@ export function SalesOrdersTimelineSection({ period, groupBy }: SalesOrdersTimel
       </motion.section>
     );
   }
-
-  const groupByLabels = {
-    day: 'Giorno',
-    week: 'Settimana',
-    month: 'Mese',
-    team: 'Team',
-  };
 
   return (
     <motion.section
@@ -205,20 +277,38 @@ export function SalesOrdersTimelineSection({ period, groupBy }: SalesOrdersTimel
             Timeline Ordini Vendita
           </h2>
 
-          {/* Group By Dropdown */}
-          <div className="flex items-center gap-2">
-            <label className="text-slate-400 text-sm">Raggruppa per:</label>
-            <select
-              value={selectedGroupBy}
-              onChange={(e) => setSelectedGroupBy(e.target.value as any)}
-              className="bg-slate-900/50 text-white border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {Object.entries(groupByLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+          <div className="flex items-center gap-4">
+            {/* Period Dropdown */}
+            <div className="flex items-center gap-2">
+              <label className="text-slate-400 text-sm">Periodo:</label>
+              <select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="bg-slate-900/50 text-white border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="today">Oggi</option>
+                <option value="week">Questa Settimana</option>
+                <option value="month">Questo Mese</option>
+                <option value="quarter">Questo Trimestre</option>
+                <option value="year">Quest'Anno</option>
+              </select>
+            </div>
+
+            {/* Group By Dropdown */}
+            <div className="flex items-center gap-2">
+              <label className="text-slate-400 text-sm">Raggruppa per:</label>
+              <select
+                value={selectedGroupBy}
+                onChange={(e) => setSelectedGroupBy(e.target.value as any)}
+                className="bg-slate-900/50 text-white border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {Object.entries(groupByLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
         <p className="text-slate-400 text-sm">

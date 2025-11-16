@@ -13,6 +13,7 @@ import { SalesOrdersTimelineSection } from './SalesOrdersTimelineSection';
 /**
  * Example 1: Basic Usage
  * Simple implementation with fixed props
+ * Note: The component now manages its own period internally via dropdown
  */
 export function BasicExample() {
   return (
@@ -20,7 +21,6 @@ export function BasicExample() {
       <h1 className="text-3xl font-bold text-white mb-6">Sales Timeline Dashboard</h1>
 
       <SalesOrdersTimelineSection
-        period="month"
         groupBy="week"
       />
     </div>
@@ -28,20 +28,11 @@ export function BasicExample() {
 }
 
 /**
- * Example 2: With Period Selector
- * Allow users to change the time period dynamically
+ * Example 2: Simple Dashboard Layout
+ * Note: The component now manages its own period internally
  */
 export function WithPeriodSelector() {
-  const [period, setPeriod] = useState<string>('month');
   const [groupBy, setGroupBy] = useState<'day' | 'week' | 'month' | 'team'>('week');
-
-  const periodLabels: Record<string, string> = {
-    today: 'Oggi',
-    week: 'Questa Settimana',
-    month: 'Questo Mese',
-    quarter: 'Questo Trimestre',
-    year: 'Quest\'Anno',
-  };
 
   return (
     <div className="min-h-screen bg-slate-900 p-6">
@@ -50,33 +41,13 @@ export function WithPeriodSelector() {
         <h1 className="text-3xl font-bold text-white mb-4">
           Analisi Timeline Vendite
         </h1>
-
-        {/* Period Selector */}
-        <div className="flex gap-4 items-center">
-          <label className="text-slate-400 text-sm font-medium">
-            Periodo:
-          </label>
-          <div className="flex gap-2">
-            {Object.entries(periodLabels).map(([value, label]) => (
-              <button
-                key={value}
-                onClick={() => setPeriod(value)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  period === value
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <p className="text-slate-400 text-sm">
+          Il periodo può essere selezionato direttamente nel componente Timeline
+        </p>
       </div>
 
       {/* Timeline Component */}
       <SalesOrdersTimelineSection
-        period={period}
         groupBy={groupBy}
       />
     </div>
@@ -86,38 +57,28 @@ export function WithPeriodSelector() {
 /**
  * Example 3: Multiple Sections Dashboard
  * Combine with other dashboard sections
+ * Note: Each section now manages its own period independently
  */
 export function DashboardExample() {
-  const [period, setPeriod] = useState<string>('month');
-
   return (
     <div className="min-h-screen bg-slate-900 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Global Period Selector */}
-        <div className="mb-8 flex items-center justify-between">
+        {/* Global Header */}
+        <div className="mb-8">
           <h1 className="text-3xl font-bold text-white">
             Super Dashboard
           </h1>
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            className="bg-slate-800 text-white border border-slate-700 rounded-lg px-4 py-2"
-          >
-            <option value="today">Oggi</option>
-            <option value="week">Questa Settimana</option>
-            <option value="month">Questo Mese</option>
-            <option value="quarter">Questo Trimestre</option>
-            <option value="year">Quest'Anno</option>
-          </select>
+          <p className="text-slate-400 text-sm mt-2">
+            Ogni sezione ha i propri filtri indipendenti
+          </p>
         </div>
 
         {/* Dashboard Sections */}
         <div className="space-y-6">
           {/* Add other dashboard sections here */}
-          {/* <KPISummarySection period={period} /> */}
+          {/* <KPISummarySection /> */}
 
           <SalesOrdersTimelineSection
-            period={period}
             groupBy="week"
           />
 
@@ -144,7 +105,6 @@ export function EmbeddedExample() {
       {/* Sales Timeline - Full Width */}
       <div className="lg:col-span-2">
         <SalesOrdersTimelineSection
-          period="month"
           groupBy="day"
         />
       </div>
@@ -161,46 +121,18 @@ export function EmbeddedExample() {
 /**
  * Example 5: Responsive Layout
  * Optimize for different screen sizes
+ * Note: The component's internal dropdown handles period selection
  */
 export function ResponsiveExample() {
-  const [period, setPeriod] = useState<string>('month');
-
   return (
     <div className="min-h-screen bg-slate-900">
-      {/* Mobile Header */}
-      <div className="lg:hidden bg-slate-800 p-4 sticky top-0 z-10">
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          className="w-full bg-slate-700 text-white border border-slate-600 rounded-lg px-3 py-2"
-        >
-          <option value="today">Oggi</option>
-          <option value="week">Settimana</option>
-          <option value="month">Mese</option>
-          <option value="quarter">Trimestre</option>
-          <option value="year">Anno</option>
-        </select>
-      </div>
-
-      {/* Desktop Header */}
-      <div className="hidden lg:block bg-slate-800 p-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-white">Timeline Vendite</h1>
-          <div className="flex gap-2">
-            {['today', 'week', 'month', 'quarter', 'year'].map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`px-4 py-2 rounded-lg text-sm ${
-                  period === p
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </button>
-            ))}
-          </div>
+      {/* Header */}
+      <div className="bg-slate-800 p-4 lg:p-6 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-xl lg:text-2xl font-bold text-white">Timeline Vendite</h1>
+          <p className="text-slate-400 text-sm mt-1">
+            Usa i filtri nel componente per selezionare periodo e raggruppamento
+          </p>
         </div>
       </div>
 
@@ -208,7 +140,6 @@ export function ResponsiveExample() {
       <div className="p-4 lg:p-6">
         <div className="max-w-7xl mx-auto">
           <SalesOrdersTimelineSection
-            period={period}
             groupBy="week"
           />
         </div>
@@ -231,7 +162,6 @@ export function CustomStyledExample() {
           </h1>
 
           <SalesOrdersTimelineSection
-            period="month"
             groupBy="week"
           />
         </div>

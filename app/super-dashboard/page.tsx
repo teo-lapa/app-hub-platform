@@ -142,7 +142,7 @@ export default function SuperDashboardPage() {
         <KPISummarySection period={selectedPeriod} />
 
         {/* Sales Orders Timeline - NEW SECTION */}
-        <SalesOrdersTimelineSection period={selectedPeriod} groupBy="week" />
+        <SalesOrdersTimelineSection groupBy="week" />
 
         {/* Row 1: Customer Health + Alerts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
