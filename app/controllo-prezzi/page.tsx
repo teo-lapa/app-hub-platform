@@ -1091,6 +1091,28 @@ export default function ControlloPrezziPage() {
                   </div>
                   <ArrowLeft className="w-5 h-5 rotate-180 text-yellow-400 group-hover:translate-x-1 transition-transform" />
                 </button>
+
+                {/* Info Ordine - Apri in Odoo */}
+                <button
+                  onClick={() => {
+                    const odooBaseUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+                    const orderUrl = `${odooBaseUrl}/web#id=${selectedProduct.orderId}&model=sale.order&view_type=form`;
+                    window.open(orderUrl, '_blank');
+                  }}
+                  className="w-full glass-strong p-4 rounded-lg hover:bg-blue-500/20 transition-all
+                           flex items-center justify-between group border-2 border-blue-500/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      🔗
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-blue-400">Info Ordine</div>
+                      <div className="text-xs text-slate-400">Apri ordine {selectedProduct.orderName} in Odoo</div>
+                    </div>
+                  </div>
+                  <ArrowLeft className="w-5 h-5 rotate-180 text-blue-400 group-hover:translate-x-1 transition-transform" />
+                </button>
               </div>
             </motion.div>
           </motion.div>
