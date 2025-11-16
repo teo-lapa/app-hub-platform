@@ -165,10 +165,10 @@ export async function GET(request: NextRequest) {
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    // Sessioni recenti (ultime 20)
+    // Sessioni recenti (ultime 100)
     const recentSessions = allEvents
       .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, 20)
+      .slice(0, 100)
       .map(event => ({
         userId: event.userId,
         userName: event.userName,

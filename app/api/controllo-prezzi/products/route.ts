@@ -32,8 +32,13 @@ export async function GET(request: NextRequest) {
     // 1. Call aggregate API via fetch to get all products
     console.log(`🔄 [PRODUCTS-API] Calling aggregate API...`);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url.split('/api')[0];
+    // Fix per Vercel: usa VERCEL_URL se disponibile, altrimenti costruisci da request.url
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    const host = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_APP_URL || request.headers.get('host') || 'localhost:3000';
+    const baseUrl = host.startsWith('http') ? host : `${protocol}://${host}`;
     const aggregateUrl = `${baseUrl}/api/controllo-prezzi/aggregate`;
+
+    console.log(`🔗 [PRODUCTS-API] Aggregate URL: ${aggregateUrl}`);
 
     const aggregateResponse = await fetch(aggregateUrl, {
       method: 'GET',
@@ -43,14 +48,23 @@ export async function GET(request: NextRequest) {
       cache: 'no-store'
     });
 
+    if (!aggregateResponse.ok) {
+      console.error(`❌ [PRODUCTS-API] Aggregate API failed: ${aggregateResponse.status}`);
+      const errorText = await aggregateResponse.text();
+      console.error(`❌ [PRODUCTS-API] Error response: ${errorText.substring(0, 200)}`);
+      throw new Error(`Aggregate API returned ${aggregateResponse.status}`);
+    }
+
     const aggregateData = await aggregateResponse.json();
 
     if (!aggregateData.success) {
+      console.error(`❌ [PRODUCTS-API] Aggregate data not successful:`, aggregateData);
       throw new Error('Failed to fetch aggregate data');
     }
 
     let products = aggregateData.products;
     console.log(`✅ [PRODUCTS-API] Got ${products.length} products from aggregate`);
+    console.log(`📊 [PRODUCTS-API] Sample product orderDate:`, products[0]?.orderDate);
 
     // 2. Filter by days (order date)
     if (days > 0) {
@@ -99,6 +113,7 @@ export async function GET(request: NextRequest) {
         customerName: p.customerName,
         quantity: p.quantity || 0,
         uom: '', // TODO: add from order line if needed
+        lineId: p.lineId || 0, // ID riga ordine per modifiche
 
         status: review?.status || 'pending',
         reviewedBy: review?.reviewed_by,
@@ -107,13 +122,14 @@ export async function GET(request: NextRequest) {
         blockedAt: review?.blocked_at,
         note: review?.note,
 
-        priceCategory: p.category
+        priceCategory: p.category,
+        isLocked: p.isLocked || false
       };
     });
 
     console.log(`✅ [PRODUCTS-API] Enriched products with review data`);
 
-    // 5. Filter by category
+    // 5. Filter by category and exclude locked prices and reviewed products
     if (category !== 'all') {
       const categoryMap: Record<string, string> = {
         'below_critical': 'sotto_pc',
@@ -125,24 +141,29 @@ export async function GET(request: NextRequest) {
         // Special case: filter by status
         products = products.filter((p: any) => p.status === 'blocked');
       } else if (categoryMap[category]) {
+        // Filter by category AND exclude:
+        // 1. Locked prices (prezzi fissi nel listino cliente)
+        // 2. Already reviewed products (già controllati)
         products = products.filter((p: any) =>
-          p.category === categoryMap[category]
+          p.priceCategory === categoryMap[category] &&
+          !p.isLocked &&
+          p.status !== 'reviewed'
         );
       }
 
-      console.log(`🎯 [PRODUCTS-API] Filtered to ${products.length} products (category: ${category})`);
+      console.log(`🎯 [PRODUCTS-API] Filtered to ${products.length} products (category: ${category}, excluding locked and reviewed)`);
     }
 
     // 6. Calculate summary
     const summary = {
       total: products.length,
       totalRevenue: products.reduce((sum: number, p: any) =>
-        sum + (p.currentPriceUnit * p.quantity), 0
+        sum + (p.soldPrice * p.quantity), 0
       ),
       byCategory: {
-        below_critical: products.filter((p: any) => p.category === 'sotto_pc').length,
-        critical_to_avg: products.filter((p: any) => p.category === 'tra_pc_medio').length,
-        above_avg: products.filter((p: any) => p.category === 'sopra_medio').length
+        below_critical: products.filter((p: any) => p.priceCategory === 'sotto_pc').length,
+        critical_to_avg: products.filter((p: any) => p.priceCategory === 'tra_pc_medio').length,
+        above_avg: products.filter((p: any) => p.priceCategory === 'sopra_medio').length
       },
       byStatus: {
         pending: products.filter((p: any) => p.status === 'pending').length,

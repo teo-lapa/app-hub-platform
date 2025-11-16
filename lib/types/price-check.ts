@@ -25,6 +25,7 @@ export interface PriceCheckProduct {
   customerName: string;
   quantity: number;
   uom: string;
+  lineId: number; // ID riga ordine (sale.order.line) per modifiche
 
   // Status controllo
   status: 'pending' | 'reviewed' | 'blocked';
@@ -36,6 +37,9 @@ export interface PriceCheckProduct {
 
   // Categoria prezzo
   priceCategory: 'below_critical' | 'critical_to_avg' | 'above_avg';
+
+  // Prezzo bloccato nel listino cliente
+  isLocked: boolean; // true = prezzo fisso nel listino cliente (da NON mostrare in dashboard)
 }
 
 export interface PriceCategory {

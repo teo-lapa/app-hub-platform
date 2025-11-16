@@ -18,6 +18,7 @@ export const maxDuration = 60; // Reduced from 120s due to optimization
 interface ProductAnalysis {
   orderId: number;
   orderName: string;
+  orderDate: string; // YYYY-MM-DD format (data consegna / commitment_date)
   customerId: number;
   customerName: string;
   lineId: number;
@@ -60,8 +61,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // STEP 1: Fetch ALL orders in draft/sent (SINGLE QUERY)
-    console.log('🔍 [AGGREGATE-PRICES-API] Fetching orders...');
+    // STEP 1: Fetch confirmed/delivered orders with delivery in last 28 days (SINGLE QUERY)
+    console.log('🔍 [AGGREGATE-PRICES-API] Fetching confirmed orders with recent delivery...');
+
+    // Calcola data 28 giorni fa
+    const twentyEightDaysAgo = new Date();
+    twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
+    const dateFromStr = twentyEightDaysAgo.toISOString().split('T')[0];
+
     const orders = await callOdoo(
       cookies,
       'sale.order',
@@ -70,10 +77,12 @@ export async function GET(request: NextRequest) {
       {
         domain: [
           ['company_id', '=', 1],
-          ['state', 'in', ['draft', 'sent']]
+          ['state', 'in', ['sale', 'done']],  // Solo ordini confermati/consegnati
+          ['commitment_date', '>=', dateFromStr],  // Consegna negli ultimi 28 giorni
+          ['picking_ids', '!=', false]  // DEVE avere consegne (esclude preventivi confermati)
         ],
-        fields: ['id', 'name', 'partner_id', 'pricelist_id'],
-        order: 'date_order DESC'
+        fields: ['id', 'name', 'partner_id', 'pricelist_id', 'date_order', 'commitment_date'],
+        order: 'commitment_date DESC'
       }
     );
 
@@ -155,7 +164,7 @@ export async function GET(request: NextRequest) {
     console.log('📊 [AGGREGATE-PRICES-API] Calculating average prices with read_group...');
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    const dateFromStr = threeMonthsAgo.toISOString().split('T')[0];
+    const threeMonthsDateStr = threeMonthsAgo.toISOString().split('T')[0];
 
     const avgPrices = await callOdoo(
       cookies,
@@ -166,7 +175,7 @@ export async function GET(request: NextRequest) {
         domain: [
           ['product_id', 'in', productIds],
           ['state', 'in', ['sale', 'done']],
-          ['create_date', '>=', dateFromStr]
+          ['create_date', '>=', threeMonthsDateStr]
         ],
         fields: ['product_id', 'price_unit:avg'],
         groupby: ['product_id']
@@ -252,6 +261,7 @@ export async function GET(request: NextRequest) {
       allProducts.push({
         orderId: order.id,
         orderName: order.name,
+        orderDate: order.commitment_date || order.date_order || '', // Usa data consegna, altrimenti data creazione
         customerId: order.partner_id[0],
         customerName: order.partner_id[1],
         lineId: line.id,

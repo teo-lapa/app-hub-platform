@@ -52,6 +52,10 @@ export default function ControlloPrezziPage() {
   const [selectedCategory, setSelectedCategory] = useState<'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all' | null>(null);
   const [products, setProducts] = useState<PriceCheckProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<PriceCheckProduct | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedPrice, setEditedPrice] = useState<number>(0);
+  const [editedDiscount, setEditedDiscount] = useState<number>(0);
+  const [isSavingPrice, setIsSavingPrice] = useState(false);
 
   // Block requests state
   const [blockRequests, setBlockRequests] = useState<BlockRequest[]>([]);
@@ -128,7 +132,7 @@ export default function ControlloPrezziPage() {
     } else {
       setLoading(true);
       try {
-        const response = await fetch(`/api/controllo-prezzi/products?category=${category}&days=7`, {
+        const response = await fetch(`/api/controllo-prezzi/products?category=${category}&days=28`, {
           credentials: 'include',
         });
 
@@ -166,6 +170,111 @@ export default function ControlloPrezziPage() {
     );
   });
 
+  // Raggruppa prodotti per settimana e giorno - VERSIONE SEMPLIFICATA
+  const groupProductsByWeekAndDay = (products: PriceCheckProduct[]) => {
+    const weeks: {
+      weekNumber: number;
+      weekLabel: string;
+      days: {
+        date: string;
+        dayLabel: string;
+        products: PriceCheckProduct[];
+      }[];
+    }[] = [];
+
+    // Raggruppa per data (estrai solo YYYY-MM-DD)
+    const productsByDate = new Map<string, PriceCheckProduct[]>();
+
+    products.forEach(p => {
+      // Estrai data pulita (formato YYYY-MM-DD)
+      let dateStr = '';
+      if (p.orderDate) {
+        // Rimuovi orario se presente: "2025-11-15 00:00:00" -> "2025-11-15"
+        dateStr = p.orderDate.split(' ')[0];
+      }
+
+      if (dateStr) {
+        if (!productsByDate.has(dateStr)) {
+          productsByDate.set(dateStr, []);
+        }
+        productsByDate.get(dateStr)!.push(p);
+      }
+    });
+
+    // Ordina le date (dalla più recente alla più vecchia)
+    const sortedDates = Array.from(productsByDate.keys()).sort().reverse();
+
+    // Raggruppa per settimana ISO
+    const weekMap = new Map<string, { date: string; products: PriceCheckProduct[] }[]>();
+
+    sortedDates.forEach(dateStr => {
+      const date = new Date(dateStr + 'T12:00:00'); // Force noon to avoid timezone issues
+      const weekKey = getWeekNumber(date).toString();
+
+      if (!weekMap.has(weekKey)) {
+        weekMap.set(weekKey, []);
+      }
+
+      weekMap.get(weekKey)!.push({
+        date: dateStr,
+        products: productsByDate.get(dateStr) || []
+      });
+    });
+
+    // Converti in formato finale
+    Array.from(weekMap.entries())
+      .sort((a, b) => parseInt(b[0]) - parseInt(a[0])) // Ordina per settimana (recente -> vecchia)
+      .forEach(([weekNum, days]) => {
+        if (days.length > 0) {
+          const firstDate = new Date(days[0].date + 'T12:00:00');
+          const lastDate = new Date(days[days.length - 1].date + 'T12:00:00');
+
+          weeks.push({
+            weekNumber: parseInt(weekNum),
+            weekLabel: `Settimana ${weekNum} (${formatDate(firstDate, 'short')} - ${formatDate(lastDate, 'short')})`,
+            days: days.map(d => ({
+              date: d.date,
+              dayLabel: formatDate(new Date(d.date + 'T12:00:00'), 'full'),
+              products: d.products
+            }))
+          });
+        }
+      });
+
+    return weeks;
+  };
+
+  // Ottieni numero settimana
+  const getWeekNumber = (date: Date): number => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  };
+
+  // Formatta data
+  const formatDate = (date: Date, format: 'short' | 'full'): string => {
+    const days = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+    const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+
+    if (format === 'short') {
+      return `${date.getDate()} ${months[date.getMonth()]}`;
+    } else {
+      return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+    }
+  };
+
+  const groupedProducts = groupProductsByWeekAndDay(filteredProducts);
+
+  // Estrae solo il nome breve del prodotto (prima della descrizione)
+  const extractShortName = (fullName: string): string => {
+    const lines = fullName.split('\n');
+    const firstLine = lines[0];
+    const beforeMarkdown = firstLine.split('**')[0].trim();
+    return beforeMarkdown || firstLine.trim();
+  };
+
   // Block requests filtrati per ricerca
   const filteredBlockRequests = blockRequests.filter(br => {
     if (!searchQuery || searchQuery.length < 3) return true;
@@ -182,7 +291,89 @@ export default function ControlloPrezziPage() {
   // Click su card prodotto
   const handleProductClick = (product: PriceCheckProduct) => {
     setSelectedProduct(product);
+    setEditedPrice(product.soldPrice);
+    setEditedDiscount(product.discount);
+    setIsEditMode(false);
     setShowProductModal(true);
+  };
+
+  // Abilita modifica prezzo
+  const handleEnableEdit = () => {
+    if (selectedProduct) {
+      setEditedPrice(selectedProduct.soldPrice);
+      setEditedDiscount(selectedProduct.discount);
+      setIsEditMode(true);
+    }
+  };
+
+  // Annulla modifica
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    if (selectedProduct) {
+      setEditedPrice(selectedProduct.soldPrice);
+      setEditedDiscount(selectedProduct.discount);
+    }
+  };
+
+  // Salva modifiche prezzo
+  const handleSavePrice = async () => {
+    if (!selectedProduct) return;
+
+    setIsSavingPrice(true);
+    try {
+      // Trova il lineId dal prodotto
+      // Assumiamo che il prodotto abbia un lineId dalla API
+      const lineId = (selectedProduct as any).lineId;
+
+      if (!lineId) {
+        toast.error('Errore: ID riga ordine non trovato');
+        return;
+      }
+
+      const response = await fetch('/api/controllo-prezzi/update-price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          orderLineId: lineId,
+          newPrice: editedPrice,
+          newDiscount: editedDiscount
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Prezzo aggiornato con successo!');
+        setIsEditMode(false);
+
+        // Aggiorna il prodotto nella lista locale
+        setProducts(prev =>
+          prev.map(p => {
+            if (p.id === selectedProduct.id && p.orderId === selectedProduct.orderId) {
+              return {
+                ...p,
+                soldPrice: editedPrice,
+                discount: editedDiscount
+              };
+            }
+            return p;
+          })
+        );
+
+        // Aggiorna anche il prodotto selezionato
+        setSelectedProduct({
+          ...selectedProduct,
+          soldPrice: editedPrice,
+          discount: editedDiscount
+        });
+      } else {
+        toast.error(data.error || 'Errore aggiornamento prezzo');
+      }
+    } catch (error: any) {
+      toast.error('Errore: ' + error.message);
+    } finally {
+      setIsSavingPrice(false);
+    }
   };
 
   // Click su card richiesta blocco
@@ -531,7 +722,7 @@ export default function ControlloPrezziPage() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                   {filteredBlockRequests.map((blockRequest) => (
                     <BlockRequestCard
                       key={blockRequest.activityId}
@@ -555,8 +746,69 @@ export default function ControlloPrezziPage() {
                     Ottimo! Nessun prodotto in questa categoria
                   </p>
                 </div>
+              ) : selectedCategory === 'below_critical' ? (
+                // Vista raggruppata per settimana/giorno (solo per below_critical)
+                <div className="space-y-6">
+                  {groupedProducts.map((week, weekIndex) => (
+                    <motion.div
+                      key={`week-${week.weekNumber}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: weekIndex * 0.1 }}
+                      className="glass p-6 rounded-xl"
+                    >
+                      {/* Header Settimana */}
+                      <h3 className="text-lg md:text-2xl font-bold mb-4 flex flex-wrap items-center gap-2 md:gap-3">
+                        <span className="text-blue-400 text-2xl md:text-3xl">📅</span>
+                        <span className="flex-1">{week.weekLabel}</span>
+                        <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs md:text-sm font-bold">
+                          {week.days.reduce((sum, day) => sum + day.products.length, 0)} prodotti
+                        </span>
+                      </h3>
+
+                      {/* Giorni */}
+                      <div className="space-y-4">
+                        {week.days.map((day, dayIndex) => (
+                          <div key={`day-${day.date}`} className="glass-strong p-4 rounded-lg">
+                            {/* Header Giorno */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                              <h4 className="text-base md:text-lg font-semibold text-slate-200">
+                                {day.dayLabel}
+                              </h4>
+                              <span className="px-2 md:px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs md:text-sm font-bold whitespace-nowrap">
+                                {day.products.length} {day.products.length === 1 ? 'prodotto' : 'prodotti'}
+                              </span>
+                            </div>
+
+                            {/* Griglia prodotti del giorno */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                              {day.products.map((product) => (
+                                <PriceCheckProductCard
+                                  key={`${product.id}-${product.orderId}`}
+                                  product={product}
+                                  onClick={() => handleProductClick(product)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {groupedProducts.length === 0 && (
+                    <div className="glass p-12 rounded-xl text-center">
+                      <div className="text-6xl mb-4">✅</div>
+                      <h3 className="text-xl font-bold mb-2">Nessun prodotto sotto punto critico</h3>
+                      <p className="text-slate-400">
+                        Ottimo! Nessun prodotto nelle ultime 4 settimane
+                      </p>
+                    </div>
+                  )}
+                </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+                // Vista normale griglia (altre categorie)
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                   {filteredProducts.map((product) => (
                     <PriceCheckProductCard
                       key={`${product.id}-${product.orderId}`}
@@ -582,7 +834,7 @@ export default function ControlloPrezziPage() {
             onClick={() => setShowProductModal(false)}
           >
             <motion.div
-              className="glass-strong rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="glass-strong rounded-2xl md:rounded-2xl p-4 md:p-6 w-full md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto m-2 md:m-0"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -591,49 +843,51 @@ export default function ControlloPrezziPage() {
               {/* Close button */}
               <button
                 onClick={() => setShowProductModal(false)}
-                className="absolute top-4 right-4 min-w-[48px] min-h-[48px] rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20"
+                className="absolute top-2 right-2 md:top-4 md:right-4 min-w-[52px] min-h-[52px] rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20 text-2xl md:text-xl z-50"
               >
                 ✕
               </button>
 
-              {/* Immagine prodotto */}
-              <div className="w-32 h-32 sm:w-40 sm:h-40 mx-auto mb-4 rounded-xl overflow-hidden">
-                {selectedProduct.image ? (
-                  <img
-                    src={`data:image/png;base64,${selectedProduct.image}`}
-                    alt={selectedProduct.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-6xl">
-                    📦
-                  </div>
-                )}
-              </div>
-
-              {/* Nome e codice */}
-              <h2 className="text-2xl font-bold text-center mb-1">{selectedProduct.name}</h2>
-              <p className="text-slate-400 text-center mb-6">COD: {selectedProduct.code}</p>
+              {/* Nome prodotto */}
+              <h2 className="text-xl md:text-2xl font-bold text-center mb-4 md:mb-6 pr-12">{extractShortName(selectedProduct.name)}</h2>
 
               {/* Info card */}
               <div className="glass p-4 rounded-lg space-y-3 mb-6">
                 {/* Prezzo venduto */}
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Prezzo Venduto:</span>
-                  <span className="font-bold text-2xl text-blue-400">
-                    CHF {selectedProduct.soldPrice.toFixed(2)}
-                  </span>
+                  {isEditMode ? (
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editedPrice}
+                      onChange={(e) => setEditedPrice(parseFloat(e.target.value) || 0)}
+                      className="px-3 py-2 bg-slate-700 rounded-lg text-blue-400 font-bold text-xl w-32 text-right"
+                    />
+                  ) : (
+                    <span className="font-bold text-2xl text-blue-400">
+                      CHF {selectedProduct.soldPrice.toFixed(2)}
+                    </span>
+                  )}
                 </div>
 
                 {/* Sconto */}
-                {selectedProduct.discount > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Sconto:</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Sconto:</span>
+                  {isEditMode ? (
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={editedDiscount}
+                      onChange={(e) => setEditedDiscount(parseFloat(e.target.value) || 0)}
+                      className="px-3 py-2 bg-slate-700 rounded-lg text-orange-400 font-bold w-24 text-right"
+                    />
+                  ) : (
                     <span className="font-bold text-orange-400">
-                      -{selectedProduct.discount.toFixed(1)}%
+                      {selectedProduct.discount > 0 ? `-${selectedProduct.discount.toFixed(1)}%` : '0%'}
                     </span>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Cliente e Ordine */}
                 <div className="pt-2 border-t border-slate-700">
@@ -734,6 +988,56 @@ export default function ControlloPrezziPage() {
               <div className="space-y-3">
                 <h3 className="font-bold text-lg mb-3">Azioni Disponibili</h3>
 
+                {/* Pulsanti Edit/Save/Cancel */}
+                {!isEditMode ? (
+                  <button
+                    onClick={handleEnableEdit}
+                    className="w-full glass-strong p-4 rounded-lg hover:bg-blue-500/20 transition-all
+                             flex items-center justify-between group border-2 border-blue-500/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        ✏️
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold">Modifica Prezzo</div>
+                        <div className="text-xs text-slate-400">Cambia prezzo e sconto</div>
+                      </div>
+                    </div>
+                    <ArrowLeft className="w-5 h-5 rotate-180 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={handleSavePrice}
+                      disabled={isSavingPrice}
+                      className="glass-strong p-4 rounded-lg bg-green-500/20 hover:bg-green-500/30 transition-all
+                               flex items-center justify-center gap-2 border-2 border-green-500/50 disabled:opacity-50"
+                    >
+                      {isSavingPrice ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-5 h-5" />
+                          Salva
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={isSavingPrice}
+                      className="glass-strong p-4 rounded-lg hover:bg-red-500/20 transition-all
+                               flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <span className="text-xl">✕</span>
+                      Annulla
+                    </button>
+                  </div>
+                )}
+
                 {/* Marca come controllato */}
                 <button
                   onClick={handleMarkAsReviewed}
@@ -787,6 +1091,28 @@ export default function ControlloPrezziPage() {
                   </div>
                   <ArrowLeft className="w-5 h-5 rotate-180 text-yellow-400 group-hover:translate-x-1 transition-transform" />
                 </button>
+
+                {/* Info Ordine - Apri in Odoo */}
+                <button
+                  onClick={() => {
+                    const odooBaseUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+                    const orderUrl = `${odooBaseUrl}/web#id=${selectedProduct.orderId}&model=sale.order&view_type=form`;
+                    window.open(orderUrl, '_blank');
+                  }}
+                  className="w-full glass-strong p-4 rounded-lg hover:bg-blue-500/20 transition-all
+                           flex items-center justify-between group border-2 border-blue-500/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      🔗
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-blue-400">Info Ordine</div>
+                      <div className="text-xs text-slate-400">Apri ordine {selectedProduct.orderName} in Odoo</div>
+                    </div>
+                  </div>
+                  <ArrowLeft className="w-5 h-5 rotate-180 text-blue-400 group-hover:translate-x-1 transition-transform" />
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -804,7 +1130,7 @@ export default function ControlloPrezziPage() {
             onClick={() => setShowBlockRequestModal(false)}
           >
             <motion.div
-              className="glass-strong rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="glass-strong rounded-2xl md:rounded-2xl p-4 md:p-6 w-full md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto m-2 md:m-0"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -823,7 +1149,7 @@ export default function ControlloPrezziPage() {
                 <div className={`inline-block text-xs font-bold px-4 py-2 rounded-full mb-3 ${getBlockRequestStateBadgeClass(selectedBlockRequest.state)}`}>
                   {formatBlockRequestStateBadge(selectedBlockRequest.state)}
                 </div>
-                <h2 className="text-2xl font-bold mb-1">{selectedBlockRequest.productName}</h2>
+                <h2 className="text-2xl font-bold mb-1">{extractShortName(selectedBlockRequest.productName)}</h2>
                 <p className="text-slate-400">COD: {selectedBlockRequest.productCode}</p>
               </div>
 
@@ -994,6 +1320,13 @@ export default function ControlloPrezziPage() {
 
 // Block Request Card Component
 function BlockRequestCard({ blockRequest, onClick }: { blockRequest: BlockRequest; onClick: () => void }) {
+  const extractShortName = (fullName: string): string => {
+    const lines = fullName.split('\n');
+    const firstLine = lines[0];
+    const beforeMarkdown = firstLine.split('**')[0].trim();
+    return beforeMarkdown || firstLine.trim();
+  };
+
   const getStateBadgeClass = (state: 'overdue' | 'today' | 'planned'): string => {
     switch (state) {
       case 'overdue':
@@ -1029,14 +1362,14 @@ function BlockRequestCard({ blockRequest, onClick }: { blockRequest: BlockReques
       className="glass p-3 rounded-xl cursor-pointer transition-all"
       onClick={onClick}
     >
-      {/* Icona prodotto */}
+      {/* Icona prodotto (senza immagine) */}
       <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto mb-2 rounded-lg overflow-hidden bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-3xl">
         🔒
       </div>
 
-      {/* Nome prodotto */}
+      {/* Nome prodotto (solo nome breve) */}
       <h3 className="text-xs sm:text-sm font-semibold mt-2 line-clamp-2 text-center min-h-[2.5rem]">
-        {blockRequest.productName}
+        {extractShortName(blockRequest.productName)}
       </h3>
 
       {/* Badge stato */}
