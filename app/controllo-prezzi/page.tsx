@@ -170,9 +170,8 @@ export default function ControlloPrezziPage() {
     );
   });
 
-  // Raggruppa prodotti per settimana e giorno
+  // Raggruppa prodotti per settimana e giorno - VERSIONE SEMPLIFICATA
   const groupProductsByWeekAndDay = (products: PriceCheckProduct[]) => {
-    const today = new Date();
     const weeks: {
       weekNumber: number;
       weekLabel: string;
@@ -183,72 +182,64 @@ export default function ControlloPrezziPage() {
       }[];
     }[] = [];
 
-    // Raggruppa per data
+    // Raggruppa per data (estrai solo YYYY-MM-DD)
     const productsByDate = new Map<string, PriceCheckProduct[]>();
 
     products.forEach(p => {
-      const date = p.orderDate || today.toISOString().split('T')[0];
-      if (!productsByDate.has(date)) {
-        productsByDate.set(date, []);
+      // Estrai data pulita (formato YYYY-MM-DD)
+      let dateStr = '';
+      if (p.orderDate) {
+        // Rimuovi orario se presente: "2025-11-15 00:00:00" -> "2025-11-15"
+        dateStr = p.orderDate.split(' ')[0];
       }
-      productsByDate.get(date)!.push(p);
+
+      if (dateStr) {
+        if (!productsByDate.has(dateStr)) {
+          productsByDate.set(dateStr, []);
+        }
+        productsByDate.get(dateStr)!.push(p);
+      }
     });
 
-    // Trova data minima e massima dai prodotti (invece di assumere 4 settimane)
-    const allDates = Array.from(productsByDate.keys()).sort();
-    if (allDates.length === 0) return weeks;
+    // Ordina le date (dalla più recente alla più vecchia)
+    const sortedDates = Array.from(productsByDate.keys()).sort().reverse();
 
-    const minDate = new Date(allDates[0]);
-    const maxDate = new Date(allDates[allDates.length - 1]);
+    // Raggruppa per settimana ISO
+    const weekMap = new Map<string, { date: string; products: PriceCheckProduct[] }[]>();
 
-    // Calcola quante settimane servono per coprire tutte le date
-    const weeksDiff = Math.ceil((maxDate.getTime() - minDate.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+    sortedDates.forEach(dateStr => {
+      const date = new Date(dateStr + 'T12:00:00'); // Force noon to avoid timezone issues
+      const weekKey = getWeekNumber(date).toString();
 
-    // Crea settimane dinamicamente basate sulle date effettive
-    for (let weekOffset = 0; weekOffset < Math.max(weeksDiff, 4); weekOffset++) {
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - (today.getDay() || 7) + 1 - (weekOffset * 7)); // Lunedì
+      if (!weekMap.has(weekKey)) {
+        weekMap.set(weekKey, []);
+      }
 
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6); // Domenica
+      weekMap.get(weekKey)!.push({
+        date: dateStr,
+        products: productsByDate.get(dateStr) || []
+      });
+    });
 
-      // Salta settimane future
-      if (weekStart > today) continue;
+    // Converti in formato finale
+    Array.from(weekMap.entries())
+      .sort((a, b) => parseInt(b[0]) - parseInt(a[0])) // Ordina per settimana (recente -> vecchia)
+      .forEach(([weekNum, days]) => {
+        if (days.length > 0) {
+          const firstDate = new Date(days[0].date + 'T12:00:00');
+          const lastDate = new Date(days[days.length - 1].date + 'T12:00:00');
 
-      const weekNumber = getWeekNumber(weekStart);
-      const weekLabel = `Settimana ${weekNumber} (${formatDate(weekStart, 'short')} - ${formatDate(weekEnd, 'short')})`;
-
-      const days: {
-        date: string;
-        dayLabel: string;
-        products: PriceCheckProduct[];
-      }[] = [];
-
-      // Crea giorni della settimana
-      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-        const currentDay = new Date(weekStart);
-        currentDay.setDate(weekStart.getDate() + dayOffset);
-
-        const dateStr = currentDay.toISOString().split('T')[0];
-        const dayProducts = productsByDate.get(dateStr) || [];
-
-        if (dayProducts.length > 0) {
-          days.push({
-            date: dateStr,
-            dayLabel: formatDate(currentDay, 'full'),
-            products: dayProducts
+          weeks.push({
+            weekNumber: parseInt(weekNum),
+            weekLabel: `Settimana ${weekNum} (${formatDate(firstDate, 'short')} - ${formatDate(lastDate, 'short')})`,
+            days: days.map(d => ({
+              date: d.date,
+              dayLabel: formatDate(new Date(d.date + 'T12:00:00'), 'full'),
+              products: d.products
+            }))
           });
         }
-      }
-
-      if (days.length > 0) {
-        weeks.push({
-          weekNumber,
-          weekLabel,
-          days
-        });
-      }
-    }
+      });
 
     return weeks;
   };
