@@ -814,7 +814,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId: orderId,
-          message: `⚠️ PREZZI SOTTO PUNTO CRITICO\n\nProdotti:\n${belowPCProducts.map(p => `- ${p.productName}: CHF ${p.newPrice.toFixed(2)} (PC: CHF ${p.pc.toFixed(2)})`).join('\n')}\n\nSpiegazione:\n${belowPCExplanation.trim()}`,
+          message: `⚠️ PREZZI SOTTO PUNTO CRITICO\n\nProdotti:\n${belowPCProducts.map(p => `- ${p.productName.split('**')[0].split(' - ')[0].trim()}: CHF ${p.newPrice.toFixed(2)} (PC: CHF ${p.pc.toFixed(2)})`).join('\n')}\n\nSpiegazione:\n${belowPCExplanation.trim()}`,
           messageType: 'comment'
         })
       });
@@ -1987,7 +1987,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                 {belowPCProducts.map((product, index) => (
                   <div key={index} className="bg-slate-700/50 rounded p-2">
                     <p className="text-xs sm:text-sm text-white font-medium">
-                      {product.productName}
+                      {product.productName.split('**')[0].split(' - ')[0].trim()}
                     </p>
                     <div className="flex items-center gap-4 mt-1">
                       <span className="text-[10px] sm:text-xs text-red-400">
