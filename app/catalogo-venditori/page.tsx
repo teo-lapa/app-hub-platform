@@ -205,7 +205,7 @@ export default function CatalogoVenditoriPage() {
       product_id: product.id,
       product_name: product.name,
       quantity: quantity,
-      price: product.list_price || undefined,
+      price: undefined, // Lascia che Odoo calcoli il prezzo dal listino cliente
       confidence: 'MANUALE',
       image_url: product.image_128 ? `data:image/png;base64,${product.image_128}` : null,
       qty_available: product.qty_available || 0,
