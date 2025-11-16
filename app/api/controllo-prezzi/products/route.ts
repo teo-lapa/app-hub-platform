@@ -99,6 +99,7 @@ export async function GET(request: NextRequest) {
         customerName: p.customerName,
         quantity: p.quantity || 0,
         uom: '', // TODO: add from order line if needed
+        lineId: p.lineId || 0, // ID riga ordine per modifiche
 
         status: review?.status || 'pending',
         reviewedBy: review?.reviewed_by,

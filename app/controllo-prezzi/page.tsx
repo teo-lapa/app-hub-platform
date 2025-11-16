@@ -52,6 +52,10 @@ export default function ControlloPrezziPage() {
   const [selectedCategory, setSelectedCategory] = useState<'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all' | null>(null);
   const [products, setProducts] = useState<PriceCheckProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<PriceCheckProduct | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedPrice, setEditedPrice] = useState<number>(0);
+  const [editedDiscount, setEditedDiscount] = useState<number>(0);
+  const [isSavingPrice, setIsSavingPrice] = useState(false);
 
   // Block requests state
   const [blockRequests, setBlockRequests] = useState<BlockRequest[]>([]);
@@ -283,7 +287,89 @@ export default function ControlloPrezziPage() {
   // Click su card prodotto
   const handleProductClick = (product: PriceCheckProduct) => {
     setSelectedProduct(product);
+    setEditedPrice(product.soldPrice);
+    setEditedDiscount(product.discount);
+    setIsEditMode(false);
     setShowProductModal(true);
+  };
+
+  // Abilita modifica prezzo
+  const handleEnableEdit = () => {
+    if (selectedProduct) {
+      setEditedPrice(selectedProduct.soldPrice);
+      setEditedDiscount(selectedProduct.discount);
+      setIsEditMode(true);
+    }
+  };
+
+  // Annulla modifica
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    if (selectedProduct) {
+      setEditedPrice(selectedProduct.soldPrice);
+      setEditedDiscount(selectedProduct.discount);
+    }
+  };
+
+  // Salva modifiche prezzo
+  const handleSavePrice = async () => {
+    if (!selectedProduct) return;
+
+    setIsSavingPrice(true);
+    try {
+      // Trova il lineId dal prodotto
+      // Assumiamo che il prodotto abbia un lineId dalla API
+      const lineId = (selectedProduct as any).lineId;
+
+      if (!lineId) {
+        toast.error('Errore: ID riga ordine non trovato');
+        return;
+      }
+
+      const response = await fetch('/api/controllo-prezzi/update-price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          orderLineId: lineId,
+          newPrice: editedPrice,
+          newDiscount: editedDiscount
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Prezzo aggiornato con successo!');
+        setIsEditMode(false);
+
+        // Aggiorna il prodotto nella lista locale
+        setProducts(prev =>
+          prev.map(p => {
+            if (p.id === selectedProduct.id && p.orderId === selectedProduct.orderId) {
+              return {
+                ...p,
+                soldPrice: editedPrice,
+                discount: editedDiscount
+              };
+            }
+            return p;
+          })
+        );
+
+        // Aggiorna anche il prodotto selezionato
+        setSelectedProduct({
+          ...selectedProduct,
+          soldPrice: editedPrice,
+          discount: editedDiscount
+        });
+      } else {
+        toast.error(data.error || 'Errore aggiornamento prezzo');
+      }
+    } catch (error: any) {
+      toast.error('Errore: ' + error.message);
+    } finally {
+      setIsSavingPrice(false);
+    }
   };
 
   // Click su card richiesta blocco
@@ -758,29 +844,46 @@ export default function ControlloPrezziPage() {
                 ✕
               </button>
 
-              {/* Nome e codice */}
-              <h2 className="text-2xl font-bold text-center mb-1">{extractShortName(selectedProduct.name)}</h2>
-              <p className="text-slate-400 text-center mb-6">COD: {selectedProduct.code}</p>
+              {/* Nome prodotto */}
+              <h2 className="text-2xl font-bold text-center mb-6">{extractShortName(selectedProduct.name)}</h2>
 
               {/* Info card */}
               <div className="glass p-4 rounded-lg space-y-3 mb-6">
                 {/* Prezzo venduto */}
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Prezzo Venduto:</span>
-                  <span className="font-bold text-2xl text-blue-400">
-                    CHF {selectedProduct.soldPrice.toFixed(2)}
-                  </span>
+                  {isEditMode ? (
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editedPrice}
+                      onChange={(e) => setEditedPrice(parseFloat(e.target.value) || 0)}
+                      className="px-3 py-2 bg-slate-700 rounded-lg text-blue-400 font-bold text-xl w-32 text-right"
+                    />
+                  ) : (
+                    <span className="font-bold text-2xl text-blue-400">
+                      CHF {selectedProduct.soldPrice.toFixed(2)}
+                    </span>
+                  )}
                 </div>
 
                 {/* Sconto */}
-                {selectedProduct.discount > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Sconto:</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Sconto:</span>
+                  {isEditMode ? (
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={editedDiscount}
+                      onChange={(e) => setEditedDiscount(parseFloat(e.target.value) || 0)}
+                      className="px-3 py-2 bg-slate-700 rounded-lg text-orange-400 font-bold w-24 text-right"
+                    />
+                  ) : (
                     <span className="font-bold text-orange-400">
-                      -{selectedProduct.discount.toFixed(1)}%
+                      {selectedProduct.discount > 0 ? `-${selectedProduct.discount.toFixed(1)}%` : '0%'}
                     </span>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Cliente e Ordine */}
                 <div className="pt-2 border-t border-slate-700">
@@ -880,6 +983,56 @@ export default function ControlloPrezziPage() {
               {/* Azioni */}
               <div className="space-y-3">
                 <h3 className="font-bold text-lg mb-3">Azioni Disponibili</h3>
+
+                {/* Pulsanti Edit/Save/Cancel */}
+                {!isEditMode ? (
+                  <button
+                    onClick={handleEnableEdit}
+                    className="w-full glass-strong p-4 rounded-lg hover:bg-blue-500/20 transition-all
+                             flex items-center justify-between group border-2 border-blue-500/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        ✏️
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold">Modifica Prezzo</div>
+                        <div className="text-xs text-slate-400">Cambia prezzo e sconto</div>
+                      </div>
+                    </div>
+                    <ArrowLeft className="w-5 h-5 rotate-180 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={handleSavePrice}
+                      disabled={isSavingPrice}
+                      className="glass-strong p-4 rounded-lg bg-green-500/20 hover:bg-green-500/30 transition-all
+                               flex items-center justify-center gap-2 border-2 border-green-500/50 disabled:opacity-50"
+                    >
+                      {isSavingPrice ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-5 h-5" />
+                          Salva
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={isSavingPrice}
+                      className="glass-strong p-4 rounded-lg hover:bg-red-500/20 transition-all
+                               flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <span className="text-xl">✕</span>
+                      Annulla
+                    </button>
+                  </div>
+                )}
 
                 {/* Marca come controllato */}
                 <button

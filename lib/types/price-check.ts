@@ -25,6 +25,7 @@ export interface PriceCheckProduct {
   customerName: string;
   quantity: number;
   uom: string;
+  lineId: number; // ID riga ordine (sale.order.line) per modifiche
 
   // Status controllo
   status: 'pending' | 'reviewed' | 'blocked';
