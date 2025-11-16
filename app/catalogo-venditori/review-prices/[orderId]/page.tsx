@@ -689,9 +689,18 @@ export default function ReviewPricesPage({ params }: RouteParams) {
           const pc = line.costPrice * 1.4; // Punto Critico
           const newPrice = values.priceUnit;
 
-          // Check if user MODIFIED the price and it's now below PC
-          // (If it was already below PC, don't ask for explanation)
-          if (newPrice < pc && newPrice !== line.currentPriceUnit) {
+          console.log('🔍 [PC-CHECK] Checking price:', {
+            product: line.productName,
+            newPrice,
+            pc,
+            costPrice: line.costPrice,
+            currentPriceUnit: line.currentPriceUnit,
+            isBelowPC: newPrice < pc
+          });
+
+          // Check if price is below PC (removed the currentPriceUnit check to always ask)
+          if (newPrice < pc) {
+            console.log('⚠️ [PC-CHECK] Product below PC:', line.productName);
             productsBelowPC.push({
               lineId: line.id,
               productName: line.productName,
