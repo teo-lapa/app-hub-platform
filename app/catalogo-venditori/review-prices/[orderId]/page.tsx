@@ -683,7 +683,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
     if (!skipPCCheck && editedLines.size > 0 && orderData) {
       const productsBelowPC: Array<{ lineId: number; productName: string; newPrice: number; pc: number }> = [];
 
-      for (const [lineId, values] of editedLines.entries()) {
+      for (const [lineId, values] of Array.from(editedLines.entries())) {
         const line = orderData.lines.find(l => l.id === lineId);
         if (line) {
           const pc = line.costPrice * 1.4; // Punto Critico
@@ -1718,7 +1718,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                   {/* Save Changes Button */}
                   {hasChanges && (
                     <button
-                      onClick={handleSavePrices}
+                      onClick={() => handleSavePrices()}
                       className="flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2.5 sm:py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors min-h-[44px] text-xs sm:text-base"
                     >
                       <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
