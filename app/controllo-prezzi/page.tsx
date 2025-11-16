@@ -722,7 +722,7 @@ export default function ControlloPrezziPage() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                   {filteredBlockRequests.map((blockRequest) => (
                     <BlockRequestCard
                       key={blockRequest.activityId}
@@ -758,10 +758,10 @@ export default function ControlloPrezziPage() {
                       className="glass p-6 rounded-xl"
                     >
                       {/* Header Settimana */}
-                      <h3 className="text-2xl font-bold mb-4 flex items-center gap-3">
-                        <span className="text-blue-400">📅</span>
-                        {week.weekLabel}
-                        <span className="ml-auto text-sm font-normal text-slate-400">
+                      <h3 className="text-lg md:text-2xl font-bold mb-4 flex flex-wrap items-center gap-2 md:gap-3">
+                        <span className="text-blue-400 text-2xl md:text-3xl">📅</span>
+                        <span className="flex-1">{week.weekLabel}</span>
+                        <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs md:text-sm font-bold">
                           {week.days.reduce((sum, day) => sum + day.products.length, 0)} prodotti
                         </span>
                       </h3>
@@ -771,17 +771,17 @@ export default function ControlloPrezziPage() {
                         {week.days.map((day, dayIndex) => (
                           <div key={`day-${day.date}`} className="glass-strong p-4 rounded-lg">
                             {/* Header Giorno */}
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="text-lg font-semibold text-slate-200">
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                              <h4 className="text-base md:text-lg font-semibold text-slate-200">
                                 {day.dayLabel}
                               </h4>
-                              <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-sm font-bold">
+                              <span className="px-2 md:px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs md:text-sm font-bold whitespace-nowrap">
                                 {day.products.length} {day.products.length === 1 ? 'prodotto' : 'prodotti'}
                               </span>
                             </div>
 
                             {/* Griglia prodotti del giorno */}
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                               {day.products.map((product) => (
                                 <PriceCheckProductCard
                                   key={`${product.id}-${product.orderId}`}
@@ -808,7 +808,7 @@ export default function ControlloPrezziPage() {
                 </div>
               ) : (
                 // Vista normale griglia (altre categorie)
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                   {filteredProducts.map((product) => (
                     <PriceCheckProductCard
                       key={`${product.id}-${product.orderId}`}
@@ -834,7 +834,7 @@ export default function ControlloPrezziPage() {
             onClick={() => setShowProductModal(false)}
           >
             <motion.div
-              className="glass-strong rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="glass-strong rounded-2xl md:rounded-2xl p-4 md:p-6 w-full md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto m-2 md:m-0"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -843,13 +843,13 @@ export default function ControlloPrezziPage() {
               {/* Close button */}
               <button
                 onClick={() => setShowProductModal(false)}
-                className="absolute top-4 right-4 min-w-[48px] min-h-[48px] rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20"
+                className="absolute top-2 right-2 md:top-4 md:right-4 min-w-[52px] min-h-[52px] rounded-full glass-strong flex items-center justify-center hover:bg-red-500/20 text-2xl md:text-xl z-50"
               >
                 ✕
               </button>
 
               {/* Nome prodotto */}
-              <h2 className="text-2xl font-bold text-center mb-6">{extractShortName(selectedProduct.name)}</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-center mb-4 md:mb-6 pr-12">{extractShortName(selectedProduct.name)}</h2>
 
               {/* Info card */}
               <div className="glass p-4 rounded-lg space-y-3 mb-6">
@@ -1130,7 +1130,7 @@ export default function ControlloPrezziPage() {
             onClick={() => setShowBlockRequestModal(false)}
           >
             <motion.div
-              className="glass-strong rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="glass-strong rounded-2xl md:rounded-2xl p-4 md:p-6 w-full md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto m-2 md:m-0"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}

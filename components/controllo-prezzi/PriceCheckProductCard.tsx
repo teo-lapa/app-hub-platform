@@ -55,18 +55,18 @@ export function PriceCheckProductCard({ product, onClick }: PriceCheckProductCar
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      className="glass p-3 rounded-xl cursor-pointer transition-all relative"
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
+      className="glass p-4 md:p-3 rounded-xl cursor-pointer transition-all relative min-h-[200px] md:min-h-[180px]"
       onClick={onClick}
     >
       {/* Badge Criticità in alto a destra */}
-      <div className={`absolute -top-2 -right-2 px-2 py-1 rounded-full text-xs font-bold border-2 ${criticality.color} shadow-lg z-10`}>
+      <div className={`absolute -top-2 -right-2 px-2 md:px-2 py-1 rounded-full text-xs md:text-xs font-bold border-2 ${criticality.color} shadow-lg z-10`}>
         {criticality.icon} {criticality.level}
       </div>
 
       {/* Nome prodotto (senza immagine, solo nome breve) */}
-      <h3 className="text-xs sm:text-sm font-semibold mt-2 line-clamp-3 text-center min-h-[3rem]">
+      <h3 className="text-sm md:text-xs lg:text-sm font-semibold mt-2 line-clamp-3 text-center min-h-[3rem]">
         {shortName}
       </h3>
 
