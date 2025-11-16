@@ -21,6 +21,16 @@ function extractShortName(fullName: string): string {
   return beforeMarkdown || firstLine.trim();
 }
 
+// Formatta data ordine in formato user-friendly
+function formatOrderDate(dateStr: string): string {
+  if (!dateStr) return '';
+
+  const date = new Date(dateStr);
+  const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+
+  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+}
+
 export function PriceCheckProductCard({ product, onClick }: PriceCheckProductCardProps) {
   const shortName = extractShortName(product.name);
 
@@ -59,6 +69,13 @@ export function PriceCheckProductCard({ product, onClick }: PriceCheckProductCar
       <div className="text-xs text-slate-400 mt-2 text-center truncate">
         👤 {product.customerName}
       </div>
+
+      {/* Data creazione ordine */}
+      {product.orderDate && (
+        <div className="text-xs text-slate-500 mt-1 text-center">
+          📅 {formatOrderDate(product.orderDate)}
+        </div>
+      )}
 
       {/* Nota venditore se presente */}
       {product.note && (
