@@ -1981,7 +1981,7 @@ export default function ReviewPricesPage({ params }: RouteParams) {
             {/* Warning Message */}
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 sm:p-4 mb-4">
               <p className="text-xs sm:text-sm text-slate-200 font-semibold mb-2">
-                I seguenti prodotti hanno prezzi sotto il Punto Critico (Costo + 40%):
+                I seguenti prodotti hanno prezzi sotto il Punto Critico:
               </p>
               <div className="space-y-1.5">
                 {belowPCProducts.map((product, index) => (
