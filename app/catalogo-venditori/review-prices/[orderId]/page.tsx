@@ -1632,6 +1632,15 @@ export default function ReviewPricesPage({ params }: RouteParams) {
                     </button>
                   )}
 
+                  {/* Cancel Order Button */}
+                  <button
+                    onClick={() => setShowCancelModal(true)}
+                    className="flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2.5 sm:py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-all min-h-[44px] text-xs sm:text-base shadow-lg"
+                  >
+                    <X className="h-5 w-5" />
+                    Annulla Ordine
+                  </button>
+
                   {/* Confirm Order Button */}
                   <button
                     onClick={handleConfirmOrder}
