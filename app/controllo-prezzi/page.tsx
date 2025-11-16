@@ -259,6 +259,14 @@ export default function ControlloPrezziPage() {
 
   const groupedProducts = groupProductsByWeekAndDay(filteredProducts);
 
+  // Estrae solo il nome breve del prodotto (prima della descrizione)
+  const extractShortName = (fullName: string): string => {
+    const lines = fullName.split('\n');
+    const firstLine = lines[0];
+    const beforeMarkdown = firstLine.split('**')[0].trim();
+    return beforeMarkdown || firstLine.trim();
+  };
+
   // Block requests filtrati per ricerca
   const filteredBlockRequests = blockRequests.filter(br => {
     if (!searchQuery || searchQuery.length < 3) return true;
@@ -750,23 +758,8 @@ export default function ControlloPrezziPage() {
                 ✕
               </button>
 
-              {/* Immagine prodotto */}
-              <div className="w-32 h-32 sm:w-40 sm:h-40 mx-auto mb-4 rounded-xl overflow-hidden">
-                {selectedProduct.image ? (
-                  <img
-                    src={`data:image/png;base64,${selectedProduct.image}`}
-                    alt={selectedProduct.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-6xl">
-                    📦
-                  </div>
-                )}
-              </div>
-
               {/* Nome e codice */}
-              <h2 className="text-2xl font-bold text-center mb-1">{selectedProduct.name}</h2>
+              <h2 className="text-2xl font-bold text-center mb-1">{extractShortName(selectedProduct.name)}</h2>
               <p className="text-slate-400 text-center mb-6">COD: {selectedProduct.code}</p>
 
               {/* Info card */}
@@ -977,7 +970,7 @@ export default function ControlloPrezziPage() {
                 <div className={`inline-block text-xs font-bold px-4 py-2 rounded-full mb-3 ${getBlockRequestStateBadgeClass(selectedBlockRequest.state)}`}>
                   {formatBlockRequestStateBadge(selectedBlockRequest.state)}
                 </div>
-                <h2 className="text-2xl font-bold mb-1">{selectedBlockRequest.productName}</h2>
+                <h2 className="text-2xl font-bold mb-1">{extractShortName(selectedBlockRequest.productName)}</h2>
                 <p className="text-slate-400">COD: {selectedBlockRequest.productCode}</p>
               </div>
 
@@ -1148,6 +1141,13 @@ export default function ControlloPrezziPage() {
 
 // Block Request Card Component
 function BlockRequestCard({ blockRequest, onClick }: { blockRequest: BlockRequest; onClick: () => void }) {
+  const extractShortName = (fullName: string): string => {
+    const lines = fullName.split('\n');
+    const firstLine = lines[0];
+    const beforeMarkdown = firstLine.split('**')[0].trim();
+    return beforeMarkdown || firstLine.trim();
+  };
+
   const getStateBadgeClass = (state: 'overdue' | 'today' | 'planned'): string => {
     switch (state) {
       case 'overdue':
@@ -1183,14 +1183,14 @@ function BlockRequestCard({ blockRequest, onClick }: { blockRequest: BlockReques
       className="glass p-3 rounded-xl cursor-pointer transition-all"
       onClick={onClick}
     >
-      {/* Icona prodotto */}
+      {/* Icona prodotto (senza immagine) */}
       <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto mb-2 rounded-lg overflow-hidden bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-3xl">
         🔒
       </div>
 
-      {/* Nome prodotto */}
+      {/* Nome prodotto (solo nome breve) */}
       <h3 className="text-xs sm:text-sm font-semibold mt-2 line-clamp-2 text-center min-h-[2.5rem]">
-        {blockRequest.productName}
+        {extractShortName(blockRequest.productName)}
       </h3>
 
       {/* Badge stato */}

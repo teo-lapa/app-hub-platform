@@ -8,7 +8,22 @@ interface PriceCheckProductCardProps {
   onClick: () => void;
 }
 
+// Estrae solo il nome breve del prodotto (prima della descrizione)
+function extractShortName(fullName: string): string {
+  // Rimuovi tutto dopo "**" o dopo "\n"
+  const lines = fullName.split('\n');
+  const firstLine = lines[0];
+
+  // Se c'è "**", prendi solo la parte prima
+  const beforeMarkdown = firstLine.split('**')[0].trim();
+
+  // Se risulta vuoto, usa la prima riga
+  return beforeMarkdown || firstLine.trim();
+}
+
 export function PriceCheckProductCard({ product, onClick }: PriceCheckProductCardProps) {
+  const shortName = extractShortName(product.name);
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -18,24 +33,9 @@ export function PriceCheckProductCard({ product, onClick }: PriceCheckProductCar
       className="glass p-3 rounded-xl cursor-pointer transition-all"
       onClick={onClick}
     >
-      {/* Immagine prodotto */}
-      <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto mb-2 rounded-lg overflow-hidden">
-        {product.image ? (
-          <img
-            src={`data:image/png;base64,${product.image}`}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-3xl">
-            📦
-          </div>
-        )}
-      </div>
-
-      {/* Nome prodotto */}
-      <h3 className="text-xs sm:text-sm font-semibold mt-2 line-clamp-2 text-center min-h-[2.5rem]">
-        {product.name}
+      {/* Nome prodotto (senza immagine, solo nome breve) */}
+      <h3 className="text-xs sm:text-sm font-semibold mt-2 line-clamp-3 text-center min-h-[3rem]">
+        {shortName}
       </h3>
 
       {/* Badge stato */}
