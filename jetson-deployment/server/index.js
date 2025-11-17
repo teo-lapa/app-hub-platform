@@ -20,6 +20,7 @@ const classifierService = USE_OLLAMA
   ? require('./classifier-ollama')
   : require('./classifier');
 const queueManager = require('./queue');
+const contactClassifier = require('./contact-classifier');
 
 // Log which classifier is being used
 console.log(`🤖 AI Classifier: ${USE_OLLAMA ? 'Ollama Llama 3.2 3B (Local)' : 'Cloud API'}`);
@@ -492,6 +493,61 @@ app.post('/api/v1/ask-document', upload.single('file'), async (req, res) => {
   }
 });
 
+/**
+ * POST /api/v1/extract-contact
+ * Extract contact information from business cards/invoices using Llama 3.2
+ */
+app.post('/api/v1/extract-contact', upload.single('file'), async (req, res) => {
+  let tempFilePath = null;
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    tempFilePath = req.file.path;
+    logger.info(`Contact extraction request: ${req.file.originalname}`);
+
+    // Step 1: OCR text extraction
+    const ocrResult = await ocrService.extractText(tempFilePath, {
+      lang: req.body.language || 'ita+eng',
+      psm: '3'
+    });
+
+    if (!ocrResult.success) {
+      throw new Error(`OCR failed: ${ocrResult.error}`);
+    }
+
+    // Step 2: Extract contact data with Llama AI
+    const contactResult = await contactClassifier.extractContact(ocrResult.text, {
+      mode: req.body.mode || 'auto'
+    });
+
+    // Cleanup
+    await fs.unlink(tempFilePath);
+
+    res.json({
+      success: true,
+      filename: req.file.originalname,
+      rawText: ocrResult.text,
+      contact: contactResult.contact,
+      confidence: contactResult.confidence,
+      extractionMethod: contactResult.extractionMethod,
+      duration: contactResult.duration
+    });
+
+  } catch (error) {
+    logger.error('Contact extraction error:', error);
+    if (tempFilePath) {
+      try { await fs.unlink(tempFilePath); } catch (e) {}
+    }
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ============================================
 // ERROR HANDLERS
 // ============================================
@@ -619,6 +675,9 @@ async function startServer() {
 
     logger.info('Initializing classification service...');
     await classifierService.initialize();
+
+    logger.info('Initializing contact classifier...');
+    await contactClassifier.initialize();
 
     logger.info('Initializing job queue...');
     await queueManager.initialize();
