@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -46,7 +48,8 @@ export default function JetsonChat() {
     setChatLoading(true);
 
     try {
-      const response = await fetch(`${jetsonStatus.tunnel.url}/api/v1/chat`, {
+      const tunnelUrl = jetsonStatus.tunnel.url.trim();
+      const response = await fetch(`${tunnelUrl}/api/v1/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -77,12 +80,21 @@ export default function JetsonChat() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-4 sm:mb-6 md:mb-8">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
-            💬 Chat con Llama AI
-          </h1>
-          <p className="text-xs sm:text-sm md:text-base text-gray-600">
-            AI locale con NVIDIA Jetson Nano + Ollama Llama 3.2 3B
-          </p>
+          <div className="flex items-center gap-4 mb-4">
+            <Link href="/jetson-monitor">
+              <button className="p-2 bg-white hover:bg-gray-100 rounded-lg transition-colors shadow-sm border border-gray-200">
+                <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
+              </button>
+            </Link>
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
+                💬 Chat con Llama AI
+              </h1>
+              <p className="text-xs sm:text-sm md:text-base text-gray-600">
+                AI locale con NVIDIA Jetson Nano + Ollama Llama 3.2 3B
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Jetson Status */}
