@@ -264,7 +264,9 @@ export default function JetsonMonitor() {
             </div>
 
             <div className="space-y-2">
-              {status?.jetson?.services && Object.entries(status.jetson.services).map(([name, stat]) => (
+              {status?.jetson?.services && Object.entries(status.jetson.services)
+                .filter(([name]) => name !== 'kimiK2')
+                .map(([name, stat]) => (
                 <div key={name} className="flex items-center justify-between">
                   <span className="text-gray-300 text-sm capitalize">{name}</span>
                   <span className={`text-xs font-semibold px-2 py-1 rounded ${
@@ -388,19 +390,23 @@ export default function JetsonMonitor() {
                 </button>
               </Link>
 
-              <button
-                disabled={!isOnline}
-                className="w-full px-4 py-3 bg-purple-500/20 hover:bg-purple-500/30 disabled:bg-gray-600/20 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors text-left flex items-center gap-2"
-              >
-                📄 Upload & Analizza PDF
-              </button>
+              <Link href="/jetson-upload">
+                <button
+                  disabled={!isOnline}
+                  className="w-full px-4 py-3 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors text-left flex items-center gap-2"
+                >
+                  📄 Upload & Analizza PDF
+                </button>
+              </Link>
 
-              <button
-                disabled={!isOnline}
-                className="w-full px-4 py-3 bg-blue-500/20 hover:bg-blue-500/30 disabled:bg-gray-600/20 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors text-left flex items-center gap-2"
-              >
-                📊 Statistiche Utilizzo
-              </button>
+              <Link href="/jetson-stats">
+                <button
+                  disabled={!isOnline}
+                  className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors text-left flex items-center gap-2"
+                >
+                  📊 Statistiche Utilizzo
+                </button>
+              </Link>
             </div>
           </div>
         </div>
