@@ -66,6 +66,8 @@ export default function JetsonMonitor() {
       const interval = setInterval(fetchStatus, 10000);
       return () => clearInterval(interval);
     }
+
+    return undefined;
   }, [autoRefresh]);
 
   // Test OCR rapido
