@@ -22,14 +22,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Call aggregate API and block-requests API in parallel
-    console.log(`🔄 [COUNTS-API] Calling aggregate and block-requests APIs...`);
+    // Call aggregate API, block-requests API and main-pricelists API in parallel
+    console.log(`🔄 [COUNTS-API] Calling aggregate, block-requests and pricelists APIs...`);
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url.split('/api')[0];
     const aggregateUrl = `${baseUrl}/api/controllo-prezzi/aggregate`;
     const blockRequestsUrl = `${baseUrl}/api/controllo-prezzi/block-requests`;
+    const pricelistsUrl = `${baseUrl}/api/controllo-prezzi/main-pricelists`;
 
-    const [aggregateResponse, blockRequestsResponse] = await Promise.all([
+    const [aggregateResponse, blockRequestsResponse, pricelistsResponse] = await Promise.all([
       fetch(aggregateUrl, {
         method: 'GET',
         headers: { cookie: cookieHeader || '' },
@@ -39,11 +40,17 @@ export async function GET(request: NextRequest) {
         method: 'GET',
         headers: { cookie: cookieHeader || '' },
         cache: 'no-store'
+      }),
+      fetch(pricelistsUrl, {
+        method: 'GET',
+        headers: { cookie: cookieHeader || '' },
+        cache: 'no-store'
       })
     ]);
 
     const aggregateData = await aggregateResponse.json();
     const blockRequestsData = await blockRequestsResponse.json();
+    const pricelistsData = await pricelistsResponse.json();
 
     if (!aggregateData.success) {
       throw new Error('Failed to fetch aggregate data');
@@ -52,6 +59,22 @@ export async function GET(request: NextRequest) {
     const { stats } = aggregateData;
     const blockRequestsCount = blockRequestsData.success ? blockRequestsData.requests.length : 0;
 
+    // Get products without rules count
+    let setupPricelistsCount = 0;
+    if (pricelistsData.success && pricelistsData.pricelists.length > 0) {
+      const pricelistIds = pricelistsData.pricelists.map((p: any) => p.id).join(',');
+      const productsWithoutRulesUrl = `${baseUrl}/api/controllo-prezzi/products-without-rules?pricelistIds=${pricelistIds}&filter=without`;
+
+      const productsWithoutRulesResponse = await fetch(productsWithoutRulesUrl, {
+        method: 'GET',
+        headers: { cookie: cookieHeader || '' },
+        cache: 'no-store'
+      });
+
+      const productsWithoutRulesData = await productsWithoutRulesResponse.json();
+      setupPricelistsCount = productsWithoutRulesData.success ? productsWithoutRulesData.count : 0;
+    }
+
     // Map to expected format
     const counts = {
       byCategory: {
@@ -59,7 +82,8 @@ export async function GET(request: NextRequest) {
         critical_to_avg: stats.tra_pc_medio || 0,
         above_avg: stats.sopra_medio || 0,
         blocked: blockRequestsCount,
-        all: stats.total_products || 0
+        all: stats.total_products || 0,
+        setup_pricelists: setupPricelistsCount
       }
     };
 

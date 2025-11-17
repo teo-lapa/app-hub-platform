@@ -69,6 +69,7 @@ export default function ControlloPrezziPage() {
     above_avg: 0,
     blocked: 0,
     all: 0,
+    setup_pricelists: 0,
   });
 
   // Stati UI
@@ -122,7 +123,13 @@ export default function ControlloPrezziPage() {
   };
 
   // Seleziona categoria e mostra prodotti/richieste
-  const handleSelectCategory = async (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all') => {
+  const handleSelectCategory = async (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all' | 'setup_pricelists') => {
+    // Se è setup_pricelists, vai alla pagina dedicata
+    if (category === 'setup_pricelists') {
+      router.push('/controllo-prezzi/imposta-listini');
+      return;
+    }
+
     setSelectedCategory(category);
     setCurrentView('products');
 

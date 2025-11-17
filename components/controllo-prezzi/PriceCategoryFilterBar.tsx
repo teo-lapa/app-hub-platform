@@ -10,8 +10,9 @@ interface PriceCategoryFilterBarProps {
     above_avg: number;
     blocked: number;
     all: number;
+    setup_pricelists: number;
   };
-  onSelect: (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all') => void;
+  onSelect: (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all' | 'setup_pricelists') => void;
 }
 
 const PRICE_CATEGORIES: PriceCategory[] = [
@@ -55,6 +56,14 @@ const PRICE_CATEGORIES: PriceCategory[] = [
     gradient: 'from-blue-500 to-blue-700',
     count: 0,
   },
+  {
+    id: 'setup_pricelists',
+    name: 'IMPOSTA LISTINI',
+    icon: '📋',
+    description: 'Imposta regole prezzi prodotti',
+    gradient: 'from-purple-500 to-purple-700',
+    count: 0,
+  },
 ];
 
 export function PriceCategoryFilterBar({
@@ -88,7 +97,7 @@ export function PriceCategoryFilterBar({
       )}
 
       {/* Griglia filtri */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 max-w-7xl mx-auto">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 max-w-7xl mx-auto">
         {PRICE_CATEGORIES.map((category, index) => {
           const count = counts[category.id];
           const isHighlighted = count === maxCount && maxCount > 0;

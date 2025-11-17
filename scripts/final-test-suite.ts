@@ -109,7 +109,7 @@ async function runTests() {
   for (const test of tests) {
     const result = await testWithTimeout(test.name, test.url, TIMEOUT_MS);
     results.push(result);
-    await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms between tests
+    // REMOVED SLEEP - run tests immediately // Wait 500ms between tests
   }
 
   // Final Report
