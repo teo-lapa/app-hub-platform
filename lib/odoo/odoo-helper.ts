@@ -9,8 +9,8 @@ import { cookies } from 'next/headers';
  * Autentica con Odoo usando credenziali (fallback)
  */
 async function authenticateWithCredentials(): Promise<string | null> {
-  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com';
-  const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24586501';
+  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com';
+  const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-25408900';
 
   console.log('🔐 Autenticazione Odoo con credenziali...');
 
@@ -101,7 +101,7 @@ async function callOdooInternal(
   kwargs: any,
   sessionId: string
 ): Promise<any> {
-  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24586501.dev.odoo.com';
+  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com';
 
   const response = await fetch(`${odooUrl}/web/dataset/call_kw`, {
     method: 'POST',
