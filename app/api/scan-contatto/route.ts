@@ -194,6 +194,55 @@ export async function POST(request: NextRequest) {
       const jetsonData = await jetsonResponse.json();
 
       console.log(`✅ [SCAN-CONTATTO] Request ${requestId} - Jetson extraction completed`);
+      console.log('🔍 [DEBUG] Jetson raw response:', JSON.stringify(jetsonData, null, 2));
+
+      // ========== MAP CONTACT DATA ==========
+      // Handle both old (buggy) and new Jetson response formats
+      let contactData = jetsonData.contact;
+
+      // Fallback: if contact is undefined/null but jetsonData has contact fields directly
+      if (!contactData && jetsonData.displayName) {
+        console.log('⚠️  [SCAN-CONTATTO] Contact is undefined, using jetsonData fields directly');
+        contactData = {
+          name: jetsonData.displayName || '',
+          email: jetsonData.emails?.[0]?.value || '',
+          phone: jetsonData.phones?.find((p: any) => p.type === 'landline')?.value || '',
+          mobile: jetsonData.phones?.find((p: any) => p.type === 'mobile')?.value || '',
+          street: jetsonData.address?.street || '',
+          zip: jetsonData.address?.postalCode || '',
+          city: jetsonData.address?.city || '',
+          country: jetsonData.address?.country || '',
+          company_name: jetsonData.companyName || '',
+          website: jetsonData.website || '',
+          vat: jetsonData.taxIdentifiers?.vatId || '',
+          function: jetsonData.jobTitle || '',
+          comment: ''
+        };
+      } else if (contactData) {
+        // Map Jetson format to our ContactData format
+        contactData = {
+          name: contactData.displayName || contactData.name || '',
+          email: contactData.emails?.[0]?.value || contactData.email || '',
+          phone: contactData.phones?.find((p: any) => p.type === 'landline')?.value || contactData.phone || '',
+          mobile: contactData.phones?.find((p: any) => p.type === 'mobile')?.value || contactData.mobile || '',
+          street: contactData.address?.street || contactData.street || '',
+          zip: contactData.address?.postalCode || contactData.zip || '',
+          city: contactData.address?.city || contactData.city || '',
+          country: contactData.address?.country || contactData.country || '',
+          company_name: contactData.companyName || contactData.company_name || '',
+          website: contactData.website || '',
+          vat: contactData.taxIdentifiers?.vatId || contactData.vat || '',
+          function: contactData.jobTitle || contactData.function || '',
+          comment: contactData.comment || ''
+        };
+      }
+
+      if (!contactData) {
+        console.error('❌ [SCAN-CONTATTO] No contact data found in response');
+        throw new Error('Nessun dato contatto estratto dall\'immagine');
+      }
+
+      console.log('✅ [SCAN-CONTATTO] Mapped contact data:', contactData);
 
       // ========== CALCULATE METRICS ==========
       const duration = Date.now() - startTime;
@@ -203,7 +252,7 @@ export async function POST(request: NextRequest) {
         {
           success: true,
           data: {
-            contact: jetsonData.contact,
+            contact: contactData,
             rawText: jetsonData.rawText,
             confidence: jetsonData.confidence,
             extractionMethod: jetsonData.extractionMethod,

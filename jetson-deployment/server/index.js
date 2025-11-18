@@ -508,9 +508,15 @@ app.post('/api/v1/extract-contact', upload.single('file'), async (req, res) => {
     tempFilePath = req.file.path;
     logger.info(`Contact extraction request: ${req.file.originalname}`);
 
+    // Map language codes: 'it' -> 'ita' for Tesseract
+    let tessLang = req.body.language || 'ita+eng';
+    if (tessLang === 'it') tessLang = 'ita+eng';
+    if (tessLang === 'en') tessLang = 'eng';
+    if (tessLang === 'de') tessLang = 'deu';
+
     // Step 1: OCR text extraction
     const ocrResult = await ocrService.extractText(tempFilePath, {
-      lang: req.body.language || 'ita+eng',
+      lang: tessLang,
       psm: '3'
     });
 
@@ -530,7 +536,7 @@ app.post('/api/v1/extract-contact', upload.single('file'), async (req, res) => {
       success: true,
       filename: req.file.originalname,
       rawText: ocrResult.text,
-      contact: contactResult.contact,
+      contact: contactResult, // Fixed: contactResult already contains the contact data
       confidence: contactResult.confidence,
       extractionMethod: contactResult.extractionMethod,
       duration: contactResult.duration
