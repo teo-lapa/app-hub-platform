@@ -168,7 +168,7 @@ class OdooXMLRPCClient implements OdooXMLRPC {
 
         // Parse struct members
         const obj: any = {};
-        const memberRegex = /<member><name>(.*?)<\/name><value>([\s\S]*?)<\/value><\/member>/g;
+        const memberRegex = /<member>\s*<name>(.*?)<\/name>\s*<value>([\s\S]*?)<\/value>\s*<\/member>/g;
         let memberMatch;
 
         while ((memberMatch = memberRegex.exec(structContent)) !== null) {
@@ -234,7 +234,7 @@ class OdooXMLRPCClient implements OdooXMLRPC {
           const structMatch = itemContent.match(/<struct>([\s\S]*?)<\/struct>/);
           if (structMatch) {
           const obj: any = {};
-          const memberRegex = /<member><name>(.*?)<\/name><value>([\s\S]*?)<\/value><\/member>/g;
+          const memberRegex = /<member>\s*<name>(.*?)<\/name>\s*<value>([\s\S]*?)<\/value>\s*<\/member>/g;
           let memberMatch;
 
           while ((memberMatch = memberRegex.exec(structMatch[1])) !== null) {
