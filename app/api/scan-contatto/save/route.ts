@@ -122,7 +122,8 @@ export async function POST(request: NextRequest) {
     // ========== CREATE PARTNER IN ODOO ==========
     console.log(`💾 [SCAN-CONTATTO-SAVE] Request ${requestId} - Creating partner in Odoo...`);
 
-    const partnerId = await odoo.create('res.partner', partnerData);
+    const partnerIds = await odoo.create('res.partner', [partnerData]);
+    const partnerId = partnerIds[0];
 
     console.log(`✅ [SCAN-CONTATTO-SAVE] Request ${requestId} - Partner created: ID ${partnerId}`);
 
