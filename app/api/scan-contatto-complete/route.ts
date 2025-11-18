@@ -262,9 +262,11 @@ Rispondi con JSON:
         // Normalizza VAT svizzero per Odoo:
         // "CHE-110.576.236" → "CH110576236"
         // "CHE-141.157.556 MWST" → "CH141157556"
+        // "CH1-105.762.36" → "CH110576236"
         let vat = (finalData.companyUID || finalData.uid).toString();
-        vat = vat.replace('CHE', 'CH').replace(/[^CH0-9]/g, '');  // Tiene solo CH + numeri
-        partnerData.vat = vat;
+        // Estrai SOLO i numeri e aggiungi CH davanti
+        const numbers = vat.replace(/\D/g, '');  // \D = tutto tranne numeri
+        partnerData.vat = 'CH' + numbers;
       }
       if (finalData.website) partnerData.website = finalData.website;
 
