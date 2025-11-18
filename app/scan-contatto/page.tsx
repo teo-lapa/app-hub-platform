@@ -67,10 +67,9 @@ export default function ScanContattoPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [steps, setSteps] = useState<ProcessingStep[]>([
-    { id: 'ocr', label: 'Tesseract OCR', icon: Scan, status: 'pending' },
-    { id: 'llama', label: 'Llama 3.2 Vision', icon: Brain, status: 'pending' },
-    { id: 'claude', label: 'Claude Refinement', icon: Sparkles, status: 'pending' },
-    { id: 'odoo', label: 'Salva in Odoo', icon: Database, status: 'pending' },
+    { id: 'ocr', label: 'Gemini Vision OCR', icon: Scan, status: 'pending' },
+    { id: 'websearch', label: 'Claude Web Search', icon: Brain, status: 'pending' },
+    { id: 'odoo', label: 'Creazione Odoo', icon: Database, status: 'pending' },
   ]);
   const [extractedData, setExtractedData] = useState<ContactData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -155,21 +154,17 @@ export default function ScanContattoPage() {
     formData.append('file', selectedFile);
 
     try {
-      // Step 1: OCR
-      updateStepStatus('ocr', 'processing', 'Estrazione testo...');
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      // Step 1: Gemini Vision OCR
+      updateStepStatus('ocr', 'processing', 'Gemini Vision estrae dati...');
 
-      // Step 2: Llama Vision
-      updateStepStatus('ocr', 'completed', 'Testo estratto');
-      updateStepStatus('llama', 'processing', 'Analisi intelligente...');
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      // Step 2: Claude Web Search
+      updateStepStatus('websearch', 'processing', 'Claude cerca su web...');
 
-      // Step 3: Claude Refinement
-      updateStepStatus('llama', 'completed', 'Dati identificati');
-      updateStepStatus('claude', 'processing', 'Raffinamento dati...');
+      // Step 3: Odoo Creation
+      updateStepStatus('odoo', 'processing', 'Creazione contatto...');
 
-      // Call API
-      const response = await fetch('/api/scan-contatto', {
+      // Call NEW API
+      const response = await fetch('/api/scan-contatto-complete', {
         method: 'POST',
         body: formData,
       });
@@ -181,21 +176,42 @@ export default function ScanContattoPage() {
 
       const result = await response.json();
 
-      console.log('📦 [SCAN-CONTATTO] API Response:', result);
-      console.log('👤 [SCAN-CONTATTO] Contact data:', result.data?.contact || result.contact);
+      console.log('📦 [SCAN-CONTATTO-COMPLETE] API Response:', result);
 
-      updateStepStatus('claude', 'completed', 'Dati raffinati');
-      updateStepStatus('odoo', 'completed', 'Pronto per il salvataggio');
-
-      // Fix: API returns result.data.contact, not result.contact
-      const contactData = result.data?.contact || result.contact;
-
-      if (!contactData) {
-        throw new Error('Nessun dato contatto ricevuto dal server');
+      if (!result.success) {
+        throw new Error(result.error || 'Pipeline fallita');
       }
 
+      // All steps completed
+      updateStepStatus('ocr', 'completed', 'Dati estratti con Gemini');
+      updateStepStatus('websearch', 'completed',
+        result.webSearchData?.found
+          ? `Azienda trovata: ${result.webSearchData.legalName}`
+          : 'Azienda non trovata su web'
+      );
+      updateStepStatus('odoo', 'completed', `Contatto creato in Odoo (ID: ${result.odooContact.id})`);
+
+      // Convert to ContactData format for form
+      const contactData: ContactData = {
+        name: result.extractedData.name || '',
+        email: result.extractedData.email || '',
+        phone: result.extractedData.phone || '',
+        mobile: result.extractedData.mobile || '',
+        street: result.extractedData.street || result.webSearchData?.address?.street || '',
+        zip: result.extractedData.zip || result.webSearchData?.address?.zip || '',
+        city: result.extractedData.city || result.webSearchData?.address?.city || '',
+        country: result.extractedData.country || '',
+        company_name: result.extractedData.companyName || result.webSearchData?.legalName || '',
+        website: result.extractedData.website || '',
+        vat: result.extractedData.companyUID || result.webSearchData?.uid || '',
+        function: result.extractedData.function || '',
+        comment: result.webSearchData?.creditInfo || '',
+      };
+
+      // Contact already created in Odoo!
+      setCreatedContact(result.odooContact);
       setExtractedData(contactData);
-      setIsEditing(true);
+      setIsEditing(false);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Errore sconosciuto';
@@ -211,37 +227,7 @@ export default function ScanContattoPage() {
     }
   };
 
-  const saveToOdoo = async () => {
-    if (!extractedData) return;
-
-    setIsProcessing(true);
-    updateStepStatus('odoo', 'processing', 'Salvataggio in Odoo...');
-
-    try {
-      const response = await fetch('/api/scan-contatto/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(extractedData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Errore durante il salvataggio');
-      }
-
-      const result = await response.json();
-
-      updateStepStatus('odoo', 'completed', 'Contatto creato!');
-      setCreatedContact(result.contact);
-      setIsEditing(false);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Errore di salvataggio';
-      setError(errorMessage);
-      updateStepStatus('odoo', 'error', errorMessage);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  // Note: saveToOdoo removed - contact is created automatically by /api/scan-contatto-complete
 
   const resetForm = () => {
     setSelectedFile(null);
@@ -724,24 +710,20 @@ export default function ScanContattoPage() {
                     />
                   </div>
 
-                  {/* Save Button */}
-                  <button
-                    onClick={saveToOdoo}
-                    disabled={isProcessing}
-                    className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 font-semibold text-white shadow-lg transition-all hover:from-green-700 hover:to-emerald-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isProcessing ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        Salvataggio...
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-center gap-2">
-                        <Save className="h-5 w-5" />
-                        Salva in Odoo
-                      </span>
-                    )}
-                  </button>
+                  {/* Info: Contact already created */}
+                  <div className="rounded-xl bg-green-50 border border-green-200 p-4">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-green-900">
+                          Contatto già creato in Odoo!
+                        </p>
+                        <p className="text-sm text-green-700">
+                          Puoi vedere i dettagli estratti qui sopra. Il contatto è già stato salvato automaticamente.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </motion.div>
               )}
 
