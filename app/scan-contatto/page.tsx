@@ -184,7 +184,8 @@ export default function ScanContattoPage() {
       updateStepStatus('claude', 'completed', 'Dati raffinati');
       updateStepStatus('odoo', 'completed', 'Pronto per il salvataggio');
 
-      setExtractedData(result.contact);
+      // Fix: API returns result.data.contact, not result.contact
+      setExtractedData(result.data?.contact || result.contact);
       setIsEditing(true);
     } catch (err) {
       const errorMessage =
