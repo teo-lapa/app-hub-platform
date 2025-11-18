@@ -256,6 +256,7 @@ class OdooXMLRPCClient implements OdooXMLRPC {
       }
 
       return items;
+      }
     }
 
     // Check for int
