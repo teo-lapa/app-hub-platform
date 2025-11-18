@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooClient } from '@/lib/odoo-client';
+import { getOdooXMLRPCClient } from '@/lib/odoo-xmlrpc';
 
 /**
  * POST /api/scan-contatto/save
@@ -74,8 +74,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`📋 [SCAN-CONTATTO-SAVE] Request ${requestId} - Contact data:`, contactData);
 
-    // ========== CREATE ODOO CLIENT ==========
-    const odoo = await getOdooClient();
+    // ========== CREATE ODOO XML-RPC CLIENT ==========
+    const odoo = await getOdooXMLRPCClient();
 
     // ========== PREPARE PARTNER DATA ==========
     const partnerData: any = {
@@ -103,10 +103,11 @@ export async function POST(request: NextRequest) {
     // Country - try to find by name
     if (contactData.country) {
       try {
-        const countries = await odoo.searchRead(
+        const countries = await odoo.execute_kw(
           'res.country',
+          'search_read',
           [[['name', 'ilike', contactData.country]]],
-          ['id']
+          { fields: ['id'], limit: 1 }
         );
 
         if (countries && countries.length > 0) {
@@ -122,23 +123,28 @@ export async function POST(request: NextRequest) {
     // ========== CREATE PARTNER IN ODOO ==========
     console.log(`💾 [SCAN-CONTATTO-SAVE] Request ${requestId} - Creating partner in Odoo...`);
 
-    const partnerIds = await odoo.create('res.partner', [partnerData]);
-    const partnerId = partnerIds[0];
+    const partnerIdResult = await odoo.execute_kw('res.partner', 'create', [[partnerData]]);
+    // Odoo returns an array with the ID, extract the first element
+    const partnerId = Array.isArray(partnerIdResult) ? partnerIdResult[0] : partnerIdResult;
 
     console.log(`✅ [SCAN-CONTATTO-SAVE] Request ${requestId} - Partner created: ID ${partnerId}`);
 
     // ========== RETRIEVE CREATED PARTNER ==========
-    const createdPartner = await odoo.searchRead(
+    const createdPartner = await odoo.execute_kw(
       'res.partner',
+      'search_read',
       [[['id', '=', partnerId]]],
-      ['id', 'name', 'display_name', 'email', 'phone', 'mobile']
+      { fields: ['id', 'name', 'display_name', 'email', 'phone', 'mobile'], limit: 1 }
     );
+
+    console.log(`📋 [SCAN-CONTATTO-SAVE] Request ${requestId} - search_read result:`, typeof createdPartner, createdPartner, 'length:', createdPartner?.length);
 
     if (!createdPartner || createdPartner.length === 0) {
       throw new Error('Partner created but not found in read');
     }
 
     const partner = createdPartner[0];
+    console.log(`👤 [SCAN-CONTATTO-SAVE] Request ${requestId} - Partner object:`, partner);
 
     // ========== CALCULATE METRICS ==========
     const duration = Date.now() - startTime;
