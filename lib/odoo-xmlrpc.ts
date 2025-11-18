@@ -146,33 +146,93 @@ class OdooXMLRPCClient implements OdooXMLRPC {
 
   private parseXMLRPCResponse(xml: string): any {
     // Simple parser for methodResponse
-    const valueMatch = xml.match(/<value>([\s\S]*?)<\/value>/);
-    if (!valueMatch) {
+    // Extract the value inside <param><value>...</value></param>
+    const paramMatch = xml.match(/<param>\s*<value>([\s\S]*)<\/value>\s*<\/param>/);
+    if (!paramMatch) {
       throw new Error('Invalid XML-RPC response');
     }
 
-    const valueContent = valueMatch[1];
+    const valueContent = paramMatch[1];
 
-    // Check for int
-    const intMatch = valueContent.match(/<int>(\d+)<\/int>/);
-    if (intMatch) {
-      return parseInt(intMatch[1], 10);
-    }
-
-    // Check for array
+    // Check for array FIRST (before checking for nested types)
     const arrayMatch = valueContent.match(/<array><data>([\s\S]*?)<\/data><\/array>/);
     if (arrayMatch) {
       const items: any[] = [];
       const dataContent = arrayMatch[1];
-      const valueRegex = /<value>([\s\S]*?)<\/value>/g;
+      // Match struct values specifically to avoid non-greedy issues with nested <value> tags
+      const structValueRegex = /<value><struct>([\s\S]*?)<\/struct><\/value>/g;
       let match;
 
-      while ((match = valueRegex.exec(dataContent)) !== null) {
-        const itemContent = match[1];
+      while ((match = structValueRegex.exec(dataContent)) !== null) {
+        const structContent = match[1];
 
-        // Parse struct
-        const structMatch = itemContent.match(/<struct>([\s\S]*?)<\/struct>/);
-        if (structMatch) {
+        // Parse struct members
+        const obj: any = {};
+        const memberRegex = /<member><name>(.*?)<\/name><value>([\s\S]*?)<\/value><\/member>/g;
+        let memberMatch;
+
+        while ((memberMatch = memberRegex.exec(structContent)) !== null) {
+          const key = memberMatch[1];
+          const valContent = memberMatch[2];
+
+          const intM = valContent.match(/<int>(\d+)<\/int>/);
+          const strM = valContent.match(/<string>(.*?)<\/string>/);
+          const boolM = valContent.match(/<boolean>([01])<\/boolean>/);
+
+          if (intM) obj[key] = parseInt(intM[1], 10);
+          else if (strM) obj[key] = strM[1];
+          else if (boolM) obj[key] = boolM[1] === '1';
+          else obj[key] = null;
+        }
+
+        items.push(obj);
+      }
+
+      return items;
+    }
+
+    // Fallback: try parsing as array of primitives
+    const arrayPrimitiveMatch = valueContent.match(/<array><data>([\s\S]*?)<\/data><\/array>/);
+    if (arrayPrimitiveMatch) {
+      const items: any[] = [];
+      const dataContent = arrayPrimitiveMatch[1];
+
+      // Match primitive values (int, string, etc.)
+      const intValueRegex = /<value><int>(\d+)<\/int><\/value>/g;
+      let intMatch;
+      while ((intMatch = intValueRegex.exec(dataContent)) !== null) {
+        items.push(parseInt(intMatch[1], 10));
+      }
+
+      if (items.length > 0) {
+        return items;
+      }
+
+      // Could add more primitive types here if needed
+
+      // If no primitives found, check if there were structs that we missed
+      const hasStructs = dataContent.includes('<struct>');
+      if (hasStructs) {
+        // There are structs but we couldn't parse them - return what we have
+        return items;
+      }
+    }
+
+    // Original struct parsing code (keeping for backward compatibility)
+    {
+      const arrayMatch2 = valueContent.match(/<array><data>([\s\S]*?)<\/data><\/array>/);
+      if (arrayMatch2) {
+        const items: any[] = [];
+        const dataContent = arrayMatch2[1];
+        const valueRegex = /<value>([\s\S]*?)<\/value>/g;
+        let match;
+
+        while ((match = valueRegex.exec(dataContent)) !== null) {
+          const itemContent = match[1];
+
+          // Parse struct
+          const structMatch = itemContent.match(/<struct>([\s\S]*?)<\/struct>/);
+          if (structMatch) {
           const obj: any = {};
           const memberRegex = /<member><name>(.*?)<\/name><value>([\s\S]*?)<\/value><\/member>/g;
           let memberMatch;
@@ -196,6 +256,12 @@ class OdooXMLRPCClient implements OdooXMLRPC {
       }
 
       return items;
+    }
+
+    // Check for int
+    const intMatch = valueContent.match(/<int>(\d+)<\/int>/);
+    if (intMatch) {
+      return parseInt(intMatch[1], 10);
     }
 
     // Check for boolean
