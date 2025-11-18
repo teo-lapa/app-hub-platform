@@ -157,15 +157,80 @@ export async function POST(request: NextRequest) {
       console.log(`✅ [APPLY-CORRECTIONS] Total verification: OK (within €0.02)`);
     }
 
-    // IMPORTANTE: Lascia traccia nel Chatter di Odoo
-    console.log('📝 [APPLY-CORRECTIONS] Adding message to invoice chatter...');
+    // IMPORTANTE: Lascia traccia nel Chatter di Odoo con dettagli completi
+    console.log('📝 [APPLY-CORRECTIONS] Adding detailed message to invoice chatter...');
 
     try {
+      // Carica righe correnti per confronto prima/dopo
+      const currentLines = await callOdoo(
+        cookies,
+        'account.move.line',
+        'search_read',
+        [[['move_id', '=', invoice_id], ['display_type', '=', false]]],
+        {
+          fields: ['id', 'name', 'product_id', 'quantity', 'price_unit', 'discount', 'price_subtotal']
+        }
+      );
+
+      // Genera dettaglio modifiche per Chatter
+      const modificheDettaglio: string[] = [];
+
+      // Dettaglio UPDATE
+      const updateCorrections = corrections.filter((c: any) => c.action === 'update');
+      if (updateCorrections.length > 0) {
+        modificheDettaglio.push(`<strong>📝 RIGHE AGGIORNATE (${updateCorrections.length}):</strong>`);
+        updateCorrections.forEach((corr: any, idx: number) => {
+          const line = currentLines.find((l: any) => l.id === corr.line_id);
+          if (line) {
+            const changes = [];
+            if (corr.changes.price_unit) {
+              const oldPrice = line.price_unit;
+              const newPrice = corr.changes.price_unit;
+              const diff = newPrice - oldPrice;
+              changes.push(`Prezzo: €${oldPrice.toFixed(2)} → €${newPrice.toFixed(2)} (${diff > 0 ? '+' : ''}€${diff.toFixed(2)})`);
+            }
+            if (corr.changes.quantity) {
+              const oldQty = line.quantity;
+              const newQty = corr.changes.quantity;
+              changes.push(`Quantità: ${oldQty} → ${newQty}`);
+            }
+            if (corr.changes.discount !== undefined) {
+              const oldDisc = line.discount || 0;
+              const newDisc = corr.changes.discount;
+              changes.push(`Sconto: ${oldDisc}% → ${newDisc}%`);
+            }
+            modificheDettaglio.push(`${idx + 1}. ${line.product_id?.[1] || line.name}`);
+            modificheDettaglio.push(`   ${changes.join(', ')}`);
+            if (corr.reason) {
+              modificheDettaglio.push(`   <em>Motivo: ${corr.reason}</em>`);
+            }
+          }
+        });
+        modificheDettaglio.push(``);
+      }
+
+      // Dettaglio CREATE
+      const createCorrections = corrections.filter((c: any) => c.action === 'create' && !c.requires_user_approval);
+      if (createCorrections.length > 0) {
+        modificheDettaglio.push(`<strong>➕ RIGHE AGGIUNTE (${createCorrections.length}):</strong>`);
+        createCorrections.forEach((corr: any, idx: number) => {
+          const newLine = corr.new_line;
+          modificheDettaglio.push(`${idx + 1}. ${newLine.name || 'N/A'}`);
+          modificheDettaglio.push(`   Quantità: ${newLine.quantity}, Prezzo: €${newLine.price_unit?.toFixed(2) || '0.00'}${newLine.discount ? `, Sconto: ${newLine.discount}%` : ''}, Totale: €${newLine.price_subtotal?.toFixed(2) || '0.00'}`);
+          if (corr.reason) {
+            modificheDettaglio.push(`   <em>Motivo: ${corr.reason}</em>`);
+          }
+        });
+        modificheDettaglio.push(``);
+      }
+
       const changesSummary = [
         `✅ <strong>Fattura validata automaticamente con Claude AI</strong>`,
         ``,
-        invoice_date ? `📅 <strong>Data fattura aggiornata:</strong> ${invoice_date}` : null,
-        `📊 <strong>Riepilogo correzioni:</strong>`,
+        invoice_date ? `📅 <strong>Data fattura PDF:</strong> ${invoice_date}` : null,
+        ``,
+        ...modificheDettaglio,
+        `📊 <strong>Riepilogo:</strong>`,
         `• Righe aggiornate: ${updated_lines}`,
         `• Righe eliminate: ${deleted_lines}`,
         `• Righe create: ${created_lines}`,

@@ -213,8 +213,15 @@ export async function POST(request: NextRequest) {
       - USA IL NUMERO IN QUELLA COLONNA (es: 5, 50, 3)
       - NON prendere il numero dalla colonna U/M (es: "18KG")
       - Per spese forfettarie: quantità = 1
-   f) Aliquota IVA (22%, 10%, 4%, 0%, ecc.)
-   g) Unità di misura
+   f) SCONTO percentuale - ⚠️ IMPORTANTE!
+      - Cerca colonna "Sc.1%" o "Sconto%"
+      - Se vedi "100,00" o "100.00" → discount: 100
+      - Se vedi "50,00" → discount: 50
+      - Se vuoto o 0 → discount: 0
+      - PER CAMPIONI GRATUITI: estrai SEMPRE il prezzo reale + discount 100
+      - Esempio: "Prezzo 3,67" + "Sc.1% 100,00" → unit_price: 3.67, discount: 100, subtotal: 0.00
+   g) Aliquota IVA (22%, 10%, 4%, 0%, ecc.)
+   h) Unità di misura
       - Se U/M contiene "CT": unit = "CT"
       - Se U/M è "KG", "PZ", "LT": usa quella
       - Per spese: "PZ"
@@ -260,6 +267,7 @@ Rispondi SOLO con JSON valido:
       "product_code": "A0334SG",
       "quantity": 5,
       "unit_price": 29.51,
+      "discount": 0,
       "subtotal": 358.55,
       "tax_rate": 10,
       "unit": "CT"
@@ -269,18 +277,20 @@ Rispondi SOLO con JSON valido:
       "product_code": "C0544SG",
       "quantity": 50,
       "unit_price": 24.74,
+      "discount": 0,
       "subtotal": 1166.29,
       "tax_rate": 10,
       "unit": "CT"
     },
     {
-      "description": "SFOGLIATELLE MIGNON APERITIVO 35 g",
-      "product_code": "S0425SG",
-      "quantity": 3,
-      "unit_price": 30.60,
-      "subtotal": 20.66,
+      "description": "CAMPIONE GRATUITO - AGNOLOTTI CARNE",
+      "product_code": "CRAVIOLI28",
+      "quantity": 1,
+      "unit_price": 3.67,
+      "discount": 100,
+      "subtotal": 0.00,
       "tax_rate": 10,
-      "unit": "CT"
+      "unit": "PZ"
     }
   ]
 }
