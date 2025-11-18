@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload,
@@ -26,6 +27,7 @@ import {
   AlertCircle,
   Trash2,
   Image as ImageIcon,
+  ArrowLeft,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -61,6 +63,9 @@ interface OdooContact {
 }
 
 export default function ScanContattoPage() {
+  // Router
+  const router = useRouter();
+
   // State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -244,6 +249,17 @@ export default function ScanContattoPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-4 md:p-8">
       <div className="mx-auto max-w-7xl">
+        {/* Back Button */}
+        <motion.button
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          onClick={() => router.push('/')}
+          className="mb-6 flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-gray-700 shadow-md transition-all hover:bg-gray-50 hover:shadow-lg"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          <span className="font-medium">Torna alla Dashboard</span>
+        </motion.button>
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}

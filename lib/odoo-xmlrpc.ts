@@ -145,11 +145,21 @@ class OdooXMLRPCClient implements OdooXMLRPC {
   }
 
   private parseXMLRPCResponse(xml: string): any {
+    // Check for XML-RPC fault (error response)
+    if (xml.includes('<fault>')) {
+      const faultMatch = xml.match(/<string>(.*?)<\/string>/);
+      const errorMsg = faultMatch ? faultMatch[1] : 'Unknown Odoo error';
+      console.error('❌ Odoo XML-RPC fault:', errorMsg);
+      console.error('Full XML response:', xml.substring(0, 500));
+      throw new Error(`Odoo error: ${errorMsg}`);
+    }
+
     // Simple parser for methodResponse
     // Extract the value inside <param><value>...</value></param>
     const paramMatch = xml.match(/<param>\s*<value>([\s\S]*)<\/value>\s*<\/param>/);
     if (!paramMatch) {
-      throw new Error('Invalid XML-RPC response');
+      console.error('❌ Invalid XML-RPC response:', xml.substring(0, 500));
+      throw new Error('Invalid XML-RPC response - check console for details');
     }
 
     const valueContent = paramMatch[1];

@@ -43,3 +43,79 @@ next-env.d.ts
 # WIP apps (in development elsewhere)
 .env.preview
 dev.log
+
+# Backup files
+*.backup
+*.bak
+*~
+*.swp
+*.swo
+*.orig
+*.rej
+
+# Reports and data files (keep only in /data directory)
+/*.json
+/*.csv
+/*.xlsx
+/*.xls
+/*.sql
+/*.log
+/*.txt
+!package.json
+!package-lock.json
+!tsconfig.json
+!next.config.js
+!tailwind.config.js
+!postcss.config.js
+!vercel.json
+
+# Script backups and outputs
+/scripts/*.json
+/scripts/backup-*
+/scripts/*-report-*
+/scripts/report-*
+
+# Documentation files (keep only in /docs directory)
+/*.md
+!README.md
+
+# Environment files with credentials
+.env.odoo.*
+.env.vercel.*
+.env.contact-enricher.*
+.jetson-ssh
+
+# PowerShell and batch scripts in root
+/*.ps1
+/*.bat
+/*.sh
+
+# Temporary directories
+/data-estratti/
+/pdf-reader-local/
+/JETSON-PROJECT/
+/JETSON-ACCESS-KIT/
+/CHIUSURA-*/
+/tmp/
+/temp/
+
+# Large tarballs
+*.tar.gz
+*.zip
+*.rar
+
+# IDE and editor files
+.idea/
+.vscode/settings.json
+*.sublime-*
+
+# Build artifacts
+vercel-deploy-debug.log
+build-output-*.log
+deploy-*.log
+*-execution.log
+
+# Test outputs
+test-output/
+screenshots/
+test-*.html
