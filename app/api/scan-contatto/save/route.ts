@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     const partnerId = await odoo.execute_kw('res.partner', 'create', [[partnerData]]);
 
-    console.log(`✅ [SCAN-CONTATTO-SAVE] Request ${requestId} - Partner created: ID ${partnerId}`);
+    console.log(`✅ [SCAN-CONTATTO-SAVE] Request ${requestId} - Partner created: ID ${partnerId}`, typeof partnerId, partnerId);
 
     // ========== RETRIEVE CREATED PARTNER ==========
     const createdPartner = await odoo.execute_kw(
@@ -135,11 +135,14 @@ export async function POST(request: NextRequest) {
       { fields: ['id', 'name', 'display_name', 'email', 'phone', 'mobile'], limit: 1 }
     );
 
+    console.log(`📋 [SCAN-CONTATTO-SAVE] Request ${requestId} - search_read result:`, typeof createdPartner, createdPartner, 'length:', createdPartner?.length);
+
     if (!createdPartner || createdPartner.length === 0) {
       throw new Error('Partner created but not found in read');
     }
 
     const partner = createdPartner[0];
+    console.log(`👤 [SCAN-CONTATTO-SAVE] Request ${requestId} - Partner object:`, partner);
 
     // ========== CALCULATE METRICS ==========
     const duration = Date.now() - startTime;
