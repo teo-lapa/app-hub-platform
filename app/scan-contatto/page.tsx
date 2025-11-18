@@ -181,11 +181,20 @@ export default function ScanContattoPage() {
 
       const result = await response.json();
 
+      console.log('📦 [SCAN-CONTATTO] API Response:', result);
+      console.log('👤 [SCAN-CONTATTO] Contact data:', result.data?.contact || result.contact);
+
       updateStepStatus('claude', 'completed', 'Dati raffinati');
       updateStepStatus('odoo', 'completed', 'Pronto per il salvataggio');
 
       // Fix: API returns result.data.contact, not result.contact
-      setExtractedData(result.data?.contact || result.contact);
+      const contactData = result.data?.contact || result.contact;
+
+      if (!contactData) {
+        throw new Error('Nessun dato contatto ricevuto dal server');
+      }
+
+      setExtractedData(contactData);
       setIsEditing(true);
     } catch (err) {
       const errorMessage =
