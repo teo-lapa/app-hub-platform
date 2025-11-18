@@ -294,6 +294,21 @@ export const mockApps: App[] = [
     createdAt: new Date('2025-11-11'),
     updatedAt: new Date('2025-11-11'),
   },
+  {
+    id: 'scan1',
+    name: 'Scan Contatto',
+    description: 'Scansiona biglietti da visita e documenti aziendali con AI. Pipeline completa: OCR con Gemini Vision, ricerca web con Claude AI, creazione automatica contatto in Odoo con tutti i dati arricchiti.',
+    icon: '📇',
+    badge: 'PRO',
+    category: 'AI & Tech',
+    url: '/scan-contatto',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-11-18'),
+    updatedAt: new Date('2025-11-18'),
+  },
 ];
 
 export const categories = [
