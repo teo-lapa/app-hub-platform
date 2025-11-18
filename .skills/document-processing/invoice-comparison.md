@@ -125,6 +125,19 @@ Se subtotal_pdf ≠ subtotal_bozza:
 
 ---
 
+### B2) Prezzo + Sconto diversi
+```json
+{
+  "action": "update",
+  "line_id": 125,
+  "changes": {"price_unit": 3.67, "discount": 100},
+  "reason": "Campione gratuito: aggiorno prezzo €3.67 + sconto 100%",
+  "requires_user_approval": false
+}
+```
+
+---
+
 ### C) Quantità diversa
 ```json
 {
@@ -139,17 +152,29 @@ Se subtotal_pdf ≠ subtotal_bozza:
 ---
 
 ### D) Prodotto mancante (non trovato in bozza)
+
+**Se il prodotto ha sconto (es: campione gratuito), includi discount nel new_line!**
+
 ```json
 {
   "action": "create",
-  "parsed_line": {
-    "description": "PRODOTTO XYZ",
-    "product_code": "ABC123",
-    "quantity": 5,
-    "unit_price": 10.00,
-    "subtotal": 50.00
+  "new_line": {
+    "name": "AGNOLOTTI DI CARNE 1000g",
+    "product_id": false,
+    "quantity": 1.0,
+    "price_unit": 3.67,
+    "discount": 100.0,
+    "price_subtotal": 0.00
   },
-  "reason": "Prodotto presente in PDF ma non trovato in bozza",
+  "parsed_line": {
+    "description": "AGNOLOTTI DI CARNE 1000g",
+    "product_code": "CRAVIOLI28",
+    "quantity": 1,
+    "unit_price": 3.67,
+    "discount": 100,
+    "subtotal": 0.00
+  },
+  "reason": "Campione gratuito presente in PDF ma non in bozza",
   "requires_user_approval": true
 }
 ```
