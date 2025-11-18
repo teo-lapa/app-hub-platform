@@ -12,11 +12,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { extractContactDataFromImage } from '@/lib/services/gemini-vision';
-import Anthropic from '@anthropic-ai/sdk';
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
 
 interface EnrichmentResult {
   // Dati OCR
@@ -123,6 +118,12 @@ Rispondi SOLO con un oggetto JSON valido:
 Se non trovi l'azienda, rispondi: {"found": false}
 `;
 
+        // Dynamic import per ridurre bundle size
+        const Anthropic = (await import('@anthropic-ai/sdk')).default;
+        const anthropic = new Anthropic({
+          apiKey: process.env.ANTHROPIC_API_KEY,
+        });
+
         const message = await anthropic.messages.create({
           model: 'claude-3-5-sonnet-20241022',
           max_tokens: 2000,
@@ -226,10 +227,9 @@ Rispondi con JSON:
 }
 `;
 
-      // Per ora uso l'XML-RPC diretto (il Claude Agent richiederebbe Task tool)
-      // Importo il client Odoo
-      const { getOdooXMLRPCClient } = await import('@/lib/odoo-xmlrpc');
-      const odoo = await getOdooXMLRPCClient();
+      // USA LO STESSO SISTEMA DELLE ALTRE API (smart-ordering, product-creator, etc.)
+      // Questo ha autenticazione automatica e gestione sessioni
+      const { createOdoo, readOdoo } = await import('@/lib/odoo/odoo-helper');
 
       // Prepara dati partner
       const partnerData: any = {
@@ -274,27 +274,25 @@ Rispondi con JSON:
         partnerData.comment = notes.join('\n');
       }
 
-      console.log('[Odoo] Creating partner:', partnerData);
+      console.log('[Odoo] Creating partner with odoo-helper:', partnerData);
 
-      // Crea il partner
-      const partnerIdResult = await odoo.execute_kw('res.partner', 'create', [[partnerData]]);
-      const partnerId = Array.isArray(partnerIdResult) ? partnerIdResult[0] : partnerIdResult;
+      // Crea il partner (stesso metodo di smart-ordering/create-order)
+      const partnerId = await createOdoo('res.partner', partnerData);
 
       console.log('[Odoo] Partner created, ID:', partnerId);
 
       // Leggi il partner creato
-      const createdPartner = await odoo.execute_kw(
+      const createdPartnerArray = await readOdoo(
         'res.partner',
-        'read',
-        [[partnerId]],
-        { fields: ['id', 'name', 'display_name', 'email', 'phone', 'mobile', 'vat', 'is_company'] }
+        [partnerId],
+        ['id', 'name', 'display_name', 'email', 'phone', 'mobile', 'vat', 'is_company']
       );
 
-      if (!createdPartner || createdPartner.length === 0) {
+      if (!createdPartnerArray || createdPartnerArray.length === 0) {
         throw new Error('Partner created but not found in read');
       }
 
-      odooContact = createdPartner[0];
+      odooContact = createdPartnerArray[0];
       console.log('[Step 3/3] ✓ Odoo contact created:', odooContact);
 
     } catch (error: any) {
