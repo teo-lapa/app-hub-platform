@@ -606,6 +606,22 @@ ${JSON.stringify(enrichedLines.map((line: any) => ({
 
     const comparisonResult = JSON.parse(comparisonJsonMatch[0]);
 
+    // 🔒 VALIDATION: Block any DELETE actions for safety
+    if (comparisonResult.corrections_needed && Array.isArray(comparisonResult.corrections_needed)) {
+      const deleteActions = comparisonResult.corrections_needed.filter((c: any) => c.action === 'delete');
+      if (deleteActions.length > 0) {
+        console.error('❌ [ANALYZE-COMPARE] CRITICAL: Claude generated DELETE actions!');
+        deleteActions.forEach((action: any, idx: number) => {
+          console.error(`   ${idx + 1}. DELETE line ${action.line_id}: ${action.reason}`);
+        });
+        throw new Error(
+          'Skill generato azioni DELETE non permesse. Questo è un bug critico della skill. ' +
+          'Solo azioni UPDATE e CREATE sono permesse.'
+        );
+      }
+      console.log('✅ [ANALYZE-COMPARE] Schema validation passed: no DELETE actions');
+    }
+
     // 🔒 POST-PROCESSING: FORCE all CREATE actions to require user approval
     // This ensures the product management step is triggered when products are missing
     if (comparisonResult.corrections_needed && Array.isArray(comparisonResult.corrections_needed)) {
