@@ -259,7 +259,12 @@ Rispondi con JSON:
         partnerData.city = finalData.city || finalData.address?.city;
       }
       if (finalData.companyUID || finalData.uid) {
-        partnerData.vat = finalData.companyUID || finalData.uid;
+        // Normalizza VAT svizzero per Odoo:
+        // "CHE-110.576.236" → "CH110576236"
+        // "CHE-141.157.556 MWST" → "CH141157556"
+        let vat = (finalData.companyUID || finalData.uid).toString();
+        vat = vat.replace('CHE', 'CH').replace(/[^CH0-9]/g, '');  // Tiene solo CH + numeri
+        partnerData.vat = vat;
       }
       if (finalData.website) partnerData.website = finalData.website;
 
