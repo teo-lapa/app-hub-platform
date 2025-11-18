@@ -234,3 +234,35 @@ export async function unlinkOdoo(
 ): Promise<boolean> {
   return await callOdoo(model, 'unlink', [ids]);
 }
+
+/**
+ * Ottiene l'ID dell'utente corrente
+ */
+export async function getCurrentUserId(): Promise<number | null> {
+  try {
+    const sessionId = await getOdooSessionId();
+    if (!sessionId) return null;
+
+    const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com';
+
+    const response = await fetch(`${odooUrl}/web/session/get_session_info`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {},
+        id: Date.now()
+      })
+    });
+
+    const data = await response.json();
+    return data.result?.uid || null;
+  } catch (error) {
+    console.error('❌ Errore ottenimento user ID:', error);
+    return null;
+  }
+}

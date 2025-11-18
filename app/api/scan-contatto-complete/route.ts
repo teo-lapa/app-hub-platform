@@ -229,7 +229,10 @@ Rispondi con JSON:
 
       // USA LO STESSO SISTEMA DELLE ALTRE API (smart-ordering, product-creator, etc.)
       // Questo ha autenticazione automatica e gestione sessioni
-      const { createOdoo, readOdoo } = await import('@/lib/odoo/odoo-helper');
+      const { createOdoo, readOdoo, searchReadOdoo, getCurrentUserId } = await import('@/lib/odoo/odoo-helper');
+
+      // Ottieni l'utente corrente (sales person)
+      const currentUserId = await getCurrentUserId();
 
       // Prepara dati partner
       const partnerData: any = {
@@ -249,6 +252,7 @@ Rispondi con JSON:
       if (finalData.email) partnerData.email = finalData.email;
       if (finalData.phone) partnerData.phone = finalData.phone;
       if (finalData.mobile) partnerData.mobile = finalData.mobile;
+      if (finalData.website) partnerData.website = finalData.website;
       if (finalData.street || finalData.address?.street) {
         partnerData.street = finalData.street || finalData.address?.street;
       }
@@ -258,6 +262,25 @@ Rispondi con JSON:
       if (finalData.city || finalData.address?.city) {
         partnerData.city = finalData.city || finalData.address?.city;
       }
+
+      // Provincia (cantone) - cerca in Odoo
+      if (finalData.state || finalData.province || finalData.address?.state) {
+        const stateName = finalData.state || finalData.province || finalData.address?.state;
+        try {
+          const states = await searchReadOdoo('res.country.state', [
+            ['country_id', '=', 43],
+            '|',
+            ['name', 'ilike', stateName],
+            ['code', 'ilike', stateName]
+          ], ['id'], 1);
+          if (states && states.length > 0) {
+            partnerData.state_id = states[0].id;
+          }
+        } catch (e) {
+          console.warn('[State] Could not find:', stateName);
+        }
+      }
+
       if (finalData.companyUID || finalData.uid) {
         // Odoo richiede formato: "CHE-123.456.788 MWST" o "TVA" o "IVA"
         let vat = (finalData.companyUID || finalData.uid).toString().trim();
@@ -270,7 +293,22 @@ Rispondi con JSON:
         partnerData.vat = vat;
         partnerData.country_id = 43; // Switzerland
       }
-      if (finalData.website) partnerData.website = finalData.website;
+
+      // Lingua - Default Tedesco, ma rileva regione
+      partnerData.lang = 'de_DE';
+      const cityLower = (finalData.city || '').toLowerCase();
+      const italianCities = ['lugano', 'bellinzona', 'locarno', 'mendrisio', 'chiasso'];
+      const frenchCities = ['genève', 'lausanne', 'neuchâtel', 'fribourg', 'sion'];
+      if (italianCities.some(c => cityLower.includes(c))) {
+        partnerData.lang = 'it_IT';
+      } else if (frenchCities.some(c => cityLower.includes(c))) {
+        partnerData.lang = 'fr_FR';
+      }
+
+      // Sales person (chi ha creato il contatto)
+      if (currentUserId) {
+        partnerData.user_id = currentUserId;
+      }
 
       // Aggiungi note con info enrichment
       const notes: string[] = [];
