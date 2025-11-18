@@ -110,7 +110,7 @@ export async function extractContactDataFromImage(
   mimeType: string = 'image/jpeg'
 ): Promise<ExtractedContactData> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
 
     // Prepara l'immagine per Gemini
     const imagePart = {
