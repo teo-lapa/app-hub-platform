@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession } from '@/lib/odoo-auth';
-import { createOdooClient } from '@/lib/odoo';
+import { getOdooClient } from '@/lib/odoo-client';
 
 /**
  * POST /api/scan-contatto/save
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     console.log(`📋 [SCAN-CONTATTO-SAVE] Request ${requestId} - Contact data:`, contactData);
 
     // ========== CREATE ODOO CLIENT ==========
-    const odoo = await createOdooClient(cookies);
+    const odoo = await getOdooClient();
 
     // ========== PREPARE PARTNER DATA ==========
     const partnerData: any = {
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
         const countries = await odoo.searchRead(
           'res.country',
           [[['name', 'ilike', contactData.country]]],
-          { fields: ['id'], limit: 1 }
+          ['id']
         );
 
         if (countries && countries.length > 0) {
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
     const createdPartner = await odoo.searchRead(
       'res.partner',
       [[['id', '=', partnerId]]],
-      { fields: ['id', 'name', 'display_name', 'email', 'phone', 'mobile'], limit: 1 }
+      ['id', 'name', 'display_name', 'email', 'phone', 'mobile']
     );
 
     if (!createdPartner || createdPartner.length === 0) {
