@@ -2,6 +2,77 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession } from '@/lib/odoo-auth';
 
 /**
+ * Fallback: estrae dati contatto da testo usando regex
+ * Usato quando il Jetson non restituisce dati strutturati
+ */
+function extractContactFromText(text: string): any {
+  const emailRegex = /([a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
+  const phoneRegex = /(?:Tel|Telefono|Phone|Mobile|Cellulare)[:\s]*(\+?[\d\s-]+)/gi;
+  const vatRegex = /(?:P\.?IVA|VAT|Partita\s+IVA)[:\s]*([A-Z]{0,2}\s*\d{8,11})/i;
+  const websiteRegex = /((?:www\.|https?:\/\/)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
+
+  // Estrai prima riga come nome (di solito il nome è la prima riga)
+  const lines = text.split('\n').filter(l => l.trim().length > 0);
+  const name = lines[0]?.trim() || '';
+
+  // Email
+  const emailMatch = text.match(emailRegex);
+  const email = emailMatch ? emailMatch[1] : '';
+
+  // Telefoni
+  const phones: string[] = [];
+  let match;
+  while ((match = phoneRegex.exec(text)) !== null) {
+    phones.push(match[1].trim());
+  }
+
+  // P.IVA
+  const vatMatch = text.match(vatRegex);
+  const vat = vatMatch ? vatMatch[1].replace(/\s/g, '') : '';
+
+  // Website
+  const websiteMatch = text.match(websiteRegex);
+  const website = websiteMatch ? websiteMatch[1] : '';
+
+  // Cerca azienda (di solito dopo CEO, o riga 2-3)
+  const companyKeywords = ['S.r.l.', 'S.p.A.', 'Corporation', 'Inc.', 'Ltd', 'GmbH'];
+  let company_name = '';
+  for (const line of lines) {
+    if (companyKeywords.some(kw => line.includes(kw))) {
+      company_name = line.trim();
+      break;
+    }
+  }
+
+  // Cerca indirizzo (di solito contiene Via, Street, o numeri civici)
+  const addressRegex = /(Via|Viale|Piazza|Street|Avenue|Road)[^\n]+/i;
+  const addressMatch = text.match(addressRegex);
+  const street = addressMatch ? addressMatch[0].trim() : '';
+
+  // CAP e città
+  const cityRegex = /(\d{5})\s+([A-Za-zàèéìòù\s]+)/;
+  const cityMatch = text.match(cityRegex);
+  const zip = cityMatch ? cityMatch[1] : '';
+  const city = cityMatch ? cityMatch[2].trim() : '';
+
+  return {
+    name,
+    email,
+    phone: phones[0] || '',
+    mobile: phones[1] || phones[0] || '',
+    company_name,
+    street,
+    zip,
+    city,
+    country: city.toLowerCase().includes('italia') || city.toLowerCase().includes('italy') ? 'Italia' : '',
+    website,
+    vat,
+    function: '',
+    comment: `Estratto automaticamente con regex fallback. Testo OCR:\n${text.substring(0, 500)}`
+  };
+}
+
+/**
  * POST /api/scan-contatto
  *
  * Scansiona un biglietto da visita o documento contenente informazioni di contatto
@@ -237,7 +308,13 @@ export async function POST(request: NextRequest) {
         };
       }
 
-      if (!contactData) {
+      // Fallback finale: se contact è undefined ma abbiamo rawText, proviamo regex extraction
+      if (!contactData && jetsonData.rawText) {
+        console.log('⚠️  [SCAN-CONTATTO] Contact undefined, tentativo regex extraction da rawText');
+        contactData = extractContactFromText(jetsonData.rawText);
+      }
+
+      if (!contactData || !contactData.name) {
         console.error('❌ [SCAN-CONTATTO] No contact data found in response');
         throw new Error('Nessun dato contatto estratto dall\'immagine');
       }
