@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Inizializza client Gemini
-    const ai = new GoogleGenerativeAI({ apiKey });
+    const ai = new GoogleGenerativeAI(apiKey);
 
     // Prepara il contenuto per Gemini
     const contents: any[] = [];

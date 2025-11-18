@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Inizializza client Gemini
-    const ai = new GoogleGenerativeAI({ apiKey });
+    const ai = new GoogleGenerativeAI(apiKey);
 
     // Determina aspect ratio in base alla piattaforma
     const aspectRatioMap: Record<string, string> = {

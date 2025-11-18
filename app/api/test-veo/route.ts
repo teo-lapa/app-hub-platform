@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       console.log('⚠️ [TEST-VEO] Usando GEMINI_API_KEY fallback');
     }
 
-    const ai = new GoogleGenerativeAI({ apiKey });
+    const ai = new GoogleGenerativeAI(apiKey);
 
     console.log('🧪 [TEST-VEO] Test 1: Verifica client creato');
     console.log('🧪 [TEST-VEO] Client type:', typeof ai);
