@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession } from '@/lib/odoo-auth';
-import { ContactScanner } from '@/lib/services/contact-scanner';
-import type { ContactScanResult } from '@/lib/types/contact-scan';
 
 /**
  * POST /api/scan-contatto
  *
  * Scansiona un biglietto da visita o documento contenente informazioni di contatto
  * ed estrae i dati strutturati per creare/aggiornare un partner in Odoo.
+ *
+ * Questo endpoint è un proxy leggero che chiama il Jetson OCR service
+ * per evitare di includere l'Anthropic SDK pesante nelle Serverless Functions.
  *
  * Request body (multipart/form-data):
  * - file: File (PDF, PNG, JPG, JPEG) - required
@@ -25,7 +26,7 @@ import type { ContactScanResult } from '@/lib/types/contact-scan';
  * - 500: Errore interno del server
  */
 
-// Runtime configuration for Next.js
+// Runtime configuration for Next.js - lightweight proxy
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 seconds timeout for OCR + enrichment
 
@@ -167,29 +168,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ========== INITIALIZE CONTACT SCANNER ==========
-    const scanner = new ContactScanner();
+    // ========== CALL JETSON OCR SERVICE ==========
+    console.log(`🔍 [SCAN-CONTATTO] Request ${requestId} - Calling Jetson for contact extraction...`);
 
-    // ========== SCAN AND SAVE ==========
-    console.log(`🔍 [SCAN-CONTATTO] Request ${requestId} - Starting scan and save...`);
+    const jetsonUrl = process.env.JETSON_OCR_URL || 'http://10.0.0.108:3100';
 
-    let result: ContactScanResult;
+    // Create form data for Jetson
+    const jetsonFormData = new FormData();
+    jetsonFormData.append('file', file);
+    jetsonFormData.append('mode', 'auto');
+    jetsonFormData.append('language', language);
+
+    let jetsonResponse;
 
     try {
-      result = await scanner.scanAndSave(fileBuffer, {
-        filename: file.name,
-        mimeType: file.type as 'application/pdf' | 'image/png' | 'image/jpeg',
-        skipEnrichment,
-        skipValidation,
-        skipMapping,
-        language,
-        odooCookies: cookies || undefined,
-        odooUid: uid
+      jetsonResponse = await fetch(`${jetsonUrl}/api/v1/extract-contact`, {
+        method: 'POST',
+        body: jetsonFormData,
       });
 
-      console.log(`✅ [SCAN-CONTATTO] Request ${requestId} - Scan completed with status: ${result.status}`);
+      if (!jetsonResponse.ok) {
+        throw new Error(`Jetson returned ${jetsonResponse.status}: ${jetsonResponse.statusText}`);
+      }
+
+      const jetsonData = await jetsonResponse.json();
+
+      console.log(`✅ [SCAN-CONTATTO] Request ${requestId} - Jetson extraction completed`);
+
+      // ========== CALCULATE METRICS ==========
+      const duration = Date.now() - startTime;
+
+      // ========== RETURN SUCCESS RESPONSE ==========
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            contact: jetsonData.contact,
+            rawText: jetsonData.rawText,
+            confidence: jetsonData.confidence,
+            extractionMethod: jetsonData.extractionMethod,
+            duration: jetsonData.duration
+          },
+          meta: {
+            requestId,
+            duration,
+            timestamp: new Date().toISOString()
+          }
+        },
+        {
+          status: 200,
+          headers: {
+            'X-Request-ID': requestId,
+            'X-Processing-Time': `${duration}ms`
+          }
+        }
+      );
     } catch (scanError) {
-      console.error(`❌ [SCAN-CONTATTO] Request ${requestId} - Scan failed:`, scanError);
+      console.error(`❌ [SCAN-CONTATTO] Request ${requestId} - Jetson call failed:`, scanError);
 
       const errorMessage = scanError instanceof Error
         ? scanError.message
@@ -198,7 +233,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: errorMessage,
-          code: 'SCAN_ERROR',
+          code: 'JETSON_ERROR',
           requestId,
           timestamp: new Date().toISOString(),
           details: scanError instanceof Error ? scanError.stack : undefined
@@ -206,38 +241,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    // ========== CALCULATE METRICS ==========
-    const duration = Date.now() - startTime;
-
-    console.log(`✅ [SCAN-CONTATTO] Request ${requestId} - Completed in ${duration}ms`);
-    console.log(`📊 [SCAN-CONTATTO] Request ${requestId} - Quality Score: ${result.qualityScore}/100`);
-    console.log(`📊 [SCAN-CONTATTO] Request ${requestId} - Completeness Score: ${result.completenessScore}/100`);
-    console.log(`📊 [SCAN-CONTATTO] Request ${requestId} - Confidence Score: ${result.confidenceScore}/100`);
-
-    if (result.odooSync?.partnerId) {
-      console.log(`🔗 [SCAN-CONTATTO] Request ${requestId} - Partner created/updated: ${result.odooSync.partnerId}`);
-    }
-
-    // ========== RETURN SUCCESS RESPONSE ==========
-    return NextResponse.json(
-      {
-        success: true,
-        data: result,
-        meta: {
-          requestId,
-          duration,
-          timestamp: new Date().toISOString()
-        }
-      },
-      {
-        status: 200,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Processing-Time': `${duration}ms`
-        }
-      }
-    );
 
   } catch (error) {
     const duration = Date.now() - startTime;
