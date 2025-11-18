@@ -259,10 +259,16 @@ Rispondi con JSON:
         partnerData.city = finalData.city || finalData.address?.city;
       }
       if (finalData.companyUID || finalData.uid) {
-        // ODOO ACCETTA IL FORMATO ORIGINALE SVIZZERO!
-        // Verified in database: "CHE-110.576.236 MWST" funziona
-        // NON normalizzare - usa il formato estratto da Gemini
-        partnerData.vat = (finalData.companyUID || finalData.uid).toString().trim();
+        // Odoo richiede formato: "CHE-123.456.788 MWST" o "TVA" o "IVA"
+        let vat = (finalData.companyUID || finalData.uid).toString().trim();
+
+        // Se il VAT non ha MWST/TVA/IVA alla fine, aggiungi MWST
+        if (!vat.includes('MWST') && !vat.includes('TVA') && !vat.includes('IVA')) {
+          vat = vat + ' MWST';
+        }
+
+        partnerData.vat = vat;
+        partnerData.country_id = 43; // Switzerland
       }
       if (finalData.website) partnerData.website = finalData.website;
 
