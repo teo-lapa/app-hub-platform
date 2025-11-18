@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minuti per generazione completa (video può richiedere tempo)
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Inizializza client Gemini
-    const ai = new GoogleGenerativeAI(apiKey);
+    const ai = new GoogleGenAI({ apiKey });
 
     // Determina aspect ratio in base alla piattaforma
     const aspectRatioMap: Record<string, string> = {
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
 // 🤖 AGENT 1: COPYWRITING
 // ==========================================
 async function generateCopywriting(
-  ai: GoogleGenerativeAI,
+  ai: GoogleGenAI,
   params: {
     productName: string;
     productDescription: string;
@@ -296,7 +296,7 @@ Rispondi SOLO con il JSON, senza markdown o spiegazioni.`;
 // 🤖 AGENT 2: IMAGE GENERATION (Nano Banana 🍌)
 // ==========================================
 async function generateMarketingImage(
-  ai: GoogleGenerativeAI,
+  ai: GoogleGenAI,
   params: {
     productName: string;
     productDescription: string;
@@ -377,7 +377,7 @@ NON includere testo o loghi nell'immagine.`;
 // 🤖 AGENT 3: VIDEO GENERATION (Veo 3.1)
 // ==========================================
 async function generateMarketingVideo(
-  ai: GoogleGenerativeAI,
+  ai: GoogleGenAI,
   params: {
     productName: string;
     productDescription: string;
@@ -397,7 +397,7 @@ async function generateMarketingVideo(
   }
 
   // Crea client dedicato per Veo con la sua API key
-  const veoAI = new GoogleGenerativeAI({ apiKey: veoApiKey });
+  const veoAI = new GoogleGenAI({ apiKey: veoApiKey });
 
   const style = params.videoStyle || 'default';
 

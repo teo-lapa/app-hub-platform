@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Inizializza client Gemini
-    const ai = new GoogleGenerativeAI(apiKey);
+    const ai = new GoogleGenAI({ apiKey });
 
     // Map language codes to full names and instructions
     const languageMap: Record<string, { name: string; instruction: string; categories: string }> = {
