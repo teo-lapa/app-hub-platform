@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSession } from '@/lib/odoo-auth';
 import { getOdooClient } from '@/lib/odoo-client';
 
 /**
@@ -41,23 +40,8 @@ export async function POST(request: NextRequest) {
   console.log(`💾 [SCAN-CONTATTO-SAVE] Request ${requestId} - Start`);
 
   try {
-    // ========== AUTHENTICATION ==========
-    const userCookies = request.headers.get('cookie');
-    const { cookies, uid } = await getOdooSession(userCookies || undefined);
-
-    if (!uid) {
-      console.error(`❌ [SCAN-CONTATTO-SAVE] Request ${requestId} - Unauthorized`);
-      return NextResponse.json(
-        {
-          error: 'Sessione non valida',
-          code: 'UNAUTHORIZED',
-          requestId
-        },
-        { status: 401 }
-      );
-    }
-
-    console.log(`✅ [SCAN-CONTATTO-SAVE] Request ${requestId} - Authenticated as UID ${uid}`);
+    // ========== NO AUTH NEEDED - Using Odoo API credentials from env ==========
+    console.log(`✅ [SCAN-CONTATTO-SAVE] Request ${requestId} - Using Odoo API credentials`);
 
     // ========== PARSE REQUEST BODY ==========
     let contactData;
