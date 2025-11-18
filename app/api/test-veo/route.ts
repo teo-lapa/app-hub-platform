@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       console.log('⚠️ [TEST-VEO] Usando GEMINI_API_KEY fallback');
     }
 
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenerativeAI({ apiKey });
 
     console.log('🧪 [TEST-VEO] Test 1: Verifica client creato');
     console.log('🧪 [TEST-VEO] Client type:', typeof ai);

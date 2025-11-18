@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 secondi per generazione immagine
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Inizializza client Gemini
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenerativeAI({ apiKey });
 
     // Prepara il contenuto per Gemini
     const contents: any[] = [];
