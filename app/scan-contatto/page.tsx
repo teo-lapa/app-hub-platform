@@ -48,6 +48,7 @@ interface ContactData {
   street: string;
   zip: string;
   city: string;
+  state: string; // Provincia/Cantone
   country: string;
   company_name: string;
   website: string;
@@ -71,6 +72,7 @@ export default function ScanContattoPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [contactType, setContactType] = useState<'company' | 'person'>('company'); // Azienda o Privato
   const [steps, setSteps] = useState<ProcessingStep[]>([
     { id: 'ocr', label: 'Gemini Vision OCR', icon: Scan, status: 'pending' },
     { id: 'websearch', label: 'Claude Web Search', icon: Brain, status: 'pending' },
@@ -573,6 +575,37 @@ export default function ScanContattoPage() {
                       <Edit3 className="h-4 w-4" />
                       {isEditing ? 'Modalità Lettura' : 'Modifica'}
                     </button>
+                  </div>
+
+                  {/* Toggle Azienda/Privato */}
+                  <div className="mb-6 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
+                    <label className="mb-3 block text-sm font-semibold text-gray-700">
+                      Tipo Contatto *
+                    </label>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setContactType('company')}
+                        className={`flex-1 rounded-lg px-6 py-3 font-semibold transition-all ${
+                          contactType === 'company'
+                            ? 'bg-blue-600 text-white shadow-lg'
+                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <Building2 className="mx-auto mb-1 h-5 w-5" />
+                        Azienda
+                      </button>
+                      <button
+                        onClick={() => setContactType('person')}
+                        className={`flex-1 rounded-lg px-6 py-3 font-semibold transition-all ${
+                          contactType === 'person'
+                            ? 'bg-blue-600 text-white shadow-lg'
+                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <User className="mx-auto mb-1 h-5 w-5" />
+                        Privato
+                      </button>
+                    </div>
                   </div>
 
                   <div className="mb-6 space-y-4">

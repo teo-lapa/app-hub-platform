@@ -67,112 +67,22 @@ export async function POST(req: NextRequest) {
     console.log('[OCR Result]', extractedData);
 
     // ============================================
-    // STEP 2: CLAUDE AGENT - WEB SEARCH
+    // STEP 2: WEB SEARCH (TEMPORANEAMENTE DISABILITATO)
     // ============================================
-    console.log('[Step 2/3] Claude Agent: Searching web for company info...');
+    console.log('[Step 2/3] Web search: Skipping (feature under development)');
     const webSearchStart = Date.now();
 
     let webSearchData: any = null;
 
-    if (extractedData.companyName || extractedData.companyUID) {
-      try {
-        const searchQuery = extractedData.companyName || extractedData.companyUID;
-        const searchPrompt = `
-Cerca informazioni su questa azienda svizzera e fornisci dati strutturati:
+    // TODO: Implementare web search tramite:
+    // - Google Custom Search API
+    // - Tavily API
+    // - MCP Server con web search capability
+    //
+    // NOTA: Claude API non supporta nativamente tool "web_search"
+    // Serve un'implementazione custom o un servizio esterno
 
-Azienda: ${searchQuery}
-${extractedData.companyUID ? `UID/CHE: ${extractedData.companyUID}` : ''}
-${extractedData.city ? `Città: ${extractedData.city}` : ''}
-
-Cerca su:
-1. Moneyhouse.ch
-2. Zefix.ch (Registro commerciale svizzero)
-3. Google
-
-Informazioni da trovare:
-- Nome legale completo
-- Forma giuridica (SA, GmbH, etc.)
-- Numero UID/CHE completo (formato CHE-XXX.XXX.XXX)
-- Indirizzo sede legale
-- Proprietari/amministratori (se disponibili)
-- Settore attività
-- Rating creditizio o info solvibilità (se disponibili)
-
-Rispondi SOLO con un oggetto JSON valido:
-{
-  "found": true/false,
-  "legalName": "nome legale completo",
-  "uid": "CHE-XXX.XXX.XXX",
-  "companyType": "SA/GmbH/etc",
-  "address": {
-    "street": "via",
-    "zip": "CAP",
-    "city": "città"
-  },
-  "owners": [{"name": "nome", "role": "ruolo"}],
-  "businessActivity": "settore",
-  "creditInfo": "informazioni creditizie se disponibili",
-  "source": "sito da cui hai preso i dati"
-}
-
-Se non trovi l'azienda, rispondi: {"found": false}
-`;
-
-        // Dynamic import per ridurre bundle size
-        const Anthropic = (await import('@anthropic-ai/sdk')).default;
-        const anthropic = new Anthropic({
-          apiKey: process.env.ANTHROPIC_API_KEY,
-        });
-
-        const message = await anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 2000,
-          tools: [
-            {
-              name: 'web_search',
-              description: 'Search the web for information',
-              input_schema: {
-                type: 'object',
-                properties: {
-                  query: {
-                    type: 'string',
-                    description: 'The search query'
-                  }
-                },
-                required: ['query']
-              }
-            }
-          ],
-          messages: [
-            {
-              role: 'user',
-              content: searchPrompt
-            }
-          ]
-        });
-
-        // Estrai il JSON dalla risposta
-        const textContent = message.content.find(c => c.type === 'text');
-        if (textContent && 'text' in textContent) {
-          const text = textContent.text;
-
-          // Cerca JSON nella risposta
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            webSearchData = JSON.parse(jsonMatch[0]);
-            console.log('[Step 2/3] ✓ Web search completed:', webSearchData);
-          } else {
-            warnings.push('Claude did not return valid JSON from web search');
-          }
-        }
-
-      } catch (error: any) {
-        warnings.push(`Web search failed: ${error.message}`);
-        console.error('[Step 2/3] ⚠ Web search error:', error);
-      }
-    } else {
-      console.log('[Step 2/3] ⊘ No company data to search');
-    }
+    warnings.push('Web search temporaneamente disabilitato - dati non arricchiti');
 
     const webSearchDuration = Date.now() - webSearchStart;
 
