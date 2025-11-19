@@ -75,7 +75,11 @@ interface GenerateMarketingRequest {
   tone?: 'professional' | 'casual' | 'fun' | 'luxury';
   targetAudience?: string;
   videoStyle?: 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion';
-  includeLogo?: boolean;
+
+  // Branding
+  includeLogo?: boolean;     // Se true, include logo e motto nell'immagine/video
+  logoImage?: string;        // Logo aziendale (base64) - opzionale
+  companyMotto?: string;      // Slogan/Motto aziendale - opzionale
 }
 
 interface MarketingResult {
@@ -114,7 +118,9 @@ export async function POST(request: NextRequest) {
       tone = 'professional',
       targetAudience = 'pubblico generale',
       videoStyle = 'default',
-      includeLogo = false
+      includeLogo = false,
+      logoImage,        // Logo aziendale (base64) - opzionale
+      companyMotto      // Slogan/Motto aziendale - opzionale
     } = body;
 
     // Validazione
@@ -190,7 +196,9 @@ export async function POST(request: NextRequest) {
           tone,
           aspectRatio,
           productImageBase64: cleanBase64,
-          includeLogo
+          includeLogo,
+          logoImage,
+          companyMotto
         })
       );
     } else {
@@ -207,7 +215,9 @@ export async function POST(request: NextRequest) {
           aspectRatio,
           productImageBase64: cleanBase64,
           videoStyle,
-          includeLogo
+          includeLogo,
+          logoImage,
+          companyMotto
         })
       );
     } else {
@@ -351,6 +361,8 @@ async function generateMarketingImage(
     aspectRatio: string;
     productImageBase64: string;
     includeLogo: boolean;
+    logoImage?: string;
+    companyMotto?: string;
   }
 ): Promise<{ data: string; mimeType: string; dataUrl: string } | null> {
 
@@ -431,26 +443,52 @@ COMPOSITION:
 
   const basePrompt = tonePrompts[params.tone as keyof typeof tonePrompts] || tonePrompts.professional;
 
-  // Aggiungi logo se richiesto (ENGLISH)
-  const logoInstruction = params.includeLogo
-    ? '\n\nLOGO: Add a small, subtle brand logo watermark in the bottom right corner.'
-    : '\n\nDO NOT include any text or logos in the image.';
+  // Aggiungi logo e motto se richiesti (ENGLISH)
+  let brandingInstruction = '';
 
-  const fullPrompt = basePrompt + logoInstruction;
+  if (params.includeLogo && params.logoImage) {
+    brandingInstruction += '\n\nLOGO: Add the provided company logo as a small, elegant watermark in the bottom right corner. The logo should be subtle but visible, maintaining professional quality.';
+  } else if (params.includeLogo) {
+    brandingInstruction += '\n\nLOGO: Add a small, subtle brand logo watermark in the bottom right corner.';
+  } else {
+    brandingInstruction += '\n\nDO NOT include any text or logos in the image.';
+  }
+
+  if (params.companyMotto) {
+    brandingInstruction += `\n\nMOTTO: Include the company motto "${params.companyMotto}" as elegant text overlay at the top or bottom of the image, in a professional, readable font.`;
+  }
+
+  const fullPrompt = basePrompt + brandingInstruction;
 
   try {
+    // Prepara i contenuti per Gemini
+    const contents: any[] = [
+      {
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: params.productImageBase64
+        }
+      }
+    ];
+
+    // Aggiungi logo se fornito
+    if (params.logoImage) {
+      const cleanLogoBase64 = params.logoImage.replace(/^data:image\/\w+;base64,/, '');
+      contents.push({
+        inlineData: {
+          mimeType: 'image/png',
+          data: cleanLogoBase64
+        }
+      });
+    }
+
+    // Aggiungi prompt
+    contents.push({ text: fullPrompt });
+
     // NUOVO SDK - usa generateContent() con gemini-2.5-flash-image
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
-      contents: [
-        {
-          inlineData: {
-            mimeType: 'image/jpeg',
-            data: params.productImageBase64
-          }
-        },
-        { text: fullPrompt }
-      ]
+      contents
     });
 
     if (isDev) {
@@ -527,15 +565,25 @@ async function generateMarketingVideo(
     productImageBase64: string;
     videoStyle?: string;
     includeLogo: boolean;
+    logoImage?: string;
+    companyMotto?: string;
   }
 ): Promise<{ operationId: string; status: string; estimatedTime: number } | null> {
 
   const style = params.videoStyle || 'default';
 
-  // Logo instruction (se richiesto)
-  const logoLine = params.includeLogo
-    ? 'Add a small, subtle brand logo watermark in the bottom right corner.'
-    : '';
+  // Logo e motto instructions (se richiesti)
+  let brandingLine = '';
+
+  if (params.includeLogo && params.logoImage) {
+    brandingLine += 'Add the provided company logo as a small, elegant watermark in the bottom right corner throughout the video. ';
+  } else if (params.includeLogo) {
+    brandingLine += 'Add a small, subtle brand logo watermark in the bottom right corner. ';
+  }
+
+  if (params.companyMotto) {
+    brandingLine += `Include the company motto "${params.companyMotto}" as elegant text at the beginning or end of the video.`;
+  }
 
   // Prompt diversi per ogni stile (INGLESE per migliore qualità)
   const stylePrompts = {
@@ -545,7 +593,7 @@ Use the provided product image as EXACT visual reference. The product MUST look 
 CAMERA: Smooth, natural movement that showcases the product elegantly.
 LIGHTING: Professional studio lighting with soft shadows.
 STYLE: Clean, premium commercial photography in motion.
-${logoLine}`,
+${brandingLine}`,
 
     zoom: `Create a premium product video with SLOW ZOOM IN effect for ${params.platform}.
 PRODUCT: ${params.productName}
@@ -554,7 +602,7 @@ CAMERA MOVEMENT: Start with medium shot, slowly zoom in to close-up revealing pr
 The zoom should be smooth, slow, and elegant - like a luxury commercial.
 LIGHTING: Professional studio lighting that highlights product features.
 STYLE: High-end commercial with emphasis on product details.
-${logoLine}`,
+${brandingLine}`,
 
     rotate: `Create a premium 360-DEGREE ROTATION product video for ${params.platform}.
 PRODUCT: ${params.productName}
@@ -563,7 +611,7 @@ CAMERA MOVEMENT: Smooth 360° horizontal rotation around the product at constant
 Professional turntable showcase style - camera orbits the product showing it from all angles.
 LIGHTING: Studio lighting with consistent illumination from all angles.
 STYLE: Classic product showcase rotation - professional and elegant.
-${logoLine}`,
+${brandingLine}`,
 
     dynamic: `Create a DYNAMIC, ENERGETIC product video for ${params.platform}.
 PRODUCT: ${params.productName}
@@ -572,7 +620,7 @@ CAMERA MOVEMENT: Fast, energetic movements - quick zoom in combined with slight 
 Dynamic angles that create excitement and grab attention.
 LIGHTING: High contrast, vibrant lighting with bold shadows.
 STYLE: Modern, high-energy commercial - fast-paced and attention-grabbing.
-${logoLine}`,
+${brandingLine}`,
 
     cinematic: `Create a CINEMATIC, HOLLYWOOD-STYLE product video for ${params.platform}.
 PRODUCT: ${params.productName}
@@ -581,7 +629,7 @@ CAMERA MOVEMENT: Professional dolly-in shot with subtle parallax effect.
 Slow, controlled push toward product with slight vertical rise - hero angle.
 LIGHTING: Dramatic cinematic lighting with rim lights and atmospheric haze.
 STYLE: Blockbuster film quality - epic, dramatic product reveal with depth and atmosphere.
-${logoLine}`,
+${brandingLine}`,
 
     explosion: `Create a MESMERIZING PRODUCT ASSEMBLY video for ${params.platform}.
 PRODUCT: ${params.productName}
@@ -592,7 +640,7 @@ Start scattered (0-1 sec), converge smoothly (1-4 sec), fully assembled (4-6 sec
 CAMERA: Static or slow push-in to emphasize the assembly magic.
 LIGHTING: Dramatic lighting that highlights each component as it moves into place.
 STYLE: Cinematic product reveal - Apple-style product showcase with satisfying assembly effect.
-${logoLine}`
+${brandingLine}`
   };
 
   const fullPrompt = stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.default;
