@@ -74,7 +74,8 @@ interface GenerateMarketingRequest {
   contentType: 'image' | 'video' | 'both';
   tone?: 'professional' | 'casual' | 'fun' | 'luxury';
   targetAudience?: string;
-  videoStyle?: 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion';
+  videoStyle?: 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion' | 'orbital' | 'reassembly';
+  videoDuration?: 6 | 12 | 30;  // Durata video in secondi (default: 6)
 
   // Branding
   includeLogo?: boolean;     // Se true, include logo e motto nell'immagine/video
@@ -118,6 +119,7 @@ export async function POST(request: NextRequest) {
       tone = 'professional',
       targetAudience = 'pubblico generale',
       videoStyle = 'default',
+      videoDuration = 6,    // Default: 6 secondi
       includeLogo = false,
       logoImage,        // Logo aziendale (base64) - opzionale
       companyMotto      // Slogan/Motto aziendale - opzionale
@@ -215,6 +217,7 @@ export async function POST(request: NextRequest) {
           aspectRatio,
           productImageBase64: cleanBase64,
           videoStyle,
+          videoDuration,
           includeLogo,
           logoImage,
           companyMotto
@@ -564,6 +567,7 @@ async function generateMarketingVideo(
     aspectRatio: string;
     productImageBase64: string;
     videoStyle?: string;
+    videoDuration?: number;
     includeLogo: boolean;
     logoImage?: string;
     companyMotto?: string;
@@ -571,6 +575,7 @@ async function generateMarketingVideo(
 ): Promise<{ operationId: string; status: string; estimatedTime: number } | null> {
 
   const style = params.videoStyle || 'default';
+  const duration = params.videoDuration || 6;
 
   // Logo e motto instructions (se richiesti)
   let brandingLine = '';
@@ -640,6 +645,30 @@ Start scattered (0-1 sec), converge smoothly (1-4 sec), fully assembled (4-6 sec
 CAMERA: Static or slow push-in to emphasize the assembly magic.
 LIGHTING: Dramatic lighting that highlights each component as it moves into place.
 STYLE: Cinematic product reveal - Apple-style product showcase with satisfying assembly effect.
+${brandingLine}`,
+
+    orbital: `Create a STUNNING ORBITAL 360° product video for ${params.platform}.
+PRODUCT: ${params.productName}
+Use the provided product image as EXACT visual reference.
+PRODUCT POSITION: Product floating elegantly in mid-air, suspended in space.
+CAMERA MOVEMENT: Camera orbits in a complete 360° circle around the floating product at constant height.
+Smooth, continuous orbital movement - camera flies around the product showing all sides.
+SPEED: Moderate orbital speed - complete 360° rotation in 5-6 seconds.
+LIGHTING: Professional studio lighting that follows the camera, maintaining consistent illumination.
+BACKGROUND: Clean, minimal background - let the product be the star.
+STYLE: Premium commercial showcase - elegant orbital reveal like luxury product advertising.
+${brandingLine}`,
+
+    reassembly: `Create a SPECTACULAR PRODUCT REASSEMBLY video for ${params.platform}.
+PRODUCT: ${params.productName}
+Use the provided product image as EXACT visual reference for the final product.
+EFFECT: Product RECONSTRUCTION from small fragments - starts with tiny scattered pieces.
+ANIMATION: Hundreds of small pieces/particles smoothly converge and fuse together.
+Start completely fragmented (0-1 sec), progressive reassembly (1-5 sec), perfect final product (5-6 sec).
+VISUAL STYLE: Particle simulation effect - each piece flies into position with precision.
+CAMERA: Slow circular movement around the reassembly process to show depth and dimension.
+LIGHTING: Bright, high-key lighting with subtle glow effect on moving pieces.
+STYLE: High-tech product reveal - futuristic reassembly like sci-fi hologram materialization.
 ${brandingLine}`
   };
 
@@ -669,7 +698,7 @@ ${brandingLine}`
       },
       config: {
         aspectRatio: veoAspectRatio,
-        durationSeconds: 6,
+        durationSeconds: duration,  // Usa il parametro dall'utente (6, 12, o 30 secondi)
         resolution: '720p'
       }
     });

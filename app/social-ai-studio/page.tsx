@@ -15,7 +15,8 @@ import ShareMenu from '@/components/social-ai/ShareMenu';
 type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
 type ContentType = 'image' | 'video' | 'both';
 type Tone = 'professional' | 'casual' | 'fun' | 'luxury';
-type VideoStyle = 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic';
+type VideoStyle = 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion' | 'orbital' | 'reassembly';
+type VideoDuration = 6 | 12 | 30;
 
 interface MarketingResult {
   copywriting: {
@@ -48,6 +49,7 @@ export default function SocialAIStudioPage() {
   const [tone, setTone] = useState<Tone>('professional');
   const [targetAudience, setTargetAudience] = useState('');
   const [videoStyle, setVideoStyle] = useState<VideoStyle>('default');
+  const [videoDuration, setVideoDuration] = useState<VideoDuration>(6);
 
   // Branding states
   const [includeLogo, setIncludeLogo] = useState(false);
@@ -255,6 +257,7 @@ export default function SocialAIStudioPage() {
           tone,
           targetAudience: targetAudience || undefined,
           videoStyle: videoStyle || 'default',
+          videoDuration: videoDuration || 6,
           // Branding
           includeLogo,
           logoImage: logoImage || undefined,
@@ -746,11 +749,97 @@ export default function SocialAIStudioPage() {
                       videoStyle === 'cinematic'
                         ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
                         : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                    } disabled:opacity-50 col-span-2`}
+                    } disabled:opacity-50`}
                   >
                     <div className="font-semibold">Cinematico</div>
                     <div className="text-xs opacity-75">Stile film professionale</div>
                   </button>
+
+                  <button
+                    onClick={() => setVideoStyle('explosion')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      videoStyle === 'explosion'
+                        ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="font-semibold">Esplosione</div>
+                    <div className="text-xs opacity-75">Assemblaggio pezzi</div>
+                  </button>
+
+                  <button
+                    onClick={() => setVideoStyle('orbital')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      videoStyle === 'orbital'
+                        ? 'bg-gradient-to-r from-indigo-500 to-blue-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="font-semibold">Orbitale 360°</div>
+                    <div className="text-xs opacity-75">Camera vola intorno</div>
+                  </button>
+
+                  <button
+                    onClick={() => setVideoStyle('reassembly')}
+                    disabled={isGenerating}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      videoStyle === 'reassembly'
+                        ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg'
+                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="font-semibold">Ricostruzione</div>
+                    <div className="text-xs opacity-75">Da frammenti a prodotto</div>
+                  </button>
+                </div>
+
+                {/* Durata Video */}
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-purple-300 mb-3">
+                    Durata Video
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      onClick={() => setVideoDuration(6)}
+                      disabled={isGenerating}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                        videoDuration === 6
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
+                          : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                      } disabled:opacity-50`}
+                    >
+                      <div className="font-semibold">⚡ 6s</div>
+                      <div className="text-xs opacity-75">Veloce</div>
+                    </button>
+
+                    <button
+                      onClick={() => setVideoDuration(12)}
+                      disabled={isGenerating}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                        videoDuration === 12
+                          ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
+                          : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                      } disabled:opacity-50`}
+                    >
+                      <div className="font-semibold">⏱️ 12s</div>
+                      <div className="text-xs opacity-75">Standard</div>
+                    </button>
+
+                    <button
+                      onClick={() => setVideoDuration(30)}
+                      disabled={isGenerating}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                        videoDuration === 30
+                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                          : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
+                      } disabled:opacity-50`}
+                    >
+                      <div className="font-semibold">🎬 30s</div>
+                      <div className="text-xs opacity-75">Lungo</div>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
