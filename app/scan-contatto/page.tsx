@@ -28,8 +28,13 @@ import {
   Trash2,
   Image as ImageIcon,
   ArrowLeft,
+  Search,
+  Link2,
+  X,
+  Mic,
 } from 'lucide-react';
 import Image from 'next/image';
+import VoiceContactCreator from './VoiceContactCreator';
 
 // Types
 interface ProcessingStep {
@@ -63,6 +68,16 @@ interface OdooContact {
   display_name: string;
 }
 
+interface CompanySearchResult {
+  id: number;
+  name: string;
+  display_name: string;
+  email: string;
+  phone: string;
+  city: string;
+  vat: string;
+}
+
 export default function ScanContattoPage() {
   // Router
   const router = useRouter();
@@ -72,7 +87,7 @@ export default function ScanContattoPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [contactType, setContactType] = useState<'company' | 'person'>('company'); // Azienda o Privato
+  const [contactType, setContactType] = useState<'company' | 'person' | 'voice'>('company'); // Azienda, Privato o Voce
   const [steps, setSteps] = useState<ProcessingStep[]>([
     { id: 'ocr', label: 'Gemini Vision OCR', icon: Scan, status: 'pending' },
     { id: 'websearch', label: 'Claude Web Search', icon: Brain, status: 'pending' },
@@ -83,6 +98,16 @@ export default function ScanContattoPage() {
   const [createdContact, setCreatedContact] = useState<OdooContact | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Link to company states
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
+  const [companySearchResults, setCompanySearchResults] = useState<CompanySearchResult[]>([]);
+  const [isSearchingCompanies, setIsSearchingCompanies] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
+  const [linkedCompany, setLinkedCompany] = useState<CompanySearchResult | null>(null);
+
+  // Voice creation state
+  const [showVoiceCreator, setShowVoiceCreator] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handlers
@@ -238,6 +263,169 @@ export default function ScanContattoPage() {
 
   // Note: saveToOdoo removed - contact is created automatically by /api/scan-contatto-complete
 
+  // Search for companies
+  const searchCompanies = async (query: string) => {
+    if (!query || query.length < 2) {
+      setCompanySearchResults([]);
+      return;
+    }
+
+    setIsSearchingCompanies(true);
+    try {
+      const response = await fetch(
+        `/api/odoo/contacts?search=${encodeURIComponent(query)}&type=company&limit=10`
+      );
+
+      if (!response.ok) {
+        throw new Error('Errore nella ricerca aziende');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setCompanySearchResults(result.data);
+      } else {
+        throw new Error(result.error || 'Errore nella ricerca');
+      }
+    } catch (err) {
+      console.error('Errore ricerca aziende:', err);
+      setError(err instanceof Error ? err.message : 'Errore ricerca aziende');
+    } finally {
+      setIsSearchingCompanies(false);
+    }
+  };
+
+  // Link contact to company
+  const linkToCompany = async (company: CompanySearchResult) => {
+    if (!createdContact) return;
+
+    setIsLinking(true);
+    try {
+      const response = await fetch(`/api/odoo/contacts/${createdContact.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          parent_id: company.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore nel collegamento all\'azienda');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setLinkedCompany(company);
+        setShowLinkModal(false);
+        setCompanySearchQuery('');
+        setCompanySearchResults([]);
+        // Update the created contact with parent info
+        setCreatedContact({
+          ...createdContact,
+          display_name: result.data.display_name,
+        });
+      } else {
+        throw new Error(result.error || 'Errore nel collegamento');
+      }
+    } catch (err) {
+      console.error('Errore collegamento azienda:', err);
+      setError(err instanceof Error ? err.message : 'Errore collegamento azienda');
+    } finally {
+      setIsLinking(false);
+    }
+  };
+  // Handle voice contact creation
+  const handleVoiceContactComplete = async (data: {
+    name: string;
+    phone: string;
+    mobile: string;
+    email: string;
+    street: string;
+    zip: string;
+    city: string;
+    state: string;
+    country: string;
+    comment: string;
+  }) => {
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/voice-contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore nella creazione del contatto');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setCreatedContact(result.data);
+        setShowVoiceCreator(false);
+      } else {
+        throw new Error(result.error || 'Errore nella creazione');
+      }
+    } catch (err) {
+      console.error('Errore creazione contatto vocale:', err);
+      setError(err instanceof Error ? err.message : 'Errore creazione contatto');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  // Handle voice contact creation
+  const handleVoiceContactComplete = async (data: {
+    name: string;
+    phone: string;
+    mobile: string;
+    email: string;
+    street: string;
+    zip: string;
+    city: string;
+    state: string;
+    country: string;
+    comment: string;
+  }) => {
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/voice-contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore nella creazione del contatto');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setCreatedContact(result.data);
+        setShowVoiceCreator(false);
+      } else {
+        throw new Error(result.error || 'Errore nella creazione');
+      }
+    } catch (err) {
+      console.error('Errore creazione contatto vocale:', err);
+      setError(err instanceof Error ? err.message : 'Errore creazione contatto');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const resetForm = () => {
     setSelectedFile(null);
     setPreviewUrl(null);
@@ -245,6 +433,11 @@ export default function ScanContattoPage() {
     setCreatedContact(null);
     setError(null);
     setIsEditing(false);
+    setLinkedCompany(null);
+    setShowLinkModal(false);
+    setCompanySearchQuery('');
+    setCompanySearchResults([]);
+    setShowVoiceCreator(false);
     setSteps((prev) =>
       prev.map((step) => ({ ...step, status: 'pending', message: undefined }))
     );
@@ -293,10 +486,13 @@ export default function ScanContattoPage() {
             <label className="mb-4 block text-center text-lg font-semibold text-gray-900">
               Che tipo di contatto vuoi scansionare?
             </label>
-            <div className="flex gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <button
-                onClick={() => setContactType('company')}
-                className={`flex-1 rounded-xl px-8 py-6 font-bold transition-all ${
+                onClick={() => {
+                  setContactType('company');
+                  setShowVoiceCreator(false);
+                }}
+                className={`flex-1 rounded-xl px-6 py-6 font-bold transition-all ${
                   contactType === 'company'
                     ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-2xl scale-105'
                     : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg'
@@ -306,8 +502,11 @@ export default function ScanContattoPage() {
                 <div className="text-lg">Azienda</div>
               </button>
               <button
-                onClick={() => setContactType('person')}
-                className={`flex-1 rounded-xl px-8 py-6 font-bold transition-all ${
+                onClick={() => {
+                  setContactType('person');
+                  setShowVoiceCreator(false);
+                }}
+                className={`flex-1 rounded-xl px-6 py-6 font-bold transition-all ${
                   contactType === 'person'
                     ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-2xl scale-105'
                     : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg'
@@ -316,11 +515,43 @@ export default function ScanContattoPage() {
                 <User className="mx-auto mb-2 h-8 w-8" />
                 <div className="text-lg">Privato</div>
               </button>
+              <button
+                onClick={() => {
+                  setContactType('voice');
+                  setShowVoiceCreator(true);
+                }}
+                className={`flex-1 rounded-xl px-6 py-6 font-bold transition-all ${
+                  contactType === 'voice'
+                    ? 'bg-gradient-to-br from-purple-600 to-pink-600 text-white shadow-2xl scale-105'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg'
+                }`}
+              >
+                <Mic className="mx-auto mb-2 h-8 w-8" />
+                <div className="text-lg">Con Voce</div>
+              </button>
             </div>
           </div>
         </motion.div>
 
-        <div className="grid gap-8 lg:grid-cols-2">
+        {/* Voice Contact Creator */}
+        {showVoiceCreator && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mx-auto max-w-2xl"
+          >
+            <VoiceContactCreator
+              onComplete={handleVoiceContactComplete}
+              onCancel={() => {
+                setShowVoiceCreator(false);
+                setContactType('person');
+              }}
+            />
+          </motion.div>
+        )}
+
+        {!showVoiceCreator && (
+                <div className="grid gap-8 lg:grid-cols-2">
           {/* Left Column: Upload & Preview */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -573,6 +804,23 @@ export default function ScanContattoPage() {
                     </p>
                   </div>
 
+                  {/* Show linked company info if linked */}
+                  {linkedCompany && (
+                    <div className="mb-6 rounded-xl bg-blue-50 border border-blue-200 p-4">
+                      <div className="flex items-center gap-3">
+                        <Link2 className="h-6 w-6 text-blue-600 shrink-0" />
+                        <div>
+                          <p className="font-semibold text-blue-900">
+                            Collegato ad Azienda
+                          </p>
+                          <p className="text-sm text-blue-700">
+                            {linkedCompany.display_name}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-3">
                     <a
                       href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${createdContact.id}&model=res.partner&view_type=form`}
@@ -583,6 +831,17 @@ export default function ScanContattoPage() {
                       <ExternalLink className="h-5 w-5" />
                       Apri in Odoo
                     </a>
+
+                    {/* Show "Link to Company" button only for private contacts */}
+                    {contactType === 'person' && !linkedCompany && (
+                      <button
+                        onClick={() => setShowLinkModal(true)}
+                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-3 font-semibold text-white shadow-lg transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl"
+                      >
+                        <Link2 className="h-5 w-5" />
+                        Collega ad Azienda
+                      </button>
+                    )}
 
                     <button
                       onClick={resetForm}
@@ -822,6 +1081,147 @@ export default function ScanContattoPage() {
             </AnimatePresence>
           </motion.div>
         </div>
+
+        {/* Link to Company Modal */}
+        <AnimatePresence>
+          {showLinkModal && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowLinkModal(false)}
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+              />
+
+              {/* Modal */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              >
+                <div className="relative max-w-2xl w-full max-h-[80vh] bg-white rounded-2xl shadow-2xl overflow-hidden">
+                  {/* Header */}
+                  <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Link2 className="h-6 w-6" />
+                        <h3 className="text-xl font-bold">Collega ad Azienda</h3>
+                      </div>
+                      <button
+                        onClick={() => setShowLinkModal(false)}
+                        className="rounded-lg p-2 transition-colors hover:bg-white/20"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
+                    {/* Search Input */}
+                    <div className="mb-6">
+                      <label className="mb-2 block text-sm font-medium text-gray-700">
+                        Cerca Azienda
+                      </label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                          type="text"
+                          value={companySearchQuery}
+                          onChange={(e) => {
+                            setCompanySearchQuery(e.target.value);
+                            searchCompanies(e.target.value);
+                          }}
+                          placeholder="Digita il nome dell'azienda..."
+                          className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-4 py-3 text-gray-900 transition-colors focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+
+                    {/* Search Results */}
+                    {isSearchingCompanies ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                      </div>
+                    ) : companySearchResults.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-sm text-gray-600 mb-3">
+                          {companySearchResults.length} {companySearchResults.length === 1 ? 'azienda trovata' : 'aziende trovate'}
+                        </p>
+                        {companySearchResults.map((company) => (
+                          <motion.button
+                            key={company.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            onClick={() => linkToCompany(company)}
+                            disabled={isLinking}
+                            className="w-full rounded-xl border-2 border-gray-200 bg-white p-4 text-left transition-all hover:border-purple-500 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <p className="font-semibold text-gray-900">
+                                  {company.display_name}
+                                </p>
+                                {company.vat && (
+                                  <p className="text-sm text-gray-600">
+                                    P.IVA: {company.vat}
+                                  </p>
+                                )}
+                                <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
+                                  {company.city && (
+                                    <span className="flex items-center gap-1">
+                                      <MapPin className="h-3 w-3" />
+                                      {company.city}
+                                    </span>
+                                  )}
+                                  {company.email && (
+                                    <span className="flex items-center gap-1">
+                                      <Mail className="h-3 w-3" />
+                                      {company.email}
+                                    </span>
+                                  )}
+                                  {company.phone && (
+                                    <span className="flex items-center gap-1">
+                                      <Phone className="h-3 w-3" />
+                                      {company.phone}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {isLinking ? (
+                                <Loader2 className="h-5 w-5 animate-spin text-purple-600 shrink-0 ml-4" />
+                              ) : (
+                                <Link2 className="h-5 w-5 text-purple-600 shrink-0 ml-4" />
+                              )}
+                            </div>
+                          </motion.button>
+                        ))}
+                      </div>
+                    ) : companySearchQuery.length >= 2 ? (
+                      <div className="rounded-xl bg-gray-50 p-8 text-center">
+                        <Building2 className="mx-auto mb-3 h-12 w-12 text-gray-400" />
+                        <p className="text-gray-600">
+                          Nessuna azienda trovata per "{companySearchQuery}"
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl bg-gray-50 p-8 text-center">
+                        <Search className="mx-auto mb-3 h-12 w-12 text-gray-400" />
+                        <p className="text-gray-600">
+                          Digita almeno 2 caratteri per cercare un'azienda
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

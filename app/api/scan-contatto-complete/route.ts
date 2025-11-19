@@ -13,6 +13,61 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractContactDataFromImage } from '@/lib/services/gemini-vision';
 
+/**
+ * Formatta le informazioni Google Search per il Chatter
+ */
+function formatGoogleSearchMessage(webSearchData: any, extractedData: any): string {
+  const parts: string[] = [];
+
+  parts.push('<h3>📍 Informazioni da Google Search (non ufficiali)</h3>');
+  parts.push('<p><i>Queste informazioni sono state trovate automaticamente su Internet e potrebbero non essere ufficiali o aggiornate.</i></p>');
+  parts.push('<ul>');
+
+  if (webSearchData.legalName) {
+    parts.push(`<li><strong>Nome trovato:</strong> ${webSearchData.legalName}</li>`);
+  }
+
+  if (webSearchData.website) {
+    parts.push(`<li><strong>Sito web:</strong> <a href="${webSearchData.website}" target="_blank">${webSearchData.website}</a></li>`);
+  }
+
+  if (webSearchData.address) {
+    const addressParts: string[] = [];
+    if (webSearchData.address.street) addressParts.push(webSearchData.address.street);
+    if (webSearchData.address.zip) addressParts.push(webSearchData.address.zip);
+    if (webSearchData.address.city) addressParts.push(webSearchData.address.city);
+    if (webSearchData.address.state) addressParts.push(webSearchData.address.state);
+    if (webSearchData.address.country) addressParts.push(webSearchData.address.country);
+
+    if (addressParts.length > 0) {
+      parts.push(`<li><strong>Indirizzo:</strong> ${addressParts.join(', ')}</li>`);
+    }
+  }
+
+  if (webSearchData.uid) {
+    parts.push(`<li><strong>UID/P.IVA:</strong> ${webSearchData.uid}</li>`);
+  }
+
+  if (webSearchData.businessActivity) {
+    parts.push(`<li><strong>Attività:</strong> ${webSearchData.businessActivity}</li>`);
+  }
+
+  if (webSearchData.companyType) {
+    parts.push(`<li><strong>Tipo azienda:</strong> ${webSearchData.companyType}</li>`);
+  }
+
+  if (webSearchData.creditInfo) {
+    parts.push(`<li><strong>Info creditizie:</strong> ${webSearchData.creditInfo}</li>`);
+  }
+
+  parts.push('</ul>');
+
+  // Aggiungi fonte
+  parts.push(`<p><small><strong>Fonte:</strong> ${webSearchData.source} | <strong>Query:</strong> ${webSearchData.searchQuery}</strong></small></p>`);
+
+  return parts.join('\n');
+}
+
 interface EnrichmentResult {
   // Dati OCR
   extractedData: any;
@@ -275,6 +330,92 @@ Rispondi con JSON:
 
       odooContact = createdPartnerArray[0];
       console.log('[Step 3/3] ✓ Odoo contact created:', odooContact);
+
+      // ============================================
+      // STEP 3.1: CREATE DELIVERY & INVOICE ADDRESSES (solo per aziende)
+      // ============================================
+      if (contactType === 'company' && partnerId) {
+        console.log('[Step 3.1] Creating delivery and invoice addresses for company...');
+
+        try {
+          const addressesToCreate = [];
+
+          // Indirizzo di consegna (delivery)
+          if (partnerData.street || partnerData.city || partnerData.zip) {
+            const deliveryAddress = {
+              parent_id: partnerId,
+              type: 'delivery',
+              name: 'Indirizzo di consegna',
+              street: partnerData.street || '',
+              city: partnerData.city || '',
+              zip: partnerData.zip || '',
+              country_id: partnerData.country_id || 43 // Default Switzerland
+            };
+            addressesToCreate.push(createOdoo('res.partner', deliveryAddress));
+          }
+
+          // Indirizzo di fatturazione (invoice)
+          if (partnerData.street || partnerData.city || partnerData.zip) {
+            const invoiceAddress = {
+              parent_id: partnerId,
+              type: 'invoice',
+              name: 'Indirizzo di fatturazione',
+              street: partnerData.street || '',
+              city: partnerData.city || '',
+              zip: partnerData.zip || '',
+              country_id: partnerData.country_id || 43 // Default Switzerland
+            };
+            addressesToCreate.push(createOdoo('res.partner', invoiceAddress));
+          }
+
+          // Crea gli indirizzi in parallelo
+          if (addressesToCreate.length > 0) {
+            const createdAddressIds = await Promise.all(addressesToCreate);
+            console.log(`[Step 3.1] ✓ Created ${createdAddressIds.length} addresses:`, createdAddressIds);
+          } else {
+            console.log('[Step 3.1] ⊘ No address data available, skipping address creation');
+          }
+
+        } catch (addressError: any) {
+          // Non bloccare il flusso se la creazione degli indirizzi fallisce
+          console.warn('[Step 3.1] ⚠ Address creation error (non-blocking):', addressError.message);
+          warnings.push(`Creazione indirizzi fallita: ${addressError.message}`);
+        }
+      }
+
+      // ============================================
+      // STEP 3.5: INVIA INFO GOOGLE SEARCH AL CHATTER
+      // ============================================
+      if (webSearchData?.found && partnerId) {
+        console.log('[Step 3.5] Sending Google Search info to Chatter...');
+
+        try {
+          // Formatta il messaggio con le informazioni Google Search
+          const chatterMessage = formatGoogleSearchMessage(webSearchData, extractedData);
+
+          // Invia al Chatter usando l'API esistente
+          const chatterResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/odoo/post-message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'res.partner',
+              res_id: partnerId,
+              message: chatterMessage
+            })
+          });
+
+          if (chatterResponse.ok) {
+            console.log('[Step 3.5] ✓ Google Search info posted to Chatter');
+          } else {
+            const errorText = await chatterResponse.text();
+            console.warn('[Step 3.5] ⚠ Failed to post to Chatter:', errorText);
+            warnings.push('Impossibile inviare info Google Search al Chatter');
+          }
+        } catch (chatterError: any) {
+          console.warn('[Step 3.5] ⚠ Chatter post error:', chatterError.message);
+          warnings.push('Errore invio messaggio Chatter');
+        }
+      }
 
     } catch (error: any) {
       console.error('[Step 3/3] ✗ Odoo creation error:', error);

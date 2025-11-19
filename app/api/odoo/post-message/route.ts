@@ -14,6 +14,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Se il messaggio contiene già tag HTML, non modificarlo
+    // Altrimenti converti i newline in <br/>
+    const isHtml = message.includes('<') && message.includes('>');
+    const formattedMessage = isHtml ? message : message.replace(/\n/g, '<br/>');
+
     // Posta messaggio nel Chatter usando message_post sul record
     const rpcResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/odoo/rpc`, {
       method: 'POST',
@@ -23,7 +28,7 @@ export async function POST(request: NextRequest) {
         method: 'message_post',
         args: [[res_id]],
         kwargs: {
-          body: message.replace(/\n/g, '<br/>'),
+          body: formattedMessage,
           message_type: 'comment'
         }
       })
