@@ -51,6 +51,7 @@ async function searchWithGoogle(
   console.log('[Google Search] 🔍 Company name:', companyName);
   console.log('[Google Search] 📍 Location:', location);
   console.log('[Google Search] 🔎 Final query:', query);
+  console.log('[Google Search] 🚀 Starting search...');
 
   try {
     const url = new URL('https://www.googleapis.com/customsearch/v1');
