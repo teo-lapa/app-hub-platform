@@ -256,20 +256,16 @@ Rispondi SOLO con il JSON, senza markdown o spiegazioni.`;
       model: 'gemini-2.5-flash',
       contents: [
         {
-          parts: [
-            {
-              inlineData: {
-                mimeType: 'image/jpeg',
-                data: params.productImageBase64
-              }
-            },
-            { text: prompt }
-          ]
-        }
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: params.productImageBase64
+          }
+        },
+        { text: prompt }
       ]
     });
 
-    const textResponse = response.text;
+    const textResponse = response.text || '';
 
     // Pulisci il JSON (rimuovi markdown se presente)
     const cleanJson = textResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -333,25 +329,21 @@ NON includere testo o loghi nell'immagine.`;
       model: 'gemini-2.5-flash-image',
       contents: [
         {
-          parts: [
-            {
-              inlineData: {
-                mimeType: 'image/jpeg',
-                data: params.productImageBase64
-              }
-            },
-            { text: prompt }
-          ]
-        }
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: params.productImageBase64
+          }
+        },
+        { text: prompt }
       ]
     });
 
     if (isDev) {
-      console.log('[AGENT-IMAGE] Response parts:', response.parts?.length);
+      console.log('[AGENT-IMAGE] Response parts:', (response as any).parts?.length);
     }
 
     // Estrai l'immagine generata dai parts della risposta
-    for (const part of response.parts || []) {
+    for (const part of (response as any).parts || []) {
       if (part.inlineData && part.inlineData.data) {
         const imageData = part.inlineData.data;
         const mimeType = part.inlineData.mimeType || 'image/png';
