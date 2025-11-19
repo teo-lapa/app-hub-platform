@@ -455,24 +455,27 @@ STYLE: Blockbuster film quality - epic, dramatic product reveal with depth and a
       });
     }
 
-    // Usa Veo 3.1 tramite REST API
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/veo-3.1:generateVideo', {
+    // Usa Veo 3.1 tramite REST API (ENDPOINT CORRETTO)
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-goog-api-key': veoApiKey
       },
       body: JSON.stringify({
-        prompt: fullPrompt,
-        referenceImages: [
+        instances: [
           {
-            bytesBase64Encoded: params.productImageBase64
+            prompt: fullPrompt,
+            image: {
+              imageBytes: params.productImageBase64,
+              mimeType: 'image/jpeg'
+            }
           }
         ],
-        config: {
+        parameters: {
           aspectRatio: veoAspectRatio,
-          duration: '5s',
-          seed: Math.floor(Math.random() * 1000000)
+          resolution: '720p',
+          durationSeconds: '6'
         }
       })
     });
@@ -480,6 +483,9 @@ STYLE: Blockbuster film quality - epic, dramatic product reveal with depth and a
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[AGENT-VIDEO] Veo API error:', response.status, errorText);
+      if (isDev) {
+        console.error('[AGENT-VIDEO] Full error response:', errorText);
+      }
       return null;
     }
 
@@ -488,7 +494,14 @@ STYLE: Blockbuster film quality - epic, dramatic product reveal with depth and a
 
     if (!operationId) {
       console.warn('[AGENT-VIDEO] No operation ID in response');
+      if (isDev) {
+        console.error('[AGENT-VIDEO] Response data:', JSON.stringify(data).substring(0, 500));
+      }
       return null;
+    }
+
+    if (isDev) {
+      console.log('[AGENT-VIDEO] ✓ Video generation started successfully:', operationId);
     }
 
     return {
