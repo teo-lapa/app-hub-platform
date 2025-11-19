@@ -48,7 +48,9 @@ async function searchWithGoogle(
   }
   query += ' Svizzera Switzerland';
 
-  console.log('[Google Search] Query:', query);
+  console.log('[Google Search] 🔍 Company name:', companyName);
+  console.log('[Google Search] 📍 Location:', location);
+  console.log('[Google Search] 🔎 Final query:', query);
 
   try {
     const url = new URL('https://www.googleapis.com/customsearch/v1');
@@ -67,9 +69,11 @@ async function searchWithGoogle(
 
     const data = await response.json();
 
-    console.log('[Google Search] Results:', data.searchInformation?.totalResults || 0);
+    console.log('[Google Search] ✅ Total results:', data.searchInformation?.totalResults || 0);
+    console.log('[Google Search] 📊 Items found:', data.items?.length || 0);
 
     if (!data.items || data.items.length === 0) {
+      console.log('[Google Search] ❌ NO RESULTS - Full response:', JSON.stringify(data, null, 2));
       return {
         found: false,
         source: 'google_custom_search',
@@ -79,6 +83,12 @@ async function searchWithGoogle(
 
     // Analizza i risultati
     const firstResult = data.items[0];
+
+    console.log('[Google Search] ✅ FOUND! First result:', {
+      title: firstResult.title,
+      link: firstResult.link,
+      snippet: firstResult.snippet?.substring(0, 100)
+    });
 
     return {
       found: true,
