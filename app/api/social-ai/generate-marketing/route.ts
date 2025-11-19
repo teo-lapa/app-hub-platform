@@ -446,15 +446,14 @@ STYLE: Blockbuster film quality - epic, dramatic product reveal with depth and a
       });
     }
 
-    // NUOVO SDK - usa generateVideos() con image-to-video
+    // NUOVO SDK - usa generateVideos() esattamente come da documentazione ufficiale
+    // https://ai.google.dev/gemini-api/docs/video
     const operation = await ai.models.generateVideos({
       model: 'veo-3.1-generate-preview',
-      source: {
-        prompt: fullPrompt,
-        image: {
-          imageBytes: params.productImageBase64,
-          mimeType: 'image/jpeg'
-        }
+      prompt: fullPrompt,  // Direct parameter (not wrapped in "source")
+      image: {             // Direct parameter (not wrapped in "source")
+        imageBytes: params.productImageBase64,
+        mimeType: 'image/jpeg'
       },
       config: {
         aspectRatio: veoAspectRatio,
