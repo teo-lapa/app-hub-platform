@@ -381,50 +381,6 @@ export default function ScanContattoPage() {
       setIsProcessing(false);
     }
   };
-  // Handle voice contact creation
-  const handleVoiceContactComplete = async (data: {
-    name: string;
-    phone: string;
-    mobile: string;
-    email: string;
-    street: string;
-    zip: string;
-    city: string;
-    state: string;
-    country: string;
-    comment: string;
-  }) => {
-    setIsProcessing(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/voice-contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error('Errore nella creazione del contatto');
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        setCreatedContact(result.data);
-        setShowVoiceCreator(false);
-      } else {
-        throw new Error(result.error || 'Errore nella creazione');
-      }
-    } catch (err) {
-      console.error('Errore creazione contatto vocale:', err);
-      setError(err instanceof Error ? err.message : 'Errore creazione contatto');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   const resetForm = () => {
     setSelectedFile(null);
@@ -1081,6 +1037,7 @@ export default function ScanContattoPage() {
             </AnimatePresence>
           </motion.div>
         </div>
+        )}
 
         {/* Link to Company Modal */}
         <AnimatePresence>

@@ -33,18 +33,14 @@ export async function PUT(
     const updateData = await request.json();
 
     // Update the contact
-    const result = await client.write('res.partner', [contactId], updateData);
+    const result = await client.callKw('res.partner', 'write', [[contactId], updateData]);
 
     if (!result) {
       throw new Error('Errore durante l\'aggiornamento del contatto');
     }
 
     // Fetch the updated contact to return it
-    const updatedContact = await client.read(
-      'res.partner',
-      [contactId],
-      ['id', 'name', 'display_name', 'email', 'phone', 'parent_id', 'is_company']
-    );
+    const updatedContact = await client.callKw('res.partner', 'read', [[contactId], ['id', 'name', 'display_name', 'email', 'phone', 'parent_id', 'is_company']]);
 
     return NextResponse.json({
       success: true,
@@ -97,11 +93,7 @@ export async function GET(
     }
 
     // Fetch the contact
-    const contact = await client.read(
-      'res.partner',
-      [contactId],
-      ['id', 'name', 'display_name', 'email', 'phone', 'city', 'country_id', 'is_company', 'parent_id', 'vat']
-    );
+    const contact = await client.callKw('res.partner', 'read', [[contactId], ['id', 'name', 'display_name', 'email', 'phone', 'city', 'country_id', 'is_company', 'parent_id', 'vat']]);
 
     if (!contact || contact.length === 0) {
       return NextResponse.json({

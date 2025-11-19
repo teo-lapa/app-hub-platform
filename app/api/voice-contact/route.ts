@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OdooClient from '@/lib/odoo/client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,9 +14,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Initialize Odoo client
-    const odoo = new OdooClient();
-    await odoo.connect();
+    // Import Odoo helper
+    const { createOdoo, readOdoo } = await import('@/lib/odoo/odoo-helper');
 
     // Prepare contact data
     const contactData: any = {
@@ -37,10 +35,10 @@ export async function POST(req: NextRequest) {
     if (data.comment) contactData.comment = data.comment;
 
     // Create contact in Odoo
-    const contactId = await odoo.create('res.partner', contactData);
+    const contactId = await createOdoo('res.partner', contactData);
 
     // Read back the created contact
-    const contact = await odoo.read('res.partner', [contactId], [
+    const contactArray = await readOdoo('res.partner', [contactId], [
       'id',
       'name',
       'display_name',
@@ -49,11 +47,17 @@ export async function POST(req: NextRequest) {
       'mobile',
     ]);
 
-    console.log('[VOICE-CONTACT] Contact created:', contact[0]);
+    const contact = contactArray && contactArray.length > 0 ? contactArray[0] : null;
+
+    if (!contact) {
+      throw new Error('Errore nella lettura del contatto creato');
+    }
+
+    console.log('[VOICE-CONTACT] Contact created:', contact);
 
     return NextResponse.json({
       success: true,
-      data: contact[0],
+      data: contact,
     });
   } catch (error) {
     console.error('[VOICE-CONTACT] Error:', error);
