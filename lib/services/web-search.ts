@@ -73,8 +73,16 @@ async function searchWithGoogle(
     console.log('[Google Search] ✅ Total results:', data.searchInformation?.totalResults || 0);
     console.log('[Google Search] 📊 Items found:', data.items?.length || 0);
 
+    // DEBUG: Log completo della risposta
+    console.log('[Google Search] 🔍 FULL API RESPONSE:', JSON.stringify(data, null, 2));
+
     if (!data.items || data.items.length === 0) {
-      console.log('[Google Search] ❌ NO RESULTS - Full response:', JSON.stringify(data, null, 2));
+      console.error('[Google Search] ❌ NO RESULTS FOUND!');
+      console.error('[Google Search] 📋 Search query was:', query);
+      console.error('[Google Search] 🌐 Total results from API:', data.searchInformation?.totalResults || 0);
+      console.error('[Google Search] ⚠️ Check your Custom Search Engine configuration at:');
+      console.error('[Google Search] 🔗 https://programmablesearchengine.google.com/controlpanel/all');
+      console.error('[Google Search] ✅ Make sure "Search the entire web" is enabled!');
       return {
         found: false,
         source: 'google_custom_search',
