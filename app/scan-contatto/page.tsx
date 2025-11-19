@@ -283,6 +283,43 @@ export default function ScanContattoPage() {
           </p>
         </motion.div>
 
+        {/* Toggle Azienda/Privato - PRIMA di tutto */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 mx-auto max-w-md"
+        >
+          <div className="rounded-2xl bg-white/70 p-6 shadow-xl backdrop-blur-md">
+            <label className="mb-4 block text-center text-lg font-semibold text-gray-900">
+              Che tipo di contatto vuoi scansionare?
+            </label>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setContactType('company')}
+                className={`flex-1 rounded-xl px-8 py-6 font-bold transition-all ${
+                  contactType === 'company'
+                    ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-2xl scale-105'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg'
+                }`}
+              >
+                <Building2 className="mx-auto mb-2 h-8 w-8" />
+                <div className="text-lg">Azienda</div>
+              </button>
+              <button
+                onClick={() => setContactType('person')}
+                className={`flex-1 rounded-xl px-8 py-6 font-bold transition-all ${
+                  contactType === 'person'
+                    ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-2xl scale-105'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg'
+                }`}
+              >
+                <User className="mx-auto mb-2 h-8 w-8" />
+                <div className="text-lg">Privato</div>
+              </button>
+            </div>
+          </div>
+        </motion.div>
+
         <div className="grid gap-8 lg:grid-cols-2">
           {/* Left Column: Upload & Preview */}
           <motion.div
@@ -577,37 +614,6 @@ export default function ScanContattoPage() {
                       <Edit3 className="h-4 w-4" />
                       {isEditing ? 'Modalità Lettura' : 'Modifica'}
                     </button>
-                  </div>
-
-                  {/* Toggle Azienda/Privato */}
-                  <div className="mb-6 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
-                    <label className="mb-3 block text-sm font-semibold text-gray-700">
-                      Tipo Contatto *
-                    </label>
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => setContactType('company')}
-                        className={`flex-1 rounded-lg px-6 py-3 font-semibold transition-all ${
-                          contactType === 'company'
-                            ? 'bg-blue-600 text-white shadow-lg'
-                            : 'bg-white text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        <Building2 className="mx-auto mb-1 h-5 w-5" />
-                        Azienda
-                      </button>
-                      <button
-                        onClick={() => setContactType('person')}
-                        className={`flex-1 rounded-lg px-6 py-3 font-semibold transition-all ${
-                          contactType === 'person'
-                            ? 'bg-blue-600 text-white shadow-lg'
-                            : 'bg-white text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        <User className="mx-auto mb-1 h-5 w-5" />
-                        Privato
-                      </button>
-                    </div>
                   </div>
 
                   <div className="mb-6 space-y-4">
