@@ -6,6 +6,46 @@ export const maxDuration = 300; // 5 minuti per generazione completa (video può
 
 const isDev = process.env.NODE_ENV === 'development';
 
+// ==========================================
+// 🧹 HELPER: Pulisce nome prodotto
+// ==========================================
+function cleanProductName(name: string): string {
+  if (!name) return name;
+
+  // Rimuovi ultima parte se contiene unità di misura o packaging
+  // Es: "FIORDILATTE JULIENNE TAGLIO NAPOLI VASC DA 2.5 KG" → "FIORDILATTE JULIENNE TAGLIO NAPOLI"
+  const measurementPatterns = /\s+(VASC|BUSTA|SACCO|CONFEZIONE|CONF|PKG|KG|GR|ML|LT|PZ|PEZZI|DA)\s+.*$/i;
+  let cleaned = name.replace(measurementPatterns, '');
+
+  // Rimuovi anche pattern tipo "2.5 KG", "250 GR", etc.
+  cleaned = cleaned.replace(/\s+\d+[\.,]?\d*\s*(KG|GR|G|ML|L|LT|LITRI|GRAMMI)$/i, '');
+
+  return cleaned.trim();
+}
+
+// ==========================================
+// 🧹 HELPER: Pulisce descrizione prodotto
+// ==========================================
+function cleanProductDescription(description: string, productName: string): string {
+  if (!description) return description;
+
+  let cleaned = description;
+
+  // Se la descrizione inizia con il nome del prodotto, rimuovilo
+  if (productName && cleaned.toLowerCase().startsWith(productName.toLowerCase())) {
+    cleaned = cleaned.substring(productName.length).trim();
+    // Rimuovi eventuali caratteri separatori iniziali
+    cleaned = cleaned.replace(/^[\-\–\—\:\s]+/, '');
+  }
+
+  // Limita a max 200 caratteri per marketing
+  if (cleaned.length > 200) {
+    cleaned = cleaned.substring(0, 197) + '...';
+  }
+
+  return cleaned.trim();
+}
+
 /**
  * POST /api/social-ai/generate-marketing
  *
@@ -34,7 +74,8 @@ interface GenerateMarketingRequest {
   contentType: 'image' | 'video' | 'both';
   tone?: 'professional' | 'casual' | 'fun' | 'luxury';
   targetAudience?: string;
-  videoStyle?: 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic';
+  videoStyle?: 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion';
+  includeLogo?: boolean;
 }
 
 interface MarketingResult {
@@ -72,7 +113,8 @@ export async function POST(request: NextRequest) {
       contentType,
       tone = 'professional',
       targetAudience = 'pubblico generale',
-      videoStyle = 'default'
+      videoStyle = 'default',
+      includeLogo = false
     } = body;
 
     // Validazione
@@ -82,6 +124,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // 🧹 PULIZIA DATI PRODOTTO
+    const cleanedName = cleanProductName(productName);
+    const cleanedDescription = cleanProductDescription(productDescription, productName);
 
     if (!['instagram', 'facebook', 'tiktok', 'linkedin'].includes(socialPlatform)) {
       return NextResponse.json(
@@ -125,8 +171,8 @@ export async function POST(request: NextRequest) {
     // AGENT 1: Copywriting (sempre attivo)
     agents.push(
       generateCopywriting(ai, {
-        productName,
-        productDescription,
+        productName: cleanedName,
+        productDescription: cleanedDescription,
         platform: socialPlatform,
         tone,
         targetAudience,
@@ -138,11 +184,13 @@ export async function POST(request: NextRequest) {
     if (contentType === 'image' || contentType === 'both') {
       agents.push(
         generateMarketingImage(ai, {
-          productName,
-          productDescription,
+          productName: cleanedName,
+          productDescription: cleanedDescription,
           platform: socialPlatform,
+          tone,
           aspectRatio,
-          productImageBase64: cleanBase64
+          productImageBase64: cleanBase64,
+          includeLogo
         })
       );
     } else {
@@ -153,12 +201,13 @@ export async function POST(request: NextRequest) {
     if (contentType === 'video' || contentType === 'both') {
       agents.push(
         generateMarketingVideo(ai, {
-          productName,
-          productDescription,
+          productName: cleanedName,
+          productDescription: cleanedDescription,
           platform: socialPlatform,
           aspectRatio,
           productImageBase64: cleanBase64,
-          videoStyle
+          videoStyle,
+          includeLogo
         })
       );
     } else {
@@ -298,31 +347,96 @@ async function generateMarketingImage(
     productName: string;
     productDescription: string;
     platform: string;
+    tone: string;
     aspectRatio: string;
     productImageBase64: string;
+    includeLogo: boolean;
   }
 ): Promise<{ data: string; mimeType: string; dataUrl: string } | null> {
 
-  const prompt = `Crea un'immagine marketing professionale e accattivante per ${params.platform}.
+  // Prompt diversi per ogni tone (ENGLISH for better quality)
+  const tonePrompts = {
+    professional: `Create a PROFESSIONAL marketing image for ${params.platform}.
 
-Prodotto: ${params.productName}
-${params.productDescription ? `Descrizione: ${params.productDescription}` : ''}
+PRODUCT: ${params.productName}
+${params.productDescription ? `Description: ${params.productDescription}` : ''}
 
-STILE:
-- Fotografia professionale da studio
-- Illuminazione perfetta
-- Sfondo elegante e pulito
-- Composizione bilanciata
-- Adatto per post social su ${params.platform}
-- Alta qualità, fotorealistica
+STYLE:
+- Professional studio photography
+- Soft, uniform lighting
+- Clean white/gray elegant background
+- Balanced, formal composition
+- High quality, photorealistic
 
-COMPOSIZIONE:
-- Il prodotto deve essere il focus principale
-- Usa l'immagine fornita come riferimento per il prodotto
-- Aggiungi elementi visivi che valorizzino il prodotto
-- Palette colori armoniosa e professionale
+COMPOSITION:
+- Product is the main focus
+- Use provided image as exact reference
+- Corporate, professional environment
+- Sober, refined color palette`,
 
-NON includere testo o loghi nell'immagine.`;
+    casual: `Create a CASUAL, NATURAL marketing image for ${params.platform}.
+
+PRODUCT: ${params.productName}
+${params.productDescription ? `Description: ${params.productDescription}` : ''}
+
+STYLE:
+- Natural lifestyle photography
+- Soft natural light (daylight style)
+- Everyday, relaxed environment
+- Spontaneous yet curated composition
+- Photorealistic with friendly atmosphere
+
+COMPOSITION:
+- Product integrated in real-life context
+- Use provided image as reference
+- Natural elements (wood, fabrics, plants)
+- Warm, welcoming color palette`,
+
+    fun: `Create a FUN, COLORFUL marketing image for ${params.platform}.
+
+PRODUCT: ${params.productName}
+${params.productDescription ? `Description: ${params.productDescription}` : ''}
+
+STYLE:
+- Vibrant, playful photography
+- Bright, energetic lighting
+- Vivid, eye-catching POP colors
+- Dynamic, creative composition
+- Young, fun atmosphere
+
+COMPOSITION:
+- Product as protagonist in playful scene
+- Use provided image as reference
+- Colorful elements, patterns, geometric shapes
+- Bold, festive color palette`,
+
+    luxury: `Create a LUXURY, EXCLUSIVE marketing image for ${params.platform}.
+
+PRODUCT: ${params.productName}
+${params.productDescription ? `Description: ${params.productDescription}` : ''}
+
+STYLE:
+- High-end premium magazine photography
+- Dramatic lighting with rim light
+- Elegant background (marble, velvet, gold)
+- Refined, sophisticated composition
+- Maximum quality, ultra-realistic
+
+COMPOSITION:
+- Product as object of desire
+- Use provided image as reference
+- Premium elements (metal, crystal, luxury textures)
+- Rich, precious color palette (black, gold, burgundy)`
+  };
+
+  const basePrompt = tonePrompts[params.tone as keyof typeof tonePrompts] || tonePrompts.professional;
+
+  // Aggiungi logo se richiesto (ENGLISH)
+  const logoInstruction = params.includeLogo
+    ? '\n\nLOGO: Add a small, subtle brand logo watermark in the bottom right corner.'
+    : '\n\nDO NOT include any text or logos in the image.';
+
+  const fullPrompt = basePrompt + logoInstruction;
 
   try {
     // NUOVO SDK - usa generateContent() con gemini-2.5-flash-image
@@ -335,7 +449,7 @@ NON includere testo o loghi nell'immagine.`;
             data: params.productImageBase64
           }
         },
-        { text: prompt }
+        { text: fullPrompt }
       ]
     });
 
@@ -412,19 +526,26 @@ async function generateMarketingVideo(
     aspectRatio: string;
     productImageBase64: string;
     videoStyle?: string;
+    includeLogo: boolean;
   }
 ): Promise<{ operationId: string; status: string; estimatedTime: number } | null> {
 
   const style = params.videoStyle || 'default';
 
-  // Prompt diversi per ogni stile
+  // Logo instruction (se richiesto)
+  const logoLine = params.includeLogo
+    ? 'Add a small, subtle brand logo watermark in the bottom right corner.'
+    : '';
+
+  // Prompt diversi per ogni stile (INGLESE per migliore qualità)
   const stylePrompts = {
     default: `Create a premium, hyper-realistic product video for ${params.platform} social media advertising.
 PRODUCT: ${params.productName}
 Use the provided product image as EXACT visual reference. The product MUST look identical to the reference photo.
 CAMERA: Smooth, natural movement that showcases the product elegantly.
 LIGHTING: Professional studio lighting with soft shadows.
-STYLE: Clean, premium commercial photography in motion.`,
+STYLE: Clean, premium commercial photography in motion.
+${logoLine}`,
 
     zoom: `Create a premium product video with SLOW ZOOM IN effect for ${params.platform}.
 PRODUCT: ${params.productName}
@@ -432,7 +553,8 @@ Use the provided product image as EXACT visual reference.
 CAMERA MOVEMENT: Start with medium shot, slowly zoom in to close-up revealing product details.
 The zoom should be smooth, slow, and elegant - like a luxury commercial.
 LIGHTING: Professional studio lighting that highlights product features.
-STYLE: High-end commercial with emphasis on product details.`,
+STYLE: High-end commercial with emphasis on product details.
+${logoLine}`,
 
     rotate: `Create a premium 360-DEGREE ROTATION product video for ${params.platform}.
 PRODUCT: ${params.productName}
@@ -440,7 +562,8 @@ Use the provided product image as EXACT visual reference.
 CAMERA MOVEMENT: Smooth 360° horizontal rotation around the product at constant speed.
 Professional turntable showcase style - camera orbits the product showing it from all angles.
 LIGHTING: Studio lighting with consistent illumination from all angles.
-STYLE: Classic product showcase rotation - professional and elegant.`,
+STYLE: Classic product showcase rotation - professional and elegant.
+${logoLine}`,
 
     dynamic: `Create a DYNAMIC, ENERGETIC product video for ${params.platform}.
 PRODUCT: ${params.productName}
@@ -448,7 +571,8 @@ Use the provided product image as EXACT visual reference.
 CAMERA MOVEMENT: Fast, energetic movements - quick zoom in combined with slight rotation.
 Dynamic angles that create excitement and grab attention.
 LIGHTING: High contrast, vibrant lighting with bold shadows.
-STYLE: Modern, high-energy commercial - fast-paced and attention-grabbing.`,
+STYLE: Modern, high-energy commercial - fast-paced and attention-grabbing.
+${logoLine}`,
 
     cinematic: `Create a CINEMATIC, HOLLYWOOD-STYLE product video for ${params.platform}.
 PRODUCT: ${params.productName}
@@ -456,7 +580,19 @@ Use the provided product image as EXACT visual reference.
 CAMERA MOVEMENT: Professional dolly-in shot with subtle parallax effect.
 Slow, controlled push toward product with slight vertical rise - hero angle.
 LIGHTING: Dramatic cinematic lighting with rim lights and atmospheric haze.
-STYLE: Blockbuster film quality - epic, dramatic product reveal with depth and atmosphere.`
+STYLE: Blockbuster film quality - epic, dramatic product reveal with depth and atmosphere.
+${logoLine}`,
+
+    explosion: `Create a MESMERIZING PRODUCT ASSEMBLY video for ${params.platform}.
+PRODUCT: ${params.productName}
+Use the provided product image as EXACT visual reference for the final assembled product.
+EFFECT: Product REASSEMBLY - starts with floating pieces/components that smoothly come together.
+ANIMATION: Individual parts gracefully float and assemble into the complete product.
+Start scattered (0-1 sec), converge smoothly (1-4 sec), fully assembled (4-6 sec).
+CAMERA: Static or slow push-in to emphasize the assembly magic.
+LIGHTING: Dramatic lighting that highlights each component as it moves into place.
+STYLE: Cinematic product reveal - Apple-style product showcase with satisfying assembly effect.
+${logoLine}`
   };
 
   const fullPrompt = stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.default;
