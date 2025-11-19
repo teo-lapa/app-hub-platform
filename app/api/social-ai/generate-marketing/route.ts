@@ -334,23 +334,13 @@ NON includere testo o loghi nell'immagine.`;
       body: JSON.stringify({
         instances: [
           {
-            prompt: prompt,
-            referenceImages: [
-              {
-                referenceImage: {
-                  bytesBase64Encoded: params.productImageBase64
-                },
-                referenceType: 'STYLE'
-              }
-            ]
+            prompt: prompt
           }
         ],
         parameters: {
           sampleCount: 1,
           aspectRatio: params.aspectRatio,
-          personGeneration: 'allow_all',
-          safetySetting: 'block_some',
-          addWatermark: false
+          safetySetting: 'block_some'
         }
       })
     });
@@ -358,11 +348,22 @@ NON includere testo o loghi nell'immagine.`;
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[AGENT-IMAGE] Imagen API error:', response.status, errorText);
+      if (isDev) {
+        console.error('[AGENT-IMAGE] Full error:', errorText);
+      }
       return null;
     }
 
     const data = await response.json();
-    const generatedImage = data.predictions?.[0]?.bytesBase64Encoded;
+
+    if (isDev) {
+      console.log('[AGENT-IMAGE] Response structure:', Object.keys(data));
+    }
+
+    // L'API ritorna predictions con bytesBase64Encoded o images array
+    const generatedImage = data.predictions?.[0]?.bytesBase64Encoded ||
+                          data.predictions?.[0]?.image?.bytesBase64Encoded ||
+                          data.images?.[0]?.bytesBase64Encoded;
 
     if (generatedImage) {
       return {
@@ -372,10 +373,14 @@ NON includere testo o loghi nell'immagine.`;
       };
     }
 
+    console.error('[AGENT-IMAGE] No image in response:', JSON.stringify(data).substring(0, 500));
     return null;
 
   } catch (error: any) {
     console.error('[AGENT-IMAGE] Errore:', error.message);
+    if (isDev) {
+      console.error('[AGENT-IMAGE] Stack:', error.stack);
+    }
     return null;
   }
 }
