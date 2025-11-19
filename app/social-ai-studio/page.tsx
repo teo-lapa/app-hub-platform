@@ -319,7 +319,7 @@ export default function SocialAIStudioPage() {
     }
 
     setIsPollingVideo(true);
-    const maxAttempts = 60; // 5 minuti max (ogni 5 secondi)
+    const maxAttempts = 120; // 10 minuti max (ogni 5 secondi) - per video lunghi fino a 30s
     let attempts = 0;
 
     const poll = async () => {
@@ -795,50 +795,53 @@ export default function SocialAIStudioPage() {
                   </button>
                 </div>
 
-                {/* Durata Video */}
+                {/* Durata Video - Slider */}
                 <div className="mt-4">
-                  <label className="block text-sm font-medium text-purple-300 mb-3">
-                    Durata Video
-                  </label>
-                  <div className="grid grid-cols-3 gap-3">
-                    <button
-                      onClick={() => setVideoDuration(6)}
-                      disabled={isGenerating}
-                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                        videoDuration === 6
-                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
-                          : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                      } disabled:opacity-50`}
-                    >
-                      <div className="font-semibold">⚡ 6s</div>
-                      <div className="text-xs opacity-75">Veloce</div>
-                    </button>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-sm font-medium text-purple-300">
+                      Durata Video
+                    </label>
+                    <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                      {videoDuration}s
+                    </span>
+                  </div>
 
-                    <button
-                      onClick={() => setVideoDuration(12)}
+                  <div className="relative pt-1">
+                    <input
+                      type="range"
+                      min="6"
+                      max="30"
+                      step="6"
+                      value={videoDuration}
+                      onChange={(e) => setVideoDuration(parseInt(e.target.value) as VideoDuration)}
                       disabled={isGenerating}
-                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                        videoDuration === 12
-                          ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
-                          : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                      } disabled:opacity-50`}
-                    >
-                      <div className="font-semibold">⏱️ 12s</div>
-                      <div className="text-xs opacity-75">Standard</div>
-                    </button>
-
-                    <button
-                      onClick={() => setVideoDuration(30)}
-                      disabled={isGenerating}
-                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                        videoDuration === 30
-                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                          : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                      } disabled:opacity-50`}
-                    >
-                      <div className="font-semibold">🎬 30s</div>
-                      <div className="text-xs opacity-75">Lungo</div>
-                    </button>
+                      className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
+                        [&::-webkit-slider-thumb]:appearance-none
+                        [&::-webkit-slider-thumb]:w-6
+                        [&::-webkit-slider-thumb]:h-6
+                        [&::-webkit-slider-thumb]:rounded-full
+                        [&::-webkit-slider-thumb]:bg-gradient-to-r
+                        [&::-webkit-slider-thumb]:from-purple-500
+                        [&::-webkit-slider-thumb]:to-pink-500
+                        [&::-webkit-slider-thumb]:shadow-lg
+                        [&::-webkit-slider-thumb]:cursor-pointer
+                        [&::-webkit-slider-thumb]:transition-transform
+                        [&::-webkit-slider-thumb]:hover:scale-110
+                        [&::-moz-range-thumb]:w-6
+                        [&::-moz-range-thumb]:h-6
+                        [&::-moz-range-thumb]:rounded-full
+                        [&::-moz-range-thumb]:bg-gradient-to-r
+                        [&::-moz-range-thumb]:from-purple-500
+                        [&::-moz-range-thumb]:to-pink-500
+                        [&::-moz-range-thumb]:border-0
+                        [&::-moz-range-thumb]:shadow-lg
+                        [&::-moz-range-thumb]:cursor-pointer"
+                    />
+                    <div className="flex justify-between mt-2 text-xs text-purple-300/70">
+                      <span>⚡ Veloce</span>
+                      <span>⏱️ Standard</span>
+                      <span>🎬 Lungo</span>
+                    </div>
                   </div>
                 </div>
               </div>

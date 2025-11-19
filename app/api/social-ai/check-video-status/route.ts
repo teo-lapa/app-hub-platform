@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = 60; // Aumentato per supportare video lunghi (fino a 30s)
 
 const isDev = process.env.NODE_ENV === 'development';
 
