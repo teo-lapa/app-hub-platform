@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minuti per generazione completa (video può richiedere tempo)
@@ -100,8 +100,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Inizializza client Gemini
-    const genAI = new GoogleGenerativeAI(apiKey);
+    // Inizializza client Gemini (NUOVO SDK)
+    const ai = new GoogleGenAI({ apiKey });
 
     // Determina aspect ratio in base alla piattaforma
     const aspectRatioMap: Record<string, string> = {
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     // AGENT 1: Copywriting (sempre attivo)
     agents.push(
-      generateCopywriting(genAI, {
+      generateCopywriting(ai, {
         productName,
         productDescription,
         platform: socialPlatform,
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
     // AGENT 2: Image Generation (se richiesto)
     if (contentType === 'image' || contentType === 'both') {
       agents.push(
-        generateMarketingImage(genAI, {
+        generateMarketingImage(ai, {
           productName,
           productDescription,
           platform: socialPlatform,
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     // AGENT 3: Video Generation (se richiesto)
     if (contentType === 'video' || contentType === 'both') {
       agents.push(
-        generateMarketingVideo(genAI, {
+        generateMarketingVideo(ai, {
           productName,
           productDescription,
           platform: socialPlatform,
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
 // 🤖 AGENT 1: COPYWRITING
 // ==========================================
 async function generateCopywriting(
-  genAI: GoogleGenerativeAI,
+  ai: GoogleGenAI,
   params: {
     productName: string;
     productDescription: string;
@@ -251,19 +251,25 @@ REGOLE:
 Rispondi SOLO con il JSON, senza markdown o spiegazioni.`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: params.productImageBase64
+    // NUOVO SDK - usa generateContent() con model specificato
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          parts: [
+            {
+              inlineData: {
+                mimeType: 'image/jpeg',
+                data: params.productImageBase64
+              }
+            },
+            { text: prompt }
+          ]
         }
-      },
-      { text: prompt }
-    ]);
+      ]
+    });
 
-    const textResponse = result.response.text();
+    const textResponse = response.text;
 
     // Pulisci il JSON (rimuovi markdown se presente)
     const cleanJson = textResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -290,7 +296,7 @@ Rispondi SOLO con il JSON, senza markdown o spiegazioni.`;
 // 🤖 AGENT 2: IMAGE GENERATION (Nano Banana 🍌)
 // ==========================================
 async function generateMarketingImage(
-  genAI: GoogleGenerativeAI,
+  ai: GoogleGenAI,
   params: {
     productName: string;
     productDescription: string;
@@ -322,42 +328,43 @@ COMPOSIZIONE:
 NON includere testo o loghi nell'immagine.`;
 
   try {
-    // Usa Gemini 2.5 Flash Image (Nano Banana 🍌) con il nuovo SDK
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
-
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: params.productImageBase64
+    // NUOVO SDK - usa generateContent() con gemini-2.5-flash-image
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: [
+        {
+          parts: [
+            {
+              inlineData: {
+                mimeType: 'image/jpeg',
+                data: params.productImageBase64
+              }
+            },
+            { text: prompt }
+          ]
         }
-      },
-      { text: prompt }
-    ]);
-
-    const response = result.response;
+      ]
+    });
 
     if (isDev) {
-      console.log('[AGENT-IMAGE] Response candidates:', response.candidates?.length);
+      console.log('[AGENT-IMAGE] Response parts:', response.parts?.length);
     }
 
     // Estrai l'immagine generata dai parts della risposta
-    for (const candidate of response.candidates || []) {
-      for (const part of candidate.content?.parts || []) {
-        if (part.inlineData && part.inlineData.data) {
-          const imageData = part.inlineData.data;
-          const mimeType = part.inlineData.mimeType || 'image/png';
+    for (const part of response.parts || []) {
+      if (part.inlineData && part.inlineData.data) {
+        const imageData = part.inlineData.data;
+        const mimeType = part.inlineData.mimeType || 'image/png';
 
-          if (isDev) {
-            console.log('[AGENT-IMAGE] ✓ Image generated successfully, size:', imageData.length, 'bytes');
-          }
-
-          return {
-            data: imageData,
-            mimeType,
-            dataUrl: `data:${mimeType};base64,${imageData}`
-          };
+        if (isDev) {
+          console.log('[AGENT-IMAGE] ✓ Image generated successfully, size:', imageData.length, 'bytes');
         }
+
+        return {
+          data: imageData,
+          mimeType,
+          dataUrl: `data:${mimeType};base64,${imageData}`
+        };
       }
     }
 
@@ -377,7 +384,7 @@ NON includere testo o loghi nell'immagine.`;
 // 🤖 AGENT 3: VIDEO GENERATION (Veo 3.1)
 // ==========================================
 async function generateMarketingVideo(
-  genAI: GoogleGenerativeAI,
+  ai: GoogleGenAI,
   params: {
     productName: string;
     productDescription: string;
@@ -387,14 +394,6 @@ async function generateMarketingVideo(
     videoStyle?: string;
   }
 ): Promise<{ operationId: string; status: string; estimatedTime: number } | null> {
-
-  // Usa API key separata per Veo se disponibile
-  const veoApiKey = process.env.VEO_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
-
-  if (!veoApiKey) {
-    console.error('[AGENT-VIDEO] Nessuna API key disponibile per Veo');
-    return null;
-  }
 
   const style = params.videoStyle || 'default';
 
@@ -455,57 +454,34 @@ STYLE: Blockbuster film quality - epic, dramatic product reveal with depth and a
       });
     }
 
-    // Usa Veo 3.1 tramite REST API (ENDPOINT CORRETTO)
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': veoApiKey
-      },
-      body: JSON.stringify({
-        instances: [
-          {
-            prompt: fullPrompt,
-            image: {
-              imageBytes: params.productImageBase64,
-              mimeType: 'image/jpeg'
-            }
-          }
-        ],
-        parameters: {
-          aspectRatio: veoAspectRatio,
-          resolution: '720p',
-          durationSeconds: '6'
+    // NUOVO SDK - usa generateVideos() con image-to-video
+    const operation = await ai.models.generateVideos({
+      model: 'veo-3.1-generate-preview',
+      source: {
+        prompt: fullPrompt,
+        image: {
+          imageBytes: params.productImageBase64,
+          mimeType: 'image/jpeg'
         }
-      })
+      },
+      config: {
+        aspectRatio: veoAspectRatio,
+        durationSeconds: 6,
+        resolution: '720p'
+      }
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[AGENT-VIDEO] Veo API error:', response.status, errorText);
-      if (isDev) {
-        console.error('[AGENT-VIDEO] Full error response:', errorText);
-      }
-      return null;
-    }
-
-    const data = await response.json();
-    const operationId = data.name;
-
-    if (!operationId) {
-      console.warn('[AGENT-VIDEO] No operation ID in response');
-      if (isDev) {
-        console.error('[AGENT-VIDEO] Response data:', JSON.stringify(data).substring(0, 500));
-      }
+    if (!operation || !operation.name) {
+      console.warn('[AGENT-VIDEO] No operation returned from Veo API');
       return null;
     }
 
     if (isDev) {
-      console.log('[AGENT-VIDEO] ✓ Video generation started successfully:', operationId);
+      console.log('[AGENT-VIDEO] ✓ Video generation started successfully:', operation.name);
     }
 
     return {
-      operationId,
+      operationId: operation.name || '',
       status: 'generating',
       estimatedTime: 120 // ~2 minuti stima
     };
