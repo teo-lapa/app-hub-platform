@@ -340,10 +340,13 @@ NON includere testo o loghi nell'immagine.`;
     });
 
     if (isDev) {
+      console.log('[AGENT-IMAGE] Full response structure:', JSON.stringify(response, null, 2));
       console.log('[AGENT-IMAGE] Response parts:', (response as any).parts?.length);
+      console.log('[AGENT-IMAGE] Response candidates:', (response as any).candidates?.length);
     }
 
-    // Estrai l'immagine generata dai parts della risposta
+    // Estrai l'immagine generata - prova diverse strutture
+    // Struttura 1: response.parts (usata da copywriting)
     for (const part of (response as any).parts || []) {
       if (part.inlineData && part.inlineData.data) {
         const imageData = part.inlineData.data;
@@ -361,7 +364,31 @@ NON includere testo o loghi nell'immagine.`;
       }
     }
 
+    // Struttura 2: response.candidates[0].content.parts (struttura standard Gemini API)
+    const candidates = (response as any).candidates || [];
+    if (candidates.length > 0 && candidates[0].content?.parts) {
+      for (const part of candidates[0].content.parts) {
+        if (part.inlineData && part.inlineData.data) {
+          const imageData = part.inlineData.data;
+          const mimeType = part.inlineData.mimeType || 'image/png';
+
+          if (isDev) {
+            console.log('[AGENT-IMAGE] ✓ Image found in candidates structure, size:', imageData.length, 'bytes');
+          }
+
+          return {
+            data: imageData,
+            mimeType,
+            dataUrl: `data:${mimeType};base64,${imageData}`
+          };
+        }
+      }
+    }
+
     console.error('[AGENT-IMAGE] No image found in response');
+    if (isDev) {
+      console.error('[AGENT-IMAGE] Tried both response.parts and response.candidates[0].content.parts');
+    }
     return null;
 
   } catch (error: any) {
