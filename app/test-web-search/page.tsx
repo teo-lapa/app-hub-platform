@@ -96,19 +96,19 @@ export default function TestWebSearchPage() {
 
             <div className="space-y-4">
               <div>
-                <span className="font-semibold">Found: </span>
+                <span className="font-semibold text-gray-900">Found: </span>
                 <span className={result.found ? 'text-green-600' : 'text-red-600'}>
                   {result.found ? '✓ Sì' : '✗ No'}
                 </span>
               </div>
 
               <div>
-                <span className="font-semibold">Source: </span>
-                <span>{result.source}</span>
+                <span className="font-semibold text-gray-900">Source: </span>
+                <span className="text-gray-700">{result.source}</span>
               </div>
 
               <div>
-                <span className="font-semibold">Query: </span>
+                <span className="font-semibold text-gray-900">Query: </span>
                 <span className="text-gray-600">{result.searchQuery}</span>
               </div>
 
@@ -116,14 +116,14 @@ export default function TestWebSearchPage() {
                 <>
                   {result.legalName && (
                     <div>
-                      <span className="font-semibold">Legal Name: </span>
-                      <span>{result.legalName}</span>
+                      <span className="font-semibold text-gray-900">Legal Name: </span>
+                      <span className="text-gray-700">{result.legalName}</span>
                     </div>
                   )}
 
                   {result.website && (
                     <div>
-                      <span className="font-semibold">Website: </span>
+                      <span className="font-semibold text-gray-900">Website: </span>
                       <a
                         href={result.website}
                         target="_blank"
@@ -137,7 +137,7 @@ export default function TestWebSearchPage() {
 
                   {result.businessActivity && (
                     <div>
-                      <span className="font-semibold">Business Activity: </span>
+                      <span className="font-semibold text-gray-900">Business Activity: </span>
                       <p className="text-gray-600 mt-1">{result.businessActivity}</p>
                     </div>
                   )}

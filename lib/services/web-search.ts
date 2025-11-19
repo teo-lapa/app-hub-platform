@@ -36,15 +36,8 @@ async function searchWithGoogle(
   const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
   const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
 
-  console.log('[Google Search] 🔑 API Key present:', !!apiKey);
-  console.log('[Google Search] 🔑 API Key length:', apiKey?.length || 0);
-  console.log('[Google Search] 🔑 Search Engine ID:', searchEngineId || 'MISSING');
-  console.log('[Google Search] 🔑 All env vars:', Object.keys(process.env).filter(k => k.includes('GOOGLE')));
-
   if (!apiKey || !searchEngineId) {
-    console.error('[Google Search] ❌ CONFIGURAZIONE MANCANTE!');
-    console.error('[Google Search] API key presente:', !!apiKey);
-    console.error('[Google Search] Search Engine ID presente:', !!searchEngineId);
+    console.warn('[Google Search] API key o Search Engine ID mancanti');
     throw new Error('Google Search not configured');
   }
 
@@ -80,16 +73,8 @@ async function searchWithGoogle(
     console.log('[Google Search] ✅ Total results:', data.searchInformation?.totalResults || 0);
     console.log('[Google Search] 📊 Items found:', data.items?.length || 0);
 
-    // DEBUG: Log completo della risposta
-    console.log('[Google Search] 🔍 FULL API RESPONSE:', JSON.stringify(data, null, 2));
-
     if (!data.items || data.items.length === 0) {
-      console.error('[Google Search] ❌ NO RESULTS FOUND!');
-      console.error('[Google Search] 📋 Search query was:', query);
-      console.error('[Google Search] 🌐 Total results from API:', data.searchInformation?.totalResults || 0);
-      console.error('[Google Search] ⚠️ Check your Custom Search Engine configuration at:');
-      console.error('[Google Search] 🔗 https://programmablesearchengine.google.com/controlpanel/all');
-      console.error('[Google Search] ✅ Make sure "Search the entire web" is enabled!');
+      console.log('[Google Search] ❌ No results found for query:', query);
       return {
         found: false,
         source: 'google_custom_search',
@@ -100,15 +85,23 @@ async function searchWithGoogle(
     // Analizza i risultati
     const firstResult = data.items[0];
 
-    console.log('[Google Search] ✅ FOUND! First result:', {
-      title: firstResult.title,
-      link: firstResult.link,
-      snippet: firstResult.snippet?.substring(0, 100)
-    });
+    console.log('[Google Search] ✅ Found:', firstResult.title);
+
+    // Estrai nome pulito (rimuovi " - ", " | ", " – " e tutto dopo)
+    let cleanName = firstResult.title
+      ?.replace(/\s*[\|\-–]\s*.*/g, '')  // Rimuovi tutto dopo | - –
+      ?.replace(/\s+\(.*?\)/g, '')        // Rimuovi parentesi
+      ?.trim() || companyName;
+
+    // Se il nome contiene ancora parole comuni di titoli web, usa il company name originale
+    const webTitleWords = ['home', 'official', 'website', 'swiss', 'switzerland', 'svizzera'];
+    if (webTitleWords.some(word => cleanName.toLowerCase().includes(word))) {
+      cleanName = companyName;
+    }
 
     return {
       found: true,
-      legalName: firstResult.title?.replace(/[|\-–].*$/, '').trim() || companyName,
+      legalName: cleanName,
       website: firstResult.link,
       businessActivity: firstResult.snippet,
       source: 'google_custom_search',
