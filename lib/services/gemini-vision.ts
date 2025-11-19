@@ -8,11 +8,18 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
-if (!GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY or GOOGLE_GEMINI_API_KEY must be set');
-}
+// Lazy initialization - only throw error when actually used
+let genAI: GoogleGenerativeAI | null = null;
 
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+function getGenAI() {
+  if (!GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY or GOOGLE_GEMINI_API_KEY must be set');
+  }
+  if (!genAI) {
+    genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  }
+  return genAI;
+}
 
 export interface ExtractedContactData {
   // Dati persona
