@@ -1,27 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 300; // 5 minuti per generazione completa (video può richiedere tempo)
 
 const isDev = process.env.NODE_ENV === 'development';
 
 /**
  * POST /api/social-ai/generate-marketing
  *
- * Genera contenuti marketing AI completi in parallelo:
- * 1. Copywriting con Gemini (Caption + Hashtags + CTA)
- * 2. Immagine con Nano Banana (Gemini 2.5 Flash Image)
- * 3. Video con Veo 3.1 (opzionale)
+ * SOCIAL MARKETING AI - Multi-Agent System
+ *
+ * Genera contenuti marketing completi per social media usando 3 AGENTI IN PARALLELO:
+ * 1. Copywriting Agent (Gemini 2.5 Flash) → Caption + Hashtags + CTA
+ * 2. Image Agent (Gemini 2.5 Flash Image - Nano Banana 🍌) → Immagine ottimizzata
+ * 3. Video Agent (Veo 3.1) → Video marketing (opzionale)
  *
  * Body:
- * - productImage: string (base64)
- * - productName?: string
- * - productDescription?: string
+ * - productImage: string (base64) - Foto del prodotto
+ * - productName?: string - Nome del prodotto
+ * - productDescription?: string - Descrizione
  * - socialPlatform: 'instagram' | 'facebook' | 'tiktok' | 'linkedin'
  * - contentType: 'image' | 'video' | 'both'
- * - tone: 'professional' | 'casual' | 'fun' | 'luxury'
- * - targetAudience?: string
- * - videoStyle?: 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic'
+ * - tone?: 'professional' | 'casual' | 'fun' | 'luxury'
+ * - targetAudience?: string - Descrizione target
  */
 
 interface GenerateMarketingRequest {
@@ -30,9 +32,32 @@ interface GenerateMarketingRequest {
   productDescription?: string;
   socialPlatform: 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
   contentType: 'image' | 'video' | 'both';
-  tone: 'professional' | 'casual' | 'fun' | 'luxury';
+  tone?: 'professional' | 'casual' | 'fun' | 'luxury';
   targetAudience?: string;
   videoStyle?: 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic';
+}
+
+interface MarketingResult {
+  copywriting: {
+    caption: string;
+    hashtags: string[];
+    cta: string;
+  };
+  image?: {
+    data: string; // base64
+    mimeType: string;
+    dataUrl: string;
+  };
+  video?: {
+    operationId: string; // ID per polling del video
+    status: 'generating' | 'completed' | 'failed';
+    estimatedTime: number; // secondi
+  };
+  metadata: {
+    platform: string;
+    aspectRatio: string;
+    generatedAt: string;
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -41,295 +66,452 @@ export async function POST(request: NextRequest) {
 
     const {
       productImage,
-      productName,
-      productDescription,
+      productName = 'questo prodotto',
+      productDescription = '',
       socialPlatform,
       contentType,
-      tone,
-      targetAudience,
+      tone = 'professional',
+      targetAudience = 'pubblico generale',
       videoStyle = 'default'
     } = body;
 
+    // Validazione
     if (!productImage) {
       return NextResponse.json(
-        { error: 'productImage è obbligatoria' },
+        { error: 'productImage è obbligatorio' },
         { status: 400 }
       );
     }
 
-    // Importa dinamicamente @google/generative-ai
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    if (!['instagram', 'facebook', 'tiktok', 'linkedin'].includes(socialPlatform)) {
+      return NextResponse.json(
+        { error: 'socialPlatform non valido' },
+        { status: 400 }
+      );
+    }
 
+    // Verifica API key
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) {
       console.error('[SOCIAL-AI] API key non configurata');
       return NextResponse.json(
-        { error: 'API key non configurata' },
+        { error: 'API key Gemini non configurata sul server' },
         { status: 500 }
       );
     }
 
+    // Inizializza client Gemini
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    // ============================================
-    // STEP 1: COPYWRITING (Gemini Flash 2.5)
-    // ============================================
-    const copywritingPrompt = buildCopywritingPrompt(body);
+    // Determina aspect ratio in base alla piattaforma
+    const aspectRatioMap: Record<string, string> = {
+      instagram: '1:1', // Feed post
+      facebook: '4:3',
+      tiktok: '9:16',   // Vertical video
+      linkedin: '16:9'  // Professional widescreen
+    };
+    const aspectRatio = aspectRatioMap[socialPlatform];
 
-    const copyModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // Pulisci base64 (rimuovi prefisso se presente)
+    const cleanBase64 = productImage.replace(/^data:image\/\w+;base64,/, '');
 
-    const copyResult = await copyModel.generateContent([
-      {
-        inlineData: {
-          data: productImage.split(',')[1] || productImage,
-          mimeType: 'image/jpeg'
-        }
-      },
-      { text: copywritingPrompt }
-    ]);
+    // ==========================================
+    // 🤖 ESECUZIONE PARALLELA DEI 3 AGENTI
+    // ==========================================
 
-    const copyText = copyResult.response.text();
+    const agents = [];
 
-    // Parsing del JSON dal copywriting
-    const copyData = parseCopywritingResponse(copyText);
+    // AGENT 1: Copywriting (sempre attivo)
+    agents.push(
+      generateCopywriting(genAI, {
+        productName,
+        productDescription,
+        platform: socialPlatform,
+        tone,
+        targetAudience,
+        productImageBase64: cleanBase64
+      })
+    );
 
-    // ============================================
-    // STEP 2: IMAGE GENERATION (Nano Banana)
-    // ============================================
-    let imageData: any = null;
-
+    // AGENT 2: Image Generation (se richiesto)
     if (contentType === 'image' || contentType === 'both') {
-      try {
-        const imagePrompt = buildImagePrompt(body, copyData.caption);
-
-        const imageModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-        const imageResult = await imageModel.generateContent([
-          {
-            inlineData: {
-              data: productImage.split(',')[1] || productImage,
-              mimeType: 'image/jpeg'
-            }
-          },
-          {
-            text: `${imagePrompt}
-
-Generate a professional marketing image for ${socialPlatform}.`
-          }
-        ]);
-
-        // Nota: Gemini 2.5 Flash non ha native image generation ancora
-        // Per ora ritorniamo l'immagine originale come placeholder
-        // TODO: Implementare Imagen 3 quando disponibile via API
-        imageData = {
-          dataUrl: productImage
-        };
-
-        console.log('[SOCIAL-AI] Image generation placeholder (original image returned)');
-
-      } catch (imageError: any) {
-        console.error('[SOCIAL-AI] Image generation error:', imageError.message);
-        // Fallback: usa l'immagine originale
-        imageData = {
-          dataUrl: productImage
-        };
-      }
-    }
-
-    // ============================================
-    // STEP 3: VIDEO GENERATION (Veo 3.1)
-    // ============================================
-    let videoData: any = null;
-
-    if (contentType === 'video' || contentType === 'both') {
-      try {
-        const videoPrompt = buildVideoPrompt(body, copyData.caption);
-
-        // Usa VEO_API_KEY se disponibile
-        const veoApiKey = process.env.VEO_API_KEY || apiKey;
-
-        const veoResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/veo-3.1:generateVideo', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': veoApiKey
-          },
-          body: JSON.stringify({
-            prompt: videoPrompt,
-            config: {
-              duration: '5s',
-              aspectRatio: getAspectRatio(socialPlatform),
-              seed: Math.floor(Math.random() * 1000000)
-            }
-          })
-        });
-
-        if (!veoResponse.ok) {
-          const errorText = await veoResponse.text();
-          console.error('[SOCIAL-AI] Veo API error:', veoResponse.status, errorText);
-          throw new Error(`Veo API returned ${veoResponse.status}`);
-        }
-
-        const veoData = await veoResponse.json();
-
-        // Estrai operation ID
-        const operationId = veoData.name;
-
-        if (operationId) {
-          videoData = {
-            operationId,
-            status: 'generating'
-          };
-          console.log('[SOCIAL-AI] Video generation started:', operationId);
-        } else {
-          console.warn('[SOCIAL-AI] Veo response missing operation ID');
-        }
-
-      } catch (videoError: any) {
-        console.error('[SOCIAL-AI] Video generation error:', videoError.message);
-        // Video è opzionale, continua senza
-      }
-    }
-
-    // ============================================
-    // RETURN RESULT
-    // ============================================
-    const result = {
-      success: true,
-      data: {
-        copywriting: copyData,
-        image: imageData,
-        video: videoData,
-        metadata: {
+      agents.push(
+        generateMarketingImage(genAI, {
+          productName,
+          productDescription,
           platform: socialPlatform,
-          aspectRatio: getAspectRatio(socialPlatform)
-        }
+          aspectRatio,
+          productImageBase64: cleanBase64
+        })
+      );
+    } else {
+      agents.push(Promise.resolve(null)); // Placeholder
+    }
+
+    // AGENT 3: Video Generation (se richiesto)
+    if (contentType === 'video' || contentType === 'both') {
+      agents.push(
+        generateMarketingVideo(genAI, {
+          productName,
+          productDescription,
+          platform: socialPlatform,
+          aspectRatio,
+          productImageBase64: cleanBase64,
+          videoStyle
+        })
+      );
+    } else {
+      agents.push(Promise.resolve(null)); // Placeholder
+    }
+
+    // Esegui tutti gli agenti in PARALLELO
+    const results = await Promise.all(agents);
+    const copywritingResult = results[0] as { caption: string; hashtags: string[]; cta: string };
+    const imageResult = results[1] as { data: string; mimeType: string; dataUrl: string } | null;
+    const videoResult = results[2] as { operationId: string; status: string; estimatedTime: number } | null;
+
+    // Costruisci risposta
+    const result: MarketingResult = {
+      copywriting: copywritingResult,
+      metadata: {
+        platform: socialPlatform,
+        aspectRatio,
+        generatedAt: new Date().toISOString()
       }
     };
 
-    return NextResponse.json(result);
+    if (imageResult) {
+      result.image = imageResult;
+    }
+
+    if (videoResult) {
+      result.video = videoResult as { operationId: string; status: 'generating' | 'completed' | 'failed'; estimatedTime: number };
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: result
+    });
 
   } catch (error: any) {
-    console.error('[SOCIAL-AI] Error:', error);
+    console.error('[SOCIAL-AI] Errore:', error);
 
     return NextResponse.json(
       {
-        success: false,
-        error: error.message || 'Errore durante la generazione'
+        error: 'Errore durante la generazione dei contenuti marketing',
+        details: error.message
       },
       { status: 500 }
     );
   }
 }
 
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
+// ==========================================
+// 🤖 AGENT 1: COPYWRITING
+// ==========================================
+async function generateCopywriting(
+  genAI: GoogleGenerativeAI,
+  params: {
+    productName: string;
+    productDescription: string;
+    platform: string;
+    tone: string;
+    targetAudience: string;
+    productImageBase64: string;
+  }
+): Promise<{ caption: string; hashtags: string[]; cta: string }> {
 
-function buildCopywritingPrompt(body: GenerateMarketingRequest): string {
-  const { socialPlatform, tone, targetAudience, productName, productDescription } = body;
+  const prompt = `Sei un esperto copywriter specializzato in social media marketing.
 
-  return `You are an expert social media copywriter.
+CONTESTO:
+- Prodotto: ${params.productName}
+- Descrizione: ${params.productDescription || 'Vedi immagine'}
+- Piattaforma: ${params.platform}
+- Tone of voice: ${params.tone}
+- Target audience: ${params.targetAudience}
 
-Create engaging marketing copy for ${socialPlatform} in ${tone} tone.
+TASK:
+Analizza l'immagine del prodotto e crea un post marketing completo per ${params.platform}.
 
-Product: ${productName || 'See image'}
-Description: ${productDescription || 'Analyze from image'}
-Target Audience: ${targetAudience || 'General'}
-
-Analyze the product image and create:
-1. Caption (${getCaptionLength(socialPlatform)} characters max)
-2. Hashtags (${getHashtagCount(socialPlatform)} relevant hashtags)
-3. Call-to-Action (compelling CTA)
-
-Return ONLY valid JSON:
+STRUTTURA RISPOSTA (formato JSON):
 {
-  "caption": "engaging caption here",
-  "hashtags": ["#hashtag1", "#hashtag2"],
-  "cta": "clear call to action"
-}`;
+  "caption": "Caption accattivante (max 150 caratteri per ${params.platform})",
+  "hashtags": ["hashtag1", "hashtag2", "hashtag3", "hashtag4", "hashtag5"],
+  "cta": "Call-to-Action efficace"
 }
 
-function buildImagePrompt(body: GenerateMarketingRequest, caption: string): string {
-  const { socialPlatform, tone } = body;
+REGOLE:
+- Caption: emozionale, breve, engaging
+- Hashtags: 5-8 hashtags rilevanti e popolari per ${params.platform}
+- CTA: chiaro e orientato all'azione
+- Tone: ${params.tone}
+- NON usare emoji se il tone è "professional"
+- USA emoji se il tone è "fun" o "casual"
 
-  return `Transform this product photo into a professional ${socialPlatform} marketing image.
+Rispondi SOLO con il JSON, senza markdown o spiegazioni.`;
 
-Style: ${tone}
-Aspect Ratio: ${getAspectRatio(socialPlatform)}
-
-Caption: ${caption}
-
-Enhance the image for maximum engagement while keeping the product as the focal point.`;
-}
-
-function buildVideoPrompt(body: GenerateMarketingRequest, caption: string): string {
-  const { socialPlatform, tone, videoStyle } = body;
-
-  const styleInstructions = {
-    default: 'smooth natural camera movement around the product',
-    zoom: 'slow cinematic zoom into the product details',
-    rotate: '360-degree rotation showcasing all product angles',
-    dynamic: 'fast-paced dynamic movements with energy',
-    cinematic: 'professional film-style cinematography with dramatic lighting'
-  };
-
-  return `Professional product video for ${socialPlatform}.
-
-Product in image, ${styleInstructions[videoStyle || 'default']}.
-
-Style: ${tone}, engaging, eye-catching.
-Duration: 5 seconds
-Aspect Ratio: ${getAspectRatio(socialPlatform)}
-
-Make it scroll-stopping and shareable.`;
-}
-
-function parseCopywritingResponse(text: string): any {
   try {
-    // Cerca JSON nel testo
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-    throw new Error('No JSON found in response');
-  } catch (error) {
-    console.error('[SOCIAL-AI] Copywriting parsing error, using fallback');
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: params.productImageBase64
+        }
+      },
+      { text: prompt }
+    ]);
+
+    const textResponse = result.response.text();
+
+    // Pulisci il JSON (rimuovi markdown se presente)
+    const cleanJson = textResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const parsed = JSON.parse(cleanJson);
+
+    return {
+      caption: parsed.caption || '',
+      hashtags: parsed.hashtags || [],
+      cta: parsed.cta || ''
+    };
+
+  } catch (error: any) {
+    console.error('[AGENT-COPYWRITING] Errore:', error.message);
     // Fallback
     return {
-      caption: 'Discover something amazing! 🚀',
-      hashtags: ['#product', '#marketing', '#new'],
-      cta: 'Shop now!'
+      caption: `Scopri ${params.productName}!`,
+      hashtags: ['#marketing', '#product', '#social'],
+      cta: 'Scopri di più!'
     };
   }
 }
 
-function getCaptionLength(platform: string): number {
-  switch (platform) {
-    case 'instagram': return 150;
-    case 'facebook': return 200;
-    case 'tiktok': return 100;
-    case 'linkedin': return 200;
-    default: return 150;
+// ==========================================
+// 🤖 AGENT 2: IMAGE GENERATION (Nano Banana 🍌)
+// ==========================================
+async function generateMarketingImage(
+  genAI: GoogleGenerativeAI,
+  params: {
+    productName: string;
+    productDescription: string;
+    platform: string;
+    aspectRatio: string;
+    productImageBase64: string;
+  }
+): Promise<{ data: string; mimeType: string; dataUrl: string } | null> {
+
+  const prompt = `Crea un'immagine marketing professionale e accattivante per ${params.platform}.
+
+Prodotto: ${params.productName}
+${params.productDescription ? `Descrizione: ${params.productDescription}` : ''}
+
+STILE:
+- Fotografia professionale da studio
+- Illuminazione perfetta
+- Sfondo elegante e pulito
+- Composizione bilanciata
+- Adatto per post social su ${params.platform}
+- Alta qualità, fotorealistica
+
+COMPOSIZIONE:
+- Il prodotto deve essere il focus principale
+- Usa l'immagine fornita come riferimento per il prodotto
+- Aggiungi elementi visivi che valorizzino il prodotto
+- Palette colori armoniosa e professionale
+
+NON includere testo o loghi nell'immagine.`;
+
+  try {
+    // Usa Imagen 3 tramite REST API
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
+
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey!
+      },
+      body: JSON.stringify({
+        instances: [
+          {
+            prompt: prompt,
+            referenceImages: [
+              {
+                referenceImage: {
+                  bytesBase64Encoded: params.productImageBase64
+                },
+                referenceType: 'STYLE'
+              }
+            ]
+          }
+        ],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: params.aspectRatio,
+          personGeneration: 'allow_all',
+          safetySetting: 'block_some',
+          addWatermark: false
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[AGENT-IMAGE] Imagen API error:', response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    const generatedImage = data.predictions?.[0]?.bytesBase64Encoded;
+
+    if (generatedImage) {
+      return {
+        data: generatedImage,
+        mimeType: 'image/png',
+        dataUrl: `data:image/png;base64,${generatedImage}`
+      };
+    }
+
+    return null;
+
+  } catch (error: any) {
+    console.error('[AGENT-IMAGE] Errore:', error.message);
+    return null;
   }
 }
 
-function getHashtagCount(platform: string): number {
-  switch (platform) {
-    case 'instagram': return 10;
-    case 'facebook': return 5;
-    case 'tiktok': return 8;
-    case 'linkedin': return 3;
-    default: return 5;
+// ==========================================
+// 🤖 AGENT 3: VIDEO GENERATION (Veo 3.1)
+// ==========================================
+async function generateMarketingVideo(
+  genAI: GoogleGenerativeAI,
+  params: {
+    productName: string;
+    productDescription: string;
+    platform: string;
+    aspectRatio: string;
+    productImageBase64: string;
+    videoStyle?: string;
   }
-}
+): Promise<{ operationId: string; status: string; estimatedTime: number } | null> {
 
-function getAspectRatio(platform: string): string {
-  switch (platform) {
-    case 'instagram': return '9:16'; // Stories/Reels
-    case 'facebook': return '16:9';
-    case 'tiktok': return '9:16';
-    case 'linkedin': return '16:9';
-    default: return '1:1';
+  // Usa API key separata per Veo se disponibile
+  const veoApiKey = process.env.VEO_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
+
+  if (!veoApiKey) {
+    console.error('[AGENT-VIDEO] Nessuna API key disponibile per Veo');
+    return null;
+  }
+
+  const style = params.videoStyle || 'default';
+
+  // Prompt diversi per ogni stile
+  const stylePrompts = {
+    default: `Create a premium, hyper-realistic product video for ${params.platform} social media advertising.
+PRODUCT: ${params.productName}
+Use the provided product image as EXACT visual reference. The product MUST look identical to the reference photo.
+CAMERA: Smooth, natural movement that showcases the product elegantly.
+LIGHTING: Professional studio lighting with soft shadows.
+STYLE: Clean, premium commercial photography in motion.`,
+
+    zoom: `Create a premium product video with SLOW ZOOM IN effect for ${params.platform}.
+PRODUCT: ${params.productName}
+Use the provided product image as EXACT visual reference.
+CAMERA MOVEMENT: Start with medium shot, slowly zoom in to close-up revealing product details.
+The zoom should be smooth, slow, and elegant - like a luxury commercial.
+LIGHTING: Professional studio lighting that highlights product features.
+STYLE: High-end commercial with emphasis on product details.`,
+
+    rotate: `Create a premium 360-DEGREE ROTATION product video for ${params.platform}.
+PRODUCT: ${params.productName}
+Use the provided product image as EXACT visual reference.
+CAMERA MOVEMENT: Smooth 360° horizontal rotation around the product at constant speed.
+Professional turntable showcase style - camera orbits the product showing it from all angles.
+LIGHTING: Studio lighting with consistent illumination from all angles.
+STYLE: Classic product showcase rotation - professional and elegant.`,
+
+    dynamic: `Create a DYNAMIC, ENERGETIC product video for ${params.platform}.
+PRODUCT: ${params.productName}
+Use the provided product image as EXACT visual reference.
+CAMERA MOVEMENT: Fast, energetic movements - quick zoom in combined with slight rotation.
+Dynamic angles that create excitement and grab attention.
+LIGHTING: High contrast, vibrant lighting with bold shadows.
+STYLE: Modern, high-energy commercial - fast-paced and attention-grabbing.`,
+
+    cinematic: `Create a CINEMATIC, HOLLYWOOD-STYLE product video for ${params.platform}.
+PRODUCT: ${params.productName}
+Use the provided product image as EXACT visual reference.
+CAMERA MOVEMENT: Professional dolly-in shot with subtle parallax effect.
+Slow, controlled push toward product with slight vertical rise - hero angle.
+LIGHTING: Dramatic cinematic lighting with rim lights and atmospheric haze.
+STYLE: Blockbuster film quality - epic, dramatic product reveal with depth and atmosphere.`
+  };
+
+  const fullPrompt = stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.default;
+
+  try {
+    // Converti l'aspect ratio per Veo (solo 16:9 o 9:16)
+    const veoAspectRatio = params.aspectRatio === '9:16' ? '9:16' : '16:9';
+
+    if (isDev) {
+      console.log('[AGENT-VIDEO] Starting image-to-video generation:', {
+        product: params.productName,
+        platform: params.platform,
+        aspectRatio: veoAspectRatio,
+        imageSize: params.productImageBase64.length
+      });
+    }
+
+    // Usa Veo 3.1 tramite REST API
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/veo-3.1:generateVideo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': veoApiKey
+      },
+      body: JSON.stringify({
+        prompt: fullPrompt,
+        referenceImages: [
+          {
+            bytesBase64Encoded: params.productImageBase64
+          }
+        ],
+        config: {
+          aspectRatio: veoAspectRatio,
+          duration: '5s',
+          seed: Math.floor(Math.random() * 1000000)
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[AGENT-VIDEO] Veo API error:', response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    const operationId = data.name;
+
+    if (!operationId) {
+      console.warn('[AGENT-VIDEO] No operation ID in response');
+      return null;
+    }
+
+    return {
+      operationId,
+      status: 'generating',
+      estimatedTime: 120 // ~2 minuti stima
+    };
+
+  } catch (error: any) {
+    console.error('[AGENT-VIDEO] Errore durante la richiesta video:', error.message);
+    if (isDev) {
+      console.error('[AGENT-VIDEO] Stack:', error.stack);
+    }
+
+    // L'API Veo potrebbe non essere disponibile o configurata
+    // Restituisci null invece di lanciare l'errore per permettere agli altri agenti di completare
+    return null;
   }
 }
