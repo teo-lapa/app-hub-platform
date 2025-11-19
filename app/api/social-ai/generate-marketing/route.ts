@@ -303,7 +303,7 @@ STRUTTURA RISPOSTA (formato JSON):
 REGOLE:
 - Caption: emozionale, breve, engaging
 - Hashtags: 5-8 hashtags rilevanti e popolari per ${params.platform}
-- CTA: chiaro e orientato all'azione
+- CTA: chiaro e orientato all'azione, DEVE includere "www.lapa.ch" (es: "Visita www.lapa.ch", "Scopri di più su www.lapa.ch", "Ordina su www.lapa.ch")
 - Tone: ${params.tone}
 - NON usare emoji se il tone è "professional"
 - USA emoji se il tone è "fun" o "casual"
