@@ -322,58 +322,46 @@ COMPOSIZIONE:
 NON includere testo o loghi nell'immagine.`;
 
   try {
-    // Usa Imagen 3 tramite REST API
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
+    // Usa Gemini 2.5 Flash Image (Nano Banana 🍌) con il nuovo SDK
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
 
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey!
-      },
-      body: JSON.stringify({
-        instances: [
-          {
-            prompt: prompt
-          }
-        ],
-        parameters: {
-          sampleCount: 1,
-          aspectRatio: params.aspectRatio,
-          safetySetting: 'block_some'
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: params.productImageBase64
         }
-      })
-    });
+      },
+      { text: prompt }
+    ]);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[AGENT-IMAGE] Imagen API error:', response.status, errorText);
-      if (isDev) {
-        console.error('[AGENT-IMAGE] Full error:', errorText);
-      }
-      return null;
-    }
-
-    const data = await response.json();
+    const response = result.response;
 
     if (isDev) {
-      console.log('[AGENT-IMAGE] Response structure:', Object.keys(data));
+      console.log('[AGENT-IMAGE] Response candidates:', response.candidates?.length);
     }
 
-    // L'API ritorna predictions con bytesBase64Encoded o images array
-    const generatedImage = data.predictions?.[0]?.bytesBase64Encoded ||
-                          data.predictions?.[0]?.image?.bytesBase64Encoded ||
-                          data.images?.[0]?.bytesBase64Encoded;
+    // Estrai l'immagine generata dai parts della risposta
+    for (const candidate of response.candidates || []) {
+      for (const part of candidate.content?.parts || []) {
+        if (part.inlineData && part.inlineData.data) {
+          const imageData = part.inlineData.data;
+          const mimeType = part.inlineData.mimeType || 'image/png';
 
-    if (generatedImage) {
-      return {
-        data: generatedImage,
-        mimeType: 'image/png',
-        dataUrl: `data:image/png;base64,${generatedImage}`
-      };
+          if (isDev) {
+            console.log('[AGENT-IMAGE] ✓ Image generated successfully, size:', imageData.length, 'bytes');
+          }
+
+          return {
+            data: imageData,
+            mimeType,
+            dataUrl: `data:${mimeType};base64,${imageData}`
+          };
+        }
+      }
     }
 
-    console.error('[AGENT-IMAGE] No image in response:', JSON.stringify(data).substring(0, 500));
+    console.error('[AGENT-IMAGE] No image found in response');
     return null;
 
   } catch (error: any) {
