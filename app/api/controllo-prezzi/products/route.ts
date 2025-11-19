@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession } from '@/lib/odoo-auth';
 import { PriceReviewService } from '@/lib/services/price-review-service';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/controllo-prezzi/products
  *

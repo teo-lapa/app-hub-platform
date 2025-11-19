@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 
+export const dynamic = 'force-dynamic';
+
 const WASTE_LOCATION_ID = 648; // MERCE DETERIORATA
 
 interface WasteProductData {

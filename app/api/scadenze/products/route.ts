@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 import { GetExpiryProductsResponse, ExpiryProduct, ExpirySummary } from '@/lib/types/expiry';
 
+export const dynamic = 'force-dynamic';
+
 // Mappatura location -> zona
 const ZONE_MAP: Record<number, string> = {
   28: 'frigo',

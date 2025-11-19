@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { callOdoo } from '@/lib/odoo-auth';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/controllo-prezzi/main-pricelists
  *

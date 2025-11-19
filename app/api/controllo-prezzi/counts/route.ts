@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession } from '@/lib/odoo-auth';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/controllo-prezzi/counts
  *

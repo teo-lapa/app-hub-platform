@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 import { GetExpiryCountsResponse } from '@/lib/types/expiry';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/scadenze/counts
  *
