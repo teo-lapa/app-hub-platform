@@ -36,8 +36,15 @@ async function searchWithGoogle(
   const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
   const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
 
+  console.log('[Google Search] 🔑 API Key present:', !!apiKey);
+  console.log('[Google Search] 🔑 API Key length:', apiKey?.length || 0);
+  console.log('[Google Search] 🔑 Search Engine ID:', searchEngineId || 'MISSING');
+  console.log('[Google Search] 🔑 All env vars:', Object.keys(process.env).filter(k => k.includes('GOOGLE')));
+
   if (!apiKey || !searchEngineId) {
-    console.warn('[Google Search] API key o Search Engine ID mancanti');
+    console.error('[Google Search] ❌ CONFIGURAZIONE MANCANTE!');
+    console.error('[Google Search] API key presente:', !!apiKey);
+    console.error('[Google Search] Search Engine ID presente:', !!searchEngineId);
     throw new Error('Google Search not configured');
   }
 
