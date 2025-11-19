@@ -159,6 +159,7 @@ export default function ScanContattoPage() {
 
     const formData = new FormData();
     formData.append('file', selectedFile);
+    formData.append('contactType', contactType); // Azienda o Privato
 
     try {
       // Step 1: Gemini Vision OCR
@@ -207,11 +208,12 @@ export default function ScanContattoPage() {
         street: result.extractedData.street || result.webSearchData?.address?.street || '',
         zip: result.extractedData.zip || result.webSearchData?.address?.zip || '',
         city: result.extractedData.city || result.webSearchData?.address?.city || '',
+        state: result.extractedData.state || '',
         country: result.extractedData.country || '',
         company_name: result.extractedData.companyName || result.webSearchData?.legalName || '',
         website: result.extractedData.website || '',
         vat: result.extractedData.companyUID || result.webSearchData?.uid || '',
-        function: result.extractedData.function || '',
+        function: result.extractedData.position || '',
         comment: result.webSearchData?.creditInfo || '',
       };
 
@@ -711,6 +713,17 @@ export default function ScanContattoPage() {
                         isEditing={isEditing}
                       />
                     </div>
+
+                    {/* State/Province */}
+                    <FormField
+                      icon={MapPin}
+                      label="Provincia/Cantone"
+                      value={extractedData.state}
+                      onChange={(value) =>
+                        setExtractedData({ ...extractedData, state: value })
+                      }
+                      isEditing={isEditing}
+                    />
 
                     {/* Country */}
                     <FormField

@@ -74,6 +74,8 @@ IMPORTANTE:
 - Per le aziende svizzere, cerca il numero UID/CHE (formato: CHE-123.456.789)
 - Distingui tra nome legale dell'azienda e nome commerciale
 - Estrai ruolo/posizione della persona se presente
+- **SITO WEB**: Cerca URL web (http://, https://, www., .ch, .com, etc) nel testo
+- **PROVINCIA/CANTONE**: Per indirizzi svizzeri, estrai il cantone (ZH, TI, GE, BE, etc) o nome completo (Zürich, Ticino, Geneva, Bern, etc)
 - Per fatture: numero fattura, data, importo totale, valuta
 - Specifica il livello di confidenza (0-1) per ogni dato estratto
 

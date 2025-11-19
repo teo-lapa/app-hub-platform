@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     // Parse multipart form data
     const formData = await req.formData();
     const file = formData.get('file') as File;
+    const contactType = formData.get('contactType') as string || 'company'; // 'company' or 'person'
 
     if (!file) {
       return NextResponse.json(
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('[Scan Complete] Processing:', file.name, `(${file.size} bytes)`);
+    console.log('[Scan Complete] Processing:', file.name, `(${file.size} bytes)`, `Type: ${contactType}`);
 
     // ============================================
     // STEP 1: GEMINI VISION OCR
@@ -150,12 +151,19 @@ Rispondi con JSON:
         type: 'contact'
       };
 
-      // Determina se è azienda o persona
-      if (finalData.companyName || finalData.legalName) {
+      // Determina se è azienda o persona basandosi sul contactType dell'utente
+      if (contactType === 'company') {
         partnerData.is_company = true;
-        partnerData.name = finalData.legalName || finalData.companyName;
+        // Se c'è un nome azienda, usa quello come nome del partner
+        if (finalData.companyName || finalData.legalName) {
+          partnerData.name = finalData.legalName || finalData.companyName;
+        }
       } else {
         partnerData.is_company = false;
+        // Per privati, usa il nome della persona
+        if (finalData.name) {
+          partnerData.name = finalData.name;
+        }
       }
 
       // Aggiungi campi disponibili
