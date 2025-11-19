@@ -42,6 +42,12 @@ export async function POST(request: NextRequest) {
     try {
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/${operationId}`;
 
+      console.log('[VIDEO-POLLING] Polling operation:', {
+        operationId,
+        apiUrl,
+        apiKeyLength: apiKey?.length || 0
+      });
+
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -50,9 +56,12 @@ export async function POST(request: NextRequest) {
         }
       });
 
+      console.log('[VIDEO-POLLING] Response status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[VIDEO-POLLING] REST API error:', response.status, errorText);
+        console.error('[VIDEO-POLLING] Full URL was:', apiUrl);
         throw new Error(`REST API returned ${response.status}: ${errorText}`);
       }
 
