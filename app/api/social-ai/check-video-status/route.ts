@@ -36,17 +36,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Polling dell'operazione usando REST API diretta
-    // Il nuovo SDK ha problemi con TypeScript types per getVideosOperation
-    let operation: any;
+    // Polling dell'operazione tramite REST API
+    let operation;
     try {
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/${operationId}`;
-
-      console.log('[VIDEO-POLLING] Polling operation:', {
-        operationId,
-        apiUrl,
-        apiKeyLength: apiKey?.length || 0
-      });
 
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -56,20 +49,13 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      console.log('[VIDEO-POLLING] Response status:', response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[VIDEO-POLLING] REST API error:', response.status, errorText);
-        console.error('[VIDEO-POLLING] Full URL was:', apiUrl);
         throw new Error(`REST API returned ${response.status}: ${errorText}`);
       }
 
       operation = await response.json();
-
-      if (isDev) {
-        console.log('[VIDEO-POLLING] Operation status:', operation.done ? 'completed' : 'generating');
-      }
 
     } catch (opError: any) {
       console.error('[VIDEO-POLLING] Errore REST API polling:', opError.message);
@@ -92,14 +78,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Video completato - estrai usando la struttura REST API
-    // Secondo la documentazione REST: operation.response.generatedVideos[0].video
-    const generatedVideos = operation.response?.generatedVideos;
+    // Video completato - estrai usando la struttura REST API corretta
+    // La struttura è: operation.response.generateVideoResponse.generatedSamples[0].video
+    const videoFile = operation.response?.generateVideoResponse?.generatedSamples?.[0]?.video;
 
-    if (!generatedVideos || generatedVideos.length === 0) {
+    if (!videoFile) {
       console.error('[VIDEO-POLLING] Video file not found in response');
       if (isDev) {
-        console.error('[VIDEO-POLLING] Full operation response:', JSON.stringify(operation.response, null, 2));
+        console.error('[VIDEO-POLLING] Full operation:', JSON.stringify(operation, null, 2));
       }
       return NextResponse.json(
         { error: 'Nessun video trovato nella risposta' },
@@ -107,38 +93,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const videoFile = generatedVideos[0].video;
-
-    if (!videoFile) {
-      console.error('[VIDEO-POLLING] Video object is null');
-      return NextResponse.json(
-        { error: 'Video object non valido' },
-        { status: 500 }
-      );
-    }
-
-    // Scarica il video usando REST API diretta
-    // Il SDK files.download() richiede downloadPath (filesystem) che non è disponibile in serverless
+    // Scarica il video
     try {
-      if (isDev) {
-        console.log('[VIDEO-POLLING] Video file info:', videoFile);
-      }
+      const videoUri = videoFile.uri || videoFile.name;
 
-      // Il video file dovrebbe avere un URI per il download
-      const fileUri = videoFile.uri;
-
-      if (!fileUri) {
+      if (!videoUri) {
         throw new Error('URI del video non trovato nel video object');
       }
 
-      // Download tramite REST API
-      const downloadUrl = fileUri.startsWith('http')
-        ? fileUri
-        : `https://generativelanguage.googleapis.com/v1beta/${fileUri}`;
-
-      if (isDev) {
-        console.log('[VIDEO-POLLING] Downloading from:', downloadUrl);
-      }
+      const downloadUrl = videoUri.startsWith('http')
+        ? videoUri
+        : `https://generativelanguage.googleapis.com/v1beta/${videoUri}`;
 
       const downloadResponse = await fetch(downloadUrl, {
         method: 'GET',
@@ -158,7 +123,7 @@ export async function POST(request: NextRequest) {
       const dataUrl = `data:video/mp4;base64,${videoBase64}`;
 
       if (isDev) {
-        console.log('[VIDEO-POLLING] ✓ Video downloaded successfully. Size:', videoBuffer.byteLength, 'bytes');
+        console.log('[VIDEO-POLLING] Video downloaded successfully. Size:', videoBuffer.byteLength, 'bytes');
       }
 
       return NextResponse.json({
@@ -174,16 +139,13 @@ export async function POST(request: NextRequest) {
 
     } catch (downloadError: any) {
       console.error('[VIDEO-POLLING] Errore durante il download del video:', downloadError.message);
-      if (isDev) {
-        console.error('[VIDEO-POLLING] Stack:', downloadError.stack);
-      }
 
       // Fallback: restituisci almeno l'URI del file
       return NextResponse.json({
         status: 'completed',
         done: true,
         video: {
-          fileUri: videoFile.uri || '',
+          fileUri: videoFile.uri || videoFile.name || '',
           mimeType: 'video/mp4',
           message: 'Video generato ma download fallito. Usa l\'URI per accedere al file.',
           error: downloadError.message
