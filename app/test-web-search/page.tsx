@@ -43,32 +43,32 @@ export default function TestWebSearchPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Test Web Search API</h1>
+        <h1 className="text-3xl font-bold mb-8 text-gray-900">Test Web Search API</h1>
 
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-900">
                 Nome Azienda
               </label>
               <input
                 type="text"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg"
+                className="w-full px-4 py-2 border rounded-lg text-gray-900"
                 placeholder="es. MIGROS"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-900">
                 Location (opzionale)
               </label>
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg"
+                className="w-full px-4 py-2 border rounded-lg text-gray-900"
                 placeholder="es. Zurigo"
               />
             </div>
@@ -92,7 +92,7 @@ export default function TestWebSearchPage() {
 
         {result && (
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-4">Risultato</h2>
+            <h2 className="text-xl font-bold mb-4 text-gray-900">Risultato</h2>
 
             <div className="space-y-4">
               <div>
@@ -146,10 +146,10 @@ export default function TestWebSearchPage() {
 
               <div className="mt-6">
                 <details>
-                  <summary className="font-semibold cursor-pointer">
+                  <summary className="font-semibold cursor-pointer text-gray-900">
                     Raw Data (clicca per espandere)
                   </summary>
-                  <pre className="mt-2 p-4 bg-gray-50 rounded overflow-auto text-xs">
+                  <pre className="mt-2 p-4 bg-gray-50 rounded overflow-auto text-xs text-gray-900">
                     {JSON.stringify(result, null, 2)}
                   </pre>
                 </details>
