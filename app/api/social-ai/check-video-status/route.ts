@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -8,10 +9,11 @@ const isDev = process.env.NODE_ENV === 'development';
 /**
  * POST /api/social-ai/check-video-status
  *
- * Controlla lo stato della generazione video Veo 3.1
+ * Controlla lo stato della generazione video Veo 3.1 usando il nuovo SDK @google/genai
+ * Documentazione: https://ai.google.dev/gemini-api/docs/video
  *
  * Body:
- * - operationId: string - ID dell'operazione video
+ * - operationId: string - ID dell'operazione video (formato: "models/veo-3.1-generate-preview/operations/...")
  */
 
 export async function POST(request: NextRequest) {
@@ -25,7 +27,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Usa VEO_API_KEY dedicata se disponibile, altrimenti fallback a GEMINI_API_KEY
+    // Verifica API key
     const apiKey = process.env.VEO_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) {
       console.error('[VIDEO-POLLING] API key non configurata');
@@ -35,29 +37,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Polling dell'operazione tramite REST API
+    // Inizializza client Gemini (NUOVO SDK)
+    const ai = new GoogleGenAI({ apiKey });
+
+    // Polling dell'operazione usando il NUOVO SDK
     let operation;
     try {
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/${operationId}`;
-
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey
-        }
+      // Usa ai.operations.getVideosOperation() come da documentazione ufficiale
+      operation = await ai.operations.getVideosOperation({
+        operation: { name: operationId }
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[VIDEO-POLLING] REST API error:', response.status, errorText);
-        throw new Error(`REST API returned ${response.status}: ${errorText}`);
+      if (isDev) {
+        console.log('[VIDEO-POLLING] Operation status:', operation.done ? 'completed' : 'generating');
       }
 
-      operation = await response.json();
-
     } catch (opError: any) {
-      console.error('[VIDEO-POLLING] Errore REST API polling:', opError.message);
+      console.error('[VIDEO-POLLING] Errore SDK polling:', opError.message);
+      if (isDev) {
+        console.error('[VIDEO-POLLING] Stack:', opError.stack);
+      }
 
       return NextResponse.json(
         {
@@ -77,13 +76,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Video completato - estrai usando la struttura REST ufficiale Google Veo
-    const videoFile = operation.response?.generateVideoResponse?.generatedSamples?.[0]?.video;
+    // Video completato - estrai usando la struttura del NUOVO SDK
+    // Secondo la documentazione: operation.response.generatedVideos[0].video
+    const generatedVideos = (operation as any).response?.generatedVideos;
 
-    if (!videoFile) {
+    if (!generatedVideos || generatedVideos.length === 0) {
       console.error('[VIDEO-POLLING] Video file not found in response');
       if (isDev) {
-        console.error('[VIDEO-POLLING] Full operation:', JSON.stringify(operation, null, 2));
+        console.error('[VIDEO-POLLING] Full operation response:', JSON.stringify((operation as any).response, null, 2));
       }
       return NextResponse.json(
         { error: 'Nessun video trovato nella risposta' },
@@ -91,37 +91,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Scarica il video
-    try {
-      const videoUri = videoFile.uri || videoFile.name;
+    const videoFile = generatedVideos[0].video;
 
-      if (!videoUri) {
+    if (!videoFile) {
+      console.error('[VIDEO-POLLING] Video object is null');
+      return NextResponse.json(
+        { error: 'Video object non valido' },
+        { status: 500 }
+      );
+    }
+
+    // Scarica il video usando ai.files.download()
+    try {
+      if (isDev) {
+        console.log('[VIDEO-POLLING] Video file info:', videoFile);
+      }
+
+      // Il video file dovrebbe avere un URI o name per il download
+      const fileUri = videoFile.uri || videoFile.name;
+
+      if (!fileUri) {
         throw new Error('URI del video non trovato nel video object');
       }
 
-      const downloadUrl = videoUri.startsWith('http')
-        ? videoUri
-        : `https://generativelanguage.googleapis.com/v1beta/${videoUri}`;
-
-      const downloadResponse = await fetch(downloadUrl, {
-        method: 'GET',
-        headers: {
-          'x-goog-api-key': apiKey
-        }
+      // Usa ai.files.download() per scaricare il video (metodo del nuovo SDK)
+      const videoData = await ai.files.download({
+        file: { uri: fileUri }
       });
 
-      if (!downloadResponse.ok) {
-        const errorText = await downloadResponse.text();
-        console.error('[VIDEO-POLLING] Download error:', downloadResponse.status, errorText);
-        throw new Error(`Download failed: ${downloadResponse.status} - ${errorText}`);
+      if (!videoData) {
+        throw new Error('Download del video fallito - nessun dato restituito');
       }
 
-      const videoBuffer = await downloadResponse.arrayBuffer();
-      const videoBase64 = Buffer.from(videoBuffer).toString('base64');
+      // Converti in base64 per il frontend
+      const videoBase64 = Buffer.from(videoData).toString('base64');
       const dataUrl = `data:video/mp4;base64,${videoBase64}`;
 
       if (isDev) {
-        console.log('[VIDEO-POLLING] Video downloaded successfully. Size:', videoBuffer.byteLength, 'bytes');
+        console.log('[VIDEO-POLLING] ✓ Video downloaded successfully. Size:', videoData.byteLength, 'bytes');
       }
 
       return NextResponse.json({
@@ -131,12 +138,15 @@ export async function POST(request: NextRequest) {
           data: videoBase64,
           dataUrl: dataUrl,
           mimeType: 'video/mp4',
-          size: videoBuffer.byteLength
+          size: videoData.byteLength
         }
       });
 
     } catch (downloadError: any) {
       console.error('[VIDEO-POLLING] Errore durante il download del video:', downloadError.message);
+      if (isDev) {
+        console.error('[VIDEO-POLLING] Stack:', downloadError.stack);
+      }
 
       // Fallback: restituisci almeno l'URI del file
       return NextResponse.json({
