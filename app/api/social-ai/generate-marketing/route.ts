@@ -591,8 +591,10 @@ async function generateMarketingVideo(
   }
 
   // Prompt diversi per ogni stile (INGLESE per migliore qualità)
+  // IMPORTANTE: Specifica DURATION in secondi per assicurare video della lunghezza corretta
   const stylePrompts = {
-    default: `Create a premium, hyper-realistic product video for ${params.platform} social media advertising.
+    default: `Create a premium, hyper-realistic ${duration}-second product video for ${params.platform} social media advertising.
+DURATION: Exactly ${duration} seconds - pace the movement to fill the entire duration smoothly.
 PRODUCT: ${params.productName}
 Use the provided product image as EXACT visual reference. The product MUST look identical to the reference photo.
 CAMERA: Smooth, natural movement that showcases the product elegantly.
@@ -600,7 +602,8 @@ LIGHTING: Professional studio lighting with soft shadows.
 STYLE: Clean, premium commercial photography in motion.
 ${brandingLine}`,
 
-    zoom: `Create a premium product video with SLOW ZOOM IN effect for ${params.platform}.
+    zoom: `Create a premium ${duration}-second product video with SLOW ZOOM IN effect for ${params.platform}.
+DURATION: Exactly ${duration} seconds - adjust zoom speed to fill the entire duration.
 PRODUCT: ${params.productName}
 Use the provided product image as EXACT visual reference.
 CAMERA MOVEMENT: Start with medium shot, slowly zoom in to close-up revealing product details.
@@ -609,7 +612,8 @@ LIGHTING: Professional studio lighting that highlights product features.
 STYLE: High-end commercial with emphasis on product details.
 ${brandingLine}`,
 
-    rotate: `Create a premium 360-DEGREE ROTATION product video for ${params.platform}.
+    rotate: `Create a premium ${duration}-second 360-DEGREE ROTATION product video for ${params.platform}.
+DURATION: Exactly ${duration} seconds - adjust rotation speed to complete full 360° in this time.
 PRODUCT: ${params.productName}
 Use the provided product image as EXACT visual reference.
 CAMERA MOVEMENT: Smooth 360° horizontal rotation around the product at constant speed.
@@ -618,7 +622,8 @@ LIGHTING: Studio lighting with consistent illumination from all angles.
 STYLE: Classic product showcase rotation - professional and elegant.
 ${brandingLine}`,
 
-    dynamic: `Create a DYNAMIC, ENERGETIC product video for ${params.platform}.
+    dynamic: `Create a DYNAMIC, ENERGETIC ${duration}-second product video for ${params.platform}.
+DURATION: Exactly ${duration} seconds - maintain high energy throughout the entire duration.
 PRODUCT: ${params.productName}
 Use the provided product image as EXACT visual reference.
 CAMERA MOVEMENT: Fast, energetic movements - quick zoom in combined with slight rotation.
@@ -627,7 +632,8 @@ LIGHTING: High contrast, vibrant lighting with bold shadows.
 STYLE: Modern, high-energy commercial - fast-paced and attention-grabbing.
 ${brandingLine}`,
 
-    cinematic: `Create a CINEMATIC, HOLLYWOOD-STYLE product video for ${params.platform}.
+    cinematic: `Create a CINEMATIC, HOLLYWOOD-STYLE ${duration}-second product video for ${params.platform}.
+DURATION: Exactly ${duration} seconds - slow, deliberate movements that fill the entire duration.
 PRODUCT: ${params.productName}
 Use the provided product image as EXACT visual reference.
 CAMERA MOVEMENT: Professional dolly-in shot with subtle parallax effect.
@@ -678,14 +684,14 @@ ${brandingLine}`
     // Converti l'aspect ratio per Veo (solo 16:9 o 9:16)
     const veoAspectRatio = params.aspectRatio === '9:16' ? '9:16' : '16:9';
 
-    if (isDev) {
-      console.log('[AGENT-VIDEO] Starting image-to-video generation:', {
-        product: params.productName,
-        platform: params.platform,
-        aspectRatio: veoAspectRatio,
-        imageSize: params.productImageBase64.length
-      });
-    }
+    console.log('[AGENT-VIDEO] Starting image-to-video generation:', {
+      product: params.productName,
+      platform: params.platform,
+      aspectRatio: veoAspectRatio,
+      durationSeconds: duration,  // LOG ESPLICITO DELLA DURATA
+      style: style,
+      imageSize: params.productImageBase64.length
+    });
 
     // NUOVO SDK - usa generateVideos() esattamente come da documentazione ufficiale
     // https://ai.google.dev/gemini-api/docs/video
