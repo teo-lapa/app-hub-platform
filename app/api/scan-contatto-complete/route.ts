@@ -294,15 +294,15 @@ Rispondi con JSON:
         partnerData.country_id = 43; // Switzerland
       }
 
-      // Lingua - Default Tedesco, ma rileva regione
-      partnerData.lang = 'de_DE';
+      // Lingua - Default Tedesco svizzero, ma rileva regione
+      partnerData.lang = 'de_CH';
       const cityLower = (finalData.city || '').toLowerCase();
       const italianCities = ['lugano', 'bellinzona', 'locarno', 'mendrisio', 'chiasso'];
       const frenchCities = ['genève', 'lausanne', 'neuchâtel', 'fribourg', 'sion'];
       if (italianCities.some(c => cityLower.includes(c))) {
         partnerData.lang = 'it_IT';
       } else if (frenchCities.some(c => cityLower.includes(c))) {
-        partnerData.lang = 'fr_FR';
+        partnerData.lang = 'fr_CH';
       }
 
       // Sales person (chi ha creato il contatto)
