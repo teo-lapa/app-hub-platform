@@ -534,7 +534,7 @@ export default function ScanContattoPage() {
 
                   <div className="space-y-3">
                     <a
-                      href={`https://odoo.trentafood.ch/web#id=${createdContact.id}&model=res.partner&view_type=form`}
+                      href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${createdContact.id}&model=res.partner&view_type=form`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl"
