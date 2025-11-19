@@ -48,6 +48,7 @@
     "next-themes": "^0.2.1",
     "node-telegram-bot-api": "^0.66.0",
     "odoo-xmlrpc": "^1.0.8",
+    "openai": "^6.9.1",
     "pdf-lib": "^1.17.1",
     "postcss": "8.4.32",
     "qr-scanner": "^1.4.2",
