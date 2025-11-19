@@ -26,8 +26,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Usa la stessa API key di generate-marketing per evitare errori 403 Permission Denied
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
+    // Usa VEO_API_KEY dedicata se disponibile, altrimenti fallback a GEMINI_API_KEY
+    // IMPORTANTE: Deve essere la stessa API key usata in generate-marketing
+    const apiKey = process.env.VEO_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) {
       console.error('[VIDEO-POLLING] API key non configurata');
       return NextResponse.json(

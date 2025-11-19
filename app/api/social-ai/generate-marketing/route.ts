@@ -90,8 +90,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verifica API key
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
+    // Usa VEO_API_KEY dedicata se disponibile, altrimenti fallback a GEMINI_API_KEY
+    // IMPORTANTE: Deve essere la stessa API key usata in check-video-status
+    const apiKey = process.env.VEO_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) {
       console.error('[SOCIAL-AI] API key non configurata');
       return NextResponse.json(
