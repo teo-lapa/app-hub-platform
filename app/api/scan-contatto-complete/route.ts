@@ -68,22 +68,38 @@ export async function POST(req: NextRequest) {
     console.log('[OCR Result]', extractedData);
 
     // ============================================
-    // STEP 2: WEB SEARCH (TEMPORANEAMENTE DISABILITATO)
+    // STEP 2: WEB SEARCH
     // ============================================
-    console.log('[Step 2/3] Web search: Skipping (feature under development)');
+    console.log('[Step 2/3] Web search: Searching company info...');
     const webSearchStart = Date.now();
 
     let webSearchData: any = null;
 
-    // TODO: Implementare web search tramite:
-    // - Google Custom Search API
-    // - Tavily API
-    // - MCP Server con web search capability
-    //
-    // NOTA: Claude API non supporta nativamente tool "web_search"
-    // Serve un'implementazione custom o un servizio esterno
+    try {
+      // Importa servizio web search
+      const { searchCompanyInfo } = await import('@/lib/services/web-search');
 
-    warnings.push('Web search temporaneamente disabilitato - dati non arricchiti');
+      // Cerca solo se è un'azienda (non persona privata)
+      if (contactType === 'company' && extractedData.companyName) {
+        const searchResult = await searchCompanyInfo(
+          extractedData.companyName,
+          extractedData.city || extractedData.zip
+        );
+
+        if (searchResult.found) {
+          webSearchData = searchResult;
+          console.log('[Step 2/3] ✓ Company found:', searchResult.legalName);
+        } else {
+          console.log('[Step 2/3] ⚠ Company not found in web search');
+          warnings.push(`Azienda "${extractedData.companyName}" non trovata su web`);
+        }
+      } else {
+        console.log('[Step 2/3] ⊘ Skipping web search (not a company or no company name)');
+      }
+    } catch (error: any) {
+      console.warn('[Step 2/3] ⚠ Web search error:', error.message);
+      warnings.push(`Web search fallito: ${error.message}`);
+    }
 
     const webSearchDuration = Date.now() - webSearchStart;
 
