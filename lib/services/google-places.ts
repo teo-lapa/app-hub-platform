@@ -104,21 +104,39 @@ export async function searchNearbyPlaces(
   }
 
   try {
+    console.log('🔍 [Google Places] Calling Nearby Search API:', url.toString().replace(apiKey, 'API_KEY_HIDDEN'));
+
     const response = await fetch(url.toString());
 
     if (!response.ok) {
-      throw new Error(`Google Places API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('❌ [Google Places] HTTP Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
+      throw new Error(`Google Places API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('📊 [Google Places] API Response:', {
+      status: data.status,
+      results_count: data.results?.length || 0,
+      error_message: data.error_message
+    });
 
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      console.error('❌ [Google Places] API Status Error:', {
+        status: data.status,
+        error_message: data.error_message,
+        available_fields: Object.keys(data)
+      });
       throw new Error(`Google Places API status: ${data.status} - ${data.error_message || 'Unknown error'}`);
     }
 
     return data.results || [];
   } catch (error) {
-    console.error('Error searching nearby places:', error);
+    console.error('❌ [Google Places] Error searching nearby places:', error);
     throw error;
   }
 }
