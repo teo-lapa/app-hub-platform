@@ -337,7 +337,7 @@ export default function ScanContattoPage() {
       setIsLinking(false);
     }
   };
-  // Handle voice contact creation
+  // Handle voice contact creation (uses the same endpoint as file scan)
   const handleVoiceContactComplete = async (data: {
     name: string;
     phone: string;
@@ -353,30 +353,76 @@ export default function ScanContattoPage() {
     setIsProcessing(true);
     setError(null);
 
+    // Update steps to show voice processing
+    setSteps((prev) =>
+      prev.map((step, idx) => ({
+        ...step,
+        status: idx === 0 ? 'processing' : 'pending',
+        message: idx === 0 ? 'Pulizia dati vocali con Claude AI...' : undefined,
+      }))
+    );
+
     try {
-      const response = await fetch('/api/voice-contact', {
+      console.log('[Voice] 🎤 Sending raw voice data to AI cleaning pipeline...');
+
+      // Call the unified endpoint with JSON data (voice mode)
+      const response = await fetch('/api/scan-contatto-complete', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json', // This triggers voice mode
         },
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        throw new Error('Errore nella creazione del contatto');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Errore nella creazione del contatto');
       }
 
       const result = await response.json();
 
+      console.log('[Voice] ✅ Contact created:', result);
+
       if (result.success) {
-        setCreatedContact(result.data);
+        // Show all steps as completed
+        setSteps((prev) =>
+          prev.map((step) => ({
+            ...step,
+            status: 'completed',
+            message: 'Completato',
+          }))
+        );
+
+        setExtractedData(result.extractedData || {
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          mobile: data.mobile,
+          street: data.street,
+          zip: data.zip,
+          city: data.city,
+          state: data.state,
+          country: data.country,
+          comment: data.comment,
+        });
+
+        setCreatedContact(result.odooContact);
         setShowVoiceCreator(false);
+        setContactType('person');
       } else {
         throw new Error(result.error || 'Errore nella creazione');
       }
     } catch (err) {
-      console.error('Errore creazione contatto vocale:', err);
+      console.error('[Voice] ❌ Error creating voice contact:', err);
       setError(err instanceof Error ? err.message : 'Errore creazione contatto');
+
+      setSteps((prev) =>
+        prev.map((step) => ({
+          ...step,
+          status: step.status === 'processing' ? 'error' : step.status,
+          message: step.status === 'processing' ? 'Errore' : undefined,
+        }))
+      );
     } finally {
       setIsProcessing(false);
     }

@@ -12,6 +12,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { extractContactDataFromImage } from '@/lib/services/gemini-vision';
+import Anthropic from '@anthropic-ai/sdk';
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+});
 
 /**
  * Formatta le informazioni Google Search per il Chatter
@@ -95,32 +100,181 @@ export async function POST(req: NextRequest) {
   const warnings: string[] = [];
 
   try {
-    // Parse multipart form data
-    const formData = await req.formData();
-    const file = formData.get('file') as File;
-    const contactType = formData.get('contactType') as string || 'company'; // 'company' or 'person'
+    // ============================================
+    // DETECT INPUT TYPE: File Upload vs Voice Data
+    // ============================================
+    const contentType = req.headers.get('content-type') || '';
+    const isVoiceData = contentType.includes('application/json');
 
-    if (!file) {
-      return NextResponse.json(
-        { error: 'No file uploaded' },
-        { status: 400 }
-      );
+    let extractedData: any;
+    let contactType: string;
+    let ocrDuration = 0;
+    let isFromVoice = false;
+
+    if (isVoiceData) {
+      // ============================================
+      // VOICE INPUT MODE: Clean raw voice data with Claude AI
+      // ============================================
+      console.log('[Scan Complete] 🎤 Mode: VOICE INPUT');
+
+      const voiceData = await req.json();
+      contactType = 'person'; // Voice contacts are always persons
+      isFromVoice = true;
+
+      console.log('[Voice Clean] Raw voice data:', voiceData);
+
+      // STEP 1: Clean voice data with Claude AI
+      console.log('[Step 1/3] 🤖 Cleaning voice data with Claude AI...');
+      const cleanStart = Date.now();
+
+      const cleaningPrompt = `Sei un assistente AI specializzato nella normalizzazione e pulizia di dati di contatto raccolti tramite voice input.
+
+I dati seguenti sono stati raccolti tramite domande vocali e potrebbero contenere:
+- Errori di trascrizione vocale
+- Formati non standardizzati (telefoni, email, indirizzi)
+- Informazioni incomplete o ambigue
+- Typos o abbreviazioni
+
+DATI GREZZI:
+${JSON.stringify(voiceData, null, 2)}
+
+COMPITO:
+1. Pulisci e normalizza tutti i campi
+2. Formatta correttamente:
+   - Numeri di telefono (formato svizzero/italiano: +41 91 123 45 67 oppure +39 02 1234567)
+   - Email (lowercase, validazione formato)
+   - Indirizzi (capitalizzazione corretta)
+   - CAP (validazione formato)
+   - Nome (capitalizzazione corretta di nome e cognome)
+3. Identifica eventuali errori o ambiguità
+4. Valuta il livello di confidenza dei dati (high/medium/low)
+
+REGOLE IMPORTANTI:
+- Se un campo è vuoto o contiene solo spazi, restituisci stringa vuota ""
+- Non inventare dati: se non sei sicuro, lascia vuoto
+- I numeri di telefono devono includere prefisso internazionale se possibile
+- Le email devono essere lowercase e valide
+- Il nome è OBBLIGATORIO - se manca o è invalido, segnala errore critico
+- Normalizza il paese: "Svizzera" → "Switzerland", "Italia" → "Italy"
+- Normalizza lo stato: "TI" → "Ticino", "ZH" → "Zürich", etc.
+
+FORMATO OUTPUT (restituisci SOLO il JSON, nessun testo prima o dopo):
+{
+  "name": "Mario Rossi",
+  "email": "mario.rossi@example.com",
+  "phone": "+41 91 123 45 67",
+  "mobile": "+41 79 123 45 67",
+  "street": "Via Roma 10",
+  "zip": "6900",
+  "city": "Lugano",
+  "state": "Ticino",
+  "country": "Switzerland",
+  "function": "",
+  "comment": "Cliente VIP. Note: [eventuali note aggiuntive]",
+  "companyName": "",
+  "website": "",
+  "vat": "",
+  "confidence": "high",
+  "warnings": ["Il numero di telefono potrebbe essere incompleto"],
+  "suggestions": ["Verificare email con il cliente"]
+}`;
+
+      const message = await anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 2000,
+        temperature: 0.3,
+        messages: [{ role: 'user', content: cleaningPrompt }],
+      });
+
+      const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+      console.log('[Voice Clean] 🤖 Claude AI response:', responseText);
+
+      // Parse Claude's response
+      let aiResponse: any;
+      try {
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('No JSON found in Claude response');
+        }
+        aiResponse = JSON.parse(jsonMatch[0]);
+      } catch (parseError) {
+        console.error('[Voice Clean] ❌ Failed to parse AI response:', parseError);
+        throw new Error('AI response parsing failed');
+      }
+
+      // Store AI analysis metadata
+      const aiConfidence = aiResponse.confidence || 'medium';
+      const aiWarnings = aiResponse.warnings || [];
+      const aiSuggestions = aiResponse.suggestions || [];
+
+      warnings.push(...aiWarnings);
+
+      console.log('[Voice Clean] ✅ Data cleaned');
+      console.log('[Voice Clean] 📊 Confidence:', aiConfidence);
+      console.log('[Voice Clean] ⚠️  Warnings:', aiWarnings);
+      console.log('[Voice Clean] 💡 Suggestions:', aiSuggestions);
+
+      // Extract cleaned data
+      extractedData = {
+        name: aiResponse.name || voiceData.name,
+        email: aiResponse.email || '',
+        phone: aiResponse.phone || '',
+        mobile: aiResponse.mobile || '',
+        street: aiResponse.street || '',
+        zip: aiResponse.zip || '',
+        city: aiResponse.city || '',
+        state: aiResponse.state || '',
+        country: aiResponse.country || '',
+        function: aiResponse.function || '',
+        comment: [
+          aiResponse.comment || voiceData.comment || '',
+          '',
+          '---',
+          '🎤 Contatto creato tramite Voice Input',
+          `📊 Confidenza AI: ${aiConfidence}`,
+          aiWarnings.length > 0 ? `⚠️ ${aiWarnings.join(', ')}` : '',
+          aiSuggestions.length > 0 ? `💡 ${aiSuggestions.join(', ')}` : '',
+        ].filter(Boolean).join('\n'),
+        companyName: aiResponse.companyName || '',
+        website: aiResponse.website || '',
+        vat: aiResponse.vat || '',
+      };
+
+      ocrDuration = Date.now() - cleanStart;
+      console.log(`[Step 1/3] ✓ Voice cleaning completed in ${ocrDuration}ms`);
+
+    } else {
+      // ============================================
+      // FILE UPLOAD MODE: Original OCR flow
+      // ============================================
+      console.log('[Scan Complete] 📄 Mode: FILE UPLOAD (OCR)');
+
+      const formData = await req.formData();
+      const file = formData.get('file') as File;
+      contactType = formData.get('contactType') as string || 'company';
+
+      if (!file) {
+        return NextResponse.json(
+          { error: 'No file uploaded' },
+          { status: 400 }
+        );
+      }
+
+      console.log('[Scan Complete] Processing:', file.name, `(${file.size} bytes)`, `Type: ${contactType}`);
+
+      // ============================================
+      // STEP 1: GEMINI VISION OCR
+      // ============================================
+      console.log('[Step 1/3] Running Gemini Vision OCR...');
+      const ocrStart = Date.now();
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      extractedData = await extractContactDataFromImage(buffer, file.type);
+
+      ocrDuration = Date.now() - ocrStart;
+      console.log(`[Step 1/3] ✓ OCR completed in ${ocrDuration}ms`);
+      console.log('[OCR Result]', extractedData);
     }
-
-    console.log('[Scan Complete] Processing:', file.name, `(${file.size} bytes)`, `Type: ${contactType}`);
-
-    // ============================================
-    // STEP 1: GEMINI VISION OCR
-    // ============================================
-    console.log('[Step 1/3] Running Gemini Vision OCR...');
-    const ocrStart = Date.now();
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const extractedData = await extractContactDataFromImage(buffer, file.type);
-
-    const ocrDuration = Date.now() - ocrStart;
-    console.log(`[Step 1/3] ✓ OCR completed in ${ocrDuration}ms`);
-    console.log('[OCR Result]', extractedData);
 
     // ============================================
     // STEP 2: WEB SEARCH
@@ -340,12 +494,15 @@ Rispondi con JSON:
         try {
           const addressesToCreate = [];
 
+          // Get company name for address labels
+          const companyName = partnerData.name || finalData.name || 'Azienda';
+
           // Indirizzo di consegna (delivery)
           if (partnerData.street || partnerData.city || partnerData.zip) {
             const deliveryAddress = {
               parent_id: partnerId,
               type: 'delivery',
-              name: 'Indirizzo di consegna',
+              name: `${companyName} - Indirizzo di consegna`,
               street: partnerData.street || '',
               city: partnerData.city || '',
               zip: partnerData.zip || '',
@@ -359,7 +516,7 @@ Rispondi con JSON:
             const invoiceAddress = {
               parent_id: partnerId,
               type: 'invoice',
-              name: 'Indirizzo di fatturazione',
+              name: `${companyName} - Indirizzo di fatturazione`,
               street: partnerData.street || '',
               city: partnerData.city || '',
               zip: partnerData.zip || '',
