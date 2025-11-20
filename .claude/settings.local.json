@@ -14,7 +14,11 @@
       "Bash(node test-chatter-message.js:*)",
       "Bash(vercel env:*)",
       "Bash(python apply-voice-patch.py:*)",
-      "Bash(NUL)"
+      "Bash(NUL)",
+      "Bash(git push:*)",
+      "Bash(powershell -Command \"(Get-Content ''app\\scan-contatto\\page.tsx'' | Measure-Object -Line).Lines\")",
+      "Bash(powershell -Command \"Get-Content ''app\\scan-contatto\\page.tsx'' | Select-Object -Last 50\")",
+      "Bash(powershell -Command \"$content = Get-Content ''scan-contatto\\page.tsx'' -Raw; $lines = $content -split ''\\r?\\n''; for ($i = 1080; $i -lt 1250 -and $i -lt $lines.Count; $i++) { Write-Host (''{0,4}→{1}'' -f ($i+1), $lines[$i]) }\")"
     ],
     "deny": [],
     "ask": []
