@@ -16,6 +16,7 @@ interface CompanySearchResult {
     city?: string;
     state?: string;
     country?: string;
+    formatted?: string; // Indirizzo completo formattato
   };
   uid?: string; // P.IVA / UID
   businessActivity?: string;
@@ -23,7 +24,187 @@ interface CompanySearchResult {
   creditInfo?: string;
   source: string;
   searchQuery: string;
+  // Dati aggiuntivi da Google Places
+  phone?: string;
+  openingHours?: string[]; // Array di stringi tipo "Lunedì: 08:00-18:00"
+  rating?: number;
+  totalRatings?: number;
+  businessTypes?: string[]; // ["restaurant", "food", "point_of_interest"]
+  priceLevel?: number; // 0-4
+  placeId?: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
   rawData?: any;
+}
+
+/**
+ * Cerca un'azienda usando Google Places API per dati strutturati
+ */
+async function searchWithGooglePlaces(
+  companyName: string,
+  location?: string
+): Promise<CompanySearchResult> {
+  const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
+
+  if (!apiKey) {
+    console.warn('[Google Places] API key mancante');
+    throw new Error('Google Places not configured');
+  }
+
+  // Costruisci query
+  let query = companyName;
+  if (location) {
+    query += ` ${location}`;
+  }
+  query += ' Switzerland';
+
+  console.log('[Google Places] 🔍 Searching for:', query);
+
+  try {
+    // Step 1: Text Search per trovare il place_id
+    const searchUrl = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json');
+    searchUrl.searchParams.append('key', apiKey);
+    searchUrl.searchParams.append('query', query);
+    searchUrl.searchParams.append('language', 'it');
+
+    const searchResponse = await fetch(searchUrl.toString());
+
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      console.error('[Google Places] Search API Error:', searchResponse.status, errorText);
+      throw new Error(`Google Places Search error: ${searchResponse.status}`);
+    }
+
+    const searchData = await searchResponse.json();
+
+    if (searchData.status !== 'OK' || !searchData.results || searchData.results.length === 0) {
+      console.log('[Google Places] ❌ No results found');
+      return {
+        found: false,
+        source: 'google_places',
+        searchQuery: query
+      };
+    }
+
+    const place = searchData.results[0];
+    console.log('[Google Places] ✅ Found place:', place.name);
+
+    // Step 2: Place Details per ottenere dati completi
+    const detailsUrl = new URL('https://maps.googleapis.com/maps/api/place/details/json');
+    detailsUrl.searchParams.append('key', apiKey);
+    detailsUrl.searchParams.append('place_id', place.place_id);
+    detailsUrl.searchParams.append('fields', 'name,formatted_address,formatted_phone_number,website,opening_hours,rating,user_ratings_total,types,price_level,geometry,address_components,business_status');
+    detailsUrl.searchParams.append('language', 'it');
+
+    const detailsResponse = await fetch(detailsUrl.toString());
+
+    if (!detailsResponse.ok) {
+      console.warn('[Google Places] Details API Error, using basic data');
+      // Usa solo i dati base dal search
+      return buildResultFromSearchData(place, query);
+    }
+
+    const detailsData = await detailsResponse.json();
+
+    if (detailsData.status !== 'OK' || !detailsData.result) {
+      console.warn('[Google Places] Details not available, using basic data');
+      return buildResultFromSearchData(place, query);
+    }
+
+    const details = detailsData.result;
+    console.log('[Google Places] ✅ Got detailed data');
+
+    // Estrai ZIP code e componenti indirizzo
+    let zip = '';
+    let street = '';
+    let city = '';
+    let country = '';
+
+    if (details.address_components) {
+      for (const component of details.address_components) {
+        if (component.types.includes('postal_code')) {
+          zip = component.long_name;
+        }
+        if (component.types.includes('route')) {
+          street = component.long_name;
+        }
+        if (component.types.includes('street_number')) {
+          street = component.long_name + (street ? ' ' + street : '');
+        }
+        if (component.types.includes('locality')) {
+          city = component.long_name;
+        }
+        if (component.types.includes('country')) {
+          country = component.long_name;
+        }
+      }
+    }
+
+    // Formatta orari di apertura
+    let openingHours: string[] | undefined;
+    if (details.opening_hours?.weekday_text) {
+      openingHours = details.opening_hours.weekday_text;
+    }
+
+    return {
+      found: true,
+      legalName: details.name || companyName,
+      website: details.website,
+      address: {
+        street: street || undefined,
+        zip: zip || undefined,
+        city: city || undefined,
+        country: country || undefined,
+        formatted: details.formatted_address
+      },
+      phone: details.formatted_phone_number,
+      openingHours: openingHours,
+      rating: details.rating,
+      totalRatings: details.user_ratings_total,
+      businessTypes: details.types,
+      priceLevel: details.price_level,
+      placeId: place.place_id,
+      coordinates: details.geometry?.location ? {
+        lat: details.geometry.location.lat,
+        lng: details.geometry.location.lng
+      } : undefined,
+      businessActivity: place.formatted_address, // Fallback
+      source: 'google_places',
+      searchQuery: query,
+      rawData: { search: place, details }
+    };
+
+  } catch (error: any) {
+    console.error('[Google Places] Error:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Costruisce un risultato base dai dati di ricerca (quando Details non è disponibile)
+ */
+function buildResultFromSearchData(place: any, query: string): CompanySearchResult {
+  return {
+    found: true,
+    legalName: place.name,
+    address: {
+      formatted: place.formatted_address
+    },
+    rating: place.rating,
+    totalRatings: place.user_ratings_total,
+    businessTypes: place.types,
+    placeId: place.place_id,
+    coordinates: place.geometry?.location ? {
+      lat: place.geometry.location.lat,
+      lng: place.geometry.location.lng
+    } : undefined,
+    businessActivity: place.formatted_address,
+    source: 'google_places',
+    searchQuery: query,
+    rawData: { search: place }
+  };
 }
 
 /**
@@ -199,15 +380,26 @@ export async function searchCompanyInfo(
 ): Promise<CompanySearchResult> {
   console.log('[Web Search] Searching for:', companyName, location || '');
 
-  // Prova Google prima
+  // Prova Google Places prima (dati strutturati completi)
   try {
-    const result = await searchWithGoogle(companyName, location);
+    const result = await searchWithGooglePlaces(companyName, location);
     if (result.found) {
-      console.log('[Web Search] ✓ Found with Google');
+      console.log('[Web Search] ✓ Found with Google Places (rich data)');
       return result;
     }
   } catch (error: any) {
-    console.warn('[Web Search] Google failed, trying Tavily...', error.message);
+    console.warn('[Web Search] Google Places failed, trying Custom Search...', error.message);
+  }
+
+  // Fallback a Google Custom Search (dati base)
+  try {
+    const result = await searchWithGoogle(companyName, location);
+    if (result.found) {
+      console.log('[Web Search] ✓ Found with Google Custom Search');
+      return result;
+    }
+  } catch (error: any) {
+    console.warn('[Web Search] Google Custom Search failed, trying Tavily...', error.message);
   }
 
   // Fallback a Tavily

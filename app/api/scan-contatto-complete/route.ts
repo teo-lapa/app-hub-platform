@@ -19,56 +19,157 @@ const anthropic = new Anthropic({
 });
 
 /**
- * Formatta le informazioni Google Search per il Chatter
+ * Formatta le informazioni Google Search per il Chatter come tabella HTML
  */
 function formatGoogleSearchMessage(webSearchData: any, extractedData: any): string {
   const parts: string[] = [];
 
-  parts.push('<h3>📍 Informazioni da Google Search (non ufficiali)</h3>');
-  parts.push('<p><i>Queste informazioni sono state trovate automaticamente su Internet e potrebbero non essere ufficiali o aggiornate.</i></p>');
-  parts.push('<ul>');
+  parts.push('<h3>📍 Informazioni da Google (non ufficiali)</h3>');
+  parts.push('<p><i>Dati trovati automaticamente su Internet - potrebbero non essere ufficiali o aggiornati.</i></p>');
 
+  parts.push('<table style="width: 100%; border-collapse: collapse; margin-top: 10px;">');
+  parts.push('<tbody>');
+
+  // Nome azienda
   if (webSearchData.legalName) {
-    parts.push(`<li><strong>Nome trovato:</strong> ${webSearchData.legalName}</li>`);
+    parts.push('<tr>');
+    parts.push('<td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold; width: 30%;">Nome</td>');
+    parts.push(`<td style="padding: 8px; border: 1px solid #ddd;">${webSearchData.legalName}</td>`);
+    parts.push('</tr>');
   }
 
+  // Sito web
   if (webSearchData.website) {
-    parts.push(`<li><strong>Sito web:</strong> <a href="${webSearchData.website}" target="_blank">${webSearchData.website}</a></li>`);
+    parts.push('<tr>');
+    parts.push('<td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">Sito web</td>');
+    parts.push(`<td style="padding: 8px; border: 1px solid #ddd;"><a href="${webSearchData.website}" target="_blank">${webSearchData.website}</a></td>`);
+    parts.push('</tr>');
   }
 
+  // Telefono
+  if (webSearchData.phone) {
+    parts.push('<tr>');
+    parts.push('<td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">Telefono</td>');
+    parts.push(`<td style="padding: 8px; border: 1px solid #ddd;">${webSearchData.phone}</td>`);
+    parts.push('</tr>');
+  }
+
+  // Indirizzo completo
   if (webSearchData.address) {
     const addressParts: string[] = [];
     if (webSearchData.address.street) addressParts.push(webSearchData.address.street);
     if (webSearchData.address.zip) addressParts.push(webSearchData.address.zip);
     if (webSearchData.address.city) addressParts.push(webSearchData.address.city);
-    if (webSearchData.address.state) addressParts.push(webSearchData.address.state);
     if (webSearchData.address.country) addressParts.push(webSearchData.address.country);
 
-    if (addressParts.length > 0) {
-      parts.push(`<li><strong>Indirizzo:</strong> ${addressParts.join(', ')}</li>`);
+    const fullAddress = webSearchData.address.formatted || addressParts.join(', ');
+
+    if (fullAddress) {
+      parts.push('<tr>');
+      parts.push('<td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">Indirizzo</td>');
+      parts.push(`<td style="padding: 8px; border: 1px solid #ddd;">${fullAddress}</td>`);
+      parts.push('</tr>');
+    }
+
+    // CAP separato se disponibile
+    if (webSearchData.address.zip) {
+      parts.push('<tr>');
+      parts.push('<td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">CAP</td>');
+      parts.push(`<td style="padding: 8px; border: 1px solid #ddd;">${webSearchData.address.zip}</td>`);
+      parts.push('</tr>');
     }
   }
 
+  // Rating e recensioni
+  if (webSearchData.rating || webSearchData.totalRatings) {
+    const ratingText = webSearchData.rating
+      ? `⭐ ${webSearchData.rating}/5`
+      : '';
+    const reviewsText = webSearchData.totalRatings
+      ? `(${webSearchData.totalRatings} recensioni)`
+      : '';
+    const fullRating = [ratingText, reviewsText].filter(Boolean).join(' ');
+
+    if (fullRating) {
+      parts.push('<tr>');
+      parts.push('<td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">Valutazione</td>');
+      parts.push(`<td style="padding: 8px; border: 1px solid #ddd;">${fullRating}</td>`);
+      parts.push('</tr>');
+    }
+  }
+
+  // Tipo di attività
+  if (webSearchData.businessTypes && webSearchData.businessTypes.length > 0) {
+    // Traduci tipi comuni
+    const typeTranslations: Record<string, string> = {
+      'restaurant': 'Ristorante',
+      'food': 'Cibo',
+      'store': 'Negozio',
+      'supermarket': 'Supermercato',
+      'point_of_interest': 'Punto di interesse',
+      'establishment': 'Attività commerciale',
+      'cafe': 'Caffetteria',
+      'bar': 'Bar'
+    };
+
+    const translatedTypes = webSearchData.businessTypes
+      .slice(0, 3) // Primi 3 tipi
+      .map((type: string) => typeTranslations[type] || type)
+      .join(', ');
+
+    parts.push('<tr>');
+    parts.push('<td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">Tipo attività</td>');
+    parts.push(`<td style="padding: 8px; border: 1px solid #ddd;">${translatedTypes}</td>`);
+    parts.push('</tr>');
+  }
+
+  // Fascia di prezzo
+  if (webSearchData.priceLevel !== undefined) {
+    const priceSymbols = '€'.repeat(webSearchData.priceLevel || 1);
+    parts.push('<tr>');
+    parts.push('<td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">Fascia prezzo</td>');
+    parts.push(`<td style="padding: 8px; border: 1px solid #ddd;">${priceSymbols}</td>`);
+    parts.push('</tr>');
+  }
+
+  // Orari di apertura
+  if (webSearchData.openingHours && webSearchData.openingHours.length > 0) {
+    const hoursHtml = webSearchData.openingHours.join('<br/>');
+    parts.push('<tr>');
+    parts.push('<td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold; vertical-align: top;">Orari apertura</td>');
+    parts.push(`<td style="padding: 8px; border: 1px solid #ddd;">${hoursHtml}</td>`);
+    parts.push('</tr>');
+  }
+
+  // UID/P.IVA
   if (webSearchData.uid) {
-    parts.push(`<li><strong>UID/P.IVA:</strong> ${webSearchData.uid}</li>`);
+    parts.push('<tr>');
+    parts.push('<td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">UID/P.IVA</td>');
+    parts.push(`<td style="padding: 8px; border: 1px solid #ddd;">${webSearchData.uid}</td>`);
+    parts.push('</tr>');
   }
 
-  if (webSearchData.businessActivity) {
-    parts.push(`<li><strong>Attività:</strong> ${webSearchData.businessActivity}</li>`);
+  // Coordinate GPS (utili per mappe)
+  if (webSearchData.coordinates) {
+    const mapsLink = `https://www.google.com/maps/search/?api=1&query=${webSearchData.coordinates.lat},${webSearchData.coordinates.lng}`;
+    parts.push('<tr>');
+    parts.push('<td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">Posizione GPS</td>');
+    parts.push(`<td style="padding: 8px; border: 1px solid #ddd;"><a href="${mapsLink}" target="_blank">Vedi su Google Maps</a></td>`);
+    parts.push('</tr>');
   }
 
-  if (webSearchData.companyType) {
-    parts.push(`<li><strong>Tipo azienda:</strong> ${webSearchData.companyType}</li>`);
-  }
-
-  if (webSearchData.creditInfo) {
-    parts.push(`<li><strong>Info creditizie:</strong> ${webSearchData.creditInfo}</li>`);
-  }
-
-  parts.push('</ul>');
+  parts.push('</tbody>');
+  parts.push('</table>');
 
   // Aggiungi fonte
-  parts.push(`<p><small><strong>Fonte:</strong> ${webSearchData.source} | <strong>Query:</strong> ${webSearchData.searchQuery}</strong></small></p>`);
+  const sourceLabels: Record<string, string> = {
+    'google_places': 'Google Places API',
+    'google_custom_search': 'Google Custom Search',
+    'tavily': 'Tavily Search'
+  };
+  const sourceLabel = sourceLabels[webSearchData.source] || webSearchData.source;
+
+  parts.push(`<p style="margin-top: 10px;"><small><strong>Fonte:</strong> ${sourceLabel}</small></p>`);
 
   return parts.join('\n');
 }
