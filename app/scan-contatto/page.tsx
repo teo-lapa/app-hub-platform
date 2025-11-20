@@ -448,15 +448,15 @@ export default function ScanContattoPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-4 md:p-8">
       <div className="mx-auto max-w-7xl">
-        {/* Back Button */}
+        {/* Back Button - Mobile: larger touch target */}
         <motion.button
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           onClick={() => router.push('/')}
-          className="mb-6 flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-gray-700 shadow-md transition-all hover:bg-gray-50 hover:shadow-lg"
+          className="mb-6 flex items-center gap-2 min-h-[48px] rounded-lg bg-white px-4 py-3 text-base md:text-sm text-gray-700 shadow-md transition-all hover:bg-gray-50 hover:shadow-lg active:scale-95"
         >
           <ArrowLeft className="h-5 w-5" />
-          <span className="font-medium">Torna alla Dashboard</span>
+          <span className="font-semibold md:font-medium">Torna alla Dashboard</span>
         </motion.button>
 
         {/* Header */}
@@ -488,48 +488,49 @@ export default function ScanContattoPage() {
             <label className="mb-4 block text-center text-lg font-semibold text-gray-900">
               Che tipo di contatto vuoi scansionare?
             </label>
-            <div className="grid grid-cols-3 gap-4">
+            {/* Mobile: touch-friendly buttons (min 48px height) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 onClick={() => {
                   setContactType('company');
                   setShowVoiceCreator(false);
                 }}
-                className={`flex-1 rounded-xl px-6 py-6 font-bold transition-all ${
+                className={`min-h-[64px] rounded-xl px-6 py-4 font-bold transition-all active:scale-95 ${
                   contactType === 'company'
                     ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-2xl scale-105'
                     : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg'
                 }`}
               >
                 <Building2 className="mx-auto mb-2 h-8 w-8" />
-                <div className="text-lg">Azienda</div>
+                <div className="text-base sm:text-lg">Azienda</div>
               </button>
               <button
                 onClick={() => {
                   setContactType('person');
                   setShowVoiceCreator(false);
                 }}
-                className={`flex-1 rounded-xl px-6 py-6 font-bold transition-all ${
+                className={`min-h-[64px] rounded-xl px-6 py-4 font-bold transition-all active:scale-95 ${
                   contactType === 'person'
                     ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-2xl scale-105'
                     : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg'
                 }`}
               >
                 <User className="mx-auto mb-2 h-8 w-8" />
-                <div className="text-lg">Privato</div>
+                <div className="text-base sm:text-lg">Privato</div>
               </button>
               <button
                 onClick={() => {
                   setContactType('voice');
                   setShowVoiceCreator(true);
                 }}
-                className={`flex-1 rounded-xl px-6 py-6 font-bold transition-all ${
+                className={`min-h-[64px] rounded-xl px-6 py-4 font-bold transition-all active:scale-95 ${
                   contactType === 'voice'
                     ? 'bg-gradient-to-br from-purple-600 to-pink-600 text-white shadow-2xl scale-105'
                     : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg'
                 }`}
               >
                 <Mic className="mx-auto mb-2 h-8 w-8" />
-                <div className="text-lg">Con Voce</div>
+                <div className="text-base sm:text-lg">Con Voce</div>
               </button>
             </div>
           </div>
@@ -552,8 +553,9 @@ export default function ScanContattoPage() {
           </motion.div>
         )}
 
+        {/* Mobile: single column layout, desktop: two columns */}
         {!showVoiceCreator && (
-                <div className="grid gap-8 lg:grid-cols-2">
+                <div className="grid gap-6 lg:gap-8 lg:grid-cols-2">
           {/* Left Column: Upload & Preview */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -580,13 +582,15 @@ export default function ScanContattoPage() {
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-300 bg-gray-50/50 hover:border-blue-400 hover:bg-blue-50/50'
                   }
-                  ${selectedFile ? 'min-h-[200px]' : 'min-h-[300px]'}
+                  ${selectedFile ? 'min-h-[200px]' : 'min-h-[300px] md:min-h-[400px]'}
                 `}
               >
+                {/* Mobile-optimized file input with camera access */}
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  capture="environment" // Opens rear camera on mobile
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handleFileSelect(file);
@@ -601,18 +605,22 @@ export default function ScanContattoPage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="flex min-h-[300px] flex-col items-center justify-center p-8 text-center"
+                      className="flex min-h-[300px] md:min-h-[400px] flex-col items-center justify-center p-6 md:p-8 text-center"
                     >
-                      <div className="mb-4 rounded-full bg-blue-100 p-6 transition-transform group-hover:scale-110">
-                        <ImageIcon className="h-12 w-12 text-blue-600" />
+                      {/* Mobile: Larger touch target with camera icon */}
+                      <div className="mb-6 rounded-full bg-blue-100 p-8 md:p-6 transition-transform group-hover:scale-110">
+                        <ImageIcon className="h-16 w-16 md:h-12 md:w-12 text-blue-600" />
                       </div>
-                      <p className="mb-2 text-lg font-semibold text-gray-700">
-                        Trascina immagine qui
+                      <p className="mb-3 text-xl md:text-lg font-bold text-gray-700">
+                        Scatta o Carica Foto
                       </p>
-                      <p className="text-sm text-gray-500">
-                        oppure clicca per selezionare
+                      <p className="text-base md:text-sm text-gray-600 mb-2">
+                        Tocca per aprire la fotocamera
                       </p>
-                      <p className="mt-4 text-xs text-gray-400">
+                      <p className="text-sm md:text-xs text-gray-500">
+                        oppure seleziona dalla galleria
+                      </p>
+                      <p className="mt-6 text-xs text-gray-400">
                         JPG, PNG, WEBP - Max 10MB
                       </p>
                     </motion.div>
@@ -655,42 +663,42 @@ export default function ScanContattoPage() {
                 </AnimatePresence>
               </div>
 
-              {/* Process Button */}
+              {/* Process Button - Mobile: larger touch target (min 48px height) */}
               {selectedFile && !extractedData && (
                 <motion.button
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   onClick={processImage}
                   disabled={isProcessing}
-                  className="mt-6 w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-6 w-full min-h-[48px] md:min-h-[44px] rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-base md:text-sm font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
                 >
                   {isProcessing ? (
                     <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Elaborazione in corso...
+                      <Loader2 className="h-6 w-6 md:h-5 md:w-5 animate-spin" />
+                      <span className="text-base md:text-sm">Elaborazione in corso...</span>
                     </span>
                   ) : (
                     <span className="flex items-center justify-center gap-2">
-                      <Sparkles className="h-5 w-5" />
-                      Avvia Scansione AI
+                      <Sparkles className="h-6 w-6 md:h-5 md:w-5" />
+                      <span className="text-base md:text-sm">Avvia Scansione AI</span>
                     </span>
                   )}
                 </motion.button>
               )}
             </div>
 
-            {/* Processing Steps */}
+            {/* Processing Steps - Mobile: larger text and spacing */}
             {(isProcessing || extractedData) && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-6 rounded-2xl bg-white/70 p-6 shadow-xl backdrop-blur-md"
+                className="mt-6 rounded-2xl bg-white/70 p-4 md:p-6 shadow-xl backdrop-blur-md"
               >
-                <h2 className="mb-4 text-xl font-semibold text-gray-900">
+                <h2 className="mb-4 text-lg md:text-xl font-bold md:font-semibold text-gray-900">
                   Progresso Elaborazione
                 </h2>
 
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   {steps.map((step, index) => {
                     const Icon = step.icon;
                     return (
@@ -701,10 +709,10 @@ export default function ScanContattoPage() {
                         transition={{ delay: index * 0.1 }}
                         className="flex items-start gap-4"
                       >
-                        {/* Icon */}
+                        {/* Icon - Mobile: larger */}
                         <div
                           className={`
-                            flex h-10 w-10 shrink-0 items-center justify-center rounded-full
+                            flex h-12 w-12 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-full
                             transition-all duration-300
                             ${
                               step.status === 'completed'
@@ -718,30 +726,33 @@ export default function ScanContattoPage() {
                           `}
                         >
                           {step.status === 'completed' ? (
-                            <CheckCircle2 className="h-5 w-5" />
+                            <CheckCircle2 className="h-6 w-6 md:h-5 md:w-5" />
                           ) : step.status === 'error' ? (
-                            <XCircle className="h-5 w-5" />
+                            <XCircle className="h-6 w-6 md:h-5 md:w-5" />
                           ) : step.status === 'processing' ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <Loader2 className="h-6 w-6 md:h-5 md:w-5 animate-spin" />
                           ) : (
-                            <Icon className="h-5 w-5" />
+                            <Icon className="h-6 w-6 md:h-5 md:w-5" />
                           )}
                         </div>
 
-                        {/* Content */}
+                        {/* Content - Mobile: larger text */}
                         <div className="flex-1">
-                          <p className="font-medium text-gray-900">
+                          <p className="text-base md:text-sm font-semibold md:font-medium text-gray-900">
                             {step.label}
                           </p>
                           {step.message && (
                             <p
-                              className={`text-sm ${
+                              className={`text-sm md:text-xs mt-1 ${
                                 step.status === 'error'
                                   ? 'text-red-600'
                                   : 'text-gray-600'
                               }`}
                             >
-                              {step.message}
+                              {/* Mobile: truncate long error messages */}
+                              <span className="line-clamp-2 md:line-clamp-none">
+                                {step.message}
+                              </span>
                             </p>
                           )}
                         </div>
@@ -823,12 +834,13 @@ export default function ScanContattoPage() {
                     </div>
                   )}
 
+                  {/* Mobile: larger touch-friendly buttons */}
                   <div className="space-y-3">
                     <a
                       href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${createdContact.id}&model=res.partner&view_type=form`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl"
+                      className="flex items-center justify-center gap-2 min-h-[48px] rounded-xl bg-blue-600 px-6 py-3 text-base md:text-sm font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95"
                     >
                       <ExternalLink className="h-5 w-5" />
                       Apri in Odoo
@@ -838,7 +850,7 @@ export default function ScanContattoPage() {
                     {contactType === 'person' && !linkedCompany && (
                       <button
                         onClick={() => setShowLinkModal(true)}
-                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-3 font-semibold text-white shadow-lg transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl"
+                        className="w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-3 text-base md:text-sm font-semibold text-white shadow-lg transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl active:scale-95"
                       >
                         <Link2 className="h-5 w-5" />
                         Collega ad Azienda
@@ -847,7 +859,7 @@ export default function ScanContattoPage() {
 
                     <button
                       onClick={resetForm}
-                      className="w-full rounded-xl bg-white px-6 py-3 font-semibold text-gray-700 shadow-md transition-all hover:bg-gray-50 hover:shadow-lg"
+                      className="w-full min-h-[48px] rounded-xl bg-white px-6 py-3 text-base md:text-sm font-semibold text-gray-700 shadow-md transition-all hover:bg-gray-50 hover:shadow-lg active:scale-95"
                     >
                       Scansiona Nuovo Contatto
                     </button>
@@ -889,7 +901,7 @@ export default function ScanContattoPage() {
                       isEditing={isEditing}
                     />
 
-                    {/* Email */}
+                    {/* Email - Mobile keyboard: email type */}
                     <FormField
                       icon={Mail}
                       label="Email"
@@ -899,9 +911,10 @@ export default function ScanContattoPage() {
                       }
                       isEditing={isEditing}
                       type="email"
+                      inputMode="email"
                     />
 
-                    {/* Phone */}
+                    {/* Phone - Mobile keyboard: tel type */}
                     <FormField
                       icon={Phone}
                       label="Telefono"
@@ -910,9 +923,11 @@ export default function ScanContattoPage() {
                         setExtractedData({ ...extractedData, phone: value })
                       }
                       isEditing={isEditing}
+                      type="tel"
+                      inputMode="tel"
                     />
 
-                    {/* Mobile */}
+                    {/* Mobile - Mobile keyboard: tel type */}
                     <FormField
                       icon={Phone}
                       label="Cellulare"
@@ -921,6 +936,8 @@ export default function ScanContattoPage() {
                         setExtractedData({ ...extractedData, mobile: value })
                       }
                       isEditing={isEditing}
+                      type="tel"
+                      inputMode="tel"
                     />
 
                     {/* Company */}
@@ -959,8 +976,8 @@ export default function ScanContattoPage() {
                       isEditing={isEditing}
                     />
 
-                    {/* ZIP & City */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* ZIP & City - Mobile: stacked on small screens */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         icon={Hash}
                         label="CAP"
@@ -969,6 +986,7 @@ export default function ScanContattoPage() {
                           setExtractedData({ ...extractedData, zip: value })
                         }
                         isEditing={isEditing}
+                        inputMode="numeric"
                       />
                       <FormField
                         icon={MapPin}
@@ -1003,7 +1021,7 @@ export default function ScanContattoPage() {
                       isEditing={isEditing}
                     />
 
-                    {/* Website */}
+                    {/* Website - Mobile keyboard: url type */}
                     <FormField
                       icon={Globe}
                       label="Sito Web"
@@ -1013,6 +1031,7 @@ export default function ScanContattoPage() {
                       }
                       isEditing={isEditing}
                       type="url"
+                      inputMode="url"
                     />
 
                     {/* VAT */}
@@ -1124,22 +1143,23 @@ export default function ScanContattoPage() {
 
                   {/* Content */}
                   <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
-                    {/* Search Input */}
+                    {/* Search Input - Mobile optimized */}
                     <div className="mb-6">
-                      <label className="mb-2 block text-sm font-medium text-gray-700">
+                      <label className="mb-2 block text-base md:text-sm font-semibold md:font-medium text-gray-700">
                         Cerca Azienda
                       </label>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <input
                           type="text"
+                          inputMode="search"
                           value={companySearchQuery}
                           onChange={(e) => {
                             setCompanySearchQuery(e.target.value);
                             searchCompanies(e.target.value);
                           }}
                           placeholder="Digita il nome dell'azienda..."
-                          className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-4 py-3 text-gray-900 transition-colors focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                          className="w-full min-h-[48px] md:min-h-[44px] rounded-lg border-2 md:border border-gray-300 bg-white pl-10 pr-4 py-3 text-base md:text-sm text-gray-900 transition-colors focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                           autoFocus
                         />
                       </div>
@@ -1230,7 +1250,7 @@ export default function ScanContattoPage() {
   );
 }
 
-// Form Field Component
+// Form Field Component - Mobile-optimized
 interface FormFieldProps {
   icon: React.ElementType;
   label: string;
@@ -1238,6 +1258,7 @@ interface FormFieldProps {
   onChange: (value: string) => void;
   isEditing: boolean;
   type?: string;
+  inputMode?: 'text' | 'email' | 'tel' | 'url' | 'numeric' | 'decimal' | 'search';
   multiline?: boolean;
 }
 
@@ -1248,12 +1269,14 @@ function FormField({
   onChange,
   isEditing,
   type = 'text',
+  inputMode,
   multiline = false,
 }: FormFieldProps) {
   return (
     <div>
-      <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-700">
-        <Icon className="h-4 w-4 text-gray-500" />
+      {/* Mobile: larger label text (16px+) for readability */}
+      <label className="mb-2 flex items-center gap-2 text-base md:text-sm font-semibold md:font-medium text-gray-700">
+        <Icon className="h-5 w-5 md:h-4 md:w-4 text-gray-500" />
         {label}
       </label>
 
@@ -1262,19 +1285,20 @@ function FormField({
           <textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            rows={3}
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            rows={4}
+            className="w-full min-h-[48px] md:min-h-[44px] rounded-lg border-2 md:border border-gray-300 bg-white px-4 py-3 text-base md:text-sm text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-y"
           />
         ) : (
           <input
             type={type}
+            inputMode={inputMode} // Mobile: triggers appropriate keyboard
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full min-h-[48px] md:min-h-[44px] rounded-lg border-2 md:border border-gray-300 bg-white px-4 py-3 text-base md:text-sm text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
         )
       ) : (
-        <div className="rounded-lg bg-gray-50 px-4 py-2.5 text-gray-900">
+        <div className="rounded-lg bg-gray-50 px-4 py-3 min-h-[48px] md:min-h-[44px] flex items-center text-base md:text-sm text-gray-900">
           {value || (
             <span className="italic text-gray-400">Non specificato</span>
           )}

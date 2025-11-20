@@ -147,10 +147,26 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ [SALES-RADAR] Errore ricerca:', error);
+
+    // Log dettagliato dell'errore per debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    console.error('❌ [SALES-RADAR] Error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      apiKeyPresent: !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+      apiKeyLength: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.length
+    });
+
     return NextResponse.json({
       success: false,
       error: 'Errore durante la ricerca aziende',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: errorMessage,
+      debug: process.env.NODE_ENV === 'development' ? {
+        stack: errorStack,
+        apiKeyConfigured: !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+      } : undefined
     }, { status: 500 });
   }
 }
