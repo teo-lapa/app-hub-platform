@@ -28,6 +28,8 @@ import {
   UserPlus,
   AlertCircle,
   X,
+  Menu,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Circle } from '@react-google-maps/api';
 
@@ -148,6 +150,9 @@ export default function SalesRadarPage() {
   const [showFilters, setShowFilters] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  // Mobile-specific state
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showMobileResults, setShowMobileResults] = useState(false);
 
   // Stats
   const existingCustomers = places.filter(p => p.existsInOdoo).length;
@@ -383,57 +388,57 @@ export default function SalesRadarPage() {
 
   return (
     <div className="flex h-screen flex-col bg-gray-50">
-      {/* Header */}
+      {/* Header - Mobile Optimized */}
       <div className="border-b bg-white shadow-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-3 sm:px-4 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={() => router.push('/')}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-gray-700 transition-colors hover:bg-gray-100"
+              className="flex items-center gap-1.5 sm:gap-2 rounded-lg px-2 py-2 sm:px-3 text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200"
             >
               <ArrowLeft className="h-5 w-5" />
-              <span className="font-medium">Dashboard</span>
+              <span className="hidden sm:inline font-medium text-sm">Dashboard</span>
             </button>
 
-            <div className="h-8 w-px bg-gray-300" />
+            <div className="hidden sm:block h-8 w-px bg-gray-300" />
 
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-2.5">
-                <MapPin className="h-6 w-6 text-white" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-2 sm:p-2.5">
+                <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Sales Radar</h1>
-                <p className="text-sm text-gray-600">
+                <h1 className="text-base sm:text-xl font-bold text-gray-900">Sales Radar</h1>
+                <p className="hidden sm:block text-sm text-gray-600">
                   Trova nuovi clienti nelle vicinanze
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="flex gap-6">
+          {/* Stats - Responsive */}
+          <div className="flex gap-3 sm:gap-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{newProspects}</div>
-              <div className="text-xs text-gray-600">Nuovi Prospect</div>
+              <div className="text-lg sm:text-2xl font-bold text-blue-600">{newProspects}</div>
+              <div className="text-[10px] sm:text-xs text-gray-600">Prospect</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-lg sm:text-2xl font-bold text-green-600">
                 {existingCustomers}
               </div>
-              <div className="text-xs text-gray-600">Già Clienti</div>
+              <div className="text-[10px] sm:text-xs text-gray-600">Clienti</div>
             </div>
-            <div className="text-center">
+            <div className="hidden sm:block text-center">
               <div className="text-2xl font-bold text-gray-900">{places.length}</div>
-              <div className="text-xs text-gray-600">Totale Trovati</div>
+              <div className="text-xs text-gray-600">Totale</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar - Filters & Controls */}
-        <div className="w-96 overflow-y-auto border-r bg-white p-4">
+      {/* Main Content - Mobile First Layout */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Desktop Sidebar - Hidden on Mobile */}
+        <div className="hidden lg:block lg:w-96 overflow-y-auto border-r bg-white p-4">
           {/* Filters Toggle */}
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -466,7 +471,7 @@ export default function SalesRadarPage() {
                   <select
                     value={radius}
                     onChange={(e) => setRadius(Number(e.target.value))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   >
                     {RADIUS_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -484,7 +489,7 @@ export default function SalesRadarPage() {
                   <select
                     value={placeType}
                     onChange={(e) => setPlaceType(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   >
                     {PLACE_TYPES.map((type) => (
                       <option key={type.value} value={type.value}>
@@ -504,7 +509,7 @@ export default function SalesRadarPage() {
                     value={keyword}
                     onChange={(e) => setKeyword(e.target.value)}
                     placeholder="es: pizza, sushi, hotel..."
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
               </motion.div>
@@ -516,12 +521,12 @@ export default function SalesRadarPage() {
             <button
               onClick={searchPlaces}
               disabled={isSearching || (!userLocation && !mapCenter)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
             >
               {isSearching ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Ricerca in corso...
+                  Ricerca...
                 </>
               ) : (
                 <>
@@ -535,7 +540,7 @@ export default function SalesRadarPage() {
               <button
                 onClick={searchPlaces}
                 disabled={isSearching}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-blue-600 bg-white px-6 py-3 font-semibold text-blue-600 transition-all hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-blue-600 bg-white px-6 py-3 text-base font-semibold text-blue-600 transition-all hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
               >
                 <RefreshCw className="h-5 w-5" />
                 Refresh
@@ -549,7 +554,7 @@ export default function SalesRadarPage() {
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 shrink-0 text-red-600" />
                 <div>
-                  <p className="font-semibold text-red-900">Errore</p>
+                  <p className="font-semibold text-red-900 text-sm">Errore</p>
                   <p className="text-sm text-red-700">{searchError}</p>
                 </div>
               </div>
@@ -562,9 +567,9 @@ export default function SalesRadarPage() {
               <div className="flex items-start gap-3">
                 <Navigation className="h-5 w-5 shrink-0 text-blue-600" />
                 <div>
-                  <p className="font-semibold text-blue-900">Posizione GPS</p>
+                  <p className="font-semibold text-blue-900 text-sm">Posizione GPS</p>
                   <p className="text-sm text-blue-700">
-                    {userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}
+                    {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
                   </p>
                 </div>
               </div>
@@ -574,7 +579,7 @@ export default function SalesRadarPage() {
           {/* Results List */}
           {places.length > 0 && (
             <div>
-              <h3 className="mb-3 font-semibold text-gray-900">
+              <h3 className="mb-3 text-sm font-semibold text-gray-900">
                 Risultati ({places.length})
               </h3>
 
@@ -595,8 +600,8 @@ export default function SalesRadarPage() {
                         : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    <div className="mb-2 flex items-start justify-between">
-                      <p className="font-semibold text-gray-900">{place.name}</p>
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <p className="font-semibold text-gray-900 text-sm leading-tight">{place.name}</p>
                       {place.isChecking ? (
                         <Loader2 className="h-5 w-5 shrink-0 animate-spin text-gray-400" />
                       ) : place.existsInOdoo ? (
@@ -606,7 +611,7 @@ export default function SalesRadarPage() {
                       )}
                     </div>
 
-                    <p className="mb-1 text-xs text-gray-600">{place.address}</p>
+                    <p className="mb-1 text-xs text-gray-600 line-clamp-1">{place.address}</p>
 
                     {place.rating && (
                       <div className="flex items-center gap-1 text-xs text-yellow-600">
@@ -634,7 +639,30 @@ export default function SalesRadarPage() {
           )}
         </div>
 
-        {/* Map */}
+        {/* Mobile Floating Action Buttons */}
+        <div className="lg:hidden absolute bottom-6 left-4 right-4 z-10 flex gap-3">
+          {/* Filters Button */}
+          <button
+            onClick={() => setShowMobileFilters(true)}
+            className="flex-1 flex items-center justify-center gap-2 rounded-full bg-white px-6 py-4 shadow-lg border-2 border-blue-600 text-blue-600 font-semibold transition-all active:scale-95 hover:bg-blue-50"
+          >
+            <SlidersHorizontal className="h-5 w-5" />
+            <span>Filtri</span>
+          </button>
+
+          {/* Results Button */}
+          {places.length > 0 && (
+            <button
+              onClick={() => setShowMobileResults(true)}
+              className="flex-1 flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 shadow-lg text-white font-semibold transition-all active:scale-95"
+            >
+              <MapPin className="h-5 w-5" />
+              <span>Risultati ({places.length})</span>
+            </button>
+          )}
+        </div>
+
+        {/* Map - Full Screen on Mobile */}
         <div className="relative flex-1">
           <GoogleMap
             mapContainerStyle={containerStyle}
@@ -646,6 +674,12 @@ export default function SalesRadarPage() {
               streetViewControl: false,
               mapTypeControl: false,
               fullscreenControl: false,
+              // Mobile optimizations
+              gestureHandling: 'greedy',
+              zoomControl: true,
+              zoomControlOptions: {
+                position: google.maps.ControlPosition.RIGHT_CENTER,
+              },
             }}
           >
             {/* User location marker */}
@@ -695,29 +729,31 @@ export default function SalesRadarPage() {
               />
             ))}
 
-            {/* Info window */}
+            {/* Info window - Mobile Optimized */}
             {selectedPlace && (
               <InfoWindow
                 position={selectedPlace.location}
                 onCloseClick={() => setSelectedPlace(null)}
               >
-                <div className="max-w-xs p-2">
-                  <h3 className="mb-2 text-lg font-bold text-gray-900">
+                <div className="max-w-[280px] sm:max-w-xs p-2">
+                  <h3 className="mb-2 text-base sm:text-lg font-bold text-gray-900 leading-tight">
                     {selectedPlace.name}
                   </h3>
 
                   <div className="mb-3 space-y-1.5 text-sm">
                     {selectedPlace.address && (
                       <div className="flex items-start gap-2 text-gray-700">
-                        <MapPin className="h-4 w-4 shrink-0" />
-                        <span>{selectedPlace.address}</span>
+                        <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
+                        <span className="text-xs sm:text-sm leading-tight">{selectedPlace.address}</span>
                       </div>
                     )}
 
                     {selectedPlace.phone && (
                       <div className="flex items-center gap-2 text-gray-700">
                         <Phone className="h-4 w-4 shrink-0" />
-                        <span>{selectedPlace.phone}</span>
+                        <a href={`tel:${selectedPlace.phone}`} className="text-xs sm:text-sm text-blue-600 hover:underline">
+                          {selectedPlace.phone}
+                        </a>
                       </div>
                     )}
 
@@ -728,7 +764,7 @@ export default function SalesRadarPage() {
                           href={selectedPlace.website}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
+                          className="text-xs sm:text-sm text-blue-600 hover:underline truncate"
                         >
                           Sito Web
                         </a>
@@ -738,12 +774,12 @@ export default function SalesRadarPage() {
                     {selectedPlace.rating && (
                       <div className="flex items-center gap-2 text-yellow-600">
                         <Star className="h-4 w-4 fill-current shrink-0" />
-                        <span>
+                        <span className="text-xs sm:text-sm">
                           {selectedPlace.rating} / 5
                           {selectedPlace.user_ratings_total && (
                             <span className="text-gray-500">
                               {' '}
-                              ({selectedPlace.user_ratings_total} recensioni)
+                              ({selectedPlace.user_ratings_total})
                             </span>
                           )}
                         </span>
@@ -754,11 +790,11 @@ export default function SalesRadarPage() {
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 shrink-0" />
                         <span
-                          className={
+                          className={`text-xs sm:text-sm font-medium ${
                             selectedPlace.opening_hours.open_now
                               ? 'text-green-600'
                               : 'text-red-600'
-                          }
+                          }`}
                         >
                           {selectedPlace.opening_hours.open_now
                             ? 'Aperto ora'
@@ -772,36 +808,34 @@ export default function SalesRadarPage() {
                   {selectedPlace.existsInOdoo && selectedPlace.odooCustomer ? (
                     <div className="mb-3 rounded-lg bg-green-50 p-3">
                       <div className="mb-2 flex items-center gap-2">
-                        <CheckCircle2 className="h-5 w-5 text-green-600" />
-                        <span className="font-semibold text-green-900">
+                        <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                        <span className="text-sm font-semibold text-green-900">
                           Cliente Esistente
                         </span>
                       </div>
 
                       {selectedPlace.salesData && (
-                        <div className="space-y-1 text-sm text-green-800">
+                        <div className="space-y-1 text-xs sm:text-sm text-green-800">
                           {selectedPlace.salesData.total_invoiced > 0 && (
                             <div className="flex items-center gap-2">
-                              <Euro className="h-4 w-4" />
+                              <Euro className="h-3 w-3 sm:h-4 sm:w-4" />
                               <span>
-                                Fatturato: €
-                                {selectedPlace.salesData.total_invoiced.toFixed(2)}
+                                €{selectedPlace.salesData.total_invoiced.toFixed(0)}
                               </span>
                             </div>
                           )}
 
                           {selectedPlace.salesData.order_count > 0 && (
                             <div className="flex items-center gap-2">
-                              <ShoppingCart className="h-4 w-4" />
-                              <span>Ordini: {selectedPlace.salesData.order_count}</span>
+                              <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <span>{selectedPlace.salesData.order_count} ordini</span>
                             </div>
                           )}
 
                           {selectedPlace.salesData.last_order_date && (
                             <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4" />
-                              <span>
-                                Ultimo ordine:{' '}
+                              <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <span className="text-xs">
                                 {new Date(
                                   selectedPlace.salesData.last_order_date
                                 ).toLocaleDateString('it-IT')}
@@ -815,7 +849,7 @@ export default function SalesRadarPage() {
                         href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.odooCustomer.id}&model=res.partner&view_type=form`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-700"
+                        className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-green-700 active:scale-95"
                       >
                         <ExternalLink className="h-4 w-4" />
                         Apri in Odoo
@@ -824,28 +858,28 @@ export default function SalesRadarPage() {
                   ) : selectedPlace.isChecking ? (
                     <div className="mb-3 rounded-lg bg-gray-50 p-3 text-center">
                       <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-gray-600" />
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs sm:text-sm text-gray-600">
                         Verifica in Odoo...
                       </p>
                     </div>
                   ) : (
                     <div className="mb-3 rounded-lg bg-red-50 p-3">
                       <div className="mb-2 flex items-center gap-2">
-                        <XCircle className="h-5 w-5 text-red-600" />
-                        <span className="font-semibold text-red-900">
+                        <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
+                        <span className="text-sm font-semibold text-red-900">
                           Nuovo Prospect
                         </span>
                       </div>
-                      <p className="mb-2 text-sm text-red-800">
+                      <p className="mb-2 text-xs sm:text-sm text-red-800">
                         Non presente in Odoo
                       </p>
 
                       <button
                         onClick={() => setShowCreateModal(true)}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-red-700 active:scale-95"
                       >
                         <UserPlus className="h-4 w-4" />
-                        Crea Contatto in Odoo
+                        Crea Contatto
                       </button>
                     </div>
                   )}
@@ -854,7 +888,7 @@ export default function SalesRadarPage() {
                     href={selectedPlace.google_maps_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-lg border-2 border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                    className="flex items-center justify-center gap-2 rounded-lg border-2 border-gray-300 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
                   >
                     <ExternalLink className="h-4 w-4" />
                     Google Maps
@@ -866,7 +900,266 @@ export default function SalesRadarPage() {
         </div>
       </div>
 
-      {/* Create Contact Modal */}
+      {/* Mobile Bottom Sheet - Filters */}
+      <AnimatePresence>
+        {showMobileFilters && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileFilters(false)}
+              className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            />
+
+            {/* Bottom Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="lg:hidden fixed bottom-0 left-0 right-0 z-50 max-h-[85vh] overflow-hidden rounded-t-3xl bg-white shadow-2xl"
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="h-1.5 w-12 rounded-full bg-gray-300" />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between border-b px-6 py-4">
+                <h3 className="text-lg font-bold text-gray-900">Filtri Ricerca</h3>
+                <button
+                  onClick={() => setShowMobileFilters(false)}
+                  className="rounded-full p-2 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                >
+                  <X className="h-6 w-6 text-gray-600" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="overflow-y-auto p-6 pb-8" style={{ maxHeight: 'calc(85vh - 140px)' }}>
+                <div className="space-y-5">
+                  {/* Radius */}
+                  <div>
+                    <label className="mb-2 block text-base font-medium text-gray-700">
+                      Raggio di Ricerca
+                    </label>
+                    <select
+                      value={radius}
+                      onChange={(e) => setRadius(Number(e.target.value))}
+                      className="w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-4 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    >
+                      {RADIUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Place Type */}
+                  <div>
+                    <label className="mb-2 block text-base font-medium text-gray-700">
+                      Tipo Attività
+                    </label>
+                    <select
+                      value={placeType}
+                      onChange={(e) => setPlaceType(e.target.value)}
+                      className="w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-4 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    >
+                      {PLACE_TYPES.map((type) => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Keyword */}
+                  <div>
+                    <label className="mb-2 block text-base font-medium text-gray-700">
+                      Parola Chiave (opzionale)
+                    </label>
+                    <input
+                      type="text"
+                      value={keyword}
+                      onChange={(e) => setKeyword(e.target.value)}
+                      placeholder="es: pizza, sushi, hotel..."
+                      className="w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-4 text-base text-gray-900 placeholder:text-gray-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+
+                  {/* User Location Info */}
+                  {userLocation && (
+                    <div className="rounded-xl bg-blue-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <Navigation className="h-5 w-5 shrink-0 text-blue-600 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-blue-900 text-sm">Posizione GPS Rilevata</p>
+                          <p className="text-sm text-blue-700">
+                            {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error */}
+                  {searchError && (
+                    <div className="rounded-xl bg-red-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 shrink-0 text-red-600 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-red-900 text-sm">Errore</p>
+                          <p className="text-sm text-red-700">{searchError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer - Search Button */}
+              <div className="border-t bg-gray-50 p-6">
+                <button
+                  onClick={() => {
+                    searchPlaces();
+                    setShowMobileFilters(false);
+                  }}
+                  disabled={isSearching || (!userLocation && !mapCenter)}
+                  className="flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-base font-semibold text-white shadow-lg transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSearching ? (
+                    <>
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span>Ricerca in corso...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-6 w-6" />
+                      <span>Cerca Aziende</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Bottom Sheet - Results */}
+      <AnimatePresence>
+        {showMobileResults && places.length > 0 && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileResults(false)}
+              className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            />
+
+            {/* Bottom Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="lg:hidden fixed bottom-0 left-0 right-0 z-50 max-h-[85vh] overflow-hidden rounded-t-3xl bg-white shadow-2xl"
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="h-1.5 w-12 rounded-full bg-gray-300" />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between border-b px-6 py-4">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Risultati</h3>
+                  <p className="text-sm text-gray-600">
+                    {newProspects} prospect, {existingCustomers} clienti
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowMobileResults(false)}
+                  className="rounded-full p-2 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                >
+                  <X className="h-6 w-6 text-gray-600" />
+                </button>
+              </div>
+
+              {/* Results List */}
+              <div className="overflow-y-auto p-4 pb-8" style={{ maxHeight: 'calc(85vh - 140px)' }}>
+                <div className="space-y-3">
+                  {places.map((place) => (
+                    <motion.button
+                      key={place.place_id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => {
+                        setSelectedPlace(place);
+                        map?.panTo(place.location);
+                        map?.setZoom(16);
+                        setShowMobileResults(false);
+                      }}
+                      className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
+                        selectedPlace?.place_id === place.place_id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300 active:bg-gray-50'
+                      }`}
+                    >
+                      <div className="mb-2 flex items-start justify-between gap-3">
+                        <p className="font-semibold text-gray-900 text-base leading-tight">{place.name}</p>
+                        {place.isChecking ? (
+                          <Loader2 className="h-6 w-6 shrink-0 animate-spin text-gray-400" />
+                        ) : place.existsInOdoo ? (
+                          <CheckCircle2 className="h-6 w-6 shrink-0 text-green-600" />
+                        ) : (
+                          <XCircle className="h-6 w-6 shrink-0 text-red-600" />
+                        )}
+                      </div>
+
+                      <p className="mb-2 text-sm text-gray-600 line-clamp-2">{place.address}</p>
+
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {place.rating && (
+                          <div className="flex items-center gap-1 text-sm text-yellow-600">
+                            <Star className="h-4 w-4 fill-current" />
+                            <span>{place.rating}</span>
+                          </div>
+                        )}
+
+                        {place.existsInOdoo && place.salesData && (
+                          <>
+                            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                              Cliente
+                            </span>
+                            {place.salesData.total_invoiced > 0 && (
+                              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+                                €{place.salesData.total_invoiced.toFixed(0)}
+                              </span>
+                            )}
+                          </>
+                        )}
+
+                        {!place.existsInOdoo && !place.isChecking && (
+                          <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
+                            Nuovo Prospect
+                          </span>
+                        )}
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Create Contact Modal - Mobile Optimized */}
       <AnimatePresence>
         {showCreateModal && selectedPlace && (
           <>
@@ -879,55 +1172,55 @@ export default function SalesRadarPage() {
               className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
             />
 
-            {/* Modal */}
+            {/* Modal - Desktop center, Mobile bottom sheet */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              className="fixed inset-x-0 bottom-0 sm:inset-0 z-50 flex sm:items-center sm:justify-center p-0 sm:p-4"
             >
-              <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+              <div className="relative w-full max-w-2xl overflow-hidden rounded-t-3xl sm:rounded-2xl bg-white shadow-2xl">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6 text-white">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <UserPlus className="h-6 w-6" />
-                      <h3 className="text-xl font-bold">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <UserPlus className="h-5 w-5 sm:h-6 sm:w-6" />
+                      <h3 className="text-base sm:text-xl font-bold">
                         Crea Contatto in Odoo
                       </h3>
                     </div>
                     {!isCreating && (
                       <button
                         onClick={() => setShowCreateModal(false)}
-                        className="rounded-lg p-2 transition-colors hover:bg-white/20"
+                        className="rounded-lg p-2 transition-colors hover:bg-white/20 active:bg-white/30"
                       >
-                        <X className="h-5 w-5" />
+                        <X className="h-5 w-5 sm:h-6 sm:w-6" />
                       </button>
                     )}
                   </div>
                 </div>
 
                 {/* Content */}
-                <div className="max-h-[70vh] overflow-y-auto p-6">
-                  <div className="mb-6 rounded-xl bg-blue-50 p-4">
-                    <h4 className="mb-2 font-semibold text-blue-900">
+                <div className="max-h-[60vh] sm:max-h-[70vh] overflow-y-auto p-4 sm:p-6">
+                  <div className="mb-4 sm:mb-6 rounded-xl bg-blue-50 p-3 sm:p-4">
+                    <h4 className="mb-2 text-sm sm:text-base font-semibold text-blue-900">
                       {selectedPlace.name}
                     </h4>
-                    <div className="space-y-1 text-sm text-blue-800">
+                    <div className="space-y-1 text-xs sm:text-sm text-blue-800">
                       {selectedPlace.address && <p>{selectedPlace.address}</p>}
                       {selectedPlace.phone && <p>Tel: {selectedPlace.phone}</p>}
                       {selectedPlace.website && (
-                        <p>Web: {selectedPlace.website}</p>
+                        <p className="truncate">Web: {selectedPlace.website}</p>
                       )}
                     </div>
                   </div>
 
-                  <p className="mb-4 text-gray-700">
+                  <p className="mb-4 text-sm sm:text-base text-gray-700">
                     Verrà creato un nuovo contatto in Odoo con i dati di Google
                     Places. Potrai modificare i dettagli successivamente.
                   </p>
 
-                  <div className="space-y-2 text-sm text-gray-600">
+                  <div className="space-y-2 text-xs sm:text-sm text-gray-600">
                     <p>✓ Nome azienda</p>
                     <p>✓ Indirizzo completo</p>
                     <p>✓ Telefono</p>
@@ -938,28 +1231,28 @@ export default function SalesRadarPage() {
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 border-t bg-gray-50 p-6">
+                <div className="flex gap-3 border-t bg-gray-50 p-4 sm:p-6">
                   <button
                     onClick={() => setShowCreateModal(false)}
                     disabled={isCreating}
-                    className="flex-1 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex-1 rounded-xl border-2 border-gray-300 bg-white px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-gray-700 transition-colors hover:bg-gray-50 active:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Annulla
                   </button>
                   <button
                     onClick={() => createContactInOdoo(selectedPlace)}
                     disabled={isCreating}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 font-semibold text-white transition-colors hover:from-blue-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white transition-colors hover:from-blue-700 hover:to-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isCreating ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        Creazione...
+                        <span>Creazione...</span>
                       </>
                     ) : (
                       <>
                         <UserPlus className="h-5 w-5" />
-                        Crea Contatto
+                        <span>Crea Contatto</span>
                       </>
                     )}
                   </button>
