@@ -229,7 +229,7 @@ export async function GET(request: NextRequest) {
       const lastSupplier = purchases[0]; // Più recente
       const lastSupplierStats = supplierStats.get(lastSupplier.supplierId);
 
-      let mainSupplier = null;
+      let mainSupplier: any = null;
 
       if (lastSupplierStats && lastSupplierStats.count >= 2) {
         // Ultimo fornitore ha almeno 2 ordini → è il principale
