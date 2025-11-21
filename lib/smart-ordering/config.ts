@@ -60,21 +60,28 @@ export const ORDER_OPTIMIZATION_CONFIG = {
    *
    * Formula NUOVA: Qtà = (consumo_giornaliero × coverage_days) - stock_effettivo
    * Coverage già include safety buffer (no aggiunta separata)
+   *
+   * ⚠️ NOTA: I valori sotto sono SOLO DOCUMENTAZIONE (esempi con leadTime=3gg)
+   * Il calcolo REALE è DINAMICO nella funzione getCoverageDays():
+   * - critical: leadTimeDays + 2
+   * - high: leadTimeDays + 4
+   * - medium: leadTimeDays + 7
+   * - low: leadTimeDays + 10
    */
   coverageDays: {
-    /** Prodotti CRITICAL/EMERGENCY: lead time + 2 giorni buffer (per ordini frequenti) */
+    /** Prodotti CRITICAL/EMERGENCY: leadTime + 2 buffer (esempio: 3+2=5) */
     critical: 5,
 
-    /** Prodotti HIGH urgency: lead time + 4 giorni buffer (per ordini frequenti) */
+    /** Prodotti HIGH urgency: leadTime + 4 buffer (esempio: 3+4=7) */
     high: 7,
 
-    /** Prodotti MEDIUM urgency: lead time + 7 giorni buffer */
+    /** Prodotti MEDIUM urgency: leadTime + 7 buffer (esempio: 3+7=10) */
     medium: 10,
 
-    /** Prodotti LOW urgency: lead time + 10 giorni buffer */
+    /** Prodotti LOW urgency: leadTime + 10 buffer (esempio: 3+10=13) */
     low: 13,
 
-    /** Default se urgency non determinata */
+    /** Default: leadTime + 3 buffer (esempio: 3+3=6) */
     default: 7,
   },
 
@@ -150,22 +157,28 @@ export function getMinOrderValue(supplierName: string): number {
 
 /**
  * Helper: Ottieni giorni copertura per urgency level
+ *
+ * @param urgencyLevel - Livello urgenza del prodotto
+ * @param leadTimeDays - Lead time REALE del fornitore in giorni (da Odoo product.supplierinfo.delay)
+ * @returns Giorni di copertura calcolati DINAMICAMENTE: leadTime + buffer basato su urgency
  */
-export function getCoverageDays(urgencyLevel: 'CRITICAL' | 'EMERGENCY' | 'HIGH' | 'MEDIUM' | 'LOW'): number {
-  const config = ORDER_OPTIMIZATION_CONFIG.coverageDays;
-
+export function getCoverageDays(
+  urgencyLevel: 'CRITICAL' | 'EMERGENCY' | 'HIGH' | 'MEDIUM' | 'LOW',
+  leadTimeDays: number = 3 // Default fallback se non fornito
+): number {
+  // CALCOLO DINAMICO: Lead time reale + buffer variabile per urgency
   switch (urgencyLevel) {
     case 'CRITICAL':
     case 'EMERGENCY':
-      return config.critical;
+      return leadTimeDays + 2; // Minimo buffer per prodotti critici
     case 'HIGH':
-      return config.high;
+      return leadTimeDays + 4; // Buffer moderato
     case 'MEDIUM':
-      return config.medium;
+      return leadTimeDays + 7; // Buffer standard
     case 'LOW':
-      return config.low;
+      return leadTimeDays + 10; // Buffer maggiore per prodotti lenti
     default:
-      return config.default;
+      return leadTimeDays + 3; // Default buffer
   }
 }
 

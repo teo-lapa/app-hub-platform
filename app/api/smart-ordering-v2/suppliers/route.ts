@@ -85,14 +85,56 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ ${products.length} prodotti caricati (excluding preorder products)`);
 
+    // 3.5. Carica informazioni fornitori per LEAD TIME REALE da product.supplierinfo
+    console.log('🚚 Caricamento lead time reali da product.supplierinfo...');
+    const productIds = products.map((p: any) => p.id);
+
+    // Extract all seller_ids from products to query supplierinfo
+    const allSellerIds: number[] = [];
+    products.forEach((p: any) => {
+      if (p.seller_ids && Array.isArray(p.seller_ids)) {
+        allSellerIds.push(...p.seller_ids);
+      }
+    });
+
+    // Query product.supplierinfo to get REAL delay field
+    const productLeadTimes = new Map<number, { supplierId: number; delay: number; price: number }[]>();
+
+    if (allSellerIds.length > 0) {
+      const supplierInfoRecords = await rpc.searchRead(
+        'product.supplierinfo',
+        [['id', 'in', allSellerIds]],
+        ['id', 'partner_id', 'product_tmpl_id', 'delay', 'price', 'min_qty'],
+        0
+      );
+
+      // Map product_tmpl_id -> supplier info with delay
+      supplierInfoRecords.forEach((info: any) => {
+        const tmplId = info.product_tmpl_id ? info.product_tmpl_id[0] : null;
+        if (!tmplId) return;
+
+        if (!productLeadTimes.has(tmplId)) {
+          productLeadTimes.set(tmplId, []);
+        }
+
+        productLeadTimes.get(tmplId)!.push({
+          supplierId: info.partner_id[0],
+          delay: info.delay || 3, // Default 3 se non specificato
+          price: info.price || 0
+        });
+      });
+
+      console.log(`✅ Lead time reali caricati per ${productLeadTimes.size} templates da Odoo`);
+    }
+
     // Load ALL incoming stock moves at once (batch query for efficiency)
     console.log('📦 Caricamento merce in arrivo...');
-    const productIds = products.map((p: any) => p.id);
+    const productIdsForMoves = products.map((p: any) => p.id);
 
     const incomingMoves = await rpc.searchRead(
       'stock.move',
       [
-        ['product_id', 'in', productIds],
+        ['product_id', 'in', productIdsForMoves],
         ['picking_code', '=', 'incoming'],
         ['state', 'in', ['confirmed', 'assigned', 'waiting']],
       ],
@@ -203,10 +245,21 @@ export async function GET(request: NextRequest) {
         const product = products.find((p: any) => p.id === productId);
         const templateId = product?.product_tmpl_id ? product.product_tmpl_id[0] : productId;
 
+        // Cerca LEAD TIME REALE da product.supplierinfo
+        let realLeadTime = 7; // Default fallback
+        const supplierInfos = productLeadTimes.get(templateId);
+        if (supplierInfos) {
+          // Trova l'info del fornitore principale
+          const mainSupplierInfo = supplierInfos.find(si => si.supplierId === mainSupplier.supplierId);
+          if (mainSupplierInfo && mainSupplierInfo.delay > 0) {
+            realLeadTime = mainSupplierInfo.delay; // USA DELAY REALE DA ODOO!
+          }
+        }
+
         supplierMap.set(templateId, {
           id: mainSupplier.supplierId,
           name: mainSupplier.supplierName,
-          leadTime: 7, // Default, verrà sovrascritto se disponibile
+          leadTime: realLeadTime, // Lead time REALE da Odoo!
           price: 0
         });
       }
@@ -231,11 +284,15 @@ export async function GET(request: NextRequest) {
     });
     console.log(`✅ ${supplierCadences.size} cadenze caricate dal database`);
 
-    // Aggiorna supplierMap con le cadenze reali
+    // Aggiorna supplierMap con le cadenze e usa lead time DB solo come FALLBACK
     supplierMap.forEach((supplier: any, templateId: any) => {
       const cadence = supplierCadences.get(supplier.id);
       if (cadence) {
-        supplier.leadTime = cadence.leadTimeDays;
+        // USA lead time da DB SOLO se non abbiamo quello reale da Odoo (ancora a default 7)
+        // Il lead time reale da Odoo ha la priorità!
+        if (supplier.leadTime === 7) {
+          supplier.leadTime = cadence.leadTimeDays; // Fallback dal DB
+        }
         supplier.cadenceDays = cadence.cadenceDays;
       }
     });

@@ -38,7 +38,7 @@ interface SupplierOrderStats {
   totalOrders: number;
   averageCadenceDays: number;
   lastOrderDate: string;
-  averageLeadTime: number;
+  // averageLeadTime REMOVED - ora calcolato da fetchAverageLeadTimeFromOdoo()
 }
 
 interface SyncOptions {
@@ -180,6 +180,74 @@ async function fetchPurchaseOrdersForSupplier(
 }
 
 /**
+ * Calcola LEAD TIME REALE dalla media dei delay in product.supplierinfo
+ */
+async function fetchAverageLeadTimeFromOdoo(
+  uid: number,
+  supplierId: number
+): Promise<number> {
+  try {
+    // Query product.supplierinfo per questo fornitore per ottenere i delay field
+    const response = await fetch(`${ODOO_URL}/jsonrpc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          service: 'object',
+          method: 'execute_kw',
+          args: [
+            ODOO_DB,
+            uid,
+            ODOO_PASSWORD,
+            'product.supplierinfo',
+            'search_read',
+            [[['partner_id', '=', supplierId]]],
+            {
+              fields: ['delay'],
+              limit: 1000
+            }
+          ]
+        },
+        id: Math.floor(Math.random() * 1000000)
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error || !data.result) {
+      return 3; // Default fallback
+    }
+
+    const supplierInfos = data.result;
+
+    if (supplierInfos.length === 0) {
+      return 3; // Nessun dato → default 3 giorni
+    }
+
+    // Calcola media dei delay (escludendo 0 e null)
+    const validDelays = supplierInfos
+      .map((info: any) => info.delay || 0)
+      .filter((d: number) => d > 0);
+
+    if (validDelays.length === 0) {
+      return 3; // Nessun delay valido → default 3
+    }
+
+    const avgDelay = Math.round(
+      validDelays.reduce((sum: number, d: number) => sum + d, 0) / validDelays.length
+    );
+
+    return avgDelay;
+
+  } catch (error) {
+    console.warn(`⚠️ [LEAD TIME] Error fetching lead time for supplier ${supplierId}:`, error);
+    return 3; // Fallback in caso di errore
+  }
+}
+
+/**
  * Calcola statistiche e cadenza reale da storico ordini
  */
 function calculateCadenceFromOrders(orders: OdooPurchaseOrder[]): SupplierOrderStats | null {
@@ -198,8 +266,7 @@ function calculateCadenceFromOrders(orders: OdooPurchaseOrder[]): SupplierOrderS
       orderDates,
       totalOrders: 1,
       averageCadenceDays: 14,
-      lastOrderDate,
-      averageLeadTime: 3
+      lastOrderDate
     };
   }
 
@@ -221,8 +288,7 @@ function calculateCadenceFromOrders(orders: OdooPurchaseOrder[]): SupplierOrderS
       orderDates,
       totalOrders: orders.length,
       averageCadenceDays: 14,
-      lastOrderDate,
-      averageLeadTime: 3
+      lastOrderDate
     };
   }
 
@@ -237,11 +303,8 @@ function calculateCadenceFromOrders(orders: OdooPurchaseOrder[]): SupplierOrderS
   else if (avgInterval <= 25) cadenceDays = 21;
   else cadenceDays = 30;
 
-  // Lead time basato su frequenza (più frequente = più urgente = lead time minore)
-  let leadTime = 3;
-  if (cadenceDays <= 3) leadTime = 1;
-  else if (cadenceDays <= 7) leadTime = 2;
-  else leadTime = 3;
+  // LEAD TIME RIMOSSO - ora calcolato separatamente da fetchAverageLeadTimeFromOdoo()
+  // che legge il valore REALE dal campo delay di product.supplierinfo
 
   return {
     supplierId: orders[0].partner_id[0],
@@ -249,8 +312,7 @@ function calculateCadenceFromOrders(orders: OdooPurchaseOrder[]): SupplierOrderS
     orderDates,
     totalOrders: orders.length,
     averageCadenceDays: cadenceDays,
-    lastOrderDate,
-    averageLeadTime: leadTime
+    lastOrderDate
   };
 }
 
@@ -321,6 +383,9 @@ export async function syncSuppliersFromOdoo(options: SyncOptions = {}): Promise<
         // Calculate cadence from orders
         const stats = calculateCadenceFromOrders(orders);
 
+        // 🚚 FETCH REAL LEAD TIME from product.supplierinfo (NOT from order frequency!)
+        const realLeadTime = await fetchAverageLeadTimeFromOdoo(uid, supplier.id);
+
         if (stats && stats.totalOrders > 0) {
           // Supplier WITH cadence (has recent orders)
           // NON impostiamo is_active - è gestito MANUALMENTE
@@ -332,14 +397,14 @@ export async function syncSuppliersFromOdoo(options: SyncOptions = {}): Promise<
             city: supplier.city || null,
             cadence_type: 'fixed_days' as CadenceType,
             cadence_value: stats.averageCadenceDays,
-            average_lead_time_days: stats.averageLeadTime,
+            average_lead_time_days: realLeadTime, // 🚚 REAL lead time from Odoo!
             last_cadence_order_date: stats.lastOrderDate,
             // is_active NON viene modificato - resta come è nel DB
-            notes: `Cadenza calcolata da ${stats.totalOrders} ordini negli ultimi ${monthsBack} mesi. Media: ${stats.averageCadenceDays} giorni.`
+            notes: `Cadenza ${stats.averageCadenceDays}gg da ${stats.totalOrders} ordini. Lead time ${realLeadTime}gg da product.supplierinfo.`
           });
 
           withCadence++;
-          console.log(`✅ [SUPPLIER SYNC] ${supplier.name}: Cadenza ${stats.averageCadenceDays} gg (${stats.totalOrders} ordini)`);
+          console.log(`✅ [SUPPLIER SYNC] ${supplier.name}: Cadenza ${stats.averageCadenceDays}gg, Lead time ${realLeadTime}gg (${stats.totalOrders} ordini)`);
         } else {
           // Supplier WITHOUT cadence (no recent orders)
           // NON impostiamo is_active - è gestito MANUALMENTE
@@ -351,10 +416,10 @@ export async function syncSuppliersFromOdoo(options: SyncOptions = {}): Promise<
             city: supplier.city || null,
             cadence_type: 'fixed_days' as CadenceType,
             cadence_value: 7, // Default placeholder
-            average_lead_time_days: 3,
+            average_lead_time_days: realLeadTime, // 🚚 REAL lead time from Odoo even if no orders!
             last_cadence_order_date: null,
             // is_active NON viene modificato - resta come è nel DB
-            notes: `Nessun ordine negli ultimi ${monthsBack} mesi`
+            notes: `Nessun ordine negli ultimi ${monthsBack} mesi. Lead time ${realLeadTime}gg da product.supplierinfo.`
           });
 
           withoutCadence++;
