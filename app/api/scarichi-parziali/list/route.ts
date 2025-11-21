@@ -154,6 +154,57 @@ async function getProdottiNonScaricati(sessionId: string, pickingId: number) {
   return prodottiNonScaricati;
 }
 
+
+async function getAutistaEVeicolo(sessionId: string, pickingId: number, batchId: number | null, locationName: string | null) {
+  let autista = null;
+  let veicolo = null;
+
+  // Prova 1: Se picking ha batch_id, leggi info da batch
+  if (batchId) {
+    try {
+      const batch = await callOdoo(sessionId, 'stock.picking.batch', 'read', [[batchId]], {
+        fields: ['x_studio_autista_del_giro', 'x_studio_auto_del_giro']
+      });
+
+      if (batch && batch.length > 0) {
+        autista = batch[0].x_studio_autista_del_giro ? batch[0].x_studio_autista_del_giro[1] : null;
+        veicolo = batch[0].x_studio_auto_del_giro ? batch[0].x_studio_auto_del_giro[1] : null;
+      }
+    } catch (error) {
+      console.log('   ⚠️  Errore lettura batch:', error);
+    }
+  }
+
+  // Prova 2: Estrai autista dalla location (es: "WH/Furgoni/Liviu")
+  if (!autista && locationName && locationName.includes('Furgon')) {
+    const parts = locationName.split('/');
+    if (parts.length >= 3) {
+      autista = parts[2]; // "Liviu"
+      veicolo = veicolo || autista; // Usa il nome autista come default per veicolo
+    }
+  }
+
+  return { autista, veicolo };
+}
+
+async function checkReturnCreated(sessionId: string, residualPickingName: string) {
+  try {
+    // Cerca transfer interni con origin che contiene il nome del picking residuo
+    const existingReturns = await callOdoo(sessionId, 'stock.picking', 'search_read', [[
+      ['picking_type_code', '=', 'internal'],
+      ['origin', 'ilike', residualPickingName]
+    ]], {
+      fields: ['id', 'name', 'state'],
+      limit: 1
+    });
+
+    return existingReturns && existingReturns.length > 0;
+  } catch (error) {
+    console.log('   ⚠️  Errore verifica return:', error);
+    return false;
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Autentica con sessione utente
@@ -169,18 +220,10 @@ export async function GET(request: NextRequest) {
 
     console.log('📋 Ricerca ordini OUT residui...');
 
-    // Data di oggi
-    const oggi = new Date();
-    oggi.setHours(0, 0, 0, 0);
-    const oggiStr = oggi.toISOString().split('T')[0];
-
-    console.log(`⚠️  Escludendo ordini con data prevista di OGGI: ${oggiStr}`);
-
-    // Cerca tutti i picking OUT in stato "assigned" (Pronto) con data < oggi
+    // Cerca TUTTI i picking OUT in stato "assigned" (Pronto), senza filtro per data
     const pickingsResidui = await callOdoo(sessionId, 'stock.picking', 'search_read', [[
       ['picking_type_code', '=', 'outgoing'],
-      ['state', '=', 'assigned'],
-      ['scheduled_date', '<', oggiStr]
+      ['state', '=', 'assigned']
     ]], {
       fields: [
         'name',
@@ -188,7 +231,9 @@ export async function GET(request: NextRequest) {
         'scheduled_date',
         'state',
         'origin',
-        'move_ids_without_package'
+        'move_ids_without_package',
+        'batch_id',
+        'location_id'
       ],
       order: 'scheduled_date desc'
     });
@@ -213,17 +258,29 @@ export async function GET(request: NextRequest) {
       // Trova OUT completato per questo Sales Order
       const outCompletato = await trovaOutCompletato(sessionId, salesOrderName);
 
+      // Recupera info autista e veicolo
+      const batchId = pickingResiduo.batch_id ? pickingResiduo.batch_id[0] : null;
+      const locationName = pickingResiduo.location_id ? pickingResiduo.location_id[1] : null;
+      const { autista, veicolo } = await getAutistaEVeicolo(sessionId, pickingResiduo.id, batchId, locationName);
+
+      // Verifica se il return è già stato creato
+      const returnCreated = await checkReturnCreated(sessionId, pickingResiduo.name);
+
       if (!outCompletato) {
         console.log('   ⚠️  Nessun OUT completato trovato per questo SO');
         ordiniConDettagli.push({
           numeroOrdineResiduo: pickingResiduo.name,
           cliente: pickingResiduo.partner_id ? pickingResiduo.partner_id[1] : 'Sconosciuto',
+          clienteId: pickingResiduo.partner_id ? pickingResiduo.partner_id[0] : 0,
           dataPrevisita: pickingResiduo.scheduled_date,
           salesOrder: salesOrderName,
           outCompletato: null,
           prodottiNonScaricati: [],
           messaggiScaricoParziale: [],
-          haScarichiParziali: false
+          haScarichiParziali: false,
+          autista,
+          veicolo,
+          returnCreated
         });
         continue;
       }
@@ -248,7 +305,10 @@ export async function GET(request: NextRequest) {
         outCompletato: outCompletato.name,
         prodottiNonScaricati,
         messaggiScaricoParziale,
-        haScarichiParziali: messaggiScaricoParziale.length > 0
+        haScarichiParziali: messaggiScaricoParziale.length > 0,
+        autista,
+        veicolo,
+        returnCreated
       });
     }
 

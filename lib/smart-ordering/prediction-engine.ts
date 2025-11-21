@@ -146,7 +146,7 @@ export class SmartPredictionEngine {
       console.log(`📅 Cadenza DB: ${supplierInfo.cadenceDays}gg (${urgencyLevel}) → coverage ${coverageDays}gg (lead ${leadTimeDays} + cadenza ${supplierInfo.cadenceDays} + buffer ${bufferDays})`);
     } else if (urgencyLevel) {
       // PRIORITÀ 2: Usa configurazione basata su urgency (già include safety buffer)
-      coverageDays = getCoverageDays(urgencyLevel);
+      coverageDays = getCoverageDays(urgencyLevel, leadTimeDays); // 🚚 Passa lead time REALE!
       // Coverage days da config GIÀ include safety buffer, non aggiungere separato
       useSeparateSafetyStock = false;
     } else if (supplierInfo) {

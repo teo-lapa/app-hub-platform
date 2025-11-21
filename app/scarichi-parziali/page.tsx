@@ -13,7 +13,13 @@ import {
   Calendar,
   FileText,
   Home,
-  RefreshCw
+  RefreshCw,
+  User,
+  Car,
+  ExternalLink,
+  Volume2,
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -34,12 +40,16 @@ interface ProductNotDelivered {
 interface ResidualOrder {
   numeroOrdineResiduo: string;
   cliente: string;
+  clienteId: number;
   dataPrevisita: string;
   salesOrder: string;
   outCompletato: string;
   prodottiNonScaricati: ProductNotDelivered[];
   messaggiScaricoParziale: PartialDischargeMessage[];
   haScarichiParziali: boolean;
+  autista?: string;
+  veicolo?: string;
+  returnCreated?: boolean;
 }
 
 export default function ScarichiParzialiPage() {
@@ -48,6 +58,7 @@ export default function ScarichiParzialiPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creatingTransfer, setCreatingTransfer] = useState<string | null>(null);
+  const [selectedOrderForMotivation, setSelectedOrderForMotivation] = useState<ResidualOrder | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -71,6 +82,66 @@ export default function ScarichiParzialiPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openPickingInOdoo = async (pickingName: string) => {
+    const odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+
+    try {
+      // Cerca l'ID del picking
+      const response = await fetch('/api/scarichi-parziali/get-picking-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pickingName })
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.pickingId) {
+        // Apri direttamente il documento
+        const url = `${odooUrl}/web#id=${data.pickingId}&model=stock.picking&view_type=form&cids=1&menu_id=146`;
+        window.open(url, '_blank');
+      } else {
+        // Fallback: apri la lista
+        const searchUrl = `${odooUrl}/web#action=stock.action_picking_tree_all&model=stock.picking&view_type=list&cids=1&menu_id=146`;
+        window.open(searchUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Errore apertura picking:', error);
+      // Fallback: apri la lista
+      const searchUrl = `${odooUrl}/web#action=stock.action_picking_tree_all&model=stock.picking&view_type=list&cids=1&menu_id=146`;
+      window.open(searchUrl, '_blank');
+    }
+  };
+
+  const openSalesOrderInOdoo = async (salesOrderName: string) => {
+    const odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+
+    try {
+      // Cerca l'ID del sales order
+      const response = await fetch('/api/scarichi-parziali/get-sales-order-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salesOrderName })
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.salesOrderId) {
+        // Apri direttamente il documento
+        const url = `${odooUrl}/web#id=${data.salesOrderId}&model=sale.order&view_type=form&cids=1&menu_id=162`;
+        window.open(url, '_blank');
+      } else {
+        // Fallback: apri la lista
+        const searchUrl = `${odooUrl}/web#action=sale.action_orders&model=sale.order&view_type=list&cids=1&menu_id=162`;
+        window.open(searchUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Errore apertura sales order:', error);
+      // Fallback: apri la lista
+      const searchUrl = `${odooUrl}/web#action=sale.action_orders&model=sale.order&view_type=list&cids=1&menu_id=162`;
+      window.open(searchUrl, '_blank');
     }
   };
 
@@ -229,17 +300,34 @@ export default function ScarichiParzialiPage() {
                   className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
                 >
                   {/* Card Header */}
-                  <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4">
-                    <div className="flex items-center justify-between">
+                  <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4 relative">
+                    {/* Pallino verde se transfer creato */}
+                    {order.returnCreated && (
+                      <div className="absolute top-3 right-3 bg-green-500 rounded-full p-1.5 shadow-lg animate-pulse" title="Transfer già creato">
+                        <CheckCircle className="w-5 h-5 text-white" />
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
                         <Truck className="w-6 h-6 text-white" />
                         <div>
-                          <h3 className="text-lg font-bold text-white">
-                            {order.numeroOrdineResiduo}
-                          </h3>
-                          <p className="text-sm text-orange-100">
-                            {order.salesOrder}
-                          </p>
+                          <button
+                            onClick={() => openPickingInOdoo(order.numeroOrdineResiduo)}
+                            className="text-lg font-bold text-white hover:text-orange-100 hover:underline flex items-center space-x-1 transition-colors"
+                            title="Apri documento in Odoo"
+                          >
+                            <span>{order.numeroOrdineResiduo}</span>
+                            <ExternalLink className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => openSalesOrderInOdoo(order.salesOrder)}
+                            className="text-sm text-orange-100 hover:text-white hover:underline flex items-center space-x-1 transition-colors"
+                            title="Apri Sales Order in Odoo"
+                          >
+                            <span>{order.salesOrder}</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </button>
                         </div>
                       </div>
                       {order.prodottiNonScaricati && order.prodottiNonScaricati.length > 0 && (
@@ -250,6 +338,24 @@ export default function ScarichiParzialiPage() {
                         </div>
                       )}
                     </div>
+
+                    {/* Info autista e veicolo */}
+                    {(order.autista || order.veicolo) && (
+                      <div className="flex items-center space-x-4 text-sm mt-2">
+                        {order.autista && (
+                          <div className="flex items-center space-x-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                            <User className="w-4 h-4 text-white" />
+                            <span className="text-white font-medium">{order.autista}</span>
+                          </div>
+                        )}
+                        {order.veicolo && (
+                          <div className="flex items-center space-x-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                            <Car className="w-4 h-4 text-white" />
+                            <span className="text-white font-medium">{order.veicolo}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Card Body */}
@@ -285,9 +391,9 @@ export default function ScarichiParzialiPage() {
                         <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
                           Motivazione scarico parziale
                         </p>
-                        <p className="text-sm text-gray-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                        <button onClick={() => setSelectedOrderForMotivation(order)} className="w-full text-left text-sm text-gray-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 hover:bg-yellow-100 cursor-pointer">
                           {getReasonSummary(order)}
-                        </p>
+                        </button>
                       </div>
                     </div>
 
@@ -348,6 +454,56 @@ export default function ScarichiParzialiPage() {
             </AnimatePresence>
           </div>
         )}
+
+      {/* Modal Motivazione Completa */}
+      <AnimatePresence>
+        {selectedOrderForMotivation && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+              <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-5 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <FileText className="w-6 h-6 text-white" />
+                  <h3 className="text-xl font-bold text-white">Motivazione Scarico Parziale</h3>
+                </div>
+                <button onClick={() => setSelectedOrderForMotivation(null)} className="text-white hover:bg-white/20 rounded-lg p-2"><X className="w-6 h-6" /></button>
+              </div>
+              <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-xs text-gray-500 uppercase">Ordine</p>
+                  <p className="text-lg font-bold text-gray-900">{selectedOrderForMotivation.numeroOrdineResiduo}</p>
+                </div>
+                {selectedOrderForMotivation.messaggiScaricoParziale && selectedOrderForMotivation.messaggiScaricoParziale.length > 0 ? (
+                  selectedOrderForMotivation.messaggiScaricoParziale.map((msg, idx) => (
+                    <div key={idx} className="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-gray-900">{msg.autore}</span>
+                        <span className="text-xs text-gray-500">{new Date(msg.data).toLocaleString('it-IT')}</span>
+                      </div>
+                      {msg.messaggio && <p className="text-sm text-gray-700 whitespace-pre-wrap">{msg.messaggio}</p>}
+                      {msg.allegati && msg.allegati.length > 0 && (
+                        <div className="mt-3 space-y-1">
+                          {msg.allegati.map((att: any, i: number) => (
+                            <div key={i} className="text-sm text-gray-600 flex items-center space-x-2">
+                              {att.tipo?.includes('audio') ? <Volume2 className="w-4 h-4 text-gray-600" /> : <FileText className="w-4 h-4 text-gray-600" />}
+                              <span>{att.nome}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 italic">Nessuna motivazione</p>
+                )}
+              </div>
+              <div className="px-6 py-4 bg-gray-50 border-t">
+                <button onClick={() => setSelectedOrderForMotivation(null)} className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-800">Chiudi</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       </div>
     </div>
   );
