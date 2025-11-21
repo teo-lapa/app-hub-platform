@@ -1771,10 +1771,19 @@ export default function SmartOrderingV2() {
 
                         if (response.ok) {
                           const result = await response.json();
-                          alert(`✅ Ordini creati con successo!\n\nPreventivi Clienti: ${result.customerQuotesCreated}\nPreventivi Fornitori: ${result.supplierQuotesCreated}`);
+
+                          // 1. Chiudi modal immediatamente
                           setSelectedPreOrder(null);
-                          await loadPreOrders();
-                          await loadData();
+
+                          // 2. Rimuovi IMMEDIATAMENTE il fornitore dalla lista (optimistic update)
+                          setPreOrderSuppliers(prev => prev.filter(s => s.supplierId !== selectedPreOrder.supplierId));
+
+                          // 3. Mostra messaggio successo
+                          alert(`✅ Ordini creati con successo!\n\nPreventivi Clienti: ${result.customerQuotesCreated}\nPreventivi Fornitori: ${result.supplierQuotesCreated}`);
+
+                          // 4. Ricarica dati per sicurezza (in background)
+                          loadPreOrders();
+                          loadData();
                         } else {
                           const error = await response.json();
                           alert(`❌ Errore: ${error.error || 'Impossibile creare gli ordini'}`);
