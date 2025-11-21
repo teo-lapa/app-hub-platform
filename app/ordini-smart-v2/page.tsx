@@ -55,6 +55,7 @@ interface Product {
   suggestedQty: number;
   uom: string;
   avgPrice?: number;
+  isPreOrder?: boolean; // True se prodotto ha tag PRE-ORDINE
   supplier: {
     name: string;
     leadTime: number;
@@ -76,6 +77,7 @@ export default function SmartOrderingV2() {
   const [loadingTodayAnalysis, setLoadingTodayAnalysis] = useState(false);
   const [showCustomers, setShowCustomers] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [togglingProductId, setTogglingProductId] = useState<number | null>(null);
   // Removed showPreOrderModal state - now using dedicated page
 
   // Pre-orders state
@@ -200,6 +202,47 @@ export default function SmartOrderingV2() {
     setFavoriteSuppliers(newFavorites);
     localStorage.setItem('favoriteSuppliers', JSON.stringify(Array.from(newFavorites)));
   }
+
+  // Toggle PRE-ORDINE tag on product
+  const togglePreOrder = async (productId: number, currentState: boolean) => {
+    try {
+      setTogglingProductId(productId);
+
+      const res = await fetch('/api/smart-ordering-v2/toggle-preorder-tag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, enable: !currentState })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        console.log(`✅ ${data.message}`);
+
+        // Se il prodotto viene marcato come PRE-ORDINE, sparisce da Smart Ordering
+        // Se viene smarcato, riappare (ricarica dati)
+        if (!currentState) {
+          // Attivato PRE-ORDINE → rimuovi il prodotto dalla lista
+          alert('✅ Prodotto marcato come PRE-ORDINE! Sparirà da questa lista.');
+          setProductDetailsModal(null); // Chiudi modal
+          loadData(); // Ricarica per aggiornare filtri
+        } else {
+          // Disattivato PRE-ORDINE → prodotto torna visibile
+          alert('✅ Tag PRE-ORDINE rimosso! Il prodotto tornerà visibile.');
+          setProductDetailsModal(null); // Chiudi modal
+          loadData(); // Ricarica
+        }
+      } else {
+        const error = await res.json();
+        console.error('❌ Errore toggle pre-order:', error);
+        alert(`Errore: ${error.error || 'Impossibile modificare il tag PRE-ORDINE'}`);
+      }
+    } catch (error) {
+      console.error('❌ Error toggling pre-order:', error);
+      alert('Errore di connessione. Riprova.');
+    } finally {
+      setTogglingProductId(null);
+    }
+  };
 
   function handleQuantityChange(productId: number, qty: number) {
     const newMap = new Map(selectedProducts);
@@ -1093,6 +1136,30 @@ export default function SmartOrderingV2() {
                           📊 Analisi Dettagliata Prodotto
                         </h2>
                         <p className="text-xl text-blue-200">{productDetailsModal.name}</p>
+
+                        {/* Toggle PRE-ORDINE */}
+                        <div className="mt-4 flex items-center gap-3 p-3 bg-purple-500/10 border border-purple-400/30 rounded-lg">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            {togglingProductId === productDetailsModal.id ? (
+                              <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <input
+                                type="checkbox"
+                                checked={productDetailsModal.isPreOrder || false}
+                                onChange={() => togglePreOrder(productDetailsModal.id, productDetailsModal.isPreOrder || false)}
+                                className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                              />
+                            )}
+                            <span className="text-purple-200 font-medium">
+                              📦 Marca come PRE-ORDINE
+                            </span>
+                          </label>
+                          <div className="text-xs text-purple-300/70">
+                            {productDetailsModal.isPreOrder
+                              ? '✓ Prodotto in pre-ordine - Sparirà da questa lista'
+                              : 'Attiva per gestire ordini su richiesta'}
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <button

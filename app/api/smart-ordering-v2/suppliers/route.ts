@@ -459,6 +459,7 @@ export async function GET(request: NextRequest) {
         suggestedQty: p.recommendedQuantity,
         uom: p.uom,
         avgPrice: p.listPrice,
+        isPreOrder: false, // Prodotti caricati qui NON sono PRE-ORDINE (già filtrati)
         supplier: {
           name: p.supplier.name,
           leadTime: p.supplier.leadTime
