@@ -236,10 +236,10 @@ export default function SmartOrderingV2() {
   function selectAllProducts() {
     if (!selectedSupplier) return;
     const newMap = new Map(selectedProducts);
-    const criticalHighProducts = selectedSupplier.products.filter(p =>
-      ['CRITICAL', 'HIGH'].includes(p.urgencyLevel)
+    const criticalHighMediumProducts = selectedSupplier.products.filter(p =>
+      ['CRITICAL', 'HIGH', 'MEDIUM'].includes(p.urgencyLevel)
     );
-    criticalHighProducts.forEach(product => {
+    criticalHighMediumProducts.forEach(product => {
       newMap.set(product.id, product.suggestedQty);
     });
     setSelectedProducts(newMap);
