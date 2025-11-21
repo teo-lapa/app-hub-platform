@@ -13,7 +13,13 @@ import {
   Calendar,
   FileText,
   Home,
-  RefreshCw
+  RefreshCw,
+  User,
+  Car,
+  ExternalLink,
+  Volume2,
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -48,6 +54,7 @@ export default function ScarichiParzialiPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creatingTransfer, setCreatingTransfer] = useState<string | null>(null);
+  const [selectedOrderForMotivation, setSelectedOrderForMotivation] = useState<ResidualOrder | null>(null);
 
   useEffect(() => {
     loadOrders();
