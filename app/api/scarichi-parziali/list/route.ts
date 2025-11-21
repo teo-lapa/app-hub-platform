@@ -176,7 +176,7 @@ async function getAutistaEVeicolo(sessionId: string, pickingId: number, batchId:
   }
 
   // Prova 2: Estrai autista dalla location (es: "WH/Furgoni/Liviu")
-  if (\!autista && locationName && locationName.includes('Furgon')) {
+  if (!autista && locationName && locationName.includes('Furgon')) {
     const parts = locationName.split('/');
     if (parts.length >= 3) {
       autista = parts[2]; // "Liviu"
