@@ -381,28 +381,40 @@ ${productDetailsHtml}
     console.log(`\n✅ Created ${createdPurchaseOrders.length} purchase orders`);
 
     // 8. DELETE PROCESSED ASSIGNMENTS FROM DATABASE
+    let deletionSucceeded = false;
+    let deletionError: string | null = null;
+
     try {
       const productIds = productAssignments.map(pa => pa.productId);
 
       if (productIds.length > 0) {
-        // Delete all assignments for the processed products (one by one for Vercel Postgres compatibility)
+        console.log(`\n🗑️ Deleting assignments for ${productIds.length} products from database...`);
+
+        let totalDeleted = 0;
         for (const productId of productIds) {
-          await sql`
+          const result = await sql`
             DELETE FROM preorder_customer_assignments
             WHERE product_id = ${productId}
           `;
+          totalDeleted += result.rowCount || 0;
         }
 
-        console.log(`\n🗑️ Deleted assignments for ${productIds.length} products from database`);
+        console.log(`✅ Successfully deleted ${totalDeleted} assignment records`);
+        deletionSucceeded = true;
+      } else {
+        deletionSucceeded = true; // No products to delete, consider it success
       }
-    } catch (dbError) {
-      console.error('❌ Failed to delete assignments from database:', dbError);
-      // Don't fail the entire request if cleanup fails
+    } catch (dbError: any) {
+      console.error('❌ CRITICAL: Failed to delete assignments from database:', dbError);
+      deletionError = dbError.message || 'Database deletion failed';
+      // IMPORTANT: We now track this as a failure instead of silently continuing
     }
 
-    // 9. Return summary
+    // 9. Return summary with deletion status
     const summary = {
       success: true,
+      deletionSucceeded, // ← NEW: Track if database cleanup worked
+      deletionError,     // ← NEW: Include error details if deletion failed
       customerQuotesCreated: createdSaleOrders.length,
       supplierQuotesCreated: createdPurchaseOrders.length,
       created: {
