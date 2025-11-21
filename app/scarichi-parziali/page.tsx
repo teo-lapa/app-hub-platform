@@ -85,16 +85,64 @@ export default function ScarichiParzialiPage() {
     }
   };
 
-  const openPickingInOdoo = (pickingName: string) => {
+  const openPickingInOdoo = async (pickingName: string) => {
     const odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
-    const searchUrl = `${odooUrl}/web#action=stock.action_picking_tree_all&model=stock.picking&view_type=list&cids=1&menu_id=146`;
-    window.open(searchUrl, '_blank');
+
+    try {
+      // Cerca l'ID del picking
+      const response = await fetch('/api/scarichi-parziali/get-picking-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pickingName })
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.pickingId) {
+        // Apri direttamente il documento
+        const url = `${odooUrl}/web#id=${data.pickingId}&model=stock.picking&view_type=form&cids=1&menu_id=146`;
+        window.open(url, '_blank');
+      } else {
+        // Fallback: apri la lista
+        const searchUrl = `${odooUrl}/web#action=stock.action_picking_tree_all&model=stock.picking&view_type=list&cids=1&menu_id=146`;
+        window.open(searchUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Errore apertura picking:', error);
+      // Fallback: apri la lista
+      const searchUrl = `${odooUrl}/web#action=stock.action_picking_tree_all&model=stock.picking&view_type=list&cids=1&menu_id=146`;
+      window.open(searchUrl, '_blank');
+    }
   };
 
-  const openSalesOrderInOdoo = (salesOrderName: string) => {
+  const openSalesOrderInOdoo = async (salesOrderName: string) => {
     const odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
-    const searchUrl = `${odooUrl}/web#action=sale.action_orders&model=sale.order&view_type=list&cids=1&menu_id=162`;
-    window.open(searchUrl, '_blank');
+
+    try {
+      // Cerca l'ID del sales order
+      const response = await fetch('/api/scarichi-parziali/get-sales-order-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salesOrderName })
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.salesOrderId) {
+        // Apri direttamente il documento
+        const url = `${odooUrl}/web#id=${data.salesOrderId}&model=sale.order&view_type=form&cids=1&menu_id=162`;
+        window.open(url, '_blank');
+      } else {
+        // Fallback: apri la lista
+        const searchUrl = `${odooUrl}/web#action=sale.action_orders&model=sale.order&view_type=list&cids=1&menu_id=162`;
+        window.open(searchUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Errore apertura sales order:', error);
+      // Fallback: apri la lista
+      const searchUrl = `${odooUrl}/web#action=sale.action_orders&model=sale.order&view_type=list&cids=1&menu_id=162`;
+      window.open(searchUrl, '_blank');
+    }
   };
 
   const handleCreateReturn = async (order: ResidualOrder) => {
@@ -293,17 +341,17 @@ export default function ScarichiParzialiPage() {
 
                     {/* Info autista e veicolo */}
                     {(order.autista || order.veicolo) && (
-                      <div className="flex items-center space-x-4 text-sm text-white/90 mt-2">
+                      <div className="flex items-center space-x-4 text-sm mt-2">
                         {order.autista && (
-                          <div className="flex items-center space-x-1.5">
-                            <User className="w-4 h-4" />
-                            <span>{order.autista}</span>
+                          <div className="flex items-center space-x-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                            <User className="w-4 h-4 text-white" />
+                            <span className="text-white font-medium">{order.autista}</span>
                           </div>
                         )}
                         {order.veicolo && (
-                          <div className="flex items-center space-x-1.5">
-                            <Car className="w-4 h-4" />
-                            <span>{order.veicolo}</span>
+                          <div className="flex items-center space-x-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                            <Car className="w-4 h-4 text-white" />
+                            <span className="text-white font-medium">{order.veicolo}</span>
                           </div>
                         )}
                       </div>
@@ -422,21 +470,21 @@ export default function ScarichiParzialiPage() {
               <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-xs text-gray-500 uppercase">Ordine</p>
-                  <p className="text-lg font-bold">{selectedOrderForMotivation.numeroOrdineResiduo}</p>
+                  <p className="text-lg font-bold text-gray-900">{selectedOrderForMotivation.numeroOrdineResiduo}</p>
                 </div>
                 {selectedOrderForMotivation.messaggiScaricoParziale && selectedOrderForMotivation.messaggiScaricoParziale.length > 0 ? (
                   selectedOrderForMotivation.messaggiScaricoParziale.map((msg, idx) => (
                     <div key={idx} className="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold">{msg.autore}</span>
+                        <span className="font-semibold text-gray-900">{msg.autore}</span>
                         <span className="text-xs text-gray-500">{new Date(msg.data).toLocaleString('it-IT')}</span>
                       </div>
-                      {msg.messaggio && <p className="text-sm whitespace-pre-wrap">{msg.messaggio}</p>}
+                      {msg.messaggio && <p className="text-sm text-gray-700 whitespace-pre-wrap">{msg.messaggio}</p>}
                       {msg.allegati && msg.allegati.length > 0 && (
                         <div className="mt-3 space-y-1">
                           {msg.allegati.map((att: any, i: number) => (
-                            <div key={i} className="text-sm flex items-center space-x-2">
-                              {att.tipo?.includes('audio') ? <Volume2 className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                            <div key={i} className="text-sm text-gray-600 flex items-center space-x-2">
+                              {att.tipo?.includes('audio') ? <Volume2 className="w-4 h-4 text-gray-600" /> : <FileText className="w-4 h-4 text-gray-600" />}
                               <span>{att.nome}</span>
                             </div>
                           ))}
