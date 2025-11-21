@@ -220,18 +220,10 @@ export async function GET(request: NextRequest) {
 
     console.log('📋 Ricerca ordini OUT residui...');
 
-    // Data di oggi
-    const oggi = new Date();
-    oggi.setHours(0, 0, 0, 0);
-    const oggiStr = oggi.toISOString().split('T')[0];
-
-    console.log(`⚠️  Escludendo ordini con data prevista di OGGI: ${oggiStr}`);
-
-    // Cerca tutti i picking OUT in stato "assigned" (Pronto) con data < oggi
+    // Cerca TUTTI i picking OUT in stato "assigned" (Pronto), senza filtro per data
     const pickingsResidui = await callOdoo(sessionId, 'stock.picking', 'search_read', [[
       ['picking_type_code', '=', 'outgoing'],
-      ['state', '=', 'assigned'],
-      ['scheduled_date', '<', oggiStr]
+      ['state', '=', 'assigned']
     ]], {
       fields: [
         'name',
