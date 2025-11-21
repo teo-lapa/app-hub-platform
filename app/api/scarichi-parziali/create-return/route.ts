@@ -32,6 +32,35 @@ async function callOdoo(sessionId: string, model: string, method: string, args: 
   return data.result;
 }
 
+// Mappa categoria → buffer location
+function getBufferLocationFromCategory(categoryName: string | null): { name: string; locationId: number } {
+  if (!categoryName) {
+    console.log('⚠️  Nessuna categoria, default a Secco');
+    return { name: 'WH/Stock/Secco', locationId: 29 };
+  }
+
+  const catLower = categoryName.toLowerCase();
+
+  // Frigo
+  if (catLower.includes('frigo') || catLower.includes('refrigerat') || catLower.includes('freddo')) {
+    return { name: 'WH/Stock/Frigo', locationId: 28 };
+  }
+
+  // Pingu
+  if (catLower.includes('pingu') || catLower.includes('surgelat') || catLower.includes('congelat')) {
+    return { name: 'WH/Stock/Pingu', locationId: 31 };
+  }
+
+  // Secco Sopra
+  if (catLower.includes('secco sopra') || catLower.includes('scaffalatura') || catLower.includes('sopra')) {
+    return { name: 'WH/Stock/Secco Sopra', locationId: 30 };
+  }
+
+  // Default: Secco
+  console.log(`ℹ️  Categoria "${categoryName}" → Default a Secco`);
+  return { name: 'WH/Stock/Secco', locationId: 29 };
+}
+
 interface ProductNotDelivered {
   nome: string;
   quantitaRichiesta: number;
@@ -107,6 +136,19 @@ export async function POST(request: NextRequest) {
 
     console.log(`📦 Trovati ${moves.length} prodotti nell'ordine residuo`);
 
+    // STEP 3.2: Leggi categorie prodotti per determinare buffer destination
+    const productIds = moves.map((m: any) => m.product_id[0]);
+    const products = await callOdoo(sessionId, 'product.product', 'read', [productIds], {
+      fields: ['id', 'name', 'categ_id']
+    });
+
+    // Crea mapping product_id -> category name
+    const productCategoryMap = new Map();
+    for (const prod of products) {
+      productCategoryMap.set(prod.id, prod.categ_id ? prod.categ_id[1] : null);
+      console.log(`  📦 ${prod.name} → Categoria: ${prod.categ_id ? prod.categ_id[1] : 'N/A'}`);
+    }
+
     // STEP 3.5: Leggi i lotti dal picking originale
     console.log('🔍 Ricerca lotti dal picking originale...');
 
@@ -129,25 +171,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // STEP 4: Cerca l'ubicazione Deposito
-    console.log('🔍 Ricerca ubicazione Deposito...');
+    // STEP 4: Raggruppa prodotti per buffer destination
+    console.log('🗂️  Raggruppamento prodotti per buffer...');
 
-    const depositoLocations = await callOdoo(sessionId, 'stock.location', 'search_read', [[
-      ['complete_name', '=', 'WH/Deposito'],
-      ['usage', '=', 'internal']
-    ]], {
-      fields: ['id', 'name', 'complete_name']
-    });
+    // Mappa bufferLocationId → lista prodotti
+    const productsByBuffer = new Map<number, Array<{ productId: number; productName: string; qty: number; uom: any; categoryName: string }>>();
 
-    if (depositoLocations.length === 0) {
-      throw new Error('Ubicazione WH/Deposito non trovata');
-    }
-
-    const depositoLocationId = depositoLocations[0].id;
-    console.log(`📦 Ubicazione Deposito: ${depositoLocations[0].complete_name} (ID: ${depositoLocationId})`);
-
-    // STEP 5: Prepara lista prodotti da rientrare
-    const productsToReturn: Array<{ productId: number; productName: string; qty: number; uom: any }> = [];
+    // STEP 5: Prepara lista prodotti da rientrare e raggruppa per buffer
 
     for (const move of moves) {
       // Trova il prodotto corrispondente in prodottiNonScaricati
@@ -167,105 +197,130 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      productsToReturn.push({
+      // Determina buffer destination dalla categoria
+      const categoryName = productCategoryMap.get(move.product_id[0]);
+      const bufferInfo = getBufferLocationFromCategory(categoryName);
+
+      console.log(`  ✓ ${move.product_id[1]} (${quantitaDaRientro} ${prodottoNonScaricato.uom}) → ${bufferInfo.name}`);
+
+      // Aggiungi al gruppo del buffer
+      if (!productsByBuffer.has(bufferInfo.locationId)) {
+        productsByBuffer.set(bufferInfo.locationId, []);
+      }
+
+      productsByBuffer.get(bufferInfo.locationId)!.push({
         productId: move.product_id[0],
         productName: move.product_id[1],
         qty: quantitaDaRientro,
-        uom: move.product_uom
+        uom: move.product_uom,
+        categoryName: categoryName || 'N/A'
       });
-
-      console.log(`  ✓ ${move.product_id[1]} (${quantitaDaRientro} ${prodottoNonScaricato.uom})`);
     }
 
-    if (productsToReturn.length === 0) {
+    if (productsByBuffer.size === 0) {
       throw new Error('Nessun prodotto da rientrare');
     }
 
-    // STEP 6: Crea un unico internal transfer verso Deposito
-    console.log(`📤 Creazione transfer verso Deposito (${productsToReturn.length} prodotti)`);
+    console.log(`📊 Prodotti raggruppati in ${productsByBuffer.size} buffer diversi`);
 
-    // Crea stock.picking (Internal Transfer: Furgone → Deposito)
-    const pickingId = await callOdoo(sessionId, 'stock.picking', 'create', [{
-      picking_type_id: 5, // Internal Transfer
-      location_id: vanLocationId,
-      location_dest_id: depositoLocationId,
-      origin: `RESO_${ordine.numeroOrdineResiduo}`,
-      note: `Reso scarico parziale - Cliente: ${ordine.cliente}\nSales Order: ${ordine.salesOrder}\nCreato: ${new Date().toLocaleString('it-IT')}`
-    }]);
+    // STEP 6: Crea un transfer per ogni buffer
+    const createdTransfers = [];
+    let totalProductsCount = 0;
+    let totalMovesCount = 0;
 
-    console.log(`✅ Picking ${pickingId} creato`);
+    for (const [bufferLocationId, products] of Array.from(productsByBuffer.entries())) {
+      const bufferInfo = getBufferLocationFromCategory(products[0].categoryName);
+      console.log(`\n📤 Creazione transfer verso ${bufferInfo.name} (${products.length} prodotti)`);
 
-    // Crea stock.move per ogni prodotto
-    const movesCreated = [];
-
-    for (const product of productsToReturn) {
-      const moveId = await callOdoo(sessionId, 'stock.move', 'create', [{
-        name: product.productName,
-        picking_id: pickingId,
-        product_id: product.productId,
-        product_uom_qty: product.qty,
-        product_uom: product.uom[0],
+      // Crea stock.picking (Internal Transfer: Furgone → Buffer)
+      const pickingId = await callOdoo(sessionId, 'stock.picking', 'create', [{
+        picking_type_id: 5, // Internal Transfer
         location_id: vanLocationId,
-        location_dest_id: depositoLocationId
+        location_dest_id: bufferLocationId,
+        origin: `RESO_${ordine.numeroOrdineResiduo}`,
+        note: `Reso scarico parziale → ${bufferInfo.name}\nCliente: ${ordine.cliente}\nSales Order: ${ordine.salesOrder}\nCreato: ${new Date().toLocaleString('it-IT')}`
       }]);
 
-      movesCreated.push({ moveId, product });
-      console.log(`  ✓ Move ${moveId} creato: ${product.productName} x${product.qty}`);
-    }
+      console.log(`✅ Picking ${pickingId} creato per ${bufferInfo.name}`);
 
-    // Conferma il picking
-    try {
-      await callOdoo(sessionId, 'stock.picking', 'action_confirm', [[pickingId]]);
-      console.log(`✅ Picking ${pickingId} confermato`);
+      // Crea stock.move per ogni prodotto
+      const movesCreated = [];
 
-      // STEP 7: Crea manualmente le stock.move.line con qty_done e lotti già impostati
-      console.log('📝 Creazione operazioni dettagliate...');
-
-      for (const { moveId, product } of movesCreated) {
-        const lotInfo = productLotMap.get(product.productId);
-
-        const moveLineData: any = {
-          move_id: moveId,
+      for (const product of products) {
+        const moveId = await callOdoo(sessionId, 'stock.move', 'create', [{
+          name: product.productName,
           picking_id: pickingId,
           product_id: product.productId,
-          product_uom_id: product.uom[0],
+          product_uom_qty: product.qty,
+          product_uom: product.uom[0],
           location_id: vanLocationId,
-          location_dest_id: depositoLocationId,
-          quantity: product.qty,
-          qty_done: product.qty  // Imposta qty_done subito con la quantità richiesta
-        };
+          location_dest_id: bufferLocationId
+        }]);
 
-        // Se esiste un lotto, impostalo
-        if (lotInfo) {
-          moveLineData.lot_id = lotInfo.lot_id;
-          console.log(`  ✓ Creazione move line: ${product.productName} x${product.qty}, lotto=${lotInfo.lot_name}`);
-        } else {
-          console.log(`  ✓ Creazione move line: ${product.productName} x${product.qty} (nessun lotto)`);
-        }
-
-        await callOdoo(sessionId, 'stock.move.line', 'create', [moveLineData]);
+        movesCreated.push({ moveId, product });
+        console.log(`  ✓ Move ${moveId}: ${product.productName} x${product.qty}`);
       }
 
-      console.log(`✅ Operazioni dettagliate create con successo!`);
+      // Conferma il picking
+      try {
+        await callOdoo(sessionId, 'stock.picking', 'action_confirm', [[pickingId]]);
+        console.log(`✅ Picking ${pickingId} confermato`);
 
-      // Assegna il picking (ora dovrebbe riconoscere le move.line già create)
-      await callOdoo(sessionId, 'stock.picking', 'action_assign', [[pickingId]]);
-      console.log(`✅ Picking ${pickingId} assegnato`);
+        // Crea stock.move.line con qty_done e lotti
+        console.log('📝 Creazione operazioni dettagliate...');
 
-    } catch (error) {
-      console.warn(`⚠️  Errore conferma/assegnazione picking ${pickingId}:`, error);
+        for (const { moveId, product } of movesCreated) {
+          const lotInfo = productLotMap.get(product.productId);
+
+          const moveLineData: any = {
+            move_id: moveId,
+            picking_id: pickingId,
+            product_id: product.productId,
+            product_uom_id: product.uom[0],
+            location_id: vanLocationId,
+            location_dest_id: bufferLocationId,
+            quantity: product.qty,
+            qty_done: product.qty
+          };
+
+          if (lotInfo) {
+            moveLineData.lot_id = lotInfo.lot_id;
+            console.log(`  ✓ Move line: ${product.productName} x${product.qty}, lotto=${lotInfo.lot_name}`);
+          } else {
+            console.log(`  ✓ Move line: ${product.productName} x${product.qty}`);
+          }
+
+          await callOdoo(sessionId, 'stock.move.line', 'create', [moveLineData]);
+        }
+
+        console.log(`✅ Operazioni dettagliate create!`);
+
+        // Assegna il picking
+        await callOdoo(sessionId, 'stock.picking', 'action_assign', [[pickingId]]);
+        console.log(`✅ Picking ${pickingId} assegnato`);
+
+        createdTransfers.push({
+          pickingId,
+          bufferName: bufferInfo.name,
+          productsCount: products.length
+        });
+
+        totalProductsCount += products.length;
+        totalMovesCount += movesCreated.length;
+
+      } catch (error) {
+        console.warn(`⚠️  Errore conferma/assegnazione picking ${pickingId}:`, error);
+      }
     }
 
-    console.log(`✅ Transfer creato con successo!`);
+    console.log(`\n✅ Tutti i transfer creati con successo!`);
 
     return NextResponse.json({
       success: true,
-      transfer: {
-        pickingId,
-        productsCount: productsToReturn.length,
-        movesCreated: movesCreated.length
-      },
-      message: `Reso creato con successo da ${vanLocationName} verso Deposito`
+      transfers: createdTransfers,
+      totalProductsCount,
+      totalMovesCount,
+      message: `Creati ${createdTransfers.length} transfer da ${vanLocationName} verso buffer`
     });
 
   } catch (error: any) {
