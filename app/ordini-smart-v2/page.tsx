@@ -1775,18 +1775,29 @@ export default function SmartOrderingV2() {
                           // 1. SALVA supplierId PRIMA di chiudere la modal
                           const supplierIdToRemove = selectedPreOrder.supplierId;
 
-                          // 2. Rimuovi IMMEDIATAMENTE il fornitore dalla lista (optimistic update)
-                          setPreOrderSuppliers(prev => prev.filter(s => s.supplierId !== supplierIdToRemove));
-
-                          // 3. Chiudi modal
+                          // 2. Chiudi modal
                           setSelectedPreOrder(null);
 
-                          // 4. Mostra messaggio successo
-                          alert(`✅ Ordini creati con successo!\n\nPreventivi Clienti: ${result.customerQuotesCreated}\nPreventivi Fornitori: ${result.supplierQuotesCreated}`);
+                          // 3. Check if database deletion succeeded
+                          if (result.deletionSucceeded) {
+                            // ✅ Deletion worked - safe to remove card
+                            console.log('✅ Database deletion verified - removing card');
+                            setPreOrderSuppliers(prev => prev.filter(s => s.supplierId !== supplierIdToRemove));
 
-                          // 5. Ricarica dati per sicurezza (in background)
-                          loadPreOrders();
-                          loadData();
+                            alert(`✅ Ordini creati con successo!\n\nPreventivi Clienti: ${result.customerQuotesCreated}\nPreventivi Fornitori: ${result.supplierQuotesCreated}`);
+
+                            // Refresh data in background
+                            loadPreOrders();
+                            loadData();
+                          } else {
+                            // ❌ Deletion failed - keep card visible and warn user
+                            console.error('❌ Database deletion FAILED:', result.deletionError);
+                            alert(`⚠️ ATTENZIONE: Ordini creati ma database non aggiornato!\n\nPreventivi Clienti: ${result.customerQuotesCreated}\nPreventivi Fornitori: ${result.supplierQuotesCreated}\n\nErrore: ${result.deletionError || 'Sconosciuto'}\n\nLa card rimarrà visibile. Ricarica la pagina e verifica manualmente.`);
+
+                            // Force reload to show actual database state
+                            loadPreOrders();
+                            loadData();
+                          }
                         } else {
                           const error = await response.json();
                           alert(`❌ Errore: ${error.error || 'Impossibile creare gli ordini'}`);
