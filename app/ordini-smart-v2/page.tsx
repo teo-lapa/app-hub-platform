@@ -1772,16 +1772,19 @@ export default function SmartOrderingV2() {
                         if (response.ok) {
                           const result = await response.json();
 
-                          // 1. Chiudi modal immediatamente
-                          setSelectedPreOrder(null);
+                          // 1. SALVA supplierId PRIMA di chiudere la modal
+                          const supplierIdToRemove = selectedPreOrder.supplierId;
 
                           // 2. Rimuovi IMMEDIATAMENTE il fornitore dalla lista (optimistic update)
-                          setPreOrderSuppliers(prev => prev.filter(s => s.supplierId !== selectedPreOrder.supplierId));
+                          setPreOrderSuppliers(prev => prev.filter(s => s.supplierId !== supplierIdToRemove));
 
-                          // 3. Mostra messaggio successo
+                          // 3. Chiudi modal
+                          setSelectedPreOrder(null);
+
+                          // 4. Mostra messaggio successo
                           alert(`✅ Ordini creati con successo!\n\nPreventivi Clienti: ${result.customerQuotesCreated}\nPreventivi Fornitori: ${result.supplierQuotesCreated}`);
 
-                          // 4. Ricarica dati per sicurezza (in background)
+                          // 5. Ricarica dati per sicurezza (in background)
                           loadPreOrders();
                           loadData();
                         } else {
