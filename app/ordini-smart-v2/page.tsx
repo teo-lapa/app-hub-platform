@@ -1786,8 +1786,8 @@ export default function SmartOrderingV2() {
 
                             alert(`✅ Ordini creati con successo!\n\nPreventivi Clienti: ${result.customerQuotesCreated}\nPreventivi Fornitori: ${result.supplierQuotesCreated}`);
 
-                            // Refresh data in background
-                            loadPreOrders();
+                            // NON ricarico preOrders perché ho già filtrato il fornitore
+                            // Ricarico solo dati principali (per aggiornare stock dopo ordini)
                             loadData();
                           } else {
                             // ❌ Deletion failed - keep card visible and warn user
