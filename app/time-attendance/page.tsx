@@ -267,7 +267,8 @@ export default function TimeAttendancePage() {
         setContact(data.data.contact);
         setCompany(data.data.company);
         setEmployees(data.data.employees || []);
-        toast.success(`Benvenuto, ${data.data.contact.name}!`);
+        // Toast con ID univoco per evitare duplicati
+        toast.success(`Benvenuto, ${data.data.contact.name}!`, { id: 'welcome-toast' });
         if (data.data.contact?.id) {
           loadClockStatus(data.data.contact.id);
         }
