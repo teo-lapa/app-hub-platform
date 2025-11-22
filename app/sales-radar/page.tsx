@@ -33,6 +33,14 @@ import {
 } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Circle } from '@react-google-maps/api';
 
+const MARKER_COLORS = {
+  user: '#3B82F6',      // Blue - user position
+  customer: '#10B981',   // Green - customer with orders
+  lead: '#F59E0B',       // Orange - saved lead in CRM
+  prospect: '#EF4444',   // Red - never seen
+  notTarget: '#9CA3AF',  // Grey - not in target
+};
+
 // Types
 interface Location {
   lat: number;
@@ -89,6 +97,24 @@ interface EnrichedPlace extends PlaceData {
   isChecking: boolean;
   odooCustomer?: OdooCustomer;
   salesData?: SalesData;
+  // Additional fields for compatibility with Odoo data and live search
+  isLead?: boolean;
+  leadId?: number;
+  notInTarget?: boolean;
+  color?: 'green' | 'orange' | 'grey' | 'red';
+  latitude?: number;
+  longitude?: number;
+  lat?: number;
+  lng?: number;
+  geometry?: {
+    location?: {
+      lat: number;
+      lng: number;
+    };
+  };
+  tags?: string[];
+  sales_data?: SalesData;
+  id?: number;
 }
 
 const containerStyle = {
@@ -154,9 +180,54 @@ export default function SalesRadarPage() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showMobileResults, setShowMobileResults] = useState(false);
 
+  // Map mode: 'live' for Google search, 'static' for Odoo data
+  const [mapMode, setMapMode] = useState<'live' | 'static'>('live');
+
+  // Static map filters
+  const [staticFilter, setStaticFilter] = useState<'all' | 'customers' | 'leads' | 'not_target'>('all');
+
+  // Loading state for static map
+  const [loadingStatic, setLoadingStatic] = useState(false);
+
+  // Odoo places (from static map)
+  const [odooPlaces, setOdooPlaces] = useState<any[]>([]);
+
+  // Saving leads state
+  const [savingLeads, setSavingLeads] = useState(false);
+
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+
+  // Not in target modal
+  const [showNotTargetModal, setShowNotTargetModal] = useState(false);
+  const [notTargetPlace, setNotTargetPlace] = useState<any>(null);
+
   // Stats
   const existingCustomers = places.filter(p => p.existsInOdoo).length;
   const newProspects = places.filter(p => !p.existsInOdoo && !p.isChecking).length;
+
+  // Marker color helper functions
+  const getMarkerColor = (place: any) => {
+    if (place.notInTarget || place.color === 'grey') {
+      return MARKER_COLORS.notTarget;
+    }
+    if (place.existsInOdoo || place.color === 'green') {
+      return MARKER_COLORS.customer;
+    }
+    if (place.isLead || place.color === 'orange') {
+      return MARKER_COLORS.lead;
+    }
+    return MARKER_COLORS.prospect;
+  };
+
+  const getMarkerOpacity = (place: any) => {
+    if (place.notInTarget || place.color === 'grey') {
+      return 0.4; // Transparent for not in target
+    }
+    return 1;
+  };
 
   // Get user location on mount
   useEffect(() => {
@@ -234,6 +305,12 @@ export default function SalesRadarPage() {
         checkIfExistsInOdoo(place, index);
       });
 
+      // Auto-save all results as leads in CRM
+      const newProspects = enrichedPlaces.filter(p => !p.existsInOdoo);
+      if (newProspects.length > 0) {
+        saveLeadsToOdoo(newProspects);
+      }
+
     } catch (error) {
       console.error('❌ Search error:', error);
       setSearchError(error instanceof Error ? error.message : 'Errore sconosciuto');
@@ -241,6 +318,52 @@ export default function SalesRadarPage() {
       setIsSearching(false);
     }
   }, [userLocation, mapCenter, radius, placeType, keyword]);
+
+  // Save leads to Odoo CRM
+  const saveLeadsToOdoo = async (placesToSave: any[]) => {
+    if (placesToSave.length === 0) return;
+
+    setSavingLeads(true);
+    try {
+      const response = await fetch('/api/sales-radar/save-leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          places: placesToSave.map(p => ({
+            place_id: p.place_id,
+            name: p.name,
+            address: p.formatted_address || p.vicinity,
+            phone: p.formatted_phone_number || p.international_phone_number,
+            website: p.website,
+            rating: p.rating,
+            user_ratings_total: p.user_ratings_total,
+            types: p.types,
+            latitude: p.geometry?.location?.lat || p.lat,
+            longitude: p.geometry?.location?.lng || p.lng,
+            google_maps_url: p.url,
+          }))
+        })
+      });
+
+      const result = await response.json();
+      console.log('✅ Lead salvati:', result.saved, 'Saltati:', result.skipped);
+
+      // Update places to mark them as leads (orange)
+      if (result.success) {
+        setPlaces(prev => prev.map(p => {
+          const savedResult = result.results?.find((r: any) => r.place_id === p.place_id);
+          if (savedResult?.status === 'created' || savedResult?.status === 'skipped') {
+            return { ...p, isLead: true, leadId: savedResult.lead_id };
+          }
+          return p;
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Errore salvataggio lead:', error);
+    } finally {
+      setSavingLeads(false);
+    }
+  };
 
   // Check if place exists in Odoo
   const checkIfExistsInOdoo = async (place: PlaceData, index: number) => {
@@ -353,6 +476,170 @@ export default function SalesRadarPage() {
     }
   };
 
+  // Load static map data from Odoo
+  const loadStaticMap = async () => {
+    if (!userLocation) {
+      alert('Posizione GPS non disponibile');
+      return;
+    }
+
+    setLoadingStatic(true);
+    try {
+      const params = new URLSearchParams({
+        latitude: userLocation.lat.toString(),
+        longitude: userLocation.lng.toString(),
+        radius: radius.toString(),
+        filter: staticFilter,
+        ...(placeType && placeType !== 'all' ? { type: placeType } : {})
+      });
+
+      const response = await fetch(`/api/sales-radar/load-from-odoo?${params}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setOdooPlaces(result.data);
+        console.log('📍 Caricati da Odoo:', result.data.length, 'luoghi');
+      }
+    } catch (error) {
+      console.error('❌ Errore caricamento mappa statica:', error);
+    } finally {
+      setLoadingStatic(false);
+    }
+  };
+
+  // Refresh Google data for static mode
+  const refreshGoogleData = async () => {
+    if (!userLocation) return;
+
+    try {
+      const response = await fetch('/api/sales-radar/update-leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          latitude: userLocation.lat,
+          longitude: userLocation.lng,
+          radius: radius
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert(`✅ Aggiornati ${result.updated} lead da Google`);
+        // Reload static map if in static mode
+        if (mapMode === 'static') {
+          loadStaticMap();
+        }
+      }
+    } catch (error) {
+      console.error('Errore aggiornamento:', error);
+    }
+  };
+
+  // Voice recording functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        setAudioChunks([]);
+
+        // Send to API for transcription
+        if (selectedPlace) {
+          await saveVoiceNote(audioBlob, selectedPlace);
+        }
+
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      setMediaRecorder(recorder);
+      setAudioChunks(chunks);
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Errore accesso microfono:', error);
+      alert('Impossibile accedere al microfono');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const saveVoiceNote = async (audioBlob: Blob, place: any) => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'voice-note.webm');
+    formData.append('lead_id', place.leadId || place.id || place.place_id);
+    formData.append('lead_type', place.existsInOdoo ? 'partner' : 'lead');
+
+    try {
+      const response = await fetch('/api/sales-radar/voice-note', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert(`Nota salvata: "${result.transcription?.substring(0, 50) || 'Audio salvato'}..."`);
+      }
+    } catch (error) {
+      console.error('Errore salvataggio nota vocale:', error);
+    }
+  };
+
+  // Not in Target functions
+  const openNotTargetModal = (place: any) => {
+    setNotTargetPlace(place);
+    setShowNotTargetModal(true);
+  };
+
+  const markAsNotTarget = async (reason: 'closed' | 'not_interested' | 'other', note?: string) => {
+    if (!notTargetPlace) return;
+
+    try {
+      const response = await fetch('/api/sales-radar/mark-not-target', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: notTargetPlace.leadId || notTargetPlace.id || notTargetPlace.place_id,
+          reason,
+          note
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        // Update local state to show grey marker
+        setPlaces(prev => prev.map(p =>
+          p.place_id === notTargetPlace.place_id
+            ? { ...p, notInTarget: true, color: 'grey' } as any
+            : p
+        ));
+        setOdooPlaces(prev => prev.map(p =>
+          p.id === notTargetPlace.id
+            ? { ...p, notInTarget: true, color: 'grey' }
+            : p
+        ));
+        setShowNotTargetModal(false);
+        setSelectedPlace(null);
+      }
+    } catch (error) {
+      console.error('Errore:', error);
+    }
+  };
+
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
   }, []);
@@ -413,23 +700,56 @@ export default function SalesRadarPage() {
                 </p>
               </div>
             </div>
+
+            {/* Map Mode Toggle */}
+            <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setMapMode('live')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  mapMode === 'live'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                🔴 Live
+              </button>
+              <button
+                onClick={() => {
+                  setMapMode('static');
+                  loadStaticMap();
+                }}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  mapMode === 'static'
+                    ? 'bg-white text-orange-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                📍 Odoo
+              </button>
+            </div>
           </div>
 
-          {/* Stats - Responsive */}
-          <div className="flex gap-3 sm:gap-6">
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-blue-600">{newProspects}</div>
-              <div className="text-[10px] sm:text-xs text-gray-600">Prospect</div>
+          {/* Stats Header - 4 Colors */}
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-red-500"></span>
+              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => !p.existsInOdoo && !p.isLead && p.color !== 'green' && p.color !== 'orange' && p.color !== 'grey' && !p.notInTarget).length}</span>
+              <span className="text-gray-500">Nuovi</span>
             </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-green-600">
-                {existingCustomers}
-              </div>
-              <div className="text-[10px] sm:text-xs text-gray-600">Clienti</div>
+            <div className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.isLead || p.color === 'orange').length}</span>
+              <span className="text-gray-500">Lead</span>
             </div>
-            <div className="hidden sm:block text-center">
-              <div className="text-2xl font-bold text-gray-900">{places.length}</div>
-              <div className="text-xs text-gray-600">Totale</div>
+            <div className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-green-500"></span>
+              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.existsInOdoo || p.color === 'green').length}</span>
+              <span className="text-gray-500">Clienti</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-gray-400"></span>
+              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.notInTarget || p.color === 'grey').length}</span>
+              <span className="text-gray-500">Esclusi</span>
             </div>
           </div>
         </div>
@@ -512,6 +832,25 @@ export default function SalesRadarPage() {
                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
+
+                {/* Static Filter - Only visible in static mode */}
+                {mapMode === 'static' && (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Filtra per Tipo
+                    </label>
+                    <select
+                      value={staticFilter}
+                      onChange={(e) => setStaticFilter(e.target.value as any)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="all">Tutti</option>
+                      <option value="customers">🟢 Solo Clienti</option>
+                      <option value="leads">🟠 Solo Lead</option>
+                      <option value="not_target">⚪ Non in Target</option>
+                    </select>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -544,6 +883,16 @@ export default function SalesRadarPage() {
               >
                 <RefreshCw className="h-5 w-5" />
                 Refresh
+              </button>
+            )}
+
+            {/* Refresh Google Data - Only in static mode */}
+            {mapMode === 'static' && (
+              <button
+                onClick={refreshGoogleData}
+                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2"
+              >
+                🔄 Aggiorna Dati Google
               </button>
             )}
           </div>
@@ -712,17 +1061,20 @@ export default function SalesRadarPage() {
               />
             )}
 
-            {/* Place markers */}
-            {places.map((place) => (
+            {/* Business Markers - conditional based on map mode */}
+            {(mapMode === 'live' ? places : odooPlaces).map((place: any, index: number) => (
               <Marker
-                key={place.place_id}
-                position={place.location}
+                key={place.place_id || place.id || index}
+                position={{
+                  lat: place.geometry?.location?.lat || place.latitude || place.lat || place.location?.lat,
+                  lng: place.geometry?.location?.lng || place.longitude || place.lng || place.location?.lng
+                }}
                 onClick={() => setSelectedPlace(place)}
                 icon={{
                   path: google.maps.SymbolPath.CIRCLE,
-                  scale: 8,
-                  fillColor: place.existsInOdoo ? '#10B981' : '#EF4444',
-                  fillOpacity: 1,
+                  scale: 10,
+                  fillColor: getMarkerColor(place),
+                  fillOpacity: getMarkerOpacity(place),
                   strokeColor: '#FFFFFF',
                   strokeWeight: 2,
                 }}
@@ -732,13 +1084,39 @@ export default function SalesRadarPage() {
             {/* Info window - Mobile Optimized */}
             {selectedPlace && (
               <InfoWindow
-                position={selectedPlace.location}
+                position={{
+                  lat: selectedPlace.geometry?.location?.lat || selectedPlace.latitude || selectedPlace.lat || selectedPlace.location?.lat,
+                  lng: selectedPlace.geometry?.location?.lng || selectedPlace.longitude || selectedPlace.lng || selectedPlace.location?.lng
+                }}
                 onCloseClick={() => setSelectedPlace(null)}
               >
                 <div className="max-w-[280px] sm:max-w-xs p-2">
                   <h3 className="mb-2 text-base sm:text-lg font-bold text-gray-900 leading-tight">
                     {selectedPlace.name}
                   </h3>
+
+                  {/* Sales data for customers (from static mode or live mode) */}
+                  {(selectedPlace.existsInOdoo || selectedPlace.sales_data || selectedPlace.color === 'green') && (selectedPlace.sales_data || selectedPlace.salesData) && (
+                    <div className="bg-green-50 p-2 rounded-lg mb-2">
+                      <p className="text-sm text-green-800">
+                        Fatturato: CHF {((selectedPlace.sales_data?.total_invoiced || selectedPlace.salesData?.total_invoiced) || 0).toLocaleString()}
+                      </p>
+                      <p className="text-sm text-green-800">
+                        Ordini: {(selectedPlace.sales_data?.order_count || selectedPlace.salesData?.order_count) || 0}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Tags display */}
+                  {selectedPlace.tags && selectedPlace.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {selectedPlace.tags.map((tag: string, i: number) => (
+                        <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="mb-3 space-y-1.5 text-sm">
                     {selectedPlace.address && (
@@ -804,8 +1182,8 @@ export default function SalesRadarPage() {
                     )}
                   </div>
 
-                  {/* Odoo Status */}
-                  {selectedPlace.existsInOdoo && selectedPlace.odooCustomer ? (
+                  {/* Odoo Status - handles all 4 color states */}
+                  {(selectedPlace.existsInOdoo || selectedPlace.color === 'green') && (selectedPlace.odooCustomer || selectedPlace.id) ? (
                     <div className="mb-3 rounded-lg bg-green-50 p-3">
                       <div className="mb-2 flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
@@ -814,30 +1192,30 @@ export default function SalesRadarPage() {
                         </span>
                       </div>
 
-                      {selectedPlace.salesData && (
+                      {(selectedPlace.salesData || selectedPlace.sales_data) && (
                         <div className="space-y-1 text-xs sm:text-sm text-green-800">
-                          {selectedPlace.salesData.total_invoiced > 0 && (
+                          {((selectedPlace.salesData?.total_invoiced || selectedPlace.sales_data?.total_invoiced) || 0) > 0 && (
                             <div className="flex items-center gap-2">
                               <Euro className="h-3 w-3 sm:h-4 sm:w-4" />
                               <span>
-                                €{selectedPlace.salesData.total_invoiced.toFixed(0)}
+                                CHF {(selectedPlace.salesData?.total_invoiced || selectedPlace.sales_data?.total_invoiced || 0).toLocaleString()}
                               </span>
                             </div>
                           )}
 
-                          {selectedPlace.salesData.order_count > 0 && (
+                          {((selectedPlace.salesData?.order_count || selectedPlace.sales_data?.order_count) || 0) > 0 && (
                             <div className="flex items-center gap-2">
                               <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
-                              <span>{selectedPlace.salesData.order_count} ordini</span>
+                              <span>{selectedPlace.salesData?.order_count || selectedPlace.sales_data?.order_count} ordini</span>
                             </div>
                           )}
 
-                          {selectedPlace.salesData.last_order_date && (
+                          {(selectedPlace.salesData?.last_order_date || selectedPlace.sales_data?.last_order_date) && (
                             <div className="flex items-center gap-2">
                               <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
                               <span className="text-xs">
                                 {new Date(
-                                  selectedPlace.salesData.last_order_date
+                                  (selectedPlace.salesData?.last_order_date || selectedPlace.sales_data?.last_order_date) as string
                                 ).toLocaleDateString('it-IT')}
                               </span>
                             </div>
@@ -846,7 +1224,7 @@ export default function SalesRadarPage() {
                       )}
 
                       <a
-                        href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.odooCustomer.id}&model=res.partner&view_type=form`}
+                        href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.odooCustomer?.id || selectedPlace.id}&model=res.partner&view_type=form`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-green-700 active:scale-95"
@@ -854,6 +1232,41 @@ export default function SalesRadarPage() {
                         <ExternalLink className="h-4 w-4" />
                         Apri in Odoo
                       </a>
+                    </div>
+                  ) : (selectedPlace.isLead || selectedPlace.color === 'orange') ? (
+                    <div className="mb-3 rounded-lg bg-orange-50 p-3">
+                      <div className="mb-2 flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+                        <span className="text-sm font-semibold text-orange-900">
+                          Lead Salvato
+                        </span>
+                      </div>
+                      <p className="mb-2 text-xs sm:text-sm text-orange-800">
+                        Presente nel CRM come lead
+                      </p>
+                      {selectedPlace.id && (
+                        <a
+                          href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.id}&model=res.partner&view_type=form`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-orange-700 active:scale-95"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Apri in Odoo
+                        </a>
+                      )}
+                    </div>
+                  ) : (selectedPlace.notInTarget || selectedPlace.color === 'grey') ? (
+                    <div className="mb-3 rounded-lg bg-gray-100 p-3">
+                      <div className="mb-2 flex items-center gap-2">
+                        <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
+                        <span className="text-sm font-semibold text-gray-700">
+                          Escluso dal Target
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-gray-600">
+                        Non rientra nei criteri target
+                      </p>
                     </div>
                   ) : selectedPlace.isChecking ? (
                     <div className="mb-3 rounded-lg bg-gray-50 p-3 text-center">
@@ -884,15 +1297,42 @@ export default function SalesRadarPage() {
                     </div>
                   )}
 
-                  <a
-                    href={selectedPlace.google_maps_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-lg border-2 border-gray-300 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Google Maps
-                  </a>
+                  {selectedPlace.google_maps_url && (
+                    <a
+                      href={selectedPlace.google_maps_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 rounded-lg border-2 border-gray-300 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Google Maps
+                    </a>
+                  )}
+
+                  {/* Voice Note and Not in Target Buttons */}
+                  <div className="mt-3 flex gap-2">
+                    {/* Voice Note Button */}
+                    <button
+                      onClick={() => isRecording ? stopRecording() : startRecording()}
+                      className={`flex-1 px-3 py-2 rounded-lg flex items-center justify-center gap-2 ${
+                        isRecording
+                          ? 'bg-red-500 text-white animate-pulse'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {isRecording ? 'Stop' : 'Nota'}
+                    </button>
+
+                    {/* Not in Target Button (only for leads/prospects, not customers) */}
+                    {!selectedPlace.existsInOdoo && (
+                      <button
+                        onClick={() => openNotTargetModal(selectedPlace)}
+                        className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                      >
+                        Non Target
+                      </button>
+                    )}
+                  </div>
                 </div>
               </InfoWindow>
             )}
@@ -1262,6 +1702,48 @@ export default function SalesRadarPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Not in Target Modal */}
+      {showNotTargetModal && notTargetPlace && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold mb-4">Non in Target</h3>
+            <p className="text-gray-600 mb-4">{notTargetPlace.name}</p>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => markAsNotTarget('closed')}
+                className="w-full px-4 py-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-left"
+              >
+                Chiuso definitivamente
+              </button>
+              <button
+                onClick={() => markAsNotTarget('not_interested')}
+                className="w-full px-4 py-3 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 text-left"
+              >
+                Non interessato
+              </button>
+              <button
+                onClick={() => {
+                  // Start recording for "other" with voice note
+                  startRecording();
+                  // After recording, will call markAsNotTarget('other', transcription)
+                }}
+                className="w-full px-4 py-3 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 text-left"
+              >
+                Altro (registra nota)
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowNotTargetModal(false)}
+              className="w-full mt-4 px-4 py-2 text-gray-600 hover:text-gray-900"
+            >
+              Annulla
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
