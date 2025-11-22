@@ -18,17 +18,19 @@ function getOpenAIClient() {
  * POST /api/sales-radar/voice-note
  *
  * Record voice note, transcribe with OpenAI Whisper, save to Odoo Lead/Partner
+ * OR save a written text note
  *
- * Request: multipart/form-data
- * - audio: File (webm/mp3 blob)
+ * Request: multipart/form-data OR JSON
+ * - audio: File (webm/mp3 blob) - optional if text_note provided
  * - lead_id: number
  * - lead_type: 'lead' | 'partner'
+ * - text_note: string (optional - for written notes)
  *
  * Response:
  * {
  *   success: true,
  *   transcription: string,
- *   attachment_id: number
+ *   attachment_id?: number
  * }
  */
 export async function POST(request: NextRequest) {
@@ -45,20 +47,30 @@ export async function POST(request: NextRequest) {
 
     const client = createOdooRPCClient(sessionId);
 
-    // 2. Receive audio blob from frontend
-    const formData = await request.formData();
-    const audioFile = formData.get('audio') as File | null;
-    const leadIdStr = formData.get('lead_id') as string | null;
-    const leadType = formData.get('lead_type') as 'lead' | 'partner' | null;
+    // Check content type to determine how to parse
+    const contentType = request.headers.get('content-type') || '';
 
-    // Validate required fields
-    if (!audioFile) {
-      return NextResponse.json({
-        success: false,
-        error: 'Nessun file audio fornito'
-      }, { status: 400 });
+    let audioFile: File | null = null;
+    let leadIdStr: string | null = null;
+    let leadType: 'lead' | 'partner' | null = null;
+    let textNote: string | null = null;
+
+    if (contentType.includes('application/json')) {
+      // JSON request (for written notes)
+      const body = await request.json();
+      leadIdStr = body.lead_id?.toString();
+      leadType = body.lead_type;
+      textNote = body.text_note;
+    } else {
+      // FormData request (for audio notes)
+      const formData = await request.formData();
+      audioFile = formData.get('audio') as File | null;
+      leadIdStr = formData.get('lead_id') as string | null;
+      leadType = formData.get('lead_type') as 'lead' | 'partner' | null;
+      textNote = formData.get('text_note') as string | null;
     }
 
+    // Validate required fields
     if (!leadIdStr) {
       return NextResponse.json({
         success: false,
@@ -81,8 +93,39 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Handle written text note
+    if (textNote && textNote.trim()) {
+      console.log('[VOICE-NOTE] Saving written note to', leadType, leadId);
+
+      const timestamp = new Date().toLocaleString('it-IT', {
+        dateStyle: 'short',
+        timeStyle: 'short'
+      });
+
+      const noteEntry = `\n\n--- Nota Scritta (${timestamp}) ---\n${textNote.trim()}`;
+
+      if (leadType === 'lead') {
+        await appendToCrmLeadDescription(client, leadId, noteEntry);
+      } else {
+        await appendToPartnerComment(client, leadId, noteEntry);
+      }
+
+      return NextResponse.json({
+        success: true,
+        transcription: textNote.trim(),
+        note_type: 'written'
+      });
+    }
+
+    // Handle audio note
+    if (!audioFile) {
+      return NextResponse.json({
+        success: false,
+        error: 'Nessun file audio o nota scritta fornita'
+      }, { status: 400 });
+    }
+
     // Validate audio file type
-    const validTypes = ['audio/webm', 'audio/mp3', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/x-m4a'];
     const fileType = audioFile.type || 'audio/webm';
 
     if (!fileType.startsWith('audio/')) {
@@ -154,13 +197,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       transcription: transcriptionText,
-      attachment_id: attachmentId
+      attachment_id: attachmentId,
+      note_type: 'voice'
     });
 
   } catch (error) {
     console.error('[VOICE-NOTE] Error:', error);
 
-    const errorMessage = error instanceof Error ? error.message : 'Errore durante l\'elaborazione della nota vocale';
+    const errorMessage = error instanceof Error ? error.message : 'Errore durante l\'elaborazione della nota';
 
     return NextResponse.json({
       success: false,

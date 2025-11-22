@@ -204,6 +204,12 @@ export default function SalesRadarPage() {
   const [showNotTargetModal, setShowNotTargetModal] = useState(false);
   const [notTargetPlace, setNotTargetPlace] = useState<any>(null);
 
+  // Note modal (vocale, scritta, non in target)
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [notePlace, setNotePlace] = useState<any>(null);
+  const [writtenNote, setWrittenNote] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
   // Stats
   const existingCustomers = places.filter(p => p.existsInOdoo).length;
   const newProspects = places.filter(p => !p.existsInOdoo && !p.isChecking).length;
@@ -608,8 +614,46 @@ export default function SalesRadarPage() {
     }
   };
 
+  // Open Note Modal (from InfoWindow)
+  const openNoteModal = (place: any) => {
+    setNotePlace(place);
+    setWrittenNote('');
+    setShowNoteModal(true);
+  };
+
+  // Save written note to Odoo
+  const saveWrittenNote = async () => {
+    if (!notePlace || !writtenNote.trim()) return;
+
+    setIsSavingNote(true);
+    try {
+      const response = await fetch('/api/sales-radar/voice-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: notePlace.leadId || notePlace.id || notePlace.place_id,
+          lead_type: notePlace.existsInOdoo ? 'partner' : 'lead',
+          text_note: writtenNote.trim()
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert('✅ Nota salvata!');
+        setShowNoteModal(false);
+        setWrittenNote('');
+      }
+    } catch (error) {
+      console.error('Errore salvataggio nota:', error);
+      alert('❌ Errore nel salvataggio');
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
   // Not in Target functions
   const openNotTargetModal = (place: any) => {
+    setShowNoteModal(false); // Chiudi note modal se aperto
     setNotTargetPlace(place);
     setShowNotTargetModal(true);
   };
@@ -1318,29 +1362,14 @@ export default function SalesRadarPage() {
                     </a>
                   )}
 
-                  {/* Voice Note and Not in Target Buttons */}
-                  <div className="mt-3 flex gap-2">
-                    {/* Voice Note Button */}
+                  {/* Note Button - Opens Note Modal */}
+                  <div className="mt-3">
                     <button
-                      onClick={() => isRecording ? stopRecording() : startRecording()}
-                      className={`flex-1 px-3 py-2 rounded-lg flex items-center justify-center gap-2 ${
-                        isRecording
-                          ? 'bg-red-500 text-white animate-pulse'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                      onClick={() => openNoteModal(selectedPlace)}
+                      className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
                     >
-                      {isRecording ? 'Stop' : 'Nota'}
+                      📝 Aggiungi Nota
                     </button>
-
-                    {/* Not in Target Button (only for leads/prospects, not customers) */}
-                    {!selectedPlace.existsInOdoo && (
-                      <button
-                        onClick={() => openNotTargetModal(selectedPlace)}
-                        className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-                      >
-                        Non Target
-                      </button>
-                    )}
                   </div>
                 </div>
               </InfoWindow>
@@ -1711,6 +1740,94 @@ export default function SalesRadarPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Note Modal - Opzioni Nota */}
+      {showNoteModal && notePlace && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-xl font-bold mb-2 text-gray-900">📝 Aggiungi Nota</h3>
+            <p className="text-gray-700 mb-4 font-medium">{notePlace.name}</p>
+
+            {/* Se sta registrando, mostra UI di registrazione */}
+            {isRecording ? (
+              <div className="space-y-4">
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center">
+                  <div className="w-16 h-16 mx-auto mb-3 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                    <span className="text-white text-2xl">🎤</span>
+                  </div>
+                  <p className="text-red-700 font-semibold text-lg">Registrazione in corso...</p>
+                  <p className="text-red-600 text-sm mt-1">Parla ora</p>
+                </div>
+                <button
+                  onClick={() => stopRecording()}
+                  className="w-full px-4 py-4 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-lg flex items-center justify-center gap-2"
+                >
+                  ⏹️ STOP - Termina Registrazione
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Nota Vocale */}
+                <button
+                  onClick={() => {
+                    setSelectedPlace(notePlace); // Per saveVoiceNote
+                    startRecording();
+                  }}
+                  className="w-full px-4 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-left font-medium flex items-center gap-3"
+                >
+                  <span className="text-xl">🎤</span>
+                  <span>Registra nota vocale</span>
+                </button>
+
+                {/* Nota Scritta */}
+                <div className="bg-green-50 rounded-lg p-3">
+                  <label className="text-green-700 font-medium flex items-center gap-2 mb-2">
+                    <span className="text-xl">✏️</span>
+                    <span>Nota scritta</span>
+                  </label>
+                  <textarea
+                    value={writtenNote}
+                    onChange={(e) => setWrittenNote(e.target.value)}
+                    placeholder="Scrivi una nota..."
+                    className="w-full px-3 py-2 border border-green-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    rows={3}
+                  />
+                  {writtenNote.trim() && (
+                    <button
+                      onClick={saveWrittenNote}
+                      disabled={isSavingNote}
+                      className="mt-2 w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
+                    >
+                      {isSavingNote ? 'Salvataggio...' : '💾 Salva Nota'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Non in Target */}
+                <button
+                  onClick={() => openNotTargetModal(notePlace)}
+                  className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-left font-medium flex items-center gap-3"
+                >
+                  <span className="text-xl">🚫</span>
+                  <span>Non in Target</span>
+                </button>
+              </div>
+            )}
+
+            {!isRecording && (
+              <button
+                onClick={() => {
+                  setShowNoteModal(false);
+                  setNotePlace(null);
+                }}
+                className="w-full mt-4 px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
+              >
+                Chiudi
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Not in Target Modal */}
       {showNotTargetModal && notTargetPlace && (
