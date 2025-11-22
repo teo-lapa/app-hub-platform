@@ -20,12 +20,13 @@ export async function GET(request: NextRequest) {
     const urgency = searchParams.get('urgency') || 'all';
     const zone = searchParams.get('zone') || undefined;
     const days = parseInt(searchParams.get('days') || '7');
+    const warehouseId = parseInt(searchParams.get('warehouseId') || '1'); // Default: warehouse 1 (EMBRACH)
 
-    console.log('🔍 Ricerca prodotti:', { urgency, zone, days });
+    console.log('🔍 Ricerca prodotti:', { urgency, zone, days, warehouseId });
 
     // Se urgency è no-movement-30 o no-movement-90, usa logica diversa
     if (urgency === 'no-movement-30' || urgency === 'no-movement-90') {
-      return await getNoMovementProducts(request, urgency, zone);
+      return await getNoMovementProducts(request, urgency, zone, warehouseId);
     }
 
     // Recupera session da cookie
@@ -84,6 +85,7 @@ export async function GET(request: NextRequest) {
         ['lot_id', 'in', lotIds],
         ['quantity', '>', 0],
         ['location_id.usage', '=', 'internal'],
+        ['location_id.warehouse_id', '=', warehouseId], // Filtra per warehouse specifico
         ['location_id', '!=', 648], // Escludi MERCE DETERIORATA (Scarti)
         ['location_id.complete_name', 'not ilike', '%FURGONI%'] // Escludi ubicazioni furgoni
       ],
@@ -167,20 +169,36 @@ export async function GET(request: NextRequest) {
       const locationName = locationParts[locationParts.length - 1] || locationCompleteName;
 
       // Determina zona in base alla location
-      // Cerca nel complete_name i buffer ID per mappare la zona
+      // Cerca nel complete_name per mappare la zona
+      // IMPORTANTE: Cerchiamo in ordine di specificità e usiamo i segmenti del path
       let zoneId: string | undefined = undefined;
 
-      // Cerca nel nome completo della location per trovare la zona
-      // Es: "Physical Locations/Frigo/..." -> frigo
-      const lowerName = locationCompleteName.toLowerCase();
-      if (lowerName.includes('frigo') || lowerName.includes('fr02')) {
-        zoneId = 'frigo';
-      } else if (lowerName.includes('secco-sopra') || lowerName.includes('sc03')) {
-        zoneId = 'secco-sopra';
-      } else if (lowerName.includes('secco') || lowerName.includes('sc02')) {
-        zoneId = 'secco';
-      } else if (lowerName.includes('pingu') || lowerName.includes('pn01')) {
-        zoneId = 'pingu';
+      // Splitta il path e cerca la zona principale (di solito il 3° o 4° segmento)
+      // Es: "WH/EMBRACH/Frigo/Scaffale" -> segmenti[2] = "Frigo"
+      const pathSegments = locationCompleteName.split('/').map(s => s.toLowerCase().trim());
+
+      // Cerca nei segmenti del path (escludendo WH e nome warehouse)
+      for (const segment of pathSegments) {
+        // Controllo PINGU prima (più specifico)
+        if (segment === 'pingu' || segment.includes('pn01') || segment.startsWith('pingu')) {
+          zoneId = 'pingu';
+          break;
+        }
+        // Controllo SECCO-SOPRA (più specifico di SECCO)
+        if (segment === 'secco-sopra' || segment.includes('sc03') || segment === 'secco sopra') {
+          zoneId = 'secco-sopra';
+          break;
+        }
+        // Controllo FRIGO
+        if (segment === 'frigo' || segment.includes('fr02') || segment.startsWith('frigo')) {
+          zoneId = 'frigo';
+          break;
+        }
+        // Controllo SECCO (generico)
+        if (segment === 'secco' || segment.includes('sc02') || segment.startsWith('secco')) {
+          zoneId = 'secco';
+          break;
+        }
       }
 
       // Filtra per zona se specificata
@@ -279,11 +297,12 @@ export async function GET(request: NextRequest) {
 async function getNoMovementProducts(
   request: NextRequest,
   urgency: 'no-movement-30' | 'no-movement-90',
-  zone?: string
+  zone?: string,
+  warehouseId: number = 1
 ) {
   try {
     const daysThreshold = urgency === 'no-movement-30' ? 30 : 90;
-    console.log(`📦 Ricerca prodotti non movimentati da ${daysThreshold} giorni...`);
+    console.log(`📦 Ricerca prodotti non movimentati da ${daysThreshold} giorni (warehouse: ${warehouseId})...`);
 
     // Recupera session da cookie
     const cookieStore = await cookies();
@@ -310,6 +329,7 @@ async function getNoMovementProducts(
       [
         ['quantity', '>', 0],
         ['location_id.usage', '=', 'internal'],
+        ['location_id.warehouse_id', '=', warehouseId], // Filtra per warehouse specifico
         ['location_id', '!=', 648], // Escludi MERCE DETERIORATA (Scarti)
         ['location_id.complete_name', 'not ilike', '%FURGONI%'] // Escludi ubicazioni furgoni
       ],
@@ -411,17 +431,27 @@ async function getNoMovementProducts(
       const locationParts = locationCompleteName.split('/');
       const locationName = locationParts[locationParts.length - 1] || locationCompleteName;
 
-      // Determina zona
+      // Determina zona - usa logica per segmenti del path
       let zoneId: string | undefined = undefined;
-      const lowerName = locationCompleteName.toLowerCase();
-      if (lowerName.includes('frigo') || lowerName.includes('fr02')) {
-        zoneId = 'frigo';
-      } else if (lowerName.includes('secco-sopra') || lowerName.includes('sc03')) {
-        zoneId = 'secco-sopra';
-      } else if (lowerName.includes('secco') || lowerName.includes('sc02')) {
-        zoneId = 'secco';
-      } else if (lowerName.includes('pingu') || lowerName.includes('pn01')) {
-        zoneId = 'pingu';
+      const pathSegments = locationCompleteName.split('/').map(s => s.toLowerCase().trim());
+
+      for (const segment of pathSegments) {
+        if (segment === 'pingu' || segment.includes('pn01') || segment.startsWith('pingu')) {
+          zoneId = 'pingu';
+          break;
+        }
+        if (segment === 'secco-sopra' || segment.includes('sc03') || segment === 'secco sopra') {
+          zoneId = 'secco-sopra';
+          break;
+        }
+        if (segment === 'frigo' || segment.includes('fr02') || segment.startsWith('frigo')) {
+          zoneId = 'frigo';
+          break;
+        }
+        if (segment === 'secco' || segment.includes('sc02') || segment.startsWith('secco')) {
+          zoneId = 'secco';
+          break;
+        }
       }
 
       // Filtra per zona se specificata
