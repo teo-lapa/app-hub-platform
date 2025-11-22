@@ -226,25 +226,39 @@ export default function TimeAttendancePage() {
     }
   };
 
+  // State per errori
+  const [contactError, setContactError] = useState<string | null>(null);
+
   const loadContactFromOdoo = async (email: string) => {
     setLoadingContact(true);
+    setContactError(null);
+    console.log('[TIME-ATTENDANCE UI] Caricando contatto per email:', email);
     try {
       const res = await fetch(`/api/time-attendance/contact?email=${encodeURIComponent(email)}`);
       const data = await res.json();
+      console.log('[TIME-ATTENDANCE UI] Risposta API:', data);
 
       if (data.success && data.data) {
         setContact(data.data.contact);
         setCompany(data.data.company);
         setEmployees(data.data.employees || []);
+        toast.success(`Benvenuto, ${data.data.contact.name}!`);
 
         // Load clock status
         if (data.data.contact?.id) {
           loadClockStatus(data.data.contact.id);
         }
+      } else {
+        // Errore specifico dall'API
+        const errorMsg = data.error || 'Contatto non trovato';
+        setContactError(errorMsg);
+        console.error('[TIME-ATTENDANCE UI] Errore:', errorMsg, data);
+        toast.error(errorMsg);
       }
     } catch (error) {
-      console.error('Error loading contact:', error);
-      toast.error('Errore nel caricamento dati');
+      console.error('[TIME-ATTENDANCE UI] Error loading contact:', error);
+      setContactError('Errore di rete nel caricamento');
+      toast.error('Errore di rete');
     } finally {
       setLoadingContact(false);
     }
@@ -415,6 +429,49 @@ export default function TimeAttendancePage() {
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           className="w-16 h-16 border-4 border-white border-t-transparent rounded-full"
         />
+      </div>
+    );
+  }
+
+  // ==================== CONTACT NOT FOUND STATE ====================
+  if (!contact && !loadingContact) {
+    return (
+      <div className={`min-h-screen ${theme.gradient} flex flex-col items-center justify-center p-4`}>
+        <Toaster position="top-center" />
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="w-full max-w-md p-8 rounded-3xl bg-white/10 backdrop-blur-lg border border-white/20 text-center"
+        >
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
+            <AlertCircle className="w-10 h-10 text-red-300" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Contatto non trovato</h2>
+          <p className="text-white/70 mb-4">
+            {contactError || 'Il tuo contatto non è stato trovato in Odoo'}
+          </p>
+          <div className="bg-white/5 rounded-xl p-4 mb-6">
+            <p className="text-white/50 text-sm">Email cercata:</p>
+            <p className="text-white font-mono">{user?.email}</p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => user?.email && loadContactFromOdoo(user.email)}
+              className="w-full py-3 px-6 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-all font-medium"
+            >
+              Riprova
+            </button>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="w-full py-3 px-6 bg-white/10 hover:bg-white/20 text-white/70 rounded-xl transition-all"
+            >
+              Torna alla Dashboard
+            </button>
+          </div>
+          <p className="mt-6 text-white/40 text-xs">
+            Se il problema persiste, contatta l&apos;amministratore per verificare che il tuo contatto sia presente in Odoo con questa email.
+          </p>
+        </motion.div>
       </div>
     );
   }

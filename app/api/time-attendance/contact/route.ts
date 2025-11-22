@@ -69,40 +69,73 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const odoo = await getOdooClient();
+    console.log('[TIME-ATTENDANCE] Cercando contatto con email:', email);
 
-    // Cerca il contatto per email
-    const contacts = await odoo.searchRead(
-      'res.partner',
-      [['email', '=', email]],
-      [
-        'id',
-        'name',
-        'email',
-        'phone',
-        'mobile',
-        'function',
-        'title',
-        'parent_id',
-        'child_ids',
-        'is_company',
-        'image_128',
-        'street',
-        'city',
-        'country_id',
-        'x_gender',
-      ],
-      1
-    );
-
-    if (!contacts || contacts.length === 0) {
+    let odoo;
+    try {
+      odoo = await getOdooClient();
+      console.log('[TIME-ATTENDANCE] Connesso a Odoo');
+    } catch (odooConnErr) {
+      console.error('[TIME-ATTENDANCE] Errore connessione Odoo:', odooConnErr);
       return NextResponse.json({
         success: false,
-        error: 'Contatto non trovato in Odoo',
+        error: 'Errore connessione a Odoo',
+        details: odooConnErr instanceof Error ? odooConnErr.message : 'Unknown error',
+      }, { status: 500 });
+    }
+
+    // Cerca il contatto per email (case insensitive con ilike)
+    let contacts;
+    try {
+      contacts = await odoo.searchRead(
+        'res.partner',
+        [['email', 'ilike', email]],
+        [
+          'id',
+          'name',
+          'email',
+          'phone',
+          'mobile',
+          'function',
+          'title',
+          'parent_id',
+          'child_ids',
+          'is_company',
+          'image_128',
+          'street',
+          'city',
+          'country_id',
+          'x_gender',
+        ],
+        10
+      );
+      console.log('[TIME-ATTENDANCE] Risultati ricerca:', contacts?.length || 0, 'contatti trovati');
+    } catch (searchErr) {
+      console.error('[TIME-ATTENDANCE] Errore ricerca Odoo:', searchErr);
+      return NextResponse.json({
+        success: false,
+        error: 'Errore ricerca in Odoo',
+        details: searchErr instanceof Error ? searchErr.message : 'Unknown error',
+      }, { status: 500 });
+    }
+
+    if (!contacts || contacts.length === 0) {
+      console.log('[TIME-ATTENDANCE] Nessun contatto trovato per email:', email);
+      return NextResponse.json({
+        success: false,
+        error: `Contatto non trovato in Odoo per email: ${email}`,
+        searched_email: email,
       }, { status: 404 });
     }
 
-    const contact = normalizeOdooContact(contacts[0] as Record<string, unknown>);
+    // Prendi il primo contatto che corrisponde esattamente (case insensitive)
+    const exactMatch = contacts.find((c: Record<string, unknown>) =>
+      (c.email as string)?.toLowerCase() === email.toLowerCase()
+    ) || contacts[0];
+
+    console.log('[TIME-ATTENDANCE] Contatto trovato:', exactMatch?.name, exactMatch?.email);
+
+    const contact = normalizeOdooContact(exactMatch as Record<string, unknown>);
 
     let company: FormattedContact | null = null;
     let employees: FormattedContact[] = [];
