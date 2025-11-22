@@ -6,6 +6,7 @@ import {
   Clock, MapPin, User, Calendar, LogIn, LogOut, Coffee, Play,
   CheckCircle, AlertCircle, QrCode, Users, X, Camera, Navigation,
   Building2, Briefcase, Phone, Mail, Shield, FileText, Home, Loader2, Settings,
+  UtensilsCrossed, AlertTriangle, Timer,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -49,13 +50,30 @@ interface TimeEntry {
   location_name?: string;
 }
 
+interface ActiveBreakInfo {
+  type: 'coffee_break' | 'lunch_break';
+  name: string;
+  started_at: string;
+  max_minutes: number;
+  elapsed_minutes: number;
+  is_exceeded: boolean;
+  exceeded_by_minutes: number;
+}
+
 interface ClockStatus {
   is_on_duty: boolean;
   is_on_break: boolean;
   last_entry: TimeEntry | null;
   entries_today: TimeEntry[];
   hours_worked_today: number;
+  active_break?: ActiveBreakInfo | null;
 }
+
+// Configurazione pause
+const BREAK_CONFIG = {
+  coffee_break: { maxMinutes: 20, name: 'Pausa Caffè', icon: Coffee },
+  lunch_break: { maxMinutes: 60, name: 'Pausa Pranzo', icon: UtensilsCrossed },
+} as const;
 
 // ==================== THEME ====================
 const getThemeColors = (gender?: string) => {
@@ -109,6 +127,11 @@ export default function TimeAttendancePage() {
   const hasCheckedConsentsRef = useRef(false);
   const [allConsentsGranted, setAllConsentsGranted] = useState(false);
 
+  // Break timer state
+  const [breakTimer, setBreakTimer] = useState<{ elapsed: number; max: number; exceeded: boolean } | null>(null);
+  const breakTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasNotifiedExceededRef = useRef(false);
+
   const theme = getThemeColors(contact?.x_gender || (contact?.title?.name?.includes('Sig.ra') ? 'female' : 'male'));
 
   // Clock timer
@@ -116,6 +139,68 @@ export default function TimeAttendancePage() {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Break timer effect
+  useEffect(() => {
+    // Clear any existing timer first
+    if (breakTimerRef.current) {
+      clearInterval(breakTimerRef.current);
+      breakTimerRef.current = null;
+    }
+
+    if (clockStatus?.is_on_break && clockStatus?.active_break) {
+      const activeBreak = clockStatus.active_break;
+      const startTime = new Date(activeBreak.started_at).getTime();
+      const maxMs = activeBreak.max_minutes * 60 * 1000;
+
+      // Start timer
+      breakTimerRef.current = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const elapsedMinutes = Math.floor(elapsed / 60000);
+        const exceeded = elapsed >= maxMs;
+
+        // Se siamo al limite, blocca il conteggio
+        const effectiveElapsed = exceeded ? activeBreak.max_minutes : elapsedMinutes;
+
+        setBreakTimer({
+          elapsed: effectiveElapsed,
+          max: activeBreak.max_minutes,
+          exceeded,
+        });
+
+        // Notifica quando supera il limite (una sola volta)
+        if (exceeded && !hasNotifiedExceededRef.current) {
+          hasNotifiedExceededRef.current = true;
+          toast.error(`${activeBreak.name} terminata! Tempo scaduto. Torna al lavoro!`, {
+            duration: 10000,
+            icon: '⚠️',
+          });
+        }
+      }, 1000);
+
+      // Initial calculation
+      const initialElapsed = Date.now() - startTime;
+      const initialMinutes = Math.floor(initialElapsed / 60000);
+      const initialExceeded = initialElapsed >= maxMs;
+      setBreakTimer({
+        elapsed: initialExceeded ? activeBreak.max_minutes : initialMinutes,
+        max: activeBreak.max_minutes,
+        exceeded: initialExceeded,
+      });
+    } else {
+      // Clear timer when not on break
+      setBreakTimer(null);
+      hasNotifiedExceededRef.current = false;
+    }
+
+    // Cleanup function
+    return () => {
+      if (breakTimerRef.current) {
+        clearInterval(breakTimerRef.current);
+        breakTimerRef.current = null;
+      }
+    };
+  }, [clockStatus?.is_on_break, clockStatus?.active_break]);
 
   // Auth check
   useEffect(() => {
@@ -318,9 +403,15 @@ export default function TimeAttendancePage() {
     }
   };
 
-  const handleBreak = async (type: 'break_start' | 'break_end') => {
-    if (!contact || !gpsPosition || !scannedQRSecret) {
-      toast.error('Scansiona prima il QR della sede');
+  const handleBreak = async (type: 'break_start' | 'break_end', breakType?: 'coffee_break' | 'lunch_break') => {
+    if (!contact) {
+      toast.error('Dati contatto non caricati');
+      return;
+    }
+
+    // Per break_start serve il break_type
+    if (type === 'break_start' && !breakType) {
+      toast.error('Seleziona il tipo di pausa');
       return;
     }
 
@@ -333,16 +424,22 @@ export default function TimeAttendancePage() {
           contact_id: contact.id,
           company_id: company?.id,
           entry_type: type,
-          latitude: gpsPosition.lat,
-          longitude: gpsPosition.lng,
-          qr_secret: scannedQRSecret,
+          break_type: breakType,
+          // GPS opzionale per le pause
+          latitude: gpsPosition?.lat,
+          longitude: gpsPosition?.lng,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
         loadClockStatus(contact.id);
-        toast.success(type === 'break_start' ? 'Inizio pausa!' : 'Fine pausa!');
+        if (type === 'break_start' && breakType) {
+          const config = BREAK_CONFIG[breakType];
+          toast.success(`${config.name} iniziata! Max ${config.maxMinutes} minuti.`, { icon: '☕' });
+        } else {
+          toast.success('Pausa terminata. Buon lavoro!', { icon: '💪' });
+        }
       } else {
         toast.error(data.error || 'Errore');
       }
@@ -482,22 +579,95 @@ export default function TimeAttendancePage() {
               )}
             </motion.button>
 
-            {/* Break Buttons */}
+            {/* Break Buttons - Due tipi di pausa */}
             {isOnDuty && !isOnBreak && (
-              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex gap-4 mt-8">
-                <button onClick={() => handleBreak('break_start')} disabled={isClocking}
-                  className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl border border-white/20">
-                  <Coffee className="w-5 h-5" />Pausa
-                </button>
+              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex flex-col items-center gap-4 mt-8">
+                <p className="text-white/60 text-sm">Scegli tipo di pausa:</p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => handleBreak('break_start', 'coffee_break')}
+                    disabled={isClocking}
+                    className="flex flex-col items-center gap-2 px-6 py-4 bg-amber-500/20 hover:bg-amber-500/30 text-white rounded-2xl border border-amber-500/50 transition-all"
+                  >
+                    <Coffee className="w-6 h-6 text-amber-400" />
+                    <span className="font-medium">Pausa Caffè</span>
+                    <span className="text-xs text-white/50">max 20 min</span>
+                  </button>
+                  <button
+                    onClick={() => handleBreak('break_start', 'lunch_break')}
+                    disabled={isClocking}
+                    className="flex flex-col items-center gap-2 px-6 py-4 bg-orange-500/20 hover:bg-orange-500/30 text-white rounded-2xl border border-orange-500/50 transition-all"
+                  >
+                    <UtensilsCrossed className="w-6 h-6 text-orange-400" />
+                    <span className="font-medium">Pausa Pranzo</span>
+                    <span className="text-xs text-white/50">max 1 ora</span>
+                  </button>
+                </div>
               </motion.div>
             )}
 
-            {isOnBreak && (
-              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-8">
-                <button onClick={() => handleBreak('break_end')} disabled={isClocking}
-                  className="flex items-center gap-2 px-6 py-3 bg-green-500/20 hover:bg-green-500/30 text-white rounded-2xl border border-green-500/50">
-                  <Play className="w-5 h-5" />Riprendi Lavoro
-                </button>
+            {/* Break Timer Display */}
+            {isOnBreak && breakTimer && (
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className={`mt-8 p-6 rounded-3xl ${breakTimer.exceeded ? 'bg-red-500/20 border border-red-500/50' : 'bg-orange-500/20 border border-orange-500/50'}`}
+              >
+                <div className="flex flex-col items-center gap-4">
+                  {/* Break type icon and name */}
+                  <div className="flex items-center gap-2">
+                    {clockStatus?.active_break?.type === 'coffee_break' ? (
+                      <Coffee className={`w-6 h-6 ${breakTimer.exceeded ? 'text-red-400' : 'text-amber-400'}`} />
+                    ) : (
+                      <UtensilsCrossed className={`w-6 h-6 ${breakTimer.exceeded ? 'text-red-400' : 'text-orange-400'}`} />
+                    )}
+                    <span className={`font-semibold ${breakTimer.exceeded ? 'text-red-400' : 'text-white'}`}>
+                      {clockStatus?.active_break?.name || 'In Pausa'}
+                    </span>
+                  </div>
+
+                  {/* Timer display */}
+                  <div className="text-center">
+                    <div className={`text-4xl font-mono font-bold ${breakTimer.exceeded ? 'text-red-400' : 'text-white'}`}>
+                      {breakTimer.elapsed} / {breakTimer.max} min
+                    </div>
+                    {breakTimer.exceeded && (
+                      <motion.div
+                        initial={{ scale: 0.8 }}
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ repeat: Infinity, duration: 1 }}
+                        className="flex items-center justify-center gap-2 mt-2 text-red-400"
+                      >
+                        <AlertTriangle className="w-5 h-5" />
+                        <span className="font-semibold">TEMPO SCADUTO!</span>
+                        <AlertTriangle className="w-5 h-5" />
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, (breakTimer.elapsed / breakTimer.max) * 100)}%` }}
+                      className={`h-full rounded-full ${breakTimer.exceeded ? 'bg-red-500' : 'bg-gradient-to-r from-amber-400 to-orange-500'}`}
+                    />
+                  </div>
+
+                  {/* End break button */}
+                  <button
+                    onClick={() => handleBreak('break_end')}
+                    disabled={isClocking}
+                    className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-medium transition-all ${
+                      breakTimer.exceeded
+                        ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
+                        : 'bg-green-500/20 hover:bg-green-500/30 text-white border border-green-500/50'
+                    }`}
+                  >
+                    <Play className="w-5 h-5" />
+                    {breakTimer.exceeded ? 'TORNA AL LAVORO!' : 'Fine Pausa'}
+                  </button>
+                </div>
               </motion.div>
             )}
 
@@ -527,24 +697,29 @@ export default function TimeAttendancePage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {clockStatus.entries_today.map((entry, i) => (
+                {clockStatus.entries_today.map((entry: TimeEntry & { break_type?: string }, i) => (
                   <motion.div key={i} initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: i * 0.05 }}
                     className="flex items-center gap-4 p-4 bg-white/10 backdrop-blur rounded-2xl border border-white/10">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                       entry.entry_type === 'clock_in' ? 'bg-green-500/30' :
-                      entry.entry_type === 'clock_out' ? 'bg-red-500/30' : 'bg-orange-500/30'
+                      entry.entry_type === 'clock_out' ? 'bg-red-500/30' :
+                      entry.break_type === 'coffee_break' ? 'bg-amber-500/30' : 'bg-orange-500/30'
                     }`}>
                       {entry.entry_type === 'clock_in' ? <LogIn className="w-6 h-6 text-green-400" /> :
                        entry.entry_type === 'clock_out' ? <LogOut className="w-6 h-6 text-red-400" /> :
-                       entry.entry_type === 'break_start' ? <Coffee className="w-6 h-6 text-orange-400" /> :
-                       <Play className="w-6 h-6 text-blue-400" />}
+                       entry.entry_type === 'break_start' ? (
+                         entry.break_type === 'coffee_break' ? <Coffee className="w-6 h-6 text-amber-400" /> :
+                         <UtensilsCrossed className="w-6 h-6 text-orange-400" />
+                       ) : <Play className="w-6 h-6 text-blue-400" />}
                     </div>
                     <div className="flex-1">
                       <div className="font-medium text-white">
                         {entry.entry_type === 'clock_in' ? 'Entrata' :
                          entry.entry_type === 'clock_out' ? 'Uscita' :
-                         entry.entry_type === 'break_start' ? 'Inizio Pausa' : 'Fine Pausa'}
+                         entry.entry_type === 'break_start' ? (
+                           entry.break_type === 'coffee_break' ? 'Pausa Caffè' : 'Pausa Pranzo'
+                         ) : 'Fine Pausa'}
                       </div>
                       <div className="text-sm text-white/60">
                         {new Date(entry.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}

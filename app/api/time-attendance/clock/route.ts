@@ -12,7 +12,15 @@ interface TimeEntry {
   qr_code_verified: boolean;
   location_id?: string;
   location_name?: string;
+  break_type?: 'coffee_break' | 'lunch_break';
+  break_max_minutes?: number;
 }
+
+// Configurazione pause
+const BREAK_CONFIG = {
+  coffee_break: { maxMinutes: 20, name: 'Pausa Caffè' },
+  lunch_break: { maxMinutes: 60, name: 'Pausa Pranzo' },
+} as const;
 
 /**
  * Calcola la distanza tra due punti GPS usando la formula di Haversine
@@ -44,7 +52,7 @@ function calculateDistance(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { contact_id, company_id, entry_type, latitude, longitude, qr_secret } = body;
+    const { contact_id, company_id, entry_type, latitude, longitude, qr_secret, break_type } = body;
 
     if (!contact_id || !entry_type) {
       return NextResponse.json({ success: false, error: 'contact_id e entry_type obbligatori' }, { status: 400 });
@@ -54,46 +62,58 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'entry_type non valido' }, { status: 400 });
     }
 
-    if (!qr_secret) {
-      return NextResponse.json({ success: false, error: 'Scansiona il QR Code della sede', code: 'QR_REQUIRED' }, { status: 400 });
+    // Per le pause (break_start/break_end), NON serve QR né GPS
+    const isBreakAction = entry_type === 'break_start' || entry_type === 'break_end';
+
+    // QR e GPS richiesti SOLO per clock_in e clock_out
+    if (!isBreakAction) {
+      if (!qr_secret) {
+        return NextResponse.json({ success: false, error: 'Scansiona il QR Code della sede', code: 'QR_REQUIRED' }, { status: 400 });
+      }
+
+      if (latitude === undefined || longitude === undefined) {
+        return NextResponse.json({ success: false, error: 'Attiva la geolocalizzazione', code: 'GPS_REQUIRED' }, { status: 400 });
+      }
     }
 
-    if (latitude === undefined || longitude === undefined) {
-      return NextResponse.json({ success: false, error: 'Attiva la geolocalizzazione', code: 'GPS_REQUIRED' }, { status: 400 });
+    // Validazione QR + Geofencing (solo per clock_in/clock_out)
+    let loc = null;
+    let distance = 0;
+
+    if (!isBreakAction && qr_secret) {
+      const locationResult = await sql`
+        SELECT id, company_id, name, latitude, longitude, radius_meters
+        FROM ta_locations WHERE qr_secret = ${qr_secret} AND is_active = true
+      `;
+
+      if (locationResult.rows.length === 0) {
+        return NextResponse.json({ success: false, error: 'QR Code non valido', code: 'INVALID_QR' }, { status: 404 });
+      }
+
+      loc = locationResult.rows[0];
+      const locLat = parseFloat(loc.latitude);
+      const locLon = parseFloat(loc.longitude);
+      const radius = loc.radius_meters || 100;
+      distance = calculateDistance(latitude, longitude, locLat, locLon);
+
+      if (distance > radius) {
+        return NextResponse.json({
+          success: false,
+          error: `Troppo lontano dalla sede "${loc.name}". Distanza: ${Math.round(distance)}m, Max: ${radius}m`,
+          code: 'OUT_OF_GEOFENCE',
+          data: { distance_meters: Math.round(distance), radius_meters: radius, location_name: loc.name }
+        }, { status: 403 });
+      }
     }
 
-    // Validazione QR + Geofencing
-    const locationResult = await sql`
-      SELECT id, company_id, name, latitude, longitude, radius_meters
-      FROM ta_locations WHERE qr_secret = ${qr_secret} AND is_active = true
-    `;
-
-    if (locationResult.rows.length === 0) {
-      return NextResponse.json({ success: false, error: 'QR Code non valido', code: 'INVALID_QR' }, { status: 404 });
-    }
-
-    const loc = locationResult.rows[0];
-    const locLat = parseFloat(loc.latitude);
-    const locLon = parseFloat(loc.longitude);
-    const radius = loc.radius_meters || 100;
-    const distance = calculateDistance(latitude, longitude, locLat, locLon);
-
-    if (distance > radius) {
-      return NextResponse.json({
-        success: false,
-        error: `Troppo lontano dalla sede "${loc.name}". Distanza: ${Math.round(distance)}m, Max: ${radius}m`,
-        code: 'OUT_OF_GEOFENCE',
-        data: { distance_meters: Math.round(distance), radius_meters: radius, location_name: loc.name }
-      }, { status: 403 });
-    }
-
-    const effectiveCompanyId = company_id || loc.company_id;
+    const effectiveCompanyId = company_id || loc?.company_id;
 
     // Verifica ultima timbratura
     const lastResult = await sql`
-      SELECT entry_type FROM ta_time_entries WHERE contact_id = ${contact_id} ORDER BY timestamp DESC LIMIT 1
+      SELECT entry_type, break_type, timestamp FROM ta_time_entries WHERE contact_id = ${contact_id} ORDER BY timestamp DESC LIMIT 1
     `;
-    const lastType = lastResult.rows[0]?.entry_type;
+    const lastEntry = lastResult.rows[0];
+    const lastType = lastEntry?.entry_type;
 
     if (entry_type === 'clock_in' && lastType === 'clock_in') {
       return NextResponse.json({ success: false, error: 'Già timbrato in entrata' }, { status: 400 });
@@ -108,25 +128,56 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Nessuna pausa in corso' }, { status: 400 });
     }
 
+    // Validazione break_type per break_start
+    let breakMaxMinutes: number | null = null;
+    let breakTypeName = '';
+
+    if (entry_type === 'break_start') {
+      if (!break_type || !['coffee_break', 'lunch_break'].includes(break_type)) {
+        return NextResponse.json({ success: false, error: 'Tipo pausa non valido. Scegli Pausa Caffè o Pausa Pranzo.' }, { status: 400 });
+      }
+      breakMaxMinutes = BREAK_CONFIG[break_type as keyof typeof BREAK_CONFIG].maxMinutes;
+      breakTypeName = BREAK_CONFIG[break_type as keyof typeof BREAK_CONFIG].name;
+    }
+
     const timestamp = new Date().toISOString();
-    const result = await sql`
-      INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, location_id, location_name)
-      VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude}, ${longitude}, true, ${loc.id}, ${loc.name})
-      RETURNING *
-    `;
+
+    // INSERT diverso per break vs clock
+    let result;
+    if (isBreakAction) {
+      // Per break_end, recupera break_type dalla pausa aperta
+      const finalBreakType = entry_type === 'break_end' ? lastEntry?.break_type : break_type;
+
+      result = await sql`
+        INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, break_type, break_max_minutes)
+        VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude || null}, ${longitude || null}, false, ${finalBreakType || null}, ${breakMaxMinutes})
+        RETURNING *
+      `;
+    } else {
+      result = await sql`
+        INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, location_id, location_name)
+        VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude}, ${longitude}, true, ${loc?.id}, ${loc?.name})
+        RETURNING *
+      `;
+    }
 
     const messages: Record<string, string> = {
       clock_in: 'Entrata registrata! Buon lavoro!',
       clock_out: 'Uscita registrata! A presto!',
-      break_start: 'Inizio pausa registrato.',
-      break_end: 'Fine pausa registrata.',
+      break_start: `${breakTypeName || 'Pausa'} iniziata! Max ${breakMaxMinutes} minuti.`,
+      break_end: 'Pausa terminata. Buon lavoro!',
     };
 
     return NextResponse.json({
       success: true,
       data: {
         entry: result.rows[0],
-        location: { id: loc.id, name: loc.name, distance_meters: Math.round(distance) }
+        location: loc ? { id: loc.id, name: loc.name, distance_meters: Math.round(distance) } : null,
+        break_info: entry_type === 'break_start' ? {
+          type: break_type,
+          max_minutes: breakMaxMinutes,
+          name: breakTypeName,
+        } : null,
       },
       message: messages[entry_type],
     });
@@ -150,7 +201,7 @@ export async function GET(request: NextRequest) {
     }
 
     const lastResult = await sql`
-      SELECT id, entry_type, timestamp, location_name FROM ta_time_entries
+      SELECT id, entry_type, timestamp, location_name, break_type, break_max_minutes FROM ta_time_entries
       WHERE contact_id = ${parseInt(contactId)} ORDER BY timestamp DESC LIMIT 1
     `;
 
@@ -158,7 +209,7 @@ export async function GET(request: NextRequest) {
     todayStart.setHours(0, 0, 0, 0);
 
     const todayResult = await sql`
-      SELECT entry_type, timestamp, location_name FROM ta_time_entries
+      SELECT entry_type, timestamp, location_name, break_type, break_max_minutes FROM ta_time_entries
       WHERE contact_id = ${parseInt(contactId)} AND timestamp >= ${todayStart.toISOString()}
       ORDER BY timestamp ASC
     `;
@@ -178,12 +229,36 @@ export async function GET(request: NextRequest) {
     const hoursWorkedToday = Math.max(0, (workingTime - breakTime) / 3600000);
 
     const last = lastResult.rows[0];
+    const isOnBreak = last?.entry_type === 'break_start';
+
+    // Calcola info pausa attiva
+    let activeBreakInfo = null;
+    if (isOnBreak && last) {
+      const breakStartTime = new Date(last.timestamp);
+      const breakElapsedMs = Date.now() - breakStartTime.getTime();
+      const breakElapsedMinutes = Math.floor(breakElapsedMs / 60000);
+      const maxMinutes = last.break_max_minutes || (last.break_type === 'coffee_break' ? 20 : 60);
+      const isExceeded = breakElapsedMinutes >= maxMinutes;
+      const effectiveElapsed = isExceeded ? maxMinutes : breakElapsedMinutes;
+
+      activeBreakInfo = {
+        type: last.break_type,
+        name: last.break_type === 'coffee_break' ? 'Pausa Caffè' : 'Pausa Pranzo',
+        started_at: last.timestamp,
+        max_minutes: maxMinutes,
+        elapsed_minutes: effectiveElapsed,
+        is_exceeded: isExceeded,
+        exceeded_by_minutes: isExceeded ? breakElapsedMinutes - maxMinutes : 0,
+      };
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         last_entry: last || null,
         is_on_duty: last && (last.entry_type === 'clock_in' || last.entry_type === 'break_end'),
-        is_on_break: last?.entry_type === 'break_start',
+        is_on_break: isOnBreak,
+        active_break: activeBreakInfo,
         hours_worked_today: Math.round(hoursWorkedToday * 100) / 100,
         entries_today: todayResult.rows,
       },
