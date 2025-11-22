@@ -177,17 +177,17 @@ export default function LandingPage() {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-4 gap-4 mt-12">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
                 {stats.map((stat, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.8 + i * 0.1 }}
-                    className="text-center"
+                    className="text-center p-3 rounded-xl bg-white/5"
                   >
-                    <div className="text-3xl font-bold text-blue-400">{stat.value}</div>
-                    <div className="text-sm text-slate-400">{stat.label}</div>
+                    <div className="text-2xl md:text-3xl font-bold text-blue-400">{stat.value}</div>
+                    <div className="text-xs md:text-sm text-slate-400">{stat.label}</div>
                   </motion.div>
                 ))}
               </div>
@@ -317,7 +317,7 @@ export default function LandingPage() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
             {features.map((feature, i) => (
               <motion.div
                 key={i}
@@ -326,13 +326,13 @@ export default function LandingPage() {
                 transition={{ duration: 0.5, delay: i * 0.1 }}
                 viewport={{ once: true }}
                 whileHover={{ y: -5 }}
-                className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-white/40 transition-all group"
+                className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 md:p-8 border border-white/20 hover:border-white/40 transition-all group"
               >
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <feature.icon className="w-7 h-7 text-white" />
+                <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform">
+                  <feature.icon className="w-6 h-6 md:w-7 md:h-7 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-                <p className="text-slate-300 leading-relaxed">{feature.description}</p>
+                <h3 className="text-lg md:text-xl font-bold text-white mb-2 md:mb-3">{feature.title}</h3>
+                <p className="text-sm md:text-base text-slate-300 leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
           </div>
