@@ -1,6 +1,85 @@
 -- ============================================
 -- TIME & ATTENDANCE - Database Schema
 -- PostgreSQL schema per gestione presenze dipendenti
+-- Versione 2.0 - Integrato con Odoo res.partner
+-- ============================================
+
+-- ============================================
+-- NUOVE TABELLE - Integrazione Odoo
+-- ============================================
+
+-- Table: Time Entries con Odoo contact_id
+-- Questa è la tabella principale per le timbrature
+-- Usa contact_id e company_id da Odoo (res.partner)
+CREATE TABLE IF NOT EXISTS ta_time_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- Riferimenti Odoo
+  contact_id INTEGER NOT NULL, -- res.partner.id del dipendente
+  company_id INTEGER, -- res.partner.id dell'azienda (parent_id)
+
+  -- Tipo di evento
+  entry_type TEXT NOT NULL CHECK (entry_type IN ('clock_in', 'clock_out', 'break_start', 'break_end')),
+
+  -- Timestamp della timbratura
+  timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+
+  -- Geolocalizzazione
+  latitude DECIMAL(10,8),
+  longitude DECIMAL(11,8),
+
+  -- Verifica QR Code (sicurezza)
+  qr_code_verified BOOLEAN DEFAULT false,
+
+  -- Nome location (opzionale)
+  location_name TEXT,
+
+  -- Extra
+  note TEXT,
+
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ta_time_entries_contact ON ta_time_entries(contact_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_ta_time_entries_company ON ta_time_entries(company_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_ta_time_entries_date ON ta_time_entries(DATE(timestamp));
+
+-- Table: GDPR Consent per contatti Odoo
+CREATE TABLE IF NOT EXISTS ta_odoo_consents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  contact_id INTEGER NOT NULL, -- res.partner.id
+
+  consent_type TEXT NOT NULL CHECK (consent_type IN ('gps_tracking', 'data_processing', 'privacy_policy')),
+  is_granted BOOLEAN NOT NULL,
+
+  granted_at TIMESTAMP,
+  revoked_at TIMESTAMP,
+
+  consent_version VARCHAR(10) DEFAULT '1.0',
+  ip_address INET,
+  user_agent TEXT,
+
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ta_odoo_consents_contact ON ta_odoo_consents(contact_id);
+
+-- View: Riepilogo giornaliero per contatto Odoo
+CREATE OR REPLACE VIEW ta_contact_daily_summary AS
+SELECT
+  contact_id,
+  company_id,
+  DATE(timestamp AT TIME ZONE 'Europe/Rome') as work_date,
+  MIN(CASE WHEN entry_type = 'clock_in' THEN timestamp END) as first_clock_in,
+  MAX(CASE WHEN entry_type = 'clock_out' THEN timestamp END) as last_clock_out,
+  COUNT(CASE WHEN entry_type = 'clock_in' THEN 1 END) as clock_in_count,
+  COUNT(CASE WHEN entry_type = 'clock_out' THEN 1 END) as clock_out_count,
+  COUNT(*) as total_entries
+FROM ta_time_entries
+GROUP BY contact_id, company_id, DATE(timestamp AT TIME ZONE 'Europe/Rome');
+
+-- ============================================
+-- LEGACY TABLES - Manteniamo per compatibilità
 -- ============================================
 
 -- Table 1: Organizations (aziende clienti - multi-tenant)
