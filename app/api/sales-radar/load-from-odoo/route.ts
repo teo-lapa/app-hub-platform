@@ -65,6 +65,7 @@ interface MapMarker {
   name: string;
   address: string;
   phone?: string;
+  website?: string;
   latitude: number;
   longitude: number;
   color: 'green' | 'orange' | 'grey';
@@ -169,7 +170,8 @@ export async function GET(request: NextRequest) {
             'street', 'street2', 'zip', 'city',
             'partner_latitude', 'partner_longitude',
             'total_invoiced', 'sale_order_count',
-            'category_id' // Tags
+            'category_id', // Tags
+            'website' // Website URL
           ],
           0, // No limit, we'll filter by distance
           'name asc'
@@ -226,6 +228,7 @@ export async function GET(request: NextRequest) {
             name: customer.display_name || customer.name,
             address,
             phone: customer.phone || customer.mobile || undefined,
+            website: customer.website || undefined,
             latitude: custLat,
             longitude: custLng,
             color,
@@ -271,7 +274,8 @@ export async function GET(request: NextRequest) {
             'phone', 'mobile',
             'street', 'street2', 'zip', 'city',
             'description', // Contains coordinates
-            'tag_ids' // Tags
+            'tag_ids', // Tags
+            'website' // Website URL
           ],
           0, // No limit, we'll filter by distance
           'name asc'
@@ -343,6 +347,7 @@ export async function GET(request: NextRequest) {
             name: lead.partner_name || lead.name || lead.contact_name || 'Lead',
             address,
             phone: lead.phone || lead.mobile || undefined,
+            website: lead.website || undefined,
             latitude: coords.latitude,
             longitude: coords.longitude,
             color,

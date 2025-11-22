@@ -209,6 +209,12 @@ export default function SalesRadarPage() {
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [notTargetExpanded, setNotTargetExpanded] = useState(false);
 
+  // AI Analysis state
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [analysisPlace, setAnalysisPlace] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   // Stats
   const existingCustomers = places.filter(p => p.existsInOdoo).length;
   const newProspects = places.filter(p => !p.existsInOdoo && !p.isChecking).length;
@@ -733,6 +739,45 @@ export default function SalesRadarPage() {
     } catch (error) {
       console.error('Errore riattivazione:', error);
       alert('Errore durante la riattivazione');
+    }
+  };
+
+  // Analyze client with AI
+  const analyzeClient = async (place: any) => {
+    if (!place) return;
+
+    setAnalysisPlace(place);
+    setAnalysisResult(null);
+    setShowAnalysisModal(true);
+    setIsAnalyzing(true);
+
+    try {
+      const clientType = (place.existsInOdoo || place.color === 'green') ? 'customer' : 'lead';
+
+      const response = await fetch('/api/sales-radar/analyze-client', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          website: place.website || '',
+          name: place.name || place.display_name || 'Cliente',
+          client_id: place.odooCustomer?.id || place.id,
+          client_type: clientType,
+          address: place.address || '',
+          phone: place.phone || ''
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setAnalysisResult(result.analysis.text);
+      } else {
+        setAnalysisResult('Errore: ' + (result.error || 'Analisi non disponibile'));
+      }
+    } catch (error) {
+      console.error('Errore analisi:', error);
+      setAnalysisResult('Errore durante l\'analisi. Riprova più tardi.');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -1424,12 +1469,18 @@ export default function SalesRadarPage() {
                   )}
 
                   {/* Note Button - Opens Note Modal */}
-                  <div className="mt-3">
+                  <div className="mt-3 space-y-2">
                     <button
                       onClick={() => openNoteModal(selectedPlace)}
                       className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
                     >
                       📝 Aggiungi Nota
+                    </button>
+                    <button
+                      onClick={() => analyzeClient(selectedPlace)}
+                      className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium flex items-center justify-center gap-2"
+                    >
+                      🤖 Analizza con AI
                     </button>
                   </div>
                 </div>
@@ -1900,6 +1951,81 @@ export default function SalesRadarPage() {
                 Chiudi
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* AI Analysis Modal */}
+      {showAnalysisModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">🤖 Analisi AI</h3>
+              <button
+                onClick={() => {
+                  setShowAnalysisModal(false);
+                  setAnalysisPlace(null);
+                  setAnalysisResult(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {analysisPlace && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="font-semibold text-gray-900">{analysisPlace.name}</p>
+                {analysisPlace.address && (
+                  <p className="text-sm text-gray-600">{analysisPlace.address}</p>
+                )}
+                {analysisPlace.website && (
+                  <a
+                    href={analysisPlace.website.startsWith('http') ? analysisPlace.website : `https://${analysisPlace.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    {analysisPlace.website}
+                  </a>
+                )}
+              </div>
+            )}
+
+            {isAnalyzing ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-12 w-12 animate-spin text-purple-600 mb-4" />
+                <p className="text-gray-600 font-medium">Analisi in corso...</p>
+                <p className="text-sm text-gray-500 mt-1">Sto analizzando il sito web e preparando suggerimenti</p>
+              </div>
+            ) : analysisResult ? (
+              <div className="prose prose-sm max-w-none">
+                <div className="whitespace-pre-wrap text-gray-700 text-sm leading-relaxed">
+                  {analysisResult}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex gap-3">
+              {!isAnalyzing && analysisResult && (
+                <button
+                  onClick={() => analyzeClient(analysisPlace)}
+                  className="flex-1 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 font-medium"
+                >
+                  🔄 Rianalizza
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setShowAnalysisModal(false);
+                  setAnalysisPlace(null);
+                  setAnalysisResult(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+              >
+                Chiudi
+              </button>
+            </div>
           </div>
         </div>
       )}
