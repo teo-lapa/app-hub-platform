@@ -183,33 +183,40 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Se il contatto è un'azienda o ha child_ids, carica i dipendenti
-    if (contact.is_company || (contact.child_ids && contact.child_ids.length > 0)) {
-      const childIds = contact.child_ids || [];
+    // Se il contatto è un'azienda o ha child_ids, carica SOLO i dipendenti
+    // Esclude indirizzi di fatturazione (type='invoice') e consegna (type='delivery')
+    const companyId = contact.is_company ? contact.id : contact.parent_id?.[0];
 
-      if (childIds.length > 0) {
-        const employeesData = await odoo.searchRead(
-          'res.partner',
-          [['id', 'in', childIds]],
-          [
-            'id',
-            'name',
-            'email',
-            'phone',
-            'mobile',
-            'function',
-            'title',
-            'is_company',
-            'image_128',
-            'x_gender',
-          ],
-          100
-        );
+    if (companyId) {
+      // Cerca dipendenti con filtro type = 'contact' (dipendenti veri, non indirizzi)
+      const employeesData = await odoo.searchRead(
+        'res.partner',
+        [
+          ['parent_id', '=', companyId],
+          ['type', '=', 'contact'],  // SOLO dipendenti, NO indirizzi
+          ['is_company', '=', false],
+        ],
+        [
+          'id',
+          'name',
+          'email',
+          'phone',
+          'mobile',
+          'function',
+          'title',
+          'is_company',
+          'image_128',
+          'x_gender',
+          'type',
+        ],
+        100
+      );
 
-        employees = (employeesData as Record<string, unknown>[]).map(emp =>
-          normalizeOdooContact(emp)
-        );
-      }
+      employees = (employeesData as Record<string, unknown>[]).map(emp =>
+        normalizeOdooContact(emp)
+      );
+
+      console.log(`[TIME-ATTENDANCE] Trovati ${employees.length} dipendenti (filtrati per type=contact)`);
     }
 
     return NextResponse.json({
