@@ -332,15 +332,15 @@ export default function SalesRadarPage() {
           places: placesToSave.map(p => ({
             place_id: p.place_id,
             name: p.name,
-            address: p.formatted_address || p.vicinity,
-            phone: p.formatted_phone_number || p.international_phone_number,
-            website: p.website,
+            address: p.address || p.formatted_address || p.vicinity || '',
+            phone: p.phone || p.formatted_phone_number || p.international_phone_number || '',
+            website: p.website || '',
             rating: p.rating,
             user_ratings_total: p.user_ratings_total,
             types: p.types,
-            latitude: p.geometry?.location?.lat || p.lat,
-            longitude: p.geometry?.location?.lng || p.lng,
-            google_maps_url: p.url,
+            latitude: p.geometry?.location?.lat || p.location?.lat || p.lat,
+            longitude: p.geometry?.location?.lng || p.location?.lng || p.lng,
+            google_maps_url: p.google_maps_url || p.url || '',
           }))
         })
       });
