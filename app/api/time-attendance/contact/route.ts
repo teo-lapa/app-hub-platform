@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooClient } from '@/lib/odoo-client';
+import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 
 // Odoo returns `false` for empty related fields, so we use `any` for raw response
 // and then normalize to proper types
@@ -71,25 +71,17 @@ export async function GET(request: NextRequest) {
 
     console.log('[TIME-ATTENDANCE] Cercando contatto con email:', email);
 
-    let odoo;
-    try {
-      odoo = await getOdooClient();
-      console.log('[TIME-ATTENDANCE] Connesso a Odoo');
-    } catch (odooConnErr) {
-      console.error('[TIME-ATTENDANCE] Errore connessione Odoo:', odooConnErr);
-      return NextResponse.json({
-        success: false,
-        error: 'Errore connessione a Odoo',
-        details: odooConnErr instanceof Error ? odooConnErr.message : 'Unknown error',
-      }, { status: 500 });
-    }
+    // Usa il client RPC con session manager e auto-reconnect
+    const odoo = createOdooRPCClient();
+    console.log('[TIME-ATTENDANCE] Client Odoo creato con session manager');
 
-    // Cerca il contatto per email (case insensitive con ilike)
+    // Cerca il contatto per email
     let contacts;
     try {
+      // Prima prova ricerca esatta
       contacts = await odoo.searchRead(
         'res.partner',
-        [['email', 'ilike', email]],
+        [['email', '=', email]],
         [
           'id',
           'name',
@@ -105,17 +97,45 @@ export async function GET(request: NextRequest) {
           'street',
           'city',
           'country_id',
-          'x_gender',
         ],
         10
       );
-      console.log('[TIME-ATTENDANCE] Risultati ricerca:', contacts?.length || 0, 'contatti trovati');
+      console.log('[TIME-ATTENDANCE] Risultati ricerca esatta:', contacts?.length || 0, 'contatti trovati');
+
+      // Se non trova, prova con email lowercase
+      if (!contacts || contacts.length === 0) {
+        console.log('[TIME-ATTENDANCE] Provo con email lowercase:', email.toLowerCase());
+        contacts = await odoo.searchRead(
+          'res.partner',
+          [['email', '=', email.toLowerCase()]],
+          [
+            'id',
+            'name',
+            'email',
+            'phone',
+            'mobile',
+            'function',
+            'title',
+            'parent_id',
+            'child_ids',
+            'is_company',
+            'image_128',
+            'street',
+            'city',
+            'country_id',
+          ],
+          10
+        );
+        console.log('[TIME-ATTENDANCE] Risultati ricerca lowercase:', contacts?.length || 0, 'contatti trovati');
+      }
     } catch (searchErr) {
       console.error('[TIME-ATTENDANCE] Errore ricerca Odoo:', searchErr);
+      const errorMessage = searchErr instanceof Error ? searchErr.message : JSON.stringify(searchErr);
       return NextResponse.json({
         success: false,
         error: 'Errore ricerca in Odoo',
-        details: searchErr instanceof Error ? searchErr.message : 'Unknown error',
+        details: errorMessage,
+        searched_email: email,
       }, { status: 500 });
     }
 
@@ -128,14 +148,11 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Prendi il primo contatto che corrisponde esattamente (case insensitive)
-    const exactMatch = contacts.find((c: Record<string, unknown>) =>
-      (c.email as string)?.toLowerCase() === email.toLowerCase()
-    ) || contacts[0];
+    // Prendi il primo contatto trovato
+    const foundContact = contacts[0];
+    console.log('[TIME-ATTENDANCE] Contatto trovato:', foundContact?.name, foundContact?.email);
 
-    console.log('[TIME-ATTENDANCE] Contatto trovato:', exactMatch?.name, exactMatch?.email);
-
-    const contact = normalizeOdooContact(exactMatch as Record<string, unknown>);
+    const contact = normalizeOdooContact(foundContact as Record<string, unknown>);
 
     let company: FormattedContact | null = null;
     let employees: FormattedContact[] = [];
