@@ -689,8 +689,20 @@ export default function TimeAttendancePage() {
                           outerRadius={80}
                           paddingAngle={5}
                           dataKey="value"
-                          label={({ name, value }) => `${name}: ${value}`}
-                          labelLine={{ stroke: 'rgba(255,255,255,0.3)' }}
+                          label={({ name, value, cx, x, y }) => (
+                            <text
+                              x={x}
+                              y={y}
+                              fill="white"
+                              textAnchor={x > cx ? 'start' : 'end'}
+                              dominantBaseline="central"
+                              fontSize={12}
+                              fontWeight={500}
+                            >
+                              {`${name}: ${value}`}
+                            </text>
+                          )}
+                          labelLine={{ stroke: 'rgba(255,255,255,0.5)' }}
                         >
                           {[
                             { name: 'In Servizio', value: companyDashboard.stats.on_duty - companyDashboard.stats.on_break, fill: '#22c55e' },
@@ -701,7 +713,8 @@ export default function TimeAttendancePage() {
                           ))}
                         </Pie>
                         <Tooltip
-                          contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                          contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', color: 'white' }}
+                          itemStyle={{ color: 'white' }}
                           labelStyle={{ color: 'white' }}
                         />
                         <Legend
