@@ -6,7 +6,7 @@ import {
   Clock, MapPin, User, Calendar, LogIn, LogOut, Coffee, Play,
   CheckCircle, AlertCircle, QrCode, Users, X, Camera, Navigation,
   Building2, Briefcase, Phone, Mail, Shield, FileText, Home, Loader2, Settings,
-  UtensilsCrossed, AlertTriangle, Timer,
+  UtensilsCrossed, AlertTriangle, Timer, TrendingUp, RefreshCw,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -69,6 +69,41 @@ interface ClockStatus {
   active_break?: ActiveBreakInfo | null;
 }
 
+// Company Dashboard Types
+interface CompanyEmployee {
+  contact_id: number;
+  contact_name: string;
+  contact_function?: string;
+  contact_image?: string;
+  is_on_duty: boolean;
+  is_on_break: boolean;
+  last_entry?: {
+    entry_type: string;
+    timestamp: string;
+    location_name?: string;
+    break_type?: 'coffee_break' | 'lunch_break';
+  };
+  hours_worked_today: number;
+  hours_worked_yesterday: number;
+  hours_worked_week: number;
+  entries_today: number;
+}
+
+interface CompanyDashboardData {
+  date: string;
+  week_start: string;
+  stats: {
+    total_employees: number;
+    on_duty: number;
+    on_break: number;
+    off_duty: number;
+    total_hours_today: number;
+    total_hours_yesterday: number;
+    total_hours_week: number;
+  };
+  employees: CompanyEmployee[];
+}
+
 // Configurazione pause
 const BREAK_CONFIG = {
   coffee_break: { maxMinutes: 20, name: 'Pausa Caffè', icon: Coffee },
@@ -104,6 +139,10 @@ export default function TimeAttendancePage() {
   const [isClocking, setIsClocking] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [view, setView] = useState<'clock' | 'history' | 'team'>('clock');
+
+  // Company Dashboard state
+  const [companyDashboard, setCompanyDashboard] = useState<CompanyDashboardData | null>(null);
+  const [loadingDashboard, setLoadingDashboard] = useState(false);
 
   // QR + GPS state
   const [showQRScanner, setShowQRScanner] = useState(false);
@@ -295,6 +334,33 @@ export default function TimeAttendancePage() {
       console.error('Error loading clock status:', error);
     }
   };
+
+  // Load company dashboard data
+  const loadCompanyDashboard = useCallback(async (companyId: number) => {
+    setLoadingDashboard(true);
+    try {
+      const res = await fetch(`/api/time-attendance/dashboard?company_id=${companyId}`);
+      const data = await res.json();
+      if (data.success) {
+        setCompanyDashboard(data.data);
+      }
+    } catch (error) {
+      console.error('Error loading company dashboard:', error);
+    } finally {
+      setLoadingDashboard(false);
+    }
+  }, []);
+
+  // Auto-load company dashboard if user is a company
+  useEffect(() => {
+    if (contact?.is_company && contact.id) {
+      loadCompanyDashboard(contact.id);
+      // Refresh ogni 30 secondi
+      const interval = setInterval(() => loadCompanyDashboard(contact.id), 30000);
+      return () => clearInterval(interval);
+    }
+    return undefined;
+  }, [contact?.is_company, contact?.id, loadCompanyDashboard]);
 
   const checkConsents = async (contactId: number) => {
     try {
@@ -500,8 +566,206 @@ export default function TimeAttendancePage() {
       <Toaster position="top-center" />
 
       <main className="pb-24 px-4">
-        {/* Clock View */}
-        {view === 'clock' && (
+        {/* Company Dashboard - Solo per aziende */}
+        {contact?.is_company && (
+          <div className="max-w-6xl mx-auto pt-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-2xl ${theme.gradient} flex items-center justify-center shadow-lg`}>
+                  <Building2 className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-white">{contact?.name}</h1>
+                  <p className="text-white/60 text-sm">Dashboard Presenze</p>
+                </div>
+              </div>
+              <button
+                onClick={() => contact.id && loadCompanyDashboard(contact.id)}
+                disabled={loadingDashboard}
+                className="p-3 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all"
+              >
+                <RefreshCw className={`w-5 h-5 ${loadingDashboard ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            {/* Stats Cards */}
+            {companyDashboard && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+                  className="p-4 rounded-2xl bg-green-500/20 border border-green-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <span className="text-green-300 text-sm">In Servizio</span>
+                  </div>
+                  <div className="text-3xl font-bold text-white">{companyDashboard.stats.on_duty}</div>
+                </motion.div>
+
+                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}
+                  className="p-4 rounded-2xl bg-orange-500/20 border border-orange-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Coffee className="w-5 h-5 text-orange-400" />
+                    <span className="text-orange-300 text-sm">In Pausa</span>
+                  </div>
+                  <div className="text-3xl font-bold text-white">{companyDashboard.stats.on_break}</div>
+                </motion.div>
+
+                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
+                  className="p-4 rounded-2xl bg-white/10 border border-white/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-5 h-5 text-white/60" />
+                    <span className="text-white/60 text-sm">Fuori</span>
+                  </div>
+                  <div className="text-3xl font-bold text-white">{companyDashboard.stats.off_duty}</div>
+                </motion.div>
+
+                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
+                  className="p-4 rounded-2xl bg-blue-500/20 border border-blue-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="w-5 h-5 text-blue-400" />
+                    <span className="text-blue-300 text-sm">Ore Oggi</span>
+                  </div>
+                  <div className="text-3xl font-bold text-white">{companyDashboard.stats.total_hours_today.toFixed(1)}h</div>
+                </motion.div>
+              </div>
+            )}
+
+            {/* Hours Summary */}
+            {companyDashboard && (
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
+                  <div className="text-white/50 text-xs mb-1">Ieri</div>
+                  <div className="text-xl font-bold text-white">{companyDashboard.stats.total_hours_yesterday.toFixed(1)}h</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white/10 border border-white/20 text-center">
+                  <div className="text-white/70 text-xs mb-1">Oggi</div>
+                  <div className="text-2xl font-bold text-white">{companyDashboard.stats.total_hours_today.toFixed(1)}h</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
+                  <div className="text-white/50 text-xs mb-1">Settimana</div>
+                  <div className="text-xl font-bold text-white">{companyDashboard.stats.total_hours_week.toFixed(1)}h</div>
+                </div>
+              </div>
+            )}
+
+            {/* Employee Cards */}
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Dipendenti ({companyDashboard?.stats.total_employees || 0})</h2>
+            </div>
+
+            {loadingDashboard && !companyDashboard ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 text-white animate-spin" />
+              </div>
+            ) : companyDashboard?.employees.length === 0 ? (
+              <div className="text-center py-12 text-white/50">
+                <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p>Nessun dipendente registrato</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {companyDashboard?.employees.map((emp, i) => (
+                  <motion.div
+                    key={emp.contact_id}
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                    className={`p-4 rounded-2xl backdrop-blur-lg border ${
+                      emp.is_on_duty
+                        ? emp.is_on_break
+                          ? 'bg-orange-500/10 border-orange-500/30'
+                          : 'bg-green-500/10 border-green-500/30'
+                        : 'bg-white/5 border-white/10'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Avatar */}
+                      <div className={`w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center ${
+                        emp.is_on_duty ? (emp.is_on_break ? 'bg-orange-500/30' : 'bg-green-500/30') : 'bg-white/10'
+                      }`}>
+                        {emp.contact_image ? (
+                          <img src={`data:image/png;base64,${emp.contact_image}`} alt="" className="w-full h-full rounded-xl object-cover" />
+                        ) : (
+                          <User className="w-6 h-6 text-white/70" />
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-white truncate">{emp.contact_name}</h3>
+                          <span className={`px-2 py-0.5 text-xs rounded-full ${
+                            emp.is_on_duty
+                              ? emp.is_on_break
+                                ? 'bg-orange-500/30 text-orange-300'
+                                : 'bg-green-500/30 text-green-300'
+                              : 'bg-white/10 text-white/50'
+                          }`}>
+                            {emp.is_on_duty
+                              ? emp.is_on_break
+                                ? (emp.last_entry?.break_type === 'coffee_break' ? 'Pausa Caffè' :
+                                   emp.last_entry?.break_type === 'lunch_break' ? 'Pausa Pranzo' : 'Pausa')
+                                : 'In Servizio'
+                              : 'Fuori'}
+                          </span>
+                        </div>
+                        {emp.contact_function && (
+                          <div className="text-xs text-white/50 truncate">{emp.contact_function}</div>
+                        )}
+
+                        {/* Hours Row */}
+                        <div className="flex items-center gap-3 mt-2 text-xs">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-white/40" />
+                            <span className="text-white/60">Oggi:</span>
+                            <span className="text-white font-medium">{emp.hours_worked_today.toFixed(1)}h</span>
+                          </div>
+                          <div className="text-white/30">|</div>
+                          <div>
+                            <span className="text-white/40">Ieri:</span>
+                            <span className="text-white/60 ml-1">{emp.hours_worked_yesterday.toFixed(1)}h</span>
+                          </div>
+                          <div className="text-white/30">|</div>
+                          <div>
+                            <span className="text-white/40">Sett:</span>
+                            <span className="text-white/60 ml-1">{emp.hours_worked_week.toFixed(1)}h</span>
+                          </div>
+                        </div>
+
+                        {/* Last Activity */}
+                        {emp.last_entry && (
+                          <div className="mt-2 text-xs text-white/40">
+                            {emp.last_entry.entry_type === 'clock_in' ? 'Entrata' :
+                             emp.last_entry.entry_type === 'clock_out' ? 'Uscita' :
+                             emp.last_entry.entry_type === 'break_start' ? 'Pausa' : 'Ripresa'}{' '}
+                            {new Date(emp.last_entry.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                            {emp.last_entry.location_name && (
+                              <span className="ml-1 text-blue-400">@ {emp.last_entry.location_name}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {/* Admin Link */}
+            <div className="mt-6 text-center">
+              <button
+                onClick={() => router.push('/time-attendance/admin')}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
+              >
+                <Settings className="w-5 h-5" />
+                Gestione Sedi e QR Code
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Clock View - Solo per dipendenti (non aziende) */}
+        {!contact?.is_company && view === 'clock' && (
           <div className="flex flex-col items-center justify-center min-h-[70vh] pt-8">
             {/* Profile Card */}
             <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
@@ -687,8 +951,8 @@ export default function TimeAttendancePage() {
           </div>
         )}
 
-        {/* History View */}
-        {view === 'history' && (
+        {/* History View - Solo per dipendenti */}
+        {!contact?.is_company && view === 'history' && (
           <div className="py-6 max-w-lg mx-auto">
             <h2 className="text-2xl font-bold text-white mb-6">Storico Oggi</h2>
             {(!clockStatus?.entries_today || clockStatus.entries_today.length === 0) ? (
@@ -735,8 +999,8 @@ export default function TimeAttendancePage() {
           </div>
         )}
 
-        {/* Team View */}
-        {view === 'team' && (
+        {/* Team View - Solo per dipendenti */}
+        {!contact?.is_company && view === 'team' && (
           <div className="py-6 max-w-lg mx-auto">
             <h2 className="text-2xl font-bold text-white mb-6">Team ({employees.length})</h2>
             {employees.length === 0 ? (
@@ -769,30 +1033,43 @@ export default function TimeAttendancePage() {
         )}
       </main>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation - Versione diversa per aziende vs dipendenti */}
       <nav className="fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-lg border-t border-white/10 px-4 py-3 z-40">
         <div className="flex justify-around max-w-lg mx-auto">
           <button onClick={() => router.push('/dashboard')} className="flex flex-col items-center py-2 px-4 rounded-xl hover:bg-white/10">
             <Home className="w-6 h-6 text-white/50" /><span className="text-xs mt-1 text-white/50">Home</span>
           </button>
-          <button onClick={() => setView('clock')} className={`flex flex-col items-center py-2 px-4 rounded-xl ${view === 'clock' ? 'bg-white/20' : ''}`}>
-            <Clock className={`w-6 h-6 ${view === 'clock' ? 'text-white' : 'text-white/50'}`} />
-            <span className={`text-xs mt-1 ${view === 'clock' ? 'text-white' : 'text-white/50'}`}>Timbra</span>
-          </button>
-          <button onClick={() => setView('history')} className={`flex flex-col items-center py-2 px-4 rounded-xl ${view === 'history' ? 'bg-white/20' : ''}`}>
-            <Calendar className={`w-6 h-6 ${view === 'history' ? 'text-white' : 'text-white/50'}`} />
-            <span className={`text-xs mt-1 ${view === 'history' ? 'text-white' : 'text-white/50'}`}>Storico</span>
-          </button>
-          {(contact?.is_company || company) && (
+
+          {/* Per aziende: solo Dashboard e Admin */}
+          {contact?.is_company ? (
             <>
-              <button onClick={() => setView('team')} className={`flex flex-col items-center py-2 px-4 rounded-xl ${view === 'team' ? 'bg-white/20' : ''}`}>
-                <Users className={`w-6 h-6 ${view === 'team' ? 'text-white' : 'text-white/50'}`} />
-                <span className={`text-xs mt-1 ${view === 'team' ? 'text-white' : 'text-white/50'}`}>Team</span>
+              <button className="flex flex-col items-center py-2 px-4 rounded-xl bg-white/20">
+                <Users className="w-6 h-6 text-white" />
+                <span className="text-xs mt-1 text-white">Dashboard</span>
               </button>
               <button onClick={() => router.push('/time-attendance/admin')} className="flex flex-col items-center py-2 px-4 rounded-xl hover:bg-white/10">
                 <Settings className="w-6 h-6 text-white/50" />
                 <span className="text-xs mt-1 text-white/50">Admin</span>
               </button>
+            </>
+          ) : (
+            <>
+              {/* Per dipendenti: Timbra, Storico, Team */}
+              <button onClick={() => setView('clock')} className={`flex flex-col items-center py-2 px-4 rounded-xl ${view === 'clock' ? 'bg-white/20' : ''}`}>
+                <Clock className={`w-6 h-6 ${view === 'clock' ? 'text-white' : 'text-white/50'}`} />
+                <span className={`text-xs mt-1 ${view === 'clock' ? 'text-white' : 'text-white/50'}`}>Timbra</span>
+              </button>
+              <button onClick={() => setView('history')} className={`flex flex-col items-center py-2 px-4 rounded-xl ${view === 'history' ? 'bg-white/20' : ''}`}>
+                <Calendar className={`w-6 h-6 ${view === 'history' ? 'text-white' : 'text-white/50'}`} />
+                <span className={`text-xs mt-1 ${view === 'history' ? 'text-white' : 'text-white/50'}`}>Storico</span>
+              </button>
+              {/* Team button - visibile a dipendenti con parent company */}
+              {company && (
+                <button onClick={() => setView('team')} className={`flex flex-col items-center py-2 px-4 rounded-xl ${view === 'team' ? 'bg-white/20' : ''}`}>
+                  <Users className={`w-6 h-6 ${view === 'team' ? 'text-white' : 'text-white/50'}`} />
+                  <span className={`text-xs mt-1 ${view === 'team' ? 'text-white' : 'text-white/50'}`}>Team</span>
+                </button>
+              )}
             </>
           )}
         </div>

@@ -127,17 +127,15 @@ export default function TimeAttendanceAdminPage() {
       const data = await res.json();
 
       if (data.success && data.data) {
-        // Se è un'azienda, usa l'ID diretto
+        // SOLO le aziende possono accedere all'admin
         if (data.data.contact.is_company) {
           setCompanyId(data.data.contact.id);
           setCompanyName(data.data.contact.name);
-        }
-        // Se è un dipendente, usa il parent_id (azienda)
-        else if (data.data.company) {
-          setCompanyId(data.data.company.id);
-          setCompanyName(data.data.company.name);
         } else {
-          setError('Non sei associato a nessuna azienda');
+          // Dipendenti non hanno accesso all'admin
+          toast.error('Accesso riservato alle aziende');
+          router.push('/time-attendance');
+          return;
         }
       } else {
         setError(data.error || 'Errore caricamento dati');
