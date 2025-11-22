@@ -592,86 +592,86 @@ export default function TimeAttendancePage() {
 
             {/* Stats Cards */}
             {companyDashboard && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                  className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/30 to-green-600/20 border border-emerald-400/40 shadow-lg shadow-emerald-500/10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="p-1.5 rounded-lg bg-emerald-500/30">
-                      <CheckCircle className="w-5 h-5 text-emerald-300" />
+                  className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500/30 to-green-600/20 border border-emerald-400/40 shadow-lg shadow-emerald-500/10">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
+                    <div className="p-1 sm:p-1.5 rounded-lg bg-emerald-500/30">
+                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-300" />
                     </div>
-                    <span className="text-emerald-200 text-sm font-medium">In Servizio</span>
+                    <span className="text-emerald-200 text-xs sm:text-sm font-medium">In Servizio</span>
                   </div>
-                  <div className="text-4xl font-bold text-white">{companyDashboard.stats.on_duty}</div>
+                  <div className="text-2xl sm:text-4xl font-bold text-white">{companyDashboard.stats.on_duty}</div>
                 </motion.div>
 
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}
-                  className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/30 to-orange-600/20 border border-amber-400/40 shadow-lg shadow-amber-500/10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="p-1.5 rounded-lg bg-amber-500/30">
-                      <Coffee className="w-5 h-5 text-amber-300" />
+                  className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500/30 to-orange-600/20 border border-amber-400/40 shadow-lg shadow-amber-500/10">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
+                    <div className="p-1 sm:p-1.5 rounded-lg bg-amber-500/30">
+                      <Coffee className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
                     </div>
-                    <span className="text-amber-200 text-sm font-medium">In Pausa</span>
+                    <span className="text-amber-200 text-xs sm:text-sm font-medium">In Pausa</span>
                   </div>
-                  <div className="text-4xl font-bold text-white">{companyDashboard.stats.on_break}</div>
+                  <div className="text-2xl sm:text-4xl font-bold text-white">{companyDashboard.stats.on_break}</div>
                 </motion.div>
 
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-                  className="p-4 rounded-2xl bg-gradient-to-br from-slate-500/30 to-gray-600/20 border border-slate-400/40 shadow-lg shadow-slate-500/10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="p-1.5 rounded-lg bg-slate-500/30">
-                      <Users className="w-5 h-5 text-slate-300" />
+                  className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-500/30 to-gray-600/20 border border-slate-400/40 shadow-lg shadow-slate-500/10">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
+                    <div className="p-1 sm:p-1.5 rounded-lg bg-slate-500/30">
+                      <Users className="w-4 h-4 sm:w-5 sm:h-5 text-slate-300" />
                     </div>
-                    <span className="text-slate-200 text-sm font-medium">Fuori</span>
+                    <span className="text-slate-200 text-xs sm:text-sm font-medium">Fuori</span>
                   </div>
-                  <div className="text-4xl font-bold text-white">{companyDashboard.stats.off_duty}</div>
+                  <div className="text-2xl sm:text-4xl font-bold text-white">{companyDashboard.stats.off_duty}</div>
                 </motion.div>
 
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
-                  className="p-4 rounded-2xl bg-gradient-to-br from-cyan-500/30 to-blue-600/20 border border-cyan-400/40 shadow-lg shadow-cyan-500/10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="p-1.5 rounded-lg bg-cyan-500/30">
-                      <TrendingUp className="w-5 h-5 text-cyan-300" />
+                  className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-cyan-500/30 to-blue-600/20 border border-cyan-400/40 shadow-lg shadow-cyan-500/10">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
+                    <div className="p-1 sm:p-1.5 rounded-lg bg-cyan-500/30">
+                      <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-300" />
                     </div>
-                    <span className="text-cyan-200 text-sm font-medium">Ore Oggi</span>
+                    <span className="text-cyan-200 text-xs sm:text-sm font-medium">Ore Oggi</span>
                   </div>
-                  <div className="text-4xl font-bold text-white">{companyDashboard.stats.total_hours_today.toFixed(1)}h</div>
+                  <div className="text-2xl sm:text-4xl font-bold text-white">{companyDashboard.stats.total_hours_today.toFixed(1)}h</div>
                 </motion.div>
               </div>
             )}
 
             {/* Hours Summary */}
             {companyDashboard && (
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-center">
-                  <div className="text-purple-300 text-xs mb-1">Ieri</div>
-                  <div className="text-xl font-bold text-white">{companyDashboard.stats.total_hours_yesterday.toFixed(1)}h</div>
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
+                <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-center">
+                  <div className="text-purple-300 text-[10px] sm:text-xs mb-0.5 sm:mb-1">Ieri</div>
+                  <div className="text-base sm:text-xl font-bold text-white">{companyDashboard.stats.total_hours_yesterday.toFixed(1)}h</div>
                 </div>
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 text-center">
-                  <div className="text-cyan-300 text-xs mb-1">Oggi</div>
-                  <div className="text-2xl font-bold text-white">{companyDashboard.stats.total_hours_today.toFixed(1)}h</div>
+                <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 text-center">
+                  <div className="text-cyan-300 text-[10px] sm:text-xs mb-0.5 sm:mb-1">Oggi</div>
+                  <div className="text-lg sm:text-2xl font-bold text-white">{companyDashboard.stats.total_hours_today.toFixed(1)}h</div>
                 </div>
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-center">
-                  <div className="text-amber-300 text-xs mb-1">Settimana</div>
-                  <div className="text-xl font-bold text-white">{companyDashboard.stats.total_hours_week.toFixed(1)}h</div>
+                <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-center">
+                  <div className="text-amber-300 text-[10px] sm:text-xs mb-0.5 sm:mb-1">Settimana</div>
+                  <div className="text-base sm:text-xl font-bold text-white">{companyDashboard.stats.total_hours_week.toFixed(1)}h</div>
                 </div>
               </div>
             )}
 
             {/* Charts Section */}
             {companyDashboard && companyDashboard.employees.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 {/* Pie Chart - Status Distribution */}
                 <motion.div
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.4 }}
-                  className="p-6 rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10"
+                  className="p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10"
                 >
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-cyan-400" />
+                  <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                     Stato Dipendenti
                   </h3>
-                  <div className="h-64">
+                  <div className="h-52 sm:h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -728,13 +728,13 @@ export default function TimeAttendancePage() {
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.5 }}
-                  className="p-6 rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10"
+                  className="p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10"
                 >
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-emerald-400" />
+                  <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
                     Ore Lavorate Oggi
                   </h3>
-                  <div className="h-64">
+                  <div className="h-52 sm:h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={companyDashboard.employees

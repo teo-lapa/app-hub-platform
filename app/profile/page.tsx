@@ -261,27 +261,27 @@ export default function ProfilePage() {
         showBackButton={false}
       />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 sm:pb-8">
 
         {/* Profile Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass-strong rounded-2xl p-8 border border-white/20"
+          className="glass-strong rounded-2xl p-4 sm:p-8 border border-white/20"
         >
           {/* Avatar e Info Base */}
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
-            <div className="relative group">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <div className="relative group flex-shrink-0">
               {/* Avatar con immagine o iniziale */}
               {displayImage ? (
                 <img
                   src={displayImage}
                   alt={formData.name}
-                  className="w-24 h-24 rounded-full object-cover shadow-lg border-2 border-white/20"
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover shadow-lg border-2 border-white/20"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-full gradient-primary flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full gradient-primary flex items-center justify-center text-white text-2xl sm:text-3xl font-bold shadow-lg">
                   {formData.name?.charAt(0)?.toUpperCase() || 'U'}
                 </div>
               )}
@@ -292,7 +292,7 @@ export default function ProfilePage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 w-24 h-24 rounded-full bg-black/60 flex flex-col items-center justify-center cursor-pointer hover:bg-black/70 transition-colors"
+                  className="absolute inset-0 w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-black/60 flex flex-col items-center justify-center cursor-pointer hover:bg-black/70 transition-colors"
                 >
                   <Camera className="w-6 h-6 text-white mb-1" />
                   <span className="text-xs text-white">Cambia</span>
@@ -314,9 +314,9 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="flex-1 text-center sm:text-left">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 mb-2">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                   {user.name}
                 </h2>
                 {!isEditing && (
@@ -330,9 +330,9 @@ export default function ProfilePage() {
                   </motion.button>
                 )}
               </div>
-              <p className="text-gray-600 dark:text-gray-400 flex items-center gap-2">
+              <p className="text-gray-600 dark:text-gray-400 flex items-center justify-center sm:justify-start gap-2 text-sm sm:text-base">
                 <Mail className="w-4 h-4" />
-                {user.email}
+                <span className="truncate max-w-[200px] sm:max-w-none">{user.email}</span>
               </p>
             </div>
           </div>
@@ -385,13 +385,13 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleSave}
                   disabled={isSaving || isLoading}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+                  className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 min-h-[48px]"
                 >
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   {isSaving ? 'Salvando...' : 'Salva Modifiche'}
@@ -400,7 +400,7 @@ export default function ProfilePage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleCancel}
-                  className="px-6 py-3 glass-strong border border-white/20 hover:bg-white/10 rounded-xl font-medium transition-colors flex items-center gap-2"
+                  className="w-full sm:w-auto px-6 py-4 sm:py-3 glass-strong border border-white/20 hover:bg-white/10 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 min-h-[48px]"
                 >
                   <X className="w-4 h-4" />
                   Annulla
@@ -453,14 +453,14 @@ export default function ProfilePage() {
           )}
 
           {/* Azioni */}
-          <div className="mt-8 pt-6 border-t border-white/10 space-y-4">
+          <div className="mt-6 sm:mt-8 pt-6 border-t border-white/10 space-y-4">
             {/* Pulsante Gestione Visibilità (solo per paul@lapa.ch) */}
             {user.email === 'paul@lapa.ch' && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => router.push('/gestione-visibilita-app')}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl font-medium transition-all"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-4 sm:py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl font-medium transition-all min-h-[48px]"
               >
                 <Settings className="w-5 h-5" />
                 Gestione Visibilità App
@@ -471,7 +471,7 @@ export default function ProfilePage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={logout}
-              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors"
+              className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors min-h-[48px]"
             >
               Logout
             </motion.button>
