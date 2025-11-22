@@ -512,6 +512,15 @@ export default function SalesRadarPage() {
     }
   };
 
+  // Auto-load Odoo data when in static mode and GPS is available
+  useEffect(() => {
+    if (mapMode === 'static' && userLocation && odooPlaces.length === 0 && !loadingStatic) {
+      console.log('📍 Auto-loading Odoo data...');
+      loadStaticMap();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapMode, userLocation]);
+
   // Refresh Google data for static mode
   const refreshGoogleData = async () => {
     if (!userLocation) return;
@@ -973,8 +982,8 @@ export default function SalesRadarPage() {
               </button>
             )}
 
-            {/* Refresh Google Data - Only in static mode */}
-            {mapMode === 'static' && (
+            {/* Refresh Google Data - Only in live mode (Google search mode) */}
+            {mapMode === 'live' && (
               <button
                 onClick={refreshGoogleData}
                 className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2"

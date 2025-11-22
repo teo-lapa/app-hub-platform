@@ -51,18 +51,22 @@ export async function POST(request: NextRequest) {
 
     console.log(`[REACTIVATE-LEAD] Lead ID: ${body.lead_id}`);
 
-    // Step 1: Get current lead with tags
-    const leads = await client.searchRead(
+    // Step 1: Get current lead with tags (include archived leads with active_test: false)
+    const leads = await client.callKw(
       'crm.lead',
-      [['id', '=', body.lead_id]],
-      ['id', 'name', 'tag_ids', 'active'],
-      1
+      'search_read',
+      [[['id', '=', body.lead_id]]],
+      {
+        fields: ['id', 'name', 'tag_ids', 'active'],
+        limit: 1,
+        context: { active_test: false } // Include archived leads
+      }
     );
 
-    if (leads.length === 0) {
+    if (!leads || leads.length === 0) {
       return NextResponse.json({
         success: false,
-        error: `Lead con ID ${body.lead_id} non trovato`
+        error: `Lead con ID ${body.lead_id} non trovato (anche tra gli archiviati)`
       }, { status: 404 });
     }
 
