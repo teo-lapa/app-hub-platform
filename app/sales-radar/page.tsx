@@ -1029,7 +1029,7 @@ export default function SalesRadarPage() {
                         </span>
                         {place.salesData.total_invoiced > 0 && (
                           <span className="rounded bg-blue-100 px-2 py-0.5 text-blue-700">
-                            €{place.salesData.total_invoiced.toFixed(0)}
+                            CHF {place.salesData.total_invoiced.toLocaleString()}
                           </span>
                         )}
                       </div>
@@ -1616,7 +1616,7 @@ export default function SalesRadarPage() {
                             </span>
                             {place.salesData.total_invoiced > 0 && (
                               <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-                                €{place.salesData.total_invoiced.toFixed(0)}
+                                CHF {place.salesData.total_invoiced.toLocaleString()}
                               </span>
                             )}
                           </>
