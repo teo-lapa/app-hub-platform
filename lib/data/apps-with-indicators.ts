@@ -687,6 +687,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-11-11'),
     updatedAt: new Date('2025-11-11'),
   },
+  {
+    id: 'time1',
+    name: 'Time & Attendance',
+    description: 'App gestione presenze dipendenti per i tuoi clienti. Timbratura entrata/uscita con GPS e geofencing, gestione turni, report ore lavorate. Multi-tenant: ogni azienda gestisce i propri dipendenti.',
+    icon: '⏰',
+    badge: 'PRO',
+    category: 'Business',
+    url: '/time-attendance',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-11-22'),
+    updatedAt: new Date('2025-11-22'),
+  },
 ];
 
 // Combina tutte le app
