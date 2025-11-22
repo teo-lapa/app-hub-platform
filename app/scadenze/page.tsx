@@ -707,9 +707,22 @@ export default function ScadenzePage() {
                 )}
               </div>
 
-              {/* Nome e codice */}
+              {/* Nome e info principali */}
               <h2 className="text-2xl font-bold text-center mb-1">{selectedProduct.name}</h2>
-              <p className="text-slate-400 text-center mb-6">COD: {selectedProduct.code}</p>
+              <div className="text-center mb-6">
+                {/* Data scadenza se esiste e non è prodotto fermo */}
+                {!selectedProduct.lotName?.toLowerCase().startsWith('fermo') && selectedProduct.expirationDate && (
+                  <p className="text-slate-300">
+                    📅 Scadenza: <span className="font-semibold">{new Date(selectedProduct.expirationDate).toLocaleDateString('it-IT')}</span>
+                  </p>
+                )}
+                {/* Lotto se esiste */}
+                {selectedProduct.lotName && (
+                  <p className="text-orange-400">
+                    📦 Lotto: <span className="font-semibold">{selectedProduct.lotName}</span>
+                  </p>
+                )}
+              </div>
 
               {/* Info card */}
               <div className="glass p-4 rounded-lg space-y-3 mb-6">

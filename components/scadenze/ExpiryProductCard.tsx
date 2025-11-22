@@ -53,10 +53,17 @@ export function ExpiryProductCard({ product, onClick }: ExpiryProductCardProps) 
         {product.quantity} {product.uom}
       </div>
 
+      {/* Data scadenza - solo per prodotti con scadenza reale (non FERMO) */}
+      {!isNoMovementProduct(product.lotName) && product.expirationDate && (
+        <div className="text-xs text-slate-300 mt-1 text-center">
+          📅 {new Date(product.expirationDate).toLocaleDateString('it-IT')}
+        </div>
+      )}
+
       {/* Lotto */}
       {product.lotName && (
         <div className="text-xs text-orange-400 mt-1 text-center truncate">
-          {product.lotName}
+          📦 {product.lotName}
         </div>
       )}
     </motion.div>
