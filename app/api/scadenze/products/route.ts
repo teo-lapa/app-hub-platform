@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
 
       // Splitta il path e cerca la zona principale (di solito il 3° o 4° segmento)
       // Es: "WH/EMBRACH/Frigo/Scaffale" -> segmenti[2] = "Frigo"
-      const pathSegments = locationCompleteName.split('/').map(s => s.toLowerCase().trim());
+      const pathSegments = locationCompleteName.split('/').map((s: string) => s.toLowerCase().trim());
 
       // Cerca nei segmenti del path (escludendo WH e nome warehouse)
       for (const segment of pathSegments) {
@@ -433,7 +433,7 @@ async function getNoMovementProducts(
 
       // Determina zona - usa logica per segmenti del path
       let zoneId: string | undefined = undefined;
-      const pathSegments = locationCompleteName.split('/').map(s => s.toLowerCase().trim());
+      const pathSegments = locationCompleteName.split('/').map((s: string) => s.toLowerCase().trim());
 
       for (const segment of pathSegments) {
         if (segment === 'pingu' || segment.includes('pn01') || segment.startsWith('pingu')) {
