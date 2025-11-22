@@ -1,0 +1,372 @@
+import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
+import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
+
+export const dynamic = 'force-dynamic';
+
+// Lazy initialization - creates client only when needed
+function getOpenAIClient() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY not configured');
+  }
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY.trim(),
+  });
+}
+
+/**
+ * POST /api/sales-radar/voice-note
+ *
+ * Record voice note, transcribe with OpenAI Whisper, save to Odoo Lead/Partner
+ * OR save a written text note
+ *
+ * Request: multipart/form-data OR JSON
+ * - audio: File (webm/mp3 blob) - optional if text_note provided
+ * - lead_id: number
+ * - lead_type: 'lead' | 'partner'
+ * - text_note: string (optional - for written notes)
+ *
+ * Response:
+ * {
+ *   success: true,
+ *   transcription: string,
+ *   attachment_id?: number
+ * }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // 1. Get Odoo session from cookies
+    const sessionId = request.cookies.get('odoo_session_id')?.value;
+
+    if (!sessionId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Non autenticato - Odoo session non trovata'
+      }, { status: 401 });
+    }
+
+    const client = createOdooRPCClient(sessionId);
+
+    // Check content type to determine how to parse
+    const contentType = request.headers.get('content-type') || '';
+
+    let audioFile: File | null = null;
+    let leadIdStr: string | null = null;
+    let leadType: 'lead' | 'partner' | null = null;
+    let textNote: string | null = null;
+
+    if (contentType.includes('application/json')) {
+      // JSON request (for written notes)
+      const body = await request.json();
+      leadIdStr = body.lead_id?.toString();
+      leadType = body.lead_type;
+      textNote = body.text_note;
+    } else {
+      // FormData request (for audio notes)
+      const formData = await request.formData();
+      audioFile = formData.get('audio') as File | null;
+      leadIdStr = formData.get('lead_id') as string | null;
+      leadType = formData.get('lead_type') as 'lead' | 'partner' | null;
+      textNote = formData.get('text_note') as string | null;
+    }
+
+    // Validate required fields
+    if (!leadIdStr) {
+      return NextResponse.json({
+        success: false,
+        error: 'lead_id richiesto'
+      }, { status: 400 });
+    }
+
+    if (!leadType || !['lead', 'partner'].includes(leadType)) {
+      return NextResponse.json({
+        success: false,
+        error: 'lead_type deve essere "lead" o "partner"'
+      }, { status: 400 });
+    }
+
+    const leadId = parseInt(leadIdStr, 10);
+    if (isNaN(leadId) || leadId <= 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'lead_id non valido'
+      }, { status: 400 });
+    }
+
+    // Handle written text note
+    if (textNote && textNote.trim()) {
+      console.log('[VOICE-NOTE] Saving written note to chatter:', leadType, leadId);
+
+      // Post to chatter instead of description/comment
+      let messageId: number;
+      if (leadType === 'lead') {
+        messageId = await postToLeadChatter(client, leadId, textNote.trim(), 'written');
+      } else {
+        messageId = await postToPartnerChatter(client, leadId, textNote.trim(), 'written');
+      }
+
+      console.log(`[VOICE-NOTE] Written note posted to chatter, message ID: ${messageId}`);
+
+      return NextResponse.json({
+        success: true,
+        transcription: textNote.trim(),
+        note_type: 'written',
+        message_id: messageId
+      });
+    }
+
+    // Handle audio note
+    if (!audioFile) {
+      return NextResponse.json({
+        success: false,
+        error: 'Nessun file audio o nota scritta fornita'
+      }, { status: 400 });
+    }
+
+    // Validate audio file type
+    const fileType = audioFile.type || 'audio/webm';
+
+    if (!fileType.startsWith('audio/')) {
+      return NextResponse.json({
+        success: false,
+        error: 'Il file deve essere un audio'
+      }, { status: 400 });
+    }
+
+    console.log('[VOICE-NOTE] Processing voice note:', {
+      audioFile: audioFile.name,
+      size: audioFile.size,
+      type: fileType,
+      leadId,
+      leadType
+    });
+
+    // 3. Send to OpenAI Whisper API for transcription
+    const openai = getOpenAIClient();
+
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioFile,
+      model: 'whisper-1',
+      language: 'it', // Italian
+      response_format: 'json',
+    });
+
+    const transcriptionText = transcription.text;
+
+    console.log('[VOICE-NOTE] Transcription completed:', transcriptionText);
+
+    if (!transcriptionText || transcriptionText.trim() === '') {
+      return NextResponse.json({
+        success: false,
+        error: 'Trascrizione vuota - nessun audio riconosciuto'
+      }, { status: 400 });
+    }
+
+    // 4. Save transcription to Odoo chatter
+    let messageId: number;
+    if (leadType === 'lead') {
+      messageId = await postToLeadChatter(client, leadId, transcriptionText, 'voice');
+    } else {
+      messageId = await postToPartnerChatter(client, leadId, transcriptionText, 'voice');
+    }
+
+    console.log(`[VOICE-NOTE] Transcription posted to ${leadType} chatter, message ID: ${messageId}`);
+
+    const timestamp = new Date().toLocaleString('it-IT', {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    });
+
+    // 5. Save audio file as ir.attachment in Odoo linked to the record
+    const attachmentId = await saveAudioAttachment(
+      client,
+      audioFile,
+      leadId,
+      leadType,
+      timestamp
+    );
+
+    console.log(`[VOICE-NOTE] Audio attachment saved with ID: ${attachmentId}`);
+
+    // 6. Return transcription text
+    return NextResponse.json({
+      success: true,
+      transcription: transcriptionText,
+      attachment_id: attachmentId,
+      message_id: messageId,
+      note_type: 'voice'
+    });
+
+  } catch (error) {
+    console.error('[VOICE-NOTE] Error:', error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Errore durante l\'elaborazione della nota';
+
+    return NextResponse.json({
+      success: false,
+      error: errorMessage
+    }, { status: 500 });
+  }
+}
+
+/**
+ * Generate HTML formatted feedback note for chatter
+ */
+function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): string {
+  const emoji = noteType === 'voice' ? '🎤' : '✏️';
+  const typeLabel = noteType === 'voice' ? 'Nota Vocale' : 'Nota Scritta';
+  const timestamp = new Date().toLocaleString('it-IT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  return `
+<table style="width:100%; border-collapse:collapse; border:1px solid #e5e7eb; border-radius:8px; margin:8px 0;">
+  <tr style="background-color:#3b82f6;">
+    <td colspan="2" style="padding:12px; color:white; font-weight:bold; font-size:14px;">
+      📍 FEEDBACK SALES RADAR
+    </td>
+  </tr>
+  <tr style="background-color:#f3f4f6;">
+    <td style="padding:8px 12px; font-weight:600; width:100px; border-bottom:1px solid #e5e7eb;">Tipo:</td>
+    <td style="padding:8px 12px; border-bottom:1px solid #e5e7eb;">${emoji} ${typeLabel}</td>
+  </tr>
+  <tr style="background-color:#ffffff;">
+    <td style="padding:8px 12px; font-weight:600; border-bottom:1px solid #e5e7eb;">Data:</td>
+    <td style="padding:8px 12px; border-bottom:1px solid #e5e7eb;">${timestamp}</td>
+  </tr>
+  <tr style="background-color:#f3f4f6;">
+    <td style="padding:8px 12px; font-weight:600; border-bottom:1px solid #e5e7eb;">Fonte:</td>
+    <td style="padding:8px 12px; border-bottom:1px solid #e5e7eb;">Sales Radar App</td>
+  </tr>
+  <tr style="background-color:#ffffff;">
+    <td colspan="2" style="padding:12px;">
+      <div style="font-weight:600; margin-bottom:8px;">Nota:</div>
+      <div style="background-color:#f9fafb; padding:12px; border-radius:6px; border-left:4px solid #3b82f6;">
+        ${noteText.replace(/\n/g, '<br/>')}
+      </div>
+    </td>
+  </tr>
+</table>`;
+}
+
+/**
+ * Post note to CRM Lead chatter (mail.message)
+ */
+async function postToLeadChatter(
+  client: ReturnType<typeof createOdooRPCClient>,
+  leadId: number,
+  noteText: string,
+  noteType: 'voice' | 'written'
+): Promise<number> {
+  // Verify lead exists
+  const leads = await client.searchRead(
+    'crm.lead',
+    [['id', '=', leadId]],
+    ['id', 'name'],
+    1
+  );
+
+  if (leads.length === 0) {
+    throw new Error(`Lead non trovato con ID: ${leadId}`);
+  }
+
+  // Generate formatted HTML feedback
+  const feedbackHtml = generateFeedbackHtml(noteText, noteType);
+
+  // Create message in chatter using message_post
+  const messageId = await client.callKw('crm.lead', 'message_post', [[leadId]], {
+    body: feedbackHtml,
+    message_type: 'comment',
+    subtype_xmlid: 'mail.mt_note',
+  });
+
+  return messageId;
+}
+
+/**
+ * Post note to Partner chatter (mail.message)
+ */
+async function postToPartnerChatter(
+  client: ReturnType<typeof createOdooRPCClient>,
+  partnerId: number,
+  noteText: string,
+  noteType: 'voice' | 'written'
+): Promise<number> {
+  // Verify partner exists
+  const partners = await client.searchRead(
+    'res.partner',
+    [['id', '=', partnerId]],
+    ['id', 'name'],
+    1
+  );
+
+  if (partners.length === 0) {
+    throw new Error(`Partner non trovato con ID: ${partnerId}`);
+  }
+
+  // Generate formatted HTML feedback
+  const feedbackHtml = generateFeedbackHtml(noteText, noteType);
+
+  // Create message in chatter using message_post
+  const messageId = await client.callKw('res.partner', 'message_post', [[partnerId]], {
+    body: feedbackHtml,
+    message_type: 'comment',
+    subtype_xmlid: 'mail.mt_note',
+  });
+
+  return messageId;
+}
+
+/**
+ * Save audio file as ir.attachment in Odoo
+ */
+async function saveAudioAttachment(
+  client: ReturnType<typeof createOdooRPCClient>,
+  audioFile: File,
+  recordId: number,
+  recordType: 'lead' | 'partner',
+  timestamp: string
+): Promise<number> {
+  // Convert File to base64
+  const arrayBuffer = await audioFile.arrayBuffer();
+  const base64Data = Buffer.from(arrayBuffer).toString('base64');
+
+  // Determine model and filename
+  const resModel = recordType === 'lead' ? 'crm.lead' : 'res.partner';
+  const extension = getFileExtension(audioFile.type);
+  const sanitizedTimestamp = timestamp.replace(/[/:]/g, '-').replace(/\s+/g, '_');
+  const filename = `nota_vocale_${sanitizedTimestamp}.${extension}`;
+
+  // Create attachment in Odoo
+  const attachmentId = await client.callKw('ir.attachment', 'create', [{
+    name: filename,
+    datas: base64Data,
+    res_model: resModel,
+    res_id: recordId,
+    mimetype: audioFile.type || 'audio/webm',
+    description: `Nota vocale registrata il ${timestamp}`
+  }]);
+
+  return attachmentId;
+}
+
+/**
+ * Get file extension from MIME type
+ */
+function getFileExtension(mimeType: string): string {
+  const mimeToExt: Record<string, string> = {
+    'audio/webm': 'webm',
+    'audio/mp3': 'mp3',
+    'audio/mpeg': 'mp3',
+    'audio/wav': 'wav',
+    'audio/ogg': 'ogg',
+    'audio/mp4': 'm4a',
+    'audio/x-m4a': 'm4a'
+  };
+
+  return mimeToExt[mimeType] || 'webm';
+}

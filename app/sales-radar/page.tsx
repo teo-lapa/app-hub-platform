@@ -33,6 +33,14 @@ import {
 } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Circle } from '@react-google-maps/api';
 
+const MARKER_COLORS = {
+  user: '#3B82F6',      // Blue - user position
+  customer: '#10B981',   // Green - customer with orders
+  lead: '#F59E0B',       // Orange - saved lead in CRM
+  prospect: '#EF4444',   // Red - never seen
+  notTarget: '#FFFFFF',  // White - not in target (escluso)
+};
+
 // Types
 interface Location {
   lat: number;
@@ -89,6 +97,25 @@ interface EnrichedPlace extends PlaceData {
   isChecking: boolean;
   odooCustomer?: OdooCustomer;
   salesData?: SalesData;
+  // Additional fields for compatibility with Odoo data and live search
+  isLead?: boolean;
+  leadId?: number;
+  notInTarget?: boolean;
+  color?: 'green' | 'orange' | 'grey' | 'red';
+  latitude?: number;
+  longitude?: number;
+  lat?: number;
+  lng?: number;
+  geometry?: {
+    location?: {
+      lat: number;
+      lng: number;
+    };
+  };
+  tags?: string[];
+  sales_data?: SalesData;
+  id?: number;
+  type?: 'customer' | 'lead'; // From Odoo load - indicates if it's res.partner or crm.lead
 }
 
 const containerStyle = {
@@ -136,7 +163,7 @@ export default function SalesRadarPage() {
   const [mapCenter, setMapCenter] = useState<Location>(defaultCenter);
 
   // Search params
-  const [radius, setRadius] = useState<number>(5000); // 5km default
+  const [radius, setRadius] = useState<number>(1000); // 1km default
   const [placeType, setPlaceType] = useState<string>('');
   const [keyword, setKeyword] = useState<string>('');
 
@@ -154,9 +181,64 @@ export default function SalesRadarPage() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showMobileResults, setShowMobileResults] = useState(false);
 
+  // Map mode: 'live' for Google search, 'static' for Odoo data
+  // Default to 'static' (Odoo) mode
+  const [mapMode, setMapMode] = useState<'live' | 'static'>('static');
+
+  // Static map filters
+  const [staticFilter, setStaticFilter] = useState<'all' | 'customers' | 'leads' | 'not_target'>('all');
+
+  // Loading state for static map
+  const [loadingStatic, setLoadingStatic] = useState(false);
+
+  // Odoo places (from static map)
+  const [odooPlaces, setOdooPlaces] = useState<any[]>([]);
+
+  // Saving leads state
+  const [savingLeads, setSavingLeads] = useState(false);
+
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+
+  // Note modal (vocale, scritta, non in target) - tutto in uno
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [notePlace, setNotePlace] = useState<any>(null);
+  const [writtenNote, setWrittenNote] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [notTargetExpanded, setNotTargetExpanded] = useState(false);
+
+  // AI Analysis state
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [analysisPlace, setAnalysisPlace] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   // Stats
   const existingCustomers = places.filter(p => p.existsInOdoo).length;
   const newProspects = places.filter(p => !p.existsInOdoo && !p.isChecking).length;
+
+  // Marker color helper functions
+  const getMarkerColor = (place: any) => {
+    if (place.notInTarget || place.color === 'grey') {
+      return MARKER_COLORS.notTarget;
+    }
+    if (place.existsInOdoo || place.color === 'green') {
+      return MARKER_COLORS.customer;
+    }
+    if (place.isLead || place.color === 'orange') {
+      return MARKER_COLORS.lead;
+    }
+    return MARKER_COLORS.prospect;
+  };
+
+  const getMarkerOpacity = (place: any) => {
+    if (place.notInTarget || place.color === 'grey') {
+      return 0.4; // Transparent for not in target
+    }
+    return 1;
+  };
 
   // Get user location on mount
   useEffect(() => {
@@ -234,6 +316,12 @@ export default function SalesRadarPage() {
         checkIfExistsInOdoo(place, index);
       });
 
+      // Auto-save all results as leads in CRM
+      const newProspects = enrichedPlaces.filter(p => !p.existsInOdoo);
+      if (newProspects.length > 0) {
+        saveLeadsToOdoo(newProspects);
+      }
+
     } catch (error) {
       console.error('❌ Search error:', error);
       setSearchError(error instanceof Error ? error.message : 'Errore sconosciuto');
@@ -241,6 +329,52 @@ export default function SalesRadarPage() {
       setIsSearching(false);
     }
   }, [userLocation, mapCenter, radius, placeType, keyword]);
+
+  // Save leads to Odoo CRM
+  const saveLeadsToOdoo = async (placesToSave: any[]) => {
+    if (placesToSave.length === 0) return;
+
+    setSavingLeads(true);
+    try {
+      const response = await fetch('/api/sales-radar/save-leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          places: placesToSave.map(p => ({
+            place_id: p.place_id,
+            name: p.name,
+            address: p.address || p.formatted_address || p.vicinity || '',
+            phone: p.phone || p.formatted_phone_number || p.international_phone_number || '',
+            website: p.website || '',
+            rating: p.rating,
+            user_ratings_total: p.user_ratings_total,
+            types: p.types,
+            latitude: p.geometry?.location?.lat || p.location?.lat || p.lat,
+            longitude: p.geometry?.location?.lng || p.location?.lng || p.lng,
+            google_maps_url: p.google_maps_url || p.url || '',
+          }))
+        })
+      });
+
+      const result = await response.json();
+      console.log('✅ Lead salvati:', result.saved, 'Saltati:', result.skipped);
+
+      // Update places to mark them as leads (orange)
+      if (result.success) {
+        setPlaces(prev => prev.map(p => {
+          const savedResult = result.results?.find((r: any) => r.place_id === p.place_id);
+          if (savedResult?.status === 'created' || savedResult?.status === 'skipped') {
+            return { ...p, isLead: true, leadId: savedResult.lead_id };
+          }
+          return p;
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Errore salvataggio lead:', error);
+    } finally {
+      setSavingLeads(false);
+    }
+  };
 
   // Check if place exists in Odoo
   const checkIfExistsInOdoo = async (place: PlaceData, index: number) => {
@@ -353,6 +487,300 @@ export default function SalesRadarPage() {
     }
   };
 
+  // Load static map data from Odoo
+  const loadStaticMap = async () => {
+    if (!userLocation) {
+      alert('Posizione GPS non disponibile');
+      return;
+    }
+
+    setLoadingStatic(true);
+    try {
+      const params = new URLSearchParams({
+        latitude: userLocation.lat.toString(),
+        longitude: userLocation.lng.toString(),
+        radius: radius.toString(),
+        filter: staticFilter,
+        ...(placeType && placeType !== 'all' ? { type: placeType } : {})
+      });
+
+      const response = await fetch(`/api/sales-radar/load-from-odoo?${params}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setOdooPlaces(result.data);
+        console.log('📍 Caricati da Odoo:', result.data.length, 'luoghi');
+      }
+    } catch (error) {
+      console.error('❌ Errore caricamento mappa statica:', error);
+    } finally {
+      setLoadingStatic(false);
+    }
+  };
+
+  // Auto-load Odoo data when in static mode and GPS is available
+  useEffect(() => {
+    if (mapMode === 'static' && userLocation && odooPlaces.length === 0 && !loadingStatic) {
+      console.log('📍 Auto-loading Odoo data...');
+      loadStaticMap();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapMode, userLocation]);
+
+  // Refresh Google data for static mode
+  const refreshGoogleData = async () => {
+    if (!userLocation) return;
+
+    try {
+      const response = await fetch('/api/sales-radar/update-leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          latitude: userLocation.lat,
+          longitude: userLocation.lng,
+          radius: radius
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert(`✅ Aggiornati ${result.updated} lead da Google`);
+        // Reload static map if in static mode
+        if (mapMode === 'static') {
+          loadStaticMap();
+        }
+      }
+    } catch (error) {
+      console.error('Errore aggiornamento:', error);
+    }
+  };
+
+  // Voice recording functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        setAudioChunks([]);
+
+        // Send to API for transcription
+        // Usa notePlace se siamo nel modal Note, altrimenti selectedPlace
+        const placeToUse = notePlace || selectedPlace;
+        if (placeToUse) {
+          await saveVoiceNote(audioBlob, placeToUse);
+
+          // Se era dal modal con "Non in Target" espanso, marca come 'other' e chiudi
+          if (notePlace && notTargetExpanded) {
+            await markAsNotTarget('other');
+            setShowNoteModal(false);
+            setNotePlace(null);
+            setNotTargetExpanded(false);
+          }
+        }
+
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      setMediaRecorder(recorder);
+      setAudioChunks(chunks);
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Errore accesso microfono:', error);
+      alert('Impossibile accedere al microfono');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const saveVoiceNote = async (audioBlob: Blob, place: any) => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'voice-note.webm');
+    formData.append('lead_id', place.leadId || place.id || place.place_id);
+    formData.append('lead_type', place.existsInOdoo ? 'partner' : 'lead');
+
+    try {
+      const response = await fetch('/api/sales-radar/voice-note', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert(`Nota salvata: "${result.transcription?.substring(0, 50) || 'Audio salvato'}..."`);
+      }
+    } catch (error) {
+      console.error('Errore salvataggio nota vocale:', error);
+    }
+  };
+
+  // Open Note Modal (from InfoWindow)
+  const openNoteModal = (place: any) => {
+    setNotePlace(place);
+    setWrittenNote('');
+    setNotTargetExpanded(false);
+    setShowNoteModal(true);
+  };
+
+  // Save written note to Odoo
+  const saveWrittenNote = async () => {
+    if (!notePlace || !writtenNote.trim()) return;
+
+    setIsSavingNote(true);
+    try {
+      const response = await fetch('/api/sales-radar/voice-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: notePlace.leadId || notePlace.id || notePlace.place_id,
+          lead_type: notePlace.existsInOdoo ? 'partner' : 'lead',
+          text_note: writtenNote.trim()
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert('✅ Nota salvata!');
+        setShowNoteModal(false);
+        setWrittenNote('');
+      }
+    } catch (error) {
+      console.error('Errore salvataggio nota:', error);
+      alert('❌ Errore nel salvataggio');
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  // Not in Target function (uses notePlace from the same modal)
+  const markAsNotTarget = async (reason: 'closed' | 'not_interested' | 'other', note?: string) => {
+    if (!notePlace) return;
+
+    try {
+      const response = await fetch('/api/sales-radar/mark-not-target', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: notePlace.leadId || notePlace.id || notePlace.place_id,
+          reason,
+          note
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        // Update local state to show grey marker
+        setPlaces(prev => prev.map(p =>
+          p.place_id === notePlace.place_id
+            ? { ...p, notInTarget: true, color: 'grey' } as any
+            : p
+        ));
+        setOdooPlaces(prev => prev.map(p =>
+          p.id === notePlace.id
+            ? { ...p, notInTarget: true, color: 'grey' }
+            : p
+        ));
+        setShowNoteModal(false);
+        setNotePlace(null);
+        setNotTargetExpanded(false);
+        setSelectedPlace(null);
+      }
+    } catch (error) {
+      console.error('Errore:', error);
+    }
+  };
+
+  // Reactivate a lead (remove from archive)
+  const reactivateLead = async (place: any) => {
+    if (!place) return;
+
+    try {
+      const response = await fetch('/api/sales-radar/reactivate-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: place.leadId || place.id
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        // Update local state to show orange marker (lead)
+        setPlaces(prev => prev.map(p =>
+          p.place_id === place.place_id
+            ? { ...p, notInTarget: false, color: 'orange' } as any
+            : p
+        ));
+        setOdooPlaces(prev => prev.map(p =>
+          p.id === place.id
+            ? { ...p, notInTarget: false, color: 'orange' }
+            : p
+        ));
+        setSelectedPlace(null);
+        alert('Lead riattivato con successo!');
+      } else {
+        alert('Errore: ' + (result.error || 'Riattivazione fallita'));
+      }
+    } catch (error) {
+      console.error('Errore riattivazione:', error);
+      alert('Errore durante la riattivazione');
+    }
+  };
+
+  // Analyze client with AI
+  const analyzeClient = async (place: any) => {
+    if (!place) return;
+
+    setAnalysisPlace(place);
+    setAnalysisResult(null);
+    setShowAnalysisModal(true);
+    setIsAnalyzing(true);
+
+    try {
+      const clientType = (place.existsInOdoo || place.color === 'green') ? 'customer' : 'lead';
+
+      const response = await fetch('/api/sales-radar/analyze-client', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          website: place.website || '',
+          name: place.name || place.display_name || 'Cliente',
+          client_id: place.odooCustomer?.id || place.id,
+          client_type: clientType,
+          address: place.address || '',
+          phone: place.phone || ''
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setAnalysisResult(result.analysis.text);
+      } else {
+        setAnalysisResult('Errore: ' + (result.error || 'Analisi non disponibile'));
+      }
+    } catch (error) {
+      console.error('Errore analisi:', error);
+      setAnalysisResult('Errore durante l\'analisi. Riprova più tardi.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
   }, []);
@@ -413,23 +841,56 @@ export default function SalesRadarPage() {
                 </p>
               </div>
             </div>
+
+            {/* Map Mode Toggle */}
+            <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setMapMode('live')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  mapMode === 'live'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                🔴 Live
+              </button>
+              <button
+                onClick={() => {
+                  setMapMode('static');
+                  loadStaticMap();
+                }}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  mapMode === 'static'
+                    ? 'bg-white text-orange-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                📍 Odoo
+              </button>
+            </div>
           </div>
 
-          {/* Stats - Responsive */}
-          <div className="flex gap-3 sm:gap-6">
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-blue-600">{newProspects}</div>
-              <div className="text-[10px] sm:text-xs text-gray-600">Prospect</div>
+          {/* Stats Header - 4 Colors */}
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-red-500"></span>
+              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => !p.existsInOdoo && !p.isLead && p.color !== 'green' && p.color !== 'orange' && p.color !== 'grey' && !p.notInTarget).length}</span>
+              <span className="text-gray-500">Nuovi</span>
             </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-green-600">
-                {existingCustomers}
-              </div>
-              <div className="text-[10px] sm:text-xs text-gray-600">Clienti</div>
+            <div className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.isLead || p.color === 'orange').length}</span>
+              <span className="text-gray-500">Lead</span>
             </div>
-            <div className="hidden sm:block text-center">
-              <div className="text-2xl font-bold text-gray-900">{places.length}</div>
-              <div className="text-xs text-gray-600">Totale</div>
+            <div className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-green-500"></span>
+              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.existsInOdoo || p.color === 'green').length}</span>
+              <span className="text-gray-500">Clienti</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-gray-400"></span>
+              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.notInTarget || p.color === 'grey').length}</span>
+              <span className="text-gray-500">Esclusi</span>
             </div>
           </div>
         </div>
@@ -512,6 +973,25 @@ export default function SalesRadarPage() {
                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
+
+                {/* Static Filter - Only visible in static mode */}
+                {mapMode === 'static' && (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Filtra per Tipo
+                    </label>
+                    <select
+                      value={staticFilter}
+                      onChange={(e) => setStaticFilter(e.target.value as any)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="all">Tutti</option>
+                      <option value="customers">🟢 Solo Clienti</option>
+                      <option value="leads">🟠 Solo Lead</option>
+                      <option value="not_target">⚪ Non in Target</option>
+                    </select>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -544,6 +1024,16 @@ export default function SalesRadarPage() {
               >
                 <RefreshCw className="h-5 w-5" />
                 Refresh
+              </button>
+            )}
+
+            {/* Refresh Google Data - Only in live mode (Google search mode) */}
+            {mapMode === 'live' && (
+              <button
+                onClick={refreshGoogleData}
+                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2"
+              >
+                🔄 Aggiorna Dati Google
               </button>
             )}
           </div>
@@ -627,7 +1117,7 @@ export default function SalesRadarPage() {
                         </span>
                         {place.salesData.total_invoiced > 0 && (
                           <span className="rounded bg-blue-100 px-2 py-0.5 text-blue-700">
-                            €{place.salesData.total_invoiced.toFixed(0)}
+                            CHF {place.salesData.total_invoiced.toLocaleString()}
                           </span>
                         )}
                       </div>
@@ -712,17 +1202,20 @@ export default function SalesRadarPage() {
               />
             )}
 
-            {/* Place markers */}
-            {places.map((place) => (
+            {/* Business Markers - conditional based on map mode */}
+            {(mapMode === 'live' ? places : odooPlaces).map((place: any, index: number) => (
               <Marker
-                key={place.place_id}
-                position={place.location}
+                key={place.place_id || place.id || index}
+                position={{
+                  lat: place.geometry?.location?.lat || place.latitude || place.lat || place.location?.lat,
+                  lng: place.geometry?.location?.lng || place.longitude || place.lng || place.location?.lng
+                }}
                 onClick={() => setSelectedPlace(place)}
                 icon={{
                   path: google.maps.SymbolPath.CIRCLE,
-                  scale: 8,
-                  fillColor: place.existsInOdoo ? '#10B981' : '#EF4444',
-                  fillOpacity: 1,
+                  scale: 10,
+                  fillColor: getMarkerColor(place),
+                  fillOpacity: getMarkerOpacity(place),
                   strokeColor: '#FFFFFF',
                   strokeWeight: 2,
                 }}
@@ -732,13 +1225,39 @@ export default function SalesRadarPage() {
             {/* Info window - Mobile Optimized */}
             {selectedPlace && (
               <InfoWindow
-                position={selectedPlace.location}
+                position={{
+                  lat: selectedPlace.geometry?.location?.lat || selectedPlace.latitude || selectedPlace.lat || selectedPlace.location?.lat,
+                  lng: selectedPlace.geometry?.location?.lng || selectedPlace.longitude || selectedPlace.lng || selectedPlace.location?.lng
+                }}
                 onCloseClick={() => setSelectedPlace(null)}
               >
                 <div className="max-w-[280px] sm:max-w-xs p-2">
                   <h3 className="mb-2 text-base sm:text-lg font-bold text-gray-900 leading-tight">
                     {selectedPlace.name}
                   </h3>
+
+                  {/* Sales data for customers (from static mode or live mode) */}
+                  {(selectedPlace.existsInOdoo || selectedPlace.sales_data || selectedPlace.color === 'green') && (selectedPlace.sales_data || selectedPlace.salesData) && (
+                    <div className="bg-green-50 p-2 rounded-lg mb-2">
+                      <p className="text-sm text-green-800">
+                        Fatturato: CHF {((selectedPlace.sales_data?.total_invoiced || selectedPlace.salesData?.total_invoiced) || 0).toLocaleString()}
+                      </p>
+                      <p className="text-sm text-green-800">
+                        Ordini: {(selectedPlace.sales_data?.order_count || selectedPlace.salesData?.order_count) || 0}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Tags display */}
+                  {selectedPlace.tags && selectedPlace.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {selectedPlace.tags.map((tag: string, i: number) => (
+                        <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="mb-3 space-y-1.5 text-sm">
                     {selectedPlace.address && (
@@ -804,8 +1323,8 @@ export default function SalesRadarPage() {
                     )}
                   </div>
 
-                  {/* Odoo Status */}
-                  {selectedPlace.existsInOdoo && selectedPlace.odooCustomer ? (
+                  {/* Odoo Status - handles all 4 color states */}
+                  {(selectedPlace.existsInOdoo || selectedPlace.color === 'green') && (selectedPlace.odooCustomer || selectedPlace.id) ? (
                     <div className="mb-3 rounded-lg bg-green-50 p-3">
                       <div className="mb-2 flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
@@ -814,30 +1333,30 @@ export default function SalesRadarPage() {
                         </span>
                       </div>
 
-                      {selectedPlace.salesData && (
+                      {(selectedPlace.salesData || selectedPlace.sales_data) && (
                         <div className="space-y-1 text-xs sm:text-sm text-green-800">
-                          {selectedPlace.salesData.total_invoiced > 0 && (
+                          {((selectedPlace.salesData?.total_invoiced || selectedPlace.sales_data?.total_invoiced) || 0) > 0 && (
                             <div className="flex items-center gap-2">
                               <Euro className="h-3 w-3 sm:h-4 sm:w-4" />
                               <span>
-                                €{selectedPlace.salesData.total_invoiced.toFixed(0)}
+                                CHF {(selectedPlace.salesData?.total_invoiced || selectedPlace.sales_data?.total_invoiced || 0).toLocaleString()}
                               </span>
                             </div>
                           )}
 
-                          {selectedPlace.salesData.order_count > 0 && (
+                          {((selectedPlace.salesData?.order_count || selectedPlace.sales_data?.order_count) || 0) > 0 && (
                             <div className="flex items-center gap-2">
                               <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
-                              <span>{selectedPlace.salesData.order_count} ordini</span>
+                              <span>{selectedPlace.salesData?.order_count || selectedPlace.sales_data?.order_count} ordini</span>
                             </div>
                           )}
 
-                          {selectedPlace.salesData.last_order_date && (
+                          {(selectedPlace.salesData?.last_order_date || selectedPlace.sales_data?.last_order_date) && (
                             <div className="flex items-center gap-2">
                               <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
                               <span className="text-xs">
                                 {new Date(
-                                  selectedPlace.salesData.last_order_date
+                                  (selectedPlace.salesData?.last_order_date || selectedPlace.sales_data?.last_order_date) as string
                                 ).toLocaleDateString('it-IT')}
                               </span>
                             </div>
@@ -846,7 +1365,7 @@ export default function SalesRadarPage() {
                       )}
 
                       <a
-                        href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.odooCustomer.id}&model=res.partner&view_type=form`}
+                        href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.odooCustomer?.id || selectedPlace.id}&model=res.partner&view_type=form`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-green-700 active:scale-95"
@@ -854,6 +1373,59 @@ export default function SalesRadarPage() {
                         <ExternalLink className="h-4 w-4" />
                         Apri in Odoo
                       </a>
+                    </div>
+                  ) : (selectedPlace.isLead || selectedPlace.color === 'orange') ? (
+                    <div className="mb-3 rounded-lg bg-orange-50 p-3">
+                      <div className="mb-2 flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+                        <span className="text-sm font-semibold text-orange-900">
+                          Lead Salvato
+                        </span>
+                      </div>
+                      <p className="mb-2 text-xs sm:text-sm text-orange-800">
+                        Presente nel CRM come lead
+                      </p>
+                      {(selectedPlace.id || selectedPlace.leadId) && (
+                        <a
+                          href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.leadId || selectedPlace.id}&model=${selectedPlace.type === 'customer' ? 'res.partner' : 'crm.lead'}&view_type=form`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-orange-700 active:scale-95"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Apri in Odoo
+                        </a>
+                      )}
+                    </div>
+                  ) : (selectedPlace.notInTarget || selectedPlace.color === 'grey') ? (
+                    <div className="mb-3 rounded-lg bg-gray-100 p-3">
+                      <div className="mb-2 flex items-center gap-2">
+                        <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
+                        <span className="text-sm font-semibold text-gray-700">
+                          Escluso dal Target
+                        </span>
+                      </div>
+                      <p className="mb-2 text-xs sm:text-sm text-gray-600">
+                        Non rientra nei criteri target
+                      </p>
+                      <button
+                        onClick={() => reactivateLead(selectedPlace)}
+                        className="w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs sm:text-sm font-medium flex items-center justify-center gap-2"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Riattiva Lead
+                      </button>
+                      {(selectedPlace.id || selectedPlace.leadId) && (
+                        <a
+                          href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.leadId || selectedPlace.id}&model=${selectedPlace.type === 'customer' ? 'res.partner' : 'crm.lead'}&view_type=form`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-gray-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-gray-700 active:scale-95"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Apri in Odoo
+                        </a>
+                      )}
                     </div>
                   ) : selectedPlace.isChecking ? (
                     <div className="mb-3 rounded-lg bg-gray-50 p-3 text-center">
@@ -884,15 +1456,33 @@ export default function SalesRadarPage() {
                     </div>
                   )}
 
-                  <a
-                    href={selectedPlace.google_maps_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-lg border-2 border-gray-300 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Google Maps
-                  </a>
+                  {selectedPlace.google_maps_url && (
+                    <a
+                      href={selectedPlace.google_maps_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 rounded-lg border-2 border-gray-300 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Google Maps
+                    </a>
+                  )}
+
+                  {/* Note Button - Opens Note Modal */}
+                  <div className="mt-3 space-y-2">
+                    <button
+                      onClick={() => openNoteModal(selectedPlace)}
+                      className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
+                    >
+                      📝 Aggiungi Nota
+                    </button>
+                    <button
+                      onClick={() => analyzeClient(selectedPlace)}
+                      className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium flex items-center justify-center gap-2"
+                    >
+                      🤖 Analizza con AI
+                    </button>
+                  </div>
                 </div>
               </InfoWindow>
             )}
@@ -1138,7 +1728,7 @@ export default function SalesRadarPage() {
                             </span>
                             {place.salesData.total_invoiced > 0 && (
                               <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-                                €{place.salesData.total_invoiced.toFixed(0)}
+                                CHF {place.salesData.total_invoiced.toLocaleString()}
                               </span>
                             )}
                           </>
@@ -1262,6 +1852,183 @@ export default function SalesRadarPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Note Modal Unificato - Nota Vocale, Scritta e Non in Target */}
+      {showNoteModal && notePlace && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-2 text-gray-900">📝 Aggiungi Nota</h3>
+            <p className="text-gray-700 mb-4 font-medium">{notePlace.name}</p>
+
+            {/* Se sta registrando, mostra UI di registrazione */}
+            {isRecording ? (
+              <div className="space-y-4">
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center">
+                  <div className="w-16 h-16 mx-auto mb-3 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                    <span className="text-white text-2xl">🎤</span>
+                  </div>
+                  <p className="text-red-700 font-semibold text-lg">Registrazione in corso...</p>
+                  <p className="text-red-600 text-sm mt-1">Parla ora</p>
+                </div>
+                <button
+                  onClick={() => stopRecording()}
+                  className="w-full px-4 py-4 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-lg flex items-center justify-center gap-2"
+                >
+                  STOP - Termina Registrazione
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Nota Vocale */}
+                <button
+                  onClick={() => {
+                    setSelectedPlace(notePlace);
+                    startRecording();
+                  }}
+                  className="w-full px-4 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-left font-medium flex items-center gap-3"
+                >
+                  <span className="text-xl">🎤</span>
+                  <span>Registra nota vocale</span>
+                </button>
+
+                {/* Nota Scritta */}
+                <div className="bg-green-50 rounded-lg p-3">
+                  <label className="text-green-700 font-medium flex items-center gap-2 mb-2">
+                    <span className="text-xl">✏️</span>
+                    <span>Nota scritta</span>
+                  </label>
+                  <textarea
+                    value={writtenNote}
+                    onChange={(e) => setWrittenNote(e.target.value)}
+                    placeholder="Scrivi una nota..."
+                    className="w-full px-3 py-2 border border-green-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    rows={3}
+                  />
+                  {writtenNote.trim() && (
+                    <button
+                      onClick={saveWrittenNote}
+                      disabled={isSavingNote}
+                      className="mt-2 w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
+                    >
+                      {isSavingNote ? 'Salvataggio...' : 'Salva Nota'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Opzioni di esclusione - tutte allo stesso livello */}
+                <button
+                  onClick={() => markAsNotTarget('closed')}
+                  className="w-full px-4 py-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-left font-medium flex items-center gap-3"
+                >
+                  <span className="text-xl">🔴</span>
+                  <span>Chiuso definitivamente</span>
+                </button>
+                <button
+                  onClick={() => markAsNotTarget('not_interested')}
+                  className="w-full px-4 py-3 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 text-left font-medium flex items-center gap-3"
+                >
+                  <span className="text-xl">🟠</span>
+                  <span>Non interessato</span>
+                </button>
+                <button
+                  onClick={() => markAsNotTarget('other')}
+                  className="w-full px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-left font-medium flex items-center gap-3"
+                >
+                  <span className="text-xl">🚫</span>
+                  <span>Non in Target</span>
+                </button>
+              </div>
+            )}
+
+            {!isRecording && (
+              <button
+                onClick={() => {
+                  setShowNoteModal(false);
+                  setNotePlace(null);
+                }}
+                className="w-full mt-4 px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
+              >
+                Chiudi
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AI Analysis Modal */}
+      {showAnalysisModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">🤖 Analisi AI</h3>
+              <button
+                onClick={() => {
+                  setShowAnalysisModal(false);
+                  setAnalysisPlace(null);
+                  setAnalysisResult(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {analysisPlace && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="font-semibold text-gray-900">{analysisPlace.name}</p>
+                {analysisPlace.address && (
+                  <p className="text-sm text-gray-600">{analysisPlace.address}</p>
+                )}
+                {analysisPlace.website && (
+                  <a
+                    href={analysisPlace.website.startsWith('http') ? analysisPlace.website : `https://${analysisPlace.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    {analysisPlace.website}
+                  </a>
+                )}
+              </div>
+            )}
+
+            {isAnalyzing ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-12 w-12 animate-spin text-purple-600 mb-4" />
+                <p className="text-gray-600 font-medium">Analisi in corso...</p>
+                <p className="text-sm text-gray-500 mt-1">Sto analizzando il sito web e preparando suggerimenti</p>
+              </div>
+            ) : analysisResult ? (
+              <div className="prose prose-sm max-w-none">
+                <div className="whitespace-pre-wrap text-gray-700 text-sm leading-relaxed">
+                  {analysisResult}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex gap-3">
+              {!isAnalyzing && analysisResult && (
+                <button
+                  onClick={() => analyzeClient(analysisPlace)}
+                  className="flex-1 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 font-medium"
+                >
+                  🔄 Rianalizza
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setShowAnalysisModal(false);
+                  setAnalysisPlace(null);
+                  setAnalysisResult(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
