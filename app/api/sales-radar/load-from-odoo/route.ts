@@ -28,6 +28,9 @@ function toRad(deg: number): number {
   return deg * (Math.PI / 180);
 }
 
+// Tag names that mark a lead/partner as "not in target" (excluded)
+const NOT_TARGET_TAGS = ['Chiuso definitivamente', 'Non interessato', 'Non in Target'];
+
 /**
  * Parse coordinates from crm.lead description field
  * Looks for pattern: "Coordinate: lat, lng" or "Coordinates: lat, lng"
@@ -191,7 +194,9 @@ export async function GET(request: NextRequest) {
           const tags = customer.category_id ?
             (Array.isArray(customer.category_id) ? customer.category_id.map((t: any) => t[1] || t) : []) : [];
           const isNotTarget = tags.some((tag: string) =>
-            typeof tag === 'string' && tag.toLowerCase().includes('not_target')
+            typeof tag === 'string' && NOT_TARGET_TAGS.some(notTag =>
+              tag.toLowerCase().includes(notTag.toLowerCase())
+            )
           );
 
           let color: 'green' | 'orange' | 'grey' = 'orange'; // Default to lead color
@@ -238,13 +243,16 @@ export async function GET(request: NextRequest) {
     }
 
     // === 2. LOAD LEADS (crm.lead) ===
-    if (filter === 'all' || filter === 'leads') {
+    if (filter === 'all' || filter === 'leads' || filter === 'not_target') {
       console.log('[LOAD-FROM-ODOO] Ricerca lead in crm.lead...');
 
       // Search for leads (type=lead means it's a lead, not an opportunity)
+      // Include both active AND archived leads (for not_target view)
       const leadDomain: any[] = [
         ['type', '=', 'lead'],
-        ['active', '=', true]
+        '|',
+        ['active', '=', true],
+        ['active', '=', false]  // Include archived/excluded leads
       ];
 
       // Filter by type in name or description if specified
@@ -308,11 +316,17 @@ export async function GET(request: NextRequest) {
             lead.tag_ids.map((tagId: number) => tagMap[tagId]).filter(Boolean) : [];
 
           const isNotTarget = tags.some((tag: string) =>
-            typeof tag === 'string' && tag.toLowerCase().includes('not_target')
+            typeof tag === 'string' && NOT_TARGET_TAGS.some(notTag =>
+              tag.toLowerCase().includes(notTag.toLowerCase())
+            )
           );
 
-          // Leads are always orange unless marked as not_target
+          // Leads are always orange unless marked as not_target (grey)
           const color: 'green' | 'orange' | 'grey' = isNotTarget ? 'grey' : 'orange';
+
+          // Apply filter for not_target
+          if (filter === 'not_target' && color !== 'grey') continue;
+          if (filter === 'leads' && color === 'grey') continue; // Exclude archived from normal leads view
 
           // Build address
           const addressParts = [

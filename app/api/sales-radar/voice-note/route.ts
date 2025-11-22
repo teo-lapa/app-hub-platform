@@ -95,25 +95,23 @@ export async function POST(request: NextRequest) {
 
     // Handle written text note
     if (textNote && textNote.trim()) {
-      console.log('[VOICE-NOTE] Saving written note to', leadType, leadId);
+      console.log('[VOICE-NOTE] Saving written note to chatter:', leadType, leadId);
 
-      const timestamp = new Date().toLocaleString('it-IT', {
-        dateStyle: 'short',
-        timeStyle: 'short'
-      });
-
-      const noteEntry = `\n\n--- Nota Scritta (${timestamp}) ---\n${textNote.trim()}`;
-
+      // Post to chatter instead of description/comment
+      let messageId: number;
       if (leadType === 'lead') {
-        await appendToCrmLeadDescription(client, leadId, noteEntry);
+        messageId = await postToLeadChatter(client, leadId, textNote.trim(), 'written');
       } else {
-        await appendToPartnerComment(client, leadId, noteEntry);
+        messageId = await postToPartnerChatter(client, leadId, textNote.trim(), 'written');
       }
+
+      console.log(`[VOICE-NOTE] Written note posted to chatter, message ID: ${messageId}`);
 
       return NextResponse.json({
         success: true,
         transcription: textNote.trim(),
-        note_type: 'written'
+        note_type: 'written',
+        message_id: messageId
       });
     }
 
@@ -164,23 +162,20 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 4. Save transcription to Odoo based on lead_type
+    // 4. Save transcription to Odoo chatter
+    let messageId: number;
+    if (leadType === 'lead') {
+      messageId = await postToLeadChatter(client, leadId, transcriptionText, 'voice');
+    } else {
+      messageId = await postToPartnerChatter(client, leadId, transcriptionText, 'voice');
+    }
+
+    console.log(`[VOICE-NOTE] Transcription posted to ${leadType} chatter, message ID: ${messageId}`);
+
     const timestamp = new Date().toLocaleString('it-IT', {
       dateStyle: 'short',
       timeStyle: 'short'
     });
-
-    const voiceNoteEntry = `\n\n--- Nota Vocale (${timestamp}) ---\n${transcriptionText}`;
-
-    if (leadType === 'lead') {
-      // Append to crm.lead description
-      await appendToCrmLeadDescription(client, leadId, voiceNoteEntry);
-    } else {
-      // Append to res.partner comment
-      await appendToPartnerComment(client, leadId, voiceNoteEntry);
-    }
-
-    console.log(`[VOICE-NOTE] Transcription saved to ${leadType} ID: ${leadId}`);
 
     // 5. Save audio file as ir.attachment in Odoo linked to the record
     const attachmentId = await saveAudioAttachment(
@@ -198,6 +193,7 @@ export async function POST(request: NextRequest) {
       success: true,
       transcription: transcriptionText,
       attachment_id: attachmentId,
+      message_id: messageId,
       note_type: 'voice'
     });
 
@@ -214,18 +210,19 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Append voice note transcription to CRM Lead description
+ * Post note to CRM Lead chatter (mail.message)
  */
-async function appendToCrmLeadDescription(
+async function postToLeadChatter(
   client: ReturnType<typeof createOdooRPCClient>,
   leadId: number,
-  voiceNoteEntry: string
-): Promise<void> {
-  // Get current description
+  noteText: string,
+  noteType: 'voice' | 'written'
+): Promise<number> {
+  // Verify lead exists
   const leads = await client.searchRead(
     'crm.lead',
     [['id', '=', leadId]],
-    ['id', 'description'],
+    ['id', 'name'],
     1
   );
 
@@ -233,26 +230,33 @@ async function appendToCrmLeadDescription(
     throw new Error(`Lead non trovato con ID: ${leadId}`);
   }
 
-  const currentDescription = leads[0].description || '';
-  const newDescription = currentDescription + voiceNoteEntry;
+  const emoji = noteType === 'voice' ? '🎤' : '✏️';
+  const typeLabel = noteType === 'voice' ? 'Nota Vocale' : 'Nota Scritta';
 
-  // Update the lead description
-  await client.callKw('crm.lead', 'write', [[leadId], { description: newDescription }]);
+  // Create message in chatter using message_post
+  const messageId = await client.callKw('crm.lead', 'message_post', [[leadId]], {
+    body: `<p><strong>${emoji} ${typeLabel} (Sales Radar)</strong></p><p>${noteText.replace(/\n/g, '<br/>')}</p>`,
+    message_type: 'comment',
+    subtype_xmlid: 'mail.mt_note',
+  });
+
+  return messageId;
 }
 
 /**
- * Append voice note transcription to Partner comment
+ * Post note to Partner chatter (mail.message)
  */
-async function appendToPartnerComment(
+async function postToPartnerChatter(
   client: ReturnType<typeof createOdooRPCClient>,
   partnerId: number,
-  voiceNoteEntry: string
-): Promise<void> {
-  // Get current comment
+  noteText: string,
+  noteType: 'voice' | 'written'
+): Promise<number> {
+  // Verify partner exists
   const partners = await client.searchRead(
     'res.partner',
     [['id', '=', partnerId]],
-    ['id', 'comment'],
+    ['id', 'name'],
     1
   );
 
@@ -260,11 +264,17 @@ async function appendToPartnerComment(
     throw new Error(`Partner non trovato con ID: ${partnerId}`);
   }
 
-  const currentComment = partners[0].comment || '';
-  const newComment = currentComment + voiceNoteEntry;
+  const emoji = noteType === 'voice' ? '🎤' : '✏️';
+  const typeLabel = noteType === 'voice' ? 'Nota Vocale' : 'Nota Scritta';
 
-  // Update the partner comment
-  await client.callKw('res.partner', 'write', [[partnerId], { comment: newComment }]);
+  // Create message in chatter using message_post
+  const messageId = await client.callKw('res.partner', 'message_post', [[partnerId]], {
+    body: `<p><strong>${emoji} ${typeLabel} (Sales Radar)</strong></p><p>${noteText.replace(/\n/g, '<br/>')}</p>`,
+    message_type: 'comment',
+    subtype_xmlid: 'mail.mt_note',
+  });
+
+  return messageId;
 }
 
 /**
