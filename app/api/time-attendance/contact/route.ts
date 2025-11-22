@@ -18,7 +18,6 @@ interface FormattedContact {
   street?: string;
   city?: string;
   country_id?: [number, string];
-  x_gender?: 'male' | 'female' | 'other';
 }
 
 /**
@@ -47,7 +46,6 @@ function normalizeOdooContact(raw: Record<string, unknown>): FormattedContact {
     country_id: raw.country_id && Array.isArray(raw.country_id)
       ? [raw.country_id[0] as number, raw.country_id[1] as string]
       : undefined,
-    x_gender: raw.x_gender ? String(raw.x_gender) as 'male' | 'female' | 'other' : undefined,
   };
 }
 
@@ -206,7 +204,6 @@ export async function GET(request: NextRequest) {
           'title',
           'is_company',
           'image_128',
-          'x_gender',
           'type',
         ],
         100
