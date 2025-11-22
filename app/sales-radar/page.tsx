@@ -553,8 +553,17 @@ export default function SalesRadarPage() {
         setAudioChunks([]);
 
         // Send to API for transcription
-        if (selectedPlace) {
-          await saveVoiceNote(audioBlob, selectedPlace);
+        // Usa notTargetPlace se siamo nel modal "Non in Target", altrimenti selectedPlace
+        const placeToUse = notTargetPlace || selectedPlace;
+        if (placeToUse) {
+          await saveVoiceNote(audioBlob, placeToUse);
+
+          // Se era dal modal "Non in Target", marca come 'other' e chiudi
+          if (notTargetPlace) {
+            await markAsNotTarget('other');
+            setShowNotTargetModal(false);
+            setNotTargetPlace(null);
+          }
         }
 
         // Stop all tracks
@@ -1706,41 +1715,66 @@ export default function SalesRadarPage() {
       {/* Not in Target Modal */}
       {showNotTargetModal && notTargetPlace && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full">
-            <h3 className="text-lg font-bold mb-4">Non in Target</h3>
-            <p className="text-gray-600 mb-4">{notTargetPlace.name}</p>
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-xl font-bold mb-2 text-gray-900">🚫 Non in Target</h3>
+            <p className="text-gray-700 mb-4 font-medium">{notTargetPlace.name}</p>
 
-            <div className="space-y-3">
-              <button
-                onClick={() => markAsNotTarget('closed')}
-                className="w-full px-4 py-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-left"
-              >
-                Chiuso definitivamente
-              </button>
-              <button
-                onClick={() => markAsNotTarget('not_interested')}
-                className="w-full px-4 py-3 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 text-left"
-              >
-                Non interessato
-              </button>
-              <button
-                onClick={() => {
-                  // Start recording for "other" with voice note
-                  startRecording();
-                  // After recording, will call markAsNotTarget('other', transcription)
-                }}
-                className="w-full px-4 py-3 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 text-left"
-              >
-                Altro (registra nota)
-              </button>
-            </div>
+            {/* Se sta registrando, mostra UI di registrazione */}
+            {isRecording ? (
+              <div className="space-y-4">
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center">
+                  <div className="w-16 h-16 mx-auto mb-3 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                    <span className="text-white text-2xl">🎤</span>
+                  </div>
+                  <p className="text-red-700 font-semibold text-lg">Registrazione in corso...</p>
+                  <p className="text-red-600 text-sm mt-1">Parla ora</p>
+                </div>
+                <button
+                  onClick={() => {
+                    stopRecording();
+                    // La nota verrà salvata automaticamente in onstop
+                  }}
+                  className="w-full px-4 py-4 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-lg flex items-center justify-center gap-2"
+                >
+                  ⏹️ STOP - Termina Registrazione
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <button
+                  onClick={() => markAsNotTarget('closed')}
+                  className="w-full px-4 py-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-left font-medium flex items-center gap-3"
+                >
+                  <span className="text-xl">🔴</span>
+                  <span>Chiuso definitivamente</span>
+                </button>
+                <button
+                  onClick={() => markAsNotTarget('not_interested')}
+                  className="w-full px-4 py-3 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 text-left font-medium flex items-center gap-3"
+                >
+                  <span className="text-xl">🟠</span>
+                  <span>Non interessato</span>
+                </button>
+                <button
+                  onClick={() => {
+                    startRecording();
+                  }}
+                  className="w-full px-4 py-3 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 text-left font-medium flex items-center gap-3"
+                >
+                  <span className="text-xl">🎤</span>
+                  <span>Altro (registra nota vocale)</span>
+                </button>
+              </div>
+            )}
 
-            <button
-              onClick={() => setShowNotTargetModal(false)}
-              className="w-full mt-4 px-4 py-2 text-gray-600 hover:text-gray-900"
-            >
-              Annulla
-            </button>
+            {!isRecording && (
+              <button
+                onClick={() => setShowNotTargetModal(false)}
+                className="w-full mt-4 px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
+              >
+                Annulla
+              </button>
+            )}
           </div>
         </div>
       )}
