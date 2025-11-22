@@ -70,8 +70,9 @@ interface MapMarker {
   longitude: number;
   color: 'green' | 'orange' | 'grey';
   sales_data?: {
-    total_invoiced: number;
-    order_count: number;
+    invoiced_3_months: number;    // Fatturato ultimi 3 mesi
+    order_count_3_months: number; // Ordini ultimi 3 mesi
+    last_order_date?: string;     // Data ultimo ordine (YYYY-MM-DD)
   };
   tags?: string[];
   distance?: number; // distance from user in meters
@@ -142,6 +143,11 @@ export async function GET(request: NextRequest) {
 
     const markers: MapMarker[] = [];
 
+    // Calculate date 3 months ago for filtering orders
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const threeMonthsAgoStr = threeMonthsAgo.toISOString().split('T')[0];
+
     // === 1. LOAD CUSTOMERS (res.partner) ===
     if (filter === 'all' || filter === 'customers' || filter === 'not_target') {
       console.log('[LOAD-FROM-ODOO] Ricerca clienti in res.partner...');
@@ -169,7 +175,6 @@ export async function GET(request: NextRequest) {
             'id', 'name', 'display_name', 'phone', 'mobile',
             'street', 'street2', 'zip', 'city',
             'partner_latitude', 'partner_longitude',
-            'total_invoiced', 'sale_order_count',
             'category_id', // Tags
             'website' // Website URL
           ],
@@ -179,20 +184,71 @@ export async function GET(request: NextRequest) {
 
         console.log(`[LOAD-FROM-ODOO] Trovati ${customers.length} clienti con coordinate`);
 
+        // Filter customers by distance first to reduce the number of order queries
+        const customersInRadius: any[] = [];
         for (const customer of customers) {
           const custLat = customer.partner_latitude;
           const custLng = customer.partner_longitude;
-
           if (!custLat || !custLng) continue;
 
-          // Calculate distance
           const distance = calculateDistance(latitude, longitude, custLat, custLng);
+          if (distance <= radius) {
+            customersInRadius.push({ ...customer, _distance: distance });
+          }
+        }
 
-          // Filter by radius
-          if (distance > radius) continue;
+        console.log(`[LOAD-FROM-ODOO] ${customersInRadius.length} clienti nel raggio`);
+
+        // Get sales data for customers in radius (last 3 months)
+        const customerIds = customersInRadius.map(c => c.id);
+
+        // Fetch orders from last 3 months for these customers
+        let salesDataMap: Record<number, { invoiced: number; orderCount: number; lastOrderDate: string | null }> = {};
+
+        if (customerIds.length > 0) {
+          try {
+            const orders = await client.searchRead(
+              'sale.order',
+              [
+                ['partner_id', 'in', customerIds],
+                ['state', 'in', ['sale', 'done']],
+                ['date_order', '>=', threeMonthsAgoStr]
+              ],
+              ['partner_id', 'amount_total', 'date_order'],
+              0,
+              'date_order desc'
+            );
+
+            // Aggregate by partner
+            for (const order of orders) {
+              const partnerId = order.partner_id[0];
+              if (!salesDataMap[partnerId]) {
+                salesDataMap[partnerId] = { invoiced: 0, orderCount: 0, lastOrderDate: null };
+              }
+              salesDataMap[partnerId].invoiced += order.amount_total || 0;
+              salesDataMap[partnerId].orderCount += 1;
+              // First order in desc order is the most recent
+              if (!salesDataMap[partnerId].lastOrderDate) {
+                salesDataMap[partnerId].lastOrderDate = order.date_order ? order.date_order.split(' ')[0] : null;
+              }
+            }
+
+            console.log(`[LOAD-FROM-ODOO] Dati vendite caricati per ${Object.keys(salesDataMap).length} clienti`);
+          } catch (e) {
+            console.warn('[LOAD-FROM-ODOO] Errore caricamento ordini:', e);
+          }
+        }
+
+        for (const customer of customersInRadius) {
+          const custLat = customer.partner_latitude;
+          const custLng = customer.partner_longitude;
+          const distance = customer._distance;
+
+          // Get sales data for this customer
+          const salesData = salesDataMap[customer.id];
+          const hasOrders = salesData && (salesData.invoiced > 0 || salesData.orderCount > 0);
 
           // Determine color based on sales data and tags
-          const hasOrders = (customer.total_invoiced || 0) > 0 || (customer.sale_order_count || 0) > 0;
           const tags = customer.category_id ?
             (Array.isArray(customer.category_id) ? customer.category_id.map((t: any) => t[1] || t) : []) : [];
           const isNotTarget = tags.some((tag: string) =>
@@ -233,8 +289,9 @@ export async function GET(request: NextRequest) {
             longitude: custLng,
             color,
             sales_data: hasOrders ? {
-              total_invoiced: customer.total_invoiced || 0,
-              order_count: customer.sale_order_count || 0
+              invoiced_3_months: Math.round(salesData.invoiced * 100) / 100,
+              order_count_3_months: salesData.orderCount,
+              last_order_date: salesData.lastOrderDate || undefined
             } : undefined,
             tags: tags.length > 0 ? tags : undefined,
             distance: Math.round(distance)

@@ -85,11 +85,15 @@ interface OdooCustomer {
 }
 
 interface SalesData {
-  total_invoiced: number;
-  order_count: number;
-  customer_rank: number;
-  last_order_date: string | null;
-  last_order_amount: number | null;
+  // Nuovi campi (ultimi 3 mesi)
+  invoiced_3_months?: number;
+  order_count_3_months?: number;
+  last_order_date?: string | null;
+  // Campi legacy (per compatibilità)
+  total_invoiced?: number;
+  order_count?: number;
+  customer_rank?: number;
+  last_order_amount?: number | null;
 }
 
 interface EnrichedPlace extends PlaceData {
@@ -1115,9 +1119,9 @@ export default function SalesRadarPage() {
                         <span className="rounded bg-green-100 px-2 py-0.5 text-green-700">
                           Cliente
                         </span>
-                        {place.salesData.total_invoiced > 0 && (
+                        {(place.salesData.invoiced_3_months ?? place.salesData.total_invoiced ?? 0) > 0 && (
                           <span className="rounded bg-blue-100 px-2 py-0.5 text-blue-700">
-                            CHF {place.salesData.total_invoiced.toLocaleString()}
+                            {(place.salesData.invoiced_3_months ?? place.salesData.total_invoiced ?? 0).toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (3m)
                           </span>
                         )}
                       </div>
@@ -1239,12 +1243,19 @@ export default function SalesRadarPage() {
                   {/* Sales data for customers (from static mode or live mode) */}
                   {(selectedPlace.existsInOdoo || selectedPlace.sales_data || selectedPlace.color === 'green') && (selectedPlace.sales_data || selectedPlace.salesData) && (
                     <div className="bg-green-50 p-2 rounded-lg mb-2">
-                      <p className="text-sm text-green-800">
-                        Fatturato: CHF {((selectedPlace.sales_data?.total_invoiced || selectedPlace.salesData?.total_invoiced) || 0).toLocaleString()}
+                      <p className="text-sm text-green-800 font-medium">
+                        Fatturato (3 mesi): {(
+                          (selectedPlace.sales_data?.invoiced_3_months ?? selectedPlace.salesData?.invoiced_3_months ?? selectedPlace.sales_data?.total_invoiced ?? selectedPlace.salesData?.total_invoiced) || 0
+                        ).toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                       <p className="text-sm text-green-800">
-                        Ordini: {(selectedPlace.sales_data?.order_count || selectedPlace.salesData?.order_count) || 0}
+                        Ordini (3 mesi): {(selectedPlace.sales_data?.order_count_3_months ?? selectedPlace.salesData?.order_count_3_months ?? selectedPlace.sales_data?.order_count ?? selectedPlace.salesData?.order_count) || 0}
                       </p>
+                      {(selectedPlace.sales_data?.last_order_date || selectedPlace.salesData?.last_order_date) && (
+                        <p className="text-sm text-green-700">
+                          Ultimo ordine: {new Date(selectedPlace.sales_data?.last_order_date || selectedPlace.salesData?.last_order_date || '').toLocaleDateString('it-CH')}
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -1335,19 +1346,19 @@ export default function SalesRadarPage() {
 
                       {(selectedPlace.salesData || selectedPlace.sales_data) && (
                         <div className="space-y-1 text-xs sm:text-sm text-green-800">
-                          {((selectedPlace.salesData?.total_invoiced || selectedPlace.sales_data?.total_invoiced) || 0) > 0 && (
+                          {((selectedPlace.salesData?.invoiced_3_months ?? selectedPlace.sales_data?.invoiced_3_months ?? selectedPlace.salesData?.total_invoiced ?? selectedPlace.sales_data?.total_invoiced) || 0) > 0 && (
                             <div className="flex items-center gap-2">
                               <Euro className="h-3 w-3 sm:h-4 sm:w-4" />
                               <span>
-                                CHF {(selectedPlace.salesData?.total_invoiced || selectedPlace.sales_data?.total_invoiced || 0).toLocaleString()}
+                                Fatturato (3 mesi): {(selectedPlace.salesData?.invoiced_3_months ?? selectedPlace.sales_data?.invoiced_3_months ?? selectedPlace.salesData?.total_invoiced ?? selectedPlace.sales_data?.total_invoiced ?? 0).toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           )}
 
-                          {((selectedPlace.salesData?.order_count || selectedPlace.sales_data?.order_count) || 0) > 0 && (
+                          {((selectedPlace.salesData?.order_count_3_months ?? selectedPlace.sales_data?.order_count_3_months ?? selectedPlace.salesData?.order_count ?? selectedPlace.sales_data?.order_count) || 0) > 0 && (
                             <div className="flex items-center gap-2">
                               <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
-                              <span>{selectedPlace.salesData?.order_count || selectedPlace.sales_data?.order_count} ordini</span>
+                              <span>{selectedPlace.salesData?.order_count_3_months ?? selectedPlace.sales_data?.order_count_3_months ?? selectedPlace.salesData?.order_count ?? selectedPlace.sales_data?.order_count} ordini (3 mesi)</span>
                             </div>
                           )}
 
@@ -1355,9 +1366,9 @@ export default function SalesRadarPage() {
                             <div className="flex items-center gap-2">
                               <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
                               <span className="text-xs">
-                                {new Date(
+                                Ultimo ordine: {new Date(
                                   (selectedPlace.salesData?.last_order_date || selectedPlace.sales_data?.last_order_date) as string
-                                ).toLocaleDateString('it-IT')}
+                                ).toLocaleDateString('it-CH')}
                               </span>
                             </div>
                           )}
@@ -1726,9 +1737,9 @@ export default function SalesRadarPage() {
                             <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
                               Cliente
                             </span>
-                            {place.salesData.total_invoiced > 0 && (
+                            {(place.salesData.invoiced_3_months ?? place.salesData.total_invoiced ?? 0) > 0 && (
                               <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-                                CHF {place.salesData.total_invoiced.toLocaleString()}
+                                {(place.salesData.invoiced_3_months ?? place.salesData.total_invoiced ?? 0).toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (3m)
                               </span>
                             )}
                           </>
