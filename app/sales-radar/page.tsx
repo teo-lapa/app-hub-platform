@@ -115,6 +115,7 @@ interface EnrichedPlace extends PlaceData {
   tags?: string[];
   sales_data?: SalesData;
   id?: number;
+  type?: 'customer' | 'lead'; // From Odoo load - indicates if it's res.partner or crm.lead
 }
 
 const containerStyle = {
@@ -1330,9 +1331,9 @@ export default function SalesRadarPage() {
                       <p className="mb-2 text-xs sm:text-sm text-orange-800">
                         Presente nel CRM come lead
                       </p>
-                      {selectedPlace.id && (
+                      {(selectedPlace.id || selectedPlace.leadId) && (
                         <a
-                          href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.id}&model=res.partner&view_type=form`}
+                          href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.leadId || selectedPlace.id}&model=${selectedPlace.type === 'customer' ? 'res.partner' : 'crm.lead'}&view_type=form`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-orange-700 active:scale-95"
@@ -1360,6 +1361,17 @@ export default function SalesRadarPage() {
                         <RefreshCw className="h-4 w-4" />
                         Riattiva Lead
                       </button>
+                      {(selectedPlace.id || selectedPlace.leadId) && (
+                        <a
+                          href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.leadId || selectedPlace.id}&model=${selectedPlace.type === 'customer' ? 'res.partner' : 'crm.lead'}&view_type=form`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-gray-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-gray-700 active:scale-95"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Apri in Odoo
+                        </a>
+                      )}
                     </div>
                   ) : selectedPlace.isChecking ? (
                     <div className="mb-3 rounded-lg bg-gray-50 p-3 text-center">

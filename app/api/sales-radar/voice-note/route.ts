@@ -210,6 +210,50 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * Generate HTML formatted feedback note for chatter
+ */
+function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): string {
+  const emoji = noteType === 'voice' ? '🎤' : '✏️';
+  const typeLabel = noteType === 'voice' ? 'Nota Vocale' : 'Nota Scritta';
+  const timestamp = new Date().toLocaleString('it-IT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  return `
+<table style="width:100%; border-collapse:collapse; border:1px solid #e5e7eb; border-radius:8px; margin:8px 0;">
+  <tr style="background-color:#3b82f6;">
+    <td colspan="2" style="padding:12px; color:white; font-weight:bold; font-size:14px;">
+      📍 FEEDBACK SALES RADAR
+    </td>
+  </tr>
+  <tr style="background-color:#f3f4f6;">
+    <td style="padding:8px 12px; font-weight:600; width:100px; border-bottom:1px solid #e5e7eb;">Tipo:</td>
+    <td style="padding:8px 12px; border-bottom:1px solid #e5e7eb;">${emoji} ${typeLabel}</td>
+  </tr>
+  <tr style="background-color:#ffffff;">
+    <td style="padding:8px 12px; font-weight:600; border-bottom:1px solid #e5e7eb;">Data:</td>
+    <td style="padding:8px 12px; border-bottom:1px solid #e5e7eb;">${timestamp}</td>
+  </tr>
+  <tr style="background-color:#f3f4f6;">
+    <td style="padding:8px 12px; font-weight:600; border-bottom:1px solid #e5e7eb;">Fonte:</td>
+    <td style="padding:8px 12px; border-bottom:1px solid #e5e7eb;">Sales Radar App</td>
+  </tr>
+  <tr style="background-color:#ffffff;">
+    <td colspan="2" style="padding:12px;">
+      <div style="font-weight:600; margin-bottom:8px;">Nota:</div>
+      <div style="background-color:#f9fafb; padding:12px; border-radius:6px; border-left:4px solid #3b82f6;">
+        ${noteText.replace(/\n/g, '<br/>')}
+      </div>
+    </td>
+  </tr>
+</table>`;
+}
+
+/**
  * Post note to CRM Lead chatter (mail.message)
  */
 async function postToLeadChatter(
@@ -230,12 +274,12 @@ async function postToLeadChatter(
     throw new Error(`Lead non trovato con ID: ${leadId}`);
   }
 
-  const emoji = noteType === 'voice' ? '🎤' : '✏️';
-  const typeLabel = noteType === 'voice' ? 'Nota Vocale' : 'Nota Scritta';
+  // Generate formatted HTML feedback
+  const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
   // Create message in chatter using message_post
   const messageId = await client.callKw('crm.lead', 'message_post', [[leadId]], {
-    body: `<p><strong>${emoji} ${typeLabel} (Sales Radar)</strong></p><p>${noteText.replace(/\n/g, '<br/>')}</p>`,
+    body: feedbackHtml,
     message_type: 'comment',
     subtype_xmlid: 'mail.mt_note',
   });
@@ -264,12 +308,12 @@ async function postToPartnerChatter(
     throw new Error(`Partner non trovato con ID: ${partnerId}`);
   }
 
-  const emoji = noteType === 'voice' ? '🎤' : '✏️';
-  const typeLabel = noteType === 'voice' ? 'Nota Vocale' : 'Nota Scritta';
+  // Generate formatted HTML feedback
+  const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
   // Create message in chatter using message_post
   const messageId = await client.callKw('res.partner', 'message_post', [[partnerId]], {
-    body: `<p><strong>${emoji} ${typeLabel} (Sales Radar)</strong></p><p>${noteText.replace(/\n/g, '<br/>')}</p>`,
+    body: feedbackHtml,
     message_type: 'comment',
     subtype_xmlid: 'mail.mt_note',
   });
