@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
+/**
+ * Pulisce l'IP address per renderlo compatibile con PostgreSQL inet
+ * Rimuove il prefisso IPv6-mapped (::ffff:) se presente
+ */
+function cleanIpAddress(ip: string | null): string | null {
+  if (!ip) return null;
+
+  // Rimuovi prefisso IPv6-mapped IPv4
+  if (ip.startsWith('::ffff:')) {
+    return ip.substring(7);
+  }
+
+  // Se contiene virgole (proxy chain), prendi il primo
+  if (ip.includes(',')) {
+    return ip.split(',')[0].trim();
+  }
+
+  return ip;
+}
+
 interface ConsentRecord {
   id: string;
   contact_id: number;
@@ -130,9 +150,12 @@ export async function POST(request: NextRequest) {
 
     const consentTypes = ['gps_tracking', 'data_processing', 'privacy_policy'] as const;
 
-    // Ottieni IP e User Agent
-    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null;
+    // Ottieni IP e User Agent (pulisci IP per compatibilità PostgreSQL inet)
+    const rawIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null;
+    const ipAddress = cleanIpAddress(rawIp);
     const userAgent = request.headers.get('user-agent') || null;
+
+    console.log('[Consent] Saving consents for contact_id:', contact_id, 'IP:', ipAddress);
 
     const timestamp = new Date().toISOString();
     const savedConsents: ConsentRecord[] = [];
@@ -152,51 +175,101 @@ export async function POST(request: NextRequest) {
 
         if (existing.rows.length > 0) {
           // Aggiorna consenso esistente
+          console.log(`[Consent] Updating existing consent ${consentType} for contact ${contact_id}`);
           if (isGranted) {
-            await sql`
-              UPDATE ta_odoo_consents
-              SET is_granted = ${isGranted},
-                  granted_at = ${timestamp},
-                  revoked_at = NULL,
-                  ip_address = ${ipAddress}::inet,
-                  user_agent = ${userAgent}
-              WHERE contact_id = ${contact_id}
-                AND consent_type = ${consentType}
-            `;
+            // Prova con IP, se fallisce riprova senza
+            try {
+              await sql`
+                UPDATE ta_odoo_consents
+                SET is_granted = ${isGranted},
+                    granted_at = ${timestamp},
+                    revoked_at = NULL,
+                    ip_address = ${ipAddress}::inet,
+                    user_agent = ${userAgent}
+                WHERE contact_id = ${contact_id}
+                  AND consent_type = ${consentType}
+              `;
+            } catch (ipError) {
+              console.warn(`[Consent] IP cast failed, retrying without IP:`, ipError);
+              await sql`
+                UPDATE ta_odoo_consents
+                SET is_granted = ${isGranted},
+                    granted_at = ${timestamp},
+                    revoked_at = NULL,
+                    user_agent = ${userAgent}
+                WHERE contact_id = ${contact_id}
+                  AND consent_type = ${consentType}
+              `;
+            }
           } else {
-            await sql`
-              UPDATE ta_odoo_consents
-              SET is_granted = ${isGranted},
-                  revoked_at = ${timestamp},
-                  ip_address = ${ipAddress}::inet,
-                  user_agent = ${userAgent}
-              WHERE contact_id = ${contact_id}
-                AND consent_type = ${consentType}
-            `;
+            try {
+              await sql`
+                UPDATE ta_odoo_consents
+                SET is_granted = ${isGranted},
+                    revoked_at = ${timestamp},
+                    ip_address = ${ipAddress}::inet,
+                    user_agent = ${userAgent}
+                WHERE contact_id = ${contact_id}
+                  AND consent_type = ${consentType}
+              `;
+            } catch (ipError) {
+              console.warn(`[Consent] IP cast failed, retrying without IP:`, ipError);
+              await sql`
+                UPDATE ta_odoo_consents
+                SET is_granted = ${isGranted},
+                    revoked_at = ${timestamp},
+                    user_agent = ${userAgent}
+                WHERE contact_id = ${contact_id}
+                  AND consent_type = ${consentType}
+              `;
+            }
           }
         } else {
           // Crea nuovo consenso
-          await sql`
-            INSERT INTO ta_odoo_consents (
-              contact_id,
-              consent_type,
-              is_granted,
-              granted_at,
-              consent_version,
-              ip_address,
-              user_agent
-            ) VALUES (
-              ${contact_id},
-              ${consentType},
-              ${isGranted},
-              ${isGranted ? timestamp : null},
-              '1.0',
-              ${ipAddress}::inet,
-              ${userAgent}
-            )
-          `;
+          console.log(`[Consent] Creating new consent ${consentType} for contact ${contact_id}`);
+          try {
+            await sql`
+              INSERT INTO ta_odoo_consents (
+                contact_id,
+                consent_type,
+                is_granted,
+                granted_at,
+                consent_version,
+                ip_address,
+                user_agent
+              ) VALUES (
+                ${contact_id},
+                ${consentType},
+                ${isGranted},
+                ${isGranted ? timestamp : null},
+                '1.0',
+                ${ipAddress}::inet,
+                ${userAgent}
+              )
+            `;
+          } catch (ipError) {
+            console.warn(`[Consent] IP cast failed on INSERT, retrying without IP:`, ipError);
+            await sql`
+              INSERT INTO ta_odoo_consents (
+                contact_id,
+                consent_type,
+                is_granted,
+                granted_at,
+                consent_version,
+                user_agent
+              ) VALUES (
+                ${contact_id},
+                ${consentType},
+                ${isGranted},
+                ${isGranted ? timestamp : null},
+                '1.0',
+                ${userAgent}
+              )
+            `;
+          }
         }
 
+        console.log(`[Consent] Successfully saved ${consentType} = ${isGranted} for contact ${contact_id}`);
         savedConsents.push({
           id: '',
           contact_id,
@@ -207,17 +280,13 @@ export async function POST(request: NextRequest) {
           consent_version: '1.0',
         });
       } catch (dbError) {
-        console.warn(`Errore salvataggio consenso ${consentType}:`, dbError);
-        // Continua comunque per gli altri consensi
-        savedConsents.push({
-          id: `temp-${Date.now()}`,
-          contact_id,
-          consent_type: consentType,
-          is_granted: isGranted,
-          granted_at: isGranted ? timestamp : null,
-          revoked_at: isGranted ? null : timestamp,
-          consent_version: '1.0',
-        });
+        // Errore critico - log e propaga
+        console.error(`[Consent] CRITICAL: Failed to save consent ${consentType} for contact ${contact_id}:`, dbError);
+        return NextResponse.json({
+          success: false,
+          error: `Errore nel salvataggio del consenso ${consentType}`,
+          details: dbError instanceof Error ? dbError.message : 'Database error',
+        }, { status: 500 });
       }
     }
 

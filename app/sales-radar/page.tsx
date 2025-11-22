@@ -85,11 +85,15 @@ interface OdooCustomer {
 }
 
 interface SalesData {
-  total_invoiced: number;
-  order_count: number;
-  customer_rank: number;
-  last_order_date: string | null;
-  last_order_amount: number | null;
+  // Nuovi campi (ultimi 3 mesi)
+  invoiced_3_months?: number;
+  order_count_3_months?: number;
+  last_order_date?: string | null;
+  // Campi legacy (per compatibilità)
+  total_invoiced?: number;
+  order_count?: number;
+  customer_rank?: number;
+  last_order_amount?: number | null;
 }
 
 interface EnrichedPlace extends PlaceData {
@@ -148,6 +152,75 @@ const RADIUS_OPTIONS = [
   { value: 10000, label: '10 km' },
   { value: 25000, label: '25 km' },
 ];
+
+/**
+ * Stima dimensione del locale e potenziale fatturato mensile
+ * basato su dati Google Places
+ */
+function estimateBusinessPotential(place: {
+  user_ratings_total?: number;
+  price_level?: number;
+  types?: string[];
+  rating?: number;
+}): { size: 'piccolo' | 'medio' | 'grande'; potentialMonthly: number; categories: string[] } {
+  const reviews = place.user_ratings_total || 0;
+  const priceLevel = place.price_level ?? 2; // Default medio
+  const types = place.types || [];
+
+  // Determina dimensione basata sul numero di recensioni
+  let size: 'piccolo' | 'medio' | 'grande' = 'piccolo';
+  if (reviews >= 500) {
+    size = 'grande';
+  } else if (reviews >= 100) {
+    size = 'medio';
+  }
+
+  // Base mensile per dimensione (in CHF)
+  const baseBySize = {
+    piccolo: 800,   // 800 CHF/mese
+    medio: 2500,    // 2500 CHF/mese
+    grande: 6000,   // 6000 CHF/mese
+  };
+
+  // Moltiplicatore per tipo di locale
+  let typeMultiplier = 1.0;
+  const categories: string[] = [];
+
+  // Categorie LAPA: Frigo, Secco, Frozen, Non-Food
+  if (types.includes('restaurant') || types.includes('meal_delivery')) {
+    typeMultiplier = 1.3;
+    categories.push('Frigo', 'Secco', 'Frozen');
+  }
+  if (types.includes('hotel') || types.includes('lodging')) {
+    typeMultiplier = 1.5;
+    categories.push('Frigo', 'Secco', 'Frozen', 'Non-Food');
+  }
+  if (types.includes('cafe') || types.includes('bakery')) {
+    typeMultiplier = 0.8;
+    categories.push('Frigo', 'Secco');
+  }
+  if (types.includes('bar')) {
+    typeMultiplier = 0.6;
+    categories.push('Frigo', 'Secco');
+  }
+  if (types.includes('supermarket') || types.includes('grocery_or_supermarket')) {
+    typeMultiplier = 2.0;
+    categories.push('Frigo', 'Secco', 'Frozen', 'Non-Food');
+  }
+
+  // Moltiplicatore per fascia di prezzo (locale più costoso = più volume)
+  const priceMultiplier = 0.7 + (priceLevel * 0.2); // 0.7 a 1.5
+
+  // Calcola potenziale mensile
+  const potentialMonthly = Math.round(baseBySize[size] * typeMultiplier * priceMultiplier);
+
+  // Default categories se vuoto
+  if (categories.length === 0) {
+    categories.push('Frigo', 'Secco');
+  }
+
+  return { size, potentialMonthly, categories: Array.from(new Set(categories)) };
+}
 
 export default function SalesRadarPage() {
   const router = useRouter();
@@ -612,7 +685,9 @@ export default function SalesRadarPage() {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'voice-note.webm');
     formData.append('lead_id', place.leadId || place.id || place.place_id);
-    formData.append('lead_type', place.existsInOdoo ? 'partner' : 'lead');
+    // Determina se è un partner (cliente esistente verde) o un lead (arancione)
+    const isPartner = place.existsInOdoo || place.type === 'customer' || place.color === 'green';
+    formData.append('lead_type', isPartner ? 'partner' : 'lead');
 
     try {
       const response = await fetch('/api/sales-radar/voice-note', {
@@ -641,6 +716,9 @@ export default function SalesRadarPage() {
   const saveWrittenNote = async () => {
     if (!notePlace || !writtenNote.trim()) return;
 
+    // Determina se è un partner (cliente esistente verde) o un lead (arancione)
+    const isPartner = notePlace.existsInOdoo || notePlace.type === 'customer' || notePlace.color === 'green';
+
     setIsSavingNote(true);
     try {
       const response = await fetch('/api/sales-radar/voice-note', {
@@ -648,7 +726,7 @@ export default function SalesRadarPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lead_id: notePlace.leadId || notePlace.id || notePlace.place_id,
-          lead_type: notePlace.existsInOdoo ? 'partner' : 'lead',
+          lead_type: isPartner ? 'partner' : 'lead',
           text_note: writtenNote.trim()
         })
       });
@@ -1115,9 +1193,9 @@ export default function SalesRadarPage() {
                         <span className="rounded bg-green-100 px-2 py-0.5 text-green-700">
                           Cliente
                         </span>
-                        {place.salesData.total_invoiced > 0 && (
+                        {(place.salesData.invoiced_3_months ?? place.salesData.total_invoiced ?? 0) > 0 && (
                           <span className="rounded bg-blue-100 px-2 py-0.5 text-blue-700">
-                            CHF {place.salesData.total_invoiced.toLocaleString()}
+                            {(place.salesData.invoiced_3_months ?? place.salesData.total_invoiced ?? 0).toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (3m)
                           </span>
                         )}
                       </div>
@@ -1239,12 +1317,19 @@ export default function SalesRadarPage() {
                   {/* Sales data for customers (from static mode or live mode) */}
                   {(selectedPlace.existsInOdoo || selectedPlace.sales_data || selectedPlace.color === 'green') && (selectedPlace.sales_data || selectedPlace.salesData) && (
                     <div className="bg-green-50 p-2 rounded-lg mb-2">
-                      <p className="text-sm text-green-800">
-                        Fatturato: CHF {((selectedPlace.sales_data?.total_invoiced || selectedPlace.salesData?.total_invoiced) || 0).toLocaleString()}
+                      <p className="text-sm text-green-800 font-medium">
+                        Fatturato (3 mesi): {(
+                          (selectedPlace.sales_data?.invoiced_3_months ?? selectedPlace.salesData?.invoiced_3_months ?? selectedPlace.sales_data?.total_invoiced ?? selectedPlace.salesData?.total_invoiced) || 0
+                        ).toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                       <p className="text-sm text-green-800">
-                        Ordini: {(selectedPlace.sales_data?.order_count || selectedPlace.salesData?.order_count) || 0}
+                        Ordini (3 mesi): {(selectedPlace.sales_data?.order_count_3_months ?? selectedPlace.salesData?.order_count_3_months ?? selectedPlace.sales_data?.order_count ?? selectedPlace.salesData?.order_count) || 0}
                       </p>
+                      {(selectedPlace.sales_data?.last_order_date || selectedPlace.salesData?.last_order_date) && (
+                        <p className="text-sm text-green-700">
+                          Ultimo ordine: {new Date(selectedPlace.sales_data?.last_order_date || selectedPlace.salesData?.last_order_date || '').toLocaleDateString('it-CH')}
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -1323,6 +1408,46 @@ export default function SalesRadarPage() {
                     )}
                   </div>
 
+                  {/* Potenziale Stimato - solo per lead/nuovi */}
+                  {!selectedPlace.existsInOdoo && selectedPlace.color !== 'green' && (selectedPlace.user_ratings_total || selectedPlace.types) && (() => {
+                    const potential = estimateBusinessPotential(selectedPlace);
+                    return (
+                      <div className="mb-3 rounded-lg bg-purple-50 p-3 border border-purple-200">
+                        <div className="mb-2 flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-purple-600" />
+                          <span className="text-sm font-semibold text-purple-900">
+                            Potenziale Stimato
+                          </span>
+                        </div>
+                        <div className="space-y-1 text-xs sm:text-sm text-purple-800">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Dimensione:</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              potential.size === 'grande' ? 'bg-purple-200 text-purple-800' :
+                              potential.size === 'medio' ? 'bg-purple-100 text-purple-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {potential.size.charAt(0).toUpperCase() + potential.size.slice(1)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Potenziale/mese:</span>
+                            <span className="text-purple-900 font-semibold">
+                              {potential.potentialMonthly.toLocaleString('it-CH')} CHF
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {potential.categories.map((cat, i) => (
+                              <span key={i} className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">
+                                {cat}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Odoo Status - handles all 4 color states */}
                   {(selectedPlace.existsInOdoo || selectedPlace.color === 'green') && (selectedPlace.odooCustomer || selectedPlace.id) ? (
                     <div className="mb-3 rounded-lg bg-green-50 p-3">
@@ -1335,19 +1460,19 @@ export default function SalesRadarPage() {
 
                       {(selectedPlace.salesData || selectedPlace.sales_data) && (
                         <div className="space-y-1 text-xs sm:text-sm text-green-800">
-                          {((selectedPlace.salesData?.total_invoiced || selectedPlace.sales_data?.total_invoiced) || 0) > 0 && (
+                          {((selectedPlace.salesData?.invoiced_3_months ?? selectedPlace.sales_data?.invoiced_3_months ?? selectedPlace.salesData?.total_invoiced ?? selectedPlace.sales_data?.total_invoiced) || 0) > 0 && (
                             <div className="flex items-center gap-2">
                               <Euro className="h-3 w-3 sm:h-4 sm:w-4" />
                               <span>
-                                CHF {(selectedPlace.salesData?.total_invoiced || selectedPlace.sales_data?.total_invoiced || 0).toLocaleString()}
+                                Fatturato (3 mesi): {(selectedPlace.salesData?.invoiced_3_months ?? selectedPlace.sales_data?.invoiced_3_months ?? selectedPlace.salesData?.total_invoiced ?? selectedPlace.sales_data?.total_invoiced ?? 0).toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           )}
 
-                          {((selectedPlace.salesData?.order_count || selectedPlace.sales_data?.order_count) || 0) > 0 && (
+                          {((selectedPlace.salesData?.order_count_3_months ?? selectedPlace.sales_data?.order_count_3_months ?? selectedPlace.salesData?.order_count ?? selectedPlace.sales_data?.order_count) || 0) > 0 && (
                             <div className="flex items-center gap-2">
                               <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
-                              <span>{selectedPlace.salesData?.order_count || selectedPlace.sales_data?.order_count} ordini</span>
+                              <span>{selectedPlace.salesData?.order_count_3_months ?? selectedPlace.sales_data?.order_count_3_months ?? selectedPlace.salesData?.order_count ?? selectedPlace.sales_data?.order_count} ordini (3 mesi)</span>
                             </div>
                           )}
 
@@ -1355,9 +1480,9 @@ export default function SalesRadarPage() {
                             <div className="flex items-center gap-2">
                               <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
                               <span className="text-xs">
-                                {new Date(
+                                Ultimo ordine: {new Date(
                                   (selectedPlace.salesData?.last_order_date || selectedPlace.sales_data?.last_order_date) as string
-                                ).toLocaleDateString('it-IT')}
+                                ).toLocaleDateString('it-CH')}
                               </span>
                             </div>
                           )}
@@ -1726,9 +1851,9 @@ export default function SalesRadarPage() {
                             <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
                               Cliente
                             </span>
-                            {place.salesData.total_invoiced > 0 && (
+                            {(place.salesData.invoiced_3_months ?? place.salesData.total_invoiced ?? 0) > 0 && (
                               <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-                                CHF {place.salesData.total_invoiced.toLocaleString()}
+                                {(place.salesData.invoiced_3_months ?? place.salesData.total_invoiced ?? 0).toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (3m)
                               </span>
                             )}
                           </>

@@ -15,7 +15,11 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('📊 Calcolo conteggi prodotti in scadenza...');
+    // Parse query params
+    const searchParams = request.nextUrl.searchParams;
+    const warehouseId = parseInt(searchParams.get('warehouseId') || '1'); // Default: warehouse 1 (EMBRACH)
+
+    console.log(`📊 Calcolo conteggi prodotti in scadenza (warehouse: ${warehouseId})...`);
 
     // Recupera session da cookie
     const cookieStore = await cookies();
@@ -72,6 +76,7 @@ export async function GET(request: NextRequest) {
         ['lot_id', 'in', lotIds],
         ['quantity', '>', 0],
         ['location_id.usage', '=', 'internal'],
+        ['location_id.warehouse_id', '=', warehouseId], // Filtra per warehouse specifico
         ['location_id', '!=', 648], // Escludi MERCE DETERIORATA (Scarti)
         ['location_id.complete_name', 'not ilike', '%FURGONI%'] // Escludi ubicazioni furgoni
       ],
@@ -144,19 +149,28 @@ export async function GET(request: NextRequest) {
       // Incrementa totale
       counts.byUrgency.all++;
 
-      // Determina zona in base alla location
+      // Determina zona in base alla location - usa logica per segmenti del path
       const locationCompleteName = quant.location_id[1] || '';
-      const lowerName = locationCompleteName.toLowerCase();
+      const pathSegments = locationCompleteName.split('/').map((s: string) => s.toLowerCase().trim());
 
-      // Mappa location -> zona (verifica buffer ID o nomi)
-      if (lowerName.includes('frigo') || lowerName.includes('fr02')) {
-        counts.byZone.frigo++;
-      } else if (lowerName.includes('secco-sopra') || lowerName.includes('sc03')) {
-        counts.byZone['secco-sopra']++;
-      } else if (lowerName.includes('secco') || lowerName.includes('sc02')) {
-        counts.byZone.secco++;
-      } else if (lowerName.includes('pingu') || lowerName.includes('pn01')) {
-        counts.byZone.pingu++;
+      // Cerca nei segmenti del path per determinare la zona
+      for (const segment of pathSegments) {
+        if (segment === 'pingu' || segment.includes('pn01') || segment.startsWith('pingu')) {
+          counts.byZone.pingu++;
+          break;
+        }
+        if (segment === 'secco-sopra' || segment.includes('sc03') || segment === 'secco sopra') {
+          counts.byZone['secco-sopra']++;
+          break;
+        }
+        if (segment === 'frigo' || segment.includes('fr02') || segment.startsWith('frigo')) {
+          counts.byZone.frigo++;
+          break;
+        }
+        if (segment === 'secco' || segment.includes('sc02') || segment.startsWith('secco')) {
+          counts.byZone.secco++;
+          break;
+        }
       }
     }
 
@@ -176,6 +190,7 @@ export async function GET(request: NextRequest) {
       [
         ['quantity', '>', 0],
         ['location_id.usage', '=', 'internal'],
+        ['location_id.warehouse_id', '=', warehouseId], // Filtra per warehouse specifico
         ['location_id', '!=', 648], // Escludi MERCE DETERIORATA (Scarti)
         ['location_id.complete_name', 'not ilike', '%FURGONI%'] // Escludi ubicazioni furgoni
       ],

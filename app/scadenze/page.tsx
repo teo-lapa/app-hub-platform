@@ -14,6 +14,12 @@ import { VerificationRequestsModal } from '@/components/scadenze/VerificationReq
 import { ExpiryProduct } from '@/lib/types/expiry';
 import toast from 'react-hot-toast';
 
+// Configurazione warehouse disponibili
+const WAREHOUSES = [
+  { id: 1, name: 'EMBRACH', icon: '🏭' },
+  { id: 2, name: 'PINGU', icon: '🐧' },
+];
+
 // Configurazione zone magazzino (da Gestione Ubicazioni)
 const ZONES = [
   {
@@ -52,6 +58,7 @@ export default function ScadenzePage() {
 
   // Stati principali
   const [currentView, setCurrentView] = useState<'filter' | 'products' | 'zones'>('filter');
+  const [selectedWarehouse, setSelectedWarehouse] = useState<number>(1); // Default: EMBRACH (ID 1)
   const [selectedUrgency, setSelectedUrgency] = useState<'expired' | 'expiring' | 'ok' | 'all' | 'no-movement-30' | 'no-movement-90' | null>(null);
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [products, setProducts] = useState<ExpiryProduct[]>([]);
@@ -115,9 +122,9 @@ export default function ScadenzePage() {
   };
 
   // Carica conteggi per urgenza
-  const loadCounts = async () => {
+  const loadCounts = async (warehouseId: number = selectedWarehouse) => {
     try {
-      const response = await fetch('/api/scadenze/counts', {
+      const response = await fetch(`/api/scadenze/counts?warehouseId=${warehouseId}`, {
         credentials: 'include',
       });
 
@@ -174,7 +181,7 @@ export default function ScadenzePage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/scadenze/products?urgency=${urgency}&days=7`, {
+      const response = await fetch(`/api/scadenze/products?urgency=${urgency}&days=7&warehouseId=${selectedWarehouse}`, {
         credentials: 'include',
       });
 
@@ -197,6 +204,34 @@ export default function ScadenzePage() {
       toast.error('Errore: ' + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Cambia warehouse e ricarica dati
+  const handleWarehouseChange = async (warehouseId: number) => {
+    setSelectedWarehouse(warehouseId);
+    setSelectedZone(null); // Reset filtro zona
+    await loadCounts(warehouseId);
+
+    // Se siamo nella vista prodotti, ricarica anche i prodotti
+    if (currentView === 'products' && selectedUrgency) {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/scadenze/products?urgency=${selectedUrgency}&days=7&warehouseId=${warehouseId}`, {
+          credentials: 'include',
+        });
+        const data = await response.json();
+        if (data.success) {
+          setProducts(data.products || []);
+          toast.success(`Magazzino: ${WAREHOUSES.find(w => w.id === warehouseId)?.name}`);
+        }
+      } catch (error) {
+        console.error('Errore cambio warehouse:', error);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      toast.success(`Magazzino: ${WAREHOUSES.find(w => w.id === warehouseId)?.name}`);
     }
   };
 
@@ -462,12 +497,29 @@ export default function ScadenzePage() {
             animate={{ opacity: 1 }}
             className="space-y-6"
           >
+            {/* Selettore Warehouse */}
+            <div className="flex justify-center gap-2 mb-4">
+              {WAREHOUSES.map((warehouse) => (
+                <button
+                  key={warehouse.id}
+                  onClick={() => handleWarehouseChange(warehouse.id)}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2
+                    ${selectedWarehouse === warehouse.id
+                      ? 'bg-blue-500 text-white'
+                      : 'glass-strong text-slate-300 hover:bg-white/10'}`}
+                >
+                  <span>{warehouse.icon}</span>
+                  <span>{warehouse.name}</span>
+                </button>
+              ))}
+            </div>
+
             <div className="text-center mb-8">
               <h1 className="text-3xl sm:text-4xl font-bold mb-2">
                 📅 Controllo Scadenze
               </h1>
               <p className="text-slate-400">
-                Monitora i prodotti in scadenza nel magazzino
+                Monitora i prodotti in scadenza nel magazzino {WAREHOUSES.find(w => w.id === selectedWarehouse)?.name}
               </p>
             </div>
 
@@ -490,14 +542,31 @@ export default function ScadenzePage() {
             animate={{ opacity: 1, x: 0 }}
             className="space-y-4"
           >
+            {/* Selettore Warehouse compatto */}
+            <div className="flex gap-2 mb-4">
+              {WAREHOUSES.map((warehouse) => (
+                <button
+                  key={warehouse.id}
+                  onClick={() => handleWarehouseChange(warehouse.id)}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1
+                    ${selectedWarehouse === warehouse.id
+                      ? 'bg-blue-500 text-white'
+                      : 'glass-strong text-slate-300 hover:bg-white/10'}`}
+                >
+                  <span>{warehouse.icon}</span>
+                  <span>{warehouse.name}</span>
+                </button>
+              ))}
+            </div>
+
             {/* Header con filtri zona */}
             <div className="glass p-4 rounded-xl">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-xl font-bold">{getUrgencyLabel()}</h2>
                   <p className="text-sm text-slate-400">
-                    {filteredProducts.length} prodotti
-                    {selectedZone && ` in ${ZONES.find(z => z.id === selectedZone)?.name}`}
+                    {filteredProducts.length} prodotti in {WAREHOUSES.find(w => w.id === selectedWarehouse)?.name}
+                    {selectedZone && ` • ${ZONES.find(z => z.id === selectedZone)?.name}`}
                     {searchQuery.length >= 3 && ` • Ricerca: "${searchQuery}"`}
                   </p>
                 </div>
@@ -638,35 +707,75 @@ export default function ScadenzePage() {
                 )}
               </div>
 
-              {/* Nome e codice */}
+              {/* Nome e info principali */}
               <h2 className="text-2xl font-bold text-center mb-1">{selectedProduct.name}</h2>
-              <p className="text-slate-400 text-center mb-6">COD: {selectedProduct.code}</p>
+              <div className="text-center mb-6">
+                {/* Data scadenza se esiste e non è prodotto fermo */}
+                {!selectedProduct.lotName?.toLowerCase().startsWith('fermo') && selectedProduct.expirationDate && (
+                  <p className="text-slate-300">
+                    📅 Scadenza: <span className="font-semibold">{new Date(selectedProduct.expirationDate).toLocaleDateString('it-IT')}</span>
+                  </p>
+                )}
+                {/* Lotto se esiste */}
+                {selectedProduct.lotName && (
+                  <p className="text-orange-400">
+                    📦 Lotto: <span className="font-semibold">{selectedProduct.lotName}</span>
+                  </p>
+                )}
+              </div>
 
               {/* Info card */}
               <div className="glass p-4 rounded-lg space-y-3 mb-6">
-                {/* Badge scadenza */}
-                <div className={`px-4 py-2 rounded-lg text-center font-bold text-lg
-                  ${selectedProduct.daysUntilExpiry < 0
-                    ? 'bg-red-500/20 text-red-400 border-2 border-red-500'
-                    : selectedProduct.daysUntilExpiry <= 7
-                    ? 'bg-orange-500/20 text-orange-400 border-2 border-orange-500'
-                    : 'bg-green-500/20 text-green-400 border-2 border-green-500'}`}>
-                  {selectedProduct.daysUntilExpiry === 0
-                    ? '🔴 SCADE OGGI'
-                    : selectedProduct.daysUntilExpiry < 0
-                    ? `🔴 SCADUTO ${Math.abs(selectedProduct.daysUntilExpiry)} giorni fa`
-                    : `⏰ Scade tra ${selectedProduct.daysUntilExpiry} giorni`}
-                </div>
+                {/* Badge scadenza/fermo */}
+                {selectedProduct.lotName?.toLowerCase().startsWith('fermo') ? (
+                  // Prodotto FERMO (non movimentato)
+                  <div className={`px-4 py-2 rounded-lg text-center font-bold text-lg
+                    ${Math.abs(selectedProduct.daysUntilExpiry) >= 90
+                      ? 'bg-purple-500/20 text-purple-400 border-2 border-purple-500'
+                      : 'bg-yellow-500/20 text-yellow-400 border-2 border-yellow-500'}`}>
+                    {Math.abs(selectedProduct.daysUntilExpiry) >= 90
+                      ? `🟣 FERMO da ${Math.abs(selectedProduct.daysUntilExpiry)} giorni`
+                      : `🟡 FERMO da ${Math.abs(selectedProduct.daysUntilExpiry)} giorni`}
+                  </div>
+                ) : (
+                  // Prodotto con scadenza reale
+                  <div className={`px-4 py-2 rounded-lg text-center font-bold text-lg
+                    ${selectedProduct.daysUntilExpiry < 0
+                      ? 'bg-red-500/20 text-red-400 border-2 border-red-500'
+                      : selectedProduct.daysUntilExpiry <= 7
+                      ? 'bg-orange-500/20 text-orange-400 border-2 border-orange-500'
+                      : 'bg-green-500/20 text-green-400 border-2 border-green-500'}`}>
+                    {selectedProduct.daysUntilExpiry === 0
+                      ? '🔴 SCADE OGGI'
+                      : selectedProduct.daysUntilExpiry < 0
+                      ? `🔴 SCADUTO ${Math.abs(selectedProduct.daysUntilExpiry)} giorni fa`
+                      : `⏰ Scade tra ${selectedProduct.daysUntilExpiry} giorni`}
+                  </div>
+                )}
 
                 {/* Dettagli */}
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-blue-400" />
-                    <span className="text-slate-400">Data Scadenza:</span>
-                    <span className="font-semibold">
-                      {new Date(selectedProduct.expirationDate).toLocaleDateString('it-IT')}
-                    </span>
-                  </div>
+                  {/* Data Scadenza - mostra solo se NON è un prodotto fermo */}
+                  {!selectedProduct.lotName?.toLowerCase().startsWith('fermo') && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-blue-400" />
+                      <span className="text-slate-400">Data Scadenza:</span>
+                      <span className="font-semibold">
+                        {new Date(selectedProduct.expirationDate).toLocaleDateString('it-IT')}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Ultimo Movimento - mostra solo per prodotti fermi */}
+                  {selectedProduct.lotName?.toLowerCase().startsWith('fermo') && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-yellow-400" />
+                      <span className="text-slate-400">Ultimo Movimento:</span>
+                      <span className="font-semibold text-yellow-400">
+                        {Math.abs(selectedProduct.daysUntilExpiry)} giorni fa
+                      </span>
+                    </div>
+                  )}
 
                   {selectedProduct.lotName && (
                     <div className="flex items-center gap-2">
@@ -841,7 +950,13 @@ export default function ScadenzePage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold truncate">{selectedProduct.name}</h3>
                     <p className="text-xs text-slate-400">
-                      {selectedProduct.quantity} {selectedProduct.uom} • Scade tra {selectedProduct.daysUntilExpiry}gg
+                      {selectedProduct.quantity} {selectedProduct.uom} • {
+                        selectedProduct.lotName?.toLowerCase().startsWith('fermo')
+                          ? `Fermo da ${Math.abs(selectedProduct.daysUntilExpiry)}gg`
+                          : selectedProduct.daysUntilExpiry < 0
+                            ? `Scaduto ${Math.abs(selectedProduct.daysUntilExpiry)}gg fa`
+                            : `Scade tra ${selectedProduct.daysUntilExpiry}gg`
+                      }
                     </p>
                   </div>
                 </div>

@@ -61,8 +61,8 @@ export class InventoryOdooClient {
 
       const session = JSON.parse(decodeURIComponent(token));
 
-      // URL completo per l'endpoint Odoo
-      const odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com';
+      // URL completo per l'endpoint Odoo - Fallback allineato con sessionManager
+      const odooUrl = process.env.NEXT_PUBLIC_ODOO_URL || process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
       const endpoint = `${odooUrl}/web/dataset/call_kw`;
 
       console.log(`🔧 RPC Call: ${model}.${method}`, args);

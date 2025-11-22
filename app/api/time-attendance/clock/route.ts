@@ -10,279 +10,186 @@ interface TimeEntry {
   latitude?: number;
   longitude?: number;
   qr_code_verified: boolean;
+  location_id?: string;
   location_name?: string;
+  break_type?: 'coffee_break' | 'lunch_break';
+  break_max_minutes?: number;
+}
+
+// Configurazione pause
+const BREAK_CONFIG = {
+  coffee_break: { maxMinutes: 20, name: 'Pausa Caffè' },
+  lunch_break: { maxMinutes: 60, name: 'Pausa Pranzo' },
+} as const;
+
+/**
+ * Calcola la distanza tra due punti GPS usando la formula di Haversine
+ * @returns distanza in metri
+ */
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 /**
  * POST /api/time-attendance/clock
- * Registra una timbratura (clock-in, clock-out, break)
- *
- * Body:
- * - contact_id: ID del contatto Odoo
- * - company_id: ID dell'azienda Odoo
- * - entry_type: 'clock_in' | 'clock_out' | 'break_start' | 'break_end'
- * - latitude?: number
- * - longitude?: number
- * - qr_code_verified: boolean
- * - location_name?: string
+ * Registra una timbratura con validazione QR + GPS geofencing
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      contact_id,
-      company_id,
-      entry_type,
-      latitude,
-      longitude,
-      qr_code_verified,
-      location_name,
-    } = body;
+    const { contact_id, company_id, entry_type, latitude, longitude, qr_secret, break_type } = body;
 
-    // Validazione base
     if (!contact_id || !entry_type) {
-      return NextResponse.json({
-        success: false,
-        error: 'contact_id e entry_type sono obbligatori',
-      }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'contact_id e entry_type obbligatori' }, { status: 400 });
     }
 
     if (!['clock_in', 'clock_out', 'break_start', 'break_end'].includes(entry_type)) {
-      return NextResponse.json({
-        success: false,
-        error: 'entry_type non valido. Usa: clock_in, clock_out, break_start, break_end',
-      }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'entry_type non valido' }, { status: 400 });
     }
 
-    // Verifica che QR code E GPS siano presenti per sicurezza
-    if (!qr_code_verified) {
-      return NextResponse.json({
-        success: false,
-        error: 'Scansione QR Code richiesta per timbrare',
-      }, { status: 400 });
+    // Per le pause (break_start/break_end), NON serve QR né GPS
+    const isBreakAction = entry_type === 'break_start' || entry_type === 'break_end';
+
+    // QR e GPS richiesti SOLO per clock_in e clock_out
+    if (!isBreakAction) {
+      if (!qr_secret) {
+        return NextResponse.json({ success: false, error: 'Scansiona il QR Code della sede', code: 'QR_REQUIRED' }, { status: 400 });
+      }
+
+      if (latitude === undefined || longitude === undefined) {
+        return NextResponse.json({ success: false, error: 'Attiva la geolocalizzazione', code: 'GPS_REQUIRED' }, { status: 400 });
+      }
     }
 
-    if (latitude === undefined || longitude === undefined) {
-      return NextResponse.json({
-        success: false,
-        error: 'Posizione GPS richiesta per timbrare',
-      }, { status: 400 });
-    }
+    // Validazione QR + Geofencing (solo per clock_in/clock_out)
+    let loc = null;
+    let distance = 0;
 
-    // Verifica stato attuale per evitare doppie timbrature
-    let lastEntry: TimeEntry | null = null;
-
-    try {
-      const lastResult = await sql`
-        SELECT
-          id,
-          contact_id,
-          company_id,
-          entry_type,
-          timestamp,
-          latitude,
-          longitude,
-          qr_code_verified,
-          location_name
-        FROM ta_time_entries
-        WHERE contact_id = ${contact_id}
-        ORDER BY timestamp DESC
-        LIMIT 1
+    if (!isBreakAction && qr_secret) {
+      const locationResult = await sql`
+        SELECT id, company_id, name, latitude, longitude, radius_meters
+        FROM ta_locations WHERE qr_secret = ${qr_secret} AND is_active = true
       `;
 
-      if (lastResult.rows.length > 0) {
-        const row = lastResult.rows[0];
-        lastEntry = {
-          id: row.id,
-          contact_id: row.contact_id,
-          company_id: row.company_id,
-          entry_type: row.entry_type,
-          timestamp: row.timestamp,
-          latitude: row.latitude,
-          longitude: row.longitude,
-          qr_code_verified: row.qr_code_verified,
-          location_name: row.location_name,
-        };
+      if (locationResult.rows.length === 0) {
+        return NextResponse.json({ success: false, error: 'QR Code non valido', code: 'INVALID_QR' }, { status: 404 });
       }
-    } catch (dbError) {
-      console.warn('Errore lettura database, procedo comunque:', dbError);
+
+      loc = locationResult.rows[0];
+      const locLat = parseFloat(loc.latitude);
+      const locLon = parseFloat(loc.longitude);
+      const radius = loc.radius_meters || 100;
+      distance = calculateDistance(latitude, longitude, locLat, locLon);
+
+      if (distance > radius) {
+        return NextResponse.json({
+          success: false,
+          error: `Troppo lontano dalla sede "${loc.name}". Distanza: ${Math.round(distance)}m, Max: ${radius}m`,
+          code: 'OUT_OF_GEOFENCE',
+          data: { distance_meters: Math.round(distance), radius_meters: radius, location_name: loc.name }
+        }, { status: 403 });
+      }
     }
 
-    // Logica di validazione timbrature
-    if (entry_type === 'clock_in' && lastEntry?.entry_type === 'clock_in') {
-      return NextResponse.json({
-        success: false,
-        error: 'Sei già timbrato in entrata. Timbra prima l\'uscita.',
-      }, { status: 400 });
+    const effectiveCompanyId = company_id || loc?.company_id;
+
+    // Verifica ultima timbratura
+    const lastResult = await sql`
+      SELECT entry_type, break_type, timestamp FROM ta_time_entries WHERE contact_id = ${contact_id} ORDER BY timestamp DESC LIMIT 1
+    `;
+    const lastEntry = lastResult.rows[0];
+    const lastType = lastEntry?.entry_type;
+
+    if (entry_type === 'clock_in' && lastType === 'clock_in') {
+      return NextResponse.json({ success: false, error: 'Già timbrato in entrata' }, { status: 400 });
+    }
+    if (entry_type === 'clock_out' && (!lastType || lastType === 'clock_out')) {
+      return NextResponse.json({ success: false, error: 'Non sei timbrato in entrata' }, { status: 400 });
+    }
+    if (entry_type === 'break_start' && lastType !== 'clock_in' && lastType !== 'break_end') {
+      return NextResponse.json({ success: false, error: 'Devi essere in servizio per la pausa' }, { status: 400 });
+    }
+    if (entry_type === 'break_end' && lastType !== 'break_start') {
+      return NextResponse.json({ success: false, error: 'Nessuna pausa in corso' }, { status: 400 });
     }
 
-    if (entry_type === 'clock_out' && (!lastEntry || lastEntry.entry_type === 'clock_out')) {
-      return NextResponse.json({
-        success: false,
-        error: 'Non risulti timbrato in entrata. Timbra prima l\'ingresso.',
-      }, { status: 400 });
+    // Validazione break_type per break_start
+    let breakMaxMinutes: number | null = null;
+    let breakTypeName = '';
+
+    if (entry_type === 'break_start') {
+      if (!break_type || !['coffee_break', 'lunch_break'].includes(break_type)) {
+        return NextResponse.json({ success: false, error: 'Tipo pausa non valido. Scegli Pausa Caffè o Pausa Pranzo.' }, { status: 400 });
+      }
+      breakMaxMinutes = BREAK_CONFIG[break_type as keyof typeof BREAK_CONFIG].maxMinutes;
+      breakTypeName = BREAK_CONFIG[break_type as keyof typeof BREAK_CONFIG].name;
     }
 
-    if (entry_type === 'break_start' && lastEntry?.entry_type !== 'clock_in' && lastEntry?.entry_type !== 'break_end') {
-      return NextResponse.json({
-        success: false,
-        error: 'Devi essere in servizio per iniziare una pausa.',
-      }, { status: 400 });
-    }
-
-    if (entry_type === 'break_end' && lastEntry?.entry_type !== 'break_start') {
-      return NextResponse.json({
-        success: false,
-        error: 'Non risulta una pausa in corso.',
-      }, { status: 400 });
-    }
-
-    // Crea timbratura
     const timestamp = new Date().toISOString();
-    let newEntry: TimeEntry | null = null;
 
-    try {
-      const result = await sql`
-        INSERT INTO ta_time_entries (
-          contact_id,
-          company_id,
-          entry_type,
-          timestamp,
-          latitude,
-          longitude,
-          qr_code_verified,
-          location_name
-        ) VALUES (
-          ${contact_id},
-          ${company_id || null},
-          ${entry_type},
-          ${timestamp},
-          ${latitude},
-          ${longitude},
-          ${qr_code_verified},
-          ${location_name || null}
-        )
-        RETURNING id, contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, location_name
+    // INSERT diverso per break vs clock
+    let result;
+    if (isBreakAction) {
+      // Per break_end, recupera break_type dalla pausa aperta
+      const finalBreakType = entry_type === 'break_end' ? lastEntry?.break_type : break_type;
+
+      result = await sql`
+        INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, break_type, break_max_minutes)
+        VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude || null}, ${longitude || null}, false, ${finalBreakType || null}, ${breakMaxMinutes})
+        RETURNING *
       `;
-
-      if (result.rows.length > 0) {
-        const row = result.rows[0];
-        newEntry = {
-          id: row.id,
-          contact_id: row.contact_id,
-          company_id: row.company_id,
-          entry_type: row.entry_type,
-          timestamp: row.timestamp,
-          latitude: row.latitude,
-          longitude: row.longitude,
-          qr_code_verified: row.qr_code_verified,
-          location_name: row.location_name,
-        };
-      }
-    } catch (dbError) {
-      console.error('Errore inserimento database:', dbError);
-      // In caso di errore database, creiamo comunque una risposta di successo
-      // (per test senza database configurato)
-      newEntry = {
-        id: `temp-${Date.now()}`,
-        contact_id,
-        company_id: company_id || 0,
-        entry_type,
-        timestamp,
-        latitude,
-        longitude,
-        qr_code_verified,
-        location_name,
-      };
+    } else {
+      result = await sql`
+        INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, location_id, location_name)
+        VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude}, ${longitude}, true, ${loc?.id}, ${loc?.name})
+        RETURNING *
+      `;
     }
 
-    // Calcola ore lavorate oggi
-    let hoursWorkedToday = 0;
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    try {
-      const todayResult = await sql`
-        SELECT entry_type, timestamp
-        FROM ta_time_entries
-        WHERE contact_id = ${contact_id}
-          AND timestamp >= ${todayStart.toISOString()}
-        ORDER BY timestamp ASC
-      `;
-
-      const entries = todayResult.rows;
-      let workingTime = 0;
-      let breakTime = 0;
-      let lastClockIn: Date | null = null;
-      let lastBreakStart: Date | null = null;
-
-      for (const entry of entries) {
-        const entryTime = new Date(entry.timestamp);
-
-        switch (entry.entry_type) {
-          case 'clock_in':
-            lastClockIn = entryTime;
-            break;
-          case 'clock_out':
-            if (lastClockIn) {
-              workingTime += entryTime.getTime() - lastClockIn.getTime();
-              lastClockIn = null;
-            }
-            break;
-          case 'break_start':
-            lastBreakStart = entryTime;
-            break;
-          case 'break_end':
-            if (lastBreakStart) {
-              breakTime += entryTime.getTime() - lastBreakStart.getTime();
-              lastBreakStart = null;
-            }
-            break;
-        }
-      }
-
-      // Se ancora in servizio, aggiungi tempo fino ad ora
-      if (lastClockIn && (entry_type === 'clock_in' || entry_type === 'break_end')) {
-        workingTime += new Date().getTime() - lastClockIn.getTime();
-      }
-
-      const netWorkingTime = workingTime - breakTime;
-      hoursWorkedToday = Math.max(0, netWorkingTime / (1000 * 60 * 60));
-    } catch {
-      // Ignora errori calcolo ore
-    }
-
-    // Messaggio di risposta
     const messages: Record<string, string> = {
-      clock_in: '✅ Entrata registrata! Buon lavoro!',
-      clock_out: '👋 Uscita registrata! A presto!',
-      break_start: '☕ Inizio pausa registrato. Buon relax!',
-      break_end: '💪 Fine pausa registrata. Bentornato!',
+      clock_in: 'Entrata registrata! Buon lavoro!',
+      clock_out: 'Uscita registrata! A presto!',
+      break_start: `${breakTypeName || 'Pausa'} iniziata! Max ${breakMaxMinutes} minuti.`,
+      break_end: 'Pausa terminata. Buon lavoro!',
     };
 
     return NextResponse.json({
       success: true,
       data: {
-        entry: newEntry,
-        is_on_duty: entry_type === 'clock_in' || entry_type === 'break_end',
-        hours_worked_today: Math.round(hoursWorkedToday * 100) / 100,
+        entry: result.rows[0],
+        location: loc ? { id: loc.id, name: loc.name, distance_meters: Math.round(distance) } : null,
+        break_info: entry_type === 'break_start' ? {
+          type: break_type,
+          max_minutes: breakMaxMinutes,
+          name: breakTypeName,
+        } : null,
       },
       message: messages[entry_type],
     });
 
   } catch (error) {
     console.error('Clock error:', error);
-    return NextResponse.json({
-      success: false,
-      error: 'Errore durante la timbratura',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Errore timbratura', details: error instanceof Error ? error.message : 'Unknown' }, { status: 500 });
   }
 }
 
 /**
  * GET /api/time-attendance/clock?contact_id=xxx
- * Ottiene lo stato attuale della timbratura (alias di /status)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -290,23 +197,74 @@ export async function GET(request: NextRequest) {
     const contactId = searchParams.get('contact_id');
 
     if (!contactId) {
-      return NextResponse.json({
-        success: false,
-        error: 'contact_id richiesto',
-      }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'contact_id richiesto' }, { status: 400 });
     }
 
-    // Redirect to status API
-    const statusUrl = new URL(request.url);
-    statusUrl.pathname = '/api/time-attendance/status';
-    const response = await fetch(statusUrl.toString());
-    return response;
+    const lastResult = await sql`
+      SELECT id, entry_type, timestamp, location_name, break_type, break_max_minutes FROM ta_time_entries
+      WHERE contact_id = ${parseInt(contactId)} ORDER BY timestamp DESC LIMIT 1
+    `;
 
-  } catch (error) {
-    console.error('Get clock status error:', error);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayResult = await sql`
+      SELECT entry_type, timestamp, location_name, break_type, break_max_minutes FROM ta_time_entries
+      WHERE contact_id = ${parseInt(contactId)} AND timestamp >= ${todayStart.toISOString()}
+      ORDER BY timestamp ASC
+    `;
+
+    let workingTime = 0, breakTime = 0;
+    let lastClockIn: Date | null = null, lastBreakStart: Date | null = null;
+
+    for (const e of todayResult.rows) {
+      const t = new Date(e.timestamp);
+      if (e.entry_type === 'clock_in') lastClockIn = t;
+      else if (e.entry_type === 'clock_out' && lastClockIn) { workingTime += t.getTime() - lastClockIn.getTime(); lastClockIn = null; }
+      else if (e.entry_type === 'break_start') lastBreakStart = t;
+      else if (e.entry_type === 'break_end' && lastBreakStart) { breakTime += t.getTime() - lastBreakStart.getTime(); lastBreakStart = null; }
+    }
+
+    if (lastClockIn) workingTime += Date.now() - lastClockIn.getTime();
+    const hoursWorkedToday = Math.max(0, (workingTime - breakTime) / 3600000);
+
+    const last = lastResult.rows[0];
+    const isOnBreak = last?.entry_type === 'break_start';
+
+    // Calcola info pausa attiva
+    let activeBreakInfo = null;
+    if (isOnBreak && last) {
+      const breakStartTime = new Date(last.timestamp);
+      const breakElapsedMs = Date.now() - breakStartTime.getTime();
+      const breakElapsedMinutes = Math.floor(breakElapsedMs / 60000);
+      const maxMinutes = last.break_max_minutes || (last.break_type === 'coffee_break' ? 20 : 60);
+      const isExceeded = breakElapsedMinutes >= maxMinutes;
+      const effectiveElapsed = isExceeded ? maxMinutes : breakElapsedMinutes;
+
+      activeBreakInfo = {
+        type: last.break_type,
+        name: last.break_type === 'coffee_break' ? 'Pausa Caffè' : 'Pausa Pranzo',
+        started_at: last.timestamp,
+        max_minutes: maxMinutes,
+        elapsed_minutes: effectiveElapsed,
+        is_exceeded: isExceeded,
+        exceeded_by_minutes: isExceeded ? breakElapsedMinutes - maxMinutes : 0,
+      };
+    }
+
     return NextResponse.json({
-      success: false,
-      error: 'Errore nel recupero dello stato',
-    }, { status: 500 });
+      success: true,
+      data: {
+        last_entry: last || null,
+        is_on_duty: last && (last.entry_type === 'clock_in' || last.entry_type === 'break_end'),
+        is_on_break: isOnBreak,
+        active_break: activeBreakInfo,
+        hours_worked_today: Math.round(hoursWorkedToday * 100) / 100,
+        entries_today: todayResult.rows,
+      },
+    });
+  } catch (error) {
+    console.error('Get clock error:', error);
+    return NextResponse.json({ success: false, error: 'Errore recupero stato' }, { status: 500 });
   }
 }

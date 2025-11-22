@@ -9,8 +9,12 @@ import { cookies } from 'next/headers';
  * Autentica con Odoo usando credenziali (fallback)
  */
 async function authenticateWithCredentials(): Promise<string | null> {
-  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com';
-  const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-25408900';
+  // Fallback allineati con sessionManager - usa DB main
+  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+  const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
+  // Supporta sia ODOO_USERNAME che ODOO_ADMIN_EMAIL per retrocompatibilità
+  const odooLogin = process.env.ODOO_USERNAME || process.env.ODOO_ADMIN_EMAIL || 'apphubplatform@lapa.ch';
+  const odooPassword = process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || 'apphubplatform2025';
 
   console.log('🔐 Autenticazione Odoo con credenziali...');
 
@@ -25,8 +29,8 @@ async function authenticateWithCredentials(): Promise<string | null> {
         method: 'call',
         params: {
           db: odooDb,
-          login: 'paul@lapa.ch',
-          password: 'lapa201180',
+          login: odooLogin,
+          password: odooPassword,
         },
         id: Date.now(),
       })
@@ -101,7 +105,8 @@ async function callOdooInternal(
   kwargs: any,
   sessionId: string
 ): Promise<any> {
-  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com';
+  // Fallback allineato con sessionManager - usa DB main
+  const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 
   const response = await fetch(`${odooUrl}/web/dataset/call_kw`, {
     method: 'POST',
@@ -243,7 +248,8 @@ export async function getCurrentUserId(): Promise<number | null> {
     const sessionId = await getOdooSessionId();
     if (!sessionId) return null;
 
-    const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com';
+    // Fallback allineato con sessionManager - usa DB main
+    const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 
     const response = await fetch(`${odooUrl}/web/session/get_session_info`, {
       method: 'POST',

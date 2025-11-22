@@ -37,6 +37,10 @@ CREATE TABLE IF NOT EXISTS ta_time_entries (
   -- Extra
   note TEXT,
 
+  -- Tipo di pausa (per break_start/break_end)
+  break_type TEXT CHECK (break_type IS NULL OR break_type IN ('coffee_break', 'lunch_break')),
+  break_max_minutes INTEGER, -- durata massima consentita in minuti
+
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -63,6 +67,36 @@ CREATE TABLE IF NOT EXISTS ta_odoo_consents (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ta_odoo_consents_contact ON ta_odoo_consents(contact_id);
+
+-- Table: Locations (sedi di lavoro per geofencing)
+CREATE TABLE IF NOT EXISTS ta_locations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id INTEGER NOT NULL, -- res.partner.id dell'azienda
+
+  -- Info sede
+  name VARCHAR(255) NOT NULL,
+  address TEXT,
+
+  -- Coordinate GPS per geofencing
+  latitude DECIMAL(10,8) NOT NULL,
+  longitude DECIMAL(11,8) NOT NULL,
+  radius_meters INTEGER DEFAULT 100, -- raggio geofence in metri
+
+  -- Codice segreto per QR Code
+  qr_secret VARCHAR(64) NOT NULL UNIQUE,
+
+  -- Stato
+  is_active BOOLEAN DEFAULT true,
+
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ta_locations_company ON ta_locations(company_id);
+CREATE INDEX IF NOT EXISTS idx_ta_locations_qr ON ta_locations(qr_secret);
+
+-- Aggiorna ta_time_entries per riferimento location
+ALTER TABLE ta_time_entries ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES ta_locations(id);
 
 -- View: Riepilogo giornaliero per contatto Odoo
 CREATE OR REPLACE VIEW ta_contact_daily_summary AS

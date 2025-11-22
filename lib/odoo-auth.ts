@@ -13,10 +13,12 @@
 import { getOdooSessionManager } from './odoo/sessionManager';
 
 // Lazy eval env vars to allow dotenv to load first
-const getOdooUrl = () => process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24721327.dev.odoo.com';
-const getOdooDb = () => process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24721327';
-const getOdooLogin = () => process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const getOdooPassword = () => process.env.ODOO_PASSWORD || 'lapa201180';
+// Fallback allineati con sessionManager - usa DB main
+const getOdooUrl = () => process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+const getOdooDb = () => process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
+// Supporta sia ODOO_USERNAME che ODOO_ADMIN_EMAIL per retrocompatibilità
+const getOdooLogin = () => process.env.ODOO_USERNAME || process.env.ODOO_ADMIN_EMAIL || 'apphubplatform@lapa.ch';
+const getOdooPassword = () => process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || 'apphubplatform2025';
 
 // Cache sessione fallback per evitare re-autenticazioni multiple
 let cachedFallbackSession: { cookie: string; expires: number } | null = null;

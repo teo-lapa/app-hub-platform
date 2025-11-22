@@ -17,8 +17,9 @@ export async function POST(request: NextRequest) {
 
     // ========== STEP 1: AUTENTICA SU ODOO (PRIORITÀ) ==========
     console.log('🔑 Step 1: Authenticating on Odoo with user credentials...');
-    const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
-    const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-24517859';
+    // Fallback allineati con sessionManager - usa DB main
+    const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+    const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 
     try {
       const odooAuthResponse = await fetch(`${odooUrl}/web/session/authenticate`, {

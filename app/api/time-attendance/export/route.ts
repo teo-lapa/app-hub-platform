@@ -12,16 +12,36 @@ interface TimeEntry {
   longitude?: number;
   qr_code_verified: boolean;
   location_name?: string;
+  break_type?: 'coffee_break' | 'lunch_break';
+  break_max_minutes?: number;
+}
+
+interface BreakDetail {
+  type: 'coffee_break' | 'lunch_break';
+  name: string;
+  start: string;
+  end: string | null;
+  duration_minutes: number;
 }
 
 interface DailyReport {
   date: string;
+  contact_id: number;
   contact_name: string;
+  company_name: string;
   first_clock_in: string | null;
   last_clock_out: string | null;
   break_minutes: number;
+  coffee_break_minutes: number;
+  lunch_break_minutes: number;
+  breaks: BreakDetail[];
   total_hours: number;
   entries: TimeEntry[];
+}
+
+interface ContactInfo {
+  name: string;
+  company_name: string;
 }
 
 /**
@@ -79,7 +99,9 @@ export async function GET(request: NextRequest) {
             latitude,
             longitude,
             qr_code_verified,
-            location_name
+            location_name,
+            break_type,
+            break_max_minutes
           FROM ta_time_entries
           WHERE contact_id = ${parseInt(contactId)}
             AND timestamp >= ${startDate.toISOString()}
@@ -97,7 +119,9 @@ export async function GET(request: NextRequest) {
             latitude,
             longitude,
             qr_code_verified,
-            location_name
+            location_name,
+            break_type,
+            break_max_minutes
           FROM ta_time_entries
           WHERE company_id = ${parseInt(companyId)}
             AND timestamp >= ${startDate.toISOString()}
@@ -116,6 +140,8 @@ export async function GET(request: NextRequest) {
         longitude: row.longitude,
         qr_code_verified: row.qr_code_verified,
         location_name: row.location_name,
+        break_type: row.break_type,
+        break_max_minutes: row.break_max_minutes,
       }));
     } catch (dbError) {
       console.warn('Database non disponibile:', dbError);
@@ -124,24 +150,68 @@ export async function GET(request: NextRequest) {
     // Raggruppa per giorno e contatto
     const dailyReports: Map<string, DailyReport> = new Map();
 
-    // Ottieni nomi dei contatti da Odoo
+    // Ottieni nomi dei contatti e aziende da Odoo
     const contactIds = Array.from(new Set(entries.map(e => e.contact_id)));
-    const contactNames: Map<number, string> = new Map();
+    const contactInfo: Map<number, ContactInfo> = new Map();
 
     if (contactIds.length > 0) {
+      console.log(`[Export] Fetching ${contactIds.length} contacts from Odoo:`, contactIds);
       try {
         const odoo = await getOdooClient();
+        // Prendi nome e parent_id (azienda) per ogni contatto
         const contacts = await odoo.searchRead(
           'res.partner',
           [['id', 'in', contactIds]],
-          ['id', 'name'],
+          ['id', 'name', 'parent_id'],
           100
         );
-        for (const c of contacts as Array<{ id: number; name: string }>) {
-          contactNames.set(c.id, c.name);
+
+        console.log(`[Export] Odoo returned ${(contacts as unknown[]).length} contacts`);
+
+        // Raccogli gli ID delle aziende parent
+        const parentIds: number[] = [];
+        for (const c of contacts as Array<{ id: number; name: string; parent_id: [number, string] | false }>) {
+          if (c.parent_id && Array.isArray(c.parent_id)) {
+            parentIds.push(c.parent_id[0]);
+          }
+        }
+
+        // Ottieni i nomi delle aziende parent (se esistono)
+        const parentNames: Map<number, string> = new Map();
+        if (parentIds.length > 0) {
+          const parents = await odoo.searchRead(
+            'res.partner',
+            [['id', 'in', parentIds]],
+            ['id', 'name'],
+            100
+          );
+          for (const p of parents as Array<{ id: number; name: string }>) {
+            parentNames.set(p.id, p.name);
+          }
+        }
+
+        // Costruisci la mappa completa
+        for (const c of contacts as Array<{ id: number; name: string; parent_id: [number, string] | false }>) {
+          let companyName = '-';
+          if (c.parent_id && Array.isArray(c.parent_id)) {
+            // parent_id è già [id, name], ma prendiamo dalla query per sicurezza
+            companyName = parentNames.get(c.parent_id[0]) || c.parent_id[1] || '-';
+          }
+          contactInfo.set(c.id, {
+            name: c.name,
+            company_name: companyName,
+          });
+          console.log(`[Export] Contact ${c.id}: ${c.name} @ ${companyName}`);
         }
       } catch (odooError) {
-        console.warn('Errore Odoo:', odooError);
+        console.error('[Export] Errore Odoo fetch contacts:', odooError);
+      }
+    }
+
+    // Log dei contatti non trovati in Odoo
+    for (const contactId of contactIds) {
+      if (!contactInfo.has(contactId)) {
+        console.warn(`[Export] Contact ID ${contactId} NOT found in Odoo!`);
       }
     }
 
@@ -151,12 +221,18 @@ export async function GET(request: NextRequest) {
       const key = `${entry.contact_id}_${date}`;
 
       if (!dailyReports.has(key)) {
+        const info = contactInfo.get(entry.contact_id);
         dailyReports.set(key, {
           date,
-          contact_name: contactNames.get(entry.contact_id) || `Contatto ${entry.contact_id}`,
+          contact_id: entry.contact_id,
+          contact_name: info?.name || `Contatto ID ${entry.contact_id}`,
+          company_name: info?.company_name || '-',
           first_clock_in: null,
           last_clock_out: null,
           break_minutes: 0,
+          coffee_break_minutes: 0,
+          lunch_break_minutes: 0,
+          breaks: [],
           total_hours: 0,
           entries: [],
         });
@@ -178,8 +254,10 @@ export async function GET(request: NextRequest) {
     for (const report of reportsArray) {
       let workingTime = 0;
       let breakTime = 0;
+      let coffeeBreakTime = 0;
+      let lunchBreakTime = 0;
       let lastClockIn: Date | null = null;
-      let lastBreakStart: Date | null = null;
+      let lastBreakStart: { time: Date; type: 'coffee_break' | 'lunch_break' | null } | null = null;
 
       for (const entry of report.entries) {
         const entryTime = new Date(entry.timestamp);
@@ -195,18 +273,60 @@ export async function GET(request: NextRequest) {
             }
             break;
           case 'break_start':
-            lastBreakStart = entryTime;
+            lastBreakStart = { time: entryTime, type: entry.break_type || null };
             break;
           case 'break_end':
             if (lastBreakStart) {
-              breakTime += entryTime.getTime() - lastBreakStart.getTime();
+              const breakDuration = entryTime.getTime() - lastBreakStart.time.getTime();
+              const breakMinutes = Math.round(breakDuration / (1000 * 60));
+              breakTime += breakDuration;
+
+              // Traccia per tipo
+              if (lastBreakStart.type === 'coffee_break') {
+                coffeeBreakTime += breakDuration;
+              } else if (lastBreakStart.type === 'lunch_break') {
+                lunchBreakTime += breakDuration;
+              }
+
+              // Aggiungi dettaglio pausa
+              report.breaks.push({
+                type: lastBreakStart.type || 'coffee_break',
+                name: lastBreakStart.type === 'lunch_break' ? 'Pausa Pranzo' : 'Pausa Caffè',
+                start: lastBreakStart.time.toISOString(),
+                end: entryTime.toISOString(),
+                duration_minutes: breakMinutes,
+              });
+
               lastBreakStart = null;
             }
             break;
         }
       }
 
+      // Se c'è una pausa ancora aperta, la contiamo fino ad ora
+      if (lastBreakStart) {
+        const breakDuration = Date.now() - lastBreakStart.time.getTime();
+        const breakMinutes = Math.round(breakDuration / (1000 * 60));
+        breakTime += breakDuration;
+
+        if (lastBreakStart.type === 'coffee_break') {
+          coffeeBreakTime += breakDuration;
+        } else if (lastBreakStart.type === 'lunch_break') {
+          lunchBreakTime += breakDuration;
+        }
+
+        report.breaks.push({
+          type: lastBreakStart.type || 'coffee_break',
+          name: lastBreakStart.type === 'lunch_break' ? 'Pausa Pranzo' : 'Pausa Caffè',
+          start: lastBreakStart.time.toISOString(),
+          end: null, // ancora in corso
+          duration_minutes: breakMinutes,
+        });
+      }
+
       report.break_minutes = Math.round(breakTime / (1000 * 60));
+      report.coffee_break_minutes = Math.round(coffeeBreakTime / (1000 * 60));
+      report.lunch_break_minutes = Math.round(lunchBreakTime / (1000 * 60));
       report.total_hours = Math.round((workingTime - breakTime) / (1000 * 60 * 60) * 100) / 100;
     }
 
@@ -218,7 +338,7 @@ export async function GET(request: NextRequest) {
     // Formato CSV
     if (format === 'csv') {
       const csvLines = [
-        'Data,Nome,Entrata,Uscita,Pausa (min),Ore Lavorate',
+        'Data,ID Contatto,Nome Dipendente,Azienda,Entrata,Uscita,Pausa Caffè (min),Pausa Pranzo (min),Pausa Totale (min),Ore Lavorate',
       ];
 
       for (const report of reports) {
@@ -228,9 +348,12 @@ export async function GET(request: NextRequest) {
         const uscita = report.last_clock_out
           ? new Date(report.last_clock_out).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
           : '-';
+        // Escape virgole nei nomi per CSV
+        const safeName = report.contact_name.includes(',') ? `"${report.contact_name}"` : report.contact_name;
+        const safeCompany = report.company_name.includes(',') ? `"${report.company_name}"` : report.company_name;
 
         csvLines.push(
-          `${report.date},${report.contact_name},${entrata},${uscita},${report.break_minutes},${report.total_hours}`
+          `${report.date},${report.contact_id},${safeName},${safeCompany},${entrata},${uscita},${report.coffee_break_minutes},${report.lunch_break_minutes},${report.break_minutes},${report.total_hours}`
         );
       }
 
@@ -260,6 +383,10 @@ export async function GET(request: NextRequest) {
             table { border-collapse: collapse; }
             th, td { border: 1px solid #000; padding: 5px; }
             th { background: #f0f0f0; font-weight: bold; }
+            .employee-name { font-weight: bold; }
+            .company-name { color: #666; }
+            .coffee-break { background: #fff3cd; }
+            .lunch-break { background: #ffe4b3; }
           </style>
         </head>
         <body>
@@ -268,10 +395,14 @@ export async function GET(request: NextRequest) {
           <table>
             <tr>
               <th>Data</th>
-              <th>Nome</th>
+              <th>ID</th>
+              <th>Nome Dipendente</th>
+              <th>Azienda</th>
               <th>Entrata</th>
               <th>Uscita</th>
-              <th>Pausa (min)</th>
+              <th>Pausa Caffè (min)</th>
+              <th>Pausa Pranzo (min)</th>
+              <th>Pausa Totale (min)</th>
               <th>Ore Lavorate</th>
             </tr>
             ${reports.map(report => {
@@ -283,9 +414,13 @@ export async function GET(request: NextRequest) {
                 : '-';
               return `<tr>
                 <td>${report.date}</td>
-                <td>${report.contact_name}</td>
+                <td>${report.contact_id}</td>
+                <td class="employee-name">${report.contact_name}</td>
+                <td class="company-name">${report.company_name}</td>
                 <td>${entrata}</td>
                 <td>${uscita}</td>
+                <td class="coffee-break">${report.coffee_break_minutes}</td>
+                <td class="lunch-break">${report.lunch_break_minutes}</td>
                 <td>${report.break_minutes}</td>
                 <td>${report.total_hours}</td>
               </tr>`;
@@ -295,30 +430,64 @@ export async function GET(request: NextRequest) {
           <h3>Riepilogo per Dipendente</h3>
           <table>
             <tr>
-              <th>Nome</th>
+              <th>ID</th>
+              <th>Nome Dipendente</th>
+              <th>Azienda</th>
               <th>Giorni Lavorati</th>
+              <th>Pausa Caffè Tot (min)</th>
+              <th>Pausa Pranzo Tot (min)</th>
               <th>Ore Totali</th>
               <th>Media Ore/Giorno</th>
             </tr>
             ${(() => {
-              const byContact = new Map<string, { days: number; hours: number }>();
+              const byContact = new Map<number, { id: number; name: string; company: string; days: number; hours: number; coffeeMin: number; lunchMin: number }>();
               for (const report of reports) {
-                const key = report.contact_name;
+                const key = report.contact_id;
                 if (!byContact.has(key)) {
-                  byContact.set(key, { days: 0, hours: 0 });
+                  byContact.set(key, { id: report.contact_id, name: report.contact_name, company: report.company_name, days: 0, hours: 0, coffeeMin: 0, lunchMin: 0 });
                 }
                 const data = byContact.get(key)!;
                 data.days++;
                 data.hours += report.total_hours;
+                data.coffeeMin += report.coffee_break_minutes;
+                data.lunchMin += report.lunch_break_minutes;
               }
-              return Array.from(byContact.entries())
-                .map(([name, data]) => `<tr>
-                  <td>${name}</td>
+              return Array.from(byContact.values())
+                .map((data) => `<tr>
+                  <td>${data.id}</td>
+                  <td class="employee-name">${data.name}</td>
+                  <td class="company-name">${data.company}</td>
                   <td>${data.days}</td>
+                  <td class="coffee-break">${data.coffeeMin}</td>
+                  <td class="lunch-break">${data.lunchMin}</td>
                   <td>${data.hours.toFixed(2)}</td>
                   <td>${(data.hours / data.days).toFixed(2)}</td>
                 </tr>`).join('');
             })()}
+          </table>
+
+          <h3>Dettaglio Pause</h3>
+          <table>
+            <tr>
+              <th>Data</th>
+              <th>ID</th>
+              <th>Nome Dipendente</th>
+              <th>Tipo Pausa</th>
+              <th>Inizio</th>
+              <th>Fine</th>
+              <th>Durata (min)</th>
+            </tr>
+            ${reports.flatMap(report =>
+              report.breaks.map(b => `<tr>
+                <td>${report.date}</td>
+                <td>${report.contact_id}</td>
+                <td>${report.contact_name}</td>
+                <td class="${b.type === 'coffee_break' ? 'coffee-break' : 'lunch-break'}">${b.name}</td>
+                <td>${new Date(b.start).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</td>
+                <td>${b.end ? new Date(b.end).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'In corso'}</td>
+                <td>${b.duration_minutes}</td>
+              </tr>`)
+            ).join('')}
           </table>
         </body>
         </html>
