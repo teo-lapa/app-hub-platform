@@ -200,15 +200,12 @@ export default function SalesRadarPage() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 
-  // Not in target modal
-  const [showNotTargetModal, setShowNotTargetModal] = useState(false);
-  const [notTargetPlace, setNotTargetPlace] = useState<any>(null);
-
-  // Note modal (vocale, scritta, non in target)
+  // Note modal (vocale, scritta, non in target) - tutto in uno
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [notePlace, setNotePlace] = useState<any>(null);
   const [writtenNote, setWrittenNote] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [notTargetExpanded, setNotTargetExpanded] = useState(false);
 
   // Stats
   const existingCustomers = places.filter(p => p.existsInOdoo).length;
@@ -559,16 +556,17 @@ export default function SalesRadarPage() {
         setAudioChunks([]);
 
         // Send to API for transcription
-        // Usa notTargetPlace se siamo nel modal "Non in Target", altrimenti selectedPlace
-        const placeToUse = notTargetPlace || selectedPlace;
+        // Usa notePlace se siamo nel modal Note, altrimenti selectedPlace
+        const placeToUse = notePlace || selectedPlace;
         if (placeToUse) {
           await saveVoiceNote(audioBlob, placeToUse);
 
-          // Se era dal modal "Non in Target", marca come 'other' e chiudi
-          if (notTargetPlace) {
+          // Se era dal modal con "Non in Target" espanso, marca come 'other' e chiudi
+          if (notePlace && notTargetExpanded) {
             await markAsNotTarget('other');
-            setShowNotTargetModal(false);
-            setNotTargetPlace(null);
+            setShowNoteModal(false);
+            setNotePlace(null);
+            setNotTargetExpanded(false);
           }
         }
 
@@ -618,6 +616,7 @@ export default function SalesRadarPage() {
   const openNoteModal = (place: any) => {
     setNotePlace(place);
     setWrittenNote('');
+    setNotTargetExpanded(false);
     setShowNoteModal(true);
   };
 
@@ -651,22 +650,16 @@ export default function SalesRadarPage() {
     }
   };
 
-  // Not in Target functions
-  const openNotTargetModal = (place: any) => {
-    setShowNoteModal(false); // Chiudi note modal se aperto
-    setNotTargetPlace(place);
-    setShowNotTargetModal(true);
-  };
-
+  // Not in Target function (uses notePlace from the same modal)
   const markAsNotTarget = async (reason: 'closed' | 'not_interested' | 'other', note?: string) => {
-    if (!notTargetPlace) return;
+    if (!notePlace) return;
 
     try {
       const response = await fetch('/api/sales-radar/mark-not-target', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lead_id: notTargetPlace.leadId || notTargetPlace.id || notTargetPlace.place_id,
+          lead_id: notePlace.leadId || notePlace.id || notePlace.place_id,
           reason,
           note
         })
@@ -676,16 +669,18 @@ export default function SalesRadarPage() {
       if (result.success) {
         // Update local state to show grey marker
         setPlaces(prev => prev.map(p =>
-          p.place_id === notTargetPlace.place_id
+          p.place_id === notePlace.place_id
             ? { ...p, notInTarget: true, color: 'grey' } as any
             : p
         ));
         setOdooPlaces(prev => prev.map(p =>
-          p.id === notTargetPlace.id
+          p.id === notePlace.id
             ? { ...p, notInTarget: true, color: 'grey' }
             : p
         ));
-        setShowNotTargetModal(false);
+        setShowNoteModal(false);
+        setNotePlace(null);
+        setNotTargetExpanded(false);
         setSelectedPlace(null);
       }
     } catch (error) {
@@ -1741,10 +1736,10 @@ export default function SalesRadarPage() {
         )}
       </AnimatePresence>
 
-      {/* Note Modal - Opzioni Nota */}
+      {/* Note Modal Unificato - Nota Vocale, Scritta e Non in Target */}
       {showNoteModal && notePlace && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold mb-2 text-gray-900">📝 Aggiungi Nota</h3>
             <p className="text-gray-700 mb-4 font-medium">{notePlace.name}</p>
 
@@ -1762,7 +1757,7 @@ export default function SalesRadarPage() {
                   onClick={() => stopRecording()}
                   className="w-full px-4 py-4 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-lg flex items-center justify-center gap-2"
                 >
-                  ⏹️ STOP - Termina Registrazione
+                  STOP - Termina Registrazione
                 </button>
               </div>
             ) : (
@@ -1770,7 +1765,7 @@ export default function SalesRadarPage() {
                 {/* Nota Vocale */}
                 <button
                   onClick={() => {
-                    setSelectedPlace(notePlace); // Per saveVoiceNote
+                    setSelectedPlace(notePlace);
                     startRecording();
                   }}
                   className="w-full px-4 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-left font-medium flex items-center gap-3"
@@ -1789,7 +1784,7 @@ export default function SalesRadarPage() {
                     value={writtenNote}
                     onChange={(e) => setWrittenNote(e.target.value)}
                     placeholder="Scrivi una nota..."
-                    className="w-full px-3 py-2 border border-green-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-3 py-2 border border-green-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     rows={3}
                   />
                   {writtenNote.trim() && (
@@ -1798,15 +1793,29 @@ export default function SalesRadarPage() {
                       disabled={isSavingNote}
                       className="mt-2 w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
                     >
-                      {isSavingNote ? 'Salvataggio...' : '💾 Salva Nota'}
+                      {isSavingNote ? 'Salvataggio...' : 'Salva Nota'}
                     </button>
                   )}
                 </div>
 
-                {/* Non in Target */}
+                {/* Opzioni di esclusione - tutte allo stesso livello */}
                 <button
-                  onClick={() => openNotTargetModal(notePlace)}
-                  className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-left font-medium flex items-center gap-3"
+                  onClick={() => markAsNotTarget('closed')}
+                  className="w-full px-4 py-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-left font-medium flex items-center gap-3"
+                >
+                  <span className="text-xl">🔴</span>
+                  <span>Chiuso definitivamente</span>
+                </button>
+                <button
+                  onClick={() => markAsNotTarget('not_interested')}
+                  className="w-full px-4 py-3 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 text-left font-medium flex items-center gap-3"
+                >
+                  <span className="text-xl">🟠</span>
+                  <span>Non interessato</span>
+                </button>
+                <button
+                  onClick={() => markAsNotTarget('other')}
+                  className="w-full px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-left font-medium flex items-center gap-3"
                 >
                   <span className="text-xl">🚫</span>
                   <span>Non in Target</span>
@@ -1823,73 +1832,6 @@ export default function SalesRadarPage() {
                 className="w-full mt-4 px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
               >
                 Chiudi
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Not in Target Modal */}
-      {showNotTargetModal && notTargetPlace && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="text-xl font-bold mb-2 text-gray-900">🚫 Non in Target</h3>
-            <p className="text-gray-700 mb-4 font-medium">{notTargetPlace.name}</p>
-
-            {/* Se sta registrando, mostra UI di registrazione */}
-            {isRecording ? (
-              <div className="space-y-4">
-                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center">
-                  <div className="w-16 h-16 mx-auto mb-3 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
-                    <span className="text-white text-2xl">🎤</span>
-                  </div>
-                  <p className="text-red-700 font-semibold text-lg">Registrazione in corso...</p>
-                  <p className="text-red-600 text-sm mt-1">Parla ora</p>
-                </div>
-                <button
-                  onClick={() => {
-                    stopRecording();
-                    // La nota verrà salvata automaticamente in onstop
-                  }}
-                  className="w-full px-4 py-4 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-lg flex items-center justify-center gap-2"
-                >
-                  ⏹️ STOP - Termina Registrazione
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <button
-                  onClick={() => markAsNotTarget('closed')}
-                  className="w-full px-4 py-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-left font-medium flex items-center gap-3"
-                >
-                  <span className="text-xl">🔴</span>
-                  <span>Chiuso definitivamente</span>
-                </button>
-                <button
-                  onClick={() => markAsNotTarget('not_interested')}
-                  className="w-full px-4 py-3 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 text-left font-medium flex items-center gap-3"
-                >
-                  <span className="text-xl">🟠</span>
-                  <span>Non interessato</span>
-                </button>
-                <button
-                  onClick={() => {
-                    startRecording();
-                  }}
-                  className="w-full px-4 py-3 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 text-left font-medium flex items-center gap-3"
-                >
-                  <span className="text-xl">🎤</span>
-                  <span>Altro (registra nota vocale)</span>
-                </button>
-              </div>
-            )}
-
-            {!isRecording && (
-              <button
-                onClick={() => setShowNotTargetModal(false)}
-                className="w-full mt-4 px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
-              >
-                Annulla
               </button>
             )}
           </div>

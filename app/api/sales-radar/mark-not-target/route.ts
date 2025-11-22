@@ -11,10 +11,13 @@ interface MarkNotTargetBody {
 
 // Tag configuration mapping reason to tag name and color
 const TAG_CONFIG: Record<string, { name: string; color: number }> = {
-  closed: { name: 'Non in Target - Chiuso', color: 1 },        // 1 = red
-  not_interested: { name: 'Non in Target - Non Interessato', color: 2 }, // 2 = orange
-  other: { name: 'Non in Target - Altro', color: 3 }           // 3 = yellow
+  closed: { name: 'Chiuso definitivamente', color: 1 },        // 1 = red
+  not_interested: { name: 'Non interessato', color: 2 },       // 2 = orange
+  other: { name: 'Non in Target', color: 4 }                   // 4 = grey
 };
+
+// All "not target" tag names - used for identification
+const NOT_TARGET_TAGS = ['Chiuso definitivamente', 'Non interessato', 'Non in Target'];
 
 /**
  * POST /api/sales-radar/mark-not-target
