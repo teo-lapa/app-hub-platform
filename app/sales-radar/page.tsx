@@ -85,11 +85,15 @@ interface OdooCustomer {
 }
 
 interface SalesData {
-  total_invoiced: number;
-  order_count: number;
-  customer_rank: number;
-  last_order_date: string | null;
-  last_order_amount: number | null;
+  // Nuovi campi (ultimi 3 mesi)
+  invoiced_3_months?: number;
+  order_count_3_months?: number;
+  last_order_date?: string | null;
+  // Campi legacy (per compatibilità)
+  total_invoiced?: number;
+  order_count?: number;
+  customer_rank?: number;
+  last_order_amount?: number | null;
 }
 
 interface EnrichedPlace extends PlaceData {
@@ -148,6 +152,75 @@ const RADIUS_OPTIONS = [
   { value: 10000, label: '10 km' },
   { value: 25000, label: '25 km' },
 ];
+
+/**
+ * Stima dimensione del locale e potenziale fatturato mensile
+ * basato su dati Google Places
+ */
+function estimateBusinessPotential(place: {
+  user_ratings_total?: number;
+  price_level?: number;
+  types?: string[];
+  rating?: number;
+}): { size: 'piccolo' | 'medio' | 'grande'; potentialMonthly: number; categories: string[] } {
+  const reviews = place.user_ratings_total || 0;
+  const priceLevel = place.price_level ?? 2; // Default medio
+  const types = place.types || [];
+
+  // Determina dimensione basata sul numero di recensioni
+  let size: 'piccolo' | 'medio' | 'grande' = 'piccolo';
+  if (reviews >= 500) {
+    size = 'grande';
+  } else if (reviews >= 100) {
+    size = 'medio';
+  }
+
+  // Base mensile per dimensione (in CHF)
+  const baseBySize = {
+    piccolo: 800,   // 800 CHF/mese
+    medio: 2500,    // 2500 CHF/mese
+    grande: 6000,   // 6000 CHF/mese
+  };
+
+  // Moltiplicatore per tipo di locale
+  let typeMultiplier = 1.0;
+  const categories: string[] = [];
+
+  // Categorie LAPA: Frigo, Secco, Frozen, Non-Food
+  if (types.includes('restaurant') || types.includes('meal_delivery')) {
+    typeMultiplier = 1.3;
+    categories.push('Frigo', 'Secco', 'Frozen');
+  }
+  if (types.includes('hotel') || types.includes('lodging')) {
+    typeMultiplier = 1.5;
+    categories.push('Frigo', 'Secco', 'Frozen', 'Non-Food');
+  }
+  if (types.includes('cafe') || types.includes('bakery')) {
+    typeMultiplier = 0.8;
+    categories.push('Frigo', 'Secco');
+  }
+  if (types.includes('bar')) {
+    typeMultiplier = 0.6;
+    categories.push('Frigo', 'Secco');
+  }
+  if (types.includes('supermarket') || types.includes('grocery_or_supermarket')) {
+    typeMultiplier = 2.0;
+    categories.push('Frigo', 'Secco', 'Frozen', 'Non-Food');
+  }
+
+  // Moltiplicatore per fascia di prezzo (locale più costoso = più volume)
+  const priceMultiplier = 0.7 + (priceLevel * 0.2); // 0.7 a 1.5
+
+  // Calcola potenziale mensile
+  const potentialMonthly = Math.round(baseBySize[size] * typeMultiplier * priceMultiplier);
+
+  // Default categories se vuoto
+  if (categories.length === 0) {
+    categories.push('Frigo', 'Secco');
+  }
+
+  return { size, potentialMonthly, categories: Array.from(new Set(categories)) };
+}
 
 export default function SalesRadarPage() {
   const router = useRouter();
@@ -208,6 +281,12 @@ export default function SalesRadarPage() {
   const [writtenNote, setWrittenNote] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [notTargetExpanded, setNotTargetExpanded] = useState(false);
+
+  // AI Analysis state
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [analysisPlace, setAnalysisPlace] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Stats
   const existingCustomers = places.filter(p => p.existsInOdoo).length;
@@ -736,6 +815,45 @@ export default function SalesRadarPage() {
     }
   };
 
+  // Analyze client with AI
+  const analyzeClient = async (place: any) => {
+    if (!place) return;
+
+    setAnalysisPlace(place);
+    setAnalysisResult(null);
+    setShowAnalysisModal(true);
+    setIsAnalyzing(true);
+
+    try {
+      const clientType = (place.existsInOdoo || place.color === 'green') ? 'customer' : 'lead';
+
+      const response = await fetch('/api/sales-radar/analyze-client', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          website: place.website || '',
+          name: place.name || place.display_name || 'Cliente',
+          client_id: place.odooCustomer?.id || place.id,
+          client_type: clientType,
+          address: place.address || '',
+          phone: place.phone || ''
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setAnalysisResult(result.analysis.text);
+      } else {
+        setAnalysisResult('Errore: ' + (result.error || 'Analisi non disponibile'));
+      }
+    } catch (error) {
+      console.error('Errore analisi:', error);
+      setAnalysisResult('Errore durante l\'analisi. Riprova più tardi.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
   }, []);
@@ -1070,9 +1188,9 @@ export default function SalesRadarPage() {
                         <span className="rounded bg-green-100 px-2 py-0.5 text-green-700">
                           Cliente
                         </span>
-                        {place.salesData.total_invoiced > 0 && (
+                        {(place.salesData.invoiced_3_months ?? place.salesData.total_invoiced ?? 0) > 0 && (
                           <span className="rounded bg-blue-100 px-2 py-0.5 text-blue-700">
-                            CHF {place.salesData.total_invoiced.toLocaleString()}
+                            {(place.salesData.invoiced_3_months ?? place.salesData.total_invoiced ?? 0).toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (3m)
                           </span>
                         )}
                       </div>
@@ -1194,12 +1312,19 @@ export default function SalesRadarPage() {
                   {/* Sales data for customers (from static mode or live mode) */}
                   {(selectedPlace.existsInOdoo || selectedPlace.sales_data || selectedPlace.color === 'green') && (selectedPlace.sales_data || selectedPlace.salesData) && (
                     <div className="bg-green-50 p-2 rounded-lg mb-2">
-                      <p className="text-sm text-green-800">
-                        Fatturato: CHF {((selectedPlace.sales_data?.total_invoiced || selectedPlace.salesData?.total_invoiced) || 0).toLocaleString()}
+                      <p className="text-sm text-green-800 font-medium">
+                        Fatturato (3 mesi): {(
+                          (selectedPlace.sales_data?.invoiced_3_months ?? selectedPlace.salesData?.invoiced_3_months ?? selectedPlace.sales_data?.total_invoiced ?? selectedPlace.salesData?.total_invoiced) || 0
+                        ).toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                       <p className="text-sm text-green-800">
-                        Ordini: {(selectedPlace.sales_data?.order_count || selectedPlace.salesData?.order_count) || 0}
+                        Ordini (3 mesi): {(selectedPlace.sales_data?.order_count_3_months ?? selectedPlace.salesData?.order_count_3_months ?? selectedPlace.sales_data?.order_count ?? selectedPlace.salesData?.order_count) || 0}
                       </p>
+                      {(selectedPlace.sales_data?.last_order_date || selectedPlace.salesData?.last_order_date) && (
+                        <p className="text-sm text-green-700">
+                          Ultimo ordine: {new Date(selectedPlace.sales_data?.last_order_date || selectedPlace.salesData?.last_order_date || '').toLocaleDateString('it-CH')}
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -1278,6 +1403,46 @@ export default function SalesRadarPage() {
                     )}
                   </div>
 
+                  {/* Potenziale Stimato - solo per lead/nuovi */}
+                  {!selectedPlace.existsInOdoo && selectedPlace.color !== 'green' && (selectedPlace.user_ratings_total || selectedPlace.types) && (() => {
+                    const potential = estimateBusinessPotential(selectedPlace);
+                    return (
+                      <div className="mb-3 rounded-lg bg-purple-50 p-3 border border-purple-200">
+                        <div className="mb-2 flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-purple-600" />
+                          <span className="text-sm font-semibold text-purple-900">
+                            Potenziale Stimato
+                          </span>
+                        </div>
+                        <div className="space-y-1 text-xs sm:text-sm text-purple-800">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Dimensione:</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              potential.size === 'grande' ? 'bg-purple-200 text-purple-800' :
+                              potential.size === 'medio' ? 'bg-purple-100 text-purple-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {potential.size.charAt(0).toUpperCase() + potential.size.slice(1)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Potenziale/mese:</span>
+                            <span className="text-purple-900 font-semibold">
+                              {potential.potentialMonthly.toLocaleString('it-CH')} CHF
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {potential.categories.map((cat, i) => (
+                              <span key={i} className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">
+                                {cat}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Odoo Status - handles all 4 color states */}
                   {(selectedPlace.existsInOdoo || selectedPlace.color === 'green') && (selectedPlace.odooCustomer || selectedPlace.id) ? (
                     <div className="mb-3 rounded-lg bg-green-50 p-3">
@@ -1290,19 +1455,19 @@ export default function SalesRadarPage() {
 
                       {(selectedPlace.salesData || selectedPlace.sales_data) && (
                         <div className="space-y-1 text-xs sm:text-sm text-green-800">
-                          {((selectedPlace.salesData?.total_invoiced || selectedPlace.sales_data?.total_invoiced) || 0) > 0 && (
+                          {((selectedPlace.salesData?.invoiced_3_months ?? selectedPlace.sales_data?.invoiced_3_months ?? selectedPlace.salesData?.total_invoiced ?? selectedPlace.sales_data?.total_invoiced) || 0) > 0 && (
                             <div className="flex items-center gap-2">
                               <Euro className="h-3 w-3 sm:h-4 sm:w-4" />
                               <span>
-                                CHF {(selectedPlace.salesData?.total_invoiced || selectedPlace.sales_data?.total_invoiced || 0).toLocaleString()}
+                                Fatturato (3 mesi): {(selectedPlace.salesData?.invoiced_3_months ?? selectedPlace.sales_data?.invoiced_3_months ?? selectedPlace.salesData?.total_invoiced ?? selectedPlace.sales_data?.total_invoiced ?? 0).toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           )}
 
-                          {((selectedPlace.salesData?.order_count || selectedPlace.sales_data?.order_count) || 0) > 0 && (
+                          {((selectedPlace.salesData?.order_count_3_months ?? selectedPlace.sales_data?.order_count_3_months ?? selectedPlace.salesData?.order_count ?? selectedPlace.sales_data?.order_count) || 0) > 0 && (
                             <div className="flex items-center gap-2">
                               <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
-                              <span>{selectedPlace.salesData?.order_count || selectedPlace.sales_data?.order_count} ordini</span>
+                              <span>{selectedPlace.salesData?.order_count_3_months ?? selectedPlace.sales_data?.order_count_3_months ?? selectedPlace.salesData?.order_count ?? selectedPlace.sales_data?.order_count} ordini (3 mesi)</span>
                             </div>
                           )}
 
@@ -1310,9 +1475,9 @@ export default function SalesRadarPage() {
                             <div className="flex items-center gap-2">
                               <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
                               <span className="text-xs">
-                                {new Date(
+                                Ultimo ordine: {new Date(
                                   (selectedPlace.salesData?.last_order_date || selectedPlace.sales_data?.last_order_date) as string
-                                ).toLocaleDateString('it-IT')}
+                                ).toLocaleDateString('it-CH')}
                               </span>
                             </div>
                           )}
@@ -1424,12 +1589,18 @@ export default function SalesRadarPage() {
                   )}
 
                   {/* Note Button - Opens Note Modal */}
-                  <div className="mt-3">
+                  <div className="mt-3 space-y-2">
                     <button
                       onClick={() => openNoteModal(selectedPlace)}
                       className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
                     >
                       📝 Aggiungi Nota
+                    </button>
+                    <button
+                      onClick={() => analyzeClient(selectedPlace)}
+                      className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium flex items-center justify-center gap-2"
+                    >
+                      🤖 Analizza con AI
                     </button>
                   </div>
                 </div>
@@ -1675,9 +1846,9 @@ export default function SalesRadarPage() {
                             <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
                               Cliente
                             </span>
-                            {place.salesData.total_invoiced > 0 && (
+                            {(place.salesData.invoiced_3_months ?? place.salesData.total_invoiced ?? 0) > 0 && (
                               <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-                                CHF {place.salesData.total_invoiced.toLocaleString()}
+                                {(place.salesData.invoiced_3_months ?? place.salesData.total_invoiced ?? 0).toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (3m)
                               </span>
                             )}
                           </>
@@ -1900,6 +2071,81 @@ export default function SalesRadarPage() {
                 Chiudi
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* AI Analysis Modal */}
+      {showAnalysisModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">🤖 Analisi AI</h3>
+              <button
+                onClick={() => {
+                  setShowAnalysisModal(false);
+                  setAnalysisPlace(null);
+                  setAnalysisResult(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {analysisPlace && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="font-semibold text-gray-900">{analysisPlace.name}</p>
+                {analysisPlace.address && (
+                  <p className="text-sm text-gray-600">{analysisPlace.address}</p>
+                )}
+                {analysisPlace.website && (
+                  <a
+                    href={analysisPlace.website.startsWith('http') ? analysisPlace.website : `https://${analysisPlace.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    {analysisPlace.website}
+                  </a>
+                )}
+              </div>
+            )}
+
+            {isAnalyzing ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-12 w-12 animate-spin text-purple-600 mb-4" />
+                <p className="text-gray-600 font-medium">Analisi in corso...</p>
+                <p className="text-sm text-gray-500 mt-1">Sto analizzando il sito web e preparando suggerimenti</p>
+              </div>
+            ) : analysisResult ? (
+              <div className="prose prose-sm max-w-none">
+                <div className="whitespace-pre-wrap text-gray-700 text-sm leading-relaxed">
+                  {analysisResult}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex gap-3">
+              {!isAnalyzing && analysisResult && (
+                <button
+                  onClick={() => analyzeClient(analysisPlace)}
+                  className="flex-1 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 font-medium"
+                >
+                  🔄 Rianalizza
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setShowAnalysisModal(false);
+                  setAnalysisPlace(null);
+                  setAnalysisResult(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+              >
+                Chiudi
+              </button>
+            </div>
           </div>
         </div>
       )}
