@@ -12,6 +12,10 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  PieChart, Pie, Legend,
+} from 'recharts';
 
 // Dynamic import per QRScanner
 const QRScanner = dynamic(() => import('@/components/time-attendance/QRScanner'), {
@@ -593,39 +597,47 @@ export default function TimeAttendancePage() {
             {companyDashboard && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                  className="p-4 rounded-2xl bg-green-500/20 border border-green-500/30">
+                  className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/30 to-green-600/20 border border-emerald-400/40 shadow-lg shadow-emerald-500/10">
                   <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="w-5 h-5 text-green-400" />
-                    <span className="text-green-300 text-sm">In Servizio</span>
+                    <div className="p-1.5 rounded-lg bg-emerald-500/30">
+                      <CheckCircle className="w-5 h-5 text-emerald-300" />
+                    </div>
+                    <span className="text-emerald-200 text-sm font-medium">In Servizio</span>
                   </div>
-                  <div className="text-3xl font-bold text-white">{companyDashboard.stats.on_duty}</div>
+                  <div className="text-4xl font-bold text-white">{companyDashboard.stats.on_duty}</div>
                 </motion.div>
 
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}
-                  className="p-4 rounded-2xl bg-orange-500/20 border border-orange-500/30">
+                  className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/30 to-orange-600/20 border border-amber-400/40 shadow-lg shadow-amber-500/10">
                   <div className="flex items-center gap-2 mb-2">
-                    <Coffee className="w-5 h-5 text-orange-400" />
-                    <span className="text-orange-300 text-sm">In Pausa</span>
+                    <div className="p-1.5 rounded-lg bg-amber-500/30">
+                      <Coffee className="w-5 h-5 text-amber-300" />
+                    </div>
+                    <span className="text-amber-200 text-sm font-medium">In Pausa</span>
                   </div>
-                  <div className="text-3xl font-bold text-white">{companyDashboard.stats.on_break}</div>
+                  <div className="text-4xl font-bold text-white">{companyDashboard.stats.on_break}</div>
                 </motion.div>
 
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-                  className="p-4 rounded-2xl bg-white/10 border border-white/20">
+                  className="p-4 rounded-2xl bg-gradient-to-br from-slate-500/30 to-gray-600/20 border border-slate-400/40 shadow-lg shadow-slate-500/10">
                   <div className="flex items-center gap-2 mb-2">
-                    <Users className="w-5 h-5 text-white/60" />
-                    <span className="text-white/60 text-sm">Fuori</span>
+                    <div className="p-1.5 rounded-lg bg-slate-500/30">
+                      <Users className="w-5 h-5 text-slate-300" />
+                    </div>
+                    <span className="text-slate-200 text-sm font-medium">Fuori</span>
                   </div>
-                  <div className="text-3xl font-bold text-white">{companyDashboard.stats.off_duty}</div>
+                  <div className="text-4xl font-bold text-white">{companyDashboard.stats.off_duty}</div>
                 </motion.div>
 
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
-                  className="p-4 rounded-2xl bg-blue-500/20 border border-blue-500/30">
+                  className="p-4 rounded-2xl bg-gradient-to-br from-cyan-500/30 to-blue-600/20 border border-cyan-400/40 shadow-lg shadow-cyan-500/10">
                   <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="w-5 h-5 text-blue-400" />
-                    <span className="text-blue-300 text-sm">Ore Oggi</span>
+                    <div className="p-1.5 rounded-lg bg-cyan-500/30">
+                      <TrendingUp className="w-5 h-5 text-cyan-300" />
+                    </div>
+                    <span className="text-cyan-200 text-sm font-medium">Ore Oggi</span>
                   </div>
-                  <div className="text-3xl font-bold text-white">{companyDashboard.stats.total_hours_today.toFixed(1)}h</div>
+                  <div className="text-4xl font-bold text-white">{companyDashboard.stats.total_hours_today.toFixed(1)}h</div>
                 </motion.div>
               </div>
             )}
@@ -633,18 +645,128 @@ export default function TimeAttendancePage() {
             {/* Hours Summary */}
             {companyDashboard && (
               <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
-                  <div className="text-white/50 text-xs mb-1">Ieri</div>
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-center">
+                  <div className="text-purple-300 text-xs mb-1">Ieri</div>
                   <div className="text-xl font-bold text-white">{companyDashboard.stats.total_hours_yesterday.toFixed(1)}h</div>
                 </div>
-                <div className="p-4 rounded-2xl bg-white/10 border border-white/20 text-center">
-                  <div className="text-white/70 text-xs mb-1">Oggi</div>
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 text-center">
+                  <div className="text-cyan-300 text-xs mb-1">Oggi</div>
                   <div className="text-2xl font-bold text-white">{companyDashboard.stats.total_hours_today.toFixed(1)}h</div>
                 </div>
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
-                  <div className="text-white/50 text-xs mb-1">Settimana</div>
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-center">
+                  <div className="text-amber-300 text-xs mb-1">Settimana</div>
                   <div className="text-xl font-bold text-white">{companyDashboard.stats.total_hours_week.toFixed(1)}h</div>
                 </div>
+              </div>
+            )}
+
+            {/* Charts Section */}
+            {companyDashboard && companyDashboard.employees.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Pie Chart - Status Distribution */}
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                  className="p-6 rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10"
+                >
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-cyan-400" />
+                    Stato Dipendenti
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'In Servizio', value: companyDashboard.stats.on_duty - companyDashboard.stats.on_break, fill: '#22c55e' },
+                            { name: 'In Pausa', value: companyDashboard.stats.on_break, fill: '#f97316' },
+                            { name: 'Fuori', value: companyDashboard.stats.off_duty, fill: '#6b7280' },
+                          ].filter(d => d.value > 0)}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                          label={({ name, value }) => `${name}: ${value}`}
+                          labelLine={{ stroke: 'rgba(255,255,255,0.3)' }}
+                        >
+                          {[
+                            { name: 'In Servizio', value: companyDashboard.stats.on_duty - companyDashboard.stats.on_break, fill: '#22c55e' },
+                            { name: 'In Pausa', value: companyDashboard.stats.on_break, fill: '#f97316' },
+                            { name: 'Fuori', value: companyDashboard.stats.off_duty, fill: '#6b7280' },
+                          ].filter(d => d.value > 0).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                          labelStyle={{ color: 'white' }}
+                        />
+                        <Legend
+                          wrapperStyle={{ color: 'white' }}
+                          formatter={(value) => <span style={{ color: 'rgba(255,255,255,0.8)' }}>{value}</span>}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </motion.div>
+
+                {/* Bar Chart - Hours by Employee */}
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="p-6 rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10"
+                >
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-emerald-400" />
+                    Ore Lavorate Oggi
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={companyDashboard.employees
+                          .slice(0, 8) // Max 8 dipendenti per leggibilità
+                          .map(emp => ({
+                            name: emp.contact_name.split(' ')[0], // Solo nome
+                            ore: emp.hours_worked_today,
+                            full_name: emp.contact_name,
+                          }))}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 60, bottom: 5 }}
+                      >
+                        <XAxis
+                          type="number"
+                          tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 12 }}
+                          axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                          domain={[0, 'auto']}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          tick={{ fill: 'rgba(255,255,255,0.8)', fontSize: 12 }}
+                          axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                          width={55}
+                        />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px' }}
+                          labelStyle={{ color: 'white', fontWeight: 'bold' }}
+                          formatter={(value: number) => [`${value.toFixed(1)}h`, 'Ore']}
+                          labelFormatter={(label, payload) => payload?.[0]?.payload?.full_name || label}
+                        />
+                        <Bar dataKey="ore" radius={[0, 8, 8, 0]}>
+                          {companyDashboard.employees.slice(0, 8).map((emp, index) => {
+                            // Colori gradient per ogni barra
+                            const colors = ['#06b6d4', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#84cc16'];
+                            return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                          })}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </motion.div>
               </div>
             )}
 
