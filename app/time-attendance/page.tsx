@@ -27,6 +27,7 @@ import {
   Shield,
   FileText,
   Download,
+  Home,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -825,6 +826,16 @@ export default function TimeAttendancePage() {
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-lg border-t border-white/10 px-4 py-3 z-40">
         <div className="flex justify-around max-w-lg mx-auto">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="flex flex-col items-center py-2 px-4 rounded-xl transition-all hover:bg-white/10"
+          >
+            <Home className="w-6 h-6 text-white/50" />
+            <span className="text-xs mt-1 text-white/50">
+              Home
+            </span>
+          </button>
+
           <button
             onClick={() => setView('clock')}
             className={`flex flex-col items-center py-2 px-4 rounded-xl transition-all ${
