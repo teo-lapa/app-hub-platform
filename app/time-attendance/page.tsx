@@ -691,10 +691,10 @@ export default function TimeAttendancePage() {
                           dataKey="value"
                           label={({ name, value, cx, x, y }) => (
                             <text
-                              x={x}
-                              y={y}
+                              x={x as number}
+                              y={y as number}
                               fill="white"
-                              textAnchor={x > cx ? 'start' : 'end'}
+                              textAnchor={(x as number) > Number(cx) ? 'start' : 'end'}
                               dominantBaseline="central"
                               fontSize={12}
                               fontWeight={500}
