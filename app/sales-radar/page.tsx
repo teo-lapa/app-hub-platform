@@ -153,6 +153,75 @@ const RADIUS_OPTIONS = [
   { value: 25000, label: '25 km' },
 ];
 
+/**
+ * Stima dimensione del locale e potenziale fatturato mensile
+ * basato su dati Google Places
+ */
+function estimateBusinessPotential(place: {
+  user_ratings_total?: number;
+  price_level?: number;
+  types?: string[];
+  rating?: number;
+}): { size: 'piccolo' | 'medio' | 'grande'; potentialMonthly: number; categories: string[] } {
+  const reviews = place.user_ratings_total || 0;
+  const priceLevel = place.price_level ?? 2; // Default medio
+  const types = place.types || [];
+
+  // Determina dimensione basata sul numero di recensioni
+  let size: 'piccolo' | 'medio' | 'grande' = 'piccolo';
+  if (reviews >= 500) {
+    size = 'grande';
+  } else if (reviews >= 100) {
+    size = 'medio';
+  }
+
+  // Base mensile per dimensione (in CHF)
+  const baseBySize = {
+    piccolo: 800,   // 800 CHF/mese
+    medio: 2500,    // 2500 CHF/mese
+    grande: 6000,   // 6000 CHF/mese
+  };
+
+  // Moltiplicatore per tipo di locale
+  let typeMultiplier = 1.0;
+  const categories: string[] = [];
+
+  // Categorie LAPA: Frigo, Secco, Frozen, Non-Food
+  if (types.includes('restaurant') || types.includes('meal_delivery')) {
+    typeMultiplier = 1.3;
+    categories.push('Frigo', 'Secco', 'Frozen');
+  }
+  if (types.includes('hotel') || types.includes('lodging')) {
+    typeMultiplier = 1.5;
+    categories.push('Frigo', 'Secco', 'Frozen', 'Non-Food');
+  }
+  if (types.includes('cafe') || types.includes('bakery')) {
+    typeMultiplier = 0.8;
+    categories.push('Frigo', 'Secco');
+  }
+  if (types.includes('bar')) {
+    typeMultiplier = 0.6;
+    categories.push('Frigo', 'Secco');
+  }
+  if (types.includes('supermarket') || types.includes('grocery_or_supermarket')) {
+    typeMultiplier = 2.0;
+    categories.push('Frigo', 'Secco', 'Frozen', 'Non-Food');
+  }
+
+  // Moltiplicatore per fascia di prezzo (locale più costoso = più volume)
+  const priceMultiplier = 0.7 + (priceLevel * 0.2); // 0.7 a 1.5
+
+  // Calcola potenziale mensile
+  const potentialMonthly = Math.round(baseBySize[size] * typeMultiplier * priceMultiplier);
+
+  // Default categories se vuoto
+  if (categories.length === 0) {
+    categories.push('Frigo', 'Secco');
+  }
+
+  return { size, potentialMonthly, categories: Array.from(new Set(categories)) };
+}
+
 export default function SalesRadarPage() {
   const router = useRouter();
 
@@ -1333,6 +1402,46 @@ export default function SalesRadarPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Potenziale Stimato - solo per lead/nuovi */}
+                  {!selectedPlace.existsInOdoo && selectedPlace.color !== 'green' && (selectedPlace.user_ratings_total || selectedPlace.types) && (() => {
+                    const potential = estimateBusinessPotential(selectedPlace);
+                    return (
+                      <div className="mb-3 rounded-lg bg-purple-50 p-3 border border-purple-200">
+                        <div className="mb-2 flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-purple-600" />
+                          <span className="text-sm font-semibold text-purple-900">
+                            Potenziale Stimato
+                          </span>
+                        </div>
+                        <div className="space-y-1 text-xs sm:text-sm text-purple-800">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Dimensione:</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              potential.size === 'grande' ? 'bg-purple-200 text-purple-800' :
+                              potential.size === 'medio' ? 'bg-purple-100 text-purple-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {potential.size.charAt(0).toUpperCase() + potential.size.slice(1)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Potenziale/mese:</span>
+                            <span className="text-purple-900 font-semibold">
+                              {potential.potentialMonthly.toLocaleString('it-CH')} CHF
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {potential.categories.map((cat, i) => (
+                              <span key={i} className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">
+                                {cat}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Odoo Status - handles all 4 color states */}
                   {(selectedPlace.existsInOdoo || selectedPlace.color === 'green') && (selectedPlace.odooCustomer || selectedPlace.id) ? (
