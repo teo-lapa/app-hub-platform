@@ -149,7 +149,7 @@ export default function TimeAttendancePage() {
   // ==================== AUTH CHECK ====================
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push('/login');
+      router.push('/'); // Landing page con login
     }
   }, [authLoading, isAuthenticated, router]);
 
