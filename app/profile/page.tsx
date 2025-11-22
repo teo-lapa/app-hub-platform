@@ -1,17 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/lib/store/authStore';
 import { UserRole } from '@/lib/types';
-import { User, Mail, Shield, Calendar, Edit2, Save, X, Settings } from 'lucide-react';
+import { User, Mail, Shield, Calendar, Edit2, Save, X, Settings, Camera, Upload, Loader2, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
+import toast, { Toaster } from 'react-hot-toast';
+
+interface OdooContact {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  image_128?: string;
+  is_company?: boolean;
+}
 
 export default function ProfilePage() {
   const { user, logout, updateProfile, isLoading } = useAuthStore();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [odooContact, setOdooContact] = useState<OdooContact | null>(null);
+  const [loadingOdoo, setLoadingOdoo] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -29,11 +44,14 @@ export default function ProfilePage() {
     appPermessi: [] as string[],
   });
 
+  // Carica contatto Odoo
   useEffect(() => {
     if (!user) {
       router.push('/');
       return;
     }
+
+    // Carica dati locali
     setFormData({
       name: user.name,
       email: user.email,
@@ -50,40 +68,134 @@ export default function ProfilePage() {
       abilitato: user.abilitato,
       appPermessi: user.appPermessi || [],
     });
+
+    // Carica contatto Odoo
+    const loadOdooContact = async () => {
+      try {
+        const res = await fetch(`/api/time-attendance/contact?email=${encodeURIComponent(user.email)}`);
+        const data = await res.json();
+        if (data.success && data.data?.contact) {
+          setOdooContact(data.data.contact);
+          // Aggiorna form con dati Odoo
+          setFormData(prev => ({
+            ...prev,
+            name: data.data.contact.name || prev.name,
+            email: data.data.contact.email || prev.email,
+            telefono: data.data.contact.phone || prev.telefono,
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading Odoo contact:', error);
+      } finally {
+        setLoadingOdoo(false);
+      }
+    };
+
+    loadOdooContact();
   }, [user, router]);
 
-  const handleSave = async () => {
+  // Gestione upload immagine
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Verifica tipo file
+    if (!file.type.startsWith('image/')) {
+      toast.error('Seleziona un file immagine');
+      return;
+    }
+
+    // Verifica dimensione (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Immagine troppo grande (max 5MB)');
+      return;
+    }
+
+    // Crea preview e converti in base64
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPreviewImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Salva su Odoo
+  const handleSaveOdoo = async () => {
+    if (!odooContact) {
+      toast.error('Contatto Odoo non trovato');
+      return;
+    }
+
+    setIsSaving(true);
     try {
-      const updateData: any = {
-        name: formData.name,
-        email: formData.email,
-        telefono: formData.telefono,
-        azienda: formData.azienda,
-        indirizzo: formData.indirizzo,
-        citta: formData.citta,
-        cap: formData.cap,
-        partitaIva: formData.partitaIva,
-        codiceCliente: formData.codiceCliente,
-        note: formData.note,
-      };
+      const res = await fetch('/api/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_id: odooContact.id,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.telefono,
+          image_base64: previewImage || undefined,
+        }),
+      });
 
-      // Solo admin può modificare ruolo e permessi
-      if (user?.role === 'admin') {
-        updateData.role = formData.role;
-        updateData.abilitato = formData.abilitato;
-        updateData.appPermessi = formData.appPermessi;
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Profilo aggiornato!');
+        setOdooContact(data.data.contact);
+        setPreviewImage(null);
+        setIsEditing(false);
+      } else {
+        toast.error(data.error || 'Errore aggiornamento');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Errore di connessione');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Se abbiamo un contatto Odoo, salva lì
+      if (odooContact) {
+        await handleSaveOdoo();
       }
 
-      // Solo se la password è stata inserita
-      if (formData.password.trim()) {
-        updateData.password = formData.password;
+      // Salva anche localmente se c'è una password o altri dati locali
+      if (formData.password.trim() || !odooContact) {
+        const updateData = {
+          name: formData.name,
+          email: formData.email,
+          telefono: formData.telefono,
+          azienda: formData.azienda,
+          indirizzo: formData.indirizzo,
+          citta: formData.citta,
+          cap: formData.cap,
+          partitaIva: formData.partitaIva,
+          codiceCliente: formData.codiceCliente,
+          note: formData.note,
+          ...(user?.role === 'admin' ? {
+            role: formData.role,
+            abilitato: formData.abilitato,
+            appPermessi: formData.appPermessi,
+          } : {}),
+          ...(formData.password.trim() ? { password: formData.password } : {}),
+        };
+
+        await updateProfile(updateData);
+        setFormData({ ...formData, password: '' }); // Reset password field
       }
 
-      await updateProfile(updateData);
       setIsEditing(false);
-      setFormData({ ...formData, password: '' }); // Reset password field
     } catch (error) {
       console.error('Error saving profile:', error);
+      toast.error('Errore nel salvataggio');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -135,8 +247,13 @@ export default function ProfilePage() {
     return colorMap[role as keyof typeof colorMap] || colorMap.visitor;
   };
 
+  // Determina l'immagine da mostrare (preview > odoo > iniziale)
+  const displayImage = previewImage || (odooContact?.image_128 ? `data:image/png;base64,${odooContact.image_128}` : null);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <Toaster position="top-center" />
+
       {/* Header */}
       <AppHeader
         title="Il Mio Profilo"
@@ -157,10 +274,43 @@ export default function ProfilePage() {
         >
           {/* Avatar e Info Base */}
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full gradient-primary flex items-center justify-center text-white text-3xl font-bold shadow-lg">
-                {user.name?.charAt(0)?.toUpperCase() || 'U'}
-              </div>
+            <div className="relative group">
+              {/* Avatar con immagine o iniziale */}
+              {displayImage ? (
+                <img
+                  src={displayImage}
+                  alt={formData.name}
+                  className="w-24 h-24 rounded-full object-cover shadow-lg border-2 border-white/20"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full gradient-primary flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                  {formData.name?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+              )}
+
+              {/* Overlay per upload (visibile in editing) */}
+              {isEditing && (
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 w-24 h-24 rounded-full bg-black/60 flex flex-col items-center justify-center cursor-pointer hover:bg-black/70 transition-colors"
+                >
+                  <Camera className="w-6 h-6 text-white mb-1" />
+                  <span className="text-xs text-white">Cambia</span>
+                </motion.button>
+              )}
+
+              {/* Input file nascosto */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+
+              {/* Badge ruolo */}
               <div className={`absolute -bottom-1 -right-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
                 {getRoleDisplay(user.role)}
               </div>
@@ -242,11 +392,11 @@ export default function ProfilePage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleSave}
-                  disabled={isLoading}
+                  disabled={isSaving || isLoading}
                   className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors flex items-center gap-2"
                 >
-                  <Save className="w-4 h-4" />
-                  {isLoading ? 'Salvando...' : 'Salva Modifiche'}
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {isSaving ? 'Salvando...' : 'Salva Modifiche'}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
