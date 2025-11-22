@@ -272,17 +272,20 @@ class OdooSessionManager {
  * Factory function to create session manager with credentials from env
  */
 export function createOdooSessionManager(): OdooSessionManager {
+  // Fallback defaults per staging
+  const DEFAULT_URL = 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com';
+  const DEFAULT_DB = 'lapadevadmin-lapa-v2-staging-2406-25408900';
+  const DEFAULT_LOGIN = 'paul@lapa.ch';
+  const DEFAULT_PASSWORD = 'lapa201180';
+
   const credentials: OdooCredentials = {
-    url: process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL || '',
-    db: process.env.ODOO_DB || '',
-    login: process.env.ODOO_USERNAME || '',
-    password: process.env.ODOO_PASSWORD || ''
+    url: process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL || DEFAULT_URL,
+    db: process.env.ODOO_DB || DEFAULT_DB,
+    login: process.env.ODOO_USERNAME || DEFAULT_LOGIN,
+    password: process.env.ODOO_PASSWORD || DEFAULT_PASSWORD
   };
 
-  // Validate credentials
-  if (!credentials.url || !credentials.db || !credentials.login || !credentials.password) {
-    throw new Error('Missing Odoo credentials in environment variables');
-  }
+  console.log('[SESSION-MANAGER] Using Odoo URL:', credentials.url);
 
   return new OdooSessionManager(credentials);
 }
