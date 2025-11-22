@@ -38,7 +38,7 @@ const MARKER_COLORS = {
   customer: '#10B981',   // Green - customer with orders
   lead: '#F59E0B',       // Orange - saved lead in CRM
   prospect: '#EF4444',   // Red - never seen
-  notTarget: '#9CA3AF',  // Grey - not in target
+  notTarget: '#FFFFFF',  // White - not in target (escluso)
 };
 
 // Types
@@ -181,7 +181,8 @@ export default function SalesRadarPage() {
   const [showMobileResults, setShowMobileResults] = useState(false);
 
   // Map mode: 'live' for Google search, 'static' for Odoo data
-  const [mapMode, setMapMode] = useState<'live' | 'static'>('live');
+  // Default to 'static' (Odoo) mode
+  const [mapMode, setMapMode] = useState<'live' | 'static'>('static');
 
   // Static map filters
   const [staticFilter, setStaticFilter] = useState<'all' | 'customers' | 'leads' | 'not_target'>('all');
@@ -685,6 +686,43 @@ export default function SalesRadarPage() {
       }
     } catch (error) {
       console.error('Errore:', error);
+    }
+  };
+
+  // Reactivate a lead (remove from archive)
+  const reactivateLead = async (place: any) => {
+    if (!place) return;
+
+    try {
+      const response = await fetch('/api/sales-radar/reactivate-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: place.leadId || place.id
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        // Update local state to show orange marker (lead)
+        setPlaces(prev => prev.map(p =>
+          p.place_id === place.place_id
+            ? { ...p, notInTarget: false, color: 'orange' } as any
+            : p
+        ));
+        setOdooPlaces(prev => prev.map(p =>
+          p.id === place.id
+            ? { ...p, notInTarget: false, color: 'orange' }
+            : p
+        ));
+        setSelectedPlace(null);
+        alert('Lead riattivato con successo!');
+      } else {
+        alert('Errore: ' + (result.error || 'Riattivazione fallita'));
+      }
+    } catch (error) {
+      console.error('Errore riattivazione:', error);
+      alert('Errore durante la riattivazione');
     }
   };
 
@@ -1312,9 +1350,16 @@ export default function SalesRadarPage() {
                           Escluso dal Target
                         </span>
                       </div>
-                      <p className="text-xs sm:text-sm text-gray-600">
+                      <p className="mb-2 text-xs sm:text-sm text-gray-600">
                         Non rientra nei criteri target
                       </p>
+                      <button
+                        onClick={() => reactivateLead(selectedPlace)}
+                        className="w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs sm:text-sm font-medium flex items-center justify-center gap-2"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Riattiva Lead
+                      </button>
                     </div>
                   ) : selectedPlace.isChecking ? (
                     <div className="mb-3 rounded-lg bg-gray-50 p-3 text-center">
