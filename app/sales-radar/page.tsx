@@ -162,7 +162,7 @@ export default function SalesRadarPage() {
   const [mapCenter, setMapCenter] = useState<Location>(defaultCenter);
 
   // Search params
-  const [radius, setRadius] = useState<number>(5000); // 5km default
+  const [radius, setRadius] = useState<number>(1000); // 1km default
   const [placeType, setPlaceType] = useState<string>('');
   const [keyword, setKeyword] = useState<string>('');
 
