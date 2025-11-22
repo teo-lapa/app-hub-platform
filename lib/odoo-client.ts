@@ -1,7 +1,9 @@
-const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com';
-const ODOO_DB = process.env.NEXT_PUBLIC_ODOO_DB || 'lapadevadmin-lapa-v2-staging-2406-25408900';
-const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+// Fallback allineati con sessionManager - usa DB main
+const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+const ODOO_DB = process.env.NEXT_PUBLIC_ODOO_DB || process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
+// Supporta sia ODOO_USERNAME che ODOO_ADMIN_EMAIL per retrocompatibilità
+const ODOO_USERNAME = process.env.ODOO_USERNAME || process.env.ODOO_ADMIN_EMAIL || 'apphubplatform@lapa.ch';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || 'apphubplatform2025';
 
 interface OdooClient {
   uid: number | null;

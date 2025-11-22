@@ -272,20 +272,23 @@ class OdooSessionManager {
  * Factory function to create session manager with credentials from env
  */
 export function createOdooSessionManager(): OdooSessionManager {
-  // Fallback defaults per staging
-  const DEFAULT_URL = 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com';
-  const DEFAULT_DB = 'lapadevadmin-lapa-v2-staging-2406-25408900';
-  const DEFAULT_LOGIN = 'paul@lapa.ch';
-  const DEFAULT_PASSWORD = 'lapa201180';
+  // Fallback defaults per DB main
+  const DEFAULT_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+  const DEFAULT_DB = 'lapadevadmin-lapa-v2-main-7268478';
+  const DEFAULT_LOGIN = 'apphubplatform@lapa.ch';
+  const DEFAULT_PASSWORD = 'apphubplatform2025';
 
   const credentials: OdooCredentials = {
     url: process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL || DEFAULT_URL,
     db: process.env.ODOO_DB || DEFAULT_DB,
-    login: process.env.ODOO_USERNAME || DEFAULT_LOGIN,
-    password: process.env.ODOO_PASSWORD || DEFAULT_PASSWORD
+    // Supporta sia ODOO_USERNAME che ODOO_ADMIN_EMAIL per retrocompatibilità
+    login: process.env.ODOO_USERNAME || process.env.ODOO_ADMIN_EMAIL || DEFAULT_LOGIN,
+    password: process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || DEFAULT_PASSWORD
   };
 
   console.log('[SESSION-MANAGER] Using Odoo URL:', credentials.url);
+  console.log('[SESSION-MANAGER] Using Odoo DB:', credentials.db);
+  console.log('[SESSION-MANAGER] Using Login:', credentials.login);
 
   return new OdooSessionManager(credentials);
 }
