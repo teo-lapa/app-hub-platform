@@ -685,7 +685,9 @@ export default function SalesRadarPage() {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'voice-note.webm');
     formData.append('lead_id', place.leadId || place.id || place.place_id);
-    formData.append('lead_type', place.existsInOdoo ? 'partner' : 'lead');
+    // Determina se è un partner (cliente esistente verde) o un lead (arancione)
+    const isPartner = place.existsInOdoo || place.type === 'customer' || place.color === 'green';
+    formData.append('lead_type', isPartner ? 'partner' : 'lead');
 
     try {
       const response = await fetch('/api/sales-radar/voice-note', {
@@ -714,6 +716,9 @@ export default function SalesRadarPage() {
   const saveWrittenNote = async () => {
     if (!notePlace || !writtenNote.trim()) return;
 
+    // Determina se è un partner (cliente esistente verde) o un lead (arancione)
+    const isPartner = notePlace.existsInOdoo || notePlace.type === 'customer' || notePlace.color === 'green';
+
     setIsSavingNote(true);
     try {
       const response = await fetch('/api/sales-radar/voice-note', {
@@ -721,7 +726,7 @@ export default function SalesRadarPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lead_id: notePlace.leadId || notePlace.id || notePlace.place_id,
-          lead_type: notePlace.existsInOdoo ? 'partner' : 'lead',
+          lead_type: isPartner ? 'partner' : 'lead',
           text_note: writtenNote.trim()
         })
       });
