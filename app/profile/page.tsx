@@ -7,7 +7,7 @@ import { UserRole } from '@/lib/types';
 import { User, Mail, Shield, Calendar, Edit2, Save, X, Settings, Camera, Upload, Loader2, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 interface OdooContact {
   id: number;
@@ -252,8 +252,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <Toaster position="top-center" />
-
       {/* Header */}
       <AppHeader
         title="Il Mio Profilo"

@@ -8,7 +8,7 @@ import {
   Building2, Briefcase, Phone, Mail, Shield, FileText, Home, Loader2, Settings,
   UtensilsCrossed, AlertTriangle, Timer, TrendingUp, RefreshCw,
 } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -540,7 +540,6 @@ export default function TimeAttendancePage() {
   if (!contact && !loadingContact) {
     return (
       <div className={`min-h-screen ${theme.gradient} flex flex-col items-center justify-center p-4`}>
-        <Toaster position="top-center" />
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
           className="w-full max-w-md p-8 rounded-3xl bg-white/10 backdrop-blur-lg border border-white/20 text-center">
           <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
@@ -567,8 +566,6 @@ export default function TimeAttendancePage() {
   // ==================== MAIN RENDER ====================
   return (
     <div className={`min-h-screen ${theme.gradient}`}>
-      <Toaster position="top-center" />
-
       <main className="pb-24 px-4">
         {/* Company Dashboard - Solo per aziende */}
         {contact?.is_company && (

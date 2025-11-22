@@ -7,7 +7,7 @@ import {
   Download, RefreshCw, MapPin, Building2, TrendingUp, AlertCircle, Loader2,
   Plus, QrCode, Trash2, Edit2, Check, X, Navigation, Printer,
 } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
@@ -422,8 +422,6 @@ export default function TimeAttendanceAdminPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      <Toaster position="top-center" />
-
       {/* Header */}
       <header className="sticky top-0 z-40 bg-black/30 backdrop-blur-lg border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-4">
