@@ -23,6 +23,7 @@ interface EmployeeStatus {
     entry_type: string;
     timestamp: string;
     location_name?: string;
+    break_type?: 'coffee_break' | 'lunch_break';
   };
   hours_worked_today: number;
   entries_today: number;
@@ -574,7 +575,12 @@ export default function TimeAttendanceAdminPage() {
                             ? (emp.is_on_break ? 'bg-orange-500/20 text-orange-400' : 'bg-green-500/20 text-green-400')
                             : 'bg-white/10 text-white/50'
                         }`}>
-                          {emp.is_on_duty ? (emp.is_on_break ? 'Pausa' : 'In Servizio') : 'Fuori'}
+                          {emp.is_on_duty
+                            ? (emp.is_on_break
+                                ? (emp.last_entry?.break_type === 'coffee_break' ? 'Pausa Caffè' :
+                                   emp.last_entry?.break_type === 'lunch_break' ? 'Pausa Pranzo' : 'Pausa')
+                                : 'In Servizio')
+                            : 'Fuori'}
                         </span>
                       </div>
                       {emp.contact_function && (
@@ -589,7 +595,10 @@ export default function TimeAttendanceAdminPage() {
                           <div className="text-sm text-white/70">
                             {emp.last_entry.entry_type === 'clock_in' ? 'Entrata' :
                              emp.last_entry.entry_type === 'clock_out' ? 'Uscita' :
-                             emp.last_entry.entry_type === 'break_start' ? 'Pausa' : 'Ripresa'}
+                             emp.last_entry.entry_type === 'break_start'
+                               ? (emp.last_entry.break_type === 'coffee_break' ? 'Pausa Caffè' :
+                                  emp.last_entry.break_type === 'lunch_break' ? 'Pausa Pranzo' : 'Pausa')
+                               : 'Ripresa'}
                             {' '}{formatTime(emp.last_entry.timestamp)}
                           </div>
                           {emp.last_entry.location_name && (

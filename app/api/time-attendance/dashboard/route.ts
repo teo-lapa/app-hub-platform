@@ -13,6 +13,7 @@ interface EmployeeStatus {
     entry_type: string;
     timestamp: string;
     location_name?: string;
+    break_type?: 'coffee_break' | 'lunch_break';
   };
   hours_worked_today: number;
   entries_today: number;
@@ -65,7 +66,8 @@ export async function GET(request: NextRequest) {
         contact_id,
         entry_type,
         timestamp,
-        location_name
+        location_name,
+        break_type
       FROM ta_time_entries
       WHERE company_id = ${parseInt(companyId)}
         AND timestamp >= ${dayStart.toISOString()}
@@ -148,6 +150,7 @@ export async function GET(request: NextRequest) {
           entry_type: lastEntry.entry_type,
           timestamp: lastEntry.timestamp,
           location_name: lastEntry.location_name,
+          break_type: lastEntry.break_type,
         } : undefined,
         hours_worked_today: Math.round(hoursWorked * 100) / 100,
         entries_today: entries.length,
