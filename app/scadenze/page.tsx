@@ -713,29 +713,56 @@ export default function ScadenzePage() {
 
               {/* Info card */}
               <div className="glass p-4 rounded-lg space-y-3 mb-6">
-                {/* Badge scadenza */}
-                <div className={`px-4 py-2 rounded-lg text-center font-bold text-lg
-                  ${selectedProduct.daysUntilExpiry < 0
-                    ? 'bg-red-500/20 text-red-400 border-2 border-red-500'
-                    : selectedProduct.daysUntilExpiry <= 7
-                    ? 'bg-orange-500/20 text-orange-400 border-2 border-orange-500'
-                    : 'bg-green-500/20 text-green-400 border-2 border-green-500'}`}>
-                  {selectedProduct.daysUntilExpiry === 0
-                    ? '🔴 SCADE OGGI'
-                    : selectedProduct.daysUntilExpiry < 0
-                    ? `🔴 SCADUTO ${Math.abs(selectedProduct.daysUntilExpiry)} giorni fa`
-                    : `⏰ Scade tra ${selectedProduct.daysUntilExpiry} giorni`}
-                </div>
+                {/* Badge scadenza/fermo */}
+                {selectedProduct.lotName?.toLowerCase().startsWith('fermo') ? (
+                  // Prodotto FERMO (non movimentato)
+                  <div className={`px-4 py-2 rounded-lg text-center font-bold text-lg
+                    ${Math.abs(selectedProduct.daysUntilExpiry) >= 90
+                      ? 'bg-purple-500/20 text-purple-400 border-2 border-purple-500'
+                      : 'bg-yellow-500/20 text-yellow-400 border-2 border-yellow-500'}`}>
+                    {Math.abs(selectedProduct.daysUntilExpiry) >= 90
+                      ? `🟣 FERMO da ${Math.abs(selectedProduct.daysUntilExpiry)} giorni`
+                      : `🟡 FERMO da ${Math.abs(selectedProduct.daysUntilExpiry)} giorni`}
+                  </div>
+                ) : (
+                  // Prodotto con scadenza reale
+                  <div className={`px-4 py-2 rounded-lg text-center font-bold text-lg
+                    ${selectedProduct.daysUntilExpiry < 0
+                      ? 'bg-red-500/20 text-red-400 border-2 border-red-500'
+                      : selectedProduct.daysUntilExpiry <= 7
+                      ? 'bg-orange-500/20 text-orange-400 border-2 border-orange-500'
+                      : 'bg-green-500/20 text-green-400 border-2 border-green-500'}`}>
+                    {selectedProduct.daysUntilExpiry === 0
+                      ? '🔴 SCADE OGGI'
+                      : selectedProduct.daysUntilExpiry < 0
+                      ? `🔴 SCADUTO ${Math.abs(selectedProduct.daysUntilExpiry)} giorni fa`
+                      : `⏰ Scade tra ${selectedProduct.daysUntilExpiry} giorni`}
+                  </div>
+                )}
 
                 {/* Dettagli */}
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-blue-400" />
-                    <span className="text-slate-400">Data Scadenza:</span>
-                    <span className="font-semibold">
-                      {new Date(selectedProduct.expirationDate).toLocaleDateString('it-IT')}
-                    </span>
-                  </div>
+                  {/* Data Scadenza - mostra solo se NON è un prodotto fermo */}
+                  {!selectedProduct.lotName?.toLowerCase().startsWith('fermo') && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-blue-400" />
+                      <span className="text-slate-400">Data Scadenza:</span>
+                      <span className="font-semibold">
+                        {new Date(selectedProduct.expirationDate).toLocaleDateString('it-IT')}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Ultimo Movimento - mostra solo per prodotti fermi */}
+                  {selectedProduct.lotName?.toLowerCase().startsWith('fermo') && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-yellow-400" />
+                      <span className="text-slate-400">Ultimo Movimento:</span>
+                      <span className="font-semibold text-yellow-400">
+                        {Math.abs(selectedProduct.daysUntilExpiry)} giorni fa
+                      </span>
+                    </div>
+                  )}
 
                   {selectedProduct.lotName && (
                     <div className="flex items-center gap-2">
@@ -910,7 +937,13 @@ export default function ScadenzePage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold truncate">{selectedProduct.name}</h3>
                     <p className="text-xs text-slate-400">
-                      {selectedProduct.quantity} {selectedProduct.uom} • Scade tra {selectedProduct.daysUntilExpiry}gg
+                      {selectedProduct.quantity} {selectedProduct.uom} • {
+                        selectedProduct.lotName?.toLowerCase().startsWith('fermo')
+                          ? `Fermo da ${Math.abs(selectedProduct.daysUntilExpiry)}gg`
+                          : selectedProduct.daysUntilExpiry < 0
+                            ? `Scaduto ${Math.abs(selectedProduct.daysUntilExpiry)}gg fa`
+                            : `Scade tra ${selectedProduct.daysUntilExpiry}gg`
+                      }
                     </p>
                   </div>
                 </div>

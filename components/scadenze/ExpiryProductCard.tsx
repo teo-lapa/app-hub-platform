@@ -39,8 +39,8 @@ export function ExpiryProductCard({ product, onClick }: ExpiryProductCardProps) 
       </h3>
 
       {/* Badge scadenza con colore urgenza */}
-      <div className={`text-xs font-bold mt-2 text-center px-2 py-1 rounded-full ${getUrgencyBadgeClass(product.daysUntilExpiry)}`}>
-        {formatExpiryBadge(product.daysUntilExpiry)}
+      <div className={`text-xs font-bold mt-2 text-center px-2 py-1 rounded-full ${getUrgencyBadgeClass(product.daysUntilExpiry, product.lotName)}`}>
+        {formatExpiryBadge(product.daysUntilExpiry, product.lotName)}
       </div>
 
       {/* Ubicazione */}
@@ -63,8 +63,23 @@ export function ExpiryProductCard({ product, onClick }: ExpiryProductCardProps) 
   );
 }
 
+// Controlla se è un prodotto "fermo" (non movimentato) invece che scaduto
+function isNoMovementProduct(lotName?: string): boolean {
+  return lotName?.toLowerCase().startsWith('fermo') || false;
+}
+
 // Funzione per ottenere la classe CSS del badge in base ai giorni
-function getUrgencyBadgeClass(days: number): string {
+function getUrgencyBadgeClass(days: number, lotName?: string): string {
+  // Per prodotti fermi (non movimentati), usa colore giallo/arancione
+  if (isNoMovementProduct(lotName)) {
+    const daysFermo = Math.abs(days);
+    if (daysFermo >= 90) {
+      return 'bg-purple-500/20 text-purple-400 border border-purple-500';
+    }
+    return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500';
+  }
+
+  // Per prodotti con scadenza reale
   if (days < 0) {
     return 'bg-red-500/20 text-red-400 border border-red-500';
   }
@@ -78,7 +93,17 @@ function getUrgencyBadgeClass(days: number): string {
 }
 
 // Funzione per formattare il testo del badge
-function formatExpiryBadge(days: number): string {
+function formatExpiryBadge(days: number, lotName?: string): string {
+  // Per prodotti fermi (non movimentati)
+  if (isNoMovementProduct(lotName)) {
+    const daysFermo = Math.abs(days);
+    if (daysFermo >= 90) {
+      return `🟣 FERMO ${daysFermo}gg`;
+    }
+    return `🟡 FERMO ${daysFermo}gg`;
+  }
+
+  // Per prodotti con scadenza reale
   if (days === 0) return '🔴 SCADE OGGI';
   if (days < 0) return `🔴 SCADUTO ${Math.abs(days)}gg fa`;
   if (days <= 3) return `🔴 Tra ${days}gg`;
