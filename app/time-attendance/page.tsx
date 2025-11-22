@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, MapPin, User, Calendar, LogIn, LogOut, Coffee, Play,
@@ -103,6 +103,10 @@ export default function TimeAttendancePage() {
     data_processing: false,
     privacy_policy: false,
   });
+
+  // Ref to prevent duplicate API calls
+  const hasLoadedContactRef = useRef(false);
+  const hasCheckedConsentsRef = useRef(false);
   const [allConsentsGranted, setAllConsentsGranted] = useState(false);
 
   const theme = getThemeColors(contact?.x_gender || (contact?.title?.name?.includes('Sig.ra') ? 'female' : 'male'));
@@ -120,16 +124,18 @@ export default function TimeAttendancePage() {
     }
   }, [authLoading, isAuthenticated, router]);
 
-  // Load contact from Odoo
+  // Load contact from Odoo (with duplicate prevention)
   useEffect(() => {
-    if (user?.email) {
+    if (user?.email && !hasLoadedContactRef.current) {
+      hasLoadedContactRef.current = true;
       loadContactFromOdoo(user.email);
     }
   }, [user?.email]);
 
-  // Check consents
+  // Check consents (with duplicate prevention)
   useEffect(() => {
-    if (contact?.id) {
+    if (contact?.id && !hasCheckedConsentsRef.current) {
+      hasCheckedConsentsRef.current = true;
       checkConsents(contact.id);
     }
   }, [contact?.id]);
