@@ -31,6 +31,20 @@ function toRad(deg: number): number {
 // Tag names that mark a lead/partner as "not in target" (excluded)
 const NOT_TARGET_TAGS = ['Chiuso definitivamente', 'Non interessato', 'Non in Target'];
 
+// Mapping of English place types to Italian equivalents for Odoo search
+const TYPE_TRANSLATIONS: Record<string, string[]> = {
+  'restaurant': ['ristorante', 'ristoranti', 'trattoria', 'pizzeria', 'osteria'],
+  'cafe': ['caffè', 'caffe', 'bar', 'pasticceria'],
+  'bar': ['bar', 'pub', 'birreria', 'lounge'],
+  'bakery': ['panetteria', 'panificio', 'forno', 'pasticceria'],
+  'supermarket': ['supermercato', 'alimentari', 'market', 'negozio'],
+  'hotel': ['hotel', 'albergo', 'residence', 'pensione'],
+  'lodging': ['alloggio', 'b&b', 'bed and breakfast', 'agriturismo'],
+  'food': ['alimentari', 'gastronomia', 'food', 'cibo'],
+  'store': ['negozio', 'store', 'shop', 'bottega'],
+  'shopping_mall': ['centro commerciale', 'mall', 'galleria']
+};
+
 /**
  * Parse coordinates from crm.lead description field
  * Looks for pattern: "Coordinate: lat, lng" or "Coordinates: lat, lng"
@@ -88,7 +102,7 @@ interface MapMarker {
  * - latitude: number (user GPS) - required
  * - longitude: number (user GPS) - required
  * - radius: number (meters) - required
- * - filter: 'all' | 'customers' | 'leads' | 'not_target' - required
+ * - filter: 'all' | 'customers' | 'leads' | 'not_target' | 'active_6m' - required
  * - type?: string (restaurant, bar, etc.) - optional
  *
  * Response:
@@ -114,7 +128,7 @@ export async function GET(request: NextRequest) {
     const latitude = parseFloat(searchParams.get('latitude') || '');
     const longitude = parseFloat(searchParams.get('longitude') || '');
     const radius = parseFloat(searchParams.get('radius') || '');
-    const filter = searchParams.get('filter') as 'all' | 'customers' | 'leads' | 'not_target';
+    const filter = searchParams.get('filter') as 'all' | 'customers' | 'leads' | 'not_target' | 'active_6m';
     const type = searchParams.get('type') || undefined;
 
     // Validate required parameters
@@ -132,10 +146,10 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (!filter || !['all', 'customers', 'leads', 'not_target'].includes(filter)) {
+    if (!filter || !['all', 'customers', 'leads', 'not_target', 'active_6m'].includes(filter)) {
       return NextResponse.json({
         success: false,
-        error: 'Parametro "filter" deve essere: all, customers, leads, not_target'
+        error: 'Parametro "filter" deve essere: all, customers, leads, not_target, active_6m'
       }, { status: 400 });
     }
 
@@ -148,8 +162,13 @@ export async function GET(request: NextRequest) {
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
     const threeMonthsAgoStr = threeMonthsAgo.toISOString().split('T')[0];
 
+    // Calculate date 6 months ago for active_6m filter
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const sixMonthsAgoStr = sixMonthsAgo.toISOString().split('T')[0];
+
     // === 1. LOAD CUSTOMERS (res.partner) ===
-    if (filter === 'all' || filter === 'customers' || filter === 'not_target') {
+    if (filter === 'all' || filter === 'customers' || filter === 'not_target' || filter === 'active_6m') {
       console.log('[LOAD-FROM-ODOO] Ricerca clienti in res.partner...');
 
       // Search for companies with coordinates
@@ -162,9 +181,17 @@ export async function GET(request: NextRequest) {
         ['partner_longitude', '!=', 0]
       ];
 
-      // Filter by type/category if specified
+      // Filter by type/category if specified (with Italian translations)
       if (type) {
-        customerDomain.push(['category_id.name', 'ilike', type]);
+        const translations = TYPE_TRANSLATIONS[type] || [type];
+        // Build OR domain for all translations: '|' '|' '|' cond1 cond2 cond3 cond4
+        // For N conditions we need N-1 '|' operators
+        for (let i = 0; i < translations.length - 1; i++) {
+          customerDomain.push('|');
+        }
+        translations.forEach(term => {
+          customerDomain.push(['category_id.name', 'ilike', term]);
+        });
       }
 
       try {
@@ -199,10 +226,13 @@ export async function GET(request: NextRequest) {
 
         console.log(`[LOAD-FROM-ODOO] ${customersInRadius.length} clienti nel raggio`);
 
-        // Get sales data for customers in radius (last 3 months)
+        // Get sales data for customers in radius (last 3 or 6 months depending on filter)
         const customerIds = customersInRadius.map(c => c.id);
 
-        // Fetch orders from last 3 months for these customers
+        // Use 6 months for active_6m filter, 3 months for others
+        const orderDateFilter = filter === 'active_6m' ? sixMonthsAgoStr : threeMonthsAgoStr;
+
+        // Fetch orders for these customers
         let salesDataMap: Record<number, { invoiced: number; orderCount: number; lastOrderDate: string | null }> = {};
 
         if (customerIds.length > 0) {
@@ -212,7 +242,7 @@ export async function GET(request: NextRequest) {
               [
                 ['partner_id', 'in', customerIds],
                 ['state', 'in', ['sale', 'done']],
-                ['date_order', '>=', threeMonthsAgoStr]
+                ['date_order', '>=', orderDateFilter]
               ],
               ['partner_id', 'amount_total', 'date_order'],
               0,
@@ -267,6 +297,7 @@ export async function GET(request: NextRequest) {
 
           // Apply filter
           if (filter === 'customers' && color !== 'green') continue;
+          if (filter === 'active_6m' && color !== 'green') continue;  // Only active customers (with orders in 6 months)
           if (filter === 'not_target' && color !== 'grey') continue;
 
           // Build address
@@ -315,11 +346,21 @@ export async function GET(request: NextRequest) {
         ['active', '=', false]  // Include archived/excluded leads
       ];
 
-      // Filter by type in name or description if specified
+      // Filter by type in name or description if specified (with Italian translations)
       if (type) {
-        leadDomain.push('|');
-        leadDomain.push(['name', 'ilike', type]);
-        leadDomain.push(['description', 'ilike', type]);
+        const translations = TYPE_TRANSLATIONS[type] || [type];
+        // Each term needs OR between name and description search
+        // For N terms we need: '|' '|' ... (N*2-1 OR operators) then all conditions
+        const allConditions: any[] = [];
+        translations.forEach(term => {
+          allConditions.push(['name', 'ilike', term]);
+          allConditions.push(['description', 'ilike', term]);
+        });
+        // Add OR operators for all conditions
+        for (let i = 0; i < allConditions.length - 1; i++) {
+          leadDomain.push('|');
+        }
+        allConditions.forEach(cond => leadDomain.push(cond));
       }
 
       try {

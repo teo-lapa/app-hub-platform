@@ -259,7 +259,7 @@ export default function SalesRadarPage() {
   const [mapMode, setMapMode] = useState<'live' | 'static'>('static');
 
   // Static map filters
-  const [staticFilter, setStaticFilter] = useState<'all' | 'customers' | 'leads' | 'not_target'>('all');
+  const [staticFilter, setStaticFilter] = useState<'all' | 'customers' | 'leads' | 'not_target' | 'active_6m'>('all');
 
   // Loading state for static map
   const [loadingStatic, setLoadingStatic] = useState(false);
@@ -1067,6 +1067,7 @@ export default function SalesRadarPage() {
                     >
                       <option value="all">Tutti</option>
                       <option value="customers">🟢 Solo Clienti</option>
+                      <option value="active_6m">🟢 Clienti Attivi (6 mesi)</option>
                       <option value="leads">🟠 Solo Lead</option>
                       <option value="not_target">⚪ Non in Target</option>
                     </select>
@@ -1451,12 +1452,13 @@ export default function SalesRadarPage() {
                   })()}
 
                   {/* Odoo Status - handles all 4 color states */}
-                  {(selectedPlace.existsInOdoo || selectedPlace.color === 'green') && (selectedPlace.odooCustomer || selectedPlace.id) ? (
-                    <div className="mb-3 rounded-lg bg-green-50 p-3">
+                  {/* Customer with orders (green) OR customer without orders (orange but type=customer) */}
+                  {(selectedPlace.existsInOdoo || selectedPlace.color === 'green' || (selectedPlace.type === 'customer' && selectedPlace.color === 'orange')) && (selectedPlace.odooCustomer || selectedPlace.id) ? (
+                    <div className={`mb-3 rounded-lg p-3 ${selectedPlace.color === 'green' ? 'bg-green-50' : 'bg-blue-50'}`}>
                       <div className="mb-2 flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-                        <span className="text-sm font-semibold text-green-900">
-                          Cliente Esistente
+                        <CheckCircle2 className={`h-4 w-4 sm:h-5 sm:w-5 ${selectedPlace.color === 'green' ? 'text-green-600' : 'text-blue-600'}`} />
+                        <span className={`text-sm font-semibold ${selectedPlace.color === 'green' ? 'text-green-900' : 'text-blue-900'}`}>
+                          {selectedPlace.color === 'green' ? 'Cliente Attivo' : 'Contatto in Odoo'}
                         </span>
                       </div>
 
@@ -1501,16 +1503,16 @@ export default function SalesRadarPage() {
                         Apri in Odoo
                       </a>
                     </div>
-                  ) : (selectedPlace.isLead || selectedPlace.color === 'orange') ? (
+                  ) : (selectedPlace.isLead || selectedPlace.type === 'lead') ? (
                     <div className="mb-3 rounded-lg bg-orange-50 p-3">
                       <div className="mb-2 flex items-center gap-2">
                         <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
                         <span className="text-sm font-semibold text-orange-900">
-                          Lead Salvato
+                          Lead CRM
                         </span>
                       </div>
                       <p className="mb-2 text-xs sm:text-sm text-orange-800">
-                        Presente nel CRM come lead
+                        Presente nel CRM come lead da convertire
                       </p>
                       {(selectedPlace.id || selectedPlace.leadId) && (
                         <a
