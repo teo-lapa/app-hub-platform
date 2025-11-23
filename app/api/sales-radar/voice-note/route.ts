@@ -238,8 +238,8 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Generate HTML formatted feedback note for chatter
- * Usa formato semplice compatibile con Odoo mail
+ * Generate formatted feedback note for chatter
+ * Usa formato plain text con <br/> come fa pickingClient (funziona in Delivery)
  */
 function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): string {
   const emoji = noteType === 'voice' ? '🎤' : '✏️';
@@ -252,13 +252,13 @@ function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): 
     minute: '2-digit'
   });
 
-  // Formato semplice compatibile con Odoo (no tabelle complesse)
-  return `<p><strong>📍 FEEDBACK SALES RADAR</strong></p>
-<p><strong>Tipo:</strong> ${emoji} ${typeLabel}</p>
-<p><strong>Data:</strong> ${timestamp}</p>
-<p><strong>Fonte:</strong> Sales Radar App</p>
-<p><strong>Nota:</strong></p>
-<blockquote>${noteText.replace(/\n/g, '<br/>')}</blockquote>`;
+  // Formato plain text con <br/> (come pickingClient che funziona in Delivery)
+  return `📍 FEEDBACK SALES RADAR<br/><br/>` +
+    `${emoji} Tipo: ${typeLabel}<br/>` +
+    `📅 Data: ${timestamp}<br/>` +
+    `📱 Fonte: Sales Radar App<br/><br/>` +
+    `📝 Nota:<br/>` +
+    `${noteText.replace(/\n/g, '<br/>')}`;
 }
 
 /**
@@ -287,7 +287,7 @@ async function postToLeadChatter(
   const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
   // Create message in chatter using message_post
-  // Pass author_id to show the correct user as author
+  // Formato plain text con <br/> come pickingClient (funziona in Delivery)
   const messageParams: Record<string, any> = {
     body: feedbackHtml,
     message_type: 'comment',
@@ -329,7 +329,7 @@ async function postToPartnerChatter(
   const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
   // Create message in chatter using message_post
-  // Pass author_id to show the correct user as author
+  // Formato plain text con <br/> come pickingClient (funziona in Delivery)
   const messageParams: Record<string, any> = {
     body: feedbackHtml,
     message_type: 'comment',
