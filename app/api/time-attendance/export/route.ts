@@ -209,7 +209,7 @@ export async function GET(request: NextRequest) {
     const contactsWithoutName = contactIds.filter(id => !contactInfo.has(id));
 
     if (contactsWithoutName.length > 0) {
-      console.log(`[Export] Fetching ${contactsWithoutName.length} contacts from Odoo (missing local names):`, contactsWithoutName);
+      console.log(`[Export] Fetching ${contactsWithoutName.length} contacts from Odoo:`, contactsWithoutName);
       try {
         const odoo = await getOdooClient();
         // Prendi nome e parent_id (azienda) per ogni contatto
@@ -220,7 +220,15 @@ export async function GET(request: NextRequest) {
           100
         );
 
-        console.log(`[Export] Odoo returned ${(contacts as unknown[]).length} contacts`);
+        const contactsArr = contacts as unknown[];
+        console.log(`[Export] Odoo returned ${contactsArr.length} contacts for IDs:`, contactsWithoutName);
+
+        // Log dei contatti non trovati
+        const foundIds = (contacts as Array<{ id: number }>).map(c => c.id);
+        const notFoundIds = contactsWithoutName.filter(id => !foundIds.includes(id));
+        if (notFoundIds.length > 0) {
+          console.warn(`[Export] Contacts NOT FOUND in Odoo:`, notFoundIds);
+        }
 
         // Raccogli gli ID delle aziende parent
         const parentIds: number[] = [];
@@ -259,6 +267,25 @@ export async function GET(request: NextRequest) {
         }
       } catch (odooError) {
         console.error('[Export] Errore Odoo fetch contacts:', odooError);
+        // Fallback: crea nomi placeholder per i contatti non trovati
+        for (const id of contactsWithoutName) {
+          if (!contactInfo.has(id)) {
+            contactInfo.set(id, {
+              name: `Dipendente #${id}`,
+              company_name: '-',
+            });
+          }
+        }
+      }
+    }
+
+    // Fallback finale: assicurati che ogni contatto abbia un nome
+    for (const contactId of contactIds) {
+      if (!contactInfo.has(contactId)) {
+        contactInfo.set(contactId, {
+          name: `Dipendente #${contactId}`,
+          company_name: '-',
+        });
       }
     }
 
@@ -304,7 +331,7 @@ export async function GET(request: NextRequest) {
         dailyReports.set(key, {
           date,
           contact_id: entry.contact_id,
-          contact_name: info?.name || `Contatto ID ${entry.contact_id}`,
+          contact_name: info?.name || `Dipendente #${entry.contact_id}`,
           company_name: info?.company_name || '-',
           first_clock_in: null,
           last_clock_out: null,
