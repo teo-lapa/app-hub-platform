@@ -1722,21 +1722,24 @@ export default function SalesRadarPage() {
                     </a>
                   )}
 
-                  {/* Note Button - Opens Note Modal */}
-                  <div className="mt-3 space-y-2">
-                    <button
-                      onClick={() => openNoteModal(selectedPlace)}
-                      className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
-                    >
-                      📝 Aggiungi Nota
-                    </button>
-                    <button
-                      onClick={() => analyzeClient(selectedPlace)}
-                      className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium flex items-center justify-center gap-2"
-                    >
-                      🤖 Analizza con AI
-                    </button>
-                  </div>
+                  {/* Note Button - Opens Note Modal (only for customers and prospects, NOT for Lead CRM or Excluded) */}
+                  {!((selectedPlace.isLead || selectedPlace.type === 'lead') && !(selectedPlace.existsInOdoo || selectedPlace.color === 'green')) &&
+                   !(selectedPlace.notInTarget || selectedPlace.color === 'grey') && (
+                    <div className="mt-3 space-y-2">
+                      <button
+                        onClick={() => openNoteModal(selectedPlace)}
+                        className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
+                      >
+                        📝 Aggiungi Nota
+                      </button>
+                      <button
+                        onClick={() => analyzeClient(selectedPlace)}
+                        className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium flex items-center justify-center gap-2"
+                      >
+                        🤖 Analizza con AI
+                      </button>
+                    </div>
+                  )}
                 </div>
               </InfoWindow>
             )}
