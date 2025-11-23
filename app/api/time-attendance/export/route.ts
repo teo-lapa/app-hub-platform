@@ -96,6 +96,14 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
+    console.log('[Export] Request params:', {
+      contactId,
+      companyId,
+      startDateStr,
+      endDateStr,
+      format,
+    });
+
     // Date di default: ultimo mese
     const endDate = endDateStr ? new Date(endDateStr) : new Date();
     const startDate = startDateStr
@@ -111,6 +119,7 @@ export async function GET(request: NextRequest) {
     try {
       let result;
 
+      // Query senza contact_name per compatibilità con DB che non hanno la colonna
       if (contactId) {
         result = await sql`
           SELECT
@@ -124,8 +133,7 @@ export async function GET(request: NextRequest) {
             qr_code_verified,
             location_name,
             break_type,
-            break_max_minutes,
-            contact_name
+            break_max_minutes
           FROM ta_time_entries
           WHERE contact_id = ${parseInt(contactId)}
             AND timestamp >= ${startDate.toISOString()}
@@ -145,8 +153,7 @@ export async function GET(request: NextRequest) {
             qr_code_verified,
             location_name,
             break_type,
-            break_max_minutes,
-            contact_name
+            break_max_minutes
           FROM ta_time_entries
           WHERE company_id = ${parseInt(companyId)}
             AND timestamp >= ${startDate.toISOString()}
@@ -167,8 +174,16 @@ export async function GET(request: NextRequest) {
         location_name: row.location_name,
         break_type: row.break_type,
         break_max_minutes: row.break_max_minutes,
-        contact_name: row.contact_name,
+        contact_name: undefined, // I nomi verranno presi da Odoo
       }));
+
+      console.log('[Export] Query result:', {
+        entriesCount: entries.length,
+        dateRange: `${startDate.toISOString()} to ${endDate.toISOString()}`,
+        companyIdUsed: companyId,
+        contactIdUsed: contactId,
+        sampleEntry: entries[0] || 'no entries',
+      });
     } catch (dbError) {
       console.warn('Database non disponibile:', dbError);
     }
