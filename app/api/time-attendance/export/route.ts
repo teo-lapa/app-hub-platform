@@ -3,6 +3,26 @@ import { sql } from '@vercel/postgres';
 import { getOdooClient } from '@/lib/odoo-client';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+
+// Estendi jsPDF per autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: {
+      head?: string[][];
+      body?: (string | number)[][];
+      startY?: number;
+      theme?: string;
+      headStyles?: { fillColor?: number[]; textColor?: number[]; fontSize?: number };
+      bodyStyles?: { fontSize?: number };
+      columnStyles?: Record<number, { cellWidth?: number | 'auto' }>;
+      margin?: { top?: number; left?: number; right?: number };
+      didDrawPage?: (data: { cursor: { y: number } }) => void;
+    }) => jsPDF;
+    lastAutoTable: { finalY: number };
+  }
+}
 
 interface TimeEntry {
   id: string;
@@ -532,6 +552,123 @@ export async function GET(request: NextRequest) {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'Content-Disposition': `attachment; filename="presenze_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.xlsx"`,
+        },
+      });
+    }
+
+    // Formato PDF
+    if (format === 'pdf') {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const doc = new jsPDF();
+
+      // Calcola riepilogo per dipendente
+      const byContact = new Map<number, { id: number; name: string; company: string; days: number; hours: number; coffeeMin: number; lunchMin: number }>();
+      for (const report of reports) {
+        const key = report.contact_id;
+        if (!byContact.has(key)) {
+          byContact.set(key, { id: report.contact_id, name: report.contact_name, company: report.company_name, days: 0, hours: 0, coffeeMin: 0, lunchMin: 0 });
+        }
+        const data = byContact.get(key)!;
+        data.days++;
+        data.hours += report.total_hours;
+        data.coffeeMin += report.coffee_break_minutes;
+        data.lunchMin += report.lunch_break_minutes;
+      }
+
+      // Calcola totali
+      const totalHours = reports.reduce((sum, r) => sum + r.total_hours, 0);
+      const totalDays = new Set(reports.map(r => r.date)).size;
+
+      // Header
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Report Presenze', 14, 20);
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text(`Periodo: ${startDate.toLocaleDateString('it-IT')} - ${endDate.toLocaleDateString('it-IT')}`, 14, 28);
+
+      // Statistiche
+      doc.setFontSize(10);
+      doc.setTextColor(0);
+      doc.text(`Dipendenti: ${byContact.size}  |  Giorni: ${totalDays}  |  Ore Totali: ${totalHours.toFixed(2)}`, 14, 36);
+
+      // Riepilogo per Dipendente
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Riepilogo per Dipendente', 14, 48);
+
+      const summaryBody: (string | number)[][] = [];
+      for (const data of Array.from(byContact.values())) {
+        summaryBody.push([
+          data.name,
+          data.days,
+          data.hours.toFixed(2),
+          (data.hours / data.days).toFixed(2),
+        ]);
+      }
+
+      doc.autoTable({
+        head: [['Dipendente', 'Giorni', 'Ore Totali', 'Media/Giorno']],
+        body: summaryBody,
+        startY: 52,
+        theme: 'striped',
+        headStyles: { fillColor: [66, 139, 202], fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        margin: { left: 14, right: 14 },
+      });
+
+      // Dettaglio Presenze
+      const startYDetail = doc.lastAutoTable.finalY + 15;
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Dettaglio Presenze', 14, startYDetail);
+
+      const detailBody: (string | number)[][] = [];
+      for (const report of reports) {
+        const entrata = report.first_clock_in
+          ? new Date(report.first_clock_in).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+          : '-';
+        const uscita = report.last_clock_out
+          ? new Date(report.last_clock_out).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+          : '-';
+
+        detailBody.push([
+          report.date,
+          report.contact_name,
+          entrata,
+          uscita,
+          report.break_minutes,
+          report.total_hours.toFixed(2),
+        ]);
+      }
+
+      doc.autoTable({
+        head: [['Data', 'Dipendente', 'Entrata', 'Uscita', 'Pause (min)', 'Ore']],
+        body: detailBody,
+        startY: startYDetail + 4,
+        theme: 'striped',
+        headStyles: { fillColor: [66, 139, 202], fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        columnStyles: {
+          0: { cellWidth: 22 },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 18 },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 22 },
+          5: { cellWidth: 15 },
+        },
+        margin: { left: 14, right: 14 },
+      });
+
+      // Genera output come ArrayBuffer
+      const pdfOutput = doc.output('arraybuffer');
+
+      return new NextResponse(pdfOutput, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="presenze_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.pdf"`,
         },
       });
     }
