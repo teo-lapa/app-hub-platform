@@ -103,7 +103,8 @@ export async function GET(request: NextRequest) {
             qr_code_verified,
             location_name,
             break_type,
-            break_max_minutes
+            break_max_minutes,
+            contact_name
           FROM ta_time_entries
           WHERE contact_id = ${parseInt(contactId)}
             AND timestamp >= ${startDate.toISOString()}
@@ -123,7 +124,8 @@ export async function GET(request: NextRequest) {
             qr_code_verified,
             location_name,
             break_type,
-            break_max_minutes
+            break_max_minutes,
+            contact_name
           FROM ta_time_entries
           WHERE company_id = ${parseInt(companyId)}
             AND timestamp >= ${startDate.toISOString()}
@@ -144,6 +146,7 @@ export async function GET(request: NextRequest) {
         location_name: row.location_name,
         break_type: row.break_type,
         break_max_minutes: row.break_max_minutes,
+        contact_name: row.contact_name,
       }));
     } catch (dbError) {
       console.warn('Database non disponibile:', dbError);
