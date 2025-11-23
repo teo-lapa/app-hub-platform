@@ -262,13 +262,24 @@ export async function GET(request: NextRequest) {
     // Imposta il cookie JWT
     response.cookies.set('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true, // Sempre true per HTTPS (staging e production)
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60, // 7 giorni
+      path: '/',
+    });
+
+    // IMPORTANTE: Salva anche la sessione Odoo per permettere chiamate API
+    // Usa la sessione admin che abbiamo già autenticato
+    response.cookies.set('odoo_session_id', adminSessionId, {
+      httpOnly: true,
+      secure: true, // Sempre true per HTTPS (staging e production)
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60, // 7 giorni
       path: '/',
     });
 
     console.log('✅ Google OAuth login completato! Redirect a dashboard...');
+    console.log('✅ Cookie odoo_session_id salvato:', adminSessionId.substring(0, 20) + '...');
     return response;
 
   } catch (error) {
