@@ -66,6 +66,13 @@ export default function HomePage() {
     };
   }, [checkAuth]);
 
+  // Se non autenticato, redirect alla landing page (DEVE essere prima di qualsiasi return!)
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/');
+    }
+  }, [isLoading, isAuthenticated, router]);
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -77,6 +84,7 @@ export default function HomePage() {
     }
   };
 
+  // Loading state
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -89,13 +97,7 @@ export default function HomePage() {
     );
   }
 
-  // Se non autenticato, redirect alla landing page
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/');
-    }
-  }, [isLoading, isAuthenticated, router]);
-
+  // Not authenticated - show loading while redirecting
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
