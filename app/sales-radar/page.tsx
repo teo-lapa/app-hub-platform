@@ -1722,9 +1722,8 @@ export default function SalesRadarPage() {
                     </a>
                   )}
 
-                  {/* Note Button - Opens Note Modal (only for customers and prospects, NOT for Lead CRM or Excluded) */}
-                  {!((selectedPlace.isLead || selectedPlace.type === 'lead') && !(selectedPlace.existsInOdoo || selectedPlace.color === 'green')) &&
-                   !(selectedPlace.notInTarget || selectedPlace.color === 'grey') && (
+                  {/* Note Button - Opens Note Modal (NOT for Excluded/Grey markers) */}
+                  {!(selectedPlace.notInTarget || selectedPlace.color === 'grey') && (
                     <div className="mt-3 space-y-2">
                       <button
                         onClick={() => openNoteModal(selectedPlace)}
