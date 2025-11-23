@@ -9,6 +9,8 @@ import { syncAllPlatforms, syncPlatform, publishApprovedResponse } from '@/lib/r
 import { getAllBusinesses } from '@/lib/review-manager/db-service';
 import { Platform } from '@/lib/review-manager/types';
 
+export const dynamic = 'force-dynamic';
+
 // POST - Esegui sync
 export async function POST(request: NextRequest) {
   try {
