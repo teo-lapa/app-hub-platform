@@ -82,49 +82,61 @@ export async function GET(request: NextRequest) {
     // Usa timezone Europe/Rome per calcoli corretti
     const TIMEZONE = 'Europe/Rome';
 
-    // Helper per ottenere data locale corretta
-    const getLocalDateBounds = (date: Date) => {
-      // Ottieni la data in formato Europe/Rome
-      const localDateStr = date.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-      // Crea date start/end per quel giorno in UTC che corrispondono a mezzanotte Rome
-      const dayStart = new Date(localDateStr + 'T00:00:00');
-      const dayEnd = new Date(localDateStr + 'T23:59:59.999');
-      // Correggi per offset Rome (UTC+1 o UTC+2)
-      const offsetMs = dayStart.getTimezoneOffset() * 60 * 1000;
-      // Per l'Italia, mezzanotte locale è 23:00 UTC (inverno) o 22:00 UTC (estate)
+    // Helper robusto per calcolare i bounds di un giorno in timezone Rome
+    // Restituisce date UTC che corrispondono a mezzanotte-23:59 in Rome
+    const getRomeDayBounds = (refDate: Date) => {
+      // Ottieni la data in formato Rome
+      const romeStr = refDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+      const [year, month, day] = romeStr.split('-').map(Number);
+
+      // Determina se è ora legale in Italia
+      // L'ora legale in Italia va dall'ultima domenica di marzo all'ultima domenica di ottobre
+      const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+      const romeTime = testDate.toLocaleString('en-US', { timeZone: TIMEZONE, hour: 'numeric', hour12: false });
+      const utcHour = testDate.getUTCHours();
+      const romeHour = parseInt(romeTime);
+      const offsetHours = romeHour - utcHour;
+
+      // Crea mezzanotte Rome in UTC
+      // Se offsetHours è 1 (CET), mezzanotte Rome = 23:00 UTC del giorno prima
+      // Se offsetHours è 2 (CEST), mezzanotte Rome = 22:00 UTC del giorno prima
+      const midnightUTC = Date.UTC(year, month - 1, day, 0, 0, 0) - (offsetHours * 60 * 60 * 1000);
+      const endOfDayUTC = midnightUTC + (24 * 60 * 60 * 1000) - 1; // 23:59:59.999 Rome
+
       return {
-        start: new Date(dayStart.getTime() - offsetMs + (1 * 60 * 60 * 1000)), // +1 per CET base
-        end: new Date(dayEnd.getTime() - offsetMs + (1 * 60 * 60 * 1000))
+        start: new Date(midnightUTC),
+        end: new Date(endOfDayUTC),
+        dateStr: romeStr
       };
     };
 
     // Data di riferimento
-    const targetDate = dateStr ? new Date(dateStr + 'T12:00:00') : new Date();
-
-    // Calcola offset corretto per ora legale/solare
-    const romeOffset = targetDate.toLocaleString('en-US', { timeZone: TIMEZONE, timeZoneName: 'shortOffset' });
-    const isDST = romeOffset.includes('+02') || romeOffset.includes('+2');
-    const tzOffset = isDST ? '+02:00' : '+01:00';
+    const targetDate = dateStr ? new Date(dateStr + 'T12:00:00Z') : new Date();
 
     // Calcola bounds per oggi
-    const todayStr = targetDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-    const dayStart = new Date(todayStr + 'T00:00:00' + tzOffset);
-    const dayEnd = new Date(todayStr + 'T23:59:59.999' + tzOffset);
+    const todayBounds = getRomeDayBounds(targetDate);
+    const dayStart = todayBounds.start;
+    const dayEnd = todayBounds.end;
 
     // Ieri
-    const yesterdayDate = new Date(targetDate);
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-    const yesterdayStart = new Date(yesterdayStr + 'T00:00:00' + tzOffset);
-    const yesterdayEnd = new Date(yesterdayStr + 'T23:59:59.999' + tzOffset);
+    const yesterdayDate = new Date(targetDate.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayBounds = getRomeDayBounds(yesterdayDate);
+    const yesterdayStart = yesterdayBounds.start;
+    const yesterdayEnd = yesterdayBounds.end;
 
     // Inizio settimana (lunedì)
-    const tempDate = new Date(targetDate);
-    const dayOfWeek = tempDate.getDay();
-    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Lunedì = 0
-    tempDate.setDate(tempDate.getDate() - diff);
-    const weekStartStr = tempDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-    const weekStart = new Date(weekStartStr + 'T00:00:00' + tzOffset);
+    // Calcola il giorno della settimana in timezone Rome (0=Dom, 1=Lun, ...)
+    const romeDayOfWeek = new Date(targetDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE }) + 'T12:00:00Z').getDay();
+    const diff = romeDayOfWeek === 0 ? 6 : romeDayOfWeek - 1; // Lunedì = 0
+    const mondayDate = new Date(targetDate.getTime() - diff * 24 * 60 * 60 * 1000);
+    const weekBounds = getRomeDayBounds(mondayDate);
+    const weekStart = weekBounds.start;
+
+    // Log per debug
+    console.log('[Dashboard] Target date:', targetDate.toISOString());
+    console.log('[Dashboard] Today bounds:', dayStart.toISOString(), '-', dayEnd.toISOString());
+    console.log('[Dashboard] Yesterday bounds:', yesterdayStart.toISOString(), '-', yesterdayEnd.toISOString());
+    console.log('[Dashboard] Week start:', weekStart.toISOString());
 
     // Ottieni lista dipendenti da Odoo
     const odoo = createOdooRPCClient();
@@ -177,10 +189,12 @@ export async function GET(request: NextRequest) {
       ORDER BY timestamp ASC
     `;
 
-    // Inizio mese
-    const monthStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
-    const monthStartStr = monthStart.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-    const monthStartDate = new Date(monthStartStr + 'T00:00:00' + tzOffset);
+    // Inizio mese (primo giorno del mese in timezone Rome)
+    const romeMonthStr = targetDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+    const [romeYear, romeMonth] = romeMonthStr.split('-').map(Number);
+    const firstOfMonth = new Date(Date.UTC(romeYear, romeMonth - 1, 1, 12, 0, 0));
+    const monthBounds = getRomeDayBounds(firstOfMonth);
+    const monthStartDate = monthBounds.start;
 
     // Timbrature del mese
     const monthEntriesResult = await sql`
