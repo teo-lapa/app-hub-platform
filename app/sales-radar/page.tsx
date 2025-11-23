@@ -30,6 +30,7 @@ import {
   X,
   Menu,
   SlidersHorizontal,
+  Users,
 } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Circle } from '@react-google-maps/api';
 
@@ -263,6 +264,10 @@ export default function SalesRadarPage() {
 
   // Loading state for static map
   const [loadingStatic, setLoadingStatic] = useState(false);
+
+  // All active customers button state
+  const [loadingAllActive, setLoadingAllActive] = useState(false);
+  const [activePeriod, setActivePeriod] = useState<'1m' | '3m' | '6m'>('3m');
 
   // Odoo places (from static map)
   const [odooPlaces, setOdooPlaces] = useState<any[]>([]);
@@ -590,6 +595,39 @@ export default function SalesRadarPage() {
       console.error('❌ Errore caricamento mappa statica:', error);
     } finally {
       setLoadingStatic(false);
+    }
+  };
+
+  // Load ALL active customers (no radius limit)
+  const loadAllActiveCustomers = async () => {
+    setLoadingAllActive(true);
+    try {
+      const params = new URLSearchParams({
+        all_active: 'true',
+        period: activePeriod
+      });
+
+      const response = await fetch(`/api/sales-radar/load-from-odoo?${params}`, {
+        credentials: 'include'
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        setOdooPlaces(result.data);
+        console.log(`📍 Caricati ${result.data.length} clienti attivi (${activePeriod})`);
+
+        // Mostra messaggio di successo
+        const periodLabel = activePeriod === '1m' ? '1 mese' : activePeriod === '3m' ? '3 mesi' : '6 mesi';
+        alert(`✅ Caricati ${result.data.length} clienti attivi negli ultimi ${periodLabel}`);
+      } else {
+        console.error('❌ Errore:', result.error);
+        alert(`❌ Errore: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Errore caricamento clienti attivi:', error);
+      alert('❌ Errore nel caricamento dei clienti attivi');
+    } finally {
+      setLoadingAllActive(false);
     }
   };
 
@@ -1116,6 +1154,46 @@ export default function SalesRadarPage() {
               >
                 🔄 Aggiorna Dati Google
               </button>
+            )}
+
+            {/* Load ALL Active Customers Button - Always visible in static mode */}
+            {mapMode === 'static' && (
+              <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                <p className="text-sm font-semibold text-green-800 mb-3">
+                  🗺️ Carica TUTTI i Clienti Attivi
+                </p>
+                <p className="text-xs text-green-600 mb-3">
+                  Senza limiti di zona - mostra tutti i clienti con ordini nel periodo selezionato
+                </p>
+                <div className="flex gap-2">
+                  <select
+                    value={activePeriod}
+                    onChange={(e) => setActivePeriod(e.target.value as '1m' | '3m' | '6m')}
+                    className="flex-1 px-3 py-2.5 text-sm border border-green-300 rounded-lg bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="1m">Ultimo mese</option>
+                    <option value="3m">Ultimi 3 mesi</option>
+                    <option value="6m">Ultimi 6 mesi</option>
+                  </select>
+                  <button
+                    onClick={loadAllActiveCustomers}
+                    disabled={loadingAllActive}
+                    className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold text-sm transition-all active:scale-95"
+                  >
+                    {loadingAllActive ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Caricamento...
+                      </>
+                    ) : (
+                      <>
+                        <Users className="h-4 w-4" />
+                        Carica Tutti
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 

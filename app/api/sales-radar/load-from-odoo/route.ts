@@ -99,11 +99,13 @@ interface MapMarker {
  * Filters by distance using Haversine formula
  *
  * Query params:
- * - latitude: number (user GPS) - required
- * - longitude: number (user GPS) - required
- * - radius: number (meters) - required
+ * - latitude: number (user GPS) - required (unless all_active=true)
+ * - longitude: number (user GPS) - required (unless all_active=true)
+ * - radius: number (meters) - required (unless all_active=true)
  * - filter: 'all' | 'customers' | 'leads' | 'not_target' | 'active_6m' - required
  * - type?: string (restaurant, bar, etc.) - optional
+ * - all_active?: 'true' - Load ALL active customers without radius limit
+ * - period?: '1m' | '3m' | '6m' - Period for active customers (default: 3m)
  *
  * Response:
  * - success: boolean
@@ -130,32 +132,42 @@ export async function GET(request: NextRequest) {
     const radius = parseFloat(searchParams.get('radius') || '');
     const filter = searchParams.get('filter') as 'all' | 'customers' | 'leads' | 'not_target' | 'active_6m';
     const type = searchParams.get('type') || undefined;
+    const allActive = searchParams.get('all_active') === 'true';
+    const period = searchParams.get('period') as '1m' | '3m' | '6m' | null;
 
-    // Validate required parameters
-    if (isNaN(latitude) || isNaN(longitude)) {
-      return NextResponse.json({
-        success: false,
-        error: 'Parametri "latitude" e "longitude" richiesti'
-      }, { status: 400 });
+    // Validate required parameters (skip for all_active mode)
+    if (!allActive) {
+      if (isNaN(latitude) || isNaN(longitude)) {
+        return NextResponse.json({
+          success: false,
+          error: 'Parametri "latitude" e "longitude" richiesti'
+        }, { status: 400 });
+      }
+
+      if (isNaN(radius) || radius <= 0) {
+        return NextResponse.json({
+          success: false,
+          error: 'Parametro "radius" deve essere un numero positivo (in metri)'
+        }, { status: 400 });
+      }
     }
 
-    if (isNaN(radius) || radius <= 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'Parametro "radius" deve essere un numero positivo (in metri)'
-      }, { status: 400 });
-    }
-
-    if (!filter || !['all', 'customers', 'leads', 'not_target', 'active_6m'].includes(filter)) {
+    // Skip filter validation for all_active mode
+    if (!allActive && (!filter || !['all', 'customers', 'leads', 'not_target', 'active_6m'].includes(filter))) {
       return NextResponse.json({
         success: false,
         error: 'Parametro "filter" deve essere: all, customers, leads, not_target, active_6m'
       }, { status: 400 });
     }
 
-    console.log('[LOAD-FROM-ODOO] Caricamento dati:', { latitude, longitude, radius, filter, type });
+    console.log('[LOAD-FROM-ODOO] Caricamento dati:', { latitude, longitude, radius, filter, type, allActive, period });
 
     const markers: MapMarker[] = [];
+
+    // Calculate date 1 month ago
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    const oneMonthAgoStr = oneMonthAgo.toISOString().split('T')[0];
 
     // Calculate date 3 months ago for filtering orders
     const threeMonthsAgo = new Date();
@@ -166,6 +178,135 @@ export async function GET(request: NextRequest) {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     const sixMonthsAgoStr = sixMonthsAgo.toISOString().split('T')[0];
+
+    // Determine period date filter based on period parameter
+    const getPeriodDateFilter = () => {
+      if (period === '1m') return oneMonthAgoStr;
+      if (period === '6m') return sixMonthsAgoStr;
+      return threeMonthsAgoStr; // Default to 3 months
+    };
+
+    // === SPECIAL MODE: LOAD ALL ACTIVE CUSTOMERS (no radius limit) ===
+    if (allActive) {
+      console.log(`[LOAD-FROM-ODOO] 🚀 Caricamento TUTTI i clienti attivi (periodo: ${period || '3m'})...`);
+
+      // Get all companies with coordinates that have orders in the specified period
+      const customerDomain: any[] = [
+        ['is_company', '=', true],
+        ['partner_latitude', '!=', false],
+        ['partner_latitude', '!=', 0],
+        ['partner_longitude', '!=', false],
+        ['partner_longitude', '!=', 0]
+      ];
+
+      try {
+        const customers = await client.searchRead(
+          'res.partner',
+          customerDomain,
+          [
+            'id', 'name', 'display_name', 'phone', 'mobile',
+            'street', 'street2', 'zip', 'city',
+            'partner_latitude', 'partner_longitude',
+            'category_id', 'website'
+          ],
+          0,
+          'name asc'
+        );
+
+        console.log(`[LOAD-FROM-ODOO] Trovati ${customers.length} clienti con coordinate`);
+
+        const customerIds = customers.map((c: any) => c.id);
+        const periodDateFilter = getPeriodDateFilter();
+
+        // Fetch orders for the specified period
+        let salesDataMap: Record<number, { invoiced: number; orderCount: number; lastOrderDate: string | null }> = {};
+
+        if (customerIds.length > 0) {
+          const orders = await client.searchRead(
+            'sale.order',
+            [
+              ['partner_id', 'in', customerIds],
+              ['state', 'in', ['sale', 'done']],
+              ['date_order', '>=', periodDateFilter]
+            ],
+            ['partner_id', 'amount_total', 'date_order'],
+            0,
+            'date_order desc'
+          );
+
+          // Aggregate by partner
+          for (const order of orders) {
+            const partnerId = order.partner_id[0];
+            if (!salesDataMap[partnerId]) {
+              salesDataMap[partnerId] = { invoiced: 0, orderCount: 0, lastOrderDate: null };
+            }
+            salesDataMap[partnerId].invoiced += order.amount_total || 0;
+            salesDataMap[partnerId].orderCount += 1;
+            if (!salesDataMap[partnerId].lastOrderDate) {
+              salesDataMap[partnerId].lastOrderDate = order.date_order ? order.date_order.split(' ')[0] : null;
+            }
+          }
+
+          console.log(`[LOAD-FROM-ODOO] Clienti con ordini nel periodo: ${Object.keys(salesDataMap).length}`);
+        }
+
+        // Only include customers that have orders in the period
+        for (const customer of customers) {
+          const salesData = salesDataMap[customer.id];
+          if (!salesData) continue; // Skip customers without orders in period
+
+          const custLat = customer.partner_latitude;
+          const custLng = customer.partner_longitude;
+
+          const addressParts = [
+            customer.street,
+            customer.street2,
+            customer.zip,
+            customer.city
+          ].filter(Boolean);
+          const address = addressParts.join(', ');
+
+          const tags = customer.category_id ?
+            (Array.isArray(customer.category_id) ? customer.category_id.map((t: any) => t[1] || t) : []) : [];
+
+          markers.push({
+            id: customer.id,
+            type: 'customer',
+            name: customer.display_name || customer.name,
+            address,
+            phone: customer.phone || customer.mobile || undefined,
+            website: customer.website || undefined,
+            latitude: custLat,
+            longitude: custLng,
+            color: 'green',
+            sales_data: {
+              invoiced_3_months: Math.round(salesData.invoiced * 100) / 100,
+              order_count_3_months: salesData.orderCount,
+              last_order_date: salesData.lastOrderDate || undefined
+            },
+            tags: tags.length > 0 ? tags : undefined
+          });
+        }
+
+        console.log(`[LOAD-FROM-ODOO] ✅ Totale clienti attivi: ${markers.length}`);
+
+      } catch (error) {
+        console.error('[LOAD-FROM-ODOO] Errore caricamento clienti attivi:', error);
+      }
+
+      // Sort by invoiced amount (highest first)
+      markers.sort((a, b) => (b.sales_data?.invoiced_3_months || 0) - (a.sales_data?.invoiced_3_months || 0));
+
+      return NextResponse.json({
+        success: true,
+        data: markers,
+        meta: {
+          total: markers.length,
+          mode: 'all_active',
+          period: period || '3m'
+        }
+      });
+    }
 
     // === 1. LOAD CUSTOMERS (res.partner) ===
     if (filter === 'all' || filter === 'customers' || filter === 'not_target' || filter === 'active_6m') {
