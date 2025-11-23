@@ -37,6 +37,7 @@ import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Circle } from '@react-go
 const MARKER_COLORS = {
   user: '#3B82F6',      // Blue - user position
   customer: '#10B981',   // Green - customer with orders
+  contact: '#8B5CF6',    // Purple - contact in Odoo but no recent orders
   lead: '#F59E0B',       // Orange - saved lead in CRM
   prospect: '#EF4444',   // Red - never seen
   notTarget: '#FFFFFF',  // White - not in target (escluso)
@@ -307,6 +308,10 @@ export default function SalesRadarPage() {
     }
     if (place.existsInOdoo || place.color === 'green') {
       return MARKER_COLORS.customer;
+    }
+    // Purple - contact in Odoo but no recent orders (type=customer but color not green)
+    if (place.color === 'purple' || (place.type === 'customer' && place.color === 'orange')) {
+      return MARKER_COLORS.contact;
     }
     if (place.isLead || place.color === 'orange') {
       return MARKER_COLORS.lead;
@@ -1564,13 +1569,13 @@ export default function SalesRadarPage() {
                   })()}
 
                   {/* Odoo Status - handles all 4 color states */}
-                  {/* Customer with orders (green) OR customer without orders (orange but type=customer) */}
+                  {/* Customer with orders (green) OR customer without orders (purple - contact in Odoo) */}
                   {(selectedPlace.existsInOdoo || selectedPlace.color === 'green' || (selectedPlace.type === 'customer' && selectedPlace.color === 'orange')) && (selectedPlace.odooCustomer || selectedPlace.id) ? (
-                    <div className={`mb-3 rounded-lg p-3 ${selectedPlace.color === 'green' ? 'bg-green-50' : 'bg-blue-50'}`}>
+                    <div className={`mb-3 rounded-lg p-3 ${selectedPlace.color === 'green' ? 'bg-green-50' : 'bg-purple-50'}`}>
                       <div className="mb-2 flex items-center gap-2">
-                        <CheckCircle2 className={`h-4 w-4 sm:h-5 sm:w-5 ${selectedPlace.color === 'green' ? 'text-green-600' : 'text-blue-600'}`} />
-                        <span className={`text-sm font-semibold ${selectedPlace.color === 'green' ? 'text-green-900' : 'text-blue-900'}`}>
-                          {selectedPlace.color === 'green' ? 'Cliente Attivo' : 'Contatto in Odoo'}
+                        <CheckCircle2 className={`h-4 w-4 sm:h-5 sm:w-5 ${selectedPlace.color === 'green' ? 'text-green-600' : 'text-purple-600'}`} />
+                        <span className={`text-sm font-semibold ${selectedPlace.color === 'green' ? 'text-green-900' : 'text-purple-900'}`}>
+                          {selectedPlace.color === 'green' ? 'Cliente Attivo' : 'Contatto Odoo (no ordini recenti)'}
                         </span>
                       </div>
 
@@ -1613,7 +1618,11 @@ export default function SalesRadarPage() {
                         }&model=res.partner&view_type=form`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-green-700 active:scale-95"
+                        className={`mt-2 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors active:scale-95 ${
+                          selectedPlace.color === 'green'
+                            ? 'bg-green-600 hover:bg-green-700'
+                            : 'bg-purple-600 hover:bg-purple-700'
+                        }`}
                       >
                         <ExternalLink className="h-4 w-4" />
                         {selectedPlace.locationType === 'delivery' ? 'Apri Azienda in Odoo' : 'Apri in Odoo'}
