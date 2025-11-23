@@ -992,23 +992,23 @@ export default function SalesRadarPage() {
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-full bg-red-500"></span>
-              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => !p.existsInOdoo && !p.isLead && p.color !== 'green' && p.color !== 'orange' && p.color !== 'grey' && !p.notInTarget).length}</span>
-              <span className="text-gray-500">Nuovi</span>
+              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => !p.existsInOdoo && !p.isLead && p.color !== 'green' && p.color !== 'orange' && p.color !== 'grey' && !p.notInTarget).length}</span>
+              <span className="text-gray-600">Nuovi</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-full bg-orange-500"></span>
-              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.isLead || p.color === 'orange').length}</span>
-              <span className="text-gray-500">Lead</span>
+              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.isLead || p.color === 'orange').length}</span>
+              <span className="text-gray-600">Lead</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-full bg-green-500"></span>
-              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.existsInOdoo || p.color === 'green').length}</span>
-              <span className="text-gray-500">Clienti</span>
+              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.existsInOdoo || p.color === 'green').length}</span>
+              <span className="text-gray-600">Clienti</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-full bg-gray-400"></span>
-              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.notInTarget || p.color === 'grey').length}</span>
-              <span className="text-gray-500">Esclusi</span>
+              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.notInTarget || p.color === 'grey').length}</span>
+              <span className="text-gray-600">Esclusi</span>
             </div>
           </div>
         </div>
@@ -1169,11 +1169,11 @@ export default function SalesRadarPage() {
                   <select
                     value={activePeriod}
                     onChange={(e) => setActivePeriod(e.target.value as '1m' | '3m' | '6m')}
-                    className="flex-1 px-3 py-2.5 text-sm border border-green-300 rounded-lg bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="flex-1 px-3 py-2.5 text-sm border border-green-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   >
-                    <option value="1m">Ultimo mese</option>
-                    <option value="3m">Ultimi 3 mesi</option>
-                    <option value="6m">Ultimi 6 mesi</option>
+                    <option value="1m" className="text-gray-900">Ultimo mese</option>
+                    <option value="3m" className="text-gray-900">Ultimi 3 mesi</option>
+                    <option value="6m" className="text-gray-900">Ultimi 6 mesi</option>
                   </select>
                   <button
                     onClick={loadAllActiveCustomers}
