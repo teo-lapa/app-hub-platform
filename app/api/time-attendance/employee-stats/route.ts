@@ -12,35 +12,83 @@ interface DailyStats {
   last_clock_out?: string;
 }
 
+// Helper robusto per calcolare i bounds di un giorno in timezone Rome
+const getRomeDayBounds = (refDate: Date) => {
+  const TIMEZONE = 'Europe/Rome';
+  const romeStr = refDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+  const [year, month, day] = romeStr.split('-').map(Number);
+
+  // Determina offset per ora legale
+  const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  const romeTime = testDate.toLocaleString('en-US', { timeZone: TIMEZONE, hour: 'numeric', hour12: false });
+  const utcHour = testDate.getUTCHours();
+  const romeHour = parseInt(romeTime);
+  const offsetHours = romeHour - utcHour;
+
+  const midnightUTC = Date.UTC(year, month - 1, day, 0, 0, 0) - (offsetHours * 60 * 60 * 1000);
+  const endOfDayUTC = midnightUTC + (24 * 60 * 60 * 1000) - 1;
+
+  return {
+    start: new Date(midnightUTC),
+    end: new Date(endOfDayUTC),
+    dateStr: romeStr
+  };
+};
+
 // Helper per calcolare ore lavorate da entries
-function calculateHoursFromEntries(entries: Array<{ entry_type: string; timestamp: string }>): number {
+function calculateHoursFromEntries(
+  entries: Array<{ entry_type: string; timestamp: string }>,
+  includeOngoing = false,
+  wasOnDutyAtStart = false,
+  periodStart?: Date
+): number {
   let workingTime = 0;
   let breakTime = 0;
-  let lastClockIn: Date | null = null;
+  let lastClockIn: Date | null = wasOnDutyAtStart && periodStart ? periodStart : null;
   let lastBreakStart: Date | null = null;
+  let isOnBreak = false;
 
   for (const entry of entries) {
     const entryTime = new Date(entry.timestamp);
     switch (entry.entry_type) {
       case 'clock_in':
         lastClockIn = entryTime;
+        isOnBreak = false;
         break;
       case 'clock_out':
         if (lastClockIn) {
           workingTime += entryTime.getTime() - lastClockIn.getTime();
           lastClockIn = null;
         }
+        // Reset anche lastBreakStart perché clock_out chiude tutto
+        lastBreakStart = null;
+        isOnBreak = false;
         break;
       case 'break_start':
         lastBreakStart = entryTime;
+        isOnBreak = true;
         break;
       case 'break_end':
         if (lastBreakStart) {
           breakTime += entryTime.getTime() - lastBreakStart.getTime();
           lastBreakStart = null;
         }
+        isOnBreak = false;
         break;
     }
+  }
+
+  // Se ancora in servizio e includeOngoing è true, aggiungi tempo fino ad ora
+  // IMPORTANTE: aggiungi SEMPRE se lastClockIn esiste, anche durante pausa!
+  // Il tempo in pausa verrà sottratto dal breakTime sotto
+  if (includeOngoing && lastClockIn) {
+    workingTime += Date.now() - lastClockIn.getTime();
+  }
+
+  // Se in pausa, aggiungi il tempo della pausa corrente al breakTime
+  // Questo verrà sottratto dal workingTime nel calcolo finale
+  if (includeOngoing && lastBreakStart) {
+    breakTime += Date.now() - lastBreakStart.getTime();
   }
 
   return Math.max(0, (workingTime - breakTime) / 3600000);
@@ -63,39 +111,55 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Timezone Europe/Rome
     const TIMEZONE = 'Europe/Rome';
     const now = new Date();
 
-    // Calcola offset per ora legale/solare
-    const romeOffset = now.toLocaleString('en-US', { timeZone: TIMEZONE, timeZoneName: 'shortOffset' });
-    const isDST = romeOffset.includes('+02') || romeOffset.includes('+2');
-    const tzOffset = isDST ? '+02:00' : '+01:00';
-
-    // Oggi
-    const todayStr = now.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-    const todayStart = new Date(todayStr + 'T00:00:00' + tzOffset);
-    const todayEnd = new Date(todayStr + 'T23:59:59.999' + tzOffset);
+    // Calcola bounds per oggi
+    const todayBounds = getRomeDayBounds(now);
+    const todayStart = todayBounds.start;
+    const todayEnd = todayBounds.end;
 
     // Ieri
-    const yesterdayDate = new Date(now);
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-    const yesterdayStart = new Date(yesterdayStr + 'T00:00:00' + tzOffset);
-    const yesterdayEnd = new Date(yesterdayStr + 'T23:59:59.999' + tzOffset);
+    const yesterdayDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayBounds = getRomeDayBounds(yesterdayDate);
+    const yesterdayStart = yesterdayBounds.start;
+    const yesterdayEnd = yesterdayBounds.end;
 
     // Inizio settimana (lunedì)
-    const tempDate = new Date(now);
-    const dayOfWeek = tempDate.getDay();
-    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    tempDate.setDate(tempDate.getDate() - diff);
-    const weekStartStr = tempDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-    const weekStart = new Date(weekStartStr + 'T00:00:00' + tzOffset);
+    const romeDayOfWeek = new Date(now.toLocaleDateString('en-CA', { timeZone: TIMEZONE }) + 'T12:00:00Z').getDay();
+    const diff = romeDayOfWeek === 0 ? 6 : romeDayOfWeek - 1;
+    const mondayDate = new Date(now.getTime() - diff * 24 * 60 * 60 * 1000);
+    const weekBounds = getRomeDayBounds(mondayDate);
+    const weekStart = weekBounds.start;
 
     // Inizio mese
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthStartStr = monthStart.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-    const monthStartDate = new Date(monthStartStr + 'T00:00:00' + tzOffset);
+    const romeMonthStr = now.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+    const [romeYear, romeMonth] = romeMonthStr.split('-').map(Number);
+    const firstOfMonth = new Date(Date.UTC(romeYear, romeMonth - 1, 1, 12, 0, 0));
+    const monthBounds = getRomeDayBounds(firstOfMonth);
+    const monthStart = monthBounds.start;
+
+    // Log per debug
+    console.log('[EmployeeStats] Contact:', contactId);
+    console.log('[EmployeeStats] Today:', todayStart.toISOString(), '-', todayEnd.toISOString());
+    console.log('[EmployeeStats] Week start:', weekStart.toISOString());
+    console.log('[EmployeeStats] Month start:', monthStart.toISOString());
+
+    // Controlla se era in servizio prima di oggi
+    const lastEntryBeforeToday = await sql`
+      SELECT entry_type, timestamp
+      FROM ta_time_entries
+      WHERE contact_id = ${parseInt(contactId)}
+        AND timestamp < ${todayStart.toISOString()}
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `;
+    // Era in servizio se l'ultimo entry prima di oggi era clock_in, break_end, o break_start
+    // break_start significa che era in servizio (anche se in pausa)
+    const wasOnDutyBeforeToday = lastEntryBeforeToday.rows.length > 0 &&
+      (lastEntryBeforeToday.rows[0].entry_type === 'clock_in' ||
+       lastEntryBeforeToday.rows[0].entry_type === 'break_end' ||
+       lastEntryBeforeToday.rows[0].entry_type === 'break_start');
 
     // Query per oggi
     const todayResult = await sql`
@@ -117,7 +181,7 @@ export async function GET(request: NextRequest) {
       ORDER BY timestamp ASC
     `;
 
-    // Query per settimana
+    // Query per settimana (include tutto da lunedì)
     const weekResult = await sql`
       SELECT entry_type, timestamp
       FROM ta_time_entries
@@ -132,20 +196,55 @@ export async function GET(request: NextRequest) {
       SELECT entry_type, timestamp
       FROM ta_time_entries
       WHERE contact_id = ${parseInt(contactId)}
-        AND timestamp >= ${monthStartDate.toISOString()}
+        AND timestamp >= ${monthStart.toISOString()}
         AND timestamp <= ${todayEnd.toISOString()}
       ORDER BY timestamp ASC
     `;
 
-    // Query per giorni lavorati nel mese (per calcolo media)
+    // Query per giorni lavorati nel mese
     const daysWorkedResult = await sql`
       SELECT DISTINCT DATE(timestamp AT TIME ZONE 'Europe/Rome') as work_date
       FROM ta_time_entries
       WHERE contact_id = ${parseInt(contactId)}
-        AND timestamp >= ${monthStartDate.toISOString()}
+        AND timestamp >= ${monthStart.toISOString()}
         AND timestamp <= ${todayEnd.toISOString()}
         AND entry_type = 'clock_in'
     `;
+
+    // Query per verificare se era in servizio prima dell'inizio settimana
+    const lastEntryBeforeWeek = await sql`
+      SELECT entry_type
+      FROM ta_time_entries
+      WHERE contact_id = ${parseInt(contactId)}
+        AND timestamp < ${weekStart.toISOString()}
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `;
+    const wasOnDutyBeforeWeek = lastEntryBeforeWeek.rows.length > 0 &&
+      (lastEntryBeforeWeek.rows[0].entry_type === 'clock_in' ||
+       lastEntryBeforeWeek.rows[0].entry_type === 'break_end' ||
+       lastEntryBeforeWeek.rows[0].entry_type === 'break_start');
+
+    // Query per verificare se era in servizio prima dell'inizio mese
+    const lastEntryBeforeMonth = await sql`
+      SELECT entry_type
+      FROM ta_time_entries
+      WHERE contact_id = ${parseInt(contactId)}
+        AND timestamp < ${monthStart.toISOString()}
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `;
+    const wasOnDutyBeforeMonth = lastEntryBeforeMonth.rows.length > 0 &&
+      (lastEntryBeforeMonth.rows[0].entry_type === 'clock_in' ||
+       lastEntryBeforeMonth.rows[0].entry_type === 'break_end' ||
+       lastEntryBeforeMonth.rows[0].entry_type === 'break_start');
+
+    // Log risultati query
+    console.log('[EmployeeStats] Today entries:', todayResult.rows.length);
+    console.log('[EmployeeStats] Yesterday entries:', yesterdayResult.rows.length);
+    console.log('[EmployeeStats] Week entries:', weekResult.rows.length);
+    console.log('[EmployeeStats] Month entries:', monthResult.rows.length);
+    console.log('[EmployeeStats] Was on duty before today:', wasOnDutyBeforeToday);
 
     // Calcola ore
     const todayEntries = todayResult.rows.map(r => ({ entry_type: r.entry_type as string, timestamp: r.timestamp as string }));
@@ -153,15 +252,17 @@ export async function GET(request: NextRequest) {
     const weekEntries = weekResult.rows.map(r => ({ entry_type: r.entry_type as string, timestamp: r.timestamp as string }));
     const monthEntries = monthResult.rows.map(r => ({ entry_type: r.entry_type as string, timestamp: r.timestamp as string }));
 
-    const hoursToday = calculateHoursFromEntries(todayEntries);
-    const hoursYesterday = calculateHoursFromEntries(yesterdayEntries);
-    const hoursWeek = calculateHoursFromEntries(weekEntries);
-    const hoursMonth = calculateHoursFromEntries(monthEntries);
+    // Per oggi, se era in servizio da ieri, inizia da mezzanotte
+    const hoursToday = calculateHoursFromEntries(todayEntries, true, wasOnDutyBeforeToday, todayStart);
+    const hoursYesterday = calculateHoursFromEntries(yesterdayEntries, false);
+    // Per settimana e mese, passa wasOnDutyBefore e il relativo start
+    const hoursWeek = calculateHoursFromEntries(weekEntries, true, wasOnDutyBeforeWeek, weekStart);
+    const hoursMonth = calculateHoursFromEntries(monthEntries, true, wasOnDutyBeforeMonth, monthStart);
 
     const daysWorkedMonth = daysWorkedResult.rows.length;
     const avgHoursPerDay = daysWorkedMonth > 0 ? hoursMonth / daysWorkedMonth : 0;
 
-    // Ottieni info contatto da Odoo (opzionale)
+    // Ottieni info contatto da Odoo
     let contactInfo = null;
     try {
       const odoo = createOdooRPCClient();
@@ -191,25 +292,37 @@ export async function GET(request: NextRequest) {
     // Statistiche giornaliere per la settimana
     const dailyStats: DailyStats[] = [];
     for (let i = 0; i < 7; i++) {
-      const d = new Date(weekStart);
-      d.setDate(d.getDate() + i);
-      if (d > now) break;
+      const dayDate = new Date(mondayDate.getTime() + i * 24 * 60 * 60 * 1000);
+      if (dayDate > now) break;
 
-      const dateStr = d.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-      const dayStartDate = new Date(dateStr + 'T00:00:00' + tzOffset);
-      const dayEndDate = new Date(dateStr + 'T23:59:59.999' + tzOffset);
+      const dayBounds = getRomeDayBounds(dayDate);
+
+      // Controlla se era in servizio prima di questo giorno
+      const lastEntryBeforeDay = await sql`
+        SELECT entry_type
+        FROM ta_time_entries
+        WHERE contact_id = ${parseInt(contactId)}
+          AND timestamp < ${dayBounds.start.toISOString()}
+        ORDER BY timestamp DESC
+        LIMIT 1
+      `;
+      const wasOnDutyBeforeDay = lastEntryBeforeDay.rows.length > 0 &&
+        (lastEntryBeforeDay.rows[0].entry_type === 'clock_in' || lastEntryBeforeDay.rows[0].entry_type === 'break_end');
 
       const dayEntries = weekEntries.filter(e => {
         const t = new Date(e.timestamp);
-        return t >= dayStartDate && t <= dayEndDate;
+        return t >= dayBounds.start && t <= dayBounds.end;
       });
 
-      const hours = calculateHoursFromEntries(dayEntries);
+      // Calcola ore includendo se era in servizio da giorno prima
+      const isToday = dayBounds.dateStr === todayBounds.dateStr;
+      const hours = calculateHoursFromEntries(dayEntries, isToday, wasOnDutyBeforeDay, dayBounds.start);
+
       const clockIns = dayEntries.filter(e => e.entry_type === 'clock_in');
       const clockOuts = dayEntries.filter(e => e.entry_type === 'clock_out');
 
       dailyStats.push({
-        date: dateStr,
+        date: dayBounds.dateStr,
         hours_worked: Math.round(hours * 100) / 100,
         entries_count: dayEntries.length,
         first_clock_in: clockIns[0]?.timestamp,

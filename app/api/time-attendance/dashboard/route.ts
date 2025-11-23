@@ -49,6 +49,8 @@ function calculateHoursFromEntries(
           workingTime += entryTime.getTime() - lastClockIn.getTime();
           lastClockIn = null;
         }
+        // Reset anche lastBreakStart perché clock_out chiude tutto
+        lastBreakStart = null;
         isOnBreak = false;
         break;
       case 'break_start':
@@ -66,11 +68,14 @@ function calculateHoursFromEntries(
   }
 
   // Se ancora in servizio e includeOngoing è true, aggiungi tempo fino ad ora
-  if (includeOngoing && lastClockIn && !isOnBreak) {
+  // IMPORTANTE: aggiungi SEMPRE se lastClockIn esiste, anche durante pausa!
+  // Il tempo in pausa verrà sottratto dal breakTime sotto
+  if (includeOngoing && lastClockIn) {
     workingTime += Date.now() - lastClockIn.getTime();
   }
 
-  // Se in pausa, aggiungi il tempo della pausa corrente
+  // Se in pausa, aggiungi il tempo della pausa corrente al breakTime
+  // Questo verrà sottratto dal workingTime nel calcolo finale
   if (includeOngoing && lastBreakStart) {
     breakTime += Date.now() - lastBreakStart.getTime();
   }
@@ -187,8 +192,9 @@ export async function GET(request: NextRequest) {
     // Mappa: contact_id -> true se era in servizio prima di oggi
     const wasOnDutyBeforeToday = new Map<number, boolean>();
     for (const entry of lastEntryBeforeTodayResult.rows) {
-      // Era in servizio se l'ultimo entry prima di oggi era clock_in o break_end
-      const wasOnDuty = entry.entry_type === 'clock_in' || entry.entry_type === 'break_end';
+      // Era in servizio se l'ultimo entry prima di oggi era clock_in, break_end, o break_start
+      // break_start significa che era in servizio (anche se in pausa)
+      const wasOnDuty = entry.entry_type === 'clock_in' || entry.entry_type === 'break_end' || entry.entry_type === 'break_start';
       wasOnDutyBeforeToday.set(entry.contact_id, wasOnDuty);
     }
 
