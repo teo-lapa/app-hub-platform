@@ -6,7 +6,7 @@ import {
   Clock, MapPin, User, Calendar, LogIn, LogOut, Coffee, Play,
   CheckCircle, AlertCircle, QrCode, Users, X, Camera, Navigation,
   Building2, Briefcase, Phone, Mail, Shield, FileText, Home, Loader2, Settings,
-  UtensilsCrossed, AlertTriangle, Timer, TrendingUp, RefreshCw,
+  UtensilsCrossed, AlertTriangle, Timer, TrendingUp, RefreshCw, Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -164,6 +164,12 @@ export default function TimeAttendancePage() {
     data_processing: false,
     privacy_policy: false,
   });
+
+  // History state for employees
+  const [historyDate, setHistoryDate] = useState(new Date().toISOString().split('T')[0]);
+  const [historyEntries, setHistoryEntries] = useState<TimeEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyStats, setHistoryStats] = useState<{ total_hours: number; break_minutes: number } | null>(null);
 
   // Ref to prevent duplicate API calls
   const hasLoadedContactRef = useRef(false);
@@ -365,6 +371,67 @@ export default function TimeAttendancePage() {
     }
     return undefined;
   }, [contact?.is_company, contact?.id, loadCompanyDashboard]);
+
+  // Load employee history for selected date
+  const loadEmployeeHistory = useCallback(async (contactId: number, date: string) => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch(`/api/time-attendance/export?contact_id=${contactId}&company_id=${company?.id || 0}&start_date=${date}&end_date=${date}&format=json`);
+      const data = await res.json();
+      if (data.success && data.data.reports.length > 0) {
+        const report = data.data.reports[0];
+        setHistoryEntries(report.entries || []);
+        setHistoryStats({
+          total_hours: report.total_hours || 0,
+          break_minutes: report.break_minutes || 0,
+        });
+      } else {
+        setHistoryEntries([]);
+        setHistoryStats(null);
+      }
+    } catch (error) {
+      console.error('Error loading history:', error);
+      setHistoryEntries([]);
+      setHistoryStats(null);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [company?.id]);
+
+  // Load history when view changes or date changes
+  useEffect(() => {
+    if (view === 'history' && contact && !contact.is_company) {
+      loadEmployeeHistory(contact.id, historyDate);
+    }
+  }, [view, contact, historyDate, loadEmployeeHistory]);
+
+  // Download employee history
+  const downloadEmployeeHistory = async (format: 'csv' | 'excel') => {
+    if (!contact) return;
+    toast.loading('Generazione report...');
+    try {
+      const url = `/api/time-attendance/export?contact_id=${contact.id}&company_id=${company?.id || 0}&start_date=${historyDate}&end_date=${historyDate}&format=${format}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const blob = await res.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `presenze_${contact.name.replace(/\s+/g, '_')}_${historyDate}.${format === 'excel' ? 'xls' : 'csv'}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        toast.dismiss();
+        toast.success('Download completato!');
+      } else {
+        toast.dismiss();
+        toast.error('Errore download');
+      }
+    } catch {
+      toast.dismiss();
+      toast.error('Errore download');
+    }
+  };
 
   const checkConsents = async (contactId: number) => {
     try {
@@ -1086,15 +1153,65 @@ export default function TimeAttendancePage() {
         {/* History View - Solo per dipendenti */}
         {!contact?.is_company && view === 'history' && (
           <div className="py-6 max-w-lg mx-auto">
-            <h2 className="text-2xl font-bold text-white mb-6">Storico Oggi</h2>
-            {(!clockStatus?.entries_today || clockStatus.entries_today.length === 0) ? (
+            {/* Header con data picker */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+              <h2 className="text-2xl font-bold text-white">Il Mio Storico</h2>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={historyDate}
+                  onChange={(e) => setHistoryDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="px-4 py-2 bg-white/10 text-white rounded-xl border border-white/20 focus:border-white/40 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Stats Summary */}
+            {historyStats && (
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="p-4 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 text-center">
+                  <div className="text-cyan-300 text-xs mb-1">Ore Lavorate</div>
+                  <div className="text-2xl font-bold text-white">{historyStats.total_hours.toFixed(1)}h</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-center">
+                  <div className="text-amber-300 text-xs mb-1">Pause</div>
+                  <div className="text-2xl font-bold text-white">{historyStats.break_minutes}min</div>
+                </div>
+              </div>
+            )}
+
+            {/* Download Buttons */}
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => downloadEmployeeHistory('csv')}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
+              >
+                <Download className="w-4 h-4" />
+                <span className="text-sm">CSV</span>
+              </button>
+              <button
+                onClick={() => downloadEmployeeHistory('excel')}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
+              >
+                <Download className="w-4 h-4" />
+                <span className="text-sm">Excel</span>
+              </button>
+            </div>
+
+            {/* Entries List */}
+            {loadingHistory ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 text-white animate-spin" />
+              </div>
+            ) : historyEntries.length === 0 ? (
               <div className="text-center py-12 text-white/50">
                 <Clock className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p>Nessuna timbratura oggi</p>
+                <p>Nessuna timbratura per {new Date(historyDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {clockStatus.entries_today.map((entry: TimeEntry & { break_type?: string }, i) => (
+                {historyEntries.map((entry: TimeEntry & { break_type?: string }, i) => (
                   <motion.div key={i} initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: i * 0.05 }}
                     className="flex items-center gap-4 p-4 bg-white/10 backdrop-blur rounded-2xl border border-white/10">
@@ -1120,7 +1237,7 @@ export default function TimeAttendancePage() {
                       </div>
                       <div className="text-sm text-white/60">
                         {new Date(entry.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
-                        {entry.location_name && <span className="ml-2 text-blue-400"> {entry.location_name}</span>}
+                        {entry.location_name && <span className="ml-2 text-blue-400">@ {entry.location_name}</span>}
                       </div>
                     </div>
                     <CheckCircle className="w-5 h-5 text-green-400" />

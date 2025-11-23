@@ -78,24 +78,47 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Usa timezone Europe/Rome per calcoli corretti
+    const TIMEZONE = 'Europe/Rome';
+
+    // Helper per ottenere data locale corretta
+    const getLocalDateBounds = (date: Date) => {
+      // Ottieni la data in formato Europe/Rome
+      const localDateStr = date.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+      // Crea date start/end per quel giorno in UTC che corrispondono a mezzanotte Rome
+      const dayStart = new Date(localDateStr + 'T00:00:00');
+      const dayEnd = new Date(localDateStr + 'T23:59:59.999');
+      // Correggi per offset Rome (UTC+1 o UTC+2)
+      const offsetMs = dayStart.getTimezoneOffset() * 60 * 1000;
+      // Per l'Italia, mezzanotte locale è 23:00 UTC (inverno) o 22:00 UTC (estate)
+      return {
+        start: new Date(dayStart.getTime() - offsetMs + (1 * 60 * 60 * 1000)), // +1 per CET base
+        end: new Date(dayEnd.getTime() - offsetMs + (1 * 60 * 60 * 1000))
+      };
+    };
+
     // Data di riferimento
-    const targetDate = dateStr ? new Date(dateStr) : new Date();
-    const dayStart = new Date(targetDate);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(targetDate);
-    dayEnd.setHours(23, 59, 59, 999);
+    const targetDate = dateStr ? new Date(dateStr + 'T12:00:00') : new Date();
+
+    // Calcola bounds per oggi
+    const todayStr = targetDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+    const dayStart = new Date(todayStr + 'T00:00:00+01:00'); // CET
+    const dayEnd = new Date(todayStr + 'T23:59:59.999+01:00');
 
     // Ieri
-    const yesterdayStart = new Date(dayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const yesterdayEnd = new Date(dayEnd);
-    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+    const yesterdayDate = new Date(targetDate);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+    const yesterdayStart = new Date(yesterdayStr + 'T00:00:00+01:00');
+    const yesterdayEnd = new Date(yesterdayStr + 'T23:59:59.999+01:00');
 
     // Inizio settimana (lunedì)
-    const weekStart = new Date(dayStart);
-    const dayOfWeek = weekStart.getDay();
+    const tempDate = new Date(targetDate);
+    const dayOfWeek = tempDate.getDay();
     const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Lunedì = 0
-    weekStart.setDate(weekStart.getDate() - diff);
+    tempDate.setDate(tempDate.getDate() - diff);
+    const weekStartStr = tempDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+    const weekStart = new Date(weekStartStr + 'T00:00:00+01:00');
 
     // Ottieni lista dipendenti da Odoo
     const odoo = createOdooRPCClient();

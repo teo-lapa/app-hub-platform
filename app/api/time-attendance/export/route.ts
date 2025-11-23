@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
-import { getOdooClient } from '@/lib/odoo-client';
+import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 
 interface TimeEntry {
   id: string;
@@ -14,6 +14,7 @@ interface TimeEntry {
   location_name?: string;
   break_type?: 'coffee_break' | 'lunch_break';
   break_max_minutes?: number;
+  contact_name?: string; // Nome salvato localmente
 }
 
 interface BreakDetail {
@@ -73,12 +74,31 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Usa timezone Europe/Rome per calcoli corretti
+    const TIMEZONE = 'Europe/Rome';
+
+    // Helper per ottenere ora locale in timezone specifico
+    const getLocalDate = (dateStr?: string | null) => {
+      const now = dateStr ? new Date(dateStr + 'T12:00:00') : new Date();
+      // Converti a Europe/Rome
+      const localDateStr = now.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+      return new Date(localDateStr + 'T00:00:00');
+    };
+
     // Date di default: ultimo mese
-    const endDate = endDateStr ? new Date(endDateStr) : new Date();
+    const endDate = getLocalDate(endDateStr);
     const startDate = startDateStr
-      ? new Date(startDateStr)
+      ? getLocalDate(startDateStr)
       : new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+    // Imposta inizio e fine giornata in timezone Europe/Rome
+    // Per ottenere l'equivalente UTC di mezzanotte Rome, usiamo l'offset
+    const startRome = new Date(startDate.toLocaleString('en-US', { timeZone: TIMEZONE }));
+    startRome.setHours(0, 0, 0, 0);
+    const endRome = new Date(endDate.toLocaleString('en-US', { timeZone: TIMEZONE }));
+    endRome.setHours(23, 59, 59, 999);
+
+    // Per le query usiamo direttamente le date Rome-relative
     startDate.setHours(0, 0, 0, 0);
     endDate.setHours(23, 59, 59, 999);
 
@@ -101,7 +121,8 @@ export async function GET(request: NextRequest) {
             qr_code_verified,
             location_name,
             break_type,
-            break_max_minutes
+            break_max_minutes,
+            contact_name
           FROM ta_time_entries
           WHERE contact_id = ${parseInt(contactId)}
             AND timestamp >= ${startDate.toISOString()}
@@ -121,7 +142,8 @@ export async function GET(request: NextRequest) {
             qr_code_verified,
             location_name,
             break_type,
-            break_max_minutes
+            break_max_minutes,
+            contact_name
           FROM ta_time_entries
           WHERE company_id = ${parseInt(companyId)}
             AND timestamp >= ${startDate.toISOString()}
@@ -142,6 +164,7 @@ export async function GET(request: NextRequest) {
         location_name: row.location_name,
         break_type: row.break_type,
         break_max_minutes: row.break_max_minutes,
+        contact_name: row.contact_name,
       }));
     } catch (dbError) {
       console.warn('Database non disponibile:', dbError);
@@ -157,20 +180,20 @@ export async function GET(request: NextRequest) {
     if (contactIds.length > 0) {
       console.log(`[Export] Fetching ${contactIds.length} contacts from Odoo:`, contactIds);
       try {
-        const odoo = await getOdooClient();
+        const odoo = createOdooRPCClient();
         // Prendi nome e parent_id (azienda) per ogni contatto
         const contacts = await odoo.searchRead(
           'res.partner',
           [['id', 'in', contactIds]],
           ['id', 'name', 'parent_id'],
           100
-        );
+        ) as Array<{ id: number; name: string; parent_id: [number, string] | false }>;
 
-        console.log(`[Export] Odoo returned ${(contacts as unknown[]).length} contacts`);
+        console.log(`[Export] Odoo returned ${contacts.length} contacts`);
 
         // Raccogli gli ID delle aziende parent
         const parentIds: number[] = [];
-        for (const c of contacts as Array<{ id: number; name: string; parent_id: [number, string] | false }>) {
+        for (const c of contacts) {
           if (c.parent_id && Array.isArray(c.parent_id)) {
             parentIds.push(c.parent_id[0]);
           }
@@ -184,14 +207,14 @@ export async function GET(request: NextRequest) {
             [['id', 'in', parentIds]],
             ['id', 'name'],
             100
-          );
-          for (const p of parents as Array<{ id: number; name: string }>) {
+          ) as Array<{ id: number; name: string }>;
+          for (const p of parents) {
             parentNames.set(p.id, p.name);
           }
         }
 
         // Costruisci la mappa completa
-        for (const c of contacts as Array<{ id: number; name: string; parent_id: [number, string] | false }>) {
+        for (const c of contacts) {
           let companyName = '-';
           if (c.parent_id && Array.isArray(c.parent_id)) {
             // parent_id è già [id, name], ma prendiamo dalla query per sicurezza
