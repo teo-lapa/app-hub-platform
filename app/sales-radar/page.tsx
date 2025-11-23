@@ -1655,7 +1655,7 @@ export default function SalesRadarPage() {
                             className="mt-2 w-full px-3 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 active:scale-95"
                           >
                             <RefreshCw className="h-4 w-4" />
-                            Aggiungi Nota
+                            Riattiva Lead
                           </button>
                           <button
                             onClick={() => setShowAiModal(true)}
