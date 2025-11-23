@@ -76,6 +76,9 @@ function parseCoordinatesFromDescription(description: string | false): { latitud
 interface MapMarker {
   id: number;
   type: 'customer' | 'lead';
+  locationType?: 'company' | 'delivery'; // 'company' = sede legale, 'delivery' = indirizzo consegna
+  parentId?: number; // ID azienda madre (per indirizzi di consegna)
+  parentName?: string; // Nome azienda madre (per indirizzi di consegna)
   name: string;
   address: string;
   phone?: string;
@@ -272,6 +275,7 @@ export async function GET(request: NextRequest) {
           markers.push({
             id: customer.id,
             type: 'customer',
+            locationType: 'company',
             name: customer.display_name || customer.name,
             address,
             phone: customer.phone || customer.mobile || undefined,
@@ -288,7 +292,97 @@ export async function GET(request: NextRequest) {
           });
         }
 
-        console.log(`[LOAD-FROM-ODOO] ✅ Totale clienti attivi: ${markers.length}`);
+        console.log(`[LOAD-FROM-ODOO] ✅ Totale clienti attivi (sedi): ${markers.length}`);
+
+        // === CARICA INDIRIZZI DI CONSEGNA per i clienti attivi ===
+        const activeCustomerIds = markers.map(m => m.id);
+        if (activeCustomerIds.length > 0) {
+          try {
+            const deliveryAddresses = await client.searchRead(
+              'res.partner',
+              [
+                ['parent_id', 'in', activeCustomerIds],
+                ['type', '=', 'delivery'],
+                ['partner_latitude', '!=', false],
+                ['partner_latitude', '!=', 0],
+                ['partner_longitude', '!=', false],
+                ['partner_longitude', '!=', 0]
+              ],
+              [
+                'id', 'name', 'display_name', 'phone', 'mobile',
+                'street', 'street2', 'zip', 'city',
+                'partner_latitude', 'partner_longitude',
+                'parent_id'
+              ],
+              0,
+              'name asc'
+            );
+
+            console.log(`[LOAD-FROM-ODOO] Trovati ${deliveryAddresses.length} indirizzi di consegna`);
+
+            // Crea una mappa dei clienti per accesso rapido
+            const customerMap = new Map(customers.map((c: any) => [c.id, c]));
+
+            for (const delivery of deliveryAddresses) {
+              const parentId = delivery.parent_id ? delivery.parent_id[0] : null;
+              const parentName = delivery.parent_id ? delivery.parent_id[1] : null;
+              if (!parentId) continue;
+
+              const parentCustomer = customerMap.get(parentId);
+              if (!parentCustomer) continue;
+
+              const parentSalesData = salesDataMap[parentId];
+              if (!parentSalesData) continue; // Il parent non è attivo
+
+              const deliveryLat = delivery.partner_latitude;
+              const deliveryLng = delivery.partner_longitude;
+              const parentLat = parentCustomer.partner_latitude;
+              const parentLng = parentCustomer.partner_longitude;
+
+              // Calcola distanza tra sede e indirizzo di consegna
+              const distanceFromParent = calculateDistance(parentLat, parentLng, deliveryLat, deliveryLng);
+
+              // Se la distanza è > 50m, aggiungi come marker separato
+              if (distanceFromParent > 50) {
+                const addressParts = [
+                  delivery.street,
+                  delivery.street2,
+                  delivery.zip,
+                  delivery.city
+                ].filter(Boolean);
+                const address = addressParts.join(', ');
+
+                const parentTags = parentCustomer.category_id ?
+                  (Array.isArray(parentCustomer.category_id) ? parentCustomer.category_id.map((t: any) => t[1] || t) : []) : [];
+
+                markers.push({
+                  id: delivery.id,
+                  type: 'customer',
+                  locationType: 'delivery',
+                  parentId: parentId,
+                  parentName: parentName,
+                  name: delivery.display_name || delivery.name || `Consegna - ${parentName}`,
+                  address,
+                  phone: delivery.phone || delivery.mobile || parentCustomer.phone || parentCustomer.mobile || undefined,
+                  website: parentCustomer.website || undefined,
+                  latitude: deliveryLat,
+                  longitude: deliveryLng,
+                  color: 'green',
+                  sales_data: {
+                    invoiced_3_months: Math.round(parentSalesData.invoiced * 100) / 100,
+                    order_count_3_months: parentSalesData.orderCount,
+                    last_order_date: parentSalesData.lastOrderDate || undefined
+                  },
+                  tags: parentTags.length > 0 ? parentTags : undefined
+                });
+              }
+            }
+
+            console.log(`[LOAD-FROM-ODOO] ✅ Totale marker (sedi + consegne): ${markers.length}`);
+          } catch (deliveryError) {
+            console.error('[LOAD-FROM-ODOO] Errore caricamento indirizzi consegna:', deliveryError);
+          }
+        }
 
       } catch (error) {
         console.error('[LOAD-FROM-ODOO] Errore caricamento clienti attivi:', error);
@@ -462,6 +556,7 @@ export async function GET(request: NextRequest) {
           markers.push({
             id: customer.id,
             type: 'customer',
+            locationType: 'company',
             name: customer.display_name || customer.name,
             address,
             phone: customer.phone || customer.mobile || undefined,
@@ -477,6 +572,119 @@ export async function GET(request: NextRequest) {
             tags: tags.length > 0 ? tags : undefined,
             distance: Math.round(distance)
           });
+        }
+
+        // === CARICA INDIRIZZI DI CONSEGNA per i clienti nel raggio ===
+        if (customerIds.length > 0) {
+          try {
+            const deliveryAddresses = await client.searchRead(
+              'res.partner',
+              [
+                ['parent_id', 'in', customerIds],
+                ['type', '=', 'delivery'],
+                ['partner_latitude', '!=', false],
+                ['partner_latitude', '!=', 0],
+                ['partner_longitude', '!=', false],
+                ['partner_longitude', '!=', 0]
+              ],
+              [
+                'id', 'name', 'display_name', 'phone', 'mobile',
+                'street', 'street2', 'zip', 'city',
+                'partner_latitude', 'partner_longitude',
+                'parent_id'
+              ],
+              0,
+              'name asc'
+            );
+
+            console.log(`[LOAD-FROM-ODOO] Trovati ${deliveryAddresses.length} indirizzi di consegna`);
+
+            // Crea una mappa dei clienti per accesso rapido
+            const customerMap = new Map(customersInRadius.map((c: any) => [c.id, c]));
+
+            for (const delivery of deliveryAddresses) {
+              const parentId = delivery.parent_id ? delivery.parent_id[0] : null;
+              const parentName = delivery.parent_id ? delivery.parent_id[1] : null;
+              if (!parentId) continue;
+
+              const parentCustomer = customerMap.get(parentId);
+              if (!parentCustomer) continue;
+
+              const deliveryLat = delivery.partner_latitude;
+              const deliveryLng = delivery.partner_longitude;
+              const parentLat = parentCustomer.partner_latitude;
+              const parentLng = parentCustomer.partner_longitude;
+
+              // Calcola distanza tra sede e indirizzo di consegna
+              const distanceFromParent = calculateDistance(parentLat, parentLng, deliveryLat, deliveryLng);
+
+              // Se la distanza è > 50m, aggiungi come marker separato
+              if (distanceFromParent > 50) {
+                // Calcola distanza dalla posizione utente
+                const distanceFromUser = calculateDistance(latitude, longitude, deliveryLat, deliveryLng);
+
+                // Includi solo se nel raggio
+                if (distanceFromUser > radius) continue;
+
+                const addressParts = [
+                  delivery.street,
+                  delivery.street2,
+                  delivery.zip,
+                  delivery.city
+                ].filter(Boolean);
+                const address = addressParts.join(', ');
+
+                const parentTags = parentCustomer.category_id ?
+                  (Array.isArray(parentCustomer.category_id) ? parentCustomer.category_id.map((t: any) => t[1] || t) : []) : [];
+                const isNotTarget = parentTags.some((tag: string) =>
+                  typeof tag === 'string' && NOT_TARGET_TAGS.some(notTag =>
+                    tag.toLowerCase().includes(notTag.toLowerCase())
+                  )
+                );
+
+                const parentSalesData = salesDataMap[parentId];
+                const hasOrders = parentSalesData && (parentSalesData.invoiced > 0 || parentSalesData.orderCount > 0);
+
+                let color: 'green' | 'orange' | 'grey' = 'orange';
+                if (isNotTarget) {
+                  color = 'grey';
+                } else if (hasOrders) {
+                  color = 'green';
+                }
+
+                // Applica filtro
+                if (filter === 'customers' && color !== 'green') continue;
+                if (filter === 'active_6m' && color !== 'green') continue;
+                if (filter === 'not_target' && color !== 'grey') continue;
+
+                markers.push({
+                  id: delivery.id,
+                  type: 'customer',
+                  locationType: 'delivery',
+                  parentId: parentId,
+                  parentName: parentName,
+                  name: delivery.display_name || delivery.name || `Consegna - ${parentName}`,
+                  address,
+                  phone: delivery.phone || delivery.mobile || parentCustomer.phone || parentCustomer.mobile || undefined,
+                  website: parentCustomer.website || undefined,
+                  latitude: deliveryLat,
+                  longitude: deliveryLng,
+                  color,
+                  sales_data: hasOrders ? {
+                    invoiced_3_months: Math.round(parentSalesData.invoiced * 100) / 100,
+                    order_count_3_months: parentSalesData.orderCount,
+                    last_order_date: parentSalesData.lastOrderDate || undefined
+                  } : undefined,
+                  tags: parentTags.length > 0 ? parentTags : undefined,
+                  distance: Math.round(distanceFromUser)
+                });
+              }
+            }
+
+            console.log(`[LOAD-FROM-ODOO] ✅ Totale marker clienti (sedi + consegne): ${markers.filter(m => m.type === 'customer').length}`);
+          } catch (deliveryError) {
+            console.error('[LOAD-FROM-ODOO] Errore caricamento indirizzi consegna:', deliveryError);
+          }
         }
       } catch (error) {
         console.error('[LOAD-FROM-ODOO] Errore caricamento clienti:', error);

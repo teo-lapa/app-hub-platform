@@ -121,6 +121,9 @@ interface EnrichedPlace extends PlaceData {
   sales_data?: SalesData;
   id?: number;
   type?: 'customer' | 'lead'; // From Odoo load - indicates if it's res.partner or crm.lead
+  locationType?: 'company' | 'delivery'; // 'company' = sede legale, 'delivery' = indirizzo consegna
+  parentId?: number; // ID azienda madre (per indirizzi di consegna)
+  parentName?: string; // Nome azienda madre (per indirizzi di consegna)
 }
 
 const containerStyle = {
@@ -1371,12 +1374,15 @@ export default function SalesRadarPage() {
                 }}
                 onClick={() => setSelectedPlace(place)}
                 icon={{
-                  path: google.maps.SymbolPath.CIRCLE,
-                  scale: 10,
+                  path: place.locationType === 'delivery'
+                    ? 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' // Pin icon for delivery
+                    : google.maps.SymbolPath.CIRCLE,
+                  scale: place.locationType === 'delivery' ? 1.5 : 10,
                   fillColor: getMarkerColor(place),
                   fillOpacity: getMarkerOpacity(place),
-                  strokeColor: '#FFFFFF',
-                  strokeWeight: 2,
+                  strokeColor: place.locationType === 'delivery' ? '#059669' : '#FFFFFF', // Verde scuro per consegna
+                  strokeWeight: place.locationType === 'delivery' ? 1 : 2,
+                  anchor: place.locationType === 'delivery' ? new google.maps.Point(12, 22) : undefined,
                 }}
               />
             ))}
@@ -1391,9 +1397,37 @@ export default function SalesRadarPage() {
                 onCloseClick={() => setSelectedPlace(null)}
               >
                 <div className="max-w-[280px] sm:max-w-xs p-2">
-                  <h3 className="mb-2 text-base sm:text-lg font-bold text-gray-900 leading-tight">
+                  <h3 className="mb-1 text-base sm:text-lg font-bold text-gray-900 leading-tight">
                     {selectedPlace.name}
                   </h3>
+
+                  {/* Location type indicator (sede vs consegna) */}
+                  {selectedPlace.locationType && (
+                    <div className={`mb-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                      selectedPlace.locationType === 'delivery'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {selectedPlace.locationType === 'delivery' ? (
+                        <>
+                          <span>🚚</span>
+                          <span>Indirizzo Consegna</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>🏢</span>
+                          <span>Sede Legale</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Parent company link for delivery addresses */}
+                  {selectedPlace.locationType === 'delivery' && selectedPlace.parentName && (
+                    <div className="mb-2 text-xs text-gray-600">
+                      Azienda: <span className="font-medium text-gray-800">{selectedPlace.parentName}</span>
+                    </div>
+                  )}
 
                   {/* Sales data for customers (from static mode or live mode) */}
                   {(selectedPlace.existsInOdoo || selectedPlace.sales_data || selectedPlace.color === 'green') && (selectedPlace.sales_data || selectedPlace.salesData) && (
@@ -1572,13 +1606,17 @@ export default function SalesRadarPage() {
                       )}
 
                       <a
-                        href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.odooCustomer?.id || selectedPlace.id}&model=res.partner&view_type=form`}
+                        href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${
+                          selectedPlace.locationType === 'delivery' && selectedPlace.parentId
+                            ? selectedPlace.parentId
+                            : (selectedPlace.odooCustomer?.id || selectedPlace.id)
+                        }&model=res.partner&view_type=form`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-green-700 active:scale-95"
                       >
                         <ExternalLink className="h-4 w-4" />
-                        Apri in Odoo
+                        {selectedPlace.locationType === 'delivery' ? 'Apri Azienda in Odoo' : 'Apri in Odoo'}
                       </a>
                     </div>
                   ) : (selectedPlace.isLead || selectedPlace.type === 'lead') ? (
