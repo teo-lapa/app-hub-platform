@@ -576,6 +576,31 @@ export async function GET(request: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const doc = new jsPDF();
 
+      // Header
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Report Presenze', 14, 20);
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text(`Periodo: ${startDate.toLocaleDateString('it-IT')} - ${endDate.toLocaleDateString('it-IT')}`, 14, 28);
+
+      // Se non ci sono dati, mostra messaggio
+      if (reports.length === 0) {
+        doc.setFontSize(12);
+        doc.setTextColor(150);
+        doc.text('Nessuna presenza registrata nel periodo selezionato.', 14, 50);
+
+        const pdfOutput = doc.output('arraybuffer');
+        return new NextResponse(pdfOutput, {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="presenze_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.pdf"`,
+          },
+        });
+      }
+
       // Calcola riepilogo per dipendente
       const byContact = new Map<number, { id: number; name: string; company: string; days: number; hours: number; coffeeMin: number; lunchMin: number }>();
       for (const report of reports) {
@@ -594,16 +619,6 @@ export async function GET(request: NextRequest) {
       const totalHours = reports.reduce((sum, r) => sum + r.total_hours, 0);
       const totalDays = new Set(reports.map(r => r.date)).size;
 
-      // Header
-      doc.setFontSize(20);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Report Presenze', 14, 20);
-
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100);
-      doc.text(`Periodo: ${startDate.toLocaleDateString('it-IT')} - ${endDate.toLocaleDateString('it-IT')}`, 14, 28);
-
       // Statistiche
       doc.setFontSize(10);
       doc.setTextColor(0);
@@ -620,7 +635,7 @@ export async function GET(request: NextRequest) {
           data.name,
           data.days,
           data.hours.toFixed(2),
-          (data.hours / data.days).toFixed(2),
+          data.days > 0 ? (data.hours / data.days).toFixed(2) : '0.00',
         ]);
       }
 
@@ -635,7 +650,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Dettaglio Presenze
-      const startYDetail = doc.lastAutoTable.finalY + 15;
+      const startYDetail = (doc.lastAutoTable?.finalY || 70) + 15;
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('Dettaglio Presenze', 14, startYDetail);
