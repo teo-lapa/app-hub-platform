@@ -47,6 +47,34 @@ export async function POST(request: NextRequest) {
 
     const client = createOdooRPCClient(sessionId);
 
+    // Get user email from JWT token to find author_id
+    let authorId: number | undefined;
+    const token = request.cookies.get('token')?.value;
+    if (token) {
+      try {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+          const userEmail = payload.email;
+          if (userEmail) {
+            // Find partner by email to use as author
+            const partners = await client.searchRead(
+              'res.partner',
+              [['email', '=', userEmail]],
+              ['id'],
+              1
+            );
+            if (partners.length > 0) {
+              authorId = partners[0].id;
+              console.log(`[VOICE-NOTE] Found author partner ID: ${authorId} for email: ${userEmail}`);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[VOICE-NOTE] Could not extract author from token:', e);
+      }
+    }
+
     // Check content type to determine how to parse
     const contentType = request.headers.get('content-type') || '';
 
@@ -100,9 +128,9 @@ export async function POST(request: NextRequest) {
       // Post to chatter instead of description/comment
       let messageId: number;
       if (leadType === 'lead') {
-        messageId = await postToLeadChatter(client, leadId, textNote.trim(), 'written');
+        messageId = await postToLeadChatter(client, leadId, textNote.trim(), 'written', authorId);
       } else {
-        messageId = await postToPartnerChatter(client, leadId, textNote.trim(), 'written');
+        messageId = await postToPartnerChatter(client, leadId, textNote.trim(), 'written', authorId);
       }
 
       console.log(`[VOICE-NOTE] Written note posted to chatter, message ID: ${messageId}`);
@@ -165,9 +193,9 @@ export async function POST(request: NextRequest) {
     // 4. Save transcription to Odoo chatter
     let messageId: number;
     if (leadType === 'lead') {
-      messageId = await postToLeadChatter(client, leadId, transcriptionText, 'voice');
+      messageId = await postToLeadChatter(client, leadId, transcriptionText, 'voice', authorId);
     } else {
-      messageId = await postToPartnerChatter(client, leadId, transcriptionText, 'voice');
+      messageId = await postToPartnerChatter(client, leadId, transcriptionText, 'voice', authorId);
     }
 
     console.log(`[VOICE-NOTE] Transcription posted to ${leadType} chatter, message ID: ${messageId}`);
@@ -211,6 +239,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * Generate HTML formatted feedback note for chatter
+ * Usa formato semplice compatibile con Odoo mail
  */
 function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): string {
   const emoji = noteType === 'voice' ? '🎤' : '✏️';
@@ -223,34 +252,13 @@ function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): 
     minute: '2-digit'
   });
 
-  return `
-<table style="width:100%; border-collapse:collapse; border:1px solid #e5e7eb; border-radius:8px; margin:8px 0;">
-  <tr style="background-color:#3b82f6;">
-    <td colspan="2" style="padding:12px; color:white; font-weight:bold; font-size:14px;">
-      📍 FEEDBACK SALES RADAR
-    </td>
-  </tr>
-  <tr style="background-color:#f3f4f6;">
-    <td style="padding:8px 12px; font-weight:600; width:100px; border-bottom:1px solid #e5e7eb;">Tipo:</td>
-    <td style="padding:8px 12px; border-bottom:1px solid #e5e7eb;">${emoji} ${typeLabel}</td>
-  </tr>
-  <tr style="background-color:#ffffff;">
-    <td style="padding:8px 12px; font-weight:600; border-bottom:1px solid #e5e7eb;">Data:</td>
-    <td style="padding:8px 12px; border-bottom:1px solid #e5e7eb;">${timestamp}</td>
-  </tr>
-  <tr style="background-color:#f3f4f6;">
-    <td style="padding:8px 12px; font-weight:600; border-bottom:1px solid #e5e7eb;">Fonte:</td>
-    <td style="padding:8px 12px; border-bottom:1px solid #e5e7eb;">Sales Radar App</td>
-  </tr>
-  <tr style="background-color:#ffffff;">
-    <td colspan="2" style="padding:12px;">
-      <div style="font-weight:600; margin-bottom:8px;">Nota:</div>
-      <div style="background-color:#f9fafb; padding:12px; border-radius:6px; border-left:4px solid #3b82f6;">
-        ${noteText.replace(/\n/g, '<br/>')}
-      </div>
-    </td>
-  </tr>
-</table>`;
+  // Formato semplice compatibile con Odoo (no tabelle complesse)
+  return `<p><strong>📍 FEEDBACK SALES RADAR</strong></p>
+<p><strong>Tipo:</strong> ${emoji} ${typeLabel}</p>
+<p><strong>Data:</strong> ${timestamp}</p>
+<p><strong>Fonte:</strong> Sales Radar App</p>
+<p><strong>Nota:</strong></p>
+<blockquote>${noteText.replace(/\n/g, '<br/>')}</blockquote>`;
 }
 
 /**
@@ -260,7 +268,8 @@ async function postToLeadChatter(
   client: ReturnType<typeof createOdooRPCClient>,
   leadId: number,
   noteText: string,
-  noteType: 'voice' | 'written'
+  noteType: 'voice' | 'written',
+  authorId?: number
 ): Promise<number> {
   // Verify lead exists
   const leads = await client.searchRead(
@@ -278,11 +287,18 @@ async function postToLeadChatter(
   const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
   // Create message in chatter using message_post
-  const messageId = await client.callKw('crm.lead', 'message_post', [[leadId]], {
+  // Pass author_id to show the correct user as author
+  const messageParams: Record<string, any> = {
     body: feedbackHtml,
     message_type: 'comment',
     subtype_xmlid: 'mail.mt_note',
-  });
+  };
+
+  if (authorId) {
+    messageParams.author_id = authorId;
+  }
+
+  const messageId = await client.callKw('crm.lead', 'message_post', [[leadId]], messageParams);
 
   return messageId;
 }
@@ -294,7 +310,8 @@ async function postToPartnerChatter(
   client: ReturnType<typeof createOdooRPCClient>,
   partnerId: number,
   noteText: string,
-  noteType: 'voice' | 'written'
+  noteType: 'voice' | 'written',
+  authorId?: number
 ): Promise<number> {
   // Verify partner exists
   const partners = await client.searchRead(
@@ -312,11 +329,18 @@ async function postToPartnerChatter(
   const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
   // Create message in chatter using message_post
-  const messageId = await client.callKw('res.partner', 'message_post', [[partnerId]], {
+  // Pass author_id to show the correct user as author
+  const messageParams: Record<string, any> = {
     body: feedbackHtml,
     message_type: 'comment',
     subtype_xmlid: 'mail.mt_note',
-  });
+  };
+
+  if (authorId) {
+    messageParams.author_id = authorId;
+  }
+
+  const messageId = await client.callKw('res.partner', 'message_post', [[partnerId]], messageParams);
 
   return messageId;
 }
