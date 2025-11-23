@@ -621,11 +621,7 @@ export default function TimeAttendanceAdminPage() {
             <div className="flex gap-3 mb-6">
               <button onClick={() => setShowExportDialog(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors">
-                <Download className="w-4 h-4" />Export CSV
-              </button>
-              <button onClick={() => setShowExportDialog(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors">
-                <FileSpreadsheet className="w-4 h-4" />Export Excel
+                <Download className="w-4 h-4" />Export Dati
               </button>
             </div>
 
