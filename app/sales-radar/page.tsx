@@ -1658,7 +1658,7 @@ export default function SalesRadarPage() {
                             Riattiva Lead
                           </button>
                           <button
-                            onClick={() => setShowAiModal(true)}
+                            onClick={() => setShowAnalysisModal(true)}
                             className="mt-2 w-full px-3 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 active:scale-95"
                           >
                             <Star className="h-4 w-4" />
