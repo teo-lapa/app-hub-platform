@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { getOdooClient } from '@/lib/odoo-client';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
+import * as XLSX from 'xlsx';
 
 interface TimeEntry {
   id: string;
@@ -416,134 +417,121 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Formato Excel (semplice HTML table che Excel può aprire)
+    // Formato Excel (vero .xlsx con libreria xlsx)
     if (format === 'excel') {
-      const html = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
-        <head>
-          <meta charset="utf-8">
-          <style>
-            table { border-collapse: collapse; }
-            th, td { border: 1px solid #000; padding: 5px; }
-            th { background: #f0f0f0; font-weight: bold; }
-            .employee-name { font-weight: bold; }
-            .company-name { color: #666; }
-            .coffee-break { background: #fff3cd; }
-            .lunch-break { background: #ffe4b3; }
-          </style>
-        </head>
-        <body>
-          <h2>Report Presenze</h2>
-          <p>Periodo: ${startDate.toLocaleDateString('it-IT')} - ${endDate.toLocaleDateString('it-IT')}</p>
-          <table>
-            <tr>
-              <th>Data</th>
-              <th>ID</th>
-              <th>Nome Dipendente</th>
-              <th>Azienda</th>
-              <th>Entrata</th>
-              <th>Uscita</th>
-              <th>Pausa Caffè (min)</th>
-              <th>Pausa Pranzo (min)</th>
-              <th>Pausa Totale (min)</th>
-              <th>Ore Lavorate</th>
-            </tr>
-            ${reports.map(report => {
-              const entrata = report.first_clock_in
-                ? new Date(report.first_clock_in).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-                : '-';
-              const uscita = report.last_clock_out
-                ? new Date(report.last_clock_out).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-                : '-';
-              return `<tr>
-                <td>${report.date}</td>
-                <td>${report.contact_id}</td>
-                <td class="employee-name">${report.contact_name}</td>
-                <td class="company-name">${report.company_name}</td>
-                <td>${entrata}</td>
-                <td>${uscita}</td>
-                <td class="coffee-break">${report.coffee_break_minutes}</td>
-                <td class="lunch-break">${report.lunch_break_minutes}</td>
-                <td>${report.break_minutes}</td>
-                <td>${report.total_hours}</td>
-              </tr>`;
-            }).join('')}
-          </table>
+      // Crea workbook
+      const wb = XLSX.utils.book_new();
 
-          <h3>Riepilogo per Dipendente</h3>
-          <table>
-            <tr>
-              <th>ID</th>
-              <th>Nome Dipendente</th>
-              <th>Azienda</th>
-              <th>Giorni Lavorati</th>
-              <th>Pausa Caffè Tot (min)</th>
-              <th>Pausa Pranzo Tot (min)</th>
-              <th>Ore Totali</th>
-              <th>Media Ore/Giorno</th>
-            </tr>
-            ${(() => {
-              const byContact = new Map<number, { id: number; name: string; company: string; days: number; hours: number; coffeeMin: number; lunchMin: number }>();
-              for (const report of reports) {
-                const key = report.contact_id;
-                if (!byContact.has(key)) {
-                  byContact.set(key, { id: report.contact_id, name: report.contact_name, company: report.company_name, days: 0, hours: 0, coffeeMin: 0, lunchMin: 0 });
-                }
-                const data = byContact.get(key)!;
-                data.days++;
-                data.hours += report.total_hours;
-                data.coffeeMin += report.coffee_break_minutes;
-                data.lunchMin += report.lunch_break_minutes;
-              }
-              return Array.from(byContact.values())
-                .map((data) => `<tr>
-                  <td>${data.id}</td>
-                  <td class="employee-name">${data.name}</td>
-                  <td class="company-name">${data.company}</td>
-                  <td>${data.days}</td>
-                  <td class="coffee-break">${data.coffeeMin}</td>
-                  <td class="lunch-break">${data.lunchMin}</td>
-                  <td>${data.hours.toFixed(2)}</td>
-                  <td>${(data.hours / data.days).toFixed(2)}</td>
-                </tr>`).join('');
-            })()}
-          </table>
+      // Sheet 1: Dettaglio Presenze
+      const detailData = reports.map(report => ({
+        'Data': report.date,
+        'ID': report.contact_id,
+        'Nome Dipendente': report.contact_name,
+        'Azienda': report.company_name,
+        'Entrata': report.first_clock_in
+          ? new Date(report.first_clock_in).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+          : '-',
+        'Uscita': report.last_clock_out
+          ? new Date(report.last_clock_out).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+          : '-',
+        'Pausa Caffè (min)': report.coffee_break_minutes,
+        'Pausa Pranzo (min)': report.lunch_break_minutes,
+        'Pausa Totale (min)': report.break_minutes,
+        'Ore Lavorate': report.total_hours,
+      }));
 
-          <h3>Dettaglio Pause</h3>
-          <table>
-            <tr>
-              <th>Data</th>
-              <th>ID</th>
-              <th>Nome Dipendente</th>
-              <th>Tipo Pausa</th>
-              <th>Inizio</th>
-              <th>Fine</th>
-              <th>Durata (min)</th>
-            </tr>
-            ${reports.flatMap(report =>
-              report.breaks.map(b => `<tr>
-                <td>${report.date}</td>
-                <td>${report.contact_id}</td>
-                <td>${report.contact_name}</td>
-                <td class="${b.type === 'coffee_break' ? 'coffee-break' : 'lunch-break'}">${b.name}</td>
-                <td>${new Date(b.start).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</td>
-                <td>${b.end ? new Date(b.end).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'In corso'}</td>
-                <td>${b.duration_minutes}</td>
-              </tr>`)
-            ).join('')}
-          </table>
-        </body>
-        </html>
-      `;
+      const wsDetail = XLSX.utils.json_to_sheet(detailData);
+      // Imposta larghezza colonne
+      wsDetail['!cols'] = [
+        { wch: 12 }, // Data
+        { wch: 8 },  // ID
+        { wch: 25 }, // Nome
+        { wch: 20 }, // Azienda
+        { wch: 10 }, // Entrata
+        { wch: 10 }, // Uscita
+        { wch: 18 }, // Pausa Caffè
+        { wch: 18 }, // Pausa Pranzo
+        { wch: 18 }, // Pausa Totale
+        { wch: 12 }, // Ore
+      ];
+      XLSX.utils.book_append_sheet(wb, wsDetail, 'Presenze');
+
+      // Sheet 2: Riepilogo per Dipendente
+      const byContact = new Map<number, { id: number; name: string; company: string; days: number; hours: number; coffeeMin: number; lunchMin: number }>();
+      for (const report of reports) {
+        const key = report.contact_id;
+        if (!byContact.has(key)) {
+          byContact.set(key, { id: report.contact_id, name: report.contact_name, company: report.company_name, days: 0, hours: 0, coffeeMin: 0, lunchMin: 0 });
+        }
+        const data = byContact.get(key)!;
+        data.days++;
+        data.hours += report.total_hours;
+        data.coffeeMin += report.coffee_break_minutes;
+        data.lunchMin += report.lunch_break_minutes;
+      }
+
+      const summaryData = Array.from(byContact.values()).map(data => ({
+        'ID': data.id,
+        'Nome Dipendente': data.name,
+        'Azienda': data.company,
+        'Giorni Lavorati': data.days,
+        'Pausa Caffè Tot (min)': data.coffeeMin,
+        'Pausa Pranzo Tot (min)': data.lunchMin,
+        'Ore Totali': Number(data.hours.toFixed(2)),
+        'Media Ore/Giorno': Number((data.hours / data.days).toFixed(2)),
+      }));
+
+      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+      wsSummary['!cols'] = [
+        { wch: 8 },  // ID
+        { wch: 25 }, // Nome
+        { wch: 20 }, // Azienda
+        { wch: 15 }, // Giorni
+        { wch: 20 }, // Pausa Caffè
+        { wch: 20 }, // Pausa Pranzo
+        { wch: 12 }, // Ore Tot
+        { wch: 15 }, // Media
+      ];
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Riepilogo');
+
+      // Sheet 3: Dettaglio Pause
+      const breakData = reports.flatMap(report =>
+        report.breaks.map(b => ({
+          'Data': report.date,
+          'ID': report.contact_id,
+          'Nome Dipendente': report.contact_name,
+          'Tipo Pausa': b.name,
+          'Inizio': new Date(b.start).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+          'Fine': b.end ? new Date(b.end).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'In corso',
+          'Durata (min)': b.duration_minutes,
+        }))
+      );
+
+      if (breakData.length > 0) {
+        const wsBreaks = XLSX.utils.json_to_sheet(breakData);
+        wsBreaks['!cols'] = [
+          { wch: 12 }, // Data
+          { wch: 8 },  // ID
+          { wch: 25 }, // Nome
+          { wch: 15 }, // Tipo
+          { wch: 10 }, // Inizio
+          { wch: 10 }, // Fine
+          { wch: 12 }, // Durata
+        ];
+        XLSX.utils.book_append_sheet(wb, wsBreaks, 'Pause');
+      }
+
+      // Genera buffer Excel
+      const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
       if (email) {
         console.log(`TODO: Inviare report Excel a ${email}`);
       }
 
-      return new NextResponse(html, {
+      return new NextResponse(excelBuffer, {
         headers: {
-          'Content-Type': 'application/vnd.ms-excel; charset=utf-8',
-          'Content-Disposition': `attachment; filename="presenze_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.xls"`,
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="presenze_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.xlsx"`,
         },
       });
     }
