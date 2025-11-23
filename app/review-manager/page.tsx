@@ -203,7 +203,7 @@ export default function ReviewManagerPage() {
               <div>
                 <p className="text-sm text-gray-600">Rating Medio</p>
                 <p className="text-2xl font-bold">
-                  {(businesses.reduce((sum, b) => sum + (b.metrics?.averageRating || 0), 0) / businesses.length || 0).toFixed(1)}
+                  {(businesses.reduce((sum, b) => sum + (b.metrics?.averageRating ? parseFloat(String(b.metrics.averageRating)) : 0), 0) / businesses.length || 0).toFixed(1)}
                 </p>
               </div>
             </div>
@@ -274,7 +274,7 @@ export default function ReviewManagerPage() {
                         <div className="text-center">
                           <p className="font-semibold flex items-center gap-1">
                             <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                            {business.metrics?.averageRating?.toFixed(1) || '-'}
+                            {business.metrics?.averageRating ? parseFloat(String(business.metrics.averageRating)).toFixed(1) : '-'}
                           </p>
                           <p className="text-gray-500">Rating</p>
                         </div>
