@@ -1722,7 +1722,7 @@ export default function SalesRadarPage() {
                     </a>
                   )}
 
-                  {/* Note Button - Opens Note Modal (NOT for Excluded/Grey markers) */}
+                  {/* Note Button - Opens Note Modal (show for all EXCEPT grey/excluded) */}
                   {!(selectedPlace.notInTarget || selectedPlace.color === 'grey') && (
                     <div className="mt-3 space-y-2">
                       <button
