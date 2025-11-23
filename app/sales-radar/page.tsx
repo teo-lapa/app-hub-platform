@@ -579,7 +579,7 @@ export default function SalesRadarPage() {
         longitude: userLocation.lng.toString(),
         radius: radius.toString(),
         filter: staticFilter,
-        ...(placeType && placeType !== 'all' ? { type: placeType } : {})
+        ...(placeType ? { type: placeType } : {})  // placeType is '' when "Tutti i tipi" is selected
       });
 
       const response = await fetch(`/api/sales-radar/load-from-odoo?${params}`, {

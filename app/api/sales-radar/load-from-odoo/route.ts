@@ -323,16 +323,25 @@ export async function GET(request: NextRequest) {
       ];
 
       // Filter by type/category if specified (with Italian translations)
+      // Searches in BOTH partner name AND category tags
       if (type) {
         const translations = TYPE_TRANSLATIONS[type] || [type];
-        // Build OR domain for all translations: '|' '|' '|' cond1 cond2 cond3 cond4
-        // For N conditions we need N-1 '|' operators
-        for (let i = 0; i < translations.length - 1; i++) {
+        console.log(`[LOAD-FROM-ODOO] Filtering customers by type: ${type} -> translations:`, translations);
+
+        // Build OR domain: search in name OR category_id.name for each translation
+        // For each term we check: name ilike term OR category_id.name ilike term
+        // For N terms with 2 conditions each, we need N*2-1 OR operators
+        const allConditions: any[] = [];
+        translations.forEach(term => {
+          allConditions.push(['name', 'ilike', term]);
+          allConditions.push(['category_id.name', 'ilike', term]);
+        });
+
+        // Add OR operators for all conditions
+        for (let i = 0; i < allConditions.length - 1; i++) {
           customerDomain.push('|');
         }
-        translations.forEach(term => {
-          customerDomain.push(['category_id.name', 'ilike', term]);
-        });
+        allConditions.forEach(cond => customerDomain.push(cond));
       }
 
       try {
