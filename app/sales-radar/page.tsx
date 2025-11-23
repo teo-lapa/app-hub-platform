@@ -1320,7 +1320,7 @@ export default function SalesRadarPage() {
         </div>
 
         {/* Map - Full Screen on Mobile */}
-        <div className="relative flex-1">
+        <div className="relative flex-1" style={{ touchAction: 'none' }}>
           <GoogleMap
             mapContainerStyle={containerStyle}
             center={mapCenter}
@@ -1763,36 +1763,36 @@ export default function SalesRadarPage() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="lg:hidden fixed bottom-0 left-0 right-0 z-50 max-h-[85vh] overflow-hidden rounded-t-3xl bg-white shadow-2xl"
+              className="lg:hidden fixed bottom-0 left-0 right-0 z-50 max-h-[70vh] overflow-hidden rounded-t-3xl bg-white shadow-2xl"
             >
               {/* Handle */}
-              <div className="flex justify-center pt-3 pb-2">
-                <div className="h-1.5 w-12 rounded-full bg-gray-300" />
+              <div className="flex justify-center pt-2 pb-1">
+                <div className="h-1 w-10 rounded-full bg-gray-300" />
               </div>
 
               {/* Header */}
-              <div className="flex items-center justify-between border-b px-6 py-4">
-                <h3 className="text-lg font-bold text-gray-900">Filtri Ricerca</h3>
+              <div className="flex items-center justify-between border-b px-4 py-2">
+                <h3 className="text-base font-bold text-gray-900">Filtri Ricerca</h3>
                 <button
                   onClick={() => setShowMobileFilters(false)}
-                  className="rounded-full p-2 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                  className="rounded-full p-1.5 hover:bg-gray-100 active:bg-gray-200 transition-colors"
                 >
-                  <X className="h-6 w-6 text-gray-600" />
+                  <X className="h-5 w-5 text-gray-600" />
                 </button>
               </div>
 
               {/* Content */}
-              <div className="overflow-y-auto p-6 pb-8" style={{ maxHeight: 'calc(85vh - 140px)' }}>
-                <div className="space-y-5">
+              <div className="overflow-y-auto px-4 py-3" style={{ maxHeight: 'calc(70vh - 130px)' }}>
+                <div className="space-y-3">
                   {/* Radius */}
                   <div>
-                    <label className="mb-2 block text-base font-medium text-gray-700">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
                       Raggio di Ricerca
                     </label>
                     <select
                       value={radius}
                       onChange={(e) => setRadius(Number(e.target.value))}
-                      className="w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-4 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20"
                     >
                       {RADIUS_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -1804,13 +1804,13 @@ export default function SalesRadarPage() {
 
                   {/* Place Type */}
                   <div>
-                    <label className="mb-2 block text-base font-medium text-gray-700">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
                       Tipo Attività
                     </label>
                     <select
                       value={placeType}
                       onChange={(e) => setPlaceType(e.target.value)}
-                      className="w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-4 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20"
                     >
                       {PLACE_TYPES.map((type) => (
                         <option key={type.value} value={type.value}>
@@ -1822,7 +1822,7 @@ export default function SalesRadarPage() {
 
                   {/* Keyword */}
                   <div>
-                    <label className="mb-2 block text-base font-medium text-gray-700">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
                       Parola Chiave (opzionale)
                     </label>
                     <input
@@ -1830,34 +1830,28 @@ export default function SalesRadarPage() {
                       value={keyword}
                       onChange={(e) => setKeyword(e.target.value)}
                       placeholder="es: pizza, sushi, hotel..."
-                      className="w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-4 text-base text-gray-900 placeholder:text-gray-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20"
                     />
                   </div>
 
                   {/* User Location Info */}
                   {userLocation && (
-                    <div className="rounded-xl bg-blue-50 p-4">
-                      <div className="flex items-start gap-3">
-                        <Navigation className="h-5 w-5 shrink-0 text-blue-600 mt-0.5" />
-                        <div>
-                          <p className="font-semibold text-blue-900 text-sm">Posizione GPS Rilevata</p>
-                          <p className="text-sm text-blue-700">
-                            {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
-                          </p>
-                        </div>
+                    <div className="rounded-lg bg-blue-50 p-3">
+                      <div className="flex items-center gap-2">
+                        <Navigation className="h-4 w-4 shrink-0 text-blue-600" />
+                        <p className="text-xs text-blue-700">
+                          GPS: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+                        </p>
                       </div>
                     </div>
                   )}
 
                   {/* Error */}
                   {searchError && (
-                    <div className="rounded-xl bg-red-50 p-4">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 shrink-0 text-red-600 mt-0.5" />
-                        <div>
-                          <p className="font-semibold text-red-900 text-sm">Errore</p>
-                          <p className="text-sm text-red-700">{searchError}</p>
-                        </div>
+                    <div className="rounded-lg bg-red-50 p-3">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+                        <p className="text-xs text-red-700">{searchError}</p>
                       </div>
                     </div>
                   )}
@@ -1865,23 +1859,23 @@ export default function SalesRadarPage() {
               </div>
 
               {/* Footer - Search Button */}
-              <div className="border-t bg-gray-50 p-6">
+              <div className="border-t bg-gray-50 px-4 py-3">
                 <button
                   onClick={() => {
                     searchPlaces();
                     setShowMobileFilters(false);
                   }}
                   disabled={isSearching || (!userLocation && !mapCenter)}
-                  className="flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-base font-semibold text-white shadow-lg transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSearching ? (
                     <>
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                      <span>Ricerca in corso...</span>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Ricerca...</span>
                     </>
                   ) : (
                     <>
-                      <Search className="h-6 w-6" />
+                      <Search className="h-5 w-5" />
                       <span>Cerca Aziende</span>
                     </>
                   )}
@@ -1911,31 +1905,31 @@ export default function SalesRadarPage() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="lg:hidden fixed bottom-0 left-0 right-0 z-50 max-h-[85vh] overflow-hidden rounded-t-3xl bg-white shadow-2xl"
+              className="lg:hidden fixed bottom-0 left-0 right-0 z-50 max-h-[75vh] overflow-hidden rounded-t-3xl bg-white shadow-2xl"
             >
               {/* Handle */}
-              <div className="flex justify-center pt-3 pb-2">
-                <div className="h-1.5 w-12 rounded-full bg-gray-300" />
+              <div className="flex justify-center pt-2 pb-1">
+                <div className="h-1 w-10 rounded-full bg-gray-300" />
               </div>
 
               {/* Header */}
-              <div className="flex items-center justify-between border-b px-6 py-4">
+              <div className="flex items-center justify-between border-b px-4 py-2">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Risultati</h3>
-                  <p className="text-sm text-gray-600">
+                  <h3 className="text-base font-bold text-gray-900">Risultati</h3>
+                  <p className="text-xs text-gray-600">
                     {newProspects} prospect, {existingCustomers} clienti
                   </p>
                 </div>
                 <button
                   onClick={() => setShowMobileResults(false)}
-                  className="rounded-full p-2 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                  className="rounded-full p-1.5 hover:bg-gray-100 active:bg-gray-200 transition-colors"
                 >
-                  <X className="h-6 w-6 text-gray-600" />
+                  <X className="h-5 w-5 text-gray-600" />
                 </button>
               </div>
 
               {/* Results List */}
-              <div className="overflow-y-auto p-4 pb-8" style={{ maxHeight: 'calc(85vh - 140px)' }}>
+              <div className="overflow-y-auto p-3 pb-6" style={{ maxHeight: 'calc(75vh - 90px)' }}>
                 <div className="space-y-3">
                   {places.map((place) => (
                     <motion.button
@@ -1948,24 +1942,24 @@ export default function SalesRadarPage() {
                         map?.setZoom(16);
                         setShowMobileResults(false);
                       }}
-                      className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
+                      className={`w-full rounded-lg border p-3 text-left transition-all ${
                         selectedPlace?.place_id === place.place_id
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 bg-white hover:border-gray-300 active:bg-gray-50'
                       }`}
                     >
-                      <div className="mb-2 flex items-start justify-between gap-3">
-                        <p className="font-semibold text-gray-900 text-base leading-tight">{place.name}</p>
+                      <div className="mb-1 flex items-start justify-between gap-2">
+                        <p className="font-semibold text-gray-900 text-sm leading-tight">{place.name}</p>
                         {place.isChecking ? (
-                          <Loader2 className="h-6 w-6 shrink-0 animate-spin text-gray-400" />
+                          <Loader2 className="h-5 w-5 shrink-0 animate-spin text-gray-400" />
                         ) : place.existsInOdoo ? (
-                          <CheckCircle2 className="h-6 w-6 shrink-0 text-green-600" />
+                          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
                         ) : (
-                          <XCircle className="h-6 w-6 shrink-0 text-red-600" />
+                          <XCircle className="h-5 w-5 shrink-0 text-red-600" />
                         )}
                       </div>
 
-                      <p className="mb-2 text-sm text-gray-600 line-clamp-2">{place.address}</p>
+                      <p className="mb-1.5 text-xs text-gray-600 line-clamp-2">{place.address}</p>
 
                       <div className="flex items-center gap-3 flex-wrap">
                         {place.rating && (
