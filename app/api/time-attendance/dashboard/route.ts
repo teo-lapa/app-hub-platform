@@ -18,43 +18,76 @@ interface EmployeeStatus {
   hours_worked_today: number;
   hours_worked_yesterday: number;
   hours_worked_week: number;
+  hours_worked_month: number;
   entries_today: number;
 }
 
 // Helper per calcolare ore lavorate da entries
-function calculateHoursFromEntries(entries: Array<{ entry_type: string; timestamp: string }>, includeOngoing = false): number {
+// wasOnDutyAtStart: true se il dipendente era già in servizio all'inizio del periodo
+// periodStart: inizio del periodo per calcolare ore se wasOnDutyAtStart è true
+// periodEnd: fine del periodo per giorni completati (es. mezzanotte per ieri)
+function calculateHoursFromEntries(
+  entries: Array<{ entry_type: string; timestamp: string }>,
+  includeOngoing = false,
+  wasOnDutyAtStart = false,
+  periodStart?: Date,
+  periodEnd?: Date
+): number {
   let workingTime = 0;
   let breakTime = 0;
-  let lastClockIn: Date | null = null;
+  let lastClockIn: Date | null = wasOnDutyAtStart && periodStart ? periodStart : null;
   let lastBreakStart: Date | null = null;
+  let isOnBreak = false;
 
   for (const entry of entries) {
     const entryTime = new Date(entry.timestamp);
     switch (entry.entry_type) {
       case 'clock_in':
         lastClockIn = entryTime;
+        isOnBreak = false;
         break;
       case 'clock_out':
         if (lastClockIn) {
           workingTime += entryTime.getTime() - lastClockIn.getTime();
           lastClockIn = null;
         }
+        // Reset anche lastBreakStart perché clock_out chiude tutto
+        lastBreakStart = null;
+        isOnBreak = false;
         break;
       case 'break_start':
         lastBreakStart = entryTime;
+        isOnBreak = true;
         break;
       case 'break_end':
         if (lastBreakStart) {
           breakTime += entryTime.getTime() - lastBreakStart.getTime();
           lastBreakStart = null;
         }
+        isOnBreak = false;
         break;
     }
   }
 
-  // Se ancora in servizio e includeOngoing è true, aggiungi tempo fino ad ora
-  if (includeOngoing && lastClockIn) {
-    workingTime += Date.now() - lastClockIn.getTime();
+  // Se ancora in servizio, calcola ore fino a:
+  // - now se includeOngoing è true (oggi)
+  // - periodEnd se fornito (giorni passati come ieri)
+  if (lastClockIn) {
+    if (includeOngoing) {
+      workingTime += Date.now() - lastClockIn.getTime();
+    } else if (periodEnd) {
+      // Per giorni completati: calcola fino a fine giornata
+      workingTime += periodEnd.getTime() - lastClockIn.getTime();
+    }
+  }
+
+  // Se in pausa, aggiungi il tempo della pausa corrente al breakTime
+  if (lastBreakStart) {
+    if (includeOngoing) {
+      breakTime += Date.now() - lastBreakStart.getTime();
+    } else if (periodEnd) {
+      breakTime += periodEnd.getTime() - lastBreakStart.getTime();
+    }
   }
 
   return Math.max(0, (workingTime - breakTime) / 3600000);
@@ -81,44 +114,61 @@ export async function GET(request: NextRequest) {
     // Usa timezone Europe/Rome per calcoli corretti
     const TIMEZONE = 'Europe/Rome';
 
-    // Helper per ottenere data locale corretta
-    const getLocalDateBounds = (date: Date) => {
-      // Ottieni la data in formato Europe/Rome
-      const localDateStr = date.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-      // Crea date start/end per quel giorno in UTC che corrispondono a mezzanotte Rome
-      const dayStart = new Date(localDateStr + 'T00:00:00');
-      const dayEnd = new Date(localDateStr + 'T23:59:59.999');
-      // Correggi per offset Rome (UTC+1 o UTC+2)
-      const offsetMs = dayStart.getTimezoneOffset() * 60 * 1000;
-      // Per l'Italia, mezzanotte locale è 23:00 UTC (inverno) o 22:00 UTC (estate)
+    // Helper robusto per calcolare i bounds di un giorno in timezone Rome
+    // Restituisce date UTC che corrispondono a mezzanotte-23:59 in Rome
+    const getRomeDayBounds = (refDate: Date) => {
+      // Ottieni la data in formato Rome
+      const romeStr = refDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+      const [year, month, day] = romeStr.split('-').map(Number);
+
+      // Determina se è ora legale in Italia
+      // L'ora legale in Italia va dall'ultima domenica di marzo all'ultima domenica di ottobre
+      const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+      const romeTime = testDate.toLocaleString('en-US', { timeZone: TIMEZONE, hour: 'numeric', hour12: false });
+      const utcHour = testDate.getUTCHours();
+      const romeHour = parseInt(romeTime);
+      const offsetHours = romeHour - utcHour;
+
+      // Crea mezzanotte Rome in UTC
+      // Se offsetHours è 1 (CET), mezzanotte Rome = 23:00 UTC del giorno prima
+      // Se offsetHours è 2 (CEST), mezzanotte Rome = 22:00 UTC del giorno prima
+      const midnightUTC = Date.UTC(year, month - 1, day, 0, 0, 0) - (offsetHours * 60 * 60 * 1000);
+      const endOfDayUTC = midnightUTC + (24 * 60 * 60 * 1000) - 1; // 23:59:59.999 Rome
+
       return {
-        start: new Date(dayStart.getTime() - offsetMs + (1 * 60 * 60 * 1000)), // +1 per CET base
-        end: new Date(dayEnd.getTime() - offsetMs + (1 * 60 * 60 * 1000))
+        start: new Date(midnightUTC),
+        end: new Date(endOfDayUTC),
+        dateStr: romeStr
       };
     };
 
     // Data di riferimento
-    const targetDate = dateStr ? new Date(dateStr + 'T12:00:00') : new Date();
+    const targetDate = dateStr ? new Date(dateStr + 'T12:00:00Z') : new Date();
 
     // Calcola bounds per oggi
-    const todayStr = targetDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-    const dayStart = new Date(todayStr + 'T00:00:00+01:00'); // CET
-    const dayEnd = new Date(todayStr + 'T23:59:59.999+01:00');
+    const todayBounds = getRomeDayBounds(targetDate);
+    const dayStart = todayBounds.start;
+    const dayEnd = todayBounds.end;
 
     // Ieri
-    const yesterdayDate = new Date(targetDate);
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-    const yesterdayStart = new Date(yesterdayStr + 'T00:00:00+01:00');
-    const yesterdayEnd = new Date(yesterdayStr + 'T23:59:59.999+01:00');
+    const yesterdayDate = new Date(targetDate.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayBounds = getRomeDayBounds(yesterdayDate);
+    const yesterdayStart = yesterdayBounds.start;
+    const yesterdayEnd = yesterdayBounds.end;
 
     // Inizio settimana (lunedì)
-    const tempDate = new Date(targetDate);
-    const dayOfWeek = tempDate.getDay();
-    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Lunedì = 0
-    tempDate.setDate(tempDate.getDate() - diff);
-    const weekStartStr = tempDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-    const weekStart = new Date(weekStartStr + 'T00:00:00+01:00');
+    // Calcola il giorno della settimana in timezone Rome (0=Dom, 1=Lun, ...)
+    const romeDayOfWeek = new Date(targetDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE }) + 'T12:00:00Z').getDay();
+    const diff = romeDayOfWeek === 0 ? 6 : romeDayOfWeek - 1; // Lunedì = 0
+    const mondayDate = new Date(targetDate.getTime() - diff * 24 * 60 * 60 * 1000);
+    const weekBounds = getRomeDayBounds(mondayDate);
+    const weekStart = weekBounds.start;
+
+    // Log per debug
+    console.log('[Dashboard] Target date:', targetDate.toISOString());
+    console.log('[Dashboard] Today bounds:', dayStart.toISOString(), '-', dayEnd.toISOString());
+    console.log('[Dashboard] Yesterday bounds:', yesterdayStart.toISOString(), '-', yesterdayEnd.toISOString());
+    console.log('[Dashboard] Week start:', weekStart.toISOString());
 
     // Ottieni lista dipendenti da Odoo
     const odoo = createOdooRPCClient();
@@ -134,6 +184,48 @@ export async function GET(request: NextRequest) {
       employees = result as typeof employees;
     } catch (odooError) {
       console.warn('Errore Odoo, procedo solo con dati locali:', odooError);
+    }
+
+    // Ottieni l'ultimo entry di ogni dipendente PRIMA di oggi
+    // Serve per sapere se erano già in servizio (clock_in ieri senza clock_out)
+    const lastEntryBeforeTodayResult = await sql`
+      SELECT DISTINCT ON (contact_id)
+        contact_id,
+        entry_type,
+        timestamp
+      FROM ta_time_entries
+      WHERE company_id = ${parseInt(companyId)}
+        AND timestamp < ${dayStart.toISOString()}
+      ORDER BY contact_id, timestamp DESC
+    `;
+
+    // Mappa: contact_id -> true se era in servizio prima di oggi
+    const wasOnDutyBeforeToday = new Map<number, boolean>();
+    for (const entry of lastEntryBeforeTodayResult.rows) {
+      // Era in servizio se l'ultimo entry prima di oggi era clock_in, break_end, o break_start
+      // break_start significa che era in servizio (anche se in pausa)
+      const wasOnDuty = entry.entry_type === 'clock_in' || entry.entry_type === 'break_end' || entry.entry_type === 'break_start';
+      wasOnDutyBeforeToday.set(entry.contact_id, wasOnDuty);
+    }
+
+    // Ottieni l'ultimo entry di ogni dipendente PRIMA di ieri
+    // Serve per calcolare le ore di ieri se erano già in servizio da prima
+    const lastEntryBeforeYesterdayResult = await sql`
+      SELECT DISTINCT ON (contact_id)
+        contact_id,
+        entry_type,
+        timestamp
+      FROM ta_time_entries
+      WHERE company_id = ${parseInt(companyId)}
+        AND timestamp < ${yesterdayStart.toISOString()}
+      ORDER BY contact_id, timestamp DESC
+    `;
+
+    // Mappa: contact_id -> true se era in servizio prima di ieri
+    const wasOnDutyBeforeYesterday = new Map<number, boolean>();
+    for (const entry of lastEntryBeforeYesterdayResult.rows) {
+      const wasOnDuty = entry.entry_type === 'clock_in' || entry.entry_type === 'break_end' || entry.entry_type === 'break_start';
+      wasOnDutyBeforeYesterday.set(entry.contact_id, wasOnDuty);
     }
 
     // Ottieni tutte le timbrature del giorno per l'azienda
@@ -171,6 +263,23 @@ export async function GET(request: NextRequest) {
       ORDER BY timestamp ASC
     `;
 
+    // Inizio mese (primo giorno del mese in timezone Rome)
+    const romeMonthStr = targetDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+    const [romeYear, romeMonth] = romeMonthStr.split('-').map(Number);
+    const firstOfMonth = new Date(Date.UTC(romeYear, romeMonth - 1, 1, 12, 0, 0));
+    const monthBounds = getRomeDayBounds(firstOfMonth);
+    const monthStartDate = monthBounds.start;
+
+    // Timbrature del mese
+    const monthEntriesResult = await sql`
+      SELECT contact_id, entry_type, timestamp
+      FROM ta_time_entries
+      WHERE company_id = ${parseInt(companyId)}
+        AND timestamp >= ${monthStartDate.toISOString()}
+        AND timestamp <= ${dayEnd.toISOString()}
+      ORDER BY timestamp ASC
+    `;
+
     // Raggruppa timbrature per dipendente - oggi
     const entriesByContact = new Map<number, typeof entriesResult.rows>();
     for (const entry of entriesResult.rows) {
@@ -204,6 +313,18 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Raggruppa timbrature per dipendente - mese
+    const monthByContact = new Map<number, Array<{ entry_type: string; timestamp: string }>>();
+    for (const entry of monthEntriesResult.rows) {
+      if (!monthByContact.has(entry.contact_id)) {
+        monthByContact.set(entry.contact_id, []);
+      }
+      monthByContact.get(entry.contact_id)!.push({
+        entry_type: entry.entry_type as string,
+        timestamp: entry.timestamp as string,
+      });
+    }
+
     // Calcola stato per ogni dipendente
     const employeeStatuses: EmployeeStatus[] = [];
 
@@ -217,17 +338,31 @@ export async function GET(request: NextRequest) {
       const entries = entriesByContact.get(contactId) || [];
       const yesterdayEntries = yesterdayByContact.get(contactId) || [];
       const weekEntries = weekByContact.get(contactId) || [];
+      const monthEntries = monthByContact.get(contactId) || [];
+
+      // Controlla se era già in servizio prima di oggi (clock_in ieri senza clock_out)
+      const wasOnDutyBefore = wasOnDutyBeforeToday.get(contactId) || false;
+      // Controlla se era già in servizio prima di ieri (per calcolo ore ieri)
+      const wasOnDutyBeforeYest = wasOnDutyBeforeYesterday.get(contactId) || false;
 
       // Calcola stato attuale
       const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
-      const isOnDuty = lastEntry && (lastEntry.entry_type === 'clock_in' || lastEntry.entry_type === 'break_end');
+      // È in servizio se: ultimo entry oggi è clock_in/break_end, OPPURE era in servizio ieri e non ha fatto clock_out oggi
+      const hasClockOutToday = entries.some(e => e.entry_type === 'clock_out');
+      const isOnDutyFromToday = lastEntry && (lastEntry.entry_type === 'clock_in' || lastEntry.entry_type === 'break_end');
+      const isOnDutyFromYesterday = wasOnDutyBefore && !hasClockOutToday;
+      const isOnDuty = isOnDutyFromToday || isOnDutyFromYesterday;
       const isOnBreak = lastEntry?.entry_type === 'break_start';
 
       // Calcola ore lavorate con helper function
+      // Se era in servizio prima di oggi, inizia il conteggio da mezzanotte
       const entriesToday = entries.map(e => ({ entry_type: e.entry_type as string, timestamp: e.timestamp as string }));
-      const hoursToday = calculateHoursFromEntries(entriesToday, true); // include ongoing
-      const hoursYesterday = calculateHoursFromEntries(yesterdayEntries, false);
-      const hoursWeek = calculateHoursFromEntries(weekEntries, true); // include ongoing per oggi
+      const hoursToday = calculateHoursFromEntries(entriesToday, true, wasOnDutyBefore, dayStart);
+      // Per ieri: passa periodEnd (fine giornata ieri) per calcolare ore fino a mezzanotte
+      // se clock_in ieri senza clock_out, conta le ore fino a fine giornata ieri
+      const hoursYesterday = calculateHoursFromEntries(yesterdayEntries, false, wasOnDutyBeforeYest, yesterdayStart, yesterdayEnd);
+      const hoursWeek = calculateHoursFromEntries(weekEntries, true); // week include tutto da lunedì
+      const hoursMonth = calculateHoursFromEntries(monthEntries, true); // month include tutto dal 1°
 
       employeeStatuses.push({
         contact_id: contactId,
@@ -245,6 +380,7 @@ export async function GET(request: NextRequest) {
         hours_worked_today: Math.round(hoursToday * 100) / 100,
         hours_worked_yesterday: Math.round(hoursYesterday * 100) / 100,
         hours_worked_week: Math.round(hoursWeek * 100) / 100,
+        hours_worked_month: Math.round(hoursMonth * 100) / 100,
         entries_today: entries.length,
       });
     }
@@ -261,12 +397,14 @@ export async function GET(request: NextRequest) {
     const totalHoursToday = employeeStatuses.reduce((sum, e) => sum + e.hours_worked_today, 0);
     const totalHoursYesterday = employeeStatuses.reduce((sum, e) => sum + e.hours_worked_yesterday, 0);
     const totalHoursWeek = employeeStatuses.reduce((sum, e) => sum + e.hours_worked_week, 0);
+    const totalHoursMonth = employeeStatuses.reduce((sum, e) => sum + e.hours_worked_month, 0);
 
     return NextResponse.json({
       success: true,
       data: {
         date: targetDate.toISOString().split('T')[0],
         week_start: weekStart.toISOString().split('T')[0],
+        month_start: monthStartDate.toISOString().split('T')[0],
         stats: {
           total_employees: employeeStatuses.length,
           on_duty: onDutyCount,
@@ -275,6 +413,7 @@ export async function GET(request: NextRequest) {
           total_hours_today: Math.round(totalHoursToday * 100) / 100,
           total_hours_yesterday: Math.round(totalHoursYesterday * 100) / 100,
           total_hours_week: Math.round(totalHoursWeek * 100) / 100,
+          total_hours_month: Math.round(totalHoursMonth * 100) / 100,
         },
         employees: employeeStatuses,
       },

@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
+import { getOdooClient } from '@/lib/odoo-client';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+
+// Estendi jsPDF per autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: {
+      head?: string[][];
+      body?: (string | number)[][];
+      startY?: number;
+      theme?: string;
+      headStyles?: { fillColor?: number[]; textColor?: number[]; fontSize?: number };
+      bodyStyles?: { fontSize?: number };
+      columnStyles?: Record<number, { cellWidth?: number | 'auto' }>;
+      margin?: { top?: number; left?: number; right?: number };
+      didDrawPage?: (data: { cursor: { y: number } }) => void;
+    }) => jsPDF;
+    lastAutoTable: { finalY: number };
+  }
+}
 
 interface TimeEntry {
   id: string;
@@ -14,7 +36,7 @@ interface TimeEntry {
   location_name?: string;
   break_type?: 'coffee_break' | 'lunch_break';
   break_max_minutes?: number;
-  contact_name?: string; // Nome salvato localmente
+  contact_name?: string; // Nome salvato localmente per export
 }
 
 interface BreakDetail {
@@ -74,31 +96,20 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Usa timezone Europe/Rome per calcoli corretti
-    const TIMEZONE = 'Europe/Rome';
-
-    // Helper per ottenere ora locale in timezone specifico
-    const getLocalDate = (dateStr?: string | null) => {
-      const now = dateStr ? new Date(dateStr + 'T12:00:00') : new Date();
-      // Converti a Europe/Rome
-      const localDateStr = now.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-      return new Date(localDateStr + 'T00:00:00');
-    };
+    console.log('[Export] Request params:', {
+      contactId,
+      companyId,
+      startDateStr,
+      endDateStr,
+      format,
+    });
 
     // Date di default: ultimo mese
-    const endDate = getLocalDate(endDateStr);
+    const endDate = endDateStr ? new Date(endDateStr) : new Date();
     const startDate = startDateStr
-      ? getLocalDate(startDateStr)
+      ? new Date(startDateStr)
       : new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Imposta inizio e fine giornata in timezone Europe/Rome
-    // Per ottenere l'equivalente UTC di mezzanotte Rome, usiamo l'offset
-    const startRome = new Date(startDate.toLocaleString('en-US', { timeZone: TIMEZONE }));
-    startRome.setHours(0, 0, 0, 0);
-    const endRome = new Date(endDate.toLocaleString('en-US', { timeZone: TIMEZONE }));
-    endRome.setHours(23, 59, 59, 999);
-
-    // Per le query usiamo direttamente le date Rome-relative
     startDate.setHours(0, 0, 0, 0);
     endDate.setHours(23, 59, 59, 999);
 
@@ -108,6 +119,7 @@ export async function GET(request: NextRequest) {
     try {
       let result;
 
+      // Query senza contact_name per compatibilità con DB che non hanno la colonna
       if (contactId) {
         result = await sql`
           SELECT
@@ -121,8 +133,7 @@ export async function GET(request: NextRequest) {
             qr_code_verified,
             location_name,
             break_type,
-            break_max_minutes,
-            contact_name
+            break_max_minutes
           FROM ta_time_entries
           WHERE contact_id = ${parseInt(contactId)}
             AND timestamp >= ${startDate.toISOString()}
@@ -142,8 +153,7 @@ export async function GET(request: NextRequest) {
             qr_code_verified,
             location_name,
             break_type,
-            break_max_minutes,
-            contact_name
+            break_max_minutes
           FROM ta_time_entries
           WHERE company_id = ${parseInt(companyId)}
             AND timestamp >= ${startDate.toISOString()}
@@ -164,8 +174,16 @@ export async function GET(request: NextRequest) {
         location_name: row.location_name,
         break_type: row.break_type,
         break_max_minutes: row.break_max_minutes,
-        contact_name: row.contact_name,
+        contact_name: undefined, // I nomi verranno presi da Odoo
       }));
+
+      console.log('[Export] Query result:', {
+        entriesCount: entries.length,
+        dateRange: `${startDate.toISOString()} to ${endDate.toISOString()}`,
+        companyIdUsed: companyId,
+        contactIdUsed: contactId,
+        sampleEntry: entries[0] || 'no entries',
+      });
     } catch (dbError) {
       console.warn('Database non disponibile:', dbError);
     }
@@ -173,27 +191,48 @@ export async function GET(request: NextRequest) {
     // Raggruppa per giorno e contatto
     const dailyReports: Map<string, DailyReport> = new Map();
 
-    // Ottieni nomi dei contatti e aziende da Odoo
+    // Prima raccogli i nomi dai dati locali (contact_name salvato nelle entries)
     const contactIds = Array.from(new Set(entries.map(e => e.contact_id)));
     const contactInfo: Map<number, ContactInfo> = new Map();
 
-    if (contactIds.length > 0) {
-      console.log(`[Export] Fetching ${contactIds.length} contacts from Odoo:`, contactIds);
+    // Raccogli nomi dalle entries (priorità ai dati locali)
+    for (const entry of entries) {
+      if (entry.contact_name && !contactInfo.has(entry.contact_id)) {
+        contactInfo.set(entry.contact_id, {
+          name: entry.contact_name,
+          company_name: '-', // Verrà aggiornato da Odoo se disponibile
+        });
+      }
+    }
+
+    // Per i contatti senza nome locale, prova Odoo
+    const contactsWithoutName = contactIds.filter(id => !contactInfo.has(id));
+
+    if (contactsWithoutName.length > 0) {
+      console.log(`[Export] Fetching ${contactsWithoutName.length} contacts from Odoo:`, contactsWithoutName);
       try {
-        const odoo = createOdooRPCClient();
+        const odoo = await getOdooClient();
         // Prendi nome e parent_id (azienda) per ogni contatto
         const contacts = await odoo.searchRead(
           'res.partner',
-          [['id', 'in', contactIds]],
+          [['id', 'in', contactsWithoutName]],
           ['id', 'name', 'parent_id'],
           100
-        ) as Array<{ id: number; name: string; parent_id: [number, string] | false }>;
+        );
 
-        console.log(`[Export] Odoo returned ${contacts.length} contacts`);
+        const contactsArr = contacts as unknown[];
+        console.log(`[Export] Odoo returned ${contactsArr.length} contacts for IDs:`, contactsWithoutName);
+
+        // Log dei contatti non trovati
+        const foundIds = (contacts as Array<{ id: number }>).map(c => c.id);
+        const notFoundIds = contactsWithoutName.filter(id => !foundIds.includes(id));
+        if (notFoundIds.length > 0) {
+          console.warn(`[Export] Contacts NOT FOUND in Odoo:`, notFoundIds);
+        }
 
         // Raccogli gli ID delle aziende parent
         const parentIds: number[] = [];
-        for (const c of contacts) {
+        for (const c of contacts as Array<{ id: number; name: string; parent_id: [number, string] | false }>) {
           if (c.parent_id && Array.isArray(c.parent_id)) {
             parentIds.push(c.parent_id[0]);
           }
@@ -207,14 +246,14 @@ export async function GET(request: NextRequest) {
             [['id', 'in', parentIds]],
             ['id', 'name'],
             100
-          ) as Array<{ id: number; name: string }>;
-          for (const p of parents) {
+          );
+          for (const p of parents as Array<{ id: number; name: string }>) {
             parentNames.set(p.id, p.name);
           }
         }
 
         // Costruisci la mappa completa
-        for (const c of contacts) {
+        for (const c of contacts as Array<{ id: number; name: string; parent_id: [number, string] | false }>) {
           let companyName = '-';
           if (c.parent_id && Array.isArray(c.parent_id)) {
             // parent_id è già [id, name], ma prendiamo dalla query per sicurezza
@@ -228,13 +267,57 @@ export async function GET(request: NextRequest) {
         }
       } catch (odooError) {
         console.error('[Export] Errore Odoo fetch contacts:', odooError);
+        // Fallback: crea nomi placeholder per i contatti non trovati
+        for (const id of contactsWithoutName) {
+          if (!contactInfo.has(id)) {
+            contactInfo.set(id, {
+              name: `Dipendente #${id}`,
+              company_name: '-',
+            });
+          }
+        }
       }
     }
 
-    // Log dei contatti non trovati in Odoo
+    // Fallback finale: assicurati che ogni contatto abbia un nome
     for (const contactId of contactIds) {
       if (!contactInfo.has(contactId)) {
-        console.warn(`[Export] Contact ID ${contactId} NOT found in Odoo!`);
+        contactInfo.set(contactId, {
+          name: `Dipendente #${contactId}`,
+          company_name: '-',
+        });
+      }
+    }
+
+    // Aggiorna company_name per i contatti con nome locale
+    if (contactInfo.size > 0) {
+      try {
+        const odoo = createOdooRPCClient();
+        const allContactIds = Array.from(contactInfo.keys());
+        const contacts = await odoo.searchRead(
+          'res.partner',
+          [['id', 'in', allContactIds]],
+          ['id', 'parent_id'],
+          100
+        ) as Array<{ id: number; parent_id: [number, string] | false }>;
+
+        for (const c of contacts) {
+          if (c.parent_id && Array.isArray(c.parent_id)) {
+            const info = contactInfo.get(c.id);
+            if (info) {
+              info.company_name = c.parent_id[1] || '-';
+            }
+          }
+        }
+      } catch {
+        // Ignora errori Odoo per company_name
+      }
+    }
+
+    // Log dei contatti senza nome
+    for (const contactId of contactIds) {
+      if (!contactInfo.has(contactId)) {
+        console.warn(`[Export] Contact ID ${contactId} has no name (local or Odoo)`);
       }
     }
 
@@ -248,7 +331,7 @@ export async function GET(request: NextRequest) {
         dailyReports.set(key, {
           date,
           contact_id: entry.contact_id,
-          contact_name: info?.name || `Contatto ID ${entry.contact_id}`,
+          contact_name: info?.name || `Dipendente #${entry.contact_id}`,
           company_name: info?.company_name || '-',
           first_clock_in: null,
           last_clock_out: null,
@@ -396,134 +479,253 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Formato Excel (semplice HTML table che Excel può aprire)
+    // Formato Excel (vero .xlsx con libreria xlsx)
     if (format === 'excel') {
-      const html = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
-        <head>
-          <meta charset="utf-8">
-          <style>
-            table { border-collapse: collapse; }
-            th, td { border: 1px solid #000; padding: 5px; }
-            th { background: #f0f0f0; font-weight: bold; }
-            .employee-name { font-weight: bold; }
-            .company-name { color: #666; }
-            .coffee-break { background: #fff3cd; }
-            .lunch-break { background: #ffe4b3; }
-          </style>
-        </head>
-        <body>
-          <h2>Report Presenze</h2>
-          <p>Periodo: ${startDate.toLocaleDateString('it-IT')} - ${endDate.toLocaleDateString('it-IT')}</p>
-          <table>
-            <tr>
-              <th>Data</th>
-              <th>ID</th>
-              <th>Nome Dipendente</th>
-              <th>Azienda</th>
-              <th>Entrata</th>
-              <th>Uscita</th>
-              <th>Pausa Caffè (min)</th>
-              <th>Pausa Pranzo (min)</th>
-              <th>Pausa Totale (min)</th>
-              <th>Ore Lavorate</th>
-            </tr>
-            ${reports.map(report => {
-              const entrata = report.first_clock_in
-                ? new Date(report.first_clock_in).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-                : '-';
-              const uscita = report.last_clock_out
-                ? new Date(report.last_clock_out).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-                : '-';
-              return `<tr>
-                <td>${report.date}</td>
-                <td>${report.contact_id}</td>
-                <td class="employee-name">${report.contact_name}</td>
-                <td class="company-name">${report.company_name}</td>
-                <td>${entrata}</td>
-                <td>${uscita}</td>
-                <td class="coffee-break">${report.coffee_break_minutes}</td>
-                <td class="lunch-break">${report.lunch_break_minutes}</td>
-                <td>${report.break_minutes}</td>
-                <td>${report.total_hours}</td>
-              </tr>`;
-            }).join('')}
-          </table>
+      // Crea workbook
+      const wb = XLSX.utils.book_new();
 
-          <h3>Riepilogo per Dipendente</h3>
-          <table>
-            <tr>
-              <th>ID</th>
-              <th>Nome Dipendente</th>
-              <th>Azienda</th>
-              <th>Giorni Lavorati</th>
-              <th>Pausa Caffè Tot (min)</th>
-              <th>Pausa Pranzo Tot (min)</th>
-              <th>Ore Totali</th>
-              <th>Media Ore/Giorno</th>
-            </tr>
-            ${(() => {
-              const byContact = new Map<number, { id: number; name: string; company: string; days: number; hours: number; coffeeMin: number; lunchMin: number }>();
-              for (const report of reports) {
-                const key = report.contact_id;
-                if (!byContact.has(key)) {
-                  byContact.set(key, { id: report.contact_id, name: report.contact_name, company: report.company_name, days: 0, hours: 0, coffeeMin: 0, lunchMin: 0 });
-                }
-                const data = byContact.get(key)!;
-                data.days++;
-                data.hours += report.total_hours;
-                data.coffeeMin += report.coffee_break_minutes;
-                data.lunchMin += report.lunch_break_minutes;
-              }
-              return Array.from(byContact.values())
-                .map((data) => `<tr>
-                  <td>${data.id}</td>
-                  <td class="employee-name">${data.name}</td>
-                  <td class="company-name">${data.company}</td>
-                  <td>${data.days}</td>
-                  <td class="coffee-break">${data.coffeeMin}</td>
-                  <td class="lunch-break">${data.lunchMin}</td>
-                  <td>${data.hours.toFixed(2)}</td>
-                  <td>${(data.hours / data.days).toFixed(2)}</td>
-                </tr>`).join('');
-            })()}
-          </table>
+      // Sheet 1: Dettaglio Presenze
+      const detailData = reports.map(report => ({
+        'Data': report.date,
+        'ID': report.contact_id,
+        'Nome Dipendente': report.contact_name,
+        'Azienda': report.company_name,
+        'Entrata': report.first_clock_in
+          ? new Date(report.first_clock_in).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+          : '-',
+        'Uscita': report.last_clock_out
+          ? new Date(report.last_clock_out).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+          : '-',
+        'Pausa Caffè (min)': report.coffee_break_minutes,
+        'Pausa Pranzo (min)': report.lunch_break_minutes,
+        'Pausa Totale (min)': report.break_minutes,
+        'Ore Lavorate': report.total_hours,
+      }));
 
-          <h3>Dettaglio Pause</h3>
-          <table>
-            <tr>
-              <th>Data</th>
-              <th>ID</th>
-              <th>Nome Dipendente</th>
-              <th>Tipo Pausa</th>
-              <th>Inizio</th>
-              <th>Fine</th>
-              <th>Durata (min)</th>
-            </tr>
-            ${reports.flatMap(report =>
-              report.breaks.map(b => `<tr>
-                <td>${report.date}</td>
-                <td>${report.contact_id}</td>
-                <td>${report.contact_name}</td>
-                <td class="${b.type === 'coffee_break' ? 'coffee-break' : 'lunch-break'}">${b.name}</td>
-                <td>${new Date(b.start).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</td>
-                <td>${b.end ? new Date(b.end).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'In corso'}</td>
-                <td>${b.duration_minutes}</td>
-              </tr>`)
-            ).join('')}
-          </table>
-        </body>
-        </html>
-      `;
+      const wsDetail = XLSX.utils.json_to_sheet(detailData);
+      // Imposta larghezza colonne
+      wsDetail['!cols'] = [
+        { wch: 12 }, // Data
+        { wch: 8 },  // ID
+        { wch: 25 }, // Nome
+        { wch: 20 }, // Azienda
+        { wch: 10 }, // Entrata
+        { wch: 10 }, // Uscita
+        { wch: 18 }, // Pausa Caffè
+        { wch: 18 }, // Pausa Pranzo
+        { wch: 18 }, // Pausa Totale
+        { wch: 12 }, // Ore
+      ];
+      XLSX.utils.book_append_sheet(wb, wsDetail, 'Presenze');
+
+      // Sheet 2: Riepilogo per Dipendente
+      const byContact = new Map<number, { id: number; name: string; company: string; days: number; hours: number; coffeeMin: number; lunchMin: number }>();
+      for (const report of reports) {
+        const key = report.contact_id;
+        if (!byContact.has(key)) {
+          byContact.set(key, { id: report.contact_id, name: report.contact_name, company: report.company_name, days: 0, hours: 0, coffeeMin: 0, lunchMin: 0 });
+        }
+        const data = byContact.get(key)!;
+        data.days++;
+        data.hours += report.total_hours;
+        data.coffeeMin += report.coffee_break_minutes;
+        data.lunchMin += report.lunch_break_minutes;
+      }
+
+      const summaryData = Array.from(byContact.values()).map(data => ({
+        'ID': data.id,
+        'Nome Dipendente': data.name,
+        'Azienda': data.company,
+        'Giorni Lavorati': data.days,
+        'Pausa Caffè Tot (min)': data.coffeeMin,
+        'Pausa Pranzo Tot (min)': data.lunchMin,
+        'Ore Totali': Number(data.hours.toFixed(2)),
+        'Media Ore/Giorno': Number((data.hours / data.days).toFixed(2)),
+      }));
+
+      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+      wsSummary['!cols'] = [
+        { wch: 8 },  // ID
+        { wch: 25 }, // Nome
+        { wch: 20 }, // Azienda
+        { wch: 15 }, // Giorni
+        { wch: 20 }, // Pausa Caffè
+        { wch: 20 }, // Pausa Pranzo
+        { wch: 12 }, // Ore Tot
+        { wch: 15 }, // Media
+      ];
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Riepilogo');
+
+      // Sheet 3: Dettaglio Pause
+      const breakData = reports.flatMap(report =>
+        report.breaks.map(b => ({
+          'Data': report.date,
+          'ID': report.contact_id,
+          'Nome Dipendente': report.contact_name,
+          'Tipo Pausa': b.name,
+          'Inizio': new Date(b.start).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+          'Fine': b.end ? new Date(b.end).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'In corso',
+          'Durata (min)': b.duration_minutes,
+        }))
+      );
+
+      if (breakData.length > 0) {
+        const wsBreaks = XLSX.utils.json_to_sheet(breakData);
+        wsBreaks['!cols'] = [
+          { wch: 12 }, // Data
+          { wch: 8 },  // ID
+          { wch: 25 }, // Nome
+          { wch: 15 }, // Tipo
+          { wch: 10 }, // Inizio
+          { wch: 10 }, // Fine
+          { wch: 12 }, // Durata
+        ];
+        XLSX.utils.book_append_sheet(wb, wsBreaks, 'Pause');
+      }
+
+      // Genera buffer Excel
+      const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
       if (email) {
         console.log(`TODO: Inviare report Excel a ${email}`);
       }
 
-      return new NextResponse(html, {
+      return new NextResponse(excelBuffer, {
         headers: {
-          'Content-Type': 'application/vnd.ms-excel; charset=utf-8',
-          'Content-Disposition': `attachment; filename="presenze_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.xls"`,
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="presenze_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.xlsx"`,
+        },
+      });
+    }
+
+    // Formato PDF
+    if (format === 'pdf') {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const doc = new jsPDF();
+
+      // Header
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Report Presenze', 14, 20);
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text(`Periodo: ${startDate.toLocaleDateString('it-IT')} - ${endDate.toLocaleDateString('it-IT')}`, 14, 28);
+
+      // Se non ci sono dati, mostra messaggio
+      if (reports.length === 0) {
+        doc.setFontSize(12);
+        doc.setTextColor(150);
+        doc.text('Nessuna presenza registrata nel periodo selezionato.', 14, 50);
+
+        const pdfOutput = doc.output('arraybuffer');
+        return new NextResponse(pdfOutput, {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="presenze_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.pdf"`,
+          },
+        });
+      }
+
+      // Calcola riepilogo per dipendente
+      const byContact = new Map<number, { id: number; name: string; company: string; days: number; hours: number; coffeeMin: number; lunchMin: number }>();
+      for (const report of reports) {
+        const key = report.contact_id;
+        if (!byContact.has(key)) {
+          byContact.set(key, { id: report.contact_id, name: report.contact_name, company: report.company_name, days: 0, hours: 0, coffeeMin: 0, lunchMin: 0 });
+        }
+        const data = byContact.get(key)!;
+        data.days++;
+        data.hours += report.total_hours;
+        data.coffeeMin += report.coffee_break_minutes;
+        data.lunchMin += report.lunch_break_minutes;
+      }
+
+      // Calcola totali
+      const totalHours = reports.reduce((sum, r) => sum + r.total_hours, 0);
+      const totalDays = new Set(reports.map(r => r.date)).size;
+
+      // Statistiche
+      doc.setFontSize(10);
+      doc.setTextColor(0);
+      doc.text(`Dipendenti: ${byContact.size}  |  Giorni: ${totalDays}  |  Ore Totali: ${totalHours.toFixed(2)}`, 14, 36);
+
+      // Riepilogo per Dipendente
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Riepilogo per Dipendente', 14, 48);
+
+      const summaryBody: (string | number)[][] = [];
+      for (const data of Array.from(byContact.values())) {
+        summaryBody.push([
+          data.name,
+          data.days,
+          data.hours.toFixed(2),
+          data.days > 0 ? (data.hours / data.days).toFixed(2) : '0.00',
+        ]);
+      }
+
+      doc.autoTable({
+        head: [['Dipendente', 'Giorni', 'Ore Totali', 'Media/Giorno']],
+        body: summaryBody,
+        startY: 52,
+        theme: 'striped',
+        headStyles: { fillColor: [66, 139, 202], fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        margin: { left: 14, right: 14 },
+      });
+
+      // Dettaglio Presenze
+      const startYDetail = (doc.lastAutoTable?.finalY || 70) + 15;
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Dettaglio Presenze', 14, startYDetail);
+
+      const detailBody: (string | number)[][] = [];
+      for (const report of reports) {
+        const entrata = report.first_clock_in
+          ? new Date(report.first_clock_in).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+          : '-';
+        const uscita = report.last_clock_out
+          ? new Date(report.last_clock_out).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+          : '-';
+
+        detailBody.push([
+          report.date,
+          report.contact_name,
+          entrata,
+          uscita,
+          report.break_minutes,
+          report.total_hours.toFixed(2),
+        ]);
+      }
+
+      doc.autoTable({
+        head: [['Data', 'Dipendente', 'Entrata', 'Uscita', 'Pause (min)', 'Ore']],
+        body: detailBody,
+        startY: startYDetail + 4,
+        theme: 'striped',
+        headStyles: { fillColor: [66, 139, 202], fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        columnStyles: {
+          0: { cellWidth: 22 },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 18 },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 22 },
+          5: { cellWidth: 15 },
+        },
+        margin: { left: 14, right: 14 },
+      });
+
+      // Genera output come ArrayBuffer
+      const pdfOutput = doc.output('arraybuffer');
+
+      return new NextResponse(pdfOutput, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="presenze_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.pdf"`,
         },
       });
     }

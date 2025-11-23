@@ -52,7 +52,7 @@ function calculateDistance(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { contact_id, company_id, entry_type, latitude, longitude, qr_secret, break_type } = body;
+    const { contact_id, company_id, entry_type, latitude, longitude, qr_secret, break_type, contact_name } = body;
 
     if (!contact_id || !entry_type) {
       return NextResponse.json({ success: false, error: 'contact_id e entry_type obbligatori' }, { status: 400 });
@@ -149,14 +149,14 @@ export async function POST(request: NextRequest) {
       const finalBreakType = entry_type === 'break_end' ? lastEntry?.break_type : break_type;
 
       result = await sql`
-        INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, break_type, break_max_minutes)
-        VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude || null}, ${longitude || null}, false, ${finalBreakType || null}, ${breakMaxMinutes})
+        INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, break_type, break_max_minutes, contact_name)
+        VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude || null}, ${longitude || null}, false, ${finalBreakType || null}, ${breakMaxMinutes}, ${contact_name || null})
         RETURNING *
       `;
     } else {
       result = await sql`
-        INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, location_id, location_name)
-        VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude}, ${longitude}, true, ${loc?.id}, ${loc?.name})
+        INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, location_id, location_name, contact_name)
+        VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude}, ${longitude}, true, ${loc?.id}, ${loc?.name}, ${contact_name || null})
         RETURNING *
       `;
     }
@@ -205,27 +205,61 @@ export async function GET(request: NextRequest) {
       WHERE contact_id = ${parseInt(contactId)} ORDER BY timestamp DESC LIMIT 1
     `;
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Usa timezone Europe/Rome per calcolare mezzanotte italiana
+    const TIMEZONE = 'Europe/Rome';
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: TIMEZONE }); // YYYY-MM-DD in Rome timezone
+    const todayStart = new Date(todayStr + 'T00:00:00+01:00'); // Mezzanotte CET (approssimato)
+
+    // Calcola offset corretto per ora legale/solare
+    const romeOffset = now.toLocaleString('en-US', { timeZone: TIMEZONE, timeZoneName: 'shortOffset' });
+    const isDST = romeOffset.includes('+02') || romeOffset.includes('+2');
+    const todayStartRome = new Date(todayStr + (isDST ? 'T00:00:00+02:00' : 'T00:00:00+01:00'));
 
     const todayResult = await sql`
       SELECT entry_type, timestamp, location_name, break_type, break_max_minutes FROM ta_time_entries
-      WHERE contact_id = ${parseInt(contactId)} AND timestamp >= ${todayStart.toISOString()}
+      WHERE contact_id = ${parseInt(contactId)} AND timestamp >= ${todayStartRome.toISOString()}
       ORDER BY timestamp ASC
     `;
 
+    // Controlla se era in servizio prima di oggi (clock_in ieri senza clock_out)
+    const lastEntryBeforeToday = await sql`
+      SELECT entry_type, timestamp
+      FROM ta_time_entries
+      WHERE contact_id = ${parseInt(contactId)}
+        AND timestamp < ${todayStartRome.toISOString()}
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `;
+    const wasOnDutyBeforeToday = lastEntryBeforeToday.rows.length > 0 &&
+      (lastEntryBeforeToday.rows[0].entry_type === 'clock_in' ||
+       lastEntryBeforeToday.rows[0].entry_type === 'break_end' ||
+       lastEntryBeforeToday.rows[0].entry_type === 'break_start');
+
     let workingTime = 0, breakTime = 0;
-    let lastClockIn: Date | null = null, lastBreakStart: Date | null = null;
+    // Se era in servizio prima di oggi, inizia il conteggio da mezzanotte
+    let lastClockIn: Date | null = wasOnDutyBeforeToday ? todayStartRome : null;
+    let lastBreakStart: Date | null = null;
 
     for (const e of todayResult.rows) {
       const t = new Date(e.timestamp);
       if (e.entry_type === 'clock_in') lastClockIn = t;
-      else if (e.entry_type === 'clock_out' && lastClockIn) { workingTime += t.getTime() - lastClockIn.getTime(); lastClockIn = null; }
+      else if (e.entry_type === 'clock_out' && lastClockIn) {
+        workingTime += t.getTime() - lastClockIn.getTime();
+        lastClockIn = null;
+        lastBreakStart = null; // Reset anche break
+      }
       else if (e.entry_type === 'break_start') lastBreakStart = t;
-      else if (e.entry_type === 'break_end' && lastBreakStart) { breakTime += t.getTime() - lastBreakStart.getTime(); lastBreakStart = null; }
+      else if (e.entry_type === 'break_end' && lastBreakStart) {
+        breakTime += t.getTime() - lastBreakStart.getTime();
+        lastBreakStart = null;
+      }
     }
 
+    // Se ancora in servizio, aggiungi tempo fino ad ora (anche durante pausa)
     if (lastClockIn) workingTime += Date.now() - lastClockIn.getTime();
+    // Se in pausa, aggiungi tempo pausa corrente
+    if (lastBreakStart) breakTime += Date.now() - lastBreakStart.getTime();
     const hoursWorkedToday = Math.max(0, (workingTime - breakTime) / 3600000);
 
     const last = lastResult.rows[0];
@@ -252,11 +286,17 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // Calcola is_on_duty considerando anche clock_in da ieri
+    const hasClockOutToday = todayResult.rows.some((e) => e.entry_type === 'clock_out');
+    const isOnDutyFromToday = last && (last.entry_type === 'clock_in' || last.entry_type === 'break_end' || last.entry_type === 'break_start');
+    const isOnDutyFromYesterday = wasOnDutyBeforeToday && !hasClockOutToday;
+    const isOnDuty = isOnDutyFromToday || isOnDutyFromYesterday;
+
     return NextResponse.json({
       success: true,
       data: {
         last_entry: last || null,
-        is_on_duty: last && (last.entry_type === 'clock_in' || last.entry_type === 'break_end'),
+        is_on_duty: isOnDuty,
         is_on_break: isOnBreak,
         active_break: activeBreakInfo,
         hours_worked_today: Math.round(hoursWorkedToday * 100) / 100,

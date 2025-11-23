@@ -223,9 +223,9 @@ export async function middleware(request: NextRequest) {
     console.error('Token validation failed:', error);
 
     // Token non valido, elimina i cookie e reindirizza alla home
+    // NOTA: Non cancelliamo odoo_session_id per permettere ri-autenticazione più fluida
     const response = NextResponse.redirect(new URL('/', request.url));
     response.cookies.delete('token');
-    response.cookies.delete('odoo_session');
     response.cookies.delete('user');
     return response;
   }

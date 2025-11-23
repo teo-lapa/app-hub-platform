@@ -30,12 +30,14 @@ import {
   X,
   Menu,
   SlidersHorizontal,
+  Users,
 } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Circle } from '@react-google-maps/api';
 
 const MARKER_COLORS = {
   user: '#3B82F6',      // Blue - user position
   customer: '#10B981',   // Green - customer with orders
+  contact: '#8B5CF6',    // Purple - contact in Odoo but no recent orders
   lead: '#F59E0B',       // Orange - saved lead in CRM
   prospect: '#EF4444',   // Red - never seen
   notTarget: '#FFFFFF',  // White - not in target (escluso)
@@ -120,6 +122,9 @@ interface EnrichedPlace extends PlaceData {
   sales_data?: SalesData;
   id?: number;
   type?: 'customer' | 'lead'; // From Odoo load - indicates if it's res.partner or crm.lead
+  locationType?: 'company' | 'delivery'; // 'company' = sede legale, 'delivery' = indirizzo consegna
+  parentId?: number; // ID azienda madre (per indirizzi di consegna)
+  parentName?: string; // Nome azienda madre (per indirizzi di consegna)
 }
 
 const containerStyle = {
@@ -259,10 +264,14 @@ export default function SalesRadarPage() {
   const [mapMode, setMapMode] = useState<'live' | 'static'>('static');
 
   // Static map filters
-  const [staticFilter, setStaticFilter] = useState<'all' | 'customers' | 'leads' | 'not_target'>('all');
+  const [staticFilter, setStaticFilter] = useState<'all' | 'customers' | 'leads' | 'not_target' | 'active_6m'>('all');
 
   // Loading state for static map
   const [loadingStatic, setLoadingStatic] = useState(false);
+
+  // All active customers button state
+  const [loadingAllActive, setLoadingAllActive] = useState(false);
+  const [activePeriod, setActivePeriod] = useState<'1m' | '3m' | '6m'>('3m');
 
   // Odoo places (from static map)
   const [odooPlaces, setOdooPlaces] = useState<any[]>([]);
@@ -299,6 +308,10 @@ export default function SalesRadarPage() {
     }
     if (place.existsInOdoo || place.color === 'green') {
       return MARKER_COLORS.customer;
+    }
+    // Purple - contact in Odoo but no recent orders (type=customer but color not green)
+    if (place.color === 'purple' || (place.type === 'customer' && place.color === 'orange')) {
+      return MARKER_COLORS.contact;
     }
     if (place.isLead || place.color === 'orange') {
       return MARKER_COLORS.lead;
@@ -574,10 +587,12 @@ export default function SalesRadarPage() {
         longitude: userLocation.lng.toString(),
         radius: radius.toString(),
         filter: staticFilter,
-        ...(placeType && placeType !== 'all' ? { type: placeType } : {})
+        ...(placeType ? { type: placeType } : {})  // placeType is '' when "Tutti i tipi" is selected
       });
 
-      const response = await fetch(`/api/sales-radar/load-from-odoo?${params}`);
+      const response = await fetch(`/api/sales-radar/load-from-odoo?${params}`, {
+        credentials: 'include' // Assicura che i cookie vengano inviati
+      });
       const result = await response.json();
 
       if (result.success) {
@@ -588,6 +603,39 @@ export default function SalesRadarPage() {
       console.error('❌ Errore caricamento mappa statica:', error);
     } finally {
       setLoadingStatic(false);
+    }
+  };
+
+  // Load ALL active customers (no radius limit)
+  const loadAllActiveCustomers = async () => {
+    setLoadingAllActive(true);
+    try {
+      const params = new URLSearchParams({
+        all_active: 'true',
+        period: activePeriod
+      });
+
+      const response = await fetch(`/api/sales-radar/load-from-odoo?${params}`, {
+        credentials: 'include'
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        setOdooPlaces(result.data);
+        console.log(`📍 Caricati ${result.data.length} clienti attivi (${activePeriod})`);
+
+        // Mostra messaggio di successo
+        const periodLabel = activePeriod === '1m' ? '1 mese' : activePeriod === '3m' ? '3 mesi' : '6 mesi';
+        alert(`✅ Caricati ${result.data.length} clienti attivi negli ultimi ${periodLabel}`);
+      } else {
+        console.error('❌ Errore:', result.error);
+        alert(`❌ Errore: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Errore caricamento clienti attivi:', error);
+      alert('❌ Errore nel caricamento dei clienti attivi');
+    } finally {
+      setLoadingAllActive(false);
     }
   };
 
@@ -952,23 +1000,23 @@ export default function SalesRadarPage() {
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-full bg-red-500"></span>
-              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => !p.existsInOdoo && !p.isLead && p.color !== 'green' && p.color !== 'orange' && p.color !== 'grey' && !p.notInTarget).length}</span>
-              <span className="text-gray-500">Nuovi</span>
+              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => !p.existsInOdoo && !p.isLead && p.color !== 'green' && p.color !== 'orange' && p.color !== 'grey' && !p.notInTarget).length}</span>
+              <span className="text-gray-600">Nuovi</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-full bg-orange-500"></span>
-              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.isLead || p.color === 'orange').length}</span>
-              <span className="text-gray-500">Lead</span>
+              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.isLead || p.color === 'orange').length}</span>
+              <span className="text-gray-600">Lead</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-full bg-green-500"></span>
-              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.existsInOdoo || p.color === 'green').length}</span>
-              <span className="text-gray-500">Clienti</span>
+              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.existsInOdoo || p.color === 'green').length}</span>
+              <span className="text-gray-600">Clienti</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-full bg-gray-400"></span>
-              <span>{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.notInTarget || p.color === 'grey').length}</span>
-              <span className="text-gray-500">Esclusi</span>
+              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.notInTarget || p.color === 'grey').length}</span>
+              <span className="text-gray-600">Esclusi</span>
             </div>
           </div>
         </div>
@@ -1065,6 +1113,7 @@ export default function SalesRadarPage() {
                     >
                       <option value="all">Tutti</option>
                       <option value="customers">🟢 Solo Clienti</option>
+                      <option value="active_6m">🟢 Clienti Attivi (6 mesi)</option>
                       <option value="leads">🟠 Solo Lead</option>
                       <option value="not_target">⚪ Non in Target</option>
                     </select>
@@ -1113,6 +1162,46 @@ export default function SalesRadarPage() {
               >
                 🔄 Aggiorna Dati Google
               </button>
+            )}
+
+            {/* Load ALL Active Customers Button - Always visible in static mode */}
+            {mapMode === 'static' && (
+              <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                <p className="text-sm font-semibold text-green-800 mb-3">
+                  🗺️ Carica TUTTI i Clienti Attivi
+                </p>
+                <p className="text-xs text-green-600 mb-3">
+                  Senza limiti di zona - mostra tutti i clienti con ordini nel periodo selezionato
+                </p>
+                <div className="flex gap-2">
+                  <select
+                    value={activePeriod}
+                    onChange={(e) => setActivePeriod(e.target.value as '1m' | '3m' | '6m')}
+                    className="flex-1 px-3 py-2.5 text-sm border border-green-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="1m" className="text-gray-900">Ultimo mese</option>
+                    <option value="3m" className="text-gray-900">Ultimi 3 mesi</option>
+                    <option value="6m" className="text-gray-900">Ultimi 6 mesi</option>
+                  </select>
+                  <button
+                    onClick={loadAllActiveCustomers}
+                    disabled={loadingAllActive}
+                    className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold text-sm transition-all active:scale-95"
+                  >
+                    {loadingAllActive ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Caricamento...
+                      </>
+                    ) : (
+                      <>
+                        <Users className="h-4 w-4" />
+                        Carica Tutti
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 
@@ -1290,12 +1379,15 @@ export default function SalesRadarPage() {
                 }}
                 onClick={() => setSelectedPlace(place)}
                 icon={{
-                  path: google.maps.SymbolPath.CIRCLE,
-                  scale: 10,
+                  path: place.locationType === 'delivery'
+                    ? 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' // Pin icon for delivery
+                    : google.maps.SymbolPath.CIRCLE,
+                  scale: place.locationType === 'delivery' ? 1.5 : 10,
                   fillColor: getMarkerColor(place),
                   fillOpacity: getMarkerOpacity(place),
-                  strokeColor: '#FFFFFF',
-                  strokeWeight: 2,
+                  strokeColor: place.locationType === 'delivery' ? '#059669' : '#FFFFFF', // Verde scuro per consegna
+                  strokeWeight: place.locationType === 'delivery' ? 1 : 2,
+                  anchor: place.locationType === 'delivery' ? new google.maps.Point(12, 22) : undefined,
                 }}
               />
             ))}
@@ -1310,9 +1402,37 @@ export default function SalesRadarPage() {
                 onCloseClick={() => setSelectedPlace(null)}
               >
                 <div className="max-w-[280px] sm:max-w-xs p-2">
-                  <h3 className="mb-2 text-base sm:text-lg font-bold text-gray-900 leading-tight">
+                  <h3 className="mb-1 text-base sm:text-lg font-bold text-gray-900 leading-tight">
                     {selectedPlace.name}
                   </h3>
+
+                  {/* Location type indicator (sede vs consegna) */}
+                  {selectedPlace.locationType && (
+                    <div className={`mb-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                      selectedPlace.locationType === 'delivery'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {selectedPlace.locationType === 'delivery' ? (
+                        <>
+                          <span>🚚</span>
+                          <span>Indirizzo Consegna</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>🏢</span>
+                          <span>Sede Legale</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Parent company link for delivery addresses */}
+                  {selectedPlace.locationType === 'delivery' && selectedPlace.parentName && (
+                    <div className="mb-2 text-xs text-gray-600">
+                      Azienda: <span className="font-medium text-gray-800">{selectedPlace.parentName}</span>
+                    </div>
+                  )}
 
                   {/* Sales data for customers (from static mode or live mode) */}
                   {(selectedPlace.existsInOdoo || selectedPlace.sales_data || selectedPlace.color === 'green') && (selectedPlace.sales_data || selectedPlace.salesData) && (
@@ -1449,12 +1569,13 @@ export default function SalesRadarPage() {
                   })()}
 
                   {/* Odoo Status - handles all 4 color states */}
-                  {(selectedPlace.existsInOdoo || selectedPlace.color === 'green') && (selectedPlace.odooCustomer || selectedPlace.id) ? (
-                    <div className="mb-3 rounded-lg bg-green-50 p-3">
+                  {/* Customer with orders (green) OR customer without orders (purple - contact in Odoo) */}
+                  {(selectedPlace.existsInOdoo || selectedPlace.color === 'green' || (selectedPlace.type === 'customer' && selectedPlace.color === 'orange')) && (selectedPlace.odooCustomer || selectedPlace.id) ? (
+                    <div className={`mb-3 rounded-lg p-3 ${selectedPlace.color === 'green' ? 'bg-green-50' : 'bg-purple-50'}`}>
                       <div className="mb-2 flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-                        <span className="text-sm font-semibold text-green-900">
-                          Cliente Esistente
+                        <CheckCircle2 className={`h-4 w-4 sm:h-5 sm:w-5 ${selectedPlace.color === 'green' ? 'text-green-600' : 'text-purple-600'}`} />
+                        <span className={`text-sm font-semibold ${selectedPlace.color === 'green' ? 'text-green-900' : 'text-purple-900'}`}>
+                          {selectedPlace.color === 'green' ? 'Cliente Attivo' : 'Contatto Odoo (no ordini recenti)'}
                         </span>
                       </div>
 
@@ -1490,25 +1611,33 @@ export default function SalesRadarPage() {
                       )}
 
                       <a
-                        href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.odooCustomer?.id || selectedPlace.id}&model=res.partner&view_type=form`}
+                        href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${
+                          selectedPlace.locationType === 'delivery' && selectedPlace.parentId
+                            ? selectedPlace.parentId
+                            : (selectedPlace.odooCustomer?.id || selectedPlace.id)
+                        }&model=res.partner&view_type=form`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-green-700 active:scale-95"
+                        className={`mt-2 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors active:scale-95 ${
+                          selectedPlace.color === 'green'
+                            ? 'bg-green-600 hover:bg-green-700'
+                            : 'bg-purple-600 hover:bg-purple-700'
+                        }`}
                       >
                         <ExternalLink className="h-4 w-4" />
-                        Apri in Odoo
+                        {selectedPlace.locationType === 'delivery' ? 'Apri Azienda in Odoo' : 'Apri in Odoo'}
                       </a>
                     </div>
-                  ) : (selectedPlace.isLead || selectedPlace.color === 'orange') ? (
+                  ) : (selectedPlace.isLead || selectedPlace.type === 'lead') ? (
                     <div className="mb-3 rounded-lg bg-orange-50 p-3">
                       <div className="mb-2 flex items-center gap-2">
                         <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
                         <span className="text-sm font-semibold text-orange-900">
-                          Lead Salvato
+                          Lead CRM
                         </span>
                       </div>
                       <p className="mb-2 text-xs sm:text-sm text-orange-800">
-                        Presente nel CRM come lead
+                        Presente nel CRM come lead da convertire
                       </p>
                       {(selectedPlace.id || selectedPlace.leadId) && (
                         <a

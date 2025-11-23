@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
       // Imposta il cookie JWT
       response.cookies.set('token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: true, // Sempre true per HTTPS (staging e production)
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60, // 7 giorni
         path: '/',
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
       // Salva session_id Odoo in cookie separato
       response.cookies.set('odoo_session_id', odooSessionId, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: true, // Sempre true per HTTPS (staging e production)
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60,
         path: '/',
