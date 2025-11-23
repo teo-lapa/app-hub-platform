@@ -1628,7 +1628,7 @@ export default function SalesRadarPage() {
                         {selectedPlace.locationType === 'delivery' ? 'Apri Azienda in Odoo' : 'Apri in Odoo'}
                       </a>
                     </div>
-                  ) : (selectedPlace.isLead || selectedPlace.type === 'lead') ? (
+                  ) : (selectedPlace.isLead || selectedPlace.type === 'lead') && selectedPlace.color !== 'grey' && !selectedPlace.notInTarget ? (
                     <div className="mb-3 rounded-lg bg-orange-50 p-3">
                       <div className="mb-2 flex items-center gap-2">
                         <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
