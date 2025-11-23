@@ -263,7 +263,7 @@ export default function BusinessReviewsPage({
           <div className="bg-white rounded-xl p-4 border text-center">
             <Star className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
             <p className="text-2xl font-bold">
-              {business?.metrics?.averageRating?.toFixed(1) || '-'}
+              {business?.metrics?.averageRating ? parseFloat(String(business.metrics.averageRating)).toFixed(1) : '-'}
             </p>
             <p className="text-sm text-gray-500">Rating Medio</p>
           </div>
