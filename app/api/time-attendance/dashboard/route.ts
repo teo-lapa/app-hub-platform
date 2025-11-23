@@ -25,11 +25,13 @@ interface EmployeeStatus {
 // Helper per calcolare ore lavorate da entries
 // wasOnDutyAtStart: true se il dipendente era già in servizio all'inizio del periodo
 // periodStart: inizio del periodo per calcolare ore se wasOnDutyAtStart è true
+// periodEnd: fine del periodo per giorni completati (es. mezzanotte per ieri)
 function calculateHoursFromEntries(
   entries: Array<{ entry_type: string; timestamp: string }>,
   includeOngoing = false,
   wasOnDutyAtStart = false,
-  periodStart?: Date
+  periodStart?: Date,
+  periodEnd?: Date
 ): number {
   let workingTime = 0;
   let breakTime = 0;
@@ -67,17 +69,25 @@ function calculateHoursFromEntries(
     }
   }
 
-  // Se ancora in servizio e includeOngoing è true, aggiungi tempo fino ad ora
-  // IMPORTANTE: aggiungi SEMPRE se lastClockIn esiste, anche durante pausa!
-  // Il tempo in pausa verrà sottratto dal breakTime sotto
-  if (includeOngoing && lastClockIn) {
-    workingTime += Date.now() - lastClockIn.getTime();
+  // Se ancora in servizio, calcola ore fino a:
+  // - now se includeOngoing è true (oggi)
+  // - periodEnd se fornito (giorni passati come ieri)
+  if (lastClockIn) {
+    if (includeOngoing) {
+      workingTime += Date.now() - lastClockIn.getTime();
+    } else if (periodEnd) {
+      // Per giorni completati: calcola fino a fine giornata
+      workingTime += periodEnd.getTime() - lastClockIn.getTime();
+    }
   }
 
   // Se in pausa, aggiungi il tempo della pausa corrente al breakTime
-  // Questo verrà sottratto dal workingTime nel calcolo finale
-  if (includeOngoing && lastBreakStart) {
-    breakTime += Date.now() - lastBreakStart.getTime();
+  if (lastBreakStart) {
+    if (includeOngoing) {
+      breakTime += Date.now() - lastBreakStart.getTime();
+    } else if (periodEnd) {
+      breakTime += periodEnd.getTime() - lastBreakStart.getTime();
+    }
   }
 
   return Math.max(0, (workingTime - breakTime) / 3600000);
@@ -198,6 +208,26 @@ export async function GET(request: NextRequest) {
       wasOnDutyBeforeToday.set(entry.contact_id, wasOnDuty);
     }
 
+    // Ottieni l'ultimo entry di ogni dipendente PRIMA di ieri
+    // Serve per calcolare le ore di ieri se erano già in servizio da prima
+    const lastEntryBeforeYesterdayResult = await sql`
+      SELECT DISTINCT ON (contact_id)
+        contact_id,
+        entry_type,
+        timestamp
+      FROM ta_time_entries
+      WHERE company_id = ${parseInt(companyId)}
+        AND timestamp < ${yesterdayStart.toISOString()}
+      ORDER BY contact_id, timestamp DESC
+    `;
+
+    // Mappa: contact_id -> true se era in servizio prima di ieri
+    const wasOnDutyBeforeYesterday = new Map<number, boolean>();
+    for (const entry of lastEntryBeforeYesterdayResult.rows) {
+      const wasOnDuty = entry.entry_type === 'clock_in' || entry.entry_type === 'break_end' || entry.entry_type === 'break_start';
+      wasOnDutyBeforeYesterday.set(entry.contact_id, wasOnDuty);
+    }
+
     // Ottieni tutte le timbrature del giorno per l'azienda
     const entriesResult = await sql`
       SELECT
@@ -312,6 +342,8 @@ export async function GET(request: NextRequest) {
 
       // Controlla se era già in servizio prima di oggi (clock_in ieri senza clock_out)
       const wasOnDutyBefore = wasOnDutyBeforeToday.get(contactId) || false;
+      // Controlla se era già in servizio prima di ieri (per calcolo ore ieri)
+      const wasOnDutyBeforeYest = wasOnDutyBeforeYesterday.get(contactId) || false;
 
       // Calcola stato attuale
       const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
@@ -326,7 +358,9 @@ export async function GET(request: NextRequest) {
       // Se era in servizio prima di oggi, inizia il conteggio da mezzanotte
       const entriesToday = entries.map(e => ({ entry_type: e.entry_type as string, timestamp: e.timestamp as string }));
       const hoursToday = calculateHoursFromEntries(entriesToday, true, wasOnDutyBefore, dayStart);
-      const hoursYesterday = calculateHoursFromEntries(yesterdayEntries, false);
+      // Per ieri: passa periodEnd (fine giornata ieri) per calcolare ore fino a mezzanotte
+      // se clock_in ieri senza clock_out, conta le ore fino a fine giornata ieri
+      const hoursYesterday = calculateHoursFromEntries(yesterdayEntries, false, wasOnDutyBeforeYest, yesterdayStart, yesterdayEnd);
       const hoursWeek = calculateHoursFromEntries(weekEntries, true); // week include tutto da lunedì
       const hoursMonth = calculateHoursFromEntries(monthEntries, true); // month include tutto dal 1°
 

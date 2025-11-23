@@ -36,24 +36,26 @@ const getRomeDayBounds = (refDate: Date) => {
 };
 
 // Helper per calcolare ore lavorate da entries
+// wasOnDutyAtStart: true se il dipendente era già in servizio all'inizio del periodo
+// periodStart: inizio del periodo per calcolare ore se wasOnDutyAtStart è true
+// periodEnd: fine del periodo per giorni completati (es. mezzanotte per ieri)
 function calculateHoursFromEntries(
   entries: Array<{ entry_type: string; timestamp: string }>,
   includeOngoing = false,
   wasOnDutyAtStart = false,
-  periodStart?: Date
+  periodStart?: Date,
+  periodEnd?: Date
 ): number {
   let workingTime = 0;
   let breakTime = 0;
   let lastClockIn: Date | null = wasOnDutyAtStart && periodStart ? periodStart : null;
   let lastBreakStart: Date | null = null;
-  let isOnBreak = false;
 
   for (const entry of entries) {
     const entryTime = new Date(entry.timestamp);
     switch (entry.entry_type) {
       case 'clock_in':
         lastClockIn = entryTime;
-        isOnBreak = false;
         break;
       case 'clock_out':
         if (lastClockIn) {
@@ -62,33 +64,38 @@ function calculateHoursFromEntries(
         }
         // Reset anche lastBreakStart perché clock_out chiude tutto
         lastBreakStart = null;
-        isOnBreak = false;
         break;
       case 'break_start':
         lastBreakStart = entryTime;
-        isOnBreak = true;
         break;
       case 'break_end':
         if (lastBreakStart) {
           breakTime += entryTime.getTime() - lastBreakStart.getTime();
           lastBreakStart = null;
         }
-        isOnBreak = false;
         break;
     }
   }
 
-  // Se ancora in servizio e includeOngoing è true, aggiungi tempo fino ad ora
-  // IMPORTANTE: aggiungi SEMPRE se lastClockIn esiste, anche durante pausa!
-  // Il tempo in pausa verrà sottratto dal breakTime sotto
-  if (includeOngoing && lastClockIn) {
-    workingTime += Date.now() - lastClockIn.getTime();
+  // Se ancora in servizio, calcola ore fino a:
+  // - now se includeOngoing è true (oggi)
+  // - periodEnd se fornito (giorni passati come ieri)
+  if (lastClockIn) {
+    if (includeOngoing) {
+      workingTime += Date.now() - lastClockIn.getTime();
+    } else if (periodEnd) {
+      // Per giorni completati: calcola fino a fine giornata
+      workingTime += periodEnd.getTime() - lastClockIn.getTime();
+    }
   }
 
   // Se in pausa, aggiungi il tempo della pausa corrente al breakTime
-  // Questo verrà sottratto dal workingTime nel calcolo finale
-  if (includeOngoing && lastBreakStart) {
-    breakTime += Date.now() - lastBreakStart.getTime();
+  if (lastBreakStart) {
+    if (includeOngoing) {
+      breakTime += Date.now() - lastBreakStart.getTime();
+    } else if (periodEnd) {
+      breakTime += periodEnd.getTime() - lastBreakStart.getTime();
+    }
   }
 
   return Math.max(0, (workingTime - breakTime) / 3600000);
@@ -160,6 +167,20 @@ export async function GET(request: NextRequest) {
       (lastEntryBeforeToday.rows[0].entry_type === 'clock_in' ||
        lastEntryBeforeToday.rows[0].entry_type === 'break_end' ||
        lastEntryBeforeToday.rows[0].entry_type === 'break_start');
+
+    // Controlla se era in servizio prima di ieri
+    const lastEntryBeforeYesterday = await sql`
+      SELECT entry_type
+      FROM ta_time_entries
+      WHERE contact_id = ${parseInt(contactId)}
+        AND timestamp < ${yesterdayStart.toISOString()}
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `;
+    const wasOnDutyBeforeYesterday = lastEntryBeforeYesterday.rows.length > 0 &&
+      (lastEntryBeforeYesterday.rows[0].entry_type === 'clock_in' ||
+       lastEntryBeforeYesterday.rows[0].entry_type === 'break_end' ||
+       lastEntryBeforeYesterday.rows[0].entry_type === 'break_start');
 
     // Query per oggi
     const todayResult = await sql`
@@ -254,7 +275,8 @@ export async function GET(request: NextRequest) {
 
     // Per oggi, se era in servizio da ieri, inizia da mezzanotte
     const hoursToday = calculateHoursFromEntries(todayEntries, true, wasOnDutyBeforeToday, todayStart);
-    const hoursYesterday = calculateHoursFromEntries(yesterdayEntries, false);
+    // Per ieri: passa periodEnd (fine giornata ieri) per calcolare ore fino a mezzanotte
+    const hoursYesterday = calculateHoursFromEntries(yesterdayEntries, false, wasOnDutyBeforeYesterday, yesterdayStart, yesterdayEnd);
     // Per settimana e mese, passa wasOnDutyBefore e il relativo start
     const hoursWeek = calculateHoursFromEntries(weekEntries, true, wasOnDutyBeforeWeek, weekStart);
     const hoursMonth = calculateHoursFromEntries(monthEntries, true, wasOnDutyBeforeMonth, monthStart);
@@ -307,7 +329,9 @@ export async function GET(request: NextRequest) {
         LIMIT 1
       `;
       const wasOnDutyBeforeDay = lastEntryBeforeDay.rows.length > 0 &&
-        (lastEntryBeforeDay.rows[0].entry_type === 'clock_in' || lastEntryBeforeDay.rows[0].entry_type === 'break_end');
+        (lastEntryBeforeDay.rows[0].entry_type === 'clock_in' ||
+         lastEntryBeforeDay.rows[0].entry_type === 'break_end' ||
+         lastEntryBeforeDay.rows[0].entry_type === 'break_start');
 
       const dayEntries = weekEntries.filter(e => {
         const t = new Date(e.timestamp);
@@ -316,7 +340,14 @@ export async function GET(request: NextRequest) {
 
       // Calcola ore includendo se era in servizio da giorno prima
       const isToday = dayBounds.dateStr === todayBounds.dateStr;
-      const hours = calculateHoursFromEntries(dayEntries, isToday, wasOnDutyBeforeDay, dayBounds.start);
+      // Per giorni passati, passa periodEnd per calcolare fino a fine giornata
+      const hours = calculateHoursFromEntries(
+        dayEntries,
+        isToday,
+        wasOnDutyBeforeDay,
+        dayBounds.start,
+        isToday ? undefined : dayBounds.end
+      );
 
       const clockIns = dayEntries.filter(e => e.entry_type === 'clock_in');
       const clockOuts = dayEntries.filter(e => e.entry_type === 'clock_out');
