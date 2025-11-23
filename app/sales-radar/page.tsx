@@ -577,7 +577,9 @@ export default function SalesRadarPage() {
         ...(placeType && placeType !== 'all' ? { type: placeType } : {})
       });
 
-      const response = await fetch(`/api/sales-radar/load-from-odoo?${params}`);
+      const response = await fetch(`/api/sales-radar/load-from-odoo?${params}`, {
+        credentials: 'include' // Assicura che i cookie vengano inviati
+      });
       const result = await response.json();
 
       if (result.success) {
