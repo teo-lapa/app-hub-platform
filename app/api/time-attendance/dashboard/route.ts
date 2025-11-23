@@ -23,39 +23,56 @@ interface EmployeeStatus {
 }
 
 // Helper per calcolare ore lavorate da entries
-function calculateHoursFromEntries(entries: Array<{ entry_type: string; timestamp: string }>, includeOngoing = false): number {
+// wasOnDutyAtStart: true se il dipendente era già in servizio all'inizio del periodo
+// periodStart: inizio del periodo per calcolare ore se wasOnDutyAtStart è true
+function calculateHoursFromEntries(
+  entries: Array<{ entry_type: string; timestamp: string }>,
+  includeOngoing = false,
+  wasOnDutyAtStart = false,
+  periodStart?: Date
+): number {
   let workingTime = 0;
   let breakTime = 0;
-  let lastClockIn: Date | null = null;
+  let lastClockIn: Date | null = wasOnDutyAtStart && periodStart ? periodStart : null;
   let lastBreakStart: Date | null = null;
+  let isOnBreak = false;
 
   for (const entry of entries) {
     const entryTime = new Date(entry.timestamp);
     switch (entry.entry_type) {
       case 'clock_in':
         lastClockIn = entryTime;
+        isOnBreak = false;
         break;
       case 'clock_out':
         if (lastClockIn) {
           workingTime += entryTime.getTime() - lastClockIn.getTime();
           lastClockIn = null;
         }
+        isOnBreak = false;
         break;
       case 'break_start':
         lastBreakStart = entryTime;
+        isOnBreak = true;
         break;
       case 'break_end':
         if (lastBreakStart) {
           breakTime += entryTime.getTime() - lastBreakStart.getTime();
           lastBreakStart = null;
         }
+        isOnBreak = false;
         break;
     }
   }
 
   // Se ancora in servizio e includeOngoing è true, aggiungi tempo fino ad ora
-  if (includeOngoing && lastClockIn) {
+  if (includeOngoing && lastClockIn && !isOnBreak) {
     workingTime += Date.now() - lastClockIn.getTime();
+  }
+
+  // Se in pausa, aggiungi il tempo della pausa corrente
+  if (includeOngoing && lastBreakStart) {
+    breakTime += Date.now() - lastBreakStart.getTime();
   }
 
   return Math.max(0, (workingTime - breakTime) / 3600000);
@@ -152,6 +169,27 @@ export async function GET(request: NextRequest) {
       employees = result as typeof employees;
     } catch (odooError) {
       console.warn('Errore Odoo, procedo solo con dati locali:', odooError);
+    }
+
+    // Ottieni l'ultimo entry di ogni dipendente PRIMA di oggi
+    // Serve per sapere se erano già in servizio (clock_in ieri senza clock_out)
+    const lastEntryBeforeTodayResult = await sql`
+      SELECT DISTINCT ON (contact_id)
+        contact_id,
+        entry_type,
+        timestamp
+      FROM ta_time_entries
+      WHERE company_id = ${parseInt(companyId)}
+        AND timestamp < ${dayStart.toISOString()}
+      ORDER BY contact_id, timestamp DESC
+    `;
+
+    // Mappa: contact_id -> true se era in servizio prima di oggi
+    const wasOnDutyBeforeToday = new Map<number, boolean>();
+    for (const entry of lastEntryBeforeTodayResult.rows) {
+      // Era in servizio se l'ultimo entry prima di oggi era clock_in o break_end
+      const wasOnDuty = entry.entry_type === 'clock_in' || entry.entry_type === 'break_end';
+      wasOnDutyBeforeToday.set(entry.contact_id, wasOnDuty);
     }
 
     // Ottieni tutte le timbrature del giorno per l'azienda
@@ -266,17 +304,25 @@ export async function GET(request: NextRequest) {
       const weekEntries = weekByContact.get(contactId) || [];
       const monthEntries = monthByContact.get(contactId) || [];
 
+      // Controlla se era già in servizio prima di oggi (clock_in ieri senza clock_out)
+      const wasOnDutyBefore = wasOnDutyBeforeToday.get(contactId) || false;
+
       // Calcola stato attuale
       const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
-      const isOnDuty = lastEntry && (lastEntry.entry_type === 'clock_in' || lastEntry.entry_type === 'break_end');
+      // È in servizio se: ultimo entry oggi è clock_in/break_end, OPPURE era in servizio ieri e non ha fatto clock_out oggi
+      const hasClockOutToday = entries.some(e => e.entry_type === 'clock_out');
+      const isOnDutyFromToday = lastEntry && (lastEntry.entry_type === 'clock_in' || lastEntry.entry_type === 'break_end');
+      const isOnDutyFromYesterday = wasOnDutyBefore && !hasClockOutToday;
+      const isOnDuty = isOnDutyFromToday || isOnDutyFromYesterday;
       const isOnBreak = lastEntry?.entry_type === 'break_start';
 
       // Calcola ore lavorate con helper function
+      // Se era in servizio prima di oggi, inizia il conteggio da mezzanotte
       const entriesToday = entries.map(e => ({ entry_type: e.entry_type as string, timestamp: e.timestamp as string }));
-      const hoursToday = calculateHoursFromEntries(entriesToday, true); // include ongoing
+      const hoursToday = calculateHoursFromEntries(entriesToday, true, wasOnDutyBefore, dayStart);
       const hoursYesterday = calculateHoursFromEntries(yesterdayEntries, false);
-      const hoursWeek = calculateHoursFromEntries(weekEntries, true); // include ongoing per oggi
-      const hoursMonth = calculateHoursFromEntries(monthEntries, true); // include ongoing per oggi
+      const hoursWeek = calculateHoursFromEntries(weekEntries, true); // week include tutto da lunedì
+      const hoursMonth = calculateHoursFromEntries(monthEntries, true); // month include tutto dal 1°
 
       employeeStatuses.push({
         contact_id: contactId,
