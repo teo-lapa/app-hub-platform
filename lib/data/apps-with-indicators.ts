@@ -702,6 +702,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-11-22'),
     updatedAt: new Date('2025-11-22'),
   },
+  {
+    id: 'review1',
+    name: 'Review Manager',
+    description: 'Gestisci le recensioni online da Google, Instagram, Facebook e TikTok. Rispondi con supporto AI, monitora sentiment e traccia rating. Sync automatico ogni 15 minuti.',
+    icon: '⭐',
+    badge: 'PRO',
+    category: 'CRM',
+    url: '/review-manager',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-11-23'),
+    updatedAt: new Date('2025-11-23'),
+  },
 ];
 
 // Combina tutte le app
