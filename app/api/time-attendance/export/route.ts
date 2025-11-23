@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { getOdooClient } from '@/lib/odoo-client';
+import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 
 interface TimeEntry {
   id: string;
@@ -14,6 +15,7 @@ interface TimeEntry {
   location_name?: string;
   break_type?: 'coffee_break' | 'lunch_break';
   break_max_minutes?: number;
+  contact_name?: string; // Nome salvato localmente per export
 }
 
 interface BreakDetail {
