@@ -55,6 +55,26 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
     };
 
     googleMapRef.current = new google.maps.Map(mapRef.current, mapOptions);
+
+    // Previeni zoom della pagina quando si interagisce con la mappa
+    const mapElement = mapRef.current;
+    if (mapElement) {
+      // Blocca touchmove per prevenire scroll/zoom della pagina
+      mapElement.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+      }, { passive: false });
+
+      // Blocca gesture events (pinch-to-zoom) sulla pagina
+      mapElement.addEventListener('gesturestart', (e) => {
+        e.preventDefault();
+      });
+      mapElement.addEventListener('gesturechange', (e) => {
+        e.preventDefault();
+      });
+      mapElement.addEventListener('gestureend', (e) => {
+        e.preventDefault();
+      });
+    }
   }, [mapLoaded]);
 
   // Aggiorna il marker del veicolo separatamente per evitare tremolii
@@ -265,8 +285,8 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
   }, [deliveriesKey, onMarkerClick, mapLoaded, deliveries]);
 
   return (
-    <div className="h-full w-full relative">
-      <div ref={mapRef} className="h-full w-full" />
+    <div className="h-full w-full relative" style={{ touchAction: 'none' }}>
+      <div ref={mapRef} className="h-full w-full" style={{ touchAction: 'none' }} />
       {!mapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
           <div className="text-center">
