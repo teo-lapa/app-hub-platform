@@ -1640,15 +1640,31 @@ export default function SalesRadarPage() {
                         Presente nel CRM come lead da convertire
                       </p>
                       {(selectedPlace.id || selectedPlace.leadId) && (
-                        <a
-                          href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.leadId || selectedPlace.id}&model=${selectedPlace.type === 'customer' ? 'res.partner' : 'crm.lead'}&view_type=form`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-orange-700 active:scale-95"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          Apri in Odoo
-                        </a>
+                        <>
+                          <a
+                            href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.leadId || selectedPlace.id}&model=${selectedPlace.type === 'customer' ? 'res.partner' : 'crm.lead'}&view_type=form`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-orange-700 active:scale-95"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Apri in Odoo
+                          </a>
+                          <button
+                            onClick={() => reactivateLead(selectedPlace)}
+                            className="mt-2 w-full px-3 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 active:scale-95"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            Aggiungi Nota
+                          </button>
+                          <button
+                            onClick={() => setShowAiModal(true)}
+                            className="mt-2 w-full px-3 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 active:scale-95"
+                          >
+                            <Star className="h-4 w-4" />
+                            Analizza con AI
+                          </button>
+                        </>
                       )}
                     </div>
                   ) : (selectedPlace.notInTarget || selectedPlace.color === 'grey') ? (
