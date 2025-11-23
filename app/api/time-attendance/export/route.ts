@@ -150,18 +150,31 @@ export async function GET(request: NextRequest) {
     // Raggruppa per giorno e contatto
     const dailyReports: Map<string, DailyReport> = new Map();
 
-    // Ottieni nomi dei contatti e aziende da Odoo
+    // Prima raccogli i nomi dai dati locali (contact_name salvato nelle entries)
     const contactIds = Array.from(new Set(entries.map(e => e.contact_id)));
     const contactInfo: Map<number, ContactInfo> = new Map();
 
-    if (contactIds.length > 0) {
-      console.log(`[Export] Fetching ${contactIds.length} contacts from Odoo:`, contactIds);
+    // Raccogli nomi dalle entries (priorità ai dati locali)
+    for (const entry of entries) {
+      if (entry.contact_name && !contactInfo.has(entry.contact_id)) {
+        contactInfo.set(entry.contact_id, {
+          name: entry.contact_name,
+          company_name: '-', // Verrà aggiornato da Odoo se disponibile
+        });
+      }
+    }
+
+    // Per i contatti senza nome locale, prova Odoo
+    const contactsWithoutName = contactIds.filter(id => !contactInfo.has(id));
+
+    if (contactsWithoutName.length > 0) {
+      console.log(`[Export] Fetching ${contactsWithoutName.length} contacts from Odoo (missing local names):`, contactsWithoutName);
       try {
         const odoo = await getOdooClient();
         // Prendi nome e parent_id (azienda) per ogni contatto
         const contacts = await odoo.searchRead(
           'res.partner',
-          [['id', 'in', contactIds]],
+          [['id', 'in', contactsWithoutName]],
           ['id', 'name', 'parent_id'],
           100
         );
@@ -208,10 +221,35 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Log dei contatti non trovati in Odoo
+    // Aggiorna company_name per i contatti con nome locale
+    if (contactInfo.size > 0) {
+      try {
+        const odoo = createOdooRPCClient();
+        const allContactIds = Array.from(contactInfo.keys());
+        const contacts = await odoo.searchRead(
+          'res.partner',
+          [['id', 'in', allContactIds]],
+          ['id', 'parent_id'],
+          100
+        ) as Array<{ id: number; parent_id: [number, string] | false }>;
+
+        for (const c of contacts) {
+          if (c.parent_id && Array.isArray(c.parent_id)) {
+            const info = contactInfo.get(c.id);
+            if (info) {
+              info.company_name = c.parent_id[1] || '-';
+            }
+          }
+        }
+      } catch {
+        // Ignora errori Odoo per company_name
+      }
+    }
+
+    // Log dei contatti senza nome
     for (const contactId of contactIds) {
       if (!contactInfo.has(contactId)) {
-        console.warn(`[Export] Contact ID ${contactId} NOT found in Odoo!`);
+        console.warn(`[Export] Contact ID ${contactId} has no name (local or Odoo)`);
       }
     }
 

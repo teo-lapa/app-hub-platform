@@ -6,7 +6,7 @@ import {
   Clock, MapPin, User, Calendar, LogIn, LogOut, Coffee, Play,
   CheckCircle, AlertCircle, QrCode, Users, X, Camera, Navigation,
   Building2, Briefcase, Phone, Mail, Shield, FileText, Home, Loader2, Settings,
-  UtensilsCrossed, AlertTriangle, Timer, TrendingUp, RefreshCw,
+  UtensilsCrossed, AlertTriangle, Timer, TrendingUp, RefreshCw, Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -90,12 +90,14 @@ interface CompanyEmployee {
   hours_worked_today: number;
   hours_worked_yesterday: number;
   hours_worked_week: number;
+  hours_worked_month?: number;
   entries_today: number;
 }
 
 interface CompanyDashboardData {
   date: string;
   week_start: string;
+  month_start?: string;
   stats: {
     total_employees: number;
     on_duty: number;
@@ -104,6 +106,7 @@ interface CompanyDashboardData {
     total_hours_today: number;
     total_hours_yesterday: number;
     total_hours_week: number;
+    total_hours_month?: number;
   };
   employees: CompanyEmployee[];
 }
@@ -164,6 +167,26 @@ export default function TimeAttendancePage() {
     data_processing: false,
     privacy_policy: false,
   });
+
+  // History state for employees
+  const [historyDate, setHistoryDate] = useState(new Date().toISOString().split('T')[0]);
+  const [historyEntries, setHistoryEntries] = useState<TimeEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyStats, setHistoryStats] = useState<{ total_hours: number; break_minutes: number } | null>(null);
+
+  // Employee detail popup state
+  const [selectedEmployee, setSelectedEmployee] = useState<CompanyEmployee | null>(null);
+  const [employeeStats, setEmployeeStats] = useState<{
+    contact: { id: number; name: string; function?: string; email?: string; phone?: string; image?: string; company?: string } | null;
+    stats: {
+      today: { hours: number; entries: number };
+      yesterday: { hours: number; entries: number };
+      week: { hours: number; entries: number; days_worked: number };
+      month: { hours: number; entries: number; days_worked: number; avg_hours_per_day: number };
+    };
+    daily_breakdown: Array<{ date: string; hours_worked: number; entries_count: number; first_clock_in?: string; last_clock_out?: string }>;
+  } | null>(null);
+  const [loadingEmployeeStats, setLoadingEmployeeStats] = useState(false);
 
   // Ref to prevent duplicate API calls
   const hasLoadedContactRef = useRef(false);
@@ -366,6 +389,91 @@ export default function TimeAttendancePage() {
     return undefined;
   }, [contact?.is_company, contact?.id, loadCompanyDashboard]);
 
+  // Load employee history for selected date
+  const loadEmployeeHistory = useCallback(async (contactId: number, date: string) => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch(`/api/time-attendance/export?contact_id=${contactId}&company_id=${company?.id || 0}&start_date=${date}&end_date=${date}&format=json`);
+      const data = await res.json();
+      if (data.success && data.data.reports.length > 0) {
+        const report = data.data.reports[0];
+        setHistoryEntries(report.entries || []);
+        setHistoryStats({
+          total_hours: report.total_hours || 0,
+          break_minutes: report.break_minutes || 0,
+        });
+      } else {
+        setHistoryEntries([]);
+        setHistoryStats(null);
+      }
+    } catch (error) {
+      console.error('Error loading history:', error);
+      setHistoryEntries([]);
+      setHistoryStats(null);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [company?.id]);
+
+  // Load history when view changes or date changes
+  useEffect(() => {
+    if (view === 'history' && contact && !contact.is_company) {
+      loadEmployeeHistory(contact.id, historyDate);
+    }
+  }, [view, contact, historyDate, loadEmployeeHistory]);
+
+  // Load employee stats for popup
+  const loadEmployeeStats = useCallback(async (employee: CompanyEmployee) => {
+    setSelectedEmployee(employee);
+    setLoadingEmployeeStats(true);
+    setEmployeeStats(null);
+    try {
+      const res = await fetch(`/api/time-attendance/employee-stats?contact_id=${employee.contact_id}&company_id=${contact?.id || company?.id || 0}`);
+      const data = await res.json();
+      if (data.success) {
+        setEmployeeStats(data.data);
+      }
+    } catch (error) {
+      console.error('Error loading employee stats:', error);
+    } finally {
+      setLoadingEmployeeStats(false);
+    }
+  }, [contact?.id, company?.id]);
+
+  // Close employee popup
+  const closeEmployeePopup = () => {
+    setSelectedEmployee(null);
+    setEmployeeStats(null);
+  };
+
+  // Download employee history
+  const downloadEmployeeHistory = async (format: 'csv' | 'excel') => {
+    if (!contact) return;
+    toast.loading('Generazione report...');
+    try {
+      const url = `/api/time-attendance/export?contact_id=${contact.id}&company_id=${company?.id || 0}&start_date=${historyDate}&end_date=${historyDate}&format=${format}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const blob = await res.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `presenze_${contact.name.replace(/\s+/g, '_')}_${historyDate}.${format === 'excel' ? 'xls' : 'csv'}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        toast.dismiss();
+        toast.success('Download completato!');
+      } else {
+        toast.dismiss();
+        toast.error('Errore download');
+      }
+    } catch {
+      toast.dismiss();
+      toast.error('Errore download');
+    }
+  };
+
   const checkConsents = async (contactId: number) => {
     try {
       const res = await fetch(`/api/time-attendance/consent?contact_id=${contactId}`);
@@ -450,6 +558,7 @@ export default function TimeAttendancePage() {
           latitude: gpsPosition.lat,
           longitude: gpsPosition.lng,
           qr_secret: qrSecret,
+          contact_name: contact.name, // Salva nome per export
         }),
       });
 
@@ -499,6 +608,7 @@ export default function TimeAttendancePage() {
           // GPS opzionale per le pause
           latitude: gpsPosition?.lat,
           longitude: gpsPosition?.lng,
+          contact_name: contact.name, // Salva nome per export
         }),
       });
 
@@ -641,7 +751,7 @@ export default function TimeAttendancePage() {
 
             {/* Hours Summary */}
             {companyDashboard && (
-              <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
                 <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-center">
                   <div className="text-purple-300 text-[10px] sm:text-xs mb-0.5 sm:mb-1">Ieri</div>
                   <div className="text-base sm:text-xl font-bold text-white">{companyDashboard.stats.total_hours_yesterday.toFixed(1)}h</div>
@@ -653,6 +763,10 @@ export default function TimeAttendancePage() {
                 <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-center">
                   <div className="text-amber-300 text-[10px] sm:text-xs mb-0.5 sm:mb-1">Settimana</div>
                   <div className="text-base sm:text-xl font-bold text-white">{companyDashboard.stats.total_hours_week.toFixed(1)}h</div>
+                </div>
+                <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500/20 to-green-500/20 border border-emerald-500/30 text-center">
+                  <div className="text-emerald-300 text-[10px] sm:text-xs mb-0.5 sm:mb-1">Mese</div>
+                  <div className="text-base sm:text-xl font-bold text-white">{(companyDashboard.stats.total_hours_month || 0).toFixed(1)}h</div>
                 </div>
               </div>
             )}
@@ -802,12 +916,13 @@ export default function TimeAttendancePage() {
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: i * 0.05 }}
-                    className={`p-4 rounded-2xl backdrop-blur-lg border ${
+                    onClick={() => loadEmployeeStats(emp)}
+                    className={`p-4 rounded-2xl backdrop-blur-lg border cursor-pointer hover:scale-[1.02] transition-transform ${
                       emp.is_on_duty
                         ? emp.is_on_break
-                          ? 'bg-orange-500/10 border-orange-500/30'
-                          : 'bg-green-500/10 border-green-500/30'
-                        : 'bg-white/5 border-white/10'
+                          ? 'bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20'
+                          : 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20'
+                        : 'bg-white/5 border-white/10 hover:bg-white/10'
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -1086,15 +1201,65 @@ export default function TimeAttendancePage() {
         {/* History View - Solo per dipendenti */}
         {!contact?.is_company && view === 'history' && (
           <div className="py-6 max-w-lg mx-auto">
-            <h2 className="text-2xl font-bold text-white mb-6">Storico Oggi</h2>
-            {(!clockStatus?.entries_today || clockStatus.entries_today.length === 0) ? (
+            {/* Header con data picker */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+              <h2 className="text-2xl font-bold text-white">Il Mio Storico</h2>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={historyDate}
+                  onChange={(e) => setHistoryDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="px-4 py-2 bg-white/10 text-white rounded-xl border border-white/20 focus:border-white/40 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Stats Summary */}
+            {historyStats && (
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="p-4 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 text-center">
+                  <div className="text-cyan-300 text-xs mb-1">Ore Lavorate</div>
+                  <div className="text-2xl font-bold text-white">{historyStats.total_hours.toFixed(1)}h</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-center">
+                  <div className="text-amber-300 text-xs mb-1">Pause</div>
+                  <div className="text-2xl font-bold text-white">{historyStats.break_minutes}min</div>
+                </div>
+              </div>
+            )}
+
+            {/* Download Buttons */}
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => downloadEmployeeHistory('csv')}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
+              >
+                <Download className="w-4 h-4" />
+                <span className="text-sm">CSV</span>
+              </button>
+              <button
+                onClick={() => downloadEmployeeHistory('excel')}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
+              >
+                <Download className="w-4 h-4" />
+                <span className="text-sm">Excel</span>
+              </button>
+            </div>
+
+            {/* Entries List */}
+            {loadingHistory ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 text-white animate-spin" />
+              </div>
+            ) : historyEntries.length === 0 ? (
               <div className="text-center py-12 text-white/50">
                 <Clock className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p>Nessuna timbratura oggi</p>
+                <p>Nessuna timbratura per {new Date(historyDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {clockStatus.entries_today.map((entry: TimeEntry & { break_type?: string }, i) => (
+                {historyEntries.map((entry: TimeEntry & { break_type?: string }, i) => (
                   <motion.div key={i} initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: i * 0.05 }}
                     className="flex items-center gap-4 p-4 bg-white/10 backdrop-blur rounded-2xl border border-white/10">
@@ -1120,7 +1285,7 @@ export default function TimeAttendancePage() {
                       </div>
                       <div className="text-sm text-white/60">
                         {new Date(entry.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
-                        {entry.location_name && <span className="ml-2 text-blue-400"> {entry.location_name}</span>}
+                        {entry.location_name && <span className="ml-2 text-blue-400">@ {entry.location_name}</span>}
                       </div>
                     </div>
                     <CheckCircle className="w-5 h-5 text-green-400" />
@@ -1214,6 +1379,171 @@ export default function TimeAttendancePage() {
         onScanSuccess={handleQRScanSuccess}
         gpsPosition={gpsPosition}
       />
+
+      {/* Employee Stats Popup */}
+      <AnimatePresence>
+        {selectedEmployee && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={closeEmployeePopup}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-2xl max-w-lg w-full p-6 overflow-y-auto max-h-[90vh] border border-white/10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
+                    selectedEmployee.is_on_duty
+                      ? selectedEmployee.is_on_break ? 'bg-orange-500/30' : 'bg-green-500/30'
+                      : 'bg-white/10'
+                  }`}>
+                    {employeeStats?.contact?.image ? (
+                      <img src={`data:image/png;base64,${employeeStats.contact.image}`} alt="" className="w-full h-full rounded-2xl object-cover" />
+                    ) : (
+                      <User className="w-7 h-7 text-white/70" />
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">{selectedEmployee.contact_name}</h2>
+                    {(employeeStats?.contact?.function || selectedEmployee.contact_function) && (
+                      <p className="text-white/50 text-sm">{employeeStats?.contact?.function || selectedEmployee.contact_function}</p>
+                    )}
+                    <span className={`inline-block mt-1 px-2 py-0.5 text-xs rounded-full ${
+                      selectedEmployee.is_on_duty
+                        ? selectedEmployee.is_on_break ? 'bg-orange-500/30 text-orange-300' : 'bg-green-500/30 text-green-300'
+                        : 'bg-white/10 text-white/50'
+                    }`}>
+                      {selectedEmployee.is_on_duty
+                        ? selectedEmployee.is_on_break ? 'In Pausa' : 'In Servizio'
+                        : 'Fuori'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={closeEmployeePopup}
+                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Loading */}
+              {loadingEmployeeStats && (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-white animate-spin" />
+                </div>
+              )}
+
+              {/* Stats */}
+              {employeeStats && !loadingEmployeeStats && (
+                <>
+                  {/* Contact Info */}
+                  {(employeeStats.contact?.email || employeeStats.contact?.phone) && (
+                    <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10">
+                      {employeeStats.contact?.email && (
+                        <div className="flex items-center gap-2 text-white/70 text-sm">
+                          <Mail className="w-4 h-4" />
+                          <span>{employeeStats.contact.email}</span>
+                        </div>
+                      )}
+                      {employeeStats.contact?.phone && (
+                        <div className="flex items-center gap-2 text-white/70 text-sm mt-2">
+                          <Phone className="w-4 h-4" />
+                          <span>{employeeStats.contact.phone}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    <div className="p-4 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/30">
+                      <div className="text-cyan-300 text-xs mb-1">Oggi</div>
+                      <div className="text-2xl font-bold text-white">{employeeStats.stats.today.hours.toFixed(1)}h</div>
+                      <div className="text-white/40 text-xs">{employeeStats.stats.today.entries} timbrature</div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-600/20 border border-purple-500/30">
+                      <div className="text-purple-300 text-xs mb-1">Ieri</div>
+                      <div className="text-2xl font-bold text-white">{employeeStats.stats.yesterday.hours.toFixed(1)}h</div>
+                      <div className="text-white/40 text-xs">{employeeStats.stats.yesterday.entries} timbrature</div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/20 to-green-600/20 border border-emerald-500/30">
+                      <div className="text-emerald-300 text-xs mb-1">Settimana</div>
+                      <div className="text-2xl font-bold text-white">{employeeStats.stats.week.hours.toFixed(1)}h</div>
+                      <div className="text-white/40 text-xs">{employeeStats.stats.week.days_worked} giorni lavorati</div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-600/20 border border-amber-500/30">
+                      <div className="text-amber-300 text-xs mb-1">Mese</div>
+                      <div className="text-2xl font-bold text-white">{employeeStats.stats.month.hours.toFixed(1)}h</div>
+                      <div className="text-white/40 text-xs">Media {employeeStats.stats.month.avg_hours_per_day.toFixed(1)}h/giorno</div>
+                    </div>
+                  </div>
+
+                  {/* Daily Breakdown */}
+                  <div>
+                    <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-white/50" />
+                      Dettaglio Settimana
+                    </h3>
+                    <div className="space-y-2">
+                      {employeeStats.daily_breakdown.map((day) => {
+                        const date = new Date(day.date);
+                        const dayName = date.toLocaleDateString('it-IT', { weekday: 'short' });
+                        const dayNum = date.getDate();
+                        const isToday = day.date === new Date().toLocaleDateString('en-CA');
+                        return (
+                          <div
+                            key={day.date}
+                            className={`flex items-center justify-between p-3 rounded-xl ${
+                              isToday ? 'bg-cyan-500/10 border border-cyan-500/30' : 'bg-white/5'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex flex-col items-center justify-center ${
+                                isToday ? 'bg-cyan-500/30' : 'bg-white/10'
+                              }`}>
+                                <span className="text-xs text-white/50 uppercase">{dayName}</span>
+                                <span className="text-white font-bold text-sm">{dayNum}</span>
+                              </div>
+                              <div>
+                                <div className="text-white font-medium">{day.hours_worked.toFixed(1)}h</div>
+                                {day.first_clock_in && (
+                                  <div className="text-white/40 text-xs">
+                                    {new Date(day.first_clock_in).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                    {day.last_clock_out && (
+                                      <> - {new Date(day.last_clock_out).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {day.hours_worked > 0 && (
+                              <div className="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full ${isToday ? 'bg-cyan-500' : 'bg-white/30'}`}
+                                  style={{ width: `${Math.min(100, (day.hours_worked / 8) * 100)}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* GDPR Consent Modal */}
       <AnimatePresence>

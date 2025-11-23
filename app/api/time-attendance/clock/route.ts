@@ -52,7 +52,7 @@ function calculateDistance(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { contact_id, company_id, entry_type, latitude, longitude, qr_secret, break_type } = body;
+    const { contact_id, company_id, entry_type, latitude, longitude, qr_secret, break_type, contact_name } = body;
 
     if (!contact_id || !entry_type) {
       return NextResponse.json({ success: false, error: 'contact_id e entry_type obbligatori' }, { status: 400 });
@@ -149,14 +149,14 @@ export async function POST(request: NextRequest) {
       const finalBreakType = entry_type === 'break_end' ? lastEntry?.break_type : break_type;
 
       result = await sql`
-        INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, break_type, break_max_minutes)
-        VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude || null}, ${longitude || null}, false, ${finalBreakType || null}, ${breakMaxMinutes})
+        INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, break_type, break_max_minutes, contact_name)
+        VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude || null}, ${longitude || null}, false, ${finalBreakType || null}, ${breakMaxMinutes}, ${contact_name || null})
         RETURNING *
       `;
     } else {
       result = await sql`
-        INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, location_id, location_name)
-        VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude}, ${longitude}, true, ${loc?.id}, ${loc?.name})
+        INSERT INTO ta_time_entries (contact_id, company_id, entry_type, timestamp, latitude, longitude, qr_code_verified, location_id, location_name, contact_name)
+        VALUES (${contact_id}, ${effectiveCompanyId}, ${entry_type}, ${timestamp}, ${latitude}, ${longitude}, true, ${loc?.id}, ${loc?.name}, ${contact_name || null})
         RETURNING *
       `;
     }
@@ -205,12 +205,20 @@ export async function GET(request: NextRequest) {
       WHERE contact_id = ${parseInt(contactId)} ORDER BY timestamp DESC LIMIT 1
     `;
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Usa timezone Europe/Rome per calcolare mezzanotte italiana
+    const TIMEZONE = 'Europe/Rome';
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: TIMEZONE }); // YYYY-MM-DD in Rome timezone
+    const todayStart = new Date(todayStr + 'T00:00:00+01:00'); // Mezzanotte CET (approssimato)
+
+    // Calcola offset corretto per ora legale/solare
+    const romeOffset = now.toLocaleString('en-US', { timeZone: TIMEZONE, timeZoneName: 'shortOffset' });
+    const isDST = romeOffset.includes('+02') || romeOffset.includes('+2');
+    const todayStartRome = new Date(todayStr + (isDST ? 'T00:00:00+02:00' : 'T00:00:00+01:00'));
 
     const todayResult = await sql`
       SELECT entry_type, timestamp, location_name, break_type, break_max_minutes FROM ta_time_entries
-      WHERE contact_id = ${parseInt(contactId)} AND timestamp >= ${todayStart.toISOString()}
+      WHERE contact_id = ${parseInt(contactId)} AND timestamp >= ${todayStartRome.toISOString()}
       ORDER BY timestamp ASC
     `;
 

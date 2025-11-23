@@ -18,6 +18,7 @@ interface EmployeeStatus {
   hours_worked_today: number;
   hours_worked_yesterday: number;
   hours_worked_week: number;
+  hours_worked_month: number;
   entries_today: number;
 }
 
@@ -78,24 +79,52 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Usa timezone Europe/Rome per calcoli corretti
+    const TIMEZONE = 'Europe/Rome';
+
+    // Helper per ottenere data locale corretta
+    const getLocalDateBounds = (date: Date) => {
+      // Ottieni la data in formato Europe/Rome
+      const localDateStr = date.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+      // Crea date start/end per quel giorno in UTC che corrispondono a mezzanotte Rome
+      const dayStart = new Date(localDateStr + 'T00:00:00');
+      const dayEnd = new Date(localDateStr + 'T23:59:59.999');
+      // Correggi per offset Rome (UTC+1 o UTC+2)
+      const offsetMs = dayStart.getTimezoneOffset() * 60 * 1000;
+      // Per l'Italia, mezzanotte locale è 23:00 UTC (inverno) o 22:00 UTC (estate)
+      return {
+        start: new Date(dayStart.getTime() - offsetMs + (1 * 60 * 60 * 1000)), // +1 per CET base
+        end: new Date(dayEnd.getTime() - offsetMs + (1 * 60 * 60 * 1000))
+      };
+    };
+
     // Data di riferimento
-    const targetDate = dateStr ? new Date(dateStr) : new Date();
-    const dayStart = new Date(targetDate);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(targetDate);
-    dayEnd.setHours(23, 59, 59, 999);
+    const targetDate = dateStr ? new Date(dateStr + 'T12:00:00') : new Date();
+
+    // Calcola offset corretto per ora legale/solare
+    const romeOffset = targetDate.toLocaleString('en-US', { timeZone: TIMEZONE, timeZoneName: 'shortOffset' });
+    const isDST = romeOffset.includes('+02') || romeOffset.includes('+2');
+    const tzOffset = isDST ? '+02:00' : '+01:00';
+
+    // Calcola bounds per oggi
+    const todayStr = targetDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+    const dayStart = new Date(todayStr + 'T00:00:00' + tzOffset);
+    const dayEnd = new Date(todayStr + 'T23:59:59.999' + tzOffset);
 
     // Ieri
-    const yesterdayStart = new Date(dayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const yesterdayEnd = new Date(dayEnd);
-    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+    const yesterdayDate = new Date(targetDate);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+    const yesterdayStart = new Date(yesterdayStr + 'T00:00:00' + tzOffset);
+    const yesterdayEnd = new Date(yesterdayStr + 'T23:59:59.999' + tzOffset);
 
     // Inizio settimana (lunedì)
-    const weekStart = new Date(dayStart);
-    const dayOfWeek = weekStart.getDay();
+    const tempDate = new Date(targetDate);
+    const dayOfWeek = tempDate.getDay();
     const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Lunedì = 0
-    weekStart.setDate(weekStart.getDate() - diff);
+    tempDate.setDate(tempDate.getDate() - diff);
+    const weekStartStr = tempDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+    const weekStart = new Date(weekStartStr + 'T00:00:00' + tzOffset);
 
     // Ottieni lista dipendenti da Odoo
     const odoo = createOdooRPCClient();
@@ -148,6 +177,21 @@ export async function GET(request: NextRequest) {
       ORDER BY timestamp ASC
     `;
 
+    // Inizio mese
+    const monthStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+    const monthStartStr = monthStart.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+    const monthStartDate = new Date(monthStartStr + 'T00:00:00' + tzOffset);
+
+    // Timbrature del mese
+    const monthEntriesResult = await sql`
+      SELECT contact_id, entry_type, timestamp
+      FROM ta_time_entries
+      WHERE company_id = ${parseInt(companyId)}
+        AND timestamp >= ${monthStartDate.toISOString()}
+        AND timestamp <= ${dayEnd.toISOString()}
+      ORDER BY timestamp ASC
+    `;
+
     // Raggruppa timbrature per dipendente - oggi
     const entriesByContact = new Map<number, typeof entriesResult.rows>();
     for (const entry of entriesResult.rows) {
@@ -181,6 +225,18 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Raggruppa timbrature per dipendente - mese
+    const monthByContact = new Map<number, Array<{ entry_type: string; timestamp: string }>>();
+    for (const entry of monthEntriesResult.rows) {
+      if (!monthByContact.has(entry.contact_id)) {
+        monthByContact.set(entry.contact_id, []);
+      }
+      monthByContact.get(entry.contact_id)!.push({
+        entry_type: entry.entry_type as string,
+        timestamp: entry.timestamp as string,
+      });
+    }
+
     // Calcola stato per ogni dipendente
     const employeeStatuses: EmployeeStatus[] = [];
 
@@ -194,6 +250,7 @@ export async function GET(request: NextRequest) {
       const entries = entriesByContact.get(contactId) || [];
       const yesterdayEntries = yesterdayByContact.get(contactId) || [];
       const weekEntries = weekByContact.get(contactId) || [];
+      const monthEntries = monthByContact.get(contactId) || [];
 
       // Calcola stato attuale
       const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
@@ -205,6 +262,7 @@ export async function GET(request: NextRequest) {
       const hoursToday = calculateHoursFromEntries(entriesToday, true); // include ongoing
       const hoursYesterday = calculateHoursFromEntries(yesterdayEntries, false);
       const hoursWeek = calculateHoursFromEntries(weekEntries, true); // include ongoing per oggi
+      const hoursMonth = calculateHoursFromEntries(monthEntries, true); // include ongoing per oggi
 
       employeeStatuses.push({
         contact_id: contactId,
@@ -222,6 +280,7 @@ export async function GET(request: NextRequest) {
         hours_worked_today: Math.round(hoursToday * 100) / 100,
         hours_worked_yesterday: Math.round(hoursYesterday * 100) / 100,
         hours_worked_week: Math.round(hoursWeek * 100) / 100,
+        hours_worked_month: Math.round(hoursMonth * 100) / 100,
         entries_today: entries.length,
       });
     }
@@ -238,12 +297,14 @@ export async function GET(request: NextRequest) {
     const totalHoursToday = employeeStatuses.reduce((sum, e) => sum + e.hours_worked_today, 0);
     const totalHoursYesterday = employeeStatuses.reduce((sum, e) => sum + e.hours_worked_yesterday, 0);
     const totalHoursWeek = employeeStatuses.reduce((sum, e) => sum + e.hours_worked_week, 0);
+    const totalHoursMonth = employeeStatuses.reduce((sum, e) => sum + e.hours_worked_month, 0);
 
     return NextResponse.json({
       success: true,
       data: {
         date: targetDate.toISOString().split('T')[0],
         week_start: weekStart.toISOString().split('T')[0],
+        month_start: monthStartDate.toISOString().split('T')[0],
         stats: {
           total_employees: employeeStatuses.length,
           on_duty: onDutyCount,
@@ -252,6 +313,7 @@ export async function GET(request: NextRequest) {
           total_hours_today: Math.round(totalHoursToday * 100) / 100,
           total_hours_yesterday: Math.round(totalHoursYesterday * 100) / 100,
           total_hours_week: Math.round(totalHoursWeek * 100) / 100,
+          total_hours_month: Math.round(totalHoursMonth * 100) / 100,
         },
         employees: employeeStatuses,
       },

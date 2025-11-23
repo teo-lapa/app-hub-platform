@@ -41,6 +41,9 @@ CREATE TABLE IF NOT EXISTS ta_time_entries (
   break_type TEXT CHECK (break_type IS NULL OR break_type IN ('coffee_break', 'lunch_break')),
   break_max_minutes INTEGER, -- durata massima consentita in minuti
 
+  -- Nome contatto salvato localmente per export (evita lookup Odoo)
+  contact_name TEXT,
+
   created_at TIMESTAMP DEFAULT NOW()
 );
 
