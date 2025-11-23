@@ -457,11 +457,19 @@ export default function TimeAttendanceAdminPage() {
         setShowExportDialog(false);
       } else {
         toast.dismiss();
-        toast.error('Errore export');
+        // Prova a leggere il messaggio di errore dal server
+        try {
+          const errorData = await res.json();
+          toast.error(errorData.error || `Errore export (${res.status})`);
+          console.error('[Export] Server error:', errorData);
+        } catch {
+          toast.error(`Errore export (${res.status})`);
+        }
       }
-    } catch {
+    } catch (err) {
       toast.dismiss();
-      toast.error('Errore download');
+      console.error('[Export] Download error:', err);
+      toast.error('Errore download - controlla la connessione');
     } finally {
       setExporting(false);
     }
