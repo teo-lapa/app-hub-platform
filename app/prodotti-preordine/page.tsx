@@ -629,7 +629,8 @@ export default function ProdottiPreordinePage() {
       c.name.toLowerCase().includes(search) ||
       c.email?.toLowerCase().includes(search) ||
       c.phone?.toLowerCase().includes(search) ||
-      c.city?.toLowerCase().includes(search)
+      c.city?.toLowerCase().includes(search) ||
+      c.parentName?.toLowerCase().includes(search)
     )
   })
 
