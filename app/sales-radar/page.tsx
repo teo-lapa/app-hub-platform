@@ -1120,7 +1120,11 @@ export default function SalesRadarPage() {
                     </label>
                     <select
                       value={staticFilter}
-                      onChange={(e) => setStaticFilter(e.target.value as any)}
+                      onChange={(e) => {
+                        setStaticFilter(e.target.value as any);
+                        // Ricarica automaticamente quando cambia il filtro
+                        setTimeout(() => loadStaticMap(), 100);
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     >
                       <option value="all">Tutti</option>
@@ -1135,27 +1139,29 @@ export default function SalesRadarPage() {
             )}
           </AnimatePresence>
 
-          {/* Search Buttons */}
+          {/* Search Buttons - Solo in modalità Live */}
           <div className="mb-6 space-y-2">
-            <button
-              onClick={searchPlaces}
-              disabled={isSearching || (!userLocation && !mapCenter)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
-            >
-              {isSearching ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Ricerca...
-                </>
-              ) : (
-                <>
-                  <Search className="h-5 w-5" />
-                  Cerca Aziende
-                </>
-              )}
-            </button>
+            {mapMode === 'live' && (
+              <button
+                onClick={searchPlaces}
+                disabled={isSearching || (!userLocation && !mapCenter)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+              >
+                {isSearching ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Ricerca...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-5 w-5" />
+                    Cerca Aziende
+                  </>
+                )}
+              </button>
+            )}
 
-            {places.length > 0 && (
+            {mapMode === 'live' && places.length > 0 && (
               <button
                 onClick={searchPlaces}
                 disabled={isSearching}
