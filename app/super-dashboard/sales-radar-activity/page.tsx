@@ -754,38 +754,42 @@ function SalesRadarMessage({ msg, odooUrl }: { msg: any; odooUrl?: string }) {
   const parseSalesRadarMessage = (body: string) => {
     const isVoice = body.includes('🎙️') || body.toLowerCase().includes('vocale');
 
-    // Extract the actual note content
-    let noteContent = '';
+    // Extract ALL text content from the HTML
+    // Remove all HTML tags and decode entities
+    let fullText = body
+      .replace(/<br\s*\/?>/gi, '\n')  // Convert <br> to newlines
+      .replace(/<\/p>/gi, '\n')        // Convert </p> to newlines
+      .replace(/<\/td>/gi, ' | ')      // Convert table cells
+      .replace(/<\/tr>/gi, '\n')       // Convert table rows
+      .replace(/<[^>]*>/g, '')         // Remove all other HTML tags
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/\n{3,}/g, '\n\n')      // Max 2 newlines
+      .trim();
 
-    // Try to find note content after "Nota:"
-    const notaMatch = body.match(/📝\s*Nota:.*?<\/(?:strong|p)>\s*<p>([^<]+)/i);
-    if (notaMatch) {
-      noteContent = notaMatch[1].trim();
-    } else {
-      // Try to find content in table cells
-      const tdMatch = body.match(/Nota[^<]*<\/td>\s*<\/tr>\s*<tr[^>]*>\s*<td[^>]*>([^<]+)/i);
-      if (tdMatch) {
-        noteContent = tdMatch[1].trim();
-      } else {
-        // Fallback: extract text from <p> tags
-        const pMatches = body.match(/<p[^>]*>([^<]+)<\/p>/g);
-        if (pMatches) {
-          for (const p of pMatches) {
-            const text = p.replace(/<[^>]*>/g, '').trim();
-            if (text.length > 20 && !text.includes('FEEDBACK') && !text.includes('Sales Radar')) {
-              noteContent = text;
-              break;
-            }
-          }
-        }
-      }
+    // Try to extract just the note part (after "Nota:")
+    const notaIndex = fullText.indexOf('Nota:');
+    if (notaIndex !== -1) {
+      // Get everything after "Nota:"
+      let noteContent = fullText.substring(notaIndex + 5).trim();
+      // Remove "Inserita tramite Sales Radar App" and similar footers
+      noteContent = noteContent.replace(/Inserita tramite Sales Radar.*/i, '').trim();
+      return { isVoice, noteContent };
     }
 
-    if (!noteContent) {
-      noteContent = msg.textPreview || '';
-    }
+    // Fallback: remove header parts and show the rest
+    fullText = fullText
+      .replace(/📍\s*FEEDBACK SALES RADAR/g, '')
+      .replace(/🎙️[^|]*\|/g, '')
+      .replace(/✍️[^|]*\|/g, '')
+      .replace(/📅[^📝]*/g, '')
+      .replace(/Inserita tramite Sales Radar.*/i, '')
+      .trim();
 
-    return { isVoice, noteContent };
+    return { isVoice, noteContent: fullText || msg.textPreview || '' };
   };
 
   const formatDate = (dateStr: string) => {
