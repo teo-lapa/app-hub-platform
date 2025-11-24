@@ -88,6 +88,8 @@ export async function GET(
     // Group by week for chart
     const weeklyData: any = {};
     const customerData: any = {};
+    // Track customers by week for "missing customers" analysis
+    const customersByWeek: Map<number, Map<number, { name: string; qty: number; revenue: number }>> = new Map();
 
     orderLines.forEach((line: any) => {
       const orderId = line.order_id[0];
@@ -122,6 +124,18 @@ export async function GET(
       customerData[customerId].qty += line.product_uom_qty;
       customerData[customerId].revenue += line.price_subtotal;
       customerData[customerId].orders += 1;
+
+      // Track customer activity per week
+      if (!customersByWeek.has(weekNumber)) {
+        customersByWeek.set(weekNumber, new Map());
+      }
+      const weekCustomers = customersByWeek.get(weekNumber)!;
+      if (!weekCustomers.has(customerId)) {
+        weekCustomers.set(customerId, { name: customerName, qty: 0, revenue: 0 });
+      }
+      const custWeekData = weekCustomers.get(customerId)!;
+      custWeekData.qty += line.product_uom_qty;
+      custWeekData.revenue += line.price_subtotal;
     });
 
     // Calculate avg daily sales from real data
@@ -357,6 +371,73 @@ export async function GET(
       .sort((a: any, b: any) => b.revenue - a.revenue)
       .slice(0, 10);
 
+    // Calculate MISSING CUSTOMERS (bought in previous weeks but NOT in recent weeks)
+    const sortedWeeks = Array.from(customersByWeek.keys()).sort((a, b) => b - a);
+    const currentWeek = getISOWeek(new Date());
+
+    // Recent weeks = last 2 weeks, Historical weeks = 4 weeks before that
+    const recentWeeks = sortedWeeks.filter(w => w >= currentWeek - 1); // Current and previous week
+    const historicalWeeks = sortedWeeks.filter(w => w < currentWeek - 1 && w >= currentWeek - 5); // 4 weeks before
+
+    // Customers who bought in recent weeks
+    const recentCustomerIds = new Set<number>();
+    recentWeeks.forEach(weekNum => {
+      const weekCustomers = customersByWeek.get(weekNum);
+      if (weekCustomers) {
+        weekCustomers.forEach((_, customerId) => recentCustomerIds.add(customerId));
+      }
+    });
+
+    // Find missing customers: bought in historical weeks but NOT in recent weeks
+    const missingCustomersMap = new Map<number, {
+      id: number;
+      name: string;
+      lastWeek: number;
+      avgQty: number;
+      avgRevenue: number;
+      weeksActive: number;
+      estimatedLoss: number;
+    }>();
+
+    historicalWeeks.forEach(weekNum => {
+      const weekCustomers = customersByWeek.get(weekNum);
+      if (weekCustomers) {
+        weekCustomers.forEach((data, customerId) => {
+          if (!recentCustomerIds.has(customerId)) {
+            // This customer is missing!
+            if (!missingCustomersMap.has(customerId)) {
+              missingCustomersMap.set(customerId, {
+                id: customerId,
+                name: data.name,
+                lastWeek: weekNum,
+                avgQty: 0,
+                avgRevenue: 0,
+                weeksActive: 0,
+                estimatedLoss: 0
+              });
+            }
+            const missing = missingCustomersMap.get(customerId)!;
+            missing.avgQty += data.qty;
+            missing.avgRevenue += data.revenue;
+            missing.weeksActive += 1;
+            if (weekNum > missing.lastWeek) {
+              missing.lastWeek = weekNum;
+            }
+          }
+        });
+      }
+    });
+
+    // Calculate averages and sort by estimated loss
+    const missingCustomers = Array.from(missingCustomersMap.values())
+      .map(c => ({
+        ...c,
+        avgQty: Math.round((c.avgQty / c.weeksActive) * 10) / 10,
+        avgRevenue: Math.round((c.avgRevenue / c.weeksActive) * 100) / 100,
+        estimatedLoss: Math.round((c.avgRevenue / c.weeksActive) * recentWeeks.length * 100) / 100
+      }))
+      .sort((a, b) => b.estimatedLoss - a.estimatedLoss);
+
     // Format locations
     const locations = stockLocations.map((loc: any) => ({
       name: loc.location_id[1],
@@ -384,6 +465,7 @@ export async function GET(
         },
         weeklyChart,
         topCustomers,
+        missingCustomers,
         locations,
         suppliers: suppliersList,
         totalOrders: orderLines.length

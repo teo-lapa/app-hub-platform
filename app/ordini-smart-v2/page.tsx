@@ -76,6 +76,7 @@ export default function SmartOrderingV2() {
   const [todayAnalysisData, setTodayAnalysisData] = useState<any>(null);
   const [loadingTodayAnalysis, setLoadingTodayAnalysis] = useState(false);
   const [showCustomers, setShowCustomers] = useState(false);
+  const [showMissingCustomers, setShowMissingCustomers] = useState(true); // Default open to highlight issue
   const [searchTerm, setSearchTerm] = useState('');
   const [togglingProductId, setTogglingProductId] = useState<number | null>(null);
   // Removed showPreOrderModal state - now using dedicated page
@@ -1264,6 +1265,62 @@ export default function SmartOrderingV2() {
                         </div>
                       )}
                     </div>
+
+                    {/* Missing Customers - Clienti che non hanno ordinato nelle ultime settimane */}
+                    {productAnalytics.missingCustomers && productAnalytics.missingCustomers.length > 0 && (
+                      <div className="bg-orange-500/10 rounded-xl p-6 border border-orange-400/30">
+                        <button
+                          onClick={() => setShowMissingCustomers(!showMissingCustomers)}
+                          className="w-full flex items-center justify-between text-orange-300 text-xl font-bold mb-4 hover:bg-white/5 p-3 rounded-lg transition-all"
+                        >
+                          <span className="flex items-center gap-2">
+                            ⚠️ Clienti Mancanti ({productAnalytics.missingCustomers.length})
+                          </span>
+                          <span className="text-2xl">{showMissingCustomers ? '▼' : '▶'}</span>
+                        </button>
+                        {showMissingCustomers && (
+                          <>
+                            <p className="text-orange-200 text-sm mb-4 px-3">
+                              Questi clienti hanno acquistato questo prodotto nelle settimane precedenti ma <strong>NON nelle ultime 2 settimane</strong>
+                            </p>
+                            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                              {productAnalytics.missingCustomers.slice(0, 15).map((customer: any, index: number) => (
+                                <div key={customer.id} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white font-bold text-sm">
+                                      {index + 1}
+                                    </div>
+                                    <div>
+                                      <div className="text-white font-semibold">{customer.name}</div>
+                                      <div className="text-orange-300 text-sm">
+                                        Ultima: W{customer.lastWeek} • Media: {customer.avgQty} {productDetailsModal.uom}/sett
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-red-400 font-bold">-CHF {customer.estimatedLoss.toFixed(0)}</div>
+                                    <div className="text-orange-300 text-xs">fatturato perso</div>
+                                  </div>
+                                </div>
+                              ))}
+                              {productAnalytics.missingCustomers.length > 15 && (
+                                <div className="text-center text-orange-300 text-sm py-2">
+                                  ... e altri {productAnalytics.missingCustomers.length - 15} clienti
+                                </div>
+                              )}
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-orange-400/30 flex justify-between items-center px-3">
+                              <div className="text-orange-200 text-sm">
+                                Fatturato totale perso stimato:
+                              </div>
+                              <div className="text-red-400 font-bold text-xl">
+                                -CHF {productAnalytics.missingCustomers.reduce((sum: number, c: any) => sum + c.estimatedLoss, 0).toFixed(0)}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
 
                     {/* Stock Locations */}
                     {(productAnalytics.locations.length > 0 || productAnalytics.product.incomingQty > 0) && (
