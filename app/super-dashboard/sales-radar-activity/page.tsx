@@ -511,81 +511,23 @@ export default function SalesRadarActivityPage() {
                       <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                     </div>
                   ) : activityDetails ? (
-                    <div className="space-y-6">
-                      {/* Record Info */}
-                      <div className="bg-slate-800/50 rounded-xl p-4 space-y-3">
-                        <h4 className="text-white font-semibold flex items-center gap-2">
-                          <User className="w-4 h-4 text-indigo-400" />
-                          Informazioni
-                        </h4>
-                        {activityDetails.record.phone && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="text-slate-400">Telefono:</span>
-                            <a href={`tel:${activityDetails.record.phone}`} className="text-indigo-300 hover:underline">
-                              {activityDetails.record.phone}
-                            </a>
-                          </div>
-                        )}
-                        {activityDetails.record.email && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="text-slate-400">Email:</span>
-                            <a href={`mailto:${activityDetails.record.email}`} className="text-indigo-300 hover:underline">
-                              {activityDetails.record.email}
-                            </a>
-                          </div>
-                        )}
-                        {(activityDetails.record.street || activityDetails.record.city) && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="text-slate-400">Indirizzo:</span>
-                            <span className="text-white">
-                              {[activityDetails.record.street, activityDetails.record.city].filter(Boolean).join(', ')}
-                            </span>
-                          </div>
-                        )}
-                        {activityDetails.record.website && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="text-slate-400">Sito:</span>
-                            <a href={activityDetails.record.website} target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:underline truncate">
-                              {activityDetails.record.website}
-                            </a>
-                          </div>
-                        )}
-                        {activityDetails.record.stage && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="text-slate-400">Stage:</span>
-                            <span className="text-orange-300">{activityDetails.record.stage}</span>
-                          </div>
-                        )}
-                      </div>
+                    <div className="space-y-3">
+                      {/* Note - clicca per aprire in Odoo */}
+                      <p className="text-slate-400 text-xs mb-2">Clicca su una nota per aprirla in Odoo</p>
 
-                      {/* Messages */}
-                      <div>
-                        <h4 className="text-white font-semibold flex items-center gap-2 mb-3">
-                          <FileText className="w-4 h-4 text-indigo-400" />
-                          Note e Messaggi ({activityDetails.salesRadarMessages} da Sales Radar)
-                        </h4>
-                        <div className="space-y-3">
-                          {activityDetails.messages.map((msg: any) => (
-                            <SalesRadarMessage key={msg.id} msg={msg} />
-                          ))}
-                          {activityDetails.messages.length === 0 && (
-                            <p className="text-slate-500 text-sm text-center py-4">
-                              Nessun messaggio trovato
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                      {activityDetails.messages.filter((m: any) => m.isSalesRadar).map((msg: any) => (
+                        <SalesRadarMessage
+                          key={msg.id}
+                          msg={msg}
+                          odooUrl={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com'}/web#id=${selectedActivity.targetId}&model=${selectedActivity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
+                        />
+                      ))}
 
-                      {/* Open in Odoo */}
-                      <a
-                        href={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com'}/web#id=${selectedActivity.targetId}&model=${selectedActivity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Apri in Odoo
-                      </a>
+                      {activityDetails.messages.filter((m: any) => m.isSalesRadar).length === 0 && (
+                        <p className="text-slate-500 text-sm text-center py-4">
+                          Nessuna nota Sales Radar trovata
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-12 text-slate-400">
@@ -806,19 +748,16 @@ function VendorsView({
   );
 }
 
-// Sales Radar Message Component - parses and displays messages nicely
-function SalesRadarMessage({ msg }: { msg: any }) {
+// Sales Radar Message Component - clickable to open in Odoo
+function SalesRadarMessage({ msg, odooUrl }: { msg: any; odooUrl?: string }) {
   // Parse Sales Radar message to extract meaningful content
   const parseSalesRadarMessage = (body: string) => {
-    // Extract note type (voice/written)
     const isVoice = body.includes('🎙️') || body.toLowerCase().includes('vocale');
-    const isWritten = body.includes('✍️') || body.toLowerCase().includes('scritta');
 
     // Extract the actual note content
-    // Look for content after "Nota:" or in the main paragraph
     let noteContent = '';
 
-    // Try to find note content between <p><strong>📝 Nota:</strong></p> and next section
+    // Try to find note content after "Nota:"
     const notaMatch = body.match(/📝\s*Nota:.*?<\/(?:strong|p)>\s*<p>([^<]+)/i);
     if (notaMatch) {
       noteContent = notaMatch[1].trim();
@@ -828,7 +767,7 @@ function SalesRadarMessage({ msg }: { msg: any }) {
       if (tdMatch) {
         noteContent = tdMatch[1].trim();
       } else {
-        // Fallback: extract text from <p> tags that contain the note
+        // Fallback: extract text from <p> tags
         const pMatches = body.match(/<p[^>]*>([^<]+)<\/p>/g);
         if (pMatches) {
           for (const p of pMatches) {
@@ -842,21 +781,11 @@ function SalesRadarMessage({ msg }: { msg: any }) {
       }
     }
 
-    // If still no content, use textPreview
     if (!noteContent) {
       noteContent = msg.textPreview || '';
     }
 
-    // Extract date if present
-    const dateMatch = body.match(/📅\s*(\d{1,2}\/\d{1,2}\/\d{4},?\s*\d{1,2}:\d{2})/);
-    const noteDate = dateMatch ? dateMatch[1] : null;
-
-    return {
-      isVoice,
-      isWritten,
-      noteContent,
-      noteDate
-    };
+    return { isVoice, noteContent };
   };
 
   const formatDate = (dateStr: string) => {
@@ -872,58 +801,43 @@ function SalesRadarMessage({ msg }: { msg: any }) {
     }
   };
 
-  if (msg.isSalesRadar) {
-    const parsed = parseSalesRadarMessage(msg.body);
+  const parsed = parseSalesRadarMessage(msg.body);
 
-    return (
-      <div className="bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 rounded-xl p-4">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            {parsed.isVoice ? (
-              <span className="flex items-center gap-1.5 px-2 py-1 bg-purple-500/30 rounded-lg text-purple-300 text-xs font-medium">
-                <Mic className="w-3 h-3" />
-                Nota Vocale
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 px-2 py-1 bg-blue-500/30 rounded-lg text-blue-300 text-xs font-medium">
-                <FileText className="w-3 h-3" />
-                Nota Scritta
-              </span>
-            )}
-            <span className="text-indigo-300 text-sm font-medium">{msg.authorName}</span>
-          </div>
-          <span className="text-xs text-slate-500">
-            {formatDate(msg.date)}
-          </span>
-        </div>
-
-        {/* Note Content */}
-        <div className="bg-slate-900/50 rounded-lg p-3">
-          <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">
-            {parsed.noteContent || msg.textPreview}
-          </p>
-        </div>
-
-        {/* Sales Radar Badge */}
-        <div className="mt-2 flex items-center gap-1 text-xs text-indigo-400">
-          <Radar className="w-3 h-3" />
-          <span>Sales Radar</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Regular message (not from Sales Radar)
+  // Clickable card that opens Odoo
   return (
-    <div className="bg-slate-800/50 rounded-xl p-3">
+    <a
+      href={odooUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 rounded-xl p-4 hover:from-indigo-500/30 hover:to-purple-500/30 hover:border-indigo-400/50 transition-all cursor-pointer group"
+    >
+      {/* Header */}
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-white">{msg.authorName}</span>
-        <span className="text-xs text-slate-500">
-          {formatDate(msg.date)}
-        </span>
+        <div className="flex items-center gap-2">
+          {parsed.isVoice ? (
+            <span className="flex items-center gap-1 text-purple-300 text-xs font-medium">
+              <Mic className="w-3.5 h-3.5" />
+              Vocale
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-blue-300 text-xs font-medium">
+              <FileText className="w-3.5 h-3.5" />
+              Scritta
+            </span>
+          )}
+          <span className="text-slate-400 text-xs">•</span>
+          <span className="text-slate-300 text-xs">{msg.authorName}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500">{formatDate(msg.date)}</span>
+          <ExternalLink className="w-3.5 h-3.5 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
       </div>
-      <p className="text-sm text-slate-400">{msg.textPreview}</p>
-    </div>
+
+      {/* Note Content */}
+      <p className="text-white text-sm leading-relaxed">
+        {parsed.noteContent}
+      </p>
+    </a>
   );
 }
