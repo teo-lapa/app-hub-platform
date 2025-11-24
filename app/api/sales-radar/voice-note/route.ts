@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * Generate formatted feedback note for chatter
- * Usa tag HTML standard (<p>, <strong>, <table>) che Odoo renderizza correttamente
+ * Usa formato semplice con <br> che Odoo renderizza correttamente
  */
 function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): string {
   const emoji = noteType === 'voice' ? '🎤' : '✏️';
@@ -252,26 +252,10 @@ function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): 
     minute: '2-digit'
   });
 
-  // Formato HTML con tabella (come catalogo-venditori che funziona correttamente)
-  return `
-<p><strong>📍 FEEDBACK SALES RADAR</strong></p>
-<table style="border-collapse: collapse; width: 100%; margin: 10px 0;">
-  <tr style="background-color: #f8f9fa;">
-    <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Tipo</strong></td>
-    <td style="padding: 8px; border: 1px solid #dee2e6;">${emoji} ${typeLabel}</td>
-  </tr>
-  <tr>
-    <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Data</strong></td>
-    <td style="padding: 8px; border: 1px solid #dee2e6;">📅 ${timestamp}</td>
-  </tr>
-  <tr style="background-color: #f8f9fa;">
-    <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Fonte</strong></td>
-    <td style="padding: 8px; border: 1px solid #dee2e6;">📱 Sales Radar App</td>
-  </tr>
-</table>
-<p><strong>📝 Nota:</strong></p>
-<p style="background-color: #fff3cd; padding: 10px; border-radius: 5px; border-left: 4px solid #ffc107;">${noteText.replace(/\n/g, '</p><p style="background-color: #fff3cd; padding: 10px; border-radius: 5px; border-left: 4px solid #ffc107;">')}</p>
-`.trim();
+  // Formato semplice con <br> - funziona meglio in Odoo chatter
+  const formattedNote = noteText.replace(/\n/g, '<br/>');
+
+  return `<b>📍 FEEDBACK SALES RADAR</b><br/><br/><b>${emoji} ${typeLabel}</b><br/>📅 ${timestamp}<br/>📱 Sales Radar App<br/><br/><b>📝 Nota:</b><br/>${formattedNote}`;
 }
 
 /**
