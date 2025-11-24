@@ -264,6 +264,48 @@ export interface TimelineDataPoint {
 export type GroupByOption = 'day' | 'week' | 'month' | 'team';
 export type PeriodOption = 'today' | 'week' | 'month' | 'quarter' | 'year';
 
+// Sales Radar Activity types
+export interface SalesRadarActivity {
+  id: string;
+  type: 'lead_created' | 'voice_note' | 'written_note';
+  timestamp: string;
+  userId: number;
+  userName: string;
+  targetName: string;
+  targetType: 'lead' | 'partner';
+  targetId: number;
+  location?: {
+    lat: number;
+    lng: number;
+  };
+  preview?: string;
+}
+
+export interface SalesRadarVendorStats {
+  userId: number;
+  userName: string;
+  leadsCreated: number;
+  voiceNotes: number;
+  writtenNotes: number;
+  totalInteractions: number;
+}
+
+export interface SalesRadarActivitySummary {
+  totalInteractions: number;
+  leadsCreated: number;
+  voiceNotes: number;
+  writtenNotes: number;
+  activeVendors: number;
+  period: string;
+  startDate: string;
+}
+
+export interface SalesRadarActivityData {
+  summary: SalesRadarActivitySummary;
+  activities: SalesRadarActivity[];
+  vendorStats: SalesRadarVendorStats[];
+}
+
 // Aggregated dashboard data interface
 export interface DashboardData {
   kpi: KPIData;
