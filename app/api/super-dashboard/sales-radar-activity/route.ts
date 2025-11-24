@@ -257,9 +257,10 @@ export async function GET(request: NextRequest) {
         ? leadsMap[msg.res_id] || `Lead #${msg.res_id}`
         : partnersMap[msg.res_id] || `Cliente #${msg.res_id}`;
 
-      // Skip if author is "Utente" (automatic imports)
-      const userName = usersMap[authorId]?.name || 'Utente';
-      if (userName === 'Utente') return;
+      // Get user name (skip only if explicitly "Utente" which means auto-import)
+      const userName = usersMap[authorId]?.name || (authorId > 0 ? 'Utente sconosciuto' : 'Sistema');
+      // Skip only known automatic imports (user actually named "Utente")
+      if (usersMap[authorId]?.name === 'Utente') return;
 
       // Check if this message has tracking values (field changes)
       const tracking = trackingByMessage[msg.id] || [];

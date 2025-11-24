@@ -69,6 +69,7 @@ export default function SalesRadarActivityPage() {
     let activities = [...data.activities];
 
     // Filter out activities with "Utente" (automatic imports from Google, etc.)
+    // Keep "Utente sconosciuto" and "Sistema" - only exclude known "Utente" imports
     activities = activities.filter(a => a.userName !== 'Utente');
 
     // Filter by vendor
