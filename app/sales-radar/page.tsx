@@ -242,7 +242,7 @@ export default function SalesRadarPage() {
 
   // Search params
   const [radius, setRadius] = useState<number>(1000); // 1km default
-  const [placeType, setPlaceType] = useState<string>('restaurant'); // Default: Ristoranti
+  const [placeType, setPlaceType] = useState<string>(''); // Default: Tutti i tipi
   const [keyword, setKeyword] = useState<string>('');
 
   // Results
@@ -979,7 +979,11 @@ export default function SalesRadarPage() {
             {/* Map Mode Toggle */}
             <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => setMapMode('live')}
+                onClick={() => {
+                  setMapMode('live');
+                  // Default a Ristoranti quando si passa a Live
+                  if (placeType === '') setPlaceType('restaurant');
+                }}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   mapMode === 'live'
                     ? 'bg-white text-blue-600 shadow-sm'
