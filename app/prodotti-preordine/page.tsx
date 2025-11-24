@@ -58,7 +58,6 @@ export default function ProdottiPreordinePage() {
   const router = useRouter()
   const [allProducts, setAllProducts] = useState<Product[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [togglingProductId, setTogglingProductId] = useState<number | null>(null)
@@ -66,11 +65,14 @@ export default function ProdottiPreordinePage() {
   const [filterMode, setFilterMode] = useState<'preordine' | 'altri'>('preordine')
   const [altriProdottiLoaded, setAltriProdottiLoaded] = useState(false)
 
-  // Customer assignment modal
+  // Customer assignment modal - LIVE SEARCH
   const [showCustomerModal, setShowCustomerModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [customerAssignments, setCustomerAssignments] = useState<Array<{ customerId: number, quantity: number }>>([])
   const [customerSearchTerm, setCustomerSearchTerm] = useState('')
+  const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([])
+  const [loadingCustomerSearch, setLoadingCustomerSearch] = useState(false)
+  const [customersCache, setCustomersCache] = useState<Map<number, Customer>>(new Map())
 
   // Supplier change modal
   const [showSupplierModal, setShowSupplierModal] = useState(false)
@@ -141,12 +143,8 @@ export default function ProdottiPreordinePage() {
         setSuppliers(suppliersList)
       }
 
-      // Load customers
-      const customersRes = await fetch('/api/customers')
-      if (customersRes.ok) {
-        const data = await customersRes.json()
-        setCustomers(data.customers || [])
-      }
+      // ✅ RIMOSSO: Non carichiamo più tutti i clienti all'avvio
+      // Ora usiamo ricerca live quando l'utente cerca nella dialog
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -208,6 +206,70 @@ export default function ProdottiPreordinePage() {
       setLoading(false)
     }
   }
+
+  // 🔍 RICERCA LIVE CLIENTI (come in Catalogo AI)
+  useEffect(() => {
+    const searchCustomersLive = async () => {
+      const term = customerSearchTerm.trim()
+
+      // Reset se meno di 2 caratteri
+      if (term.length < 2) {
+        setSearchedCustomers([])
+        setLoadingCustomerSearch(false)
+        return
+      }
+
+      setLoadingCustomerSearch(true)
+
+      try {
+        const response = await fetch(`/api/clienti/search?q=${encodeURIComponent(term)}&userId=7`)
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        if (data.success) {
+          // Trasforma i risultati nel formato Customer
+          const transformedCustomers: Customer[] = (data.results || []).map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            email: c.email || '',
+            phone: c.phone || '',
+            city: c.city || '',
+            parentName: c.parentId ? null : null // parentName non è fornito da questa API
+          }))
+
+          setSearchedCustomers(transformedCustomers)
+
+          // 💾 Aggiorna cache con i nuovi clienti trovati
+          setCustomersCache(prev => {
+            const newCache = new Map(prev)
+            transformedCustomers.forEach(c => newCache.set(c.id, c))
+            return newCache
+          })
+
+          console.log(`✅ Trovati ${transformedCustomers.length} clienti per "${term}"`)
+        } else {
+          console.error('❌ Errore ricerca:', data.error)
+          setSearchedCustomers([])
+        }
+      } catch (err) {
+        console.error('❌ Errore ricerca live:', err)
+        setSearchedCustomers([])
+      } finally {
+        setLoadingCustomerSearch(false)
+      }
+    }
+
+    // Debounce: attendi 500ms dopo che l'utente smette di digitare
+    const debounceTimer = setTimeout(() => {
+      searchCustomersLive()
+    }, 500)
+
+    return () => clearTimeout(debounceTimer)
+  }, [customerSearchTerm])
 
   const togglePreOrder = async (productId: number, currentState: boolean) => {
     try {
@@ -277,6 +339,25 @@ export default function ProdottiPreordinePage() {
         quantity: a.quantity
       }))
     )
+
+    // 💾 Popola cache con i clienti già assegnati
+    setCustomersCache(prev => {
+      const newCache = new Map(prev)
+      ;(product.assignedCustomers || []).forEach(a => {
+        if (!newCache.has(a.customerId)) {
+          newCache.set(a.customerId, {
+            id: a.customerId,
+            name: a.customerName,
+            email: undefined,
+            phone: undefined,
+            city: undefined,
+            parentName: null
+          })
+        }
+      })
+      return newCache
+    })
+
     setShowCustomerModal(true)
   }
 
@@ -326,7 +407,7 @@ export default function ProdottiPreordinePage() {
 
       // Recupera nomi clienti per local state
       const savedAssignments = validAssignments.map(a => {
-        const customer = customers.find(c => c.id === a.customerId);
+        const customer = customersCache.get(a.customerId);
         return {
           customerId: a.customerId,
           customerName: customer?.name || 'Cliente sconosciuto',
@@ -623,16 +704,8 @@ export default function ProdottiPreordinePage() {
         p.supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
     })
 
-  const filteredCustomers = customers.filter(c => {
-    const search = customerSearchTerm.toLowerCase()
-    return (
-      c.name.toLowerCase().includes(search) ||
-      c.email?.toLowerCase().includes(search) ||
-      c.phone?.toLowerCase().includes(search) ||
-      c.city?.toLowerCase().includes(search) ||
-      c.parentName?.toLowerCase().includes(search)
-    )
-  })
+  // ✅ USA RISULTATI RICERCA LIVE (già filtrati dal server)
+  const filteredCustomers = searchedCustomers
 
   const filteredSuppliers = suppliers.filter(s =>
     s.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
@@ -952,7 +1025,7 @@ export default function ProdottiPreordinePage() {
                                   {variant.assignedCustomers && variant.assignedCustomers.length > 0 ? (
                                     <div className="space-y-1">
                                       {variant.assignedCustomers.map((a: any, i: number) => {
-                                        const customer = customers.find(c => c.id === a.customerId);
+                                        const customer = customersCache.get(a.customerId);
                                         return (
                                           <div key={i} className="flex justify-between items-center">
                                             <span className="truncate text-xs">{customer?.name || 'Cliente sconosciuto'}</span>
@@ -1077,7 +1150,7 @@ export default function ProdottiPreordinePage() {
                         {product.assignedCustomers.length > 0 ? (
                           <div className="space-y-1">
                             {product.assignedCustomers.map((a, i) => {
-                              const customer = customers.find(c => c.id === a.customerId);
+                              const customer = customersCache.get(a.customerId);
                               return (
                                 <div key={i} className="flex justify-between items-center">
                                   <span className="truncate">{customer?.name || 'Cliente sconosciuto'}</span>
@@ -1155,7 +1228,7 @@ export default function ProdottiPreordinePage() {
                                 {variant.assignedCustomers && variant.assignedCustomers.length > 0 ? (
                                   <div className="space-y-1">
                                     {variant.assignedCustomers.map((a: any, i: number) => {
-                                      const customer = customers.find(c => c.id === a.customerId);
+                                      const customer = customersCache.get(a.customerId);
                                       return (
                                         <div key={i} className="flex justify-between items-center">
                                           <span className="truncate">{customer?.name || 'Cliente sconosciuto'}</span>
@@ -1234,11 +1307,16 @@ export default function ProdottiPreordinePage() {
                 <MagnifyingGlassIcon className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Cerca cliente..."
+                  placeholder="Cerca cliente... (min 2 caratteri)"
                   value={customerSearchTerm}
                   onChange={(e) => setCustomerSearchTerm(e.target.value)}
-                  className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 text-sm sm:text-base bg-slate-700 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[48px]"
+                  className="w-full pl-10 sm:pl-12 pr-12 py-3 sm:py-3 text-sm sm:text-base bg-slate-700 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[48px]"
                 />
+                {loadingCustomerSearch && (
+                  <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
+                    <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
               </div>
 
               {/* Selected customers list - Mobile optimized */}
@@ -1246,7 +1324,7 @@ export default function ProdottiPreordinePage() {
                 <div className="space-y-2 border-t border-white/10 pt-3">
                   <h3 className="text-xs font-semibold text-purple-300 uppercase tracking-wide">Clienti Selezionati:</h3>
                   {customerAssignments.map((assignment, idx) => {
-                    const customer = customers.find(c => c.id === assignment.customerId)
+                    const customer = customersCache.get(assignment.customerId)
                     return (
                       <div key={idx} className="flex gap-2 items-center bg-slate-700/50 rounded-lg p-3">
                         <div className="flex-1 text-white text-sm min-w-0">
