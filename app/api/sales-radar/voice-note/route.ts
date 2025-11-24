@@ -243,23 +243,28 @@ export async function POST(request: NextRequest) {
 
 /**
  * Generate formatted feedback note for chatter
- * Usa tag <p> e <strong> come catalogo-venditori che funziona
+ * Usa formato con stili inline come sales-alert/note che funziona bene in Odoo
  */
 function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): string {
   const emoji = noteType === 'voice' ? '🎤' : '✏️';
   const typeLabel = noteType === 'voice' ? 'Nota Vocale' : 'Nota Scritta';
-  const timestamp = new Date().toLocaleString('it-IT', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  const timestamp = new Date().toLocaleDateString('it-IT');
+  const timeStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-  // Formato come catalogo-venditori con <p> e <strong>
+  // Formato con stili inline come sales-alert/note
   const formattedNote = noteText.replace(/\n/g, '<br/>');
 
-  return `<p><strong>📍 FEEDBACK SALES RADAR</strong></p><p>${emoji} ${typeLabel} | 📅 ${timestamp}</p><p><strong>📝 Nota:</strong></p><p>${formattedNote}</p><p><em>Inserita tramite Sales Radar App</em></p>`;
+  return `
+<div style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+  <strong style="color: white;">📍 FEEDBACK SALES RADAR - ${emoji} ${typeLabel}</strong>
+</div>
+<div style="padding: 12px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+  ${formattedNote}
+</div>
+<div style="margin-top: 8px; font-size: 12px; color: #666;">
+  <em>Inserita tramite Sales Radar App il ${timestamp} alle ${timeStr}</em>
+</div>
+`;
 }
 
 /**
@@ -289,10 +294,11 @@ async function postToLeadChatter(
   // Generate formatted HTML feedback
   const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
-  // USA callOdoo DIRETTAMENTE come catalogo-venditori/add-order-line
+  // USA callOdoo DIRETTAMENTE come sales-alert/note che funziona!
   const messageParams: Record<string, any> = {
     body: feedbackHtml,
-    message_type: 'comment'
+    message_type: 'comment',
+    subtype_xmlid: 'mail.mt_note'  // Necessario per rendering HTML corretto
   };
 
   if (authorId) {
@@ -303,7 +309,7 @@ async function postToLeadChatter(
     cookies,
     'crm.lead',
     'message_post',
-    [[leadId]],
+    [leadId],  // Array singolo, non doppio
     messageParams
   );
 
@@ -312,7 +318,7 @@ async function postToLeadChatter(
 
 /**
  * Post note to Partner chatter (mail.message)
- * USA callOdoo DIRETTAMENTE come catalogo-venditori che funziona!
+ * USA callOdoo DIRETTAMENTE come sales-alert/note che funziona!
  */
 async function postToPartnerChatter(
   cookies: string,
@@ -337,10 +343,11 @@ async function postToPartnerChatter(
   // Generate formatted HTML feedback
   const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
-  // USA callOdoo DIRETTAMENTE come catalogo-venditori/add-order-line
+  // USA callOdoo DIRETTAMENTE come sales-alert/note che funziona!
   const messageParams: Record<string, any> = {
     body: feedbackHtml,
-    message_type: 'comment'
+    message_type: 'comment',
+    subtype_xmlid: 'mail.mt_note'  // Necessario per rendering HTML corretto
   };
 
   if (authorId) {
@@ -351,7 +358,7 @@ async function postToPartnerChatter(
     cookies,
     'res.partner',
     'message_post',
-    [[partnerId]],
+    [partnerId],  // Array singolo, non doppio
     messageParams
   );
 
