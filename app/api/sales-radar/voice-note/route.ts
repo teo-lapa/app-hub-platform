@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * Generate formatted feedback note for chatter
- * Usa formato semplice con <br> che Odoo renderizza correttamente
+ * Usa tag <p> e <strong> come catalogo-venditori che funziona
  */
 function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): string {
   const emoji = noteType === 'voice' ? '🎤' : '✏️';
@@ -252,10 +252,10 @@ function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): 
     minute: '2-digit'
   });
 
-  // Formato semplice con <br> - funziona meglio in Odoo chatter
+  // Formato come catalogo-venditori con <p> e <strong>
   const formattedNote = noteText.replace(/\n/g, '<br/>');
 
-  return `<b>📍 FEEDBACK SALES RADAR</b><br/><br/><b>${emoji} ${typeLabel}</b><br/>📅 ${timestamp}<br/>📱 Sales Radar App<br/><br/><b>📝 Nota:</b><br/>${formattedNote}`;
+  return `<p><strong>📍 FEEDBACK SALES RADAR</strong></p><p>${emoji} ${typeLabel} | 📅 ${timestamp}</p><p><strong>📝 Nota:</strong></p><p>${formattedNote}</p><p><em>Inserita tramite Sales Radar App</em></p>`;
 }
 
 /**
