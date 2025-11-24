@@ -157,17 +157,56 @@ export async function GET(request: NextRequest) {
     });
     const partnerIds = Array.from(partnerIdsSet);
 
-    // Fetch partner details including phone
+    // Fetch partner details including phone AND parent_id for company grouping
     const partners = await rpc.searchRead(
       'res.partner',
       [['id', 'in', partnerIds]],
-      ['id', 'name', 'phone', 'mobile', 'email', 'user_id'],
+      ['id', 'name', 'phone', 'mobile', 'email', 'user_id', 'parent_id', 'is_company'],
       0
     );
 
     const partnersMap: Record<number, any> = {};
     partners.forEach((p: any) => {
       partnersMap[p.id] = p;
+    });
+
+    // Fetch parent companies that are not already in partnersMap
+    const parentIdsToFetch = new Set<number>();
+    partners.forEach((p: any) => {
+      if (p.parent_id && p.parent_id[0] && !partnersMap[p.parent_id[0]]) {
+        parentIdsToFetch.add(p.parent_id[0]);
+      }
+    });
+
+    if (parentIdsToFetch.size > 0) {
+      const parentPartners = await rpc.searchRead(
+        'res.partner',
+        [['id', 'in', Array.from(parentIdsToFetch)]],
+        ['id', 'name', 'phone', 'mobile', 'email', 'user_id', 'parent_id', 'is_company'],
+        0
+      );
+      parentPartners.forEach((p: any) => {
+        partnersMap[p.id] = p;
+      });
+    }
+
+    // Helper: Get the company ID (parent or self if no parent)
+    const getCompanyId = (partnerId: number): number => {
+      const partner = partnersMap[partnerId];
+      if (!partner) return partnerId;
+      // If has parent_id, return parent (the company)
+      if (partner.parent_id && partner.parent_id[0]) {
+        return partner.parent_id[0];
+      }
+      // Otherwise this partner IS the company
+      return partnerId;
+    };
+
+    // Map: partnerId -> companyId (for aggregating children under parent)
+    const partnerToCompanyMap: Map<number, number> = new Map();
+    Object.keys(partnersMap).forEach(idStr => {
+      const partnerId = parseInt(idStr, 10);
+      partnerToCompanyMap.set(partnerId, getCompanyId(partnerId));
     });
 
     // Define week ranges
@@ -215,8 +254,13 @@ export async function GET(request: NextRequest) {
 
       const productId = line.product_id[0];
       const productName = line.product_id[1];
-      const customerId = order.partner_id[0];
-      const customerName = order.partner_id[1];
+
+      // Use company ID (parent) instead of individual contact ID
+      // This aggregates all contacts of a company under the parent company
+      const originalPartnerId = order.partner_id[0];
+      const customerId = partnerToCompanyMap.get(originalPartnerId) || originalPartnerId;
+      const customerName = partnersMap[customerId]?.name || order.partner_id[1];
+
       const orderDate = new Date(order.effective_date);
       const weekKey = getYearWeekKey(orderDate);
       const qty = line.product_uom_qty;
