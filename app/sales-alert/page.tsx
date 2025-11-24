@@ -610,29 +610,44 @@ function NoteModal({ customer, isOpen, onClose }: { customer: CustomerAlert | nu
 function InfoModal({ customer, isOpen, onClose }: { customer: CustomerAlert | null; isOpen: boolean; onClose: () => void }) {
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [loadedForCustomerId, setLoadedForCustomerId] = useState<number | null>(null);
 
+  // Single effect that handles both reset and fetch
   useEffect(() => {
-    if (isOpen && customer && !analysis) {
-      fetchAnalysis();
+    if (!isOpen || !customer) {
+      return;
     }
-  }, [isOpen, customer]);
 
-  const fetchAnalysis = async () => {
-    if (!customer) return;
+    // If we already have analysis for THIS customer, don't refetch
+    if (loadedForCustomerId === customer.customerId && analysis) {
+      return;
+    }
+
+    // Different customer - reset and fetch
+    if (loadedForCustomerId !== customer.customerId) {
+      setAnalysis(null);
+      setLoadedForCustomerId(customer.customerId);
+    }
+
+    // Fetch analysis for current customer
+    fetchAnalysisForCustomer(customer);
+  }, [isOpen, customer?.customerId]);
+
+  const fetchAnalysisForCustomer = async (customerToAnalyze: CustomerAlert) => {
     setLoadingAI(true);
     try {
       const res = await fetch('/api/sales-alert/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: customer.customerName,
-          variationPercent: customer.variationPercent,
-          wasWeeklyRevenue: customer.wasWeeklyRevenue,
-          nowWeeklyRevenue: customer.nowWeeklyRevenue,
-          daysSinceLastOrder: customer.daysSinceLastOrder,
-          lostProducts: customer.lostProducts,
-          historicalRevenue: customer.historicalRevenue,
-          recentRevenue: customer.recentRevenue
+          customerName: customerToAnalyze.customerName,
+          variationPercent: customerToAnalyze.variationPercent,
+          wasWeeklyRevenue: customerToAnalyze.wasWeeklyRevenue,
+          nowWeeklyRevenue: customerToAnalyze.nowWeeklyRevenue,
+          daysSinceLastOrder: customerToAnalyze.daysSinceLastOrder,
+          lostProducts: customerToAnalyze.lostProducts,
+          historicalRevenue: customerToAnalyze.historicalRevenue,
+          recentRevenue: customerToAnalyze.recentRevenue
         })
       });
       const data = await res.json();
