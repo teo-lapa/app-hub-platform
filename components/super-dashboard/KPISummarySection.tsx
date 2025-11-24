@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent, BarChart, Building2, Activity, RefreshCcw, X, ChevronDown, ChevronUp, Radar } from 'lucide-react';
-import { SalesRadarActivityModal } from './SalesRadarActivityModal';
 import Link from 'next/link';
 
 interface KPICardProps {
@@ -339,7 +338,6 @@ export function KPISummarySection({ period }: KPISummarySectionProps) {
   const [error, setError] = useState<string | null>(null);
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [recurringStats, setRecurringStats] = useState<{ count: number; loss: number } | null>(null);
-  const [showSalesRadarModal, setShowSalesRadarModal] = useState(false);
   const [salesRadarStats, setSalesRadarStats] = useState<{ interactions: number; vendors: number } | null>(null);
 
   useEffect(() => {
@@ -616,66 +614,61 @@ export function KPISummarySection({ period }: KPISummarySectionProps) {
           </div>
         </motion.div>
 
-        {/* Sales Radar Activity Card - Special clickable card */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: (kpis.length + 1) * 0.1, duration: 0.5 }}
-          whileHover={{ y: -4, transition: { duration: 0.2 } }}
-          className="relative group cursor-pointer"
-          onClick={() => setShowSalesRadarModal(true)}
-        >
-          <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl p-6 shadow-2xl border border-white/10 overflow-hidden h-full">
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.1),transparent)]" />
-            </div>
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-3">
-                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
-                  <Radar className="w-6 h-6 text-white" />
-                </div>
-                {salesRadarStats && salesRadarStats.interactions > 0 && (
-                  <div className="flex items-center gap-1 text-indigo-200 text-sm font-semibold">
-                    <Activity className="w-4 h-4" />
-                    {salesRadarStats.interactions}
+        {/* Sales Radar Activity Card - Link to dedicated page */}
+        <Link href="/super-dashboard/sales-radar-activity">
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: (kpis.length + 1) * 0.1, duration: 0.5 }}
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="relative group cursor-pointer"
+          >
+            <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl p-6 shadow-2xl border border-white/10 overflow-hidden h-full">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.1),transparent)]" />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+                    <Radar className="w-6 h-6 text-white" />
                   </div>
-                )}
+                  {salesRadarStats && salesRadarStats.interactions > 0 && (
+                    <div className="flex items-center gap-1 text-indigo-200 text-sm font-semibold">
+                      <Activity className="w-4 h-4" />
+                      {salesRadarStats.interactions}
+                    </div>
+                  )}
+                </div>
+                <h3 className="text-white/80 text-sm font-medium mb-1">
+                  Sales Radar
+                </h3>
+                <div className="text-2xl font-bold text-white mb-1">
+                  {salesRadarStats ? `${salesRadarStats.interactions} attività` : 'Monitor'}
+                </div>
+                <p className="text-white/60 text-xs">
+                  {salesRadarStats ? `${salesRadarStats.vendors} venditori attivi` : 'Monitora attività venditori'}
+                </p>
               </div>
-              <h3 className="text-white/80 text-sm font-medium mb-1">
-                Sales Radar
-              </h3>
-              <div className="text-2xl font-bold text-white mb-1">
-                {salesRadarStats ? `${salesRadarStats.interactions} attività` : 'Monitor'}
+              <div className="absolute bottom-0 right-0 w-24 h-12 opacity-20">
+                <svg viewBox="0 0 100 50" className="w-full h-full">
+                  <polyline
+                    points="0,30 25,25 50,35 75,15 100,20"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="2"
+                    className="animate-pulse"
+                  />
+                </svg>
               </div>
-              <p className="text-white/60 text-xs">
-                {salesRadarStats ? `${salesRadarStats.vendors} venditori attivi` : 'Monitora attività venditori'}
-              </p>
             </div>
-            <div className="absolute bottom-0 right-0 w-24 h-12 opacity-20">
-              <svg viewBox="0 0 100 50" className="w-full h-full">
-                <polyline
-                  points="0,30 25,25 50,35 75,15 100,20"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                  className="animate-pulse"
-                />
-              </svg>
-            </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </Link>
       </div>
 
       {/* Recurring Products Lost Modal */}
       <RecurringProductsLostModal
         isOpen={showRecurringModal}
         onClose={() => setShowRecurringModal(false)}
-      />
-
-      {/* Sales Radar Activity Modal */}
-      <SalesRadarActivityModal
-        isOpen={showSalesRadarModal}
-        onClose={() => setShowSalesRadarModal(false)}
       />
     </section>
   );
