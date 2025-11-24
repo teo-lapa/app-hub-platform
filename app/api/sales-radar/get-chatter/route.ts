@@ -85,7 +85,6 @@ export async function GET(request: NextRequest) {
       ],
       ['id', 'body', 'date', 'author_id', 'message_type', 'subtype_id'],
       50, // Limit to 50 messages
-      0,
       'date desc'
     );
 
