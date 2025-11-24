@@ -80,13 +80,14 @@ interface ProductAlert {
 /**
  * API: Sales Alert Analysis
  *
- * Analyzes last 6 weeks of orders to identify:
+ * Analyzes completed weeks of orders to identify:
  * 1. Customers at risk (declining or lost)
  * 2. Products in decline
  * 3. Summary statistics
  *
- * Historical period: W-6 to W-3 (4 weeks)
- * Recent period: W-2 to W0 (3 weeks, including current)
+ * IMPORTANT: Excludes current week (incomplete) and future deliveries
+ * Historical period: W-7 to W-4 (4 complete weeks)
+ * Recent period: W-3 to W-1 (3 complete weeks)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -100,19 +101,21 @@ export async function GET(request: NextRequest) {
 
     const rpc = createOdooRPCClient(sessionId);
     const now = new Date();
+    const today = now.toISOString().split('T')[0];
     const currentWeek = getISOWeek(now);
     const currentYear = now.getFullYear();
 
-    // Calculate date 6 weeks ago
-    const sixWeeksAgo = new Date();
-    sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
-    const dateFrom = sixWeeksAgo.toISOString().split('T')[0];
+    // Calculate date 7 weeks ago (to get 7 complete weeks of history)
+    const sevenWeeksAgo = new Date();
+    sevenWeeksAgo.setDate(sevenWeeksAgo.getDate() - 49);
+    const dateFrom = sevenWeeksAgo.toISOString().split('T')[0];
 
-    // Get all order lines from last 6 weeks
+    // Get all order lines from last 7 weeks, excluding future deliveries
     const orderLines = await rpc.searchRead(
       'sale.order.line',
       [
         ['order_id.effective_date', '>=', dateFrom],
+        ['order_id.effective_date', '<=', today],
         ['order_id.state', 'in', ['sale', 'done']]
       ],
       ['order_id', 'product_id', 'product_uom_qty', 'price_subtotal'],
@@ -211,19 +214,20 @@ export async function GET(request: NextRequest) {
       partnerToCompanyMap.set(partnerId, getCompanyId(partnerId));
     });
 
-    // Define week ranges
-    // Recent: W0 (current), W-1, W-2 (3 weeks)
-    // Historical: W-3, W-4, W-5, W-6 (4 weeks)
+    // Define week ranges - EXCLUDE current week (incomplete)
+    // Recent: W-1, W-2, W-3 (3 complete weeks)
+    // Historical: W-4, W-5, W-6, W-7 (4 complete weeks)
     const recentWeekKeys: string[] = [];
     const historicalWeekKeys: string[] = [];
 
-    for (let i = 0; i <= 2; i++) {
+    // Start from last week (i=1), not current week (i=0)
+    for (let i = 1; i <= 3; i++) {
       const d = new Date();
       d.setDate(d.getDate() - i * 7);
       recentWeekKeys.push(getYearWeekKey(d));
     }
 
-    for (let i = 3; i <= 6; i++) {
+    for (let i = 4; i <= 7; i++) {
       const d = new Date();
       d.setDate(d.getDate() - i * 7);
       historicalWeekKeys.push(getYearWeekKey(d));
