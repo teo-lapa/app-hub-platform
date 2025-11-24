@@ -34,6 +34,9 @@ export default function SalesRadarActivityPage() {
   const [selectedActivityType, setSelectedActivityType] = useState<ActivityType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<SalesRadarActivity | null>(null);
+  const [activityDetails, setActivityDetails] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -96,6 +99,26 @@ export default function SalesRadarActivityPage() {
     today: 'Oggi',
     week: 'Questa settimana',
     month: 'Questo mese'
+  };
+
+  // Fetch activity details when an activity is selected
+  const handleActivityClick = async (activity: SalesRadarActivity) => {
+    setSelectedActivity(activity);
+    setLoadingDetails(true);
+    setActivityDetails(null);
+
+    try {
+      // Fetch the chatter messages for this lead/partner
+      const response = await fetch(`/api/sales-radar/get-chatter?model=${activity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&id=${activity.targetId}`);
+      const result = await response.json();
+      if (result.success) {
+        setActivityDetails(result.data);
+      }
+    } catch (err) {
+      console.error('Error fetching activity details:', err);
+    } finally {
+      setLoadingDetails(false);
+    }
   };
 
   const getActivityIcon = (type: SalesRadarActivity['type']) => {
@@ -414,6 +437,7 @@ export default function SalesRadarActivityPage() {
                   formatTimestamp={formatTimestamp}
                   getActivityIcon={getActivityIcon}
                   getActivityLabel={getActivityLabel}
+                  onActivityClick={handleActivityClick}
                 />
               )}
 
@@ -441,6 +465,165 @@ export default function SalesRadarActivityPage() {
             </div>
           </>
         ) : null}
+
+        {/* Activity Detail Drawer */}
+        <AnimatePresence>
+          {selectedActivity && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+              onClick={() => setSelectedActivity(null)}
+            >
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="absolute right-0 top-0 h-full w-full max-w-lg bg-slate-900 border-l border-slate-700 shadow-2xl overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Drawer Header */}
+                <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-violet-600 p-4 z-10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-white truncate">
+                        {selectedActivity.targetName}
+                      </h3>
+                      <p className="text-indigo-200 text-sm">
+                        {selectedActivity.targetType === 'lead' ? 'Lead' : 'Cliente'} - {selectedActivity.userName}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedActivity(null)}
+                      className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5 text-white" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Drawer Content */}
+                <div className="p-4">
+                  {loadingDetails ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : activityDetails ? (
+                    <div className="space-y-6">
+                      {/* Record Info */}
+                      <div className="bg-slate-800/50 rounded-xl p-4 space-y-3">
+                        <h4 className="text-white font-semibold flex items-center gap-2">
+                          <User className="w-4 h-4 text-indigo-400" />
+                          Informazioni
+                        </h4>
+                        {activityDetails.record.phone && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-slate-400">Telefono:</span>
+                            <a href={`tel:${activityDetails.record.phone}`} className="text-indigo-300 hover:underline">
+                              {activityDetails.record.phone}
+                            </a>
+                          </div>
+                        )}
+                        {activityDetails.record.email && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-slate-400">Email:</span>
+                            <a href={`mailto:${activityDetails.record.email}`} className="text-indigo-300 hover:underline">
+                              {activityDetails.record.email}
+                            </a>
+                          </div>
+                        )}
+                        {(activityDetails.record.street || activityDetails.record.city) && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-slate-400">Indirizzo:</span>
+                            <span className="text-white">
+                              {[activityDetails.record.street, activityDetails.record.city].filter(Boolean).join(', ')}
+                            </span>
+                          </div>
+                        )}
+                        {activityDetails.record.website && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-slate-400">Sito:</span>
+                            <a href={activityDetails.record.website} target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:underline truncate">
+                              {activityDetails.record.website}
+                            </a>
+                          </div>
+                        )}
+                        {activityDetails.record.stage && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-slate-400">Stage:</span>
+                            <span className="text-orange-300">{activityDetails.record.stage}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Messages */}
+                      <div>
+                        <h4 className="text-white font-semibold flex items-center gap-2 mb-3">
+                          <FileText className="w-4 h-4 text-indigo-400" />
+                          Note e Messaggi ({activityDetails.salesRadarMessages} da Sales Radar)
+                        </h4>
+                        <div className="space-y-3">
+                          {activityDetails.messages.map((msg: any) => (
+                            <div
+                              key={msg.id}
+                              className={`rounded-xl p-3 ${
+                                msg.isSalesRadar
+                                  ? 'bg-indigo-500/20 border border-indigo-500/30'
+                                  : 'bg-slate-800/50'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-white">{msg.authorName}</span>
+                                <span className="text-xs text-slate-500">
+                                  {new Date(msg.date).toLocaleString('it-IT', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                              {msg.isSalesRadar ? (
+                                <div
+                                  className="text-sm text-slate-300 prose prose-invert prose-sm max-w-none"
+                                  dangerouslySetInnerHTML={{ __html: msg.body }}
+                                />
+                              ) : (
+                                <p className="text-sm text-slate-400">{msg.textPreview}</p>
+                              )}
+                            </div>
+                          ))}
+                          {activityDetails.messages.length === 0 && (
+                            <p className="text-slate-500 text-sm text-center py-4">
+                              Nessun messaggio trovato
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Open in Odoo */}
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com'}/web#id=${selectedActivity.targetId}&model=${selectedActivity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Apri in Odoo
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-slate-400">
+                      <p>Clicca su un&apos;attività per vedere i dettagli</p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
@@ -451,12 +634,14 @@ function TimelineView({
   activities,
   formatTimestamp,
   getActivityIcon,
-  getActivityLabel
+  getActivityLabel,
+  onActivityClick
 }: {
   activities: SalesRadarActivity[];
   formatTimestamp: (ts: string) => string;
   getActivityIcon: (type: SalesRadarActivity['type']) => React.ReactNode;
   getActivityLabel: (type: SalesRadarActivity['type']) => string;
+  onActivityClick: (activity: SalesRadarActivity) => void;
 }) {
   if (activities.length === 0) {
     return (
@@ -476,7 +661,8 @@ function TimelineView({
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: index * 0.02 }}
-          className="p-4 hover:bg-slate-700/20 transition-colors"
+          className="p-4 hover:bg-slate-700/20 transition-colors cursor-pointer"
+          onClick={() => onActivityClick(activity)}
         >
           <div className="flex items-start gap-4">
             {/* Activity Icon */}
@@ -519,17 +705,14 @@ function TimelineView({
               </div>
             </div>
 
-            {/* Actions */}
+            {/* View Details Button */}
             <div className="flex items-center gap-2">
-              <a
-                href={`https://lapa-sandalo.odoo.com/web#id=${activity.targetId}&model=${activity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
                 className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/20 rounded-lg transition-colors"
-                title="Apri in Odoo"
+                title="Vedi dettagli"
               >
-                <ExternalLink className="w-4 h-4" />
-              </a>
+                <Eye className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </motion.div>

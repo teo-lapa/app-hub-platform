@@ -298,7 +298,7 @@ function TimelineView({
 
             {/* Link to Odoo */}
             <a
-              href={`https://lapa-sandalo.odoo.com/web#id=${activity.targetId}&model=${activity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
+              href={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com'}/web#id=${activity.targetId}&model=${activity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-shrink-0 p-2 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/20 rounded-lg transition-colors"
