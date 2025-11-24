@@ -478,12 +478,19 @@ export async function GET(request: NextRequest) {
       return a.qtyChangePercent - b.qtyChangePercent;
     });
 
-    // Calculate summary
-    const customerCounts = { critical: 0, warning: 0, ok: 0 };
-    customerAlerts.forEach(c => customerCounts[c.status]++);
+    // Calculate summary counts - use filter().length for guaranteed consistency
+    // This ensures the counts ALWAYS match the actual customers in the response array
+    const verifiedCustomerCounts = {
+      critical: customerAlerts.filter(c => c.status === 'critical').length,
+      warning: customerAlerts.filter(c => c.status === 'warning').length,
+      ok: customerAlerts.filter(c => c.status === 'ok').length
+    };
 
-    const productCounts = { critical: 0, warning: 0, ok: 0 };
-    productAlerts.forEach(p => productCounts[p.status]++);
+    const verifiedProductCounts = {
+      critical: productAlerts.filter(p => p.status === 'critical').length,
+      warning: productAlerts.filter(p => p.status === 'warning').length,
+      ok: productAlerts.filter(p => p.status === 'ok').length
+    };
 
     // Calculate total revenue at risk (from critical and warning customers)
     const totalRevenueAtRisk = customerAlerts
@@ -494,8 +501,8 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         summary: {
-          customersAtRisk: customerCounts,
-          productsAtRisk: productCounts,
+          customersAtRisk: verifiedCustomerCounts,
+          productsAtRisk: verifiedProductCounts,
           totalRevenueAtRisk: Math.round(totalRevenueAtRisk * 100) / 100,
           currentWeek,
           currentYear,
@@ -508,8 +515,8 @@ export async function GET(request: NextRequest) {
             recent: recentWeekKeys
           }
         },
-        customers: customerAlerts.slice(0, 100), // Top 100 customers
-        products: productAlerts.slice(0, 100) // Top 100 products
+        customers: customerAlerts, // All customers (summary counts match)
+        products: productAlerts // All products
       }
     });
 
