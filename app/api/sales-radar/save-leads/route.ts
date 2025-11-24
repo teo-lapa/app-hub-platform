@@ -26,6 +26,10 @@ interface SaveResult {
   name: string;
   status: 'created' | 'skipped' | 'error';
   lead_id?: number;
+  partner_id?: number;
+  isArchived?: boolean;
+  color?: 'orange' | 'grey' | 'green';
+  tags?: string[];
   error?: string;
 }
 
@@ -145,13 +149,56 @@ export async function POST(request: NextRequest) {
         );
 
         if (existingLeads.length > 0) {
-          const isArchived = existingLeads[0].active === false;
-          console.log(`[SAVE-LEADS] Lead gia esistente${isArchived ? ' (archiviato)' : ''} per: ${place.name}`);
+          const lead = existingLeads[0];
+          const isArchived = lead.active === false;
+
+          // Recupera i tag del lead per determinare il colore
+          let color: 'orange' | 'grey' = 'orange';
+          let tagNames: string[] = [];
+
+          try {
+            // Recupera il lead completo con i tag
+            const leadFull = await client.searchRead(
+              'crm.lead',
+              [['id', '=', lead.id]],
+              ['tag_ids'],
+              1
+            );
+
+            if (leadFull.length > 0 && leadFull[0].tag_ids && leadFull[0].tag_ids.length > 0) {
+              // Recupera i nomi dei tag
+              const tags = await client.searchRead(
+                'crm.tag',
+                [['id', 'in', leadFull[0].tag_ids]],
+                ['name'],
+                0
+              );
+              tagNames = tags.map((t: any) => t.name);
+
+              // Controlla se e' marcato "non in target"
+              const NOT_TARGET_TAGS = ['Non in Target', 'Chiuso definitivamente', 'Non interessato', 'non in target', 'chiuso'];
+              const isNotTarget = tagNames.some((tag: string) =>
+                NOT_TARGET_TAGS.some(notTag => tag.toLowerCase().includes(notTag.toLowerCase()))
+              );
+
+              if (isNotTarget) {
+                color = 'grey';
+              }
+            }
+          } catch (tagError) {
+            console.log(`[SAVE-LEADS] Errore recupero tag per lead ${lead.id}:`, tagError);
+          }
+
+          console.log(`[SAVE-LEADS] Lead gia esistente${isArchived ? ' (archiviato)' : ''} per: ${place.name}, color: ${color}`);
+
           results.push({
             place_id: place.place_id,
             name: place.name,
             status: 'skipped',
-            lead_id: existingLeads[0].id,
+            lead_id: lead.id,
+            isArchived: isArchived,
+            color: color,
+            tags: tagNames,
             error: isArchived ? 'Lead archiviato esistente' : undefined
           });
           skippedCount++;
@@ -173,13 +220,22 @@ export async function POST(request: NextRequest) {
         );
 
         if (existingPartners.length > 0) {
-          const isArchived = existingPartners[0].active === false;
-          console.log(`[SAVE-LEADS] Partner gia esistente${isArchived ? ' (archiviato)' : ''} per: ${place.name}`);
+          const partner = existingPartners[0];
+          const isArchived = partner.active === false;
+
+          // I partner (clienti) sono sempre verdi, ma se archiviati sono grigi
+          const color: 'green' | 'grey' = isArchived ? 'grey' : 'green';
+
+          console.log(`[SAVE-LEADS] Partner gia esistente${isArchived ? ' (archiviato)' : ''} per: ${place.name}, color: ${color}`);
+
           results.push({
             place_id: place.place_id,
             name: place.name,
             status: 'skipped',
-            error: `Partner${isArchived ? ' archiviato' : ''} gia esistente (ID: ${existingPartners[0].id})`
+            partner_id: partner.id,
+            isArchived: isArchived,
+            color: color,
+            error: `Partner${isArchived ? ' archiviato' : ''} gia esistente (ID: ${partner.id})`
           });
           skippedCount++;
           continue;

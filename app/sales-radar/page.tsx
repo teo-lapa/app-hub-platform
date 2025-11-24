@@ -450,7 +450,15 @@ export default function SalesRadarPage() {
         setPlaces(prev => prev.map(p => {
           const savedResult = result.results?.find((r: any) => r.place_id === p.place_id);
           if (savedResult?.status === 'created' || savedResult?.status === 'skipped') {
-            return { ...p, isLead: true, leadId: savedResult.lead_id };
+            return {
+              ...p,
+              isLead: true,
+              leadId: savedResult.lead_id,
+              // Aggiungi colore e stato dal risultato API
+              color: savedResult.color || p.color,
+              notInTarget: savedResult.color === 'grey' || p.notInTarget,
+              tags: savedResult.tags || p.tags
+            };
           }
           return p;
         }));
