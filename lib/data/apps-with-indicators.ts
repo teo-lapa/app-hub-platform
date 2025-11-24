@@ -717,6 +717,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-11-23'),
     updatedAt: new Date('2025-11-23'),
   },
+  {
+    id: 'sales-alert1',
+    name: 'Sales Alert',
+    description: '🚨 Sistema di allerta vendite in calo. Identifica clienti che hanno smesso di comprare prodotti ricorsivi, prodotti con cali significativi, e suggerisce azioni commerciali. KPI critici, warning e trend analysis.',
+    icon: '🚨',
+    badge: 'PRO',
+    category: 'Vendite',
+    url: '/sales-alert',
+    requiredRole: 'dipendente',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-11-24'),
+    updatedAt: new Date('2025-11-24'),
+  },
 ];
 
 // Combina tutte le app
