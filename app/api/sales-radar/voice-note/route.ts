@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
+import { callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -121,6 +122,9 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Costruisci cookies string per callOdoo (come catalogo-venditori)
+    const cookies = `session_id=${sessionId}`;
+
     // Handle written text note
     if (textNote && textNote.trim()) {
       console.log('[VOICE-NOTE] Saving written note to chatter:', leadType, leadId);
@@ -128,9 +132,9 @@ export async function POST(request: NextRequest) {
       // Post to chatter instead of description/comment
       let messageId: number;
       if (leadType === 'lead') {
-        messageId = await postToLeadChatter(client, leadId, textNote.trim(), 'written', authorId);
+        messageId = await postToLeadChatter(cookies, client, leadId, textNote.trim(), 'written', authorId);
       } else {
-        messageId = await postToPartnerChatter(client, leadId, textNote.trim(), 'written', authorId);
+        messageId = await postToPartnerChatter(cookies, client, leadId, textNote.trim(), 'written', authorId);
       }
 
       console.log(`[VOICE-NOTE] Written note posted to chatter, message ID: ${messageId}`);
@@ -193,9 +197,9 @@ export async function POST(request: NextRequest) {
     // 4. Save transcription to Odoo chatter
     let messageId: number;
     if (leadType === 'lead') {
-      messageId = await postToLeadChatter(client, leadId, transcriptionText, 'voice', authorId);
+      messageId = await postToLeadChatter(cookies, client, leadId, transcriptionText, 'voice', authorId);
     } else {
-      messageId = await postToPartnerChatter(client, leadId, transcriptionText, 'voice', authorId);
+      messageId = await postToPartnerChatter(cookies, client, leadId, transcriptionText, 'voice', authorId);
     }
 
     console.log(`[VOICE-NOTE] Transcription posted to ${leadType} chatter, message ID: ${messageId}`);
@@ -260,8 +264,10 @@ function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): 
 
 /**
  * Post note to CRM Lead chatter (mail.message)
+ * USA callOdoo DIRETTAMENTE come catalogo-venditori che funziona!
  */
 async function postToLeadChatter(
+  cookies: string,
   client: ReturnType<typeof createOdooRPCClient>,
   leadId: number,
   noteText: string,
@@ -283,8 +289,7 @@ async function postToLeadChatter(
   // Generate formatted HTML feedback
   const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
-  // Create message in chatter using message_post
-  // SENZA subtype_xmlid - come catalogo-venditori/add-order-line che funziona
+  // USA callOdoo DIRETTAMENTE come catalogo-venditori/add-order-line
   const messageParams: Record<string, any> = {
     body: feedbackHtml,
     message_type: 'comment'
@@ -294,15 +299,23 @@ async function postToLeadChatter(
     messageParams.author_id = authorId;
   }
 
-  const messageId = await client.callKw('crm.lead', 'message_post', [[leadId]], messageParams);
+  const messageId = await callOdoo(
+    cookies,
+    'crm.lead',
+    'message_post',
+    [[leadId]],
+    messageParams
+  );
 
   return messageId;
 }
 
 /**
  * Post note to Partner chatter (mail.message)
+ * USA callOdoo DIRETTAMENTE come catalogo-venditori che funziona!
  */
 async function postToPartnerChatter(
+  cookies: string,
   client: ReturnType<typeof createOdooRPCClient>,
   partnerId: number,
   noteText: string,
@@ -324,8 +337,7 @@ async function postToPartnerChatter(
   // Generate formatted HTML feedback
   const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
-  // Create message in chatter using message_post
-  // SENZA subtype_xmlid - come catalogo-venditori/add-order-line che funziona
+  // USA callOdoo DIRETTAMENTE come catalogo-venditori/add-order-line
   const messageParams: Record<string, any> = {
     body: feedbackHtml,
     message_type: 'comment'
@@ -335,7 +347,13 @@ async function postToPartnerChatter(
     messageParams.author_id = authorId;
   }
 
-  const messageId = await client.callKw('res.partner', 'message_post', [[partnerId]], messageParams);
+  const messageId = await callOdoo(
+    cookies,
+    'res.partner',
+    'message_post',
+    [[partnerId]],
+    messageParams
+  );
 
   return messageId;
 }
