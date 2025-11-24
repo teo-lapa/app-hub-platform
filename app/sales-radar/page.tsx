@@ -1082,37 +1082,41 @@ export default function SalesRadarPage() {
                   </select>
                 </div>
 
-                {/* Place Type */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    Tipo Attività
-                  </label>
-                  <select
-                    value={placeType}
-                    onChange={(e) => setPlaceType(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  >
-                    {PLACE_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Place Type - Solo in modalità Live */}
+                {mapMode === 'live' && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      Tipo Attività
+                    </label>
+                    <select
+                      value={placeType}
+                      onChange={(e) => setPlaceType(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    >
+                      {PLACE_TYPES.map((type) => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-                {/* Keyword */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    Parola Chiave (opzionale)
-                  </label>
-                  <input
-                    type="text"
-                    value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
-                    placeholder="es: pizza, sushi, hotel..."
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
+                {/* Keyword - Solo in modalità Live */}
+                {mapMode === 'live' && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      Parola Chiave (opzionale)
+                    </label>
+                    <input
+                      type="text"
+                      value={keyword}
+                      onChange={(e) => setKeyword(e.target.value)}
+                      placeholder="es: pizza, sushi, hotel..."
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                )}
 
                 {/* Static Filter - Only visible in static mode */}
                 {mapMode === 'static' && (
@@ -1824,37 +1828,41 @@ export default function SalesRadarPage() {
                     </select>
                   </div>
 
-                  {/* Place Type */}
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Tipo Attività
-                    </label>
-                    <select
-                      value={placeType}
-                      onChange={(e) => setPlaceType(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20"
-                    >
-                      {PLACE_TYPES.map((type) => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Place Type - Solo in modalità Live */}
+                  {mapMode === 'live' && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">
+                        Tipo Attività
+                      </label>
+                      <select
+                        value={placeType}
+                        onChange={(e) => setPlaceType(e.target.value)}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20"
+                      >
+                        {PLACE_TYPES.map((type) => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-                  {/* Keyword */}
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Parola Chiave (opzionale)
-                    </label>
-                    <input
-                      type="text"
-                      value={keyword}
-                      onChange={(e) => setKeyword(e.target.value)}
-                      placeholder="es: pizza, sushi, hotel..."
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20"
-                    />
-                  </div>
+                  {/* Keyword - Solo in modalità Live */}
+                  {mapMode === 'live' && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">
+                        Parola Chiave (opzionale)
+                      </label>
+                      <input
+                        type="text"
+                        value={keyword}
+                        onChange={(e) => setKeyword(e.target.value)}
+                        placeholder="es: pizza, sushi, hotel..."
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20"
+                      />
+                    </div>
+                  )}
 
                   {/* User Location Info */}
                   {userLocation && (
