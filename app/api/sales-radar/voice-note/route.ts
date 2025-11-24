@@ -243,7 +243,8 @@ export async function POST(request: NextRequest) {
 
 /**
  * Generate formatted feedback note for chatter
- * Usa formato con stili inline come sales-alert/note che funziona bene in Odoo
+ * IMPORTANTE: Odoo sanitizza HTML con div/style - usa solo tag base!
+ * Tag permessi: <p>, <strong>, <em>, <br/>, <ul>, <li>
  */
 function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): string {
   const emoji = noteType === 'voice' ? '🎤' : '✏️';
@@ -251,20 +252,10 @@ function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): 
   const timestamp = new Date().toLocaleDateString('it-IT');
   const timeStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-  // Formato con stili inline come sales-alert/note
+  // Formato con tag HTML semplici (come catalogo-venditori che funziona)
   const formattedNote = noteText.replace(/\n/g, '<br/>');
 
-  return `
-<div style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); padding: 12px; border-radius: 8px; margin-bottom: 8px;">
-  <strong style="color: white;">📍 FEEDBACK SALES RADAR - ${emoji} ${typeLabel}</strong>
-</div>
-<div style="padding: 12px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
-  ${formattedNote}
-</div>
-<div style="margin-top: 8px; font-size: 12px; color: #666;">
-  <em>Inserita tramite Sales Radar App il ${timestamp} alle ${timeStr}</em>
-</div>
-`;
+  return `<p><strong>📍 FEEDBACK SALES RADAR</strong></p><ul><li><strong>Tipo:</strong> ${emoji} ${typeLabel}</li><li><strong>Data:</strong> ${timestamp} alle ${timeStr}</li></ul><p><strong>📝 Nota:</strong></p><p>${formattedNote}</p><p><em>Inserita tramite Sales Radar App</em></p>`;
 }
 
 /**
