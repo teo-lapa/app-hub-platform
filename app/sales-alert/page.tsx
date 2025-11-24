@@ -345,7 +345,7 @@ function CustomerCard({
             <StatusIcon status={customer.status} />
             <div>
               <a
-                href={`https://lfruttadeisogni.odoo.com/web#id=${customer.customerId}&model=res.partner&view_type=form`}
+                href={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapa.odoo.com'}/web#id=${customer.customerId}&model=res.partner&view_type=form`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-white font-semibold text-lg hover:text-blue-400 hover:underline transition-colors"
