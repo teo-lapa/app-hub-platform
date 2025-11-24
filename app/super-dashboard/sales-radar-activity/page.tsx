@@ -28,8 +28,8 @@ export default function SalesRadarActivityPage() {
   const [data, setData] = useState<SalesRadarActivityData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [period, setPeriod] = useState<'today' | 'week' | 'month'>('week');
-  const [viewMode, setViewMode] = useState<ViewMode>('timeline');
+  const [period, setPeriod] = useState<'today' | 'week' | 'month'>('today');
+  const [viewMode, setViewMode] = useState<ViewMode>('vendors');
   const [selectedVendor, setSelectedVendor] = useState<number | null>(null);
   const [selectedActivityType, setSelectedActivityType] = useState<ActivityType>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,6 +66,9 @@ export default function SalesRadarActivityPage() {
     if (!data) return [];
 
     let activities = [...data.activities];
+
+    // Filter out activities with "Utente" (automatic imports from Google, etc.)
+    activities = activities.filter(a => a.userName !== 'Utente');
 
     // Filter by vendor
     if (selectedVendor !== null) {
@@ -144,7 +147,10 @@ export default function SalesRadarActivityPage() {
   };
 
   const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
+    // Odoo returns dates in UTC, need to handle timezone properly
+    // Add 'Z' suffix if not present to ensure UTC parsing
+    const utcTimestamp = timestamp.endsWith('Z') ? timestamp : timestamp.replace(' ', 'T') + 'Z';
+    const date = new Date(utcTimestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);

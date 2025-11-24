@@ -75,17 +75,21 @@ export async function GET(request: NextRequest) {
 
     const record = records[0];
 
-    // 2. Get chatter messages for this record
-    const messages = await client.searchRead(
+    // 2. Get chatter messages for this record (include archived records)
+    const messages = await client.callKw(
       'mail.message',
-      [
+      'search_read',
+      [[
         ['model', '=', model],
         ['res_id', '=', recordId],
         ['message_type', 'in', ['comment', 'notification']]
-      ],
-      ['id', 'body', 'date', 'author_id', 'message_type', 'subtype_id'],
-      50, // Limit to 50 messages
-      'date desc'
+      ]],
+      {
+        fields: ['id', 'body', 'date', 'author_id', 'message_type', 'subtype_id'],
+        limit: 50,
+        order: 'date desc',
+        context: { active_test: false }
+      }
     );
 
     console.log(`[GET-CHATTER] Found ${messages.length} messages`);
