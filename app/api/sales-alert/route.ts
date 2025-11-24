@@ -41,6 +41,8 @@ interface CustomerAlert {
   email: string | null;
   salesPersonId: number | null;
   salesPersonName: string | null;
+  teamId: number | null;
+  teamName: string | null;
   status: AlertStatus;
   historicalRevenue: number;
   recentRevenue: number;
@@ -141,7 +143,7 @@ export async function GET(request: NextRequest) {
     const orders = await rpc.searchRead(
       'sale.order',
       [['id', 'in', orderIds]],
-      ['id', 'name', 'effective_date', 'partner_id'],
+      ['id', 'name', 'effective_date', 'partner_id', 'team_id'],
       0
     );
 
@@ -231,6 +233,8 @@ export async function GET(request: NextRequest) {
     // Customer -> { weekKey -> { revenue, products: Set, orderDates } }
     const customerData: Map<number, {
       name: string;
+      teamId: number | null;
+      teamName: string | null;
       weeks: Map<string, { revenue: number; products: Set<number>; lastOrderDate: Date }>;
     }> = new Map();
 
@@ -261,6 +265,10 @@ export async function GET(request: NextRequest) {
       const customerId = partnerToCompanyMap.get(originalPartnerId) || originalPartnerId;
       const customerName = partnersMap[customerId]?.name || order.partner_id[1];
 
+      // Get sales team from order
+      const orderTeamId = order.team_id ? order.team_id[0] : null;
+      const orderTeamName = order.team_id ? order.team_id[1] : null;
+
       const orderDate = new Date(order.effective_date);
       const weekKey = getYearWeekKey(orderDate);
       const qty = line.product_uom_qty;
@@ -268,7 +276,19 @@ export async function GET(request: NextRequest) {
 
       // Update customer data
       if (!customerData.has(customerId)) {
-        customerData.set(customerId, { name: customerName, weeks: new Map() });
+        customerData.set(customerId, {
+          name: customerName,
+          teamId: orderTeamId,
+          teamName: orderTeamName,
+          weeks: new Map()
+        });
+      } else {
+        // Update team if not set (use most recent order's team)
+        const existing = customerData.get(customerId)!;
+        if (!existing.teamId && orderTeamId) {
+          existing.teamId = orderTeamId;
+          existing.teamName = orderTeamName;
+        }
       }
       const customer = customerData.get(customerId)!;
       if (!customer.weeks.has(weekKey)) {
@@ -426,6 +446,8 @@ export async function GET(request: NextRequest) {
         email,
         salesPersonId,
         salesPersonName,
+        teamId: data.teamId,
+        teamName: data.teamName,
         status,
         historicalRevenue: Math.round(historicalRevenue * 100) / 100,
         recentRevenue: Math.round(recentRevenue * 100) / 100,

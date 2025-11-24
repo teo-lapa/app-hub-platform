@@ -22,6 +22,8 @@ interface CustomerAlert {
   mobile: string | null;
   email: string | null;
   salesPersonName: string | null;
+  teamId: number | null;
+  teamName: string | null;
   status: 'critical' | 'warning' | 'ok';
   variationPercent: number;
   wasWeeklyRevenue: number;
@@ -71,6 +73,8 @@ const mockData: SalesAlertData = {
       mobile: '+41 79 123 4567',
       email: 'mario@ristorante.ch',
       salesPersonName: 'Giovanni Rossi',
+      teamId: 1,
+      teamName: 'Vendite Zurigo',
       status: 'critical',
       variationPercent: -68,
       wasWeeklyRevenue: 1250,
@@ -90,6 +94,8 @@ const mockData: SalesAlertData = {
       mobile: '+41 78 987 6543',
       email: 'info@bellavista.ch',
       salesPersonName: 'Marco Bianchi',
+      teamId: 2,
+      teamName: 'Vendite Ticino',
       status: 'critical',
       variationPercent: -52,
       wasWeeklyRevenue: 2100,
@@ -108,6 +114,8 @@ const mockData: SalesAlertData = {
       mobile: '+41 76 555 1234',
       email: 'napoli@pizza.ch',
       salesPersonName: 'Giovanni Rossi',
+      teamId: 1,
+      teamName: 'Vendite Zurigo',
       status: 'warning',
       variationPercent: -35,
       wasWeeklyRevenue: 890,
@@ -125,6 +133,8 @@ const mockData: SalesAlertData = {
       mobile: null,
       email: 'toscana@trattoria.ch',
       salesPersonName: 'Anna Verdi',
+      teamId: 3,
+      teamName: 'Vendite Berna',
       status: 'warning',
       variationPercent: -28,
       wasWeeklyRevenue: 650,
@@ -142,6 +152,8 @@ const mockData: SalesAlertData = {
       mobile: '+41 79 111 2222',
       email: 'milano@caffe.ch',
       salesPersonName: 'Marco Bianchi',
+      teamId: 2,
+      teamName: 'Vendite Ticino',
       status: 'ok',
       variationPercent: 12,
       wasWeeklyRevenue: 420,
@@ -332,12 +344,22 @@ function CustomerCard({
           <div className="flex items-center gap-3">
             <StatusIcon status={customer.status} />
             <div>
-              <h3 className="text-white font-semibold text-lg">{customer.customerName}</h3>
-              <div className="flex items-center gap-2 mt-1">
+              <a
+                href={`https://lfruttadeisogni.odoo.com/web#id=${customer.customerId}&model=res.partner&view_type=form`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white font-semibold text-lg hover:text-blue-400 hover:underline transition-colors"
+              >
+                {customer.customerName}
+              </a>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span className={cn("font-bold", variationColor)}>
                   {customer.variationPercent > 0 ? '+' : ''}{customer.variationPercent}%
                   {customer.variationPercent < 0 ? ' ↓' : ' ↑'}
                 </span>
+                {customer.teamName && (
+                  <span className="text-purple-400 text-xs bg-purple-500/20 px-2 py-0.5 rounded">{customer.teamName}</span>
+                )}
                 {customer.salesPersonName && (
                   <span className="text-slate-500 text-xs">• {customer.salesPersonName}</span>
                 )}
@@ -757,6 +779,7 @@ export default function SalesAlertPage() {
   const [activeTab, setActiveTab] = useState<'clienti' | 'prodotti'>('clienti');
   const [lastSync, setLastSync] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<'all' | 'critical' | 'warning' | 'ok'>('all');
+  const [teamFilter, setTeamFilter] = useState<string>('all');
   const [noteModal, setNoteModal] = useState<{ isOpen: boolean; customer: CustomerAlert | null }>({ isOpen: false, customer: null });
   const [infoModal, setInfoModal] = useState<{ isOpen: boolean; customer: CustomerAlert | null }>({ isOpen: false, customer: null });
 
@@ -782,6 +805,8 @@ export default function SalesAlertPage() {
               mobile: c.mobile || null,
               email: c.email || null,
               salesPersonName: c.salesPersonName || null,
+              teamId: c.teamId || null,
+              teamName: c.teamName || null,
               status: c.status as 'critical' | 'warning' | 'ok',
               variationPercent: Math.round(c.revenueChangePercent || 0),
               wasWeeklyRevenue: Math.round((c.historicalRevenue || 0) / 4), // 4 historical weeks
@@ -893,6 +918,13 @@ export default function SalesAlertPage() {
     return order[a.status] - order[b.status];
   });
 
+  // Get unique teams for filter dropdown
+  const uniqueTeams = Array.from(new Set(
+    sortedCustomers
+      .filter(c => c.teamName)
+      .map(c => c.teamName)
+  )).sort() as string[];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
@@ -997,27 +1029,44 @@ export default function SalesAlertPage() {
               onClick={() => setStatusFilter(statusFilter === 'ok' ? 'all' : 'ok')}
             />
           </div>
-          {statusFilter !== 'all' && (
+          {(statusFilter !== 'all' || teamFilter !== 'all') && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-4 flex items-center gap-2"
+              className="mt-4 flex items-center gap-2 flex-wrap"
             >
-              <span className="text-slate-400 text-sm">Filtro attivo:</span>
-              <span className={cn(
-                "px-3 py-1 rounded-full text-sm font-medium",
-                statusFilter === 'critical' && "bg-red-500/20 text-red-300",
-                statusFilter === 'warning' && "bg-orange-500/20 text-orange-300",
-                statusFilter === 'ok' && "bg-green-500/20 text-green-300"
-              )}>
-                {statusFilter === 'critical' ? 'Critici' : statusFilter === 'warning' ? 'Attenzione' : 'OK'}
-              </span>
-              <button
-                onClick={() => setStatusFilter('all')}
-                className="text-slate-400 hover:text-white text-sm underline"
-              >
-                Rimuovi filtro
-              </button>
+              <span className="text-slate-400 text-sm">Filtri attivi:</span>
+              {statusFilter !== 'all' && (
+                <>
+                  <span className={cn(
+                    "px-3 py-1 rounded-full text-sm font-medium",
+                    statusFilter === 'critical' && "bg-red-500/20 text-red-300",
+                    statusFilter === 'warning' && "bg-orange-500/20 text-orange-300",
+                    statusFilter === 'ok' && "bg-green-500/20 text-green-300"
+                  )}>
+                    {statusFilter === 'critical' ? 'Critici' : statusFilter === 'warning' ? 'Attenzione' : 'OK'}
+                  </span>
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className="text-slate-400 hover:text-white text-sm underline"
+                  >
+                    ✕
+                  </button>
+                </>
+              )}
+              {teamFilter !== 'all' && (
+                <>
+                  <span className="px-3 py-1 rounded-full text-sm font-medium bg-purple-500/20 text-purple-300">
+                    Team: {teamFilter}
+                  </span>
+                  <button
+                    onClick={() => setTeamFilter('all')}
+                    className="text-slate-400 hover:text-white text-sm underline"
+                  >
+                    ✕
+                  </button>
+                </>
+              )}
             </motion.div>
           )}
         </section>
@@ -1053,6 +1102,20 @@ export default function SalesAlertPage() {
               <Package className="w-5 h-5" />
               Prodotti
             </motion.button>
+
+            {/* Team Filter Dropdown */}
+            {activeTab === 'clienti' && uniqueTeams.length > 0 && (
+              <select
+                value={teamFilter}
+                onChange={(e) => setTeamFilter(e.target.value)}
+                className="ml-auto px-4 py-3 rounded-xl bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="all" className="bg-slate-800">Tutti i Team</option>
+                {uniqueTeams.map(team => (
+                  <option key={team} value={team} className="bg-slate-800">{team}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Tab Content */}
@@ -1067,7 +1130,7 @@ export default function SalesAlertPage() {
                 className="space-y-4"
               >
                 {sortedCustomers
-                  .filter(c => statusFilter === 'all' || c.status === statusFilter)
+                  .filter(c => (statusFilter === 'all' || c.status === statusFilter) && (teamFilter === 'all' || c.teamName === teamFilter))
                   .map((customer, index) => (
                   <CustomerCard
                     key={customer.customerId}
@@ -1078,10 +1141,10 @@ export default function SalesAlertPage() {
                   />
                 ))}
 
-                {sortedCustomers.filter(c => statusFilter === 'all' || c.status === statusFilter).length === 0 && (
+                {sortedCustomers.filter(c => (statusFilter === 'all' || c.status === statusFilter) && (teamFilter === 'all' || c.teamName === teamFilter)).length === 0 && (
                   <div className="text-center py-12 text-slate-400">
                     <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Nessun cliente trovato {statusFilter !== 'all' && 'con questo filtro'}</p>
+                    <p>Nessun cliente trovato {(statusFilter !== 'all' || teamFilter !== 'all') && 'con i filtri attivi'}</p>
                   </div>
                 )}
               </motion.div>
