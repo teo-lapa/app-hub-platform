@@ -136,16 +136,16 @@ export async function POST(request: NextRequest) {
 
         // Check if lead already exists (search for place_id in description)
         // Include both active and archived leads to prevent duplicates
-        const existingLeads = await client.searchRead(
+        // IMPORTANTE: usare callKw con context active_test: false per vedere gli archiviati
+        const existingLeads = await client.callKw(
           'crm.lead',
-          [
-            ['description', 'ilike', `Place ID: ${place.place_id}`],
-            '|',
-            ['active', '=', true],
-            ['active', '=', false]
-          ],
-          ['id', 'name', 'active'],
-          1
+          'search_read',
+          [[['description', 'ilike', `Place ID: ${place.place_id}`]]],
+          {
+            fields: ['id', 'name', 'active'],
+            limit: 1,
+            context: { active_test: false }
+          }
         );
 
         if (existingLeads.length > 0) {
@@ -157,12 +157,16 @@ export async function POST(request: NextRequest) {
           let tagNames: string[] = [];
 
           try {
-            // Recupera il lead completo con i tag
-            const leadFull = await client.searchRead(
+            // Recupera il lead completo con i tag (include archiviati)
+            const leadFull = await client.callKw(
               'crm.lead',
-              [['id', '=', lead.id]],
-              ['tag_ids'],
-              1
+              'search_read',
+              [[['id', '=', lead.id]]],
+              {
+                fields: ['tag_ids'],
+                limit: 1,
+                context: { active_test: false }
+              }
             );
 
             if (leadFull.length > 0 && leadFull[0].tag_ids && leadFull[0].tag_ids.length > 0) {
@@ -207,16 +211,16 @@ export async function POST(request: NextRequest) {
 
         // Check if partner (customer) already exists with this place_id
         // Search in 'comment' field for Google Place ID pattern
-        const existingPartners = await client.searchRead(
+        // IMPORTANTE: usare callKw con context active_test: false per vedere gli archiviati
+        const existingPartners = await client.callKw(
           'res.partner',
-          [
-            ['comment', 'ilike', `Google Place ID: ${place.place_id}`],
-            '|',
-            ['active', '=', true],
-            ['active', '=', false]
-          ],
-          ['id', 'name', 'active'],
-          1
+          'search_read',
+          [[['comment', 'ilike', `Google Place ID: ${place.place_id}`]]],
+          {
+            fields: ['id', 'name', 'active'],
+            limit: 1,
+            context: { active_test: false }
+          }
         );
 
         if (existingPartners.length > 0) {
