@@ -243,8 +243,8 @@ export async function POST(request: NextRequest) {
 
 /**
  * Generate formatted feedback note for chatter
- * IMPORTANTE: Odoo escapa QUALSIASI HTML - usa TESTO PIANO!
- * Odoo wrapperà automaticamente in <p> il testo
+ * USA HTML con <p> multipli come catalogo-venditori che funziona!
+ * NON usare subtype_xmlid che causa escaping dell'HTML
  */
 function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): string {
   const emoji = noteType === 'voice' ? '🎤' : '✏️';
@@ -252,16 +252,16 @@ function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): 
   const timestamp = new Date().toLocaleDateString('it-IT');
   const timeStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-  // TESTO PIANO - Odoo lo formatterà automaticamente
-  return `📍 FEEDBACK SALES RADAR
+  // Formatta la nota con <br> per gli a capo
+  const formattedNote = noteText.replace(/\n/g, '<br/>');
 
-${emoji} ${typeLabel}
-📅 ${timestamp} alle ${timeStr}
-
-📝 Nota:
-${noteText}
-
-— Inserita tramite Sales Radar App`;
+  // HTML con <p> multipli come catalogo-venditori
+  return `<p><strong>📍 FEEDBACK SALES RADAR</strong></p>
+<p>${emoji} ${typeLabel}</p>
+<p>📅 ${timestamp} alle ${timeStr}</p>
+<p><strong>📝 Nota:</strong></p>
+<p>${formattedNote}</p>
+<p><em>— Inserita tramite Sales Radar App</em></p>`;
 }
 
 /**
@@ -291,11 +291,11 @@ async function postToLeadChatter(
   // Generate formatted HTML feedback
   const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
-  // USA callOdoo DIRETTAMENTE come sales-alert/note che funziona!
+  // USA callOdoo come catalogo-venditori (SENZA subtype_xmlid che escapa HTML!)
   const messageParams: Record<string, any> = {
     body: feedbackHtml,
-    message_type: 'comment',
-    subtype_xmlid: 'mail.mt_note'  // Necessario per rendering HTML corretto
+    message_type: 'comment'
+    // NON usare subtype_xmlid - causa escaping dell'HTML!
   };
 
   if (authorId) {
@@ -306,7 +306,7 @@ async function postToLeadChatter(
     cookies,
     'crm.lead',
     'message_post',
-    [leadId],  // Array singolo, non doppio
+    [leadId],
     messageParams
   );
 
@@ -315,7 +315,7 @@ async function postToLeadChatter(
 
 /**
  * Post note to Partner chatter (mail.message)
- * USA callOdoo DIRETTAMENTE come sales-alert/note che funziona!
+ * USA callOdoo come catalogo-venditori (SENZA subtype_xmlid!)
  */
 async function postToPartnerChatter(
   cookies: string,
@@ -340,11 +340,11 @@ async function postToPartnerChatter(
   // Generate formatted HTML feedback
   const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
-  // USA callOdoo DIRETTAMENTE come sales-alert/note che funziona!
+  // USA callOdoo come catalogo-venditori (SENZA subtype_xmlid che escapa HTML!)
   const messageParams: Record<string, any> = {
     body: feedbackHtml,
-    message_type: 'comment',
-    subtype_xmlid: 'mail.mt_note'  // Necessario per rendering HTML corretto
+    message_type: 'comment'
+    // NON usare subtype_xmlid - causa escaping dell'HTML!
   };
 
   if (authorId) {
@@ -355,7 +355,7 @@ async function postToPartnerChatter(
     cookies,
     'res.partner',
     'message_post',
-    [partnerId],  // Array singolo, non doppio
+    [partnerId],
     messageParams
   );
 
