@@ -54,26 +54,40 @@ export async function GET(request: NextRequest) {
 
     console.log(`[GET-CHATTER] Fetching chatter for ${model} ID: ${recordId}`);
 
-    // 1. Get the record info
-    const records = await client.callKw(
-      model,
-      'search_read',
-      [[['id', '=', recordId]]],
-      {
-        fields: ['id', 'name', 'phone', 'email', 'street', 'city', 'create_date', 'write_date'],
-        limit: 1,
-        context: { active_test: false }
+    // 1. Get the record info (try to find even if archived)
+    let record: any = null;
+    try {
+      const records = await client.callKw(
+        model,
+        'search_read',
+        [[['id', '=', recordId]]],
+        {
+          fields: ['id', 'name', 'phone', 'email', 'street', 'city', 'create_date', 'write_date'],
+          limit: 1,
+          context: { active_test: false }
+        }
+      );
+      if (records.length > 0) {
+        record = records[0];
       }
-    );
-
-    if (records.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'Record non trovato'
-      }, { status: 404 });
+    } catch (e) {
+      console.warn(`[GET-CHATTER] Could not fetch record info:`, e);
     }
 
-    const record = records[0];
+    // If record not found, create a placeholder (we can still fetch messages)
+    if (!record) {
+      console.log(`[GET-CHATTER] Record not found, using placeholder for ${model} ID: ${recordId}`);
+      record = {
+        id: recordId,
+        name: `${model === 'crm.lead' ? 'Lead' : 'Partner'} #${recordId}`,
+        phone: null,
+        email: null,
+        street: null,
+        city: null,
+        create_date: null,
+        write_date: null
+      };
+    }
 
     // 2. Get chatter messages for this record (include archived records)
     const messages = await client.callKw(

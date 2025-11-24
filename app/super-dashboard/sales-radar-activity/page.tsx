@@ -401,7 +401,7 @@ export default function SalesRadarActivityPage() {
                         className="w-full bg-slate-700 text-white border border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       >
                         <option value="">Tutti i venditori</option>
-                        {data.vendorStats.map(vendor => (
+                        {data.vendorStats.filter(v => v.userName !== 'Utente').map(vendor => (
                           <option key={vendor.userId} value={vendor.userId}>
                             {vendor.userName} ({vendor.totalInteractions})
                           </option>
@@ -449,7 +449,7 @@ export default function SalesRadarActivityPage() {
 
               {viewMode === 'vendors' && (
                 <VendorsView
-                  vendorStats={data.vendorStats}
+                  vendorStats={data.vendorStats.filter(v => v.userName !== 'Utente')}
                   onSelectVendor={(id) => {
                     setSelectedVendor(id);
                     setViewMode('timeline');
