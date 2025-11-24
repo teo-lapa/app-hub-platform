@@ -171,8 +171,10 @@ export async function GET(request: NextRequest) {
     }
 
     // 7. Fetch lead/partner names for messages
-    const leadIds = [...new Set(allMessages.filter(m => m.model === 'crm.lead').map(m => m.res_id))];
-    const partnerIds = [...new Set(allMessages.filter(m => m.model === 'res.partner').map(m => m.res_id))];
+    const leadIdsSet = new Set(allMessages.filter(m => m.model === 'crm.lead').map(m => m.res_id));
+    const partnerIdsSet = new Set(allMessages.filter(m => m.model === 'res.partner').map(m => m.res_id));
+    const leadIds = Array.from(leadIdsSet);
+    const partnerIds = Array.from(partnerIdsSet);
 
     let leadsMap: Record<number, string> = {};
     let partnersMap: Record<number, string> = {};
