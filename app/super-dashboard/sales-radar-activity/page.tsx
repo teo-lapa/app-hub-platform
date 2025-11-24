@@ -522,7 +522,7 @@ function TimelineView({
             {/* Actions */}
             <div className="flex items-center gap-2">
               <a
-                href={`https://lapa.odoo.com/web#id=${activity.targetId}&model=${activity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
+                href={`https://lapa-sandalo.odoo.com/web#id=${activity.targetId}&model=${activity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/20 rounded-lg transition-colors"

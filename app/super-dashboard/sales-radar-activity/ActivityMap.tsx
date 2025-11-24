@@ -150,7 +150,7 @@ export default function ActivityMap({ activities }: ActivityMapProps) {
                   ${activity.userName} - ${getActivityTypeLabel(activity.type)}
                 </div>
                 ${activity.preview ? `<div style="font-size: 12px; color: #4b5563; font-style: italic; margin-bottom: 8px;">"${activity.preview}"</div>` : ''}
-                <a href="https://lapa.odoo.com/web#id=${activity.targetId}&model=${activity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form"
+                <a href="https://lapa-sandalo.odoo.com/web#id=${activity.targetId}&model=${activity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form"
                    target="_blank"
                    style="font-size: 12px; color: #6366f1; text-decoration: none;">
                   Apri in Odoo →
