@@ -773,30 +773,16 @@ export default function SalesAlertPage() {
         if (result.success && result.data) {
           // Map API response to frontend format
           const apiData = result.data;
-          const mappedData: SalesAlertData = {
-            summary: {
-              critical: {
-                count: apiData.summary.customersAtRisk.critical,
-                revenueLost: apiData.customers
-                  .filter((c: any) => c.status === 'critical')
-                  .reduce((sum: number, c: any) => sum + Math.abs(c.revenueChange || 0), 0)
-              },
-              warning: {
-                count: apiData.summary.customersAtRisk.warning,
-                revenueLost: apiData.customers
-                  .filter((c: any) => c.status === 'warning')
-                  .reduce((sum: number, c: any) => sum + Math.abs(c.revenueChange || 0), 0)
-              },
-              ok: { count: apiData.summary.customersAtRisk.ok }
-            },
-            customers: apiData.customers.map((c: any) => ({
+
+          // Prima mappiamo i customers
+          const mappedCustomers: CustomerAlert[] = apiData.customers.map((c: any) => ({
               customerId: c.customerId,
               customerName: c.customerName,
               phone: c.phone || null,
               mobile: c.mobile || null,
               email: c.email || null,
               salesPersonName: c.salesPersonName || null,
-              status: c.status,
+              status: c.status as 'critical' | 'warning' | 'ok',
               variationPercent: Math.round(c.revenueChangePercent || 0),
               wasWeeklyRevenue: Math.round((c.historicalRevenue || 0) / 4), // 4 historical weeks
               nowWeeklyRevenue: Math.round((c.recentRevenue || 0) / 3),    // 3 recent weeks
@@ -811,8 +797,14 @@ export default function SalesAlertPage() {
                 lastWeekBought: parseInt(p.lastPurchasedWeek?.split('W')[1] || '0'),
                 estimatedLoss: (p.avgRevenuePerWeek || 0) * 3 // 3 weeks of lost revenue
               }))
-            })),
-            products: apiData.products.map((p: any) => ({
+            }));
+
+          // Poi calcoliamo il summary DAI customers mappati per garantire coerenza
+          const criticalCustomers = mappedCustomers.filter(c => c.status === 'critical');
+          const warningCustomers = mappedCustomers.filter(c => c.status === 'warning');
+          const okCustomers = mappedCustomers.filter(c => c.status === 'ok');
+
+          const mappedProducts: ProductAlert[] = apiData.products.map((p: any) => ({
               productId: p.productId,
               productName: p.productName,
               status: p.status,
@@ -823,7 +815,23 @@ export default function SalesAlertPage() {
               weekNewLabel: apiData.summary.periods?.recent?.[0]?.split('-')[1] || 'W0',
               customersLostCount: p.customerLoss || 0,
               revenueLost: Math.max(0, (p.historicalRevenue || 0) - (p.recentRevenue || 0))
-            }))
+            }));
+
+          // Costruiamo mappedData con summary calcolato dai customers mappati
+          const mappedData: SalesAlertData = {
+            summary: {
+              critical: {
+                count: criticalCustomers.length,
+                revenueLost: criticalCustomers.reduce((sum, c) => sum + c.totalLoss, 0)
+              },
+              warning: {
+                count: warningCustomers.length,
+                revenueLost: warningCustomers.reduce((sum, c) => sum + c.totalLoss, 0)
+              },
+              ok: { count: okCustomers.length }
+            },
+            customers: mappedCustomers,
+            products: mappedProducts
           };
           setData(mappedData);
         } else {
