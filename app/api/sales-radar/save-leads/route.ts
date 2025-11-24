@@ -131,20 +131,55 @@ export async function POST(request: NextRequest) {
         }
 
         // Check if lead already exists (search for place_id in description)
+        // Include both active and archived leads to prevent duplicates
         const existingLeads = await client.searchRead(
           'crm.lead',
-          [['description', 'ilike', `Place ID: ${place.place_id}`]],
-          ['id', 'name'],
+          [
+            ['description', 'ilike', `Place ID: ${place.place_id}`],
+            '|',
+            ['active', '=', true],
+            ['active', '=', false]
+          ],
+          ['id', 'name', 'active'],
           1
         );
 
         if (existingLeads.length > 0) {
-          console.log(`[SAVE-LEADS] Lead gia esistente per: ${place.name}`);
+          const isArchived = existingLeads[0].active === false;
+          console.log(`[SAVE-LEADS] Lead gia esistente${isArchived ? ' (archiviato)' : ''} per: ${place.name}`);
           results.push({
             place_id: place.place_id,
             name: place.name,
             status: 'skipped',
-            lead_id: existingLeads[0].id
+            lead_id: existingLeads[0].id,
+            error: isArchived ? 'Lead archiviato esistente' : undefined
+          });
+          skippedCount++;
+          continue;
+        }
+
+        // Check if partner (customer) already exists with this place_id
+        // Search in 'comment' field for Google Place ID pattern
+        const existingPartners = await client.searchRead(
+          'res.partner',
+          [
+            ['comment', 'ilike', `Google Place ID: ${place.place_id}`],
+            '|',
+            ['active', '=', true],
+            ['active', '=', false]
+          ],
+          ['id', 'name', 'active'],
+          1
+        );
+
+        if (existingPartners.length > 0) {
+          const isArchived = existingPartners[0].active === false;
+          console.log(`[SAVE-LEADS] Partner gia esistente${isArchived ? ' (archiviato)' : ''} per: ${place.name}`);
+          results.push({
+            place_id: place.place_id,
+            name: place.name,
+            status: 'skipped',
+            error: `Partner${isArchived ? ' archiviato' : ''} gia esistente (ID: ${existingPartners[0].id})`
           });
           skippedCount++;
           continue;

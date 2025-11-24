@@ -17,7 +17,7 @@ interface UpdateLeadsResponse {
 }
 
 // Regex per estrarre place_id dalla descrizione
-const PLACE_ID_REGEX = /Google Place ID: ([^\n]+)/;
+const PLACE_ID_REGEX = /Place ID: ([^\n]+)/;
 
 // Regex per estrarre coordinate dalla descrizione
 const COORDINATES_REGEX = /Coordinate: ([-\d.]+),\s*([-\d.]+)/;
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
       'crm.lead',
       [
         ['description', '!=', false],
-        ['description', 'ilike', 'Google Place ID:']
+        ['description', 'ilike', 'Place ID:']
       ],
       ['id', 'name', 'description'],
       0, // Nessun limite
