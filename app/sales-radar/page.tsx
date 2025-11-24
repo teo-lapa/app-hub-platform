@@ -997,6 +997,8 @@ export default function SalesRadarPage() {
               <button
                 onClick={() => {
                   setMapMode('static');
+                  setPlaceType(''); // Reset filtro tipo attività in modalità Odoo
+                  setKeyword(''); // Reset anche keyword per sicurezza
                   loadStaticMap(); // Sempre refresh quando clicchi
                 }}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Radar, Users, Mic, FileText, MapPin, Clock, TrendingUp, User, ExternalLink } from 'lucide-react';
+import { X, Radar, Users, Mic, FileText, MapPin, Clock, TrendingUp, User, ExternalLink, RefreshCw, Target, Activity } from 'lucide-react';
 import type { SalesRadarActivityData, SalesRadarActivity, SalesRadarVendorStats } from '@/lib/super-dashboard/types';
 
 interface SalesRadarActivityModalProps {
@@ -54,6 +54,22 @@ export function SalesRadarActivityModal({ isOpen, onClose }: SalesRadarActivityM
         return <Mic className="w-4 h-4 text-purple-400" />;
       case 'written_note':
         return <FileText className="w-4 h-4 text-blue-400" />;
+      case 'stage_change':
+        return <TrendingUp className="w-4 h-4 text-green-400" />;
+      case 'lead_archived':
+        return <X className="w-4 h-4 text-red-400" />;
+      case 'lead_reactivated':
+        return <RefreshCw className="w-4 h-4 text-emerald-400" />;
+      case 'tag_added':
+        return <Target className="w-4 h-4 text-yellow-400" />;
+      case 'tag_removed':
+        return <Target className="w-4 h-4 text-yellow-400" />;
+      case 'note_added':
+        return <FileText className="w-4 h-4 text-cyan-400" />;
+      case 'field_updated':
+        return <Activity className="w-4 h-4 text-gray-400" />;
+      default:
+        return <Activity className="w-4 h-4 text-gray-400" />;
     }
   };
 
@@ -65,6 +81,22 @@ export function SalesRadarActivityModal({ isOpen, onClose }: SalesRadarActivityM
         return 'ha registrato nota vocale su';
       case 'written_note':
         return 'ha scritto nota su';
+      case 'stage_change':
+        return 'ha cambiato stato di';
+      case 'lead_archived':
+        return 'ha archiviato';
+      case 'lead_reactivated':
+        return 'ha riattivato';
+      case 'tag_added':
+        return 'ha modificato tag di';
+      case 'tag_removed':
+        return 'ha rimosso tag da';
+      case 'note_added':
+        return 'ha aggiunto nota a';
+      case 'field_updated':
+        return 'ha modificato';
+      default:
+        return 'ha interagito con';
     }
   };
 

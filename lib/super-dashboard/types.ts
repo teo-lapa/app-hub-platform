@@ -267,7 +267,9 @@ export type PeriodOption = 'today' | 'week' | 'month' | 'quarter' | 'year';
 // Sales Radar Activity types
 export interface SalesRadarActivity {
   id: string;
-  type: 'lead_created' | 'voice_note' | 'written_note';
+  type: 'lead_created' | 'voice_note' | 'written_note' | 'stage_change' |
+        'lead_archived' | 'lead_reactivated' | 'tag_added' | 'tag_removed' |
+        'note_added' | 'field_updated';
   timestamp: string;
   userId: number;
   userName: string;
@@ -279,6 +281,9 @@ export interface SalesRadarActivity {
     lng: number;
   };
   preview?: string;
+  fieldName?: string;
+  oldValue?: string;
+  newValue?: string;
 }
 
 export interface SalesRadarVendorStats {
@@ -287,6 +292,11 @@ export interface SalesRadarVendorStats {
   leadsCreated: number;
   voiceNotes: number;
   writtenNotes: number;
+  stageChanges: number;
+  leadsArchived: number;
+  leadsReactivated: number;
+  tagsAdded: number;
+  notesAdded: number;
   totalInteractions: number;
 }
 
@@ -295,6 +305,11 @@ export interface SalesRadarActivitySummary {
   leadsCreated: number;
   voiceNotes: number;
   writtenNotes: number;
+  stageChanges: number;
+  leadsArchived: number;
+  leadsReactivated: number;
+  tagsAdded: number;
+  notesAdded: number;
   activeVendors: number;
   period: string;
   startDate: string;

@@ -8,10 +8,17 @@ interface ActivityMapProps {
 }
 
 // Marker colors based on activity type
-const MARKER_COLORS = {
-  lead_created: '#F97316', // Orange
-  voice_note: '#A855F7',   // Purple
-  written_note: '#3B82F6'  // Blue
+const MARKER_COLORS: Record<SalesRadarActivity['type'], string> = {
+  lead_created: '#F97316',      // Orange
+  voice_note: '#A855F7',        // Purple
+  written_note: '#3B82F6',      // Blue
+  stage_change: '#10B981',      // Green
+  lead_archived: '#EF4444',     // Red
+  lead_reactivated: '#34D399',  // Emerald
+  tag_added: '#F59E0B',         // Yellow
+  tag_removed: '#F59E0B',       // Yellow
+  note_added: '#06B6D4',        // Cyan
+  field_updated: '#6B7280'      // Gray
 };
 
 export default function ActivityMap({ activities }: ActivityMapProps) {
@@ -237,6 +244,22 @@ function getMarkerIcon(type: SalesRadarActivity['type']): string {
       return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>';
     case 'written_note':
       return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+    case 'stage_change':
+      return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>';
+    case 'lead_archived':
+      return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    case 'lead_reactivated':
+      return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>';
+    case 'tag_added':
+      return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/></svg>';
+    case 'tag_removed':
+      return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/></svg>';
+    case 'note_added':
+      return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+    case 'field_updated':
+      return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>';
+    default:
+      return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>';
   }
 }
 
@@ -248,5 +271,21 @@ function getActivityTypeLabel(type: SalesRadarActivity['type']): string {
       return 'Nota vocale';
     case 'written_note':
       return 'Nota scritta';
+    case 'stage_change':
+      return 'Cambio stato';
+    case 'lead_archived':
+      return 'Lead archiviato';
+    case 'lead_reactivated':
+      return 'Lead riattivato';
+    case 'tag_added':
+      return 'Tag aggiunto';
+    case 'tag_removed':
+      return 'Tag rimosso';
+    case 'note_added':
+      return 'Nota aggiunta';
+    case 'field_updated':
+      return 'Campo modificato';
+    default:
+      return 'Attività';
   }
 }
