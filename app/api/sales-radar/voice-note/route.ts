@@ -284,11 +284,10 @@ async function postToLeadChatter(
   const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
   // Create message in chatter using message_post
-  // Formato plain text con <br/> come pickingClient (funziona in Delivery)
+  // SENZA subtype_xmlid - come catalogo-venditori/add-order-line che funziona
   const messageParams: Record<string, any> = {
     body: feedbackHtml,
-    message_type: 'comment',
-    subtype_xmlid: 'mail.mt_comment',
+    message_type: 'comment'
   };
 
   if (authorId) {
@@ -326,11 +325,10 @@ async function postToPartnerChatter(
   const feedbackHtml = generateFeedbackHtml(noteText, noteType);
 
   // Create message in chatter using message_post
-  // Formato plain text con <br/> come pickingClient (funziona in Delivery)
+  // SENZA subtype_xmlid - come catalogo-venditori/add-order-line che funziona
   const messageParams: Record<string, any> = {
     body: feedbackHtml,
-    message_type: 'comment',
-    subtype_xmlid: 'mail.mt_comment',
+    message_type: 'comment'
   };
 
   if (authorId) {
