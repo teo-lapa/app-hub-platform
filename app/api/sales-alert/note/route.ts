@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 
 /**
  * API: Save note to customer chatter in Odoo
  *
- * Creates a mail.message on the res.partner record
+ * Creates a mail.message on the res.partner record using message_post
  */
 export async function POST(request: NextRequest) {
   try {
-    const sessionId = request.cookies.get('odoo_session_id')?.value;
-    if (!sessionId) {
+    // Get user session
+    const cookieHeader = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
+
+    if (!uid) {
       return NextResponse.json({
         success: false,
-        error: 'Non autenticato - Odoo session non trovata'
+        error: 'Non autenticato - Sessione Odoo non valida'
       }, { status: 401 });
     }
 
@@ -25,8 +29,6 @@ export async function POST(request: NextRequest) {
         error: 'customerId e note sono richiesti'
       }, { status: 400 });
     }
-
-    const rpc = createOdooRPCClient(sessionId);
 
     // Format note with Sales Alert header
     const formattedNote = `
@@ -41,14 +43,18 @@ export async function POST(request: NextRequest) {
 </div>
 `;
 
-    // Create message in chatter using mail.message model
-    const messageId = await rpc.create('mail.message', {
-      model: 'res.partner',
-      res_id: customerId,
-      body: formattedNote,
-      message_type: 'comment',
-      subtype_id: 2, // Note subtype (internal)
-    });
+    // Use message_post to create message in chatter (like catalogo-venditori)
+    const messageId = await callOdoo(
+      cookies,
+      'res.partner',
+      'message_post',
+      [customerId],
+      {
+        body: formattedNote,
+        message_type: 'comment',
+        subtype_xmlid: 'mail.mt_note'
+      }
+    );
 
     return NextResponse.json({
       success: true,
