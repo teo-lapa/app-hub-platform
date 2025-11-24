@@ -243,8 +243,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * Generate formatted feedback note for chatter
- * USA HTML con <p> multipli come catalogo-venditori che funziona!
- * NON usare subtype_xmlid che causa escaping dell'HTML
+ * TESTO PIANO SEMPLICE - Odoo escapa QUALSIASI HTML!
  */
 function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): string {
   const emoji = noteType === 'voice' ? '🎤' : '✏️';
@@ -252,16 +251,8 @@ function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): 
   const timestamp = new Date().toLocaleDateString('it-IT');
   const timeStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-  // Formatta la nota con <br> per gli a capo
-  const formattedNote = noteText.replace(/\n/g, '<br/>');
-
-  // HTML con <p> multipli come catalogo-venditori
-  return `<p><strong>📍 FEEDBACK SALES RADAR</strong></p>
-<p>${emoji} ${typeLabel}</p>
-<p>📅 ${timestamp} alle ${timeStr}</p>
-<p><strong>📝 Nota:</strong></p>
-<p>${formattedNote}</p>
-<p><em>— Inserita tramite Sales Radar App</em></p>`;
+  // SOLO TESTO PIANO - niente HTML!
+  return `📍 FEEDBACK SALES RADAR | ${emoji} ${typeLabel} | 📅 ${timestamp} ${timeStr} | 📝 ${noteText}`;
 }
 
 /**
