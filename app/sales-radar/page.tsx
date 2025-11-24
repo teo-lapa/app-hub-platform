@@ -242,7 +242,7 @@ export default function SalesRadarPage() {
 
   // Search params
   const [radius, setRadius] = useState<number>(1000); // 1km default
-  const [placeType, setPlaceType] = useState<string>('');
+  const [placeType, setPlaceType] = useState<string>('restaurant'); // Default: Ristoranti
   const [keyword, setKeyword] = useState<string>('');
 
   // Results
