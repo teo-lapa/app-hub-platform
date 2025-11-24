@@ -288,7 +288,7 @@ async function postToLeadChatter(
   const messageParams: Record<string, any> = {
     body: feedbackHtml,
     message_type: 'comment',
-    subtype_xmlid: 'mail.mt_note',
+    subtype_xmlid: 'mail.mt_comment',
   };
 
   if (authorId) {
@@ -330,7 +330,7 @@ async function postToPartnerChatter(
   const messageParams: Record<string, any> = {
     body: feedbackHtml,
     message_type: 'comment',
-    subtype_xmlid: 'mail.mt_note',
+    subtype_xmlid: 'mail.mt_comment',
   };
 
   if (authorId) {
