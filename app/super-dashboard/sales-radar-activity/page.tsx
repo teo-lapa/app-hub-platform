@@ -22,7 +22,8 @@ const ActivityMap = dynamic(() => import('./ActivityMap'), {
 });
 
 type ViewMode = 'timeline' | 'vendors' | 'map';
-type ActivityType = 'all' | 'lead_created' | 'voice_note' | 'written_note';
+type ActivityType = 'all' | 'lead_created' | 'voice_note' | 'written_note' | 'stage_change' |
+                    'lead_archived' | 'lead_reactivated' | 'tag_added' | 'note_added';
 
 export default function SalesRadarActivityPage() {
   const [data, setData] = useState<SalesRadarActivityData | null>(null);
@@ -132,6 +133,20 @@ export default function SalesRadarActivityPage() {
         return <Mic className="w-4 h-4 text-purple-400" />;
       case 'written_note':
         return <FileText className="w-4 h-4 text-blue-400" />;
+      case 'stage_change':
+        return <TrendingUp className="w-4 h-4 text-green-400" />;
+      case 'lead_archived':
+        return <X className="w-4 h-4 text-red-400" />;
+      case 'lead_reactivated':
+        return <RefreshCw className="w-4 h-4 text-emerald-400" />;
+      case 'tag_added':
+        return <Target className="w-4 h-4 text-yellow-400" />;
+      case 'note_added':
+        return <FileText className="w-4 h-4 text-cyan-400" />;
+      case 'field_updated':
+        return <Activity className="w-4 h-4 text-gray-400" />;
+      default:
+        return <Activity className="w-4 h-4 text-gray-400" />;
     }
   };
 
@@ -143,6 +158,20 @@ export default function SalesRadarActivityPage() {
         return 'ha registrato nota vocale su';
       case 'written_note':
         return 'ha scritto nota su';
+      case 'stage_change':
+        return 'ha cambiato stato di';
+      case 'lead_archived':
+        return 'ha archiviato';
+      case 'lead_reactivated':
+        return 'ha riattivato';
+      case 'tag_added':
+        return 'ha modificato tag di';
+      case 'note_added':
+        return 'ha aggiunto nota a';
+      case 'field_updated':
+        return 'ha modificato';
+      default:
+        return 'ha interagito con';
     }
   };
 
@@ -294,8 +323,50 @@ export default function SalesRadarActivityPage() {
                 className="bg-gradient-to-br from-green-500/20 to-green-600/10 border border-green-500/30 rounded-xl p-5"
               >
                 <div className="flex items-center gap-3 mb-2">
-                  <Users className="w-5 h-5 text-green-400" />
-                  <span className="text-green-200 text-sm font-medium">Venditori Attivi</span>
+                  <TrendingUp className="w-5 h-5 text-green-400" />
+                  <span className="text-green-200 text-sm font-medium">Cambi Stato</span>
+                </div>
+                <div className="text-4xl font-bold text-white">{data.summary.stageChanges}</div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="bg-gradient-to-br from-red-500/20 to-red-600/10 border border-red-500/30 rounded-xl p-5"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <X className="w-5 h-5 text-red-400" />
+                  <span className="text-red-200 text-sm font-medium">Archiviati</span>
+                </div>
+                <div className="text-4xl font-bold text-white">{data.summary.leadsArchived}</div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border border-yellow-500/30 rounded-xl p-5"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <Target className="w-5 h-5 text-yellow-400" />
+                  <span className="text-yellow-200 text-sm font-medium">Tag Modificati</span>
+                </div>
+                <div className="text-4xl font-bold text-white">{data.summary.tagsAdded}</div>
+                <div className="text-xs text-yellow-300 mt-1">
+                  Non interessato, Non target, ecc.
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 border border-cyan-500/30 rounded-xl p-5"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <Users className="w-5 h-5 text-cyan-400" />
+                  <span className="text-cyan-200 text-sm font-medium">Venditori Attivi</span>
                 </div>
                 <div className="text-4xl font-bold text-white">{data.summary.activeVendors}</div>
               </motion.div>
@@ -695,18 +766,30 @@ function VendorsView({
 
             {/* Stats & Action */}
             <div className="flex items-center gap-8">
-              <div className="hidden md:flex items-center gap-6">
+              <div className="hidden md:flex items-center gap-4 flex-wrap">
                 <div className="text-center">
-                  <div className="text-orange-400 font-bold text-xl">{vendor.leadsCreated}</div>
+                  <div className="text-orange-400 font-bold text-lg">{vendor.leadsCreated}</div>
                   <div className="text-xs text-slate-500">Lead</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-purple-400 font-bold text-xl">{vendor.voiceNotes}</div>
+                  <div className="text-purple-400 font-bold text-lg">{vendor.voiceNotes}</div>
                   <div className="text-xs text-slate-500">Vocali</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-blue-400 font-bold text-xl">{vendor.writtenNotes}</div>
+                  <div className="text-blue-400 font-bold text-lg">{vendor.writtenNotes}</div>
                   <div className="text-xs text-slate-500">Scritte</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-green-400 font-bold text-lg">{vendor.stageChanges}</div>
+                  <div className="text-xs text-slate-500">Stati</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-red-400 font-bold text-lg">{vendor.leadsArchived}</div>
+                  <div className="text-xs text-slate-500">Archiviati</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-yellow-400 font-bold text-lg">{vendor.tagsAdded}</div>
+                  <div className="text-xs text-slate-500">Tag</div>
                 </div>
               </div>
 
@@ -735,9 +818,21 @@ function VendorsView({
                 className="bg-blue-500 transition-all"
                 style={{ width: `${(vendor.writtenNotes / vendor.totalInteractions) * 100}%` }}
               />
+              <div
+                className="bg-green-500 transition-all"
+                style={{ width: `${(vendor.stageChanges / vendor.totalInteractions) * 100}%` }}
+              />
+              <div
+                className="bg-red-500 transition-all"
+                style={{ width: `${(vendor.leadsArchived / vendor.totalInteractions) * 100}%` }}
+              />
+              <div
+                className="bg-yellow-500 transition-all"
+                style={{ width: `${(vendor.tagsAdded / vendor.totalInteractions) * 100}%` }}
+              />
             </div>
           </div>
-          <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+          <div className="flex items-center gap-3 mt-2 text-xs text-slate-500 flex-wrap">
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 bg-orange-500 rounded-full" /> Lead
             </span>
@@ -746,6 +841,15 @@ function VendorsView({
             </span>
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 bg-blue-500 rounded-full" /> Scritte
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 bg-green-500 rounded-full" /> Stati
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 bg-red-500 rounded-full" /> Archiviati
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 bg-yellow-500 rounded-full" /> Tag
             </span>
           </div>
         </motion.div>
