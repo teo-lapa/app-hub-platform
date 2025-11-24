@@ -445,7 +445,55 @@ export default function SalesAlertPage() {
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
-          setData(result.data);
+          // Map API response to frontend format
+          const apiData = result.data;
+          const mappedData: SalesAlertData = {
+            summary: {
+              critical: {
+                count: apiData.summary.customersAtRisk.critical,
+                revenueLost: apiData.customers
+                  .filter((c: any) => c.status === 'critical')
+                  .reduce((sum: number, c: any) => sum + Math.abs(c.revenueChange || 0), 0)
+              },
+              warning: {
+                count: apiData.summary.customersAtRisk.warning,
+                revenueLost: apiData.customers
+                  .filter((c: any) => c.status === 'warning')
+                  .reduce((sum: number, c: any) => sum + Math.abs(c.revenueChange || 0), 0)
+              },
+              ok: { count: apiData.summary.customersAtRisk.ok }
+            },
+            customers: apiData.customers.map((c: any) => ({
+              customerId: c.customerId,
+              customerName: c.customerName,
+              status: c.status,
+              variationPercent: Math.round(c.revenueChangePercent || 0),
+              wasWeeklyRevenue: Math.round((c.historicalRevenue || 0) / 4), // 4 historical weeks
+              nowWeeklyRevenue: Math.round((c.recentRevenue || 0) / 3),    // 3 recent weeks
+              daysSinceLastOrder: c.daysSinceLastOrder || 0,
+              totalLoss: Math.abs(c.revenueChange || 0),
+              lostProducts: (c.lostProducts || []).map((p: any) => ({
+                productId: p.productId,
+                productName: p.productName,
+                avgQtyPerWeek: p.avgQtyPerWeek || 0,
+                lastWeekBought: parseInt(p.lastPurchasedWeek?.split('W')[1] || '0'),
+                estimatedLoss: (p.avgRevenuePerWeek || 0) * 3 // 3 weeks of lost revenue
+              }))
+            })),
+            products: apiData.products.map((p: any) => ({
+              productId: p.productId,
+              productName: p.productName,
+              status: p.status,
+              variationPercent: Math.round(p.qtyChangePercent || 0),
+              weekOldQty: Math.round(p.historicalQty || 0),
+              weekOldLabel: apiData.summary.periods?.historical?.[0]?.split('-')[1] || 'W-6',
+              weekNewQty: Math.round(p.recentQty || 0),
+              weekNewLabel: apiData.summary.periods?.recent?.[0]?.split('-')[1] || 'W0',
+              customersLostCount: p.customerLoss || 0,
+              revenueLost: Math.max(0, (p.historicalRevenue || 0) - (p.recentRevenue || 0))
+            }))
+          };
+          setData(mappedData);
         } else {
           // Fallback to mock data if API fails
           setData(mockData);
