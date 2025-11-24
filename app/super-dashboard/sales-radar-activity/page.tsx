@@ -566,34 +566,7 @@ export default function SalesRadarActivityPage() {
                         </h4>
                         <div className="space-y-3">
                           {activityDetails.messages.map((msg: any) => (
-                            <div
-                              key={msg.id}
-                              className={`rounded-xl p-3 ${
-                                msg.isSalesRadar
-                                  ? 'bg-indigo-500/20 border border-indigo-500/30'
-                                  : 'bg-slate-800/50'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium text-white">{msg.authorName}</span>
-                                <span className="text-xs text-slate-500">
-                                  {new Date(msg.date).toLocaleString('it-IT', {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </span>
-                              </div>
-                              {msg.isSalesRadar ? (
-                                <div
-                                  className="text-sm text-slate-300 prose prose-invert prose-sm max-w-none"
-                                  dangerouslySetInnerHTML={{ __html: msg.body }}
-                                />
-                              ) : (
-                                <p className="text-sm text-slate-400">{msg.textPreview}</p>
-                              )}
-                            </div>
+                            <SalesRadarMessage key={msg.id} msg={msg} />
                           ))}
                           {activityDetails.messages.length === 0 && (
                             <p className="text-slate-500 text-sm text-center py-4">
@@ -829,6 +802,128 @@ function VendorsView({
           </div>
         </motion.div>
       ))}
+    </div>
+  );
+}
+
+// Sales Radar Message Component - parses and displays messages nicely
+function SalesRadarMessage({ msg }: { msg: any }) {
+  // Parse Sales Radar message to extract meaningful content
+  const parseSalesRadarMessage = (body: string) => {
+    // Extract note type (voice/written)
+    const isVoice = body.includes('🎙️') || body.toLowerCase().includes('vocale');
+    const isWritten = body.includes('✍️') || body.toLowerCase().includes('scritta');
+
+    // Extract the actual note content
+    // Look for content after "Nota:" or in the main paragraph
+    let noteContent = '';
+
+    // Try to find note content between <p><strong>📝 Nota:</strong></p> and next section
+    const notaMatch = body.match(/📝\s*Nota:.*?<\/(?:strong|p)>\s*<p>([^<]+)/i);
+    if (notaMatch) {
+      noteContent = notaMatch[1].trim();
+    } else {
+      // Try to find content in table cells
+      const tdMatch = body.match(/Nota[^<]*<\/td>\s*<\/tr>\s*<tr[^>]*>\s*<td[^>]*>([^<]+)/i);
+      if (tdMatch) {
+        noteContent = tdMatch[1].trim();
+      } else {
+        // Fallback: extract text from <p> tags that contain the note
+        const pMatches = body.match(/<p[^>]*>([^<]+)<\/p>/g);
+        if (pMatches) {
+          for (const p of pMatches) {
+            const text = p.replace(/<[^>]*>/g, '').trim();
+            if (text.length > 20 && !text.includes('FEEDBACK') && !text.includes('Sales Radar')) {
+              noteContent = text;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // If still no content, use textPreview
+    if (!noteContent) {
+      noteContent = msg.textPreview || '';
+    }
+
+    // Extract date if present
+    const dateMatch = body.match(/📅\s*(\d{1,2}\/\d{1,2}\/\d{4},?\s*\d{1,2}:\d{2})/);
+    const noteDate = dateMatch ? dateMatch[1] : null;
+
+    return {
+      isVoice,
+      isWritten,
+      noteContent,
+      noteDate
+    };
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleString('it-IT', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  if (msg.isSalesRadar) {
+    const parsed = parseSalesRadarMessage(msg.body);
+
+    return (
+      <div className="bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 rounded-xl p-4">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {parsed.isVoice ? (
+              <span className="flex items-center gap-1.5 px-2 py-1 bg-purple-500/30 rounded-lg text-purple-300 text-xs font-medium">
+                <Mic className="w-3 h-3" />
+                Nota Vocale
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 px-2 py-1 bg-blue-500/30 rounded-lg text-blue-300 text-xs font-medium">
+                <FileText className="w-3 h-3" />
+                Nota Scritta
+              </span>
+            )}
+            <span className="text-indigo-300 text-sm font-medium">{msg.authorName}</span>
+          </div>
+          <span className="text-xs text-slate-500">
+            {formatDate(msg.date)}
+          </span>
+        </div>
+
+        {/* Note Content */}
+        <div className="bg-slate-900/50 rounded-lg p-3">
+          <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">
+            {parsed.noteContent || msg.textPreview}
+          </p>
+        </div>
+
+        {/* Sales Radar Badge */}
+        <div className="mt-2 flex items-center gap-1 text-xs text-indigo-400">
+          <Radar className="w-3 h-3" />
+          <span>Sales Radar</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Regular message (not from Sales Radar)
+  return (
+    <div className="bg-slate-800/50 rounded-xl p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-medium text-white">{msg.authorName}</span>
+        <span className="text-xs text-slate-500">
+          {formatDate(msg.date)}
+        </span>
+      </div>
+      <p className="text-sm text-slate-400">{msg.textPreview}</p>
     </div>
   );
 }
