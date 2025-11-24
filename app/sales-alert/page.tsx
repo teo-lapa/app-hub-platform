@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Home, Phone, FileText, ChevronDown, ChevronUp, TrendingDown, Package, Users, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Home, Phone, FileText, ChevronDown, ChevronUp, TrendingDown, Package, Users, AlertTriangle, Info, X, Send, MessageSquare, Loader2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +18,10 @@ interface LostProduct {
 interface CustomerAlert {
   customerId: number;
   customerName: string;
+  phone: string | null;
+  mobile: string | null;
+  email: string | null;
+  salesPersonName: string | null;
   status: 'critical' | 'warning' | 'ok';
   variationPercent: number;
   wasWeeklyRevenue: number;
@@ -25,6 +29,8 @@ interface CustomerAlert {
   daysSinceLastOrder: number;
   lostProducts: LostProduct[];
   totalLoss: number;
+  historicalRevenue?: number;
+  recentRevenue?: number;
 }
 
 interface ProductAlert {
@@ -206,7 +212,9 @@ function KPICard({
   count,
   revenueLost,
   gradient,
-  index
+  index,
+  isActive,
+  onClick
 }: {
   icon: React.ReactNode;
   label: string;
@@ -214,6 +222,8 @@ function KPICard({
   revenueLost?: number;
   gradient: string;
   index: number;
+  isActive?: boolean;
+  onClick?: () => void;
 }) {
   return (
     <motion.div
@@ -221,11 +231,16 @@ function KPICard({
       animate={{ y: 0, opacity: 1 }}
       transition={{ delay: index * 0.1, duration: 0.5 }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className="relative group"
+      onClick={onClick}
+      className={cn(
+        "relative group cursor-pointer",
+        isActive && "ring-4 ring-white/50 rounded-xl"
+      )}
     >
       <div className={cn(
-        "bg-gradient-to-br rounded-xl p-6 shadow-2xl border border-white/10 overflow-hidden",
-        gradient
+        "bg-gradient-to-br rounded-xl p-6 shadow-2xl border overflow-hidden transition-all",
+        gradient,
+        isActive ? "border-white/50" : "border-white/10"
       )}>
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.1),transparent)]" />
@@ -234,6 +249,7 @@ function KPICard({
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-3">
             <div className="text-3xl">{icon}</div>
+            {isActive && <span className="text-white text-xs bg-white/20 px-2 py-1 rounded">Filtro attivo</span>}
           </div>
 
           <h3 className="text-white/80 text-sm font-medium mb-1">{label}</h3>
@@ -254,7 +270,17 @@ function KPICard({
 }
 
 // Customer Card component
-function CustomerCard({ customer, index }: { customer: CustomerAlert; index: number }) {
+function CustomerCard({
+  customer,
+  index,
+  onNote,
+  onInfo
+}: {
+  customer: CustomerAlert;
+  index: number;
+  onNote: (customer: CustomerAlert) => void;
+  onInfo: (customer: CustomerAlert) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   const statusColors = {
@@ -264,6 +290,12 @@ function CustomerCard({ customer, index }: { customer: CustomerAlert; index: num
   };
 
   const variationColor = customer.variationPercent < 0 ? 'text-red-400' : 'text-green-400';
+
+  // Get phone number for WhatsApp (prefer mobile, then phone)
+  const phoneNumber = customer.mobile || customer.phone;
+  const whatsappUrl = phoneNumber
+    ? `https://wa.me/${phoneNumber.replace(/[^0-9+]/g, '').replace('+', '')}?text=${encodeURIComponent(`Buongiorno, sono di LAPA. La contatto riguardo ai nostri ordini...`)}`
+    : null;
 
   return (
     <motion.div
@@ -286,6 +318,9 @@ function CustomerCard({ customer, index }: { customer: CustomerAlert; index: num
                   {customer.variationPercent > 0 ? '+' : ''}{customer.variationPercent}%
                   {customer.variationPercent < 0 ? ' ↓' : ' ↑'}
                 </span>
+                {customer.salesPersonName && (
+                  <span className="text-slate-500 text-xs">• {customer.salesPersonName}</span>
+                )}
               </div>
             </div>
           </div>
@@ -304,23 +339,47 @@ function CustomerCard({ customer, index }: { customer: CustomerAlert; index: num
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2 mt-4">
+        <div className="flex items-center gap-2 mt-4 flex-wrap">
+          {whatsappUrl ? (
+            <motion.a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              <Phone className="w-4 h-4" />
+              WhatsApp
+            </motion.a>
+          ) : (
+            <motion.button
+              disabled
+              className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-slate-400 rounded-lg text-sm font-medium cursor-not-allowed"
+            >
+              <Phone className="w-4 h-4" />
+              No Tel.
+            </motion.button>
+          )}
+
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-medium transition-colors"
+            onClick={() => onNote(customer)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
           >
-            <Phone className="w-4 h-4" />
-            Chiama
+            <FileText className="w-4 h-4" />
+            Note
           </motion.button>
 
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
+            onClick={() => onInfo(customer)}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium transition-colors"
           >
-            <FileText className="w-4 h-4" />
-            Note
+            <Info className="w-4 h-4" />
+            Analisi AI
           </motion.button>
 
           {customer.lostProducts.length > 0 && (
@@ -428,11 +487,243 @@ function ProductCard({ product, index }: { product: ProductAlert; index: number 
   );
 }
 
+// Note Modal Component
+function NoteModal({ customer, isOpen, onClose }: { customer: CustomerAlert | null; isOpen: boolean; onClose: () => void }) {
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  if (!isOpen || !customer) return null;
+
+  const handleSave = async () => {
+    if (!note.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/sales-alert/note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: customer.customerId,
+          note: note,
+          noteType: 'Feedback Vendite'
+        })
+      });
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => {
+          onClose();
+          setNote('');
+          setSaved(false);
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Error saving note:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl max-w-lg w-full shadow-2xl border border-blue-500/30"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-t-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                Nota per {customer.customerName}
+              </h2>
+              <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-lg">
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+          </div>
+          <div className="p-6">
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Scrivi qui la tua nota... (es: Cliente chiamato, chiuso per ferie fino al 5/12)"
+              className="w-full h-32 bg-white/10 border border-white/20 rounded-xl p-4 text-white placeholder-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-slate-300 hover:text-white transition-colors"
+              >
+                Annulla
+              </button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleSave}
+                disabled={saving || !note.trim()}
+                className={cn(
+                  "px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition-all",
+                  saved
+                    ? "bg-green-600 text-white"
+                    : "bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
+                )}
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? '✓ Salvato!' : <><Send className="w-4 h-4" /> Salva in Odoo</>}
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+// Info Modal Component with AI Analysis
+function InfoModal({ customer, isOpen, onClose }: { customer: CustomerAlert | null; isOpen: boolean; onClose: () => void }) {
+  const [analysis, setAnalysis] = useState<string | null>(null);
+  const [loadingAI, setLoadingAI] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && customer && !analysis) {
+      fetchAnalysis();
+    }
+  }, [isOpen, customer]);
+
+  const fetchAnalysis = async () => {
+    if (!customer) return;
+    setLoadingAI(true);
+    try {
+      const res = await fetch('/api/sales-alert/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: customer.customerName,
+          variationPercent: customer.variationPercent,
+          wasWeeklyRevenue: customer.wasWeeklyRevenue,
+          nowWeeklyRevenue: customer.nowWeeklyRevenue,
+          daysSinceLastOrder: customer.daysSinceLastOrder,
+          lostProducts: customer.lostProducts,
+          historicalRevenue: customer.historicalRevenue,
+          recentRevenue: customer.recentRevenue
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAnalysis(data.analysis);
+      }
+    } catch (error) {
+      console.error('Error fetching AI analysis:', error);
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
+  if (!isOpen || !customer) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-2xl border border-purple-500/30"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4 rounded-t-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                Analisi AI - {customer.customerName}
+              </h2>
+              <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-lg">
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+          </div>
+          <div className="p-6 overflow-y-auto max-h-[calc(85vh-80px)]">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-red-400">{customer.variationPercent}%</div>
+                <div className="text-red-200 text-xs">Variazione</div>
+              </div>
+              <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-orange-400">{customer.daysSinceLastOrder}g</div>
+                <div className="text-orange-200 text-xs">Ultimo Ordine</div>
+              </div>
+              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-purple-400">{customer.lostProducts.length}</div>
+                <div className="text-purple-200 text-xs">Prodotti Persi</div>
+              </div>
+            </div>
+
+            {/* Revenue Comparison */}
+            <div className="bg-white/5 rounded-xl p-4 mb-6">
+              <h3 className="text-white font-semibold mb-3">📊 Confronto Fatturato</h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-slate-400 text-sm">Era (media sett.)</div>
+                  <div className="text-white text-xl font-bold">CHF {customer.wasWeeklyRevenue.toLocaleString('de-CH')}</div>
+                </div>
+                <div className="text-3xl">→</div>
+                <div className="text-right">
+                  <div className="text-slate-400 text-sm">Ora (media sett.)</div>
+                  <div className="text-red-400 text-xl font-bold">CHF {customer.nowWeeklyRevenue.toLocaleString('de-CH')}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Analysis */}
+            <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-4">
+              <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                Analisi AI
+              </h3>
+              {loadingAI ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+                  <span className="ml-3 text-purple-300">Analisi in corso...</span>
+                </div>
+              ) : analysis ? (
+                <div className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">
+                  {analysis}
+                </div>
+              ) : (
+                <div className="text-slate-400 text-center py-4">
+                  Errore nel caricamento dell'analisi
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 export default function SalesAlertPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<SalesAlertData | null>(null);
   const [activeTab, setActiveTab] = useState<'clienti' | 'prodotti'>('clienti');
   const [lastSync, setLastSync] = useState<Date>(new Date());
+  const [statusFilter, setStatusFilter] = useState<'all' | 'critical' | 'warning' | 'ok'>('all');
+  const [noteModal, setNoteModal] = useState<{ isOpen: boolean; customer: CustomerAlert | null }>({ isOpen: false, customer: null });
+  const [infoModal, setInfoModal] = useState<{ isOpen: boolean; customer: CustomerAlert | null }>({ isOpen: false, customer: null });
 
   useEffect(() => {
     fetchData();
@@ -466,12 +757,18 @@ export default function SalesAlertPage() {
             customers: apiData.customers.map((c: any) => ({
               customerId: c.customerId,
               customerName: c.customerName,
+              phone: c.phone || null,
+              mobile: c.mobile || null,
+              email: c.email || null,
+              salesPersonName: c.salesPersonName || null,
               status: c.status,
               variationPercent: Math.round(c.revenueChangePercent || 0),
               wasWeeklyRevenue: Math.round((c.historicalRevenue || 0) / 4), // 4 historical weeks
               nowWeeklyRevenue: Math.round((c.recentRevenue || 0) / 3),    // 3 recent weeks
               daysSinceLastOrder: c.daysSinceLastOrder || 0,
               totalLoss: Math.abs(c.revenueChange || 0),
+              historicalRevenue: c.historicalRevenue || 0,
+              recentRevenue: c.recentRevenue || 0,
               lostProducts: (c.lostProducts || []).map((p: any) => ({
                 productId: p.productId,
                 productName: p.productName,
@@ -634,6 +931,8 @@ export default function SalesAlertPage() {
               revenueLost={data?.summary.critical.revenueLost}
               gradient="from-red-600 to-red-800"
               index={0}
+              isActive={statusFilter === 'critical'}
+              onClick={() => setStatusFilter(statusFilter === 'critical' ? 'all' : 'critical')}
             />
             <KPICard
               icon="🟠"
@@ -642,6 +941,8 @@ export default function SalesAlertPage() {
               revenueLost={data?.summary.warning.revenueLost}
               gradient="from-orange-500 to-orange-700"
               index={1}
+              isActive={statusFilter === 'warning'}
+              onClick={() => setStatusFilter(statusFilter === 'warning' ? 'all' : 'warning')}
             />
             <KPICard
               icon="🟢"
@@ -649,8 +950,33 @@ export default function SalesAlertPage() {
               count={data?.summary.ok.count || 0}
               gradient="from-green-600 to-green-800"
               index={2}
+              isActive={statusFilter === 'ok'}
+              onClick={() => setStatusFilter(statusFilter === 'ok' ? 'all' : 'ok')}
             />
           </div>
+          {statusFilter !== 'all' && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 flex items-center gap-2"
+            >
+              <span className="text-slate-400 text-sm">Filtro attivo:</span>
+              <span className={cn(
+                "px-3 py-1 rounded-full text-sm font-medium",
+                statusFilter === 'critical' && "bg-red-500/20 text-red-300",
+                statusFilter === 'warning' && "bg-orange-500/20 text-orange-300",
+                statusFilter === 'ok' && "bg-green-500/20 text-green-300"
+              )}>
+                {statusFilter === 'critical' ? 'Critici' : statusFilter === 'warning' ? 'Attenzione' : 'OK'}
+              </span>
+              <button
+                onClick={() => setStatusFilter('all')}
+                className="text-slate-400 hover:text-white text-sm underline"
+              >
+                Rimuovi filtro
+              </button>
+            </motion.div>
+          )}
         </section>
 
         {/* Tabs */}
@@ -697,14 +1023,22 @@ export default function SalesAlertPage() {
                 transition={{ duration: 0.3 }}
                 className="space-y-4"
               >
-                {sortedCustomers.map((customer, index) => (
-                  <CustomerCard key={customer.customerId} customer={customer} index={index} />
+                {sortedCustomers
+                  .filter(c => statusFilter === 'all' || c.status === statusFilter)
+                  .map((customer, index) => (
+                  <CustomerCard
+                    key={customer.customerId}
+                    customer={customer}
+                    index={index}
+                    onNote={(c) => setNoteModal({ isOpen: true, customer: c })}
+                    onInfo={(c) => setInfoModal({ isOpen: true, customer: c })}
+                  />
                 ))}
 
-                {sortedCustomers.length === 0 && (
+                {sortedCustomers.filter(c => statusFilter === 'all' || c.status === statusFilter).length === 0 && (
                   <div className="text-center py-12 text-slate-400">
                     <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Nessun cliente trovato</p>
+                    <p>Nessun cliente trovato {statusFilter !== 'all' && 'con questo filtro'}</p>
                   </div>
                 )}
               </motion.div>
@@ -745,6 +1079,18 @@ export default function SalesAlertPage() {
           Powered by Claude AI & Odoo 17
         </p>
       </motion.div>
+
+      {/* Modals */}
+      <NoteModal
+        isOpen={noteModal.isOpen}
+        customer={noteModal.customer}
+        onClose={() => setNoteModal({ isOpen: false, customer: null })}
+      />
+      <InfoModal
+        isOpen={infoModal.isOpen}
+        customer={infoModal.customer}
+        onClose={() => setInfoModal({ isOpen: false, customer: null })}
+      />
     </div>
   );
 }

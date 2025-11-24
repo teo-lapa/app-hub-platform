@@ -36,6 +36,11 @@ type AlertStatus = 'critical' | 'warning' | 'ok';
 interface CustomerAlert {
   customerId: number;
   customerName: string;
+  phone: string | null;
+  mobile: string | null;
+  email: string | null;
+  salesPersonId: number | null;
+  salesPersonName: string | null;
   status: AlertStatus;
   historicalRevenue: number;
   recentRevenue: number;
@@ -143,6 +148,26 @@ export async function GET(request: NextRequest) {
     const ordersMap: Record<number, any> = {};
     orders.forEach((o: any) => {
       ordersMap[o.id] = o;
+    });
+
+    // Get unique partner IDs to fetch phone numbers
+    const partnerIdsSet = new Set<number>();
+    orders.forEach((o: any) => {
+      if (o.partner_id) partnerIdsSet.add(o.partner_id[0]);
+    });
+    const partnerIds = Array.from(partnerIdsSet);
+
+    // Fetch partner details including phone
+    const partners = await rpc.searchRead(
+      'res.partner',
+      [['id', 'in', partnerIds]],
+      ['id', 'name', 'phone', 'mobile', 'email', 'user_id'],
+      0
+    );
+
+    const partnersMap: Record<number, any> = {};
+    partners.forEach((p: any) => {
+      partnersMap[p.id] = p;
     });
 
     // Define week ranges
@@ -341,9 +366,22 @@ export async function GET(request: NextRequest) {
         ? Math.floor((now.getTime() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24))
         : -1;
 
+      // Get partner contact info
+      const partner = partnersMap[customerId];
+      const phone = partner?.phone || null;
+      const mobile = partner?.mobile || null;
+      const email = partner?.email || null;
+      const salesPersonId = partner?.user_id ? partner.user_id[0] : null;
+      const salesPersonName = partner?.user_id ? partner.user_id[1] : null;
+
       customerAlerts.push({
         customerId,
         customerName: data.name,
+        phone,
+        mobile,
+        email,
+        salesPersonId,
+        salesPersonName,
         status,
         historicalRevenue: Math.round(historicalRevenue * 100) / 100,
         recentRevenue: Math.round(recentRevenue * 100) / 100,
