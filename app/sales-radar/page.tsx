@@ -753,7 +753,9 @@ export default function SalesRadarPage() {
 
       const result = await response.json();
       if (result.success) {
-        alert(`Nota salvata: "${result.transcription?.substring(0, 50) || 'Audio salvato'}..."`);
+        // Chiudi modal senza popup - basta la conferma visiva
+        setShowNoteModal(false);
+        setWrittenNote('');
       }
     } catch (error) {
       console.error('Errore salvataggio nota vocale:', error);
@@ -789,13 +791,13 @@ export default function SalesRadarPage() {
 
       const result = await response.json();
       if (result.success) {
-        alert('✅ Nota salvata!');
+        // Chiudi modal senza popup - basta la conferma visiva
         setShowNoteModal(false);
         setWrittenNote('');
       }
     } catch (error) {
       console.error('Errore salvataggio nota:', error);
-      alert('❌ Errore nel salvataggio');
+      // Nessun alert per errori - si vede dal comportamento
     } finally {
       setIsSavingNote(false);
     }
