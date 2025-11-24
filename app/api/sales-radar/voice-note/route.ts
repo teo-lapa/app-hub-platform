@@ -243,8 +243,8 @@ export async function POST(request: NextRequest) {
 
 /**
  * Generate formatted feedback note for chatter
- * IMPORTANTE: Odoo sanitizza HTML con div/style - usa solo tag base!
- * Tag permessi: <p>, <strong>, <em>, <br/>, <ul>, <li>
+ * IMPORTANTE: Odoo escapa QUALSIASI HTML - usa TESTO PIANO!
+ * Odoo wrapperà automaticamente in <p> il testo
  */
 function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): string {
   const emoji = noteType === 'voice' ? '🎤' : '✏️';
@@ -252,10 +252,16 @@ function generateFeedbackHtml(noteText: string, noteType: 'voice' | 'written'): 
   const timestamp = new Date().toLocaleDateString('it-IT');
   const timeStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-  // Formato con tag HTML semplici (come catalogo-venditori che funziona)
-  const formattedNote = noteText.replace(/\n/g, '<br/>');
+  // TESTO PIANO - Odoo lo formatterà automaticamente
+  return `📍 FEEDBACK SALES RADAR
 
-  return `<p><strong>📍 FEEDBACK SALES RADAR</strong></p><ul><li><strong>Tipo:</strong> ${emoji} ${typeLabel}</li><li><strong>Data:</strong> ${timestamp} alle ${timeStr}</li></ul><p><strong>📝 Nota:</strong></p><p>${formattedNote}</p><p><em>Inserita tramite Sales Radar App</em></p>`;
+${emoji} ${typeLabel}
+📅 ${timestamp} alle ${timeStr}
+
+📝 Nota:
+${noteText}
+
+— Inserita tramite Sales Radar App`;
 }
 
 /**
