@@ -20,15 +20,18 @@ export async function GET(request: NextRequest) {
     const rpc = createOdooRPCClient(sessionId);
 
     // Carica tutti i partner attivi
-    // Include tutti i partner tranne indirizzi di consegna/fatturazione
-    // Questo include: aziende, contatti, ristoranti, ecc.
-    // NOTA: NON filtro per customer_rank o is_company per massima flessibilità
+    // Include: Aziende OR Contatti veri (NO indirizzi delivery/invoice)
+    // Stesso filtro usato in /api/clienti/search che funziona correttamente
     const customers = await rpc.searchRead(
       'res.partner',
       [
         ['active', '=', true],
-        // Escludi SOLO delivery/invoice addresses
-        ['type', 'not in', ['delivery', 'invoice']]
+        // Logica OR: Aziende O Contatti veri (NO indirizzi)
+        '|',
+          ['is_company', '=', true],         // Aziende
+          '&',
+            ['is_company', '=', false],      // Contatti
+            ['type', '=', 'contact'],        // Solo type='contact' (NO delivery/invoice)
       ],
       ['id', 'name', 'email', 'phone', 'city', 'parent_id'],
       1000,
