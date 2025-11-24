@@ -995,7 +995,7 @@ export default function SalesRadarPage() {
               <button
                 onClick={() => {
                   setMapMode('static');
-                  loadStaticMap();
+                  loadStaticMap(); // Sempre refresh quando clicchi
                 }}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   mapMode === 'static'
@@ -1003,7 +1003,7 @@ export default function SalesRadarPage() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                📍 Odoo
+                {loadingStatic ? '⏳' : '📍'} Odoo
               </button>
             </div>
           </div>
