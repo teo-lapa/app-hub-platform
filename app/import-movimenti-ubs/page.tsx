@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Upload, FileText, CheckCircle, XCircle, AlertCircle, Download, TrendingUp, TrendingDown, ArrowLeft, Home } from 'lucide-react'
 import Link from 'next/link'
+import type { BankJournalConfig } from '@/lib/config/bank-journals'
 
 interface Transaction {
   date: string
@@ -35,6 +36,8 @@ interface ParseResult {
     totalExpense: number
     netChange: number
   }
+  suggestedJournal?: BankJournalConfig // Journal suggerito automaticamente
+  availableJournals?: BankJournalConfig[] // Tutti i journal disponibili
 }
 
 export default function ImportMovimentiUBS() {
@@ -43,6 +46,8 @@ export default function ImportMovimentiUBS() {
   const [importing, setImporting] = useState(false)
   const [parseResults, setParseResults] = useState<ParseResult[]>([])
   const [currentFileIndex, setCurrentFileIndex] = useState(0)
+  const [selectedJournals, setSelectedJournals] = useState<Record<number, number>>({}) // fileIndex → journalId
+  const [availableJournals, setAvailableJournals] = useState<BankJournalConfig[]>([])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files
@@ -77,6 +82,19 @@ export default function ImportMovimentiUBS() {
 
         const result = await response.json()
         results.push(result)
+
+        // Salva il journal suggerito per questo file
+        if (result.suggestedJournal) {
+          setSelectedJournals(prev => ({
+            ...prev,
+            [i]: result.suggestedJournal.journalId
+          }))
+        }
+
+        // Salva i journal disponibili (serve solo una volta)
+        if (i === 0 && result.availableJournals) {
+          setAvailableJournals(result.availableJournals)
+        }
       } catch (error) {
         console.error(`Errore parsing file ${file.name}:`, error)
         results.push({
@@ -92,6 +110,22 @@ export default function ImportMovimentiUBS() {
 
   const handleImport = async () => {
     if (parseResults.length === 0) return
+
+    // Validazione: verifica che tutti i file abbiano un journal selezionato
+    const missingJournals: number[] = [];
+    for (let i = 0; i < parseResults.length; i++) {
+      if (!selectedJournals[i]) {
+        missingJournals.push(i + 1);
+      }
+    }
+
+    if (missingJournals.length > 0) {
+      alert(
+        `⚠️ Seleziona il registro bancario per i seguenti file:\n` +
+        missingJournals.map(n => `- File ${n}`).join('\n')
+      );
+      return;
+    }
 
     setImporting(true)
 
@@ -117,7 +151,8 @@ export default function ImportMovimentiUBS() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             accountInfo: parseResult.accountInfo,
-            transactions: parseResult.transactions
+            transactions: parseResult.transactions,
+            journalId: selectedJournals[i] // Passa il journal selezionato
           })
         })
 
@@ -331,6 +366,62 @@ export default function ImportMovimentiUBS() {
                         CHF {parseResult.stats.netChange.toLocaleString('de-CH', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
+                  </div>
+                )}
+
+                {/* Journal Selection - NUOVO */}
+                {availableJournals.length > 0 && (
+                  <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl mt-6 border-2 border-purple-200">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="bg-purple-600 p-2 rounded-lg">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-800">Registro Bancario Odoo</p>
+                        <p className="text-xs text-gray-600">Seleziona dove registrare queste transazioni</p>
+                      </div>
+                    </div>
+
+                    <select
+                      value={selectedJournals[idx] || ''}
+                      onChange={(e) => {
+                        const journalId = parseInt(e.target.value)
+                        setSelectedJournals(prev => ({
+                          ...prev,
+                          [idx]: journalId
+                        }))
+                      }}
+                      className="w-full px-4 py-3 bg-white border-2 border-purple-300 rounded-lg font-semibold text-gray-800 hover:border-purple-500 focus:border-purple-600 focus:ring-2 focus:ring-purple-200 transition-all cursor-pointer"
+                    >
+                      <option value="">-- Seleziona registro bancario --</option>
+                      {availableJournals.map(journal => (
+                        <option key={journal.journalId} value={journal.journalId}>
+                          {journal.journalName} ({journal.currency}) - {journal.journalCode}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Info IBAN match */}
+                    {parseResult.suggestedJournal && selectedJournals[idx] === parseResult.suggestedJournal.journalId && (
+                      <div className="mt-3 flex items-center gap-2 text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+                        <CheckCircle className="w-4 h-4" />
+                        <span>
+                          ✅ Registro suggerito automaticamente da IBAN: <strong>{parseResult.accountInfo.iban}</strong>
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Warning IBAN non riconosciuto */}
+                    {!parseResult.suggestedJournal && parseResult.accountInfo.iban && (
+                      <div className="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-lg">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>
+                          ⚠️ IBAN {parseResult.accountInfo.iban} non riconosciuto. Seleziona manualmente il registro corretto.
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

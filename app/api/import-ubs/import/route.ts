@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth'
+import { findJournalByIban, getDefaultJournal } from '@/lib/config/bank-journals'
 
 interface Transaction {
   date: string
@@ -24,9 +25,7 @@ interface AccountInfo {
   transactionCount: number
 }
 
-// Giornali bancari UBS
-const UBS_CHF_JOURNAL_ID = 9
-const UBS_EUR_JOURNAL_ID = 11
+// Journal IDs ora gestiti da lib/config/bank-journals.ts
 
 /**
  * Genera unique_import_id per evitare duplicati in Odoo
@@ -45,7 +44,11 @@ export async function POST(request: NextRequest) {
     console.log('🏦 [IMPORT-UBS] Inizio import movimenti bancari...')
 
     const body = await request.json()
-    const { accountInfo, transactions } = body as { accountInfo: AccountInfo; transactions: Transaction[] }
+    const { accountInfo, transactions, journalId: requestedJournalId } = body as {
+      accountInfo: AccountInfo;
+      transactions: Transaction[];
+      journalId?: number; // Journal selezionato dall'utente (opzionale)
+    }
 
     if (!transactions || transactions.length === 0) {
       return NextResponse.json({
@@ -63,9 +66,20 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ [IMPORT-UBS] Autenticato con Odoo (UID: ${uid})`)
 
-    // Determina giornale in base a valuta
-    const journalId = accountInfo.currency === 'EUR' ? UBS_EUR_JOURNAL_ID : UBS_CHF_JOURNAL_ID
-    console.log(`📁 [IMPORT-UBS] Giornale selezionato: ${journalId} (${accountInfo.currency})`)
+    // Determina il journal da usare
+    let journalId: number;
+
+    if (requestedJournalId) {
+      // Usa il journal specificato dall'utente nella UI
+      journalId = requestedJournalId;
+      console.log(`📁 [IMPORT-UBS] Journal selezionato dall'utente: ${journalId}`);
+    } else {
+      // Fallback: determina automaticamente da IBAN o valuta
+      const suggestedJournal = findJournalByIban(accountInfo.iban)
+        || getDefaultJournal(accountInfo.currency as 'CHF' | 'EUR');
+      journalId = suggestedJournal.journalId;
+      console.log(`📁 [IMPORT-UBS] Journal auto-determinato: ${journalId} (${suggestedJournal.journalName})`);
+    }
 
     // Importa transazioni una per una
     let imported = 0

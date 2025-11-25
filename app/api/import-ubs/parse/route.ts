@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { findJournalByIban, findJournalByAccountNumber, getAllJournals } from '@/lib/config/bank-journals'
 
 interface Transaction {
   date: string
@@ -406,11 +407,26 @@ export async function POST(request: NextRequest) {
       netChange: totalIncome - totalExpense
     }
 
+    // Trova il journal suggerito basato sull'IBAN o numero conto
+    let suggestedJournal = findJournalByIban(accountInfo.iban);
+
+    if (!suggestedJournal && accountInfo.accountNumber) {
+      suggestedJournal = findJournalByAccountNumber(accountInfo.accountNumber);
+    }
+
+    if (suggestedJournal) {
+      console.log(`✅ Journal suggerito: ${suggestedJournal.journalName} (ID: ${suggestedJournal.journalId}) per IBAN ${accountInfo.iban}`);
+    } else {
+      console.warn(`⚠️ Nessun journal trovato per IBAN ${accountInfo.iban} - richiesta selezione manuale`);
+    }
+
     return NextResponse.json({
       success: true,
       accountInfo,
       transactions,
-      stats
+      stats,
+      suggestedJournal, // Journal suggerito automaticamente
+      availableJournals: getAllJournals() // Tutti i journal disponibili per il dropdown
     })
 
   } catch (error) {
