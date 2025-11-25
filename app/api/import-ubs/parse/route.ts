@@ -237,15 +237,16 @@ export async function POST(request: NextRequest) {
         let amount = 0
         let type: 'income' | 'expense' = 'income'
 
-        // Controlla se è una riga di Sammelauftrag individuale
-        const isSammelauftragItem = (beschreibung1.includes('Sammelauftrag') ||
-                                     beschreibung2.includes('Sammelauftrag') ||
-                                     beschreibung3.includes('Sammelauftrag')) &&
-                                    einzelbetrag &&
-                                    einzelbetrag !== ''
+        // PRIMA: Controlla se è la riga collettiva del Sammelauftrag (da skippare)
+        if (beschreibung1.includes('e-banking-Sammelauftrag') && belastung && belastung !== '') {
+          console.log(`⏭️  SKIP riga collettiva Sammelauftrag: ${belastung}`)
+          continue // Salta questa riga
+        }
 
-        if (isSammelauftragItem) {
-          // USA EINZELBETRAG per Sammelauftrag individuale
+        // SECONDA: Controlla se è una riga individuale con Einzelbetrag
+        // (le righe Sammelauftrag individuali hanno SOLO Einzelbetrag, senza Belastung/Gutschrift)
+        if (einzelbetrag && einzelbetrag !== '') {
+          // USA EINZELBETRAG
           const einzelbetragValue = parseFloat(einzelbetrag.replace(',', '.'))
 
           if (einzelbetragValue < 0) {
@@ -260,7 +261,7 @@ export async function POST(request: NextRequest) {
             totalIncome += amount
           }
 
-          console.log(`✅ Sammelauftrag item: ${einzelbetrag} per ${beschreibung1.substring(0, 50)}`)
+          console.log(`✅ Usando Einzelbetrag: ${einzelbetrag} per ${beschreibung1.substring(0, 50)}`)
 
         } else if (gutschrift && gutschrift !== '') {
           // Entrata normale
@@ -270,13 +271,6 @@ export async function POST(request: NextRequest) {
 
         } else if (belastung && belastung !== '') {
           // Uscita normale
-
-          // IGNORA la riga collettiva del Sammelauftrag (quella con il totale)
-          if (beschreibung1.includes('e-banking-Sammelauftrag')) {
-            console.log(`⏭️  SKIP riga collettiva Sammelauftrag: ${belastung}`)
-            continue // Salta questa riga
-          }
-
           amount = -parseFloat(belastung.replace(',', '.'))
           type = 'expense'
           totalExpense += Math.abs(amount)
