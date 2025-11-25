@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OdooClient from '@/lib/odoo-xmlrpc-v2';
+import { getOdooClient } from '@/lib/odoo-client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    const odoo = new OdooClient();
+    const odoo = await getOdooClient();
 
     // Cerca solo journal di tipo 'bank'
     const journals = await odoo.searchRead(
