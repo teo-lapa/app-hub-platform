@@ -12,13 +12,15 @@ export async function GET(request: NextRequest) {
   try {
     const odoo = await getOdooClient();
 
-    // Cerca solo journal di tipo 'bank'
+    // Cerca journal di tipo 'bank' O 'cash'
     const journals = await odoo.searchRead(
       'account.journal',
       [
-        ['type', '=', 'bank']  // Solo journal bancari
+        '|',
+        ['type', '=', 'bank'],
+        ['type', '=', 'cash']
       ],
-      ['id', 'name', 'code', 'currency_id', 'bank_account_id']
+      ['id', 'name', 'code', 'currency_id', 'bank_account_id', 'type']
     );
 
     if (!journals || journals.length === 0) {
@@ -28,47 +30,58 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Per ogni journal, recupera l'IBAN dal bank_account_id
-    const journalsWithIban = await Promise.all(
-      journals.map(async (journal: any) => {
-        let iban = null;
-        let accountNumber = null;
+    // Batch query ottimizzata: recupera tutti gli IBAN in UNA sola chiamata
+    // 1. Raccogli tutti i bank_account_id
+    const bankAccountIds = journals
+      .filter((j: any) => j.bank_account_id && Array.isArray(j.bank_account_id))
+      .map((j: any) => j.bank_account_id[0]);
 
-        // Se il journal ha un bank_account_id, recupera l'IBAN
-        if (journal.bank_account_id && Array.isArray(journal.bank_account_id)) {
-          const bankAccountId = journal.bank_account_id[0];
+    // 2. UNA sola chiamata per tutti gli IBAN (invece di N chiamate)
+    let ibanMap = new Map<number, { iban: string | null; accountNumber: string | null }>();
 
-          try {
-            const bankAccounts = await odoo.searchRead(
-              'res.partner.bank',
-              [['id', '=', bankAccountId]],
-              ['acc_number', 'sanitized_acc_number']
-            );
+    if (bankAccountIds.length > 0) {
+      try {
+        const bankAccounts = await odoo.searchRead(
+          'res.partner.bank',
+          [['id', 'in', bankAccountIds]],
+          ['id', 'acc_number', 'sanitized_acc_number']
+        );
 
-            if (bankAccounts && bankAccounts.length > 0) {
-              iban = bankAccounts[0].sanitized_acc_number || bankAccounts[0].acc_number;
-              accountNumber = bankAccounts[0].acc_number;
+        // 3. Crea mappa ID -> IBAN per lookup veloce
+        ibanMap = new Map(
+          bankAccounts.map((ba: any) => [
+            ba.id,
+            {
+              iban: ba.sanitized_acc_number || ba.acc_number,
+              accountNumber: ba.acc_number
             }
-          } catch (error) {
-            console.error(`Errore recupero IBAN per journal ${journal.id}:`, error);
-          }
-        }
+          ])
+        );
+      } catch (error) {
+        console.error('Errore recupero IBAN batch:', error);
+      }
+    }
 
-        // Estrai nome valuta da currency_id
-        const currency = Array.isArray(journal.currency_id)
-          ? journal.currency_id[1].split(' ')[0]  // Es: "CHF" da "CHF Swiss Franc"
-          : 'CHF';  // Default
+    // 4. Mappa journals con IBAN usando la mappa pre-costruita
+    const journalsWithIban = journals.map((journal: any) => {
+      const bankAccountId = journal.bank_account_id?.[0];
+      const bankInfo = bankAccountId ? ibanMap.get(bankAccountId) : null;
 
-        return {
-          id: journal.id,
-          name: journal.name,
-          code: journal.code,
-          currency: currency,
-          iban: iban,
-          accountNumber: accountNumber
-        };
-      })
-    );
+      // Estrai nome valuta da currency_id
+      const currency = Array.isArray(journal.currency_id)
+        ? journal.currency_id[1].split(' ')[0]  // Es: "CHF" da "CHF Swiss Franc"
+        : 'CHF';  // Default
+
+      return {
+        id: journal.id,
+        name: journal.name,
+        code: journal.code,
+        currency: currency,
+        iban: bankInfo?.iban || null,
+        accountNumber: bankInfo?.accountNumber || null,
+        type: journal.type  // Aggiunto per debugging
+      };
+    });
 
     return NextResponse.json({
       success: true,
