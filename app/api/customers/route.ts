@@ -20,20 +20,18 @@ export async function GET(request: NextRequest) {
     const rpc = createOdooRPCClient(sessionId);
 
     // Carica tutti i partner attivi
-    // Include sia aziende che contatti veri
-    // ESCLUDI indirizzi di consegna/fatturazione (type='delivery'/'invoice')
-    // NOTA: NON filtro per customer_rank perché molti clienti hanno customer_rank=0
+    // Include: Aziende OR Contatti veri (NO indirizzi delivery/invoice)
+    // Stesso filtro usato in /api/clienti/search che funziona correttamente
     const customers = await rpc.searchRead(
       'res.partner',
       [
-        // RIMOSSO: ['customer_rank', '>', 0] → Bloccava 3360+ clienti incluso DGD
         ['active', '=', true],
-        // Escludi indirizzi di consegna e fatturazione
+        // Logica OR: Aziende O Contatti veri (NO indirizzi)
         '|',
           ['is_company', '=', true],         // Aziende
           '&',
             ['is_company', '=', false],      // Contatti
-            ['type', '=', 'contact']         // Ma solo type='contact' (NO delivery/invoice)
+            ['type', '=', 'contact'],        // Solo type='contact' (NO delivery/invoice)
       ],
       ['id', 'name', 'email', 'phone', 'city', 'parent_id'],
       1000,
