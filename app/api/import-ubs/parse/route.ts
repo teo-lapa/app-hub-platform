@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
         }
         parts.push(current.trim())
 
-        if (parts.length < 14) continue
+        if (parts.length < 10) continue // Minimo 10 colonne fino a Transaktions-Nr.
 
         try {
         const abschlussdatum = parts[0]?.trim()
@@ -226,6 +226,7 @@ export async function POST(request: NextRequest) {
         const currency = parts[4]?.trim()
         const belastung = parts[5]?.trim() // Uscita
         const gutschrift = parts[6]?.trim() // Entrata
+        const einzelbetrag = parts[7]?.trim() // Importo singolo per Sammelauftrag
         const saldo = parts[8]?.trim()
         const transaktionsNr = parts[9]?.trim()
         const beschreibung1 = parts[10]?.replace(/^"(.*)"$/, '$1').trim()
@@ -236,13 +237,46 @@ export async function POST(request: NextRequest) {
         let amount = 0
         let type: 'income' | 'expense' = 'income'
 
-        if (gutschrift && gutschrift !== '') {
-          // Entrata (positivo)
+        // Controlla se è una riga di Sammelauftrag individuale
+        const isSammelauftragItem = (beschreibung1.includes('Sammelauftrag') ||
+                                     beschreibung2.includes('Sammelauftrag') ||
+                                     beschreibung3.includes('Sammelauftrag')) &&
+                                    einzelbetrag &&
+                                    einzelbetrag !== ''
+
+        if (isSammelauftragItem) {
+          // USA EINZELBETRAG per Sammelauftrag individuale
+          const einzelbetragValue = parseFloat(einzelbetrag.replace(',', '.'))
+
+          if (einzelbetragValue < 0) {
+            // Uscita
+            amount = einzelbetragValue // già negativo
+            type = 'expense'
+            totalExpense += Math.abs(amount)
+          } else {
+            // Entrata
+            amount = einzelbetragValue
+            type = 'income'
+            totalIncome += amount
+          }
+
+          console.log(`✅ Sammelauftrag item: ${einzelbetrag} per ${beschreibung1.substring(0, 50)}`)
+
+        } else if (gutschrift && gutschrift !== '') {
+          // Entrata normale
           amount = parseFloat(gutschrift.replace(',', '.'))
           type = 'income'
           totalIncome += amount
+
         } else if (belastung && belastung !== '') {
-          // Uscita (negativo)
+          // Uscita normale
+
+          // IGNORA la riga collettiva del Sammelauftrag (quella con il totale)
+          if (beschreibung1.includes('e-banking-Sammelauftrag')) {
+            console.log(`⏭️  SKIP riga collettiva Sammelauftrag: ${belastung}`)
+            continue // Salta questa riga
+          }
+
           amount = -parseFloat(belastung.replace(',', '.'))
           type = 'expense'
           totalExpense += Math.abs(amount)
