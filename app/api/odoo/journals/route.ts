@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
     );
 
     console.log('📊 [DEBUG] Tutti i journals in Odoo:', JSON.stringify(allJournals, null, 2));
-    console.log('📊 [DEBUG] Types trovati:', [...new Set(allJournals.map((j: any) => j.type))]);
+    const uniqueTypes = Array.from(new Set(allJournals.map((j: any) => j.type)));
+    console.log('📊 [DEBUG] Types trovati:', uniqueTypes);
 
     // Cerca journal di tipo 'bank' O 'cash'
     const journals = await odoo.searchRead(
