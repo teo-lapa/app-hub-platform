@@ -12,6 +12,16 @@ export async function GET(request: NextRequest) {
   try {
     const odoo = await getOdooClient();
 
+    // DEBUG: Prima recupera TUTTI i journals per vedere quali types esistono
+    const allJournals = await odoo.searchRead(
+      'account.journal',
+      [],  // Nessun filtro - prendi TUTTI
+      ['id', 'name', 'code', 'type']
+    );
+
+    console.log('📊 [DEBUG] Tutti i journals in Odoo:', JSON.stringify(allJournals, null, 2));
+    console.log('📊 [DEBUG] Types trovati:', [...new Set(allJournals.map((j: any) => j.type))]);
+
     // Cerca journal di tipo 'bank' O 'cash'
     const journals = await odoo.searchRead(
       'account.journal',
@@ -22,6 +32,8 @@ export async function GET(request: NextRequest) {
       ],
       ['id', 'name', 'code', 'currency_id', 'bank_account_id', 'type']
     );
+
+    console.log(`📊 [DEBUG] Journals filtrati (bank o cash): ${journals.length} trovati`);
 
     if (!journals || journals.length === 0) {
       return NextResponse.json({
