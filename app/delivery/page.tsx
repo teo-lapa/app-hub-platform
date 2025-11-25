@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Dexie, { Table } from 'dexie';
 import dynamic from 'next/dynamic';
-import type { Delivery, Product, Attachment, OfflineAction } from './types';
+import type { Delivery, Product, Attachment, OfflineAction, VehicleCheckData, VehicleInfo, OpenIssue, VehicleCheckItem, VehicleCheckPhoto, VehicleCheckCategory } from './types';
+import { VEHICLE_CHECK_CATEGORIES } from './vehicle-check-config';
 
 const DeliveryMap = dynamic(() => import('./components/DeliveryMap'), { ssr: false });
 
@@ -35,7 +36,7 @@ export default function DeliveryPage() {
   // Estados principales
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [currentDelivery, setCurrentDelivery] = useState<Delivery | null>(null);
-  const [view, setView] = useState<'list' | 'map' | 'stats' | 'scarico'>('list');
+  const [view, setView] = useState<'list' | 'map' | 'stats' | 'scarico' | 'vehicle-check'>('list');
   const [loading, setLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,11 +110,24 @@ export default function DeliveryPage() {
   const [markers, setMarkers] = useState<any[]>([]);
   const [showPOI, setShowPOI] = useState(true);
 
+  // Estados vehicle check
+  const [vehicleCheckData, setVehicleCheckData] = useState<VehicleCheckData | null>(null);
+  const [vehicleInfo, setVehicleInfo] = useState<VehicleInfo | null>(null);
+  const [activeCheckCategory, setActiveCheckCategory] = useState<string>('motore');
+  const [openIssues, setOpenIssues] = useState<OpenIssue[]>([]);
+  const [needsWeeklyCheck, setNeedsWeeklyCheck] = useState(false);
+  const [showResolveModal, setShowResolveModal] = useState(false);
+  const [selectedIssue, setSelectedIssue] = useState<OpenIssue | null>(null);
+  const [checkPhotos, setCheckPhotos] = useState<VehicleCheckPhoto[]>([]);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [currentPhotoItem, setCurrentPhotoItem] = useState<{ categoryId: string; itemId: string } | null>(null);
+
   // Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const photoModalInputRef = useRef<HTMLInputElement>(null);
   const paymentReceiptInputRef = useRef<HTMLInputElement>(null);
+  const vehicleCheckPhotoInputRef = useRef<HTMLInputElement>(null);
 
   // ==================== EFFECTS ====================
   useEffect(() => {
@@ -130,6 +144,13 @@ export default function DeliveryPage() {
       delete (window as any).navigateToDelivery;
     };
   }, []);
+
+  // Vehicle check effect - carica dati quando view cambia
+  useEffect(() => {
+    if (view === 'vehicle-check') {
+      loadVehicleCheckInfo();
+    }
+  }, [view]);
 
   // ==================== INITIALIZATION ====================
   async function initializeApp() {
@@ -377,6 +398,145 @@ export default function DeliveryPage() {
     }
 
     showToast('Navigazione avviata', 'success');
+  }
+
+  // ==================== VEHICLE CHECK LOGIC ====================
+  async function loadVehicleCheckInfo() {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/vehicle-check/get-info', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!res.ok) throw new Error('Errore caricamento dati veicolo');
+
+      const data = await res.json();
+
+      if (data.success) {
+        setVehicleInfo(data.vehicle_info);
+        setVehicleCheckData(data.check_data);
+        setOpenIssues(data.open_issues || []);
+        setNeedsWeeklyCheck(data.needs_weekly_check || false);
+      } else {
+        showToast(data.error || 'Errore caricamento dati', 'error');
+      }
+    } catch (error) {
+      console.error('Errore loadVehicleCheckInfo:', error);
+      showToast('Errore caricamento dati veicolo', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function markItemStatus(categoryId: string, itemId: string, status: 'ok' | 'issue') {
+    if (!vehicleCheckData) return;
+
+    const updatedCategories = vehicleCheckData.categories.map(cat => {
+      if (cat.id === categoryId) {
+        return {
+          ...cat,
+          items: cat.items.map(item => {
+            if (item.id === itemId) {
+              return {
+                ...item,
+                status,
+                note: status === 'ok' ? '' : item.note // Clear note if OK
+              };
+            }
+            return item;
+          })
+        };
+      }
+      return cat;
+    });
+
+    setVehicleCheckData({
+      ...vehicleCheckData,
+      categories: updatedCategories
+    });
+  }
+
+  function updateItemNote(categoryId: string, itemId: string, note: string) {
+    if (!vehicleCheckData) return;
+
+    const updatedCategories = vehicleCheckData.categories.map(cat => {
+      if (cat.id === categoryId) {
+        return {
+          ...cat,
+          items: cat.items.map(item => {
+            if (item.id === itemId) {
+              return { ...item, note };
+            }
+            return item;
+          })
+        };
+      }
+      return cat;
+    });
+
+    setVehicleCheckData({
+      ...vehicleCheckData,
+      categories: updatedCategories
+    });
+  }
+
+  function calculateSummary() {
+    if (!vehicleCheckData) return { total: 0, ok: 0, issues: 0, unchecked: 0 };
+
+    let total = 0;
+    let ok = 0;
+    let issues = 0;
+    let unchecked = 0;
+
+    vehicleCheckData.categories.forEach(cat => {
+      cat.items.forEach(item => {
+        total++;
+        if (item.status === 'ok') ok++;
+        else if (item.status === 'issue') issues++;
+        else unchecked++;
+      });
+    });
+
+    return { total, ok, issues, unchecked };
+  }
+
+  async function completeVehicleCheck() {
+    if (!vehicleCheckData) return;
+
+    const summary = calculateSummary();
+
+    if (summary.unchecked > 0) {
+      showToast(`Rimangono ${summary.unchecked} controlli non completati`, 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetch('/api/vehicle-check/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          check_data: vehicleCheckData
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        showToast('Controllo veicolo completato!', 'success');
+        setView('list');
+        // Ricarica i dati per aggiornare il reminder
+        await loadVehicleCheckInfo();
+      } else {
+        showToast(data.error || 'Errore completamento controllo', 'error');
+      }
+    } catch (error) {
+      console.error('Errore completeVehicleCheck:', error);
+      showToast('Errore completamento controllo', 'error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   // ==================== SCARICO LOGIC ====================
@@ -1443,6 +1603,131 @@ export default function DeliveryPage() {
     }
   }
 
+  // ==================== VEHICLE CHECK FUNCTIONS ====================
+
+  function capturePhoto(categoryId: string, itemId: string) {
+    setCurrentPhotoItem({ categoryId, itemId });
+    vehicleCheckPhotoInputRef.current?.click();
+  }
+
+  async function handleVehicleCheckPhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !currentPhotoItem) return;
+
+    try {
+      const base64 = await fileToBase64(file);
+      const compressed = await compressImage(base64);
+
+      const newPhoto: VehicleCheckPhoto = {
+        id: `photo_${Date.now()}`,
+        item_id: currentPhotoItem.itemId,
+        data: compressed,
+        preview: compressed,
+        uploaded: false,
+        timestamp: new Date()
+      };
+
+      setCheckPhotos(prev => [...prev, newPhoto]);
+      showToast('Foto aggiunta con successo', 'success');
+
+      // Reset
+      setCurrentPhotoItem(null);
+      if (vehicleCheckPhotoInputRef.current) {
+        vehicleCheckPhotoInputRef.current.value = '';
+      }
+    } catch (err) {
+      console.error('Error capturing photo:', err);
+      showToast('Errore durante la cattura della foto', 'error');
+    }
+  }
+
+  async function generateVehicleCheckPDF() {
+    if (!vehicleCheckData || !vehicleInfo) {
+      showToast('Nessun controllo veicolo disponibile', 'error');
+      return;
+    }
+
+    try {
+      showToast('Generazione PDF in corso...', 'info');
+
+      const { jsPDF } = await import('jspdf');
+      // @ts-ignore
+      const { default: autoTable } = await import('jspdf-autotable');
+
+      const doc = new jsPDF();
+
+      // Header
+      doc.setFontSize(18);
+      doc.text('Controllo Veicolo - LAPA Delivery', 20, 20);
+
+      // Info veicolo
+      doc.setFontSize(12);
+      doc.text(`Veicolo: ${vehicleInfo.name}`, 20, 35);
+      doc.text(`Targa: ${vehicleInfo.license_plate || 'N/A'}`, 20, 42);
+      doc.text(`Autista: ${session?.name || 'N/A'}`, 20, 49);
+      doc.text(`Data: ${new Date(vehicleCheckData.check_date).toLocaleDateString('it-IT')}`, 20, 56);
+
+      // Summary
+      doc.setFontSize(14);
+      doc.text('Riepilogo Controllo', 20, 70);
+      doc.setFontSize(10);
+      doc.text(`Elementi OK: ${vehicleCheckData.summary.ok_count}`, 20, 78);
+      doc.text(`Problemi Aperti: ${vehicleCheckData.summary.open_issues}`, 80, 78);
+      doc.text(`Problemi Risolti: ${vehicleCheckData.summary.resolved_issues}`, 140, 78);
+
+      // Filtra solo problemi aperti (status='issue' && !resolved)
+      const openIssuesList = vehicleCheckData.categories.flatMap(cat =>
+        cat.items
+          .filter(item => item.status === 'issue' && !item.resolved)
+          .map(item => [
+            cat.name,
+            item.label,
+            item.note || '-'
+          ])
+      );
+
+      if (openIssuesList.length > 0) {
+        doc.setFontSize(14);
+        doc.text('Problemi Aperti', 20, 93);
+
+        autoTable(doc, {
+          startY: 98,
+          head: [['Categoria', 'Elemento', 'Nota']],
+          body: openIssuesList,
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [239, 68, 68] }
+        });
+      } else {
+        doc.setFontSize(12);
+        doc.setTextColor(16, 185, 129);
+        doc.text('Nessun problema aperto', 20, 98);
+      }
+
+      // Footer
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(128);
+        doc.text(
+          `Pagina ${i} di ${pageCount} - Generato il ${new Date().toLocaleString('it-IT')}`,
+          doc.internal.pageSize.width / 2,
+          doc.internal.pageSize.height - 10,
+          { align: 'center' }
+        );
+      }
+
+      // Download
+      const fileName = `Controllo_Veicolo_${vehicleInfo.license_plate || vehicleInfo.name}_${Date.now()}.pdf`;
+      doc.save(fileName);
+
+      showToast('PDF scaricato con successo', 'success');
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      showToast('Errore durante la generazione del PDF', 'error');
+    }
+  }
+
   // ==================== ETA & OPTIMIZATION ====================
   async function calculateETAsForDeliveries(delivs: Delivery[]) {
     if (!currentPosition) return;
@@ -1881,6 +2166,213 @@ export default function DeliveryPage() {
           </div>
         )}
 
+        {/* VISTA VEHICLE CHECK */}
+        {view === 'vehicle-check' && (
+          <div className="h-[calc(100dvh-130px)] overflow-y-auto pb-20">
+            {/* Header con gradiente */}
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-4xl">🚗</span>
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold">Controllo Veicolo</h2>
+                  {vehicleInfo && (
+                    <div className="text-indigo-100 text-sm mt-1">
+                      {vehicleInfo.name} - {vehicleInfo.license_plate}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {needsWeeklyCheck && (
+                <div className="bg-yellow-500 text-yellow-900 px-4 py-3 rounded-lg font-semibold flex items-center gap-2 mt-3">
+                  <span className="text-xl">⚠️</span>
+                  <span>Controllo settimanale richiesto!</span>
+                </div>
+              )}
+            </div>
+
+            {/* Banner problemi aperti */}
+            {openIssues.length > 0 && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 m-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">🔴</span>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-red-800 mb-1">
+                      {openIssues.length} Problem{openIssues.length > 1 ? 'i' : 'a'} Apert{openIssues.length > 1 ? 'i' : 'o'}
+                    </h3>
+                    <div className="space-y-2">
+                      {openIssues.map((issue) => (
+                        <div key={issue.id} className="text-sm text-red-700 bg-white rounded p-2">
+                          <div className="font-semibold">{issue.category} - {issue.item}</div>
+                          <div className="text-xs mt-1">{issue.note}</div>
+                          <div className="text-xs text-red-500 mt-1">
+                            Segnalato: {new Date(issue.reported_date).toLocaleDateString('it-IT')}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tabs categorie */}
+            {vehicleCheckData && (
+              <>
+                <div className="sticky top-0 bg-white z-10 border-b overflow-x-auto">
+                  <div className="flex gap-2 p-3 min-w-max">
+                    {VEHICLE_CHECK_CATEGORIES.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setActiveCheckCategory(cat.id)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${
+                          activeCheckCategory === cat.id
+                            ? 'text-white shadow-md'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                        style={{
+                          backgroundColor: activeCheckCategory === cat.id ? cat.color : undefined
+                        }}
+                      >
+                        <span className="text-lg">{cat.icon}</span>
+                        <span>{cat.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Checklist items */}
+                <div className="p-4 space-y-3">
+                  {vehicleCheckData.categories
+                    .find((cat) => cat.id === activeCheckCategory)
+                    ?.items.map((item) => {
+                      const configCategory = VEHICLE_CHECK_CATEGORIES.find(
+                        (c) => c.id === activeCheckCategory
+                      );
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="bg-white rounded-lg shadow-sm border-2 p-4"
+                          style={{
+                            borderColor:
+                              item.status === 'ok'
+                                ? '#10B981'
+                                : item.status === 'issue'
+                                ? '#EF4444'
+                                : '#E5E7EB'
+                          }}
+                        >
+                          <div className="flex items-start gap-3 mb-3">
+                            <span className="text-2xl">{configCategory?.icon}</span>
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-gray-900">{item.label}</h4>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {item.status === 'ok' && (
+                                <span className="text-2xl">✅</span>
+                              )}
+                              {item.status === 'issue' && (
+                                <span className="text-2xl">❌</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Buttons OK / Problema */}
+                          <div className="flex gap-2 mb-3">
+                            <button
+                              onClick={() => markItemStatus(activeCheckCategory, item.id, 'ok')}
+                              className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
+                                item.status === 'ok'
+                                  ? 'bg-green-500 text-white'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              ✅ OK
+                            </button>
+                            <button
+                              onClick={() => markItemStatus(activeCheckCategory, item.id, 'issue')}
+                              className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
+                                item.status === 'issue'
+                                  ? 'bg-red-500 text-white'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              ❌ PROBLEMA
+                            </button>
+                          </div>
+
+                          {/* Textarea per note quando c'è un problema */}
+                          {item.status === 'issue' && (
+                            <div className="mt-3">
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Descrivi il problema:
+                              </label>
+                              <textarea
+                                value={item.note || ''}
+                                onChange={(e) =>
+                                  updateItemNote(activeCheckCategory, item.id, e.target.value)
+                                }
+                                placeholder="Es: Pneumatico anteriore destro consumato..."
+                                className="w-full border border-gray-300 rounded-lg p-3 text-sm resize-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                rows={3}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* Footer con summary */}
+                <div className="fixed bottom-[70px] left-0 right-0 bg-white border-t p-4 shadow-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex gap-4 text-sm">
+                      <div className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                        <span className="font-semibold">{calculateSummary().ok}</span>
+                        <span className="text-gray-600">OK</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                        <span className="font-semibold">{calculateSummary().issues}</span>
+                        <span className="text-gray-600">Problemi</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded-full bg-gray-300"></span>
+                        <span className="font-semibold">{calculateSummary().unchecked}</span>
+                        <span className="text-gray-600">Da fare</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={completeVehicleCheck}
+                    disabled={calculateSummary().unchecked > 0 || loading}
+                    className={`w-full py-4 rounded-lg font-bold text-white transition-all ${
+                      calculateSummary().unchecked > 0 || loading
+                        ? 'bg-gray-300 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 shadow-lg'
+                    }`}
+                  >
+                    {loading ? '⏳ Salvataggio...' : '✅ COMPLETA CONTROLLO'}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Loading state */}
+            {!vehicleCheckData && loading && (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <div className="text-4xl mb-4">⏳</div>
+                  <div className="text-gray-600">Caricamento dati veicolo...</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* VISTA SCARICO */}
         {view === 'scarico' && currentDelivery && (
           <div className="fixed inset-0 top-[60px] bottom-[70px] bg-white flex flex-col">
@@ -1971,6 +2463,140 @@ export default function DeliveryPage() {
             </div>
           </div>
         )}
+
+        {/* VISTA VEHICLE CHECK */}
+        {view === 'vehicle-check' && (
+          <div className="p-4 space-y-4">
+            {/* Header Card */}
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-6 shadow-lg text-white">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-4xl">🚗</span>
+                <div>
+                  <h2 className="text-2xl font-bold">Controllo Veicolo</h2>
+                  <p className="text-indigo-100 text-sm">
+                    {vehicleInfo ? `${vehicleInfo.name} - ${vehicleInfo.license_plate || 'N/A'}` : 'Caricamento...'}
+                  </p>
+                </div>
+              </div>
+
+              {vehicleCheckData && (
+                <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-indigo-400">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{vehicleCheckData.summary.ok_count}</div>
+                    <div className="text-xs text-indigo-200">OK</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{vehicleCheckData.summary.open_issues}</div>
+                    <div className="text-xs text-indigo-200">Aperti</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{vehicleCheckData.summary.resolved_issues}</div>
+                    <div className="text-xs text-indigo-200">Risolti</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Categories Tabs */}
+            <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+              <div className="flex gap-2 p-2">
+                {VEHICLE_CHECK_CATEGORIES.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCheckCategory(cat.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${
+                      activeCheckCategory === cat.id
+                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    style={activeCheckCategory === cat.id ? {} : { color: cat.color }}
+                  >
+                    <span className="text-xl">{cat.icon}</span>
+                    <span>{cat.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Check Items */}
+            <div className="space-y-3">
+              {VEHICLE_CHECK_CATEGORIES
+                .find(cat => cat.id === activeCheckCategory)
+                ?.items.map(item => {
+                  const checkItem = vehicleCheckData?.categories
+                    .find(cat => cat.id === activeCheckCategory)
+                    ?.items.find(ci => ci.id === item.id);
+
+                  const itemPhotos = checkPhotos.filter(p => p.item_id === item.id);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="bg-white rounded-xl p-4 shadow-sm border-2"
+                      style={{
+                        borderColor: checkItem?.status === 'ok' ? '#10b981' :
+                                    checkItem?.status === 'issue' ? '#ef4444' : '#d1d5db'
+                      }}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900">{item.label}</h3>
+                          {checkItem?.note && (
+                            <p className="text-sm text-gray-600 mt-1">{checkItem.note}</p>
+                          )}
+                        </div>
+                        <div className="text-3xl ml-2">
+                          {checkItem?.status === 'ok' ? '✅' :
+                           checkItem?.status === 'issue' ? '⚠️' : '⭕'}
+                        </div>
+                      </div>
+
+                      {/* Photo Thumbnails */}
+                      {itemPhotos.length > 0 && (
+                        <div className="flex gap-2 mb-3 overflow-x-auto">
+                          {itemPhotos.map(photo => (
+                            <div
+                              key={photo.id}
+                              className="relative w-20 h-20 flex-shrink-0"
+                            >
+                              <img
+                                src={photo.preview || photo.data}
+                                alt="Check photo"
+                                className="w-full h-full object-cover rounded-lg border-2 border-gray-200"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => capturePhoto(activeCheckCategory, item.id)}
+                          className="flex-1 bg-blue-500 text-white py-2 px-3 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors"
+                        >
+                          📷 Foto
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* Download PDF Button - Fixed at bottom */}
+            {vehicleCheckData && vehicleInfo && (
+              <div className="fixed bottom-[80px] left-4 right-4 z-40">
+                <button
+                  onClick={generateVehicleCheckPDF}
+                  className="w-full bg-gradient-to-r from-red-600 to-orange-600 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2"
+                >
+                  <span className="text-2xl">📄</span>
+                  <span>Scarica PDF</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* BOTTOM NAVIGATION */}
@@ -2011,6 +2637,16 @@ export default function DeliveryPage() {
         >
           <span className="text-2xl">📊</span>
           <span className="text-xs font-semibold">Stats</span>
+        </button>
+
+        <button
+          onClick={() => setView('vehicle-check')}
+          className={`flex flex-col items-center gap-1 px-4 py-2 ${
+            view === 'vehicle-check' ? 'text-indigo-600' : 'text-gray-400'
+          }`}
+        >
+          <span className="text-2xl">🚗</span>
+          <span className="text-xs font-semibold">Check</span>
         </button>
       </nav>
 
@@ -2926,6 +3562,16 @@ export default function DeliveryPage() {
         accept="image/*"
         capture="environment"
         onChange={handlePaymentReceiptCapture}
+        className="hidden"
+      />
+
+      {/* Hidden file input for vehicle check photos */}
+      <input
+        ref={vehicleCheckPhotoInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleVehicleCheckPhotoCapture}
         className="hidden"
       />
 

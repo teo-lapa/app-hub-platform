@@ -64,3 +64,68 @@ export interface OfflineAction {
   timestamp: Date;
   synced: boolean;
 }
+
+// ==================== VEHICLE CHECK TYPES ====================
+
+export interface VehicleCheckItem {
+  id: string;
+  label: string;
+  status: 'unchecked' | 'ok' | 'issue';
+  note?: string;
+  photos: VehicleCheckPhoto[];
+  resolved?: boolean;
+  resolved_date?: string;
+}
+
+export interface VehicleCheckPhoto {
+  id: string;
+  item_id: string;
+  data: string; // base64
+  preview?: string;
+  uploaded: boolean;
+  odoo_attachment_id?: number;
+  timestamp: Date;
+}
+
+export interface VehicleCheckCategory {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  items: VehicleCheckItem[];
+}
+
+export interface VehicleCheckData {
+  check_id: string;
+  check_date: string;
+  driver_id: number;
+  driver_name: string;
+  vehicle_id: number;
+  vehicle_name: string;
+  vehicle_license_plate?: string;
+  categories: VehicleCheckCategory[];
+  summary: {
+    total_items: number;
+    ok_count: number;
+    issue_count: number;
+    unchecked_count: number;
+    open_issues: number;
+    resolved_issues: number;
+  };
+}
+
+export interface VehicleInfo {
+  id: number;
+  name: string;
+  license_plate: string;
+}
+
+export interface OpenIssue {
+  id: string;
+  category: string;
+  item: string;
+  note: string;
+  reported_date: string;
+  photos: VehicleCheckPhoto[];
+  resolved: boolean;
+}
