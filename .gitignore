@@ -122,3 +122,4 @@ deploy-*.log
 test-output/
 screenshots/
 test-*.html
+.env.vercel-preview
