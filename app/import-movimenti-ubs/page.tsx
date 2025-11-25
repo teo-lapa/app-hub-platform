@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Upload, FileText, CheckCircle, XCircle, AlertCircle, Download, TrendingUp, TrendingDown, ArrowLeft, Home } from 'lucide-react'
 import Link from 'next/link'
 import type { BankJournalConfig } from '@/lib/config/bank-journals'
+import { fetchJournalsFromOdoo, findJournalByIban } from '@/lib/config/bank-journals'
 
 interface Transaction {
   date: string
@@ -48,6 +49,27 @@ export default function ImportMovimentiUBS() {
   const [currentFileIndex, setCurrentFileIndex] = useState(0)
   const [selectedJournals, setSelectedJournals] = useState<Record<number, number>>({}) // fileIndex → journalId
   const [availableJournals, setAvailableJournals] = useState<BankJournalConfig[]>([])
+  const [loadingJournals, setLoadingJournals] = useState(true)
+
+  // Carica i journal da Odoo all'apertura della pagina
+  useEffect(() => {
+    async function loadJournals() {
+      setLoadingJournals(true)
+      try {
+        console.log('📥 Caricamento journals da Odoo...')
+        const journals = await fetchJournalsFromOdoo()
+        console.log(`✅ Caricati ${journals.length} journals da Odoo`)
+        setAvailableJournals(journals)
+      } catch (error) {
+        console.error('❌ Errore caricamento journals:', error)
+        // availableJournals sarà [] in caso di errore
+      } finally {
+        setLoadingJournals(false)
+      }
+    }
+
+    loadJournals()
+  }, []) // Esegui solo al mount del componente
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files
@@ -83,17 +105,20 @@ export default function ImportMovimentiUBS() {
         const result = await response.json()
         results.push(result)
 
-        // Salva il journal suggerito per questo file
-        if (result.suggestedJournal) {
-          setSelectedJournals(prev => ({
-            ...prev,
-            [i]: result.suggestedJournal.journalId
-          }))
-        }
+        // Auto-seleziona journal basandosi su IBAN dal file CSV
+        if (result.success && result.accountInfo?.iban) {
+          const iban = result.accountInfo.iban
+          const matchedJournal = findJournalByIban(iban, availableJournals)
 
-        // Salva i journal disponibili (serve solo una volta)
-        if (i === 0 && result.availableJournals) {
-          setAvailableJournals(result.availableJournals)
+          if (matchedJournal) {
+            console.log(`✅ Journal auto-selezionato per IBAN ${iban}: ${matchedJournal.journalName}`)
+            setSelectedJournals(prev => ({
+              ...prev,
+              [i]: matchedJournal.journalId
+            }))
+          } else {
+            console.warn(`⚠️ Nessun journal trovato per IBAN: ${iban}`)
+          }
         }
       } catch (error) {
         console.error(`Errore parsing file ${file.name}:`, error)

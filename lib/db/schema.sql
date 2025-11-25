@@ -162,3 +162,84 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_price_reviews_unique_line ON price_reviews
 CREATE TRIGGER update_price_reviews_updated_at
 BEFORE UPDATE ON price_reviews
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- VOICE RECORDINGS: Registrazioni Vocali + AI
+-- ============================================
+
+-- Table: Voice Recordings (registrazioni vocali per arrivo merce e note)
+CREATE TABLE IF NOT EXISTS voice_recordings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id INTEGER NOT NULL, -- ID utente che ha registrato
+  plaud_file_id TEXT, -- ID file Plaud (se sincronizzato da Plaud Cloud)
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT DEFAULT 'arrivo_merce' CHECK (category IN ('arrivo_merce', 'inventory', 'note', 'order', 'other')),
+
+  -- Audio & Storage
+  audio_url TEXT, -- URL Vercel Blob o presigned URL Plaud
+  audio_format TEXT DEFAULT 'audio/mpeg', -- MIME type
+  duration INTEGER, -- Durata in secondi
+  file_size INTEGER, -- Dimensione file in bytes
+
+  -- AI Processing
+  transcription TEXT, -- Trascrizione completa
+  summary TEXT, -- Riassunto AI generato
+  ai_status TEXT DEFAULT 'pending' CHECK (ai_status IN ('pending', 'transcribing', 'processing', 'completed', 'failed')),
+  ai_error TEXT, -- Messaggio errore se fallito
+
+  -- Extracted Data (specifico per arrivo merce)
+  extracted_products JSONB DEFAULT '[]'::jsonb, -- Array di prodotti estratti: [{name, quantity, weight, unit, odoo_product_id}]
+
+  -- Odoo Integration
+  odoo_picking_id INTEGER, -- ID movimento inventario Odoo (se creato)
+  odoo_partner_id INTEGER, -- ID fornitore (se applicabile)
+
+  -- Metadata
+  tags TEXT[], -- Tags per categorizzazione e ricerca
+  metadata JSONB DEFAULT '{}'::jsonb, -- Dati extra: device_id, language, confidence, etc.
+
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  processed_at TIMESTAMP -- Quando l'AI ha completato il processing
+);
+
+-- Indici per performance
+CREATE INDEX IF NOT EXISTS idx_voice_recordings_user ON voice_recordings(user_id);
+CREATE INDEX IF NOT EXISTS idx_voice_recordings_category ON voice_recordings(category);
+CREATE INDEX IF NOT EXISTS idx_voice_recordings_ai_status ON voice_recordings(ai_status);
+CREATE INDEX IF NOT EXISTS idx_voice_recordings_created ON voice_recordings(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_voice_recordings_plaud_file ON voice_recordings(plaud_file_id) WHERE plaud_file_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_voice_recordings_odoo_picking ON voice_recordings(odoo_picking_id) WHERE odoo_picking_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_voice_recordings_tags ON voice_recordings USING GIN(tags);
+
+-- Indice full-text search su trascrizione (per ricerca testuale veloce)
+CREATE INDEX IF NOT EXISTS idx_voice_recordings_transcription_search
+ON voice_recordings USING GIN(to_tsvector('italian', COALESCE(transcription, '')));
+
+-- Indice GIN per query JSONB su extracted_products
+CREATE INDEX IF NOT EXISTS idx_voice_recordings_extracted_products
+ON voice_recordings USING GIN(extracted_products);
+
+-- Trigger per auto-update updated_at
+CREATE TRIGGER update_voice_recordings_updated_at
+BEFORE UPDATE ON voice_recordings
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- View: Recent Voice Recordings (ultimi 30 giorni)
+CREATE OR REPLACE VIEW recent_voice_recordings AS
+SELECT
+  vr.*,
+  EXTRACT(DAY FROM (NOW() - vr.created_at)) as days_ago,
+  jsonb_array_length(vr.extracted_products) as products_count
+FROM voice_recordings vr
+WHERE vr.created_at >= NOW() - INTERVAL '30 days'
+ORDER BY vr.created_at DESC;
+
+-- View: Pending Processing (registrazioni in attesa di AI processing)
+CREATE OR REPLACE VIEW pending_voice_recordings AS
+SELECT *
+FROM voice_recordings
+WHERE ai_status IN ('pending', 'transcribing', 'processing')
+ORDER BY created_at ASC;

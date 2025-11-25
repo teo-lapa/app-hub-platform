@@ -96,6 +96,104 @@ export interface AppStore {
   filterApps: () => void;
 }
 
+// ============================================
+// VOICE RECORDINGS TYPES
+// ============================================
+
+export type VoiceRecordingCategory = 'arrivo_merce' | 'inventory' | 'note' | 'order' | 'other';
+export type VoiceRecordingAIStatus = 'pending' | 'transcribing' | 'processing' | 'completed' | 'failed';
+
+export interface ExtractedProduct {
+  name: string;
+  quantity?: number;
+  weight?: number;
+  unit?: string; // 'kg', 'g', 'pz', 'lt', etc.
+  odoo_product_id?: number; // ID prodotto Odoo se matchato
+  confidence?: number; // Confidence dell'AI (0-1)
+}
+
+export interface VoiceRecording {
+  id: string;
+  user_id: number;
+  plaud_file_id?: string;
+  name: string;
+  description?: string;
+  category: VoiceRecordingCategory;
+
+  // Audio & Storage
+  audio_url?: string;
+  audio_format: string;
+  duration?: number; // in secondi
+  file_size?: number; // in bytes
+
+  // AI Processing
+  transcription?: string;
+  summary?: string;
+  ai_status: VoiceRecordingAIStatus;
+  ai_error?: string;
+
+  // Extracted Data
+  extracted_products: ExtractedProduct[];
+
+  // Odoo Integration
+  odoo_picking_id?: number;
+  odoo_partner_id?: number;
+
+  // Metadata
+  tags: string[];
+  metadata: Record<string, any>;
+
+  // Timestamps
+  created_at: Date;
+  updated_at: Date;
+  processed_at?: Date;
+}
+
+export interface VoiceRecordingUploadRequest {
+  name: string;
+  description?: string;
+  category: VoiceRecordingCategory;
+  audio_file: File;
+  tags?: string[];
+}
+
+export interface VoiceRecordingResponse {
+  success: boolean;
+  recording?: VoiceRecording;
+  error?: string;
+}
+
+// ============================================
+// PLAUD API TYPES
+// ============================================
+
+export interface PlaudAPIToken {
+  api_token: string;
+  expires_at?: number;
+}
+
+export interface PlaudFile {
+  id: string;
+  name: string;
+  description?: string;
+  start_time: string;
+  end_time: string;
+  duration: number;
+  device_id?: string;
+  audio_url?: string; // presigned URL
+  ai_status?: string;
+  ai_result_list?: any[];
+  ai_data?: any;
+}
+
+export interface PlaudWebhookPayload {
+  event_type: 'audio_transcribe.completed' | string;
+  data: {
+    file_id: string;
+    [key: string]: any;
+  };
+}
+
 export interface UIState {
   theme: 'light' | 'dark' | 'system';
   sidebarOpen: boolean;

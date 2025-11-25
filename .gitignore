@@ -46,6 +46,7 @@ dev.log
 
 # Backup files
 *.backup
+*.backup2
 *.bak
 *~
 *.swp
@@ -89,6 +90,8 @@ dev.log
 /*.ps1
 /*.bat
 /*.sh
+/*.py
+/nul
 
 # Temporary directories
 /data-estratti/
