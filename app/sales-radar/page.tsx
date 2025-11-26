@@ -868,6 +868,77 @@ export default function SalesRadarPage() {
     }
   };
 
+  // Save Appointment to Odoo
+  const saveAppointment = async () => {
+    if (!notePlace || !appointmentDate || !appointmentTime) return;
+
+    setIsSavingNote(true);
+    try {
+      const response = await fetch('/api/sales-radar/create-appointment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          partner_id: notePlace.id || notePlace.leadId,
+          date: appointmentDate,
+          time: appointmentTime,
+          note: appointmentNote
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        // Close modal without popup
+        setShowNoteModal(false);
+        setAppointmentDate('');
+        setAppointmentTime('');
+        setAppointmentNote('');
+        setActivityType('menu');
+        setNotePlace(null);
+      }
+    } catch (error) {
+      console.error('Errore salvataggio appuntamento:', error);
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  // Save Activity/Task to Odoo
+  const saveActivity = async () => {
+    if (!notePlace || !taskTitle.trim()) return;
+
+    setIsSavingNote(true);
+    try {
+      const response = await fetch('/api/sales-radar/create-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          partner_id: notePlace.id || notePlace.leadId,
+          activity_type: 'task',
+          summary: taskTitle,
+          note: taskDescription,
+          date_deadline: taskDueDate || undefined,
+          priority: taskPriority
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        // Close modal without popup
+        setShowNoteModal(false);
+        setTaskTitle('');
+        setTaskDescription('');
+        setTaskDueDate('');
+        setTaskPriority('medium');
+        setActivityType('menu');
+        setNotePlace(null);
+      }
+    } catch (error) {
+      console.error('Errore salvataggio attività:', error);
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
   // Not in Target function (uses notePlace from the same modal)
   const markAsNotTarget = async (reason: 'closed' | 'not_interested' | 'other', note?: string) => {
     if (!notePlace) return;
@@ -2464,19 +2535,11 @@ export default function SalesRadarPage() {
                 </div>
 
                 <button
-                  onClick={() => {
-                    console.log('Appuntamento creato:', {
-                      place: notePlace.name,
-                      date: appointmentDate,
-                      time: appointmentTime,
-                      note: appointmentNote
-                    });
-                    // TODO: Implementare salvataggio
-                  }}
-                  disabled={!appointmentDate || !appointmentTime}
+                  onClick={saveAppointment}
+                  disabled={!appointmentDate || !appointmentTime || isSavingNote}
                   className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Salva Appuntamento
+                  {isSavingNote ? 'Salvataggio...' : 'Salva Appuntamento'}
                 </button>
 
                 <button
@@ -2559,20 +2622,11 @@ export default function SalesRadarPage() {
                 </div>
 
                 <button
-                  onClick={() => {
-                    console.log('Task creato:', {
-                      place: notePlace.name,
-                      title: taskTitle,
-                      description: taskDescription,
-                      dueDate: taskDueDate,
-                      priority: taskPriority
-                    });
-                    // TODO: Implementare salvataggio
-                  }}
-                  disabled={!taskTitle.trim()}
+                  onClick={saveActivity}
+                  disabled={!taskTitle.trim() || isSavingNote}
                   className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Salva Task
+                  {isSavingNote ? 'Salvataggio...' : 'Salva Attività'}
                 </button>
 
                 <button
