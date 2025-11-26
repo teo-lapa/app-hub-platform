@@ -433,16 +433,25 @@ export default function SalesRadarPage() {
 
       setPlaces(enrichedPlaces);
 
-      // Check each place in Odoo (in background)
-      enrichedPlaces.forEach((place, index) => {
-        checkIfExistsInOdoo(place, index);
-      });
+      // Check each place in Odoo and wait for all checks to complete
+      const checkPromises = enrichedPlaces.map((place, index) =>
+        checkIfExistsInOdoo(place, index)
+      );
 
-      // Auto-save all results as leads in CRM
-      const newProspects = enrichedPlaces.filter(p => !p.existsInOdoo);
-      if (newProspects.length > 0) {
-        saveLeadsToOdoo(newProspects);
-      }
+      await Promise.all(checkPromises);
+
+      // Auto-save only NEW prospects (not existing in Odoo) as leads in CRM
+      // Re-read from state to get updated existsInOdoo values
+      setPlaces(currentPlaces => {
+        const newProspects = currentPlaces.filter(p => !p.existsInOdoo && !p.isChecking);
+        if (newProspects.length > 0) {
+          console.log(`💾 Saving ${newProspects.length} new prospects as leads...`);
+          saveLeadsToOdoo(newProspects);
+        } else {
+          console.log('✅ No new prospects to save - all already exist in Odoo');
+        }
+        return currentPlaces;
+      });
 
     } catch (error) {
       console.error('❌ Search error:', error);
@@ -535,12 +544,26 @@ export default function SalesRadarPage() {
 
       setPlaces((prev) => {
         const newPlaces = [...prev];
+
+        // Determine color based on sales data
+        let color: 'green' | 'purple' | undefined = undefined;
+        if (result.exists && result.customer) {
+          // Check if has recent sales (last 3 months)
+          const hasRecentSales = result.sales_data &&
+            result.sales_data.last_order_date &&
+            (new Date().getTime() - new Date(result.sales_data.last_order_date).getTime()) < (90 * 24 * 60 * 60 * 1000); // 90 days
+
+          color = hasRecentSales ? 'green' : 'purple';
+        }
+
         newPlaces[index] = {
           ...newPlaces[index],
           isChecking: false,
           existsInOdoo: result.exists,
           odooCustomer: result.customer,
           salesData: result.sales_data,
+          color: color,
+          type: 'customer' // Mark as customer type
         };
         return newPlaces;
       });
