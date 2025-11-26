@@ -86,10 +86,24 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // De-duplica per code: tieni solo il primo journal per ogni code
+    // Questo gestisce il caso in cui Odoo ha journal duplicati (problema dati)
+    const seenCodes = new Set<string>();
+    const uniqueJournals = journalsWithIban.filter((j: any) => {
+      if (seenCodes.has(j.code)) {
+        console.warn(`⚠️ Journal duplicato saltato: ${j.name} (${j.code})`);
+        return false;
+      }
+      seenCodes.add(j.code);
+      return true;
+    });
+
+    console.log(`✅ ${uniqueJournals.length} journal univoci (rimossi ${journalsWithIban.length - uniqueJournals.length} duplicati)`);
+
     return NextResponse.json({
       success: true,
-      journals: journalsWithIban,
-      count: journalsWithIban.length
+      journals: uniqueJournals,
+      count: uniqueJournals.length
     });
 
   } catch (error: any) {
