@@ -2357,6 +2357,16 @@ export default function DeliveryPage() {
                     {vehicleInfo ? `${vehicleInfo.name} - ${vehicleInfo.license_plate || 'N/A'}` : 'Caricamento...'}
                   </p>
                 </div>
+                {/* PDF Button */}
+                {vehicleCheckData && (
+                  <button
+                    onClick={generateVehicleCheckPDF}
+                    className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-colors"
+                    title="Genera PDF"
+                  >
+                    <span className="text-xl">📄</span>
+                  </button>
+                )}
               </div>
 
               {/* Campo Chilometri */}
@@ -2401,8 +2411,12 @@ export default function DeliveryPage() {
             </div>
 
             {/* Categories Tabs */}
-            <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
-              <div className="flex gap-2 p-2">
+            <div className="bg-white rounded-xl shadow-sm overflow-x-auto scrollbar-hide" style={{
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}>
+              <div className="flex gap-2 p-2 min-w-max">
                 {filteredVehicleCheckCategories.map(cat => {
                   // Calcola quanti item sono completati (ok o issue) vs totali
                   const categoryData = vehicleCheckData?.categories.find(c => c.id === cat.id);
@@ -2414,7 +2428,7 @@ export default function DeliveryPage() {
                     <button
                       key={cat.id}
                       onClick={() => setActiveCheckCategory(cat.id)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-sm whitespace-nowrap transition-all flex-shrink-0 ${
                         activeCheckCategory === cat.id
                           ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -2577,24 +2591,24 @@ export default function DeliveryPage() {
             </div>
 
             {/* Action Buttons - Fixed at bottom */}
-            {vehicleCheckData && vehicleInfo && (
-              <div className="fixed bottom-[80px] left-4 right-4 z-40 flex gap-2">
-                <button
-                  onClick={saveVehicleCheck}
-                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2"
-                >
-                  <span className="text-2xl">💾</span>
-                  <span>Salva</span>
-                </button>
-                <button
-                  onClick={generateVehicleCheckPDF}
-                  className="flex-1 bg-gradient-to-r from-red-600 to-orange-600 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2"
-                >
-                  <span className="text-2xl">📄</span>
-                  <span>PDF</span>
-                </button>
-              </div>
-            )}
+            {vehicleCheckData && vehicleInfo && (() => {
+              const summary = calculateSummary();
+              const isCheckComplete = summary.unchecked === 0;
+              const hasOdometer = vehicleCheckData.odometer && vehicleCheckData.odometer > 0;
+              const canSave = isCheckComplete && hasOdometer;
+
+              return canSave ? (
+                <div className="fixed bottom-[80px] left-4 right-4 z-40">
+                  <button
+                    onClick={saveVehicleCheck}
+                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2"
+                  >
+                    <span className="text-2xl">💾</span>
+                    <span>Salva</span>
+                  </button>
+                </div>
+              ) : null;
+            })()}
           </div>
         )}
       </main>

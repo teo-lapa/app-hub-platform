@@ -702,34 +702,6 @@ export default function SalesRadarPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [staticFilter]);
 
-  // Refresh Google data for static mode
-  const refreshGoogleData = async () => {
-    if (!userLocation) return;
-
-    try {
-      const response = await fetch('/api/sales-radar/update-leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          latitude: userLocation.lat,
-          longitude: userLocation.lng,
-          radius: radius
-        })
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        alert(`✅ Aggiornati ${result.updated} lead da Google`);
-        // Reload static map if in static mode
-        if (mapMode === 'static') {
-          loadStaticMap();
-        }
-      }
-    } catch (error) {
-      console.error('Errore aggiornamento:', error);
-    }
-  };
-
   // Voice recording functions
   const startRecording = async () => {
     try {
@@ -1251,8 +1223,8 @@ export default function SalesRadarPage() {
             )}
           </AnimatePresence>
 
-          {/* Search Buttons - Solo in modalità Live */}
-          <div className="mb-6 space-y-2">
+          {/* Search Button - Solo in modalità Live */}
+          <div className="mb-6">
             {mapMode === 'live' && (
               <button
                 onClick={searchPlaces}
@@ -1270,27 +1242,6 @@ export default function SalesRadarPage() {
                     Cerca Aziende
                   </>
                 )}
-              </button>
-            )}
-
-            {mapMode === 'live' && places.length > 0 && (
-              <button
-                onClick={searchPlaces}
-                disabled={isSearching}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-blue-600 bg-white px-6 py-3 text-base font-semibold text-blue-600 transition-all hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
-              >
-                <RefreshCw className="h-5 w-5" />
-                Refresh
-              </button>
-            )}
-
-            {/* Refresh Google Data - Only in live mode (Google search mode) */}
-            {mapMode === 'live' && (
-              <button
-                onClick={refreshGoogleData}
-                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2"
-              >
-                🔄 Aggiorna Dati Google
               </button>
             )}
 
