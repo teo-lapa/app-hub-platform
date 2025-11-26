@@ -228,6 +228,26 @@ export async function GET(request: NextRequest) {
       wasOnDutyBeforeYesterday.set(entry.contact_id, wasOnDuty);
     }
 
+    // Ottieni l'ultimo entry di ogni dipendente PRIMA della settimana
+    // Serve per calcolare le ore settimanali se erano già in servizio da domenica
+    const lastEntryBeforeWeekResult = await sql`
+      SELECT DISTINCT ON (contact_id)
+        contact_id,
+        entry_type,
+        timestamp
+      FROM ta_time_entries
+      WHERE company_id = ${parseInt(companyId)}
+        AND timestamp < ${weekStart.toISOString()}
+      ORDER BY contact_id, timestamp DESC
+    `;
+
+    // Mappa: contact_id -> true se era in servizio prima della settimana
+    const wasOnDutyBeforeWeek = new Map<number, boolean>();
+    for (const entry of lastEntryBeforeWeekResult.rows) {
+      const wasOnDuty = entry.entry_type === 'clock_in' || entry.entry_type === 'break_end' || entry.entry_type === 'break_start';
+      wasOnDutyBeforeWeek.set(entry.contact_id, wasOnDuty);
+    }
+
     // Ottieni tutte le timbrature del giorno per l'azienda
     const entriesResult = await sql`
       SELECT
@@ -279,6 +299,26 @@ export async function GET(request: NextRequest) {
         AND timestamp <= ${dayEnd.toISOString()}
       ORDER BY timestamp ASC
     `;
+
+    // Ottieni l'ultimo entry di ogni dipendente PRIMA del mese
+    // Serve per calcolare le ore mensili se erano già in servizio da mesi precedenti
+    const lastEntryBeforeMonthResult = await sql`
+      SELECT DISTINCT ON (contact_id)
+        contact_id,
+        entry_type,
+        timestamp
+      FROM ta_time_entries
+      WHERE company_id = ${parseInt(companyId)}
+        AND timestamp < ${monthStartDate.toISOString()}
+      ORDER BY contact_id, timestamp DESC
+    `;
+
+    // Mappa: contact_id -> true se era in servizio prima del mese
+    const wasOnDutyBeforeMonth = new Map<number, boolean>();
+    for (const entry of lastEntryBeforeMonthResult.rows) {
+      const wasOnDuty = entry.entry_type === 'clock_in' || entry.entry_type === 'break_end' || entry.entry_type === 'break_start';
+      wasOnDutyBeforeMonth.set(entry.contact_id, wasOnDuty);
+    }
 
     // Raggruppa timbrature per dipendente - oggi
     const entriesByContact = new Map<number, typeof entriesResult.rows>();
@@ -344,6 +384,10 @@ export async function GET(request: NextRequest) {
       const wasOnDutyBefore = wasOnDutyBeforeToday.get(contactId) || false;
       // Controlla se era già in servizio prima di ieri (per calcolo ore ieri)
       const wasOnDutyBeforeYest = wasOnDutyBeforeYesterday.get(contactId) || false;
+      // Controlla se era già in servizio prima della settimana (per calcolo ore settimana)
+      const wasOnDutyBeforeWk = wasOnDutyBeforeWeek.get(contactId) || false;
+      // Controlla se era già in servizio prima del mese (per calcolo ore mese)
+      const wasOnDutyBeforeMo = wasOnDutyBeforeMonth.get(contactId) || false;
 
       // Calcola stato attuale
       const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
@@ -361,8 +405,10 @@ export async function GET(request: NextRequest) {
       // Per ieri: passa periodEnd (fine giornata ieri) per calcolare ore fino a mezzanotte
       // se clock_in ieri senza clock_out, conta le ore fino a fine giornata ieri
       const hoursYesterday = calculateHoursFromEntries(yesterdayEntries, false, wasOnDutyBeforeYest, yesterdayStart, yesterdayEnd);
-      const hoursWeek = calculateHoursFromEntries(weekEntries, true); // week include tutto da lunedì
-      const hoursMonth = calculateHoursFromEntries(monthEntries, true); // month include tutto dal 1°
+      // Per settimana: se era in servizio prima di lunedì, inizia il conteggio da lunedì 00:00
+      const hoursWeek = calculateHoursFromEntries(weekEntries, true, wasOnDutyBeforeWk, weekStart);
+      // Per mese: se era in servizio prima del 1° del mese, inizia il conteggio dal 1° 00:00
+      const hoursMonth = calculateHoursFromEntries(monthEntries, true, wasOnDutyBeforeMo, monthStartDate);
 
       employeeStatuses.push({
         contact_id: contactId,
