@@ -531,12 +531,18 @@ export async function GET(request: NextRequest) {
             )
           );
 
-          let color: 'green' | 'orange' | 'grey' = 'orange'; // Default to lead color
+          // IMPORTANT: Contacts (res.partner) are NEVER orange (orange is only for leads)
+          // - Green: Active customer with recent orders
+          // - Purple: Customer without recent orders (will be rendered as purple in frontend)
+          // - Grey: Marked as "not in target"
+          let color: 'green' | 'orange' | 'grey' = 'green'; // Default to green for contacts
 
           if (isNotTarget) {
             color = 'grey';
-          } else if (hasOrders) {
-            color = 'green';
+          } else if (!hasOrders) {
+            // Contacts without orders should appear as purple (but we store as 'green'
+            // and let frontend decide based on sales_data presence)
+            color = 'green'; // Frontend will show purple if no sales_data
           }
 
           // Apply filter
