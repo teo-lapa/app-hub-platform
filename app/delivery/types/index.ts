@@ -80,6 +80,7 @@ export interface VehicleCheckItem {
 export interface VehicleCheckPhoto {
   id: string;
   item_id: string;
+  category_id: string;
   data: string; // base64
   preview?: string;
   uploaded: boolean;

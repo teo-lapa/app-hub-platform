@@ -1634,6 +1634,7 @@ export default function DeliveryPage() {
       const newPhoto: VehicleCheckPhoto = {
         id: `photo_${Date.now()}`,
         item_id: currentPhotoItem.itemId,
+        category_id: currentPhotoItem.categoryId,
         data: compressed,
         preview: compressed,
         uploaded: false,
@@ -2337,40 +2338,6 @@ export default function DeliveryPage() {
                     })}
                 </div>
 
-                {/* Footer con summary */}
-                <div className="fixed bottom-[70px] left-0 right-0 bg-white border-t p-4 shadow-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex gap-4 text-sm">
-                      <div className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                        <span className="font-semibold">{calculateSummary().ok}</span>
-                        <span className="text-gray-600">OK</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                        <span className="font-semibold">{calculateSummary().issues}</span>
-                        <span className="text-gray-600">Problemi</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded-full bg-gray-300"></span>
-                        <span className="font-semibold">{calculateSummary().unchecked}</span>
-                        <span className="text-gray-600">Da fare</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={completeVehicleCheck}
-                    disabled={calculateSummary().unchecked > 0 || loading}
-                    className={`w-full py-4 rounded-lg font-bold text-white transition-all ${
-                      calculateSummary().unchecked > 0 || loading
-                        ? 'bg-gray-300 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 shadow-lg'
-                    }`}
-                  >
-                    {loading ? '⏳ Salvataggio...' : '✅ COMPLETA CONTROLLO'}
-                  </button>
-                </div>
               </>
             )}
 
