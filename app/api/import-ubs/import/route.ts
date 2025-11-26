@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
         const lineData = {
           journal_id: journalId,
-          date: transaction.date,
+          date: transaction.date && transaction.date.trim() !== '' ? transaction.date : false,
           payment_ref: paymentRef,
           amount: amountValue,
           unique_import_id: uniqueImportId,
