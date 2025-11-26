@@ -1737,15 +1737,19 @@ export default function DeliveryPage() {
       doc.text(`Problemi Risolti: ${vehicleCheckData.summary.resolved_issues}`, 140, 78);
 
       // Filtra solo problemi aperti (status='issue' && !resolved)
-      const openIssuesList = vehicleCheckData.categories.flatMap(cat =>
-        cat.items
-          .filter(item => item.status === 'issue' && !item.resolved)
-          .map(item => [
-            cat.name,
-            item.label,
-            item.note || '-'
-          ])
-      );
+      // Usa SOLO le categorie VISIBILI, non tutte (esclude FRIGO per veicoli non refrigerati)
+      const visibleCategoryIds = filteredVehicleCheckCategories.map(c => c.id);
+      const openIssuesList = vehicleCheckData.categories
+        .filter(cat => visibleCategoryIds.includes(cat.id)) // Solo categorie visibili!
+        .flatMap(cat =>
+          cat.items
+            .filter(item => item.status === 'issue' && !item.resolved)
+            .map(item => [
+              cat.name,
+              item.label,
+              item.note || '-'
+            ])
+        );
 
       if (openIssuesList.length > 0) {
         doc.setFontSize(14);
