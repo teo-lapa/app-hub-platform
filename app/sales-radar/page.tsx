@@ -968,22 +968,10 @@ export default function SalesRadarPage() {
       const result = await response.json();
 
       if (result.success) {
-        alert(`✅ Lead convertito con successo!\n\nIl contatto è stato creato in Odoo.`);
+        alert(`✅ Lead convertito con successo!\n\nIl contatto è stato creato in Odoo.\n\nRicarica i dati per vedere il nuovo contatto.`);
 
-        // Aggiorna il marker da arancione a verde
-        setPlaces(prev => prev.map(p => {
-          if ((p.leadId || p.id) === leadId) {
-            return {
-              ...p,
-              existsInOdoo: true,
-              color: 'green',
-              isLead: false,
-              odooCustomer: result.partner,
-              id: result.partner_id
-            };
-          }
-          return p;
-        }));
+        // Rimuovi il lead dalla mappa (è stato convertito e archiviato)
+        setPlaces(prev => prev.filter(p => (p.leadId || p.id) !== leadId));
 
         // Chiudi il popup
         setSelectedPlace(null);
