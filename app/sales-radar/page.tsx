@@ -684,14 +684,23 @@ export default function SalesRadarPage() {
     }
   };
 
-  // Auto-load Odoo data when in static mode and GPS is available
+  // Auto-load Odoo data when switching to static mode or when GPS becomes available
   useEffect(() => {
-    if (mapMode === 'static' && userLocation && odooPlaces.length === 0 && !loadingStatic) {
-      console.log('📍 Auto-loading Odoo data...');
+    if (mapMode === 'static' && userLocation && !loadingStatic) {
+      console.log('📍 Loading Odoo data with filter:', staticFilter);
       loadStaticMap();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapMode, userLocation]);
+
+  // Reload map when staticFilter changes (but only in static mode)
+  useEffect(() => {
+    if (mapMode === 'static' && userLocation && !loadingStatic) {
+      console.log('🔄 Filter changed to:', staticFilter, '- reloading map...');
+      loadStaticMap();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staticFilter]);
 
   // Refresh Google data for static mode
   const refreshGoogleData = async () => {
@@ -1095,7 +1104,7 @@ export default function SalesRadarPage() {
                   setMapMode('static');
                   setPlaceType(''); // Reset filtro tipo attività in modalità Odoo
                   setKeyword(''); // Reset anche keyword per sicurezza
-                  loadStaticMap(); // Sempre refresh quando clicchi
+                  // La mappa si ricarica automaticamente tramite useEffect quando mapMode cambia
                 }}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   mapMode === 'static'
@@ -1226,8 +1235,7 @@ export default function SalesRadarPage() {
                       value={staticFilter}
                       onChange={(e) => {
                         setStaticFilter(e.target.value as any);
-                        // Ricarica automaticamente quando cambia il filtro
-                        setTimeout(() => loadStaticMap(), 100);
+                        // La mappa si ricarica automaticamente tramite useEffect
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     >

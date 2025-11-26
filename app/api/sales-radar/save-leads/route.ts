@@ -15,6 +15,7 @@ interface GooglePlace {
   latitude: number;
   longitude: number;
   google_maps_url?: string;
+  price_level?: number; // Google price level (0-4)
 }
 
 interface SaveLeadsBody {
@@ -31,6 +32,75 @@ interface SaveResult {
   color?: 'orange' | 'grey' | 'green';
   tags?: string[];
   error?: string;
+}
+
+/**
+ * Stima dimensione del locale e potenziale fatturato mensile
+ * basato su dati Google Places (identica alla funzione frontend)
+ */
+function estimateBusinessPotential(place: {
+  user_ratings_total?: number;
+  price_level?: number;
+  types?: string[];
+  rating?: number;
+}): { size: 'piccolo' | 'medio' | 'grande'; potentialMonthly: number; categories: string[] } {
+  const reviews = place.user_ratings_total || 0;
+  const priceLevel = place.price_level ?? 2; // Default medio
+  const types = place.types || [];
+
+  // Determina dimensione basata sul numero di recensioni
+  let size: 'piccolo' | 'medio' | 'grande' = 'piccolo';
+  if (reviews >= 500) {
+    size = 'grande';
+  } else if (reviews >= 100) {
+    size = 'medio';
+  }
+
+  // Base mensile per dimensione (in CHF)
+  const baseBySize = {
+    piccolo: 800,   // 800 CHF/mese
+    medio: 2500,    // 2500 CHF/mese
+    grande: 6000,   // 6000 CHF/mese
+  };
+
+  // Moltiplicatore per tipo di locale
+  let typeMultiplier = 1.0;
+  const categories: string[] = [];
+
+  // Categorie LAPA: Frigo, Secco, Frozen, Non-Food
+  if (types.includes('restaurant') || types.includes('meal_delivery')) {
+    typeMultiplier = 1.3;
+    categories.push('Frigo', 'Secco', 'Frozen');
+  }
+  if (types.includes('hotel') || types.includes('lodging')) {
+    typeMultiplier = 1.5;
+    categories.push('Frigo', 'Secco', 'Frozen', 'Non-Food');
+  }
+  if (types.includes('cafe') || types.includes('bakery')) {
+    typeMultiplier = 0.8;
+    categories.push('Frigo', 'Secco');
+  }
+  if (types.includes('bar')) {
+    typeMultiplier = 0.6;
+    categories.push('Frigo', 'Secco');
+  }
+  if (types.includes('supermarket') || types.includes('grocery_or_supermarket')) {
+    typeMultiplier = 2.0;
+    categories.push('Frigo', 'Secco', 'Frozen', 'Non-Food');
+  }
+
+  // Moltiplicatore per fascia di prezzo (locale più costoso = più volume)
+  const priceMultiplier = 0.7 + (priceLevel * 0.2); // 0.7 a 1.5
+
+  // Calcola potenziale mensile
+  const potentialMonthly = Math.round(baseBySize[size] * typeMultiplier * priceMultiplier);
+
+  // Default categories se vuoto
+  if (categories.length === 0) {
+    categories.push('Frigo', 'Secco');
+  }
+
+  return { size, potentialMonthly, categories: Array.from(new Set(categories)) };
 }
 
 /**
@@ -245,7 +315,15 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Build description with all Google data
+        // Calculate business potential
+        const potential = estimateBusinessPotential({
+          user_ratings_total: place.user_ratings_total,
+          price_level: place.price_level,
+          types: place.types,
+          rating: place.rating
+        });
+
+        // Build description with all Google data + potential
         const descriptionParts: string[] = [
           '=== DATI GOOGLE PLACES ===',
           '',
@@ -279,6 +357,14 @@ export async function POST(request: NextRequest) {
         if (place.google_maps_url) {
           descriptionParts.push(`Google Maps: ${place.google_maps_url}`);
         }
+
+        // Add potential estimation
+        descriptionParts.push('');
+        descriptionParts.push('=== POTENZIALE STIMATO ===');
+        descriptionParts.push('');
+        descriptionParts.push(`Dimensione: ${potential.size.toUpperCase()}`);
+        descriptionParts.push(`Potenziale mensile: ${potential.potentialMonthly.toLocaleString('it-CH')} CHF`);
+        descriptionParts.push(`Categorie prodotti: ${potential.categories.join(', ')}`);
 
         descriptionParts.push('');
         descriptionParts.push(`Importato da Sales Radar il ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}`);
