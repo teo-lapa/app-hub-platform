@@ -127,20 +127,57 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ [VEHICLE-CHECK] Open issues:', openIssues.length);
 
+    // Import vehicle check categories to initialize check data
+    const { VEHICLE_CHECK_CATEGORIES } = await import('@/app/delivery/vehicle-check-config');
+
+    // Initialize check data structure
+    const checkData = {
+      check_id: `check_${Date.now()}`,
+      check_date: new Date().toISOString(),
+      driver_id: employeeId,
+      driver_name: driverName,
+      vehicle_id: vehicle.id,
+      vehicle_name: vehicle.name,
+      vehicle_license_plate: vehicle.license_plate,
+      categories: VEHICLE_CHECK_CATEGORIES.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        icon: cat.icon,
+        color: cat.color,
+        items: cat.items.map(item => ({
+          id: item.id,
+          label: item.label,
+          status: 'unchecked' as const,
+          note: '',
+          photos: [],
+          resolved: false
+        }))
+      })),
+      summary: {
+        total_items: VEHICLE_CHECK_CATEGORIES.reduce((sum, cat) => sum + cat.items.length, 0),
+        ok_count: 0,
+        issue_count: 0,
+        unchecked_count: VEHICLE_CHECK_CATEGORIES.reduce((sum, cat) => sum + cat.items.length, 0),
+        open_issues: openIssues.length,
+        resolved_issues: 0
+      }
+    };
+
     return NextResponse.json({
       success: true,
-      vehicle: {
+      vehicle_info: {
         id: vehicle.id,
         name: vehicle.name,
         license_plate: vehicle.license_plate
       },
-      driver: {
+      driver_info: {
         id: employeeId,
         name: driverName
       },
+      check_data: checkData,
       last_check_date: lastCheckDate,
       open_issues: openIssues,
-      needs_check: lastCheckDate ?
+      needs_weekly_check: lastCheckDate ?
         (Date.now() - new Date(lastCheckDate).getTime()) > (7 * 24 * 60 * 60 * 1000) :
         true
     });

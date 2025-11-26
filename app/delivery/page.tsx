@@ -501,8 +501,8 @@ export default function DeliveryPage() {
     return { total, ok, issues, unchecked };
   }
 
-  async function completeVehicleCheck() {
-    if (!vehicleCheckData) return;
+  async function saveVehicleCheck() {
+    if (!vehicleCheckData || !vehicleInfo) return;
 
     const summary = calculateSummary();
 
@@ -513,27 +513,40 @@ export default function DeliveryPage() {
 
     try {
       setLoading(true);
-      const res = await fetch('/api/vehicle-check/complete', {
+
+      // Upload photos first
+      const photosToUpload = checkPhotos.map(photo => ({
+        photo_key: `${photo.category_id}_${photo.item_id}`,
+        data: photo.data,
+        item_id: photo.item_id,
+        category_id: photo.category_id
+      }));
+
+      const res = await fetch('/api/vehicle-check/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          check_data: vehicleCheckData
+          vehicle_id: vehicleInfo.id,
+          check_data: vehicleCheckData,
+          photos: photosToUpload
         })
       });
 
       const data = await res.json();
 
       if (data.success) {
-        showToast('Controllo veicolo completato!', 'success');
+        showToast('Controllo veicolo salvato!', 'success');
         setView('list');
-        // Ricarica i dati per aggiornare il reminder
+        // Reset check data
+        setVehicleCheckData(null);
+        setCheckPhotos([]);
         await loadVehicleCheckInfo();
       } else {
-        showToast(data.error || 'Errore completamento controllo', 'error');
+        showToast(data.error || 'Errore salvataggio controllo', 'error');
       }
     } catch (error) {
-      console.error('Errore completeVehicleCheck:', error);
-      showToast('Errore completamento controllo', 'error');
+      console.error('Errore saveVehicleCheck:', error);
+      showToast('Errore salvataggio controllo', 'error');
     } finally {
       setLoading(false);
     }
@@ -2519,7 +2532,7 @@ export default function DeliveryPage() {
             </div>
 
             {/* Check Items */}
-            <div className="space-y-3">
+            <div className="space-y-3 pb-32">
               {VEHICLE_CHECK_CATEGORIES
                 .find(cat => cat.id === activeCheckCategory)
                 ?.items.map(item => {
@@ -2570,28 +2583,66 @@ export default function DeliveryPage() {
                       )}
 
                       {/* Actions */}
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 mb-2">
+                        <button
+                          onClick={() => markItemStatus(activeCheckCategory, item.id, 'ok')}
+                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                            checkItem?.status === 'ok'
+                              ? 'bg-green-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-green-100'
+                          }`}
+                        >
+                          ✅ OK
+                        </button>
+                        <button
+                          onClick={() => markItemStatus(activeCheckCategory, item.id, 'issue')}
+                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                            checkItem?.status === 'issue'
+                              ? 'bg-red-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-red-100'
+                          }`}
+                        >
+                          ⚠️ Problema
+                        </button>
                         <button
                           onClick={() => capturePhoto(activeCheckCategory, item.id)}
-                          className="flex-1 bg-blue-500 text-white py-2 px-3 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors"
+                          className="bg-blue-500 text-white py-2 px-3 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors"
                         >
-                          📷 Foto
+                          📷
                         </button>
                       </div>
+
+                      {/* Note input - shown when status is 'issue' */}
+                      {checkItem?.status === 'issue' && (
+                        <textarea
+                          value={checkItem.note || ''}
+                          onChange={(e) => updateItemNote(activeCheckCategory, item.id, e.target.value)}
+                          placeholder="Descrivi il problema..."
+                          className="w-full p-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500"
+                          rows={2}
+                        />
+                      )}
                     </div>
                   );
                 })}
             </div>
 
-            {/* Download PDF Button - Fixed at bottom */}
+            {/* Action Buttons - Fixed at bottom */}
             {vehicleCheckData && vehicleInfo && (
-              <div className="fixed bottom-[80px] left-4 right-4 z-40">
+              <div className="fixed bottom-[80px] left-4 right-4 z-40 flex gap-2">
+                <button
+                  onClick={saveVehicleCheck}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2"
+                >
+                  <span className="text-2xl">💾</span>
+                  <span>Salva</span>
+                </button>
                 <button
                   onClick={generateVehicleCheckPDF}
-                  className="w-full bg-gradient-to-r from-red-600 to-orange-600 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2"
+                  className="flex-1 bg-gradient-to-r from-red-600 to-orange-600 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2"
                 >
                   <span className="text-2xl">📄</span>
-                  <span>Scarica PDF</span>
+                  <span>PDF</span>
                 </button>
               </div>
             )}
