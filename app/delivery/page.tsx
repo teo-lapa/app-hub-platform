@@ -489,7 +489,13 @@ export default function DeliveryPage() {
     let issues = 0;
     let unchecked = 0;
 
+    // Conta solo le categorie VISIBILI (filtered), non tutte!
+    const visibleCategoryIds = filteredVehicleCheckCategories.map(cat => cat.id);
+
     vehicleCheckData.categories.forEach(cat => {
+      // Salta le categorie nascoste (es: FRIGO per veicoli non refrigerati)
+      if (!visibleCategoryIds.includes(cat.id)) return;
+
       cat.items.forEach(item => {
         total++;
         if (item.status === 'ok') ok++;
