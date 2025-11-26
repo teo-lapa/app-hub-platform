@@ -125,6 +125,7 @@ interface EnrichedPlace extends PlaceData {
   locationType?: 'company' | 'delivery'; // 'company' = sede legale, 'delivery' = indirizzo consegna
   parentId?: number; // ID azienda madre (per indirizzi di consegna)
   parentName?: string; // Nome azienda madre (per indirizzi di consegna)
+  description?: string; // Lead description
 }
 
 const containerStyle = {
@@ -157,6 +158,38 @@ const RADIUS_OPTIONS = [
   { value: 10000, label: '10 km' },
   { value: 25000, label: '25 km' },
 ];
+
+/**
+ * Estrae il potenziale stimato dalla descrizione del lead Odoo
+ */
+function extractPotentialFromDescription(description?: string): { size: 'piccolo' | 'medio' | 'grande'; potentialMonthly: number; categories: string[] } | null {
+  if (!description) return null;
+
+  try {
+    // Cerca la sezione "POTENZIALE STIMATO"
+    const potentialMatch = description.match(/=== POTENZIALE STIMATO ===([\s\S]*?)(?=\n\n|$)/);
+    if (!potentialMatch) return null;
+
+    const potentialSection = potentialMatch[1];
+
+    // Estrai dimensione
+    const sizeMatch = potentialSection.match(/Dimensione:\s*(PICCOLO|MEDIO|GRANDE)/i);
+    const size = sizeMatch ? sizeMatch[1].toLowerCase() as 'piccolo' | 'medio' | 'grande' : 'piccolo';
+
+    // Estrai potenziale mensile
+    const potentialMatch2 = potentialSection.match(/Potenziale mensile:\s*([\d']+)/);
+    const potentialMonthly = potentialMatch2 ? parseInt(potentialMatch2[1].replace(/'/g, ''), 10) : 0;
+
+    // Estrai categorie
+    const categoriesMatch = potentialSection.match(/Categorie prodotti:\s*(.+)/);
+    const categories = categoriesMatch ? categoriesMatch[1].split(',').map(c => c.trim()) : [];
+
+    return { size, potentialMonthly, categories };
+  } catch (error) {
+    console.warn('Errore estrazione potenziale:', error);
+    return null;
+  }
+}
 
 /**
  * Stima dimensione del locale e potenziale fatturato mensile
@@ -297,6 +330,9 @@ export default function SalesRadarPage() {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+  // Convert lead to contact state
+  const [isConvertingLead, setIsConvertingLead] = useState(false);
+
   // Stats
   const existingCustomers = places.filter(p => p.existsInOdoo).length;
   const newProspects = places.filter(p => !p.existsInOdoo && !p.isChecking).length;
@@ -435,6 +471,7 @@ export default function SalesRadarPage() {
             rating: p.rating,
             user_ratings_total: p.user_ratings_total,
             types: p.types,
+            price_level: p.price_level,
             latitude: p.geometry?.location?.lat || p.location?.lat || p.lat,
             longitude: p.geometry?.location?.lng || p.location?.lng || p.lng,
             google_maps_url: p.google_maps_url || p.url || '',
@@ -875,6 +912,65 @@ export default function SalesRadarPage() {
     } catch (error) {
       console.error('Errore riattivazione:', error);
       alert('Errore durante la riattivazione');
+    }
+  };
+
+  // Convert lead to contact
+  const convertLeadToContact = async (place: any) => {
+    if (!place || !place.leadId && !place.id) {
+      alert('Lead non valido');
+      return;
+    }
+
+    const leadId = place.leadId || place.id;
+    const confirmConvert = confirm(`Vuoi convertire il lead "${place.name}" in un contatto Odoo?\n\nIl lead verrà archiviato e sarà creato un nuovo contatto.`);
+
+    if (!confirmConvert) return;
+
+    setIsConvertingLead(true);
+
+    try {
+      const response = await fetch('/api/sales-radar/convert-lead-to-contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: leadId })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(`✅ Lead convertito con successo!\n\nIl contatto è stato creato in Odoo.`);
+
+        // Aggiorna il marker da arancione a verde
+        setPlaces(prev => prev.map(p => {
+          if ((p.leadId || p.id) === leadId) {
+            return {
+              ...p,
+              existsInOdoo: true,
+              color: 'green',
+              isLead: false,
+              odooCustomer: result.partner,
+              id: result.partner_id
+            };
+          }
+          return p;
+        }));
+
+        // Chiudi il popup
+        setSelectedPlace(null);
+
+        // Apri Odoo (opzionale)
+        if (result.odoo_url) {
+          window.open(result.odoo_url, '_blank');
+        }
+      } else {
+        alert('❌ Errore conversione: ' + (result.error || 'Errore sconosciuto'));
+      }
+    } catch (error) {
+      console.error('Errore conversione lead:', error);
+      alert('❌ Errore durante la conversione. Riprova più tardi.');
+    } finally {
+      setIsConvertingLead(false);
     }
   };
 
@@ -1655,28 +1751,94 @@ export default function SalesRadarPage() {
                       </a>
                     </div>
                   ) : (selectedPlace.isLead || selectedPlace.type === 'lead') && selectedPlace.color !== 'grey' && !selectedPlace.notInTarget ? (
-                    <div className="mb-3 rounded-lg bg-orange-50 p-3">
-                      <div className="mb-2 flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
-                        <span className="text-sm font-semibold text-orange-900">
-                          Lead CRM
-                        </span>
-                      </div>
-                      <p className="mb-2 text-xs sm:text-sm text-orange-800">
-                        Presente nel CRM come lead da convertire
-                      </p>
-                      {(selectedPlace.id || selectedPlace.leadId) && (
-                        <a
-                          href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.leadId || selectedPlace.id}&model=${selectedPlace.type === 'customer' ? 'res.partner' : 'crm.lead'}&view_type=form`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-orange-700 active:scale-95"
+                    <>
+                      {/* Potenziale Stimato per Lead */}
+                      {(() => {
+                        const potential = extractPotentialFromDescription(selectedPlace.description);
+                        if (potential) {
+                          return (
+                            <div className="mb-3 rounded-lg bg-purple-50 p-3 border border-purple-200">
+                              <div className="mb-2 flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4 text-purple-600" />
+                                <span className="text-sm font-semibold text-purple-900">
+                                  Potenziale Stimato
+                                </span>
+                              </div>
+                              <div className="space-y-1 text-xs sm:text-sm text-purple-800">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">Dimensione:</span>
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                    potential.size === 'grande' ? 'bg-purple-200 text-purple-800' :
+                                    potential.size === 'medio' ? 'bg-purple-100 text-purple-700' :
+                                    'bg-gray-100 text-gray-600'
+                                  }`}>
+                                    {potential.size.charAt(0).toUpperCase() + potential.size.slice(1)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">Potenziale/mese:</span>
+                                  <span className="text-purple-900 font-semibold">
+                                    {potential.potentialMonthly.toLocaleString('it-CH')} CHF
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {potential.categories.map((cat, i) => (
+                                    <span key={i} className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">
+                                      {cat}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      <div className="mb-3 rounded-lg bg-orange-50 p-3 border border-orange-200">
+                        <div className="mb-2 flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+                          <span className="text-sm font-semibold text-orange-900">
+                            Lead CRM
+                          </span>
+                        </div>
+                        <p className="mb-3 text-xs sm:text-sm text-orange-800">
+                          Presente nel CRM come lead da convertire
+                        </p>
+
+                        {/* Pulsante Crea Contatto */}
+                        <button
+                          onClick={() => convertLeadToContact(selectedPlace)}
+                          disabled={isConvertingLead}
+                          className="w-full mb-2 flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-green-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <ExternalLink className="h-4 w-4" />
-                          Apri in Odoo
-                        </a>
-                      )}
-                    </div>
+                          {isConvertingLead ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Conversione...
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="h-4 w-4" />
+                              Crea Contatto
+                            </>
+                          )}
+                        </button>
+
+                        {/* Pulsante Apri in Odoo */}
+                        {(selectedPlace.id || selectedPlace.leadId) && (
+                          <a
+                            href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${selectedPlace.leadId || selectedPlace.id}&model=${selectedPlace.type === 'customer' ? 'res.partner' : 'crm.lead'}&view_type=form`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-orange-700 active:scale-95"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Apri in Odoo
+                          </a>
+                        )}
+                      </div>
+                    </>
                   ) : (selectedPlace.notInTarget || selectedPlace.color === 'grey') ? (
                     <div className="mb-3 rounded-lg bg-gray-100 p-3">
                       <div className="mb-2 flex items-center gap-2">
@@ -1715,24 +1877,22 @@ export default function SalesRadarPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="mb-3 rounded-lg bg-red-50 p-3">
+                    <div className="mb-3 rounded-lg bg-red-50 p-3 border border-red-200">
                       <div className="mb-2 flex items-center gap-2">
                         <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
                         <span className="text-sm font-semibold text-red-900">
                           Nuovo Prospect
                         </span>
                       </div>
-                      <p className="mb-2 text-xs sm:text-sm text-red-800">
-                        Non presente in Odoo
+                      <p className="mb-3 text-xs sm:text-sm text-red-800">
+                        Salvato automaticamente come lead nel CRM. Convertilo in contatto quando sei pronto!
                       </p>
 
-                      <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-red-700 active:scale-95"
-                      >
-                        <UserPlus className="h-4 w-4" />
-                        Crea Contatto
-                      </button>
+                      <div className="bg-red-100 border border-red-300 rounded-lg p-2 mb-3">
+                        <p className="text-xs text-red-800 font-medium">
+                          💡 Per creare il contatto: apri il lead nel CRM e usa il pulsante "Crea Contatto"
+                        </p>
+                      </div>
                     </div>
                   )}
 
