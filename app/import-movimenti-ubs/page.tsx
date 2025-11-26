@@ -50,6 +50,14 @@ export default function ImportMovimentiUBS() {
   const [selectedJournals, setSelectedJournals] = useState<Record<number, number>>({}) // fileIndex → journalId
   const [availableJournals, setAvailableJournals] = useState<BankJournalConfig[]>([])
   const [loadingJournals, setLoadingJournals] = useState(true)
+  const [showSummaryModal, setShowSummaryModal] = useState(false)
+  const [summaryData, setSummaryData] = useState<{
+    totalImported: number
+    totalSkipped: number
+    totalErrors: number
+    totalTransactions: number
+    errorDetails: string[]
+  } | null>(null)
 
   // Carica i journal da Odoo all'apertura della pagina
   useEffect(() => {
@@ -195,50 +203,15 @@ export default function ImportMovimentiUBS() {
       }
     }
 
-    // Mostra riepilogo finale
-    let message = ''
-
-    if (totalErrors === 0 && totalSkipped === 0) {
-      message = `🎉 IMPORT COMPLETATO CON SUCCESSO!\n\n`
-      message += `✅ ${totalImported} movimenti importati correttamente\n`
-      message += `📊 Totale transazioni: ${totalTransactions}\n\n`
-      message += `Tutti i movimenti sono stati registrati in Odoo!`
-    } else if (totalImported > 0 && totalErrors === 0) {
-      message = `🎉 IMPORT COMPLETATO!\n\n`
-      message += `✅ Movimenti nuovi importati: ${totalImported}\n`
-      message += `⏭️  Duplicati già presenti: ${totalSkipped}\n`
-      message += `📊 Totale transazioni processate: ${totalTransactions}\n\n`
-      message += `${totalImported} nuovi movimenti sono stati registrati in Odoo.\n`
-      message += `${totalSkipped} movimenti erano già stati importati in precedenza.`
-    } else if (totalImported === 0 && totalSkipped > 0 && totalErrors === 0) {
-      message = `ℹ️ NESSUN NUOVO MOVIMENTO\n\n`
-      message += `⏭️  Tutti i ${totalSkipped} movimenti erano già stati importati in precedenza.\n\n`
-      message += `Non è stato necessario importare nulla - tutto già presente in Odoo!`
-    } else {
-      message = `⚠️ IMPORT COMPLETATO CON ERRORI\n\n`
-      message += `✅ Importati: ${totalImported}\n`
-      if (totalSkipped > 0) {
-        message += `⏭️  Duplicati: ${totalSkipped}\n`
-      }
-      message += `❌ Errori: ${totalErrors}\n`
-      message += `📊 Totale: ${totalTransactions}\n\n`
-
-      if (allErrorDetails.length > 0) {
-        message += `Primi errori:\n`
-        const errorsToShow = allErrorDetails.slice(0, 3)
-        errorsToShow.forEach((error, idx) => {
-          message += `${idx + 1}. ${error.substring(0, 100)}\n`
-        })
-
-        if (allErrorDetails.length > 3) {
-          message += `\n... e altri ${allErrorDetails.length - 3} errori.\n`
-        }
-      }
-
-      message += `\n⚠️ Controlla la console (F12) per i dettagli!`
-    }
-
-    alert(message)
+    // Mostra riepilogo finale con modal
+    setSummaryData({
+      totalImported,
+      totalSkipped,
+      totalErrors,
+      totalTransactions,
+      errorDetails: allErrorDetails
+    })
+    setShowSummaryModal(true)
 
     setFiles([])
     setParseResults([])
@@ -602,6 +575,160 @@ export default function ImportMovimentiUBS() {
           </div>
         )}
       </div>
+
+      {/* Summary Modal - BELLISSIMO POPUP! */}
+      {showSummaryModal && summaryData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+             onClick={() => setShowSummaryModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+               onClick={(e) => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className={`p-6 sm:p-8 rounded-t-2xl ${
+              summaryData.totalErrors === 0 && summaryData.totalSkipped === 0
+                ? 'bg-gradient-to-r from-green-500 to-emerald-600'
+                : summaryData.totalImported > 0 && summaryData.totalErrors === 0
+                ? 'bg-gradient-to-r from-blue-500 to-cyan-600'
+                : summaryData.totalImported === 0 && summaryData.totalSkipped > 0 && summaryData.totalErrors === 0
+                ? 'bg-gradient-to-r from-gray-400 to-gray-500'
+                : 'bg-gradient-to-r from-orange-500 to-red-600'
+            }`}>
+              <div className="flex items-center justify-between text-white">
+                <div className="flex items-center gap-3">
+                  {summaryData.totalErrors === 0 && summaryData.totalSkipped === 0 ? (
+                    <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12" />
+                  ) : summaryData.totalErrors > 0 ? (
+                    <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12" />
+                  ) : (
+                    <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12" />
+                  )}
+                  <div>
+                    <h2 className="text-2xl sm:text-3xl font-bold">
+                      {summaryData.totalErrors === 0 && summaryData.totalSkipped === 0
+                        ? '🎉 Import Completato!'
+                        : summaryData.totalImported > 0 && summaryData.totalErrors === 0
+                        ? '🎉 Import Completato!'
+                        : summaryData.totalImported === 0 && summaryData.totalSkipped > 0 && summaryData.totalErrors === 0
+                        ? 'ℹ️ Nessun Nuovo Movimento'
+                        : '⚠️ Import con Errori'}
+                    </h2>
+                    <p className="text-sm sm:text-base opacity-90 mt-1">
+                      {summaryData.totalTransactions} transazion{summaryData.totalTransactions === 1 ? 'e' : 'i'} processate
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSummaryModal(false)}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all">
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 sm:p-8">
+              {/* Statistics Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                {/* Importati */}
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                    <p className="text-sm font-semibold text-gray-600">Importati</p>
+                  </div>
+                  <p className="text-3xl font-bold text-green-700">{summaryData.totalImported}</p>
+                  <p className="text-xs text-gray-500 mt-1">nuovi movimenti</p>
+                </div>
+
+                {/* Duplicati */}
+                {summaryData.totalSkipped > 0 && (
+                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="w-6 h-6 text-blue-600" />
+                      <p className="text-sm font-semibold text-gray-600">Duplicati</p>
+                    </div>
+                    <p className="text-3xl font-bold text-blue-700">{summaryData.totalSkipped}</p>
+                    <p className="text-xs text-gray-500 mt-1">già presenti</p>
+                  </div>
+                )}
+
+                {/* Errori */}
+                {summaryData.totalErrors > 0 && (
+                  <div className="bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-200 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <XCircle className="w-6 h-6 text-red-600" />
+                      <p className="text-sm font-semibold text-gray-600">Errori</p>
+                    </div>
+                    <p className="text-3xl font-bold text-red-700">{summaryData.totalErrors}</p>
+                    <p className="text-xs text-gray-500 mt-1">transazioni fallite</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Message */}
+              <div className="bg-gray-50 rounded-xl p-4 sm:p-6 mb-6">
+                {summaryData.totalErrors === 0 && summaryData.totalSkipped === 0 ? (
+                  <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
+                    <strong className="text-green-700">Perfetto! ✅</strong><br />
+                    Tutti i {summaryData.totalImported} movimenti sono stati registrati correttamente in Odoo!
+                  </p>
+                ) : summaryData.totalImported > 0 && summaryData.totalErrors === 0 ? (
+                  <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
+                    <strong className="text-blue-700">Importazione completata! 📊</strong><br />
+                    {summaryData.totalImported} nuovi movimenti sono stati registrati in Odoo.<br />
+                    {summaryData.totalSkipped} movimenti erano già stati importati in precedenza e sono stati saltati.
+                  </p>
+                ) : summaryData.totalImported === 0 && summaryData.totalSkipped > 0 && summaryData.totalErrors === 0 ? (
+                  <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
+                    <strong className="text-gray-700">Nessun nuovo movimento ℹ️</strong><br />
+                    Tutti i {summaryData.totalSkipped} movimenti erano già stati importati in precedenza.<br />
+                    Non è stato necessario importare nulla - tutto già presente in Odoo!
+                  </p>
+                ) : (
+                  <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
+                    <strong className="text-orange-700">Attenzione! ⚠️</strong><br />
+                    L'importazione è stata completata con alcuni errori.<br />
+                    {summaryData.totalImported > 0 && `✅ ${summaryData.totalImported} movimenti importati correttamente`}<br />
+                    {summaryData.totalSkipped > 0 && `⏭️ ${summaryData.totalSkipped} duplicati saltati`}<br />
+                    {summaryData.totalErrors > 0 && `❌ ${summaryData.totalErrors} errori riscontrati`}
+                  </p>
+                )}
+              </div>
+
+              {/* Error Details */}
+              {summaryData.totalErrors > 0 && summaryData.errorDetails.length > 0 && (
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 sm:p-6">
+                  <h3 className="text-lg font-bold text-red-700 mb-3 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    Dettagli Errori
+                  </h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {summaryData.errorDetails.slice(0, 5).map((error, idx) => (
+                      <div key={idx} className="bg-white rounded-lg p-3 text-sm text-gray-700 break-words">
+                        <span className="font-bold text-red-600">#{idx + 1}:</span> {error.substring(0, 200)}
+                      </div>
+                    ))}
+                    {summaryData.errorDetails.length > 5 && (
+                      <p className="text-xs text-red-600 font-semibold mt-2">
+                        ... e altri {summaryData.errorDetails.length - 5} errori. Controlla la console (F12) per i dettagli completi.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Close Button */}
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={() => setShowSummaryModal(false)}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all"
+                >
+                  Chiudi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
