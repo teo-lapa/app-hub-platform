@@ -552,6 +552,47 @@ export default function DeliveryPage() {
     }
   }
 
+  async function resolveIssue() {
+    if (!selectedIssue || !vehicleInfo) return;
+
+    try {
+      setLoading(true);
+
+      const res = await fetch('/api/vehicle-check/resolve-issue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vehicle_id: vehicleInfo.id,
+          issue_id: selectedIssue.id,
+          resolved_date: new Date().toISOString()
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        showToast(`Problema "${selectedIssue.item}" risolto!`, 'success');
+
+        // Rimuovi l'issue dalla lista locale
+        setOpenIssues(prev => prev.filter(issue => issue.id !== selectedIssue.id));
+
+        // Chiudi il modal
+        setShowResolveModal(false);
+        setSelectedIssue(null);
+
+        // Ricarica i dati del veicolo per aggiornare tutto
+        await loadVehicleCheckInfo();
+      } else {
+        showToast(data.error || 'Errore risoluzione problema', 'error');
+      }
+    } catch (error) {
+      console.error('Errore resolveIssue:', error);
+      showToast('Errore risoluzione problema', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   // ==================== SCARICO LOGIC ====================
   async function openScaricoView(delivery: Delivery) {
     setCurrentDelivery(delivery);
@@ -2504,13 +2545,19 @@ export default function DeliveryPage() {
 
                   const itemPhotos = checkPhotos.filter(p => p.item_id === item.id);
 
+                  // Cerca se c'è un problema precedente aperto per questo item
+                  const previousIssue = openIssues.find(
+                    issue => issue.category_id === activeCheckCategory && issue.item_id === item.id
+                  );
+
                   return (
                     <div
                       key={item.id}
                       className="bg-white rounded-xl p-4 shadow-sm border-2"
                       style={{
                         borderColor: checkItem?.status === 'ok' ? '#10b981' :
-                                    checkItem?.status === 'issue' ? '#ef4444' : '#d1d5db'
+                                    checkItem?.status === 'issue' ? '#ef4444' :
+                                    previousIssue ? '#f59e0b' : '#d1d5db'
                       }}
                     >
                       <div className="flex items-start justify-between mb-3">
@@ -2518,6 +2565,40 @@ export default function DeliveryPage() {
                           <h3 className="font-semibold text-gray-900">{item.label}</h3>
                           {checkItem?.note && (
                             <p className="text-sm text-gray-600 mt-1">{checkItem.note}</p>
+                          )}
+
+                          {/* Previous Issue Badge */}
+                          {previousIssue && (
+                            <div className="mt-2 bg-orange-50 border-l-4 border-orange-500 p-2 rounded">
+                              <div className="flex items-start gap-2">
+                                <span className="text-orange-600 text-lg flex-shrink-0">⚠️</span>
+                                <div className="flex-1">
+                                  <div className="text-xs font-bold text-orange-800 uppercase">
+                                    Problema Precedente
+                                    {previousIssue.persistence_count > 1 && (
+                                      <span className="ml-1 bg-red-600 text-white px-1.5 py-0.5 rounded-full text-[10px]">
+                                        {previousIssue.persistence_count}x
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-orange-700 mt-0.5">
+                                    {previousIssue.note || 'Nessuna nota'}
+                                  </div>
+                                  <div className="text-[10px] text-orange-600 mt-1">
+                                    Rilevato: {new Date(previousIssue.reported_date).toLocaleDateString('it-IT')}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setSelectedIssue(previousIssue);
+                                    setShowResolveModal(true);
+                                  }}
+                                  className="bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-green-700 transition-colors flex-shrink-0"
+                                >
+                                  ✓ RISOLVI
+                                </button>
+                              </div>
+                            </div>
                           )}
                         </div>
                         <div className="text-3xl ml-2">
@@ -3540,6 +3621,115 @@ export default function DeliveryPage() {
                     </>
                   ) : (
                     '✓ Conferma Reso'
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Risoluzione Problema Veicolo */}
+      <AnimatePresence>
+        {showResolveModal && selectedIssue && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => {
+              setShowResolveModal(false);
+              setSelectedIssue(null);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+            >
+              <div className="text-center mb-6">
+                <div className="text-6xl mb-4">✅</div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Risolvi Problema
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Conferma che il problema è stato risolto
+                </p>
+              </div>
+
+              <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg mb-6">
+                <div className="flex items-start gap-3">
+                  <span className="text-orange-600 text-2xl flex-shrink-0">⚠️</span>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900 mb-1">
+                      {selectedIssue.item}
+                    </h3>
+                    <p className="text-sm text-gray-700 mb-2">
+                      <span className="font-semibold">Categoria:</span> {selectedIssue.category}
+                    </p>
+                    {selectedIssue.note && (
+                      <p className="text-sm text-gray-700 mb-2">
+                        <span className="font-semibold">Nota:</span> {selectedIssue.note}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-600">
+                      Rilevato: {new Date(selectedIssue.reported_date).toLocaleDateString('it-IT', {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </p>
+                    {selectedIssue.persistence_count > 1 && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                          Segnalato {selectedIssue.persistence_count} volte
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowResolveModal(false);
+                    setSelectedIssue(null);
+                  }}
+                  disabled={loading}
+                  className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-colors ${
+                    loading
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={resolveIssue}
+                  disabled={loading}
+                  className={`flex-1 py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
+                    loading
+                      ? 'bg-green-400 cursor-not-allowed'
+                      : 'bg-green-600 hover:bg-green-700 active:scale-95'
+                  } text-white shadow-lg`}
+                >
+                  {loading ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                      />
+                      <span>Risolvendo...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xl">✓</span>
+                      <span>Conferma Risoluzione</span>
+                    </>
                   )}
                 </button>
               </div>
