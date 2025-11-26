@@ -158,6 +158,7 @@ export default function ImportMovimentiUBS() {
     let totalSkipped = 0
     let totalErrors = 0
     let totalTransactions = 0
+    const allErrorDetails: string[] = [] // Raccoglie TUTTI gli errori dettagliati
 
     // Importa TUTTI i file processati
     for (let i = 0; i < parseResults.length; i++) {
@@ -189,16 +190,21 @@ export default function ImportMovimentiUBS() {
           totalErrors += result.errors || 0
           totalTransactions += result.total || 0
 
-          // Log errori dettagliati se presenti
+          // Raccogli errori dettagliati
           if (result.errorDetails && result.errorDetails.length > 0) {
+            allErrorDetails.push(...result.errorDetails)
             console.error(`❌ Errori dettagliati file ${i + 1}:`, result.errorDetails)
           }
         } else {
           totalErrors++
+          const errorMsg = `File ${i + 1}: ${result.error}`
+          allErrorDetails.push(errorMsg)
           console.error(`❌ Errore importazione file ${i + 1}:`, result.error)
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Errore importazione file ${i + 1}:`, error)
+        const errorMsg = `File ${i + 1}: ${error.message || 'Errore sconosciuto'}`
+        allErrorDetails.push(errorMsg)
         totalErrors++
       }
     }
@@ -213,8 +219,22 @@ export default function ImportMovimentiUBS() {
     }
 
     if (totalErrors > 0) {
-      message += `❌ Errori: ${totalErrors}\n\n`
-      message += `⚠️ IMPORTANTE: Apri la console del browser (F12) per vedere i dettagli degli errori!\n`
+      message += `\n❌ Errori: ${totalErrors}\n`
+
+      // Mostra i primi 5 errori dettagliati nell'alert
+      if (allErrorDetails.length > 0) {
+        message += `\n📋 Primi errori:\n`
+        const errorsToShow = allErrorDetails.slice(0, 5)
+        errorsToShow.forEach((error, idx) => {
+          message += `${idx + 1}. ${error}\n`
+        })
+
+        if (allErrorDetails.length > 5) {
+          message += `\n... e altri ${allErrorDetails.length - 5} errori.\n`
+        }
+      }
+
+      message += `\n⚠️ Apri la console del browser (F12) per vedere tutti i dettagli!\n`
     }
 
     alert(message)
