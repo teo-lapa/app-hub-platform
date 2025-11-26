@@ -104,46 +104,20 @@ export async function GET(request: NextRequest) {
       format,
     });
 
-    // Usa timezone Europe/Rome per calcoli corretti (come dashboard API)
-    const TIMEZONE = 'Europe/Rome';
-
-    // Helper robusto per calcolare i bounds di un giorno in timezone Rome
-    const getRomeDayBounds = (refDate: Date) => {
-      const romeStr = refDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
-      const [year, month, day] = romeStr.split('-').map(Number);
-
-      // Determina offset DST
-      const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-      const romeTime = testDate.toLocaleString('en-US', { timeZone: TIMEZONE, hour: 'numeric', hour12: false });
-      const utcHour = testDate.getUTCHours();
-      const romeHour = parseInt(romeTime);
-      const offsetHours = romeHour - utcHour;
-
-      const midnightUTC = Date.UTC(year, month - 1, day, 0, 0, 0) - (offsetHours * 60 * 60 * 1000);
-      const endOfDayUTC = midnightUTC + (24 * 60 * 60 * 1000) - 1;
-
-      return {
-        start: new Date(midnightUTC),
-        end: new Date(endOfDayUTC),
-        dateStr: romeStr
-      };
-    };
-
     // Date di default: ultimo mese
-    const endDateInput = endDateStr ? new Date(endDateStr + 'T12:00:00Z') : new Date();
-    const startDateInput = startDateStr
-      ? new Date(startDateStr + 'T12:00:00Z')
-      : new Date(endDateInput.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const endDate = endDateStr ? new Date(endDateStr) : new Date();
+    const startDate = startDateStr
+      ? new Date(startDateStr)
+      : new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Calcola bounds corretti in timezone Rome
-    const startBounds = getRomeDayBounds(startDateInput);
-    const endBounds = getRomeDayBounds(endDateInput);
-    const startDate = startBounds.start;
-    const endDate = endBounds.end;
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
 
-    console.log('[Export] Date bounds (Rome timezone):', {
+    console.log('[Export] Date range:', {
       start: startDate.toISOString(),
       end: endDate.toISOString(),
+      startLocal: startDate.toLocaleString('it-IT'),
+      endLocal: endDate.toLocaleString('it-IT'),
     });
 
     // Query entries
@@ -170,7 +144,6 @@ export async function GET(request: NextRequest) {
             contact_name
           FROM ta_time_entries
           WHERE contact_id = ${parseInt(contactId)}
-            AND company_id = ${parseInt(companyId)}
             AND timestamp >= ${startDate.toISOString()}
             AND timestamp <= ${endDate.toISOString()}
           ORDER BY timestamp ASC
