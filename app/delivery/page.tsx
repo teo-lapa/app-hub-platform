@@ -2369,21 +2369,40 @@ export default function DeliveryPage() {
             {/* Categories Tabs */}
             <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
               <div className="flex gap-2 p-2">
-                {filteredVehicleCheckCategories.map(cat => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setActiveCheckCategory(cat.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${
-                      activeCheckCategory === cat.id
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                    style={activeCheckCategory === cat.id ? {} : { color: cat.color }}
-                  >
-                    <span className="text-xl">{cat.icon}</span>
-                    <span>{cat.name}</span>
-                  </button>
-                ))}
+                {filteredVehicleCheckCategories.map(cat => {
+                  // Calcola quanti item sono completati (ok o issue) vs totali
+                  const categoryData = vehicleCheckData?.categories.find(c => c.id === cat.id);
+                  const totalItems = cat.items.length;
+                  const completedItems = categoryData?.items.filter(item => item.status !== 'unchecked').length || 0;
+                  const allCompleted = completedItems === totalItems;
+
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setActiveCheckCategory(cat.id)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${
+                        activeCheckCategory === cat.id
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      style={activeCheckCategory === cat.id ? {} : { color: cat.color }}
+                    >
+                      <span className="text-xl">{cat.icon}</span>
+                      <span className="flex items-center gap-2">
+                        <span>{cat.name}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                          allCompleted
+                            ? 'bg-green-500 text-white'
+                            : activeCheckCategory === cat.id
+                            ? 'bg-white/20 text-white'
+                            : 'bg-orange-500 text-white'
+                        }`}>
+                          {completedItems}/{totalItems}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
