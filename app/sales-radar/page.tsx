@@ -317,12 +317,24 @@ export default function SalesRadarPage() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 
-  // Note modal (vocale, scritta, non in target) - tutto in uno
+  // Activity modal (note, appuntamenti, task, non in target) - tutto in uno
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [notePlace, setNotePlace] = useState<any>(null);
+  const [activityType, setActivityType] = useState<'menu' | 'note' | 'appointment' | 'task' | 'notarget'>('menu');
   const [writtenNote, setWrittenNote] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [notTargetExpanded, setNotTargetExpanded] = useState(false);
+
+  // Appointment fields
+  const [appointmentDate, setAppointmentDate] = useState('');
+  const [appointmentTime, setAppointmentTime] = useState('');
+  const [appointmentNote, setAppointmentNote] = useState('');
+
+  // Task fields
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [taskDueDate, setTaskDueDate] = useState('');
+  const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
 
   // AI Analysis state
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
@@ -797,17 +809,27 @@ export default function SalesRadarPage() {
         // Chiudi modal senza popup - basta la conferma visiva
         setShowNoteModal(false);
         setWrittenNote('');
+        setActivityType('menu');
+        setNotePlace(null);
       }
     } catch (error) {
       console.error('Errore salvataggio nota vocale:', error);
     }
   };
 
-  // Open Note Modal (from InfoWindow)
+  // Open Activity Modal (from InfoWindow)
   const openNoteModal = (place: any) => {
     setNotePlace(place);
+    setActivityType('menu'); // Start with menu
     setWrittenNote('');
     setNotTargetExpanded(false);
+    setAppointmentDate('');
+    setAppointmentTime('');
+    setAppointmentNote('');
+    setTaskTitle('');
+    setTaskDescription('');
+    setTaskDueDate('');
+    setTaskPriority('medium');
     setShowNoteModal(true);
   };
 
@@ -835,6 +857,8 @@ export default function SalesRadarPage() {
         // Chiudi modal senza popup - basta la conferma visiva
         setShowNoteModal(false);
         setWrittenNote('');
+        setActivityType('menu');
+        setNotePlace(null);
       }
     } catch (error) {
       console.error('Errore salvataggio nota:', error);
@@ -875,6 +899,7 @@ export default function SalesRadarPage() {
         setShowNoteModal(false);
         setNotePlace(null);
         setNotTargetExpanded(false);
+        setActivityType('menu');
         setSelectedPlace(null);
       }
     } catch (error) {
@@ -1890,14 +1915,14 @@ export default function SalesRadarPage() {
                     </a>
                   )}
 
-                  {/* Note Button - Opens Note Modal (show for all EXCEPT grey/excluded) */}
+                  {/* Activity Button - Opens Activity Modal (show for all EXCEPT grey/excluded) */}
                   {!(selectedPlace.notInTarget || selectedPlace.color === 'grey') && (
                     <div className="mt-3 space-y-2">
                       <button
                         onClick={() => openNoteModal(selectedPlace)}
                         className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
                       >
-                        📝 Aggiungi Nota
+                        📋 Attività sul Cliente
                       </button>
                       <button
                         onClick={() => analyzeClient(selectedPlace)}
@@ -2275,69 +2300,307 @@ export default function SalesRadarPage() {
         )}
       </AnimatePresence>
 
-      {/* Note Modal Unificato - Nota Vocale, Scritta e Non in Target */}
+      {/* Activity Modal - Menu Principale con Note, Appuntamenti, Task, Non in Target */}
       {showNoteModal && notePlace && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold mb-2 text-gray-900">📝 Aggiungi Nota</h3>
-            <p className="text-gray-700 mb-4 font-medium">{notePlace.name}</p>
+            {/* Header con nome place */}
+            <div className="mb-4">
+              <h3 className="text-xl font-bold text-gray-900">
+                {activityType === 'menu' && '🎯 Azioni Disponibili'}
+                {activityType === 'note' && '📝 Aggiungi Nota'}
+                {activityType === 'appointment' && '📅 Crea Appuntamento'}
+                {activityType === 'task' && '✅ Crea Attività'}
+                {activityType === 'notarget' && '🚫 Escludi dal Target'}
+              </h3>
+              <p className="text-gray-700 mt-1 font-medium">{notePlace.name}</p>
+            </div>
 
-            {/* Se sta registrando, mostra UI di registrazione */}
-            {isRecording ? (
-              <div className="space-y-4">
-                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center">
-                  <div className="w-16 h-16 mx-auto mb-3 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
-                    <span className="text-white text-2xl">🎤</span>
-                  </div>
-                  <p className="text-red-700 font-semibold text-lg">Registrazione in corso...</p>
-                  <p className="text-red-600 text-sm mt-1">Parla ora</p>
-                </div>
-                <button
-                  onClick={() => stopRecording()}
-                  className="w-full px-4 py-4 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-lg flex items-center justify-center gap-2"
-                >
-                  STOP - Termina Registrazione
-                </button>
-              </div>
-            ) : (
+            {/* MENU PRINCIPALE */}
+            {activityType === 'menu' ? (
               <div className="space-y-3">
-                {/* Nota Vocale */}
+                <button
+                  onClick={() => setActivityType('note')}
+                  className="w-full px-6 py-4 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-left font-medium flex items-center gap-3 border-2 border-blue-200 transition-all"
+                >
+                  <span className="text-2xl">📝</span>
+                  <div>
+                    <div className="font-bold">Aggiungi Nota</div>
+                    <div className="text-sm text-blue-600">Nota vocale o scritta</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setActivityType('appointment')}
+                  className="w-full px-6 py-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-left font-medium flex items-center gap-3 border-2 border-green-200 transition-all"
+                >
+                  <span className="text-2xl">📅</span>
+                  <div>
+                    <div className="font-bold">Crea Appuntamento</div>
+                    <div className="text-sm text-green-600">Pianifica un incontro</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setActivityType('task')}
+                  className="w-full px-6 py-4 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-left font-medium flex items-center gap-3 border-2 border-purple-200 transition-all"
+                >
+                  <span className="text-2xl">✅</span>
+                  <div>
+                    <div className="font-bold">Crea Attività/Task</div>
+                    <div className="text-sm text-purple-600">Aggiungi un compito da svolgere</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setActivityType('notarget')}
+                  className="w-full px-6 py-4 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-left font-medium flex items-center gap-3 border-2 border-red-200 transition-all"
+                >
+                  <span className="text-2xl">🚫</span>
+                  <div>
+                    <div className="font-bold">Escludi dal Target</div>
+                    <div className="text-sm text-red-600">Non interessato o chiuso</div>
+                  </div>
+                </button>
+
                 <button
                   onClick={() => {
-                    setSelectedPlace(notePlace);
-                    startRecording();
+                    setShowNoteModal(false);
+                    setNotePlace(null);
+                    setActivityType('menu');
                   }}
-                  className="w-full px-4 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-left font-medium flex items-center gap-3"
+                  className="w-full mt-4 px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
                 >
-                  <span className="text-xl">🎤</span>
-                  <span>Registra nota vocale</span>
+                  Chiudi
                 </button>
+              </div>
 
-                {/* Nota Scritta */}
-                <div className="bg-green-50 rounded-lg p-3">
-                  <label className="text-green-700 font-medium flex items-center gap-2 mb-2">
-                    <span className="text-xl">✏️</span>
-                    <span>Nota scritta</span>
-                  </label>
-                  <textarea
-                    value={writtenNote}
-                    onChange={(e) => setWrittenNote(e.target.value)}
-                    placeholder="Scrivi una nota..."
-                    className="w-full px-3 py-2 border border-green-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    rows={3}
-                  />
-                  {writtenNote.trim() && (
+            ) : activityType === 'note' ? (
+              /* FORM NOTE - Codice esistente */
+              <>
+                {isRecording ? (
+                  <div className="space-y-4">
+                    <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center">
+                      <div className="w-16 h-16 mx-auto mb-3 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                        <span className="text-white text-2xl">🎤</span>
+                      </div>
+                      <p className="text-red-700 font-semibold text-lg">Registrazione in corso...</p>
+                      <p className="text-red-600 text-sm mt-1">Parla ora</p>
+                    </div>
                     <button
-                      onClick={saveWrittenNote}
-                      disabled={isSavingNote}
-                      className="mt-2 w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
+                      onClick={() => stopRecording()}
+                      className="w-full px-4 py-4 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-lg flex items-center justify-center gap-2"
                     >
-                      {isSavingNote ? 'Salvataggio...' : 'Salva Nota'}
+                      STOP - Termina Registrazione
                     </button>
-                  )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Nota Vocale */}
+                    <button
+                      onClick={() => {
+                        setSelectedPlace(notePlace);
+                        startRecording();
+                      }}
+                      className="w-full px-4 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-left font-medium flex items-center gap-3"
+                    >
+                      <span className="text-xl">🎤</span>
+                      <span>Registra nota vocale</span>
+                    </button>
+
+                    {/* Nota Scritta */}
+                    <div className="bg-green-50 rounded-lg p-3">
+                      <label className="text-green-700 font-medium flex items-center gap-2 mb-2">
+                        <span className="text-xl">✏️</span>
+                        <span>Nota scritta</span>
+                      </label>
+                      <textarea
+                        value={writtenNote}
+                        onChange={(e) => setWrittenNote(e.target.value)}
+                        placeholder="Scrivi una nota..."
+                        className="w-full px-3 py-2 border border-green-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        rows={3}
+                      />
+                      {writtenNote.trim() && (
+                        <button
+                          onClick={saveWrittenNote}
+                          disabled={isSavingNote}
+                          className="mt-2 w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
+                        >
+                          {isSavingNote ? 'Salvataggio...' : 'Salva Nota'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {!isRecording && (
+                  <button
+                    onClick={() => setActivityType('menu')}
+                    className="w-full mt-4 px-4 py-2 text-gray-600 hover:text-gray-900 font-medium flex items-center justify-center gap-2"
+                  >
+                    <span>← Indietro</span>
+                  </button>
+                )}
+              </>
+
+            ) : activityType === 'appointment' ? (
+              /* FORM APPUNTAMENTO */
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Data</label>
+                  <input
+                    type="date"
+                    value={appointmentDate}
+                    onChange={(e) => setAppointmentDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
                 </div>
 
-                {/* Opzioni di esclusione - tutte allo stesso livello */}
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Ora</label>
+                  <input
+                    type="time"
+                    value={appointmentTime}
+                    onChange={(e) => setAppointmentTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Note (opzionale)</label>
+                  <textarea
+                    value={appointmentNote}
+                    onChange={(e) => setAppointmentNote(e.target.value)}
+                    placeholder="Aggiungi dettagli sull'appuntamento..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    rows={3}
+                  />
+                </div>
+
+                <button
+                  onClick={() => {
+                    console.log('Appuntamento creato:', {
+                      place: notePlace.name,
+                      date: appointmentDate,
+                      time: appointmentTime,
+                      note: appointmentNote
+                    });
+                    // TODO: Implementare salvataggio
+                  }}
+                  disabled={!appointmentDate || !appointmentTime}
+                  className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Salva Appuntamento
+                </button>
+
+                <button
+                  onClick={() => setActivityType('menu')}
+                  className="w-full px-4 py-2 text-gray-600 hover:text-gray-900 font-medium flex items-center justify-center gap-2"
+                >
+                  <span>← Indietro</span>
+                </button>
+              </div>
+
+            ) : activityType === 'task' ? (
+              /* FORM TASK */
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Titolo</label>
+                  <input
+                    type="text"
+                    value={taskTitle}
+                    onChange={(e) => setTaskTitle(e.target.value)}
+                    placeholder="Es: Chiamare per preventivo"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Descrizione</label>
+                  <textarea
+                    value={taskDescription}
+                    onChange={(e) => setTaskDescription(e.target.value)}
+                    placeholder="Dettagli del task..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Data Scadenza</label>
+                  <input
+                    type="date"
+                    value={taskDueDate}
+                    onChange={(e) => setTaskDueDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Priorità</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => setTaskPriority('low')}
+                      className={`px-3 py-2 rounded-lg font-medium transition-all ${
+                        taskPriority === 'low'
+                          ? 'bg-green-600 text-white'
+                          : 'bg-green-100 text-green-700 hover:bg-green-200'
+                      }`}
+                    >
+                      Bassa
+                    </button>
+                    <button
+                      onClick={() => setTaskPriority('medium')}
+                      className={`px-3 py-2 rounded-lg font-medium transition-all ${
+                        taskPriority === 'medium'
+                          ? 'bg-yellow-600 text-white'
+                          : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                      }`}
+                    >
+                      Media
+                    </button>
+                    <button
+                      onClick={() => setTaskPriority('high')}
+                      className={`px-3 py-2 rounded-lg font-medium transition-all ${
+                        taskPriority === 'high'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-red-100 text-red-700 hover:bg-red-200'
+                      }`}
+                    >
+                      Alta
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    console.log('Task creato:', {
+                      place: notePlace.name,
+                      title: taskTitle,
+                      description: taskDescription,
+                      dueDate: taskDueDate,
+                      priority: taskPriority
+                    });
+                    // TODO: Implementare salvataggio
+                  }}
+                  disabled={!taskTitle.trim()}
+                  className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Salva Task
+                </button>
+
+                <button
+                  onClick={() => setActivityType('menu')}
+                  className="w-full px-4 py-2 text-gray-600 hover:text-gray-900 font-medium flex items-center justify-center gap-2"
+                >
+                  <span>← Indietro</span>
+                </button>
+              </div>
+
+            ) : activityType === 'notarget' ? (
+              /* OPZIONI ESCLUSIONE */
+              <div className="space-y-3">
                 <button
                   onClick={() => markAsNotTarget('closed')}
                   className="w-full px-4 py-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-left font-medium flex items-center gap-3"
@@ -2359,20 +2622,15 @@ export default function SalesRadarPage() {
                   <span className="text-xl">🚫</span>
                   <span>Non in Target</span>
                 </button>
-              </div>
-            )}
 
-            {!isRecording && (
-              <button
-                onClick={() => {
-                  setShowNoteModal(false);
-                  setNotePlace(null);
-                }}
-                className="w-full mt-4 px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
-              >
-                Chiudi
-              </button>
-            )}
+                <button
+                  onClick={() => setActivityType('menu')}
+                  className="w-full mt-4 px-4 py-2 text-gray-600 hover:text-gray-900 font-medium flex items-center justify-center gap-2"
+                >
+                  <span>← Indietro</span>
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       )}
