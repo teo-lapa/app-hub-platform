@@ -217,9 +217,26 @@ export async function GET(request: NextRequest) {
         entriesCount: entries.length,
         dateRange: `${startDate.toISOString()} to ${endDate.toISOString()}`,
         companyIdUsed: companyId,
-        contactIdUsed: contactId,
+        contactIdUsed: contactId || 'ALL EMPLOYEES',
         sampleEntry: entries[0] || 'no entries',
+        firstTenEntries: entries.slice(0, 10).map(e => ({
+          contact_id: e.contact_id,
+          contact_name: e.contact_name,
+          entry_type: e.entry_type,
+          timestamp: e.timestamp
+        }))
       });
+
+      // CRITICAL DEBUG: Se non ci sono entries, logga info per debug
+      if (entries.length === 0) {
+        console.error('[Export] NO ENTRIES FOUND! Debug info:', {
+          companyId,
+          contactId,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          queryUsed: contactId ? 'WITH contact_id filter' : 'WITHOUT contact_id filter (all employees)'
+        });
+      }
     } catch (dbError) {
       console.warn('Database non disponibile:', dbError);
     }
