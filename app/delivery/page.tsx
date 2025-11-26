@@ -2575,7 +2575,7 @@ export default function DeliveryPage() {
                                 <div className="flex-1">
                                   <div className="text-xs font-bold text-orange-800 uppercase">
                                     Problema Precedente
-                                    {previousIssue.persistence_count > 1 && (
+                                    {previousIssue.persistence_count && previousIssue.persistence_count > 1 && (
                                       <span className="ml-1 bg-red-600 text-white px-1.5 py-0.5 rounded-full text-[10px]">
                                         {previousIssue.persistence_count}x
                                       </span>
@@ -3681,7 +3681,7 @@ export default function DeliveryPage() {
                         year: 'numeric'
                       })}
                     </p>
-                    {selectedIssue.persistence_count > 1 && (
+                    {selectedIssue.persistence_count && selectedIssue.persistence_count > 1 && (
                       <div className="mt-2 flex items-center gap-2">
                         <span className="bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
                           Segnalato {selectedIssue.persistence_count} volte

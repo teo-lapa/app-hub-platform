@@ -126,7 +126,9 @@ export interface VehicleInfo {
 export interface OpenIssue {
   id: string;
   category: string;
+  category_id: string;
   item: string;
+  item_id: string;
   note: string;
   reported_date: string;
   photos: VehicleCheckPhoto[];
