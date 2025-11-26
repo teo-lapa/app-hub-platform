@@ -85,6 +85,18 @@ export const VEHICLE_CHECK_CATEGORIES: CheckCategory[] = [
       { id: 'pronto_soccorso', label: 'Kit pronto soccorso' },
       { id: 'triangolo', label: 'Triangolo emergenza' }
     ]
+  },
+  {
+    id: 'frigo',
+    name: 'FRIGO',
+    icon: '❄️',
+    color: '#06B6D4',
+    items: [
+      { id: 'temperatura', label: 'Temperatura frigo' },
+      { id: 'compressore', label: 'Funzionamento compressore' },
+      { id: 'guarnizioni', label: 'Guarnizioni sportelli' },
+      { id: 'pulizia_frigo', label: 'Pulizia interna' }
+    ]
   }
 ];
 

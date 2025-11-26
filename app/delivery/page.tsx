@@ -1905,6 +1905,26 @@ export default function DeliveryPage() {
     return sorted;
   }, [deliveries, showCompleted]);
 
+  // ==================== FILTERED VEHICLE CHECK CATEGORIES ====================
+  const filteredVehicleCheckCategories = useMemo(() => {
+    // Se non c'è vehicleInfo, mostra tutte le categorie
+    if (!vehicleInfo) {
+      return VEHICLE_CHECK_CATEGORIES;
+    }
+
+    // Controlla se il veicolo è refrigerato
+    const categoryName = vehicleInfo.category_name?.toLowerCase() || '';
+    const isRefrigerated = categoryName.includes('refrigerat') || categoryName.includes('frigo');
+
+    // Filtra categorie: mostra FRIGO solo per veicoli refrigerati
+    return VEHICLE_CHECK_CATEGORIES.filter(cat => {
+      if (cat.id === 'frigo' && !isRefrigerated) {
+        return false;
+      }
+      return true;
+    });
+  }, [vehicleInfo]);
+
   // ==================== STATS ====================
   const stats = {
     total: deliveries.length,
@@ -2217,10 +2237,19 @@ export default function DeliveryPage() {
                     <div className="space-y-2">
                       {openIssues.map((issue) => (
                         <div key={issue.id} className="text-sm text-red-700 bg-white rounded p-2">
-                          <div className="font-semibold">{issue.category} - {issue.item}</div>
-                          <div className="text-xs mt-1">{issue.note}</div>
-                          <div className="text-xs text-red-500 mt-1">
-                            Segnalato: {new Date(issue.reported_date).toLocaleDateString('it-IT')}
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-semibold">{issue.category} - {issue.item}</div>
+                              <div className="text-xs mt-1">{issue.note}</div>
+                              <div className="text-xs text-red-500 mt-1">
+                                Segnalato: {new Date(issue.reported_date).toLocaleDateString('it-IT')}
+                              </div>
+                            </div>
+                            {issue.persistence_count && issue.persistence_count > 1 && (
+                              <div className="ml-2 px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold whitespace-nowrap">
+                                ⚠️ Persiste da {issue.persistence_count} controlli
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -2235,7 +2264,7 @@ export default function DeliveryPage() {
               <>
                 <div className="sticky top-0 bg-white z-10 border-b overflow-x-auto">
                   <div className="flex gap-2 p-3 min-w-max">
-                    {VEHICLE_CHECK_CATEGORIES.map((cat) => (
+                    {filteredVehicleCheckCategories.map((cat) => (
                       <button
                         key={cat.id}
                         onClick={() => setActiveCheckCategory(cat.id)}
@@ -2260,7 +2289,7 @@ export default function DeliveryPage() {
                   {vehicleCheckData.categories
                     .find((cat) => cat.id === activeCheckCategory)
                     ?.items.map((item) => {
-                      const configCategory = VEHICLE_CHECK_CATEGORIES.find(
+                      const configCategory = filteredVehicleCheckCategories.find(
                         (c) => c.id === activeCheckCategory
                       );
 
@@ -2480,7 +2509,7 @@ export default function DeliveryPage() {
             {/* Categories Tabs */}
             <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
               <div className="flex gap-2 p-2">
-                {VEHICLE_CHECK_CATEGORIES.map(cat => (
+                {filteredVehicleCheckCategories.map(cat => (
                   <button
                     key={cat.id}
                     onClick={() => setActiveCheckCategory(cat.id)}
@@ -2500,7 +2529,7 @@ export default function DeliveryPage() {
 
             {/* Check Items */}
             <div className="space-y-3 pb-32">
-              {VEHICLE_CHECK_CATEGORIES
+              {filteredVehicleCheckCategories
                 .find(cat => cat.id === activeCheckCategory)
                 ?.items.map(item => {
                   const checkItem = vehicleCheckData?.categories

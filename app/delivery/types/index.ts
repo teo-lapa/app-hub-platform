@@ -119,6 +119,8 @@ export interface VehicleInfo {
   id: number;
   name: string;
   license_plate: string;
+  category_id: number | null;
+  category_name: string | null;
 }
 
 export interface OpenIssue {
@@ -129,4 +131,5 @@ export interface OpenIssue {
   reported_date: string;
   photos: VehicleCheckPhoto[];
   resolved: boolean;
+  persistence_count?: number;
 }

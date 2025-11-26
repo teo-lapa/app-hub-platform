@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       [],
       {
         domain: [['driver_employee_id', '=', employeeId]],  // FIXED: use driver_employee_id not driver_id
-        fields: ['id', 'name', 'license_plate'],
+        fields: ['id', 'name', 'license_plate', 'category_id'],
         limit: 1
       }
     );
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     const vehicle = vehicles[0];
     console.log('✅ [VEHICLE-CHECK] Veicolo trovato:', vehicle);
 
-    // 3. Get last vehicle check from chatter
+    // 3. Get last 10 vehicle checks from chatter for persistence tracking
     const messages = await callOdoo(
       cookies,
       'mail.message',
@@ -80,48 +80,84 @@ export async function GET(request: NextRequest) {
         ],
         fields: ['body', 'date', 'subject'],
         order: 'date DESC',
-        limit: 1
+        limit: 10
       }
     );
 
     let previousCheck: any = null;
     let lastCheckDate: any = null;
     let openIssues: any[] = [];
+    const previousChecks: any[] = [];
 
-    if (messages.length > 0) {
-      lastCheckDate = messages[0].date;
-
-      // Parse JSON from message body
+    // Parse all previous checks
+    for (const msg of messages) {
       try {
-        const body = messages[0].body;
+        const body = msg.body;
         const jsonMatch = body.match(/VEHICLE_CHECK_DATA:([\s\S]*?)(?:<\/|$)/);
 
         if (jsonMatch && jsonMatch[1]) {
-          previousCheck = JSON.parse(jsonMatch[1].trim());
-
-          // Extract open issues
-          if (previousCheck && previousCheck.categories) {
-            openIssues = previousCheck.categories
-              .flatMap((cat: any) =>
-                cat.items
-                  .filter((item: any) => item.status === 'issue' && !item.resolved)
-                  .map((item: any) => ({
-                    id: `${cat.id}_${item.id}`,
-                    category: cat.name,
-                    category_id: cat.id,
-                    item_id: item.id,
-                    item: item.label,
-                    note: item.note || '',
-                    reported_date: previousCheck.check_date,
-                    photos: item.photos || [],
-                    resolved: false
-                  }))
-              );
-          }
+          const checkData = JSON.parse(jsonMatch[1].trim());
+          previousChecks.push({
+            date: msg.date,
+            data: checkData
+          });
         }
       } catch (parseError) {
-        console.error('❌ [VEHICLE-CHECK] Errore parsing JSON dal chatter:', parseError);
-        // Continue without previous check data
+        console.error('❌ [VEHICLE-CHECK] Errore parsing check:', parseError);
+      }
+    }
+
+    if (previousChecks.length > 0) {
+      previousCheck = previousChecks[0].data;
+      lastCheckDate = previousChecks[0].date;
+
+      // Calculate persistence for each issue
+      // Track how many consecutive checks an issue has appeared in
+      const issueHistory = new Map<string, number>();
+
+      // Iterate through checks from newest to oldest
+      for (const check of previousChecks) {
+        if (check.data && check.data.categories) {
+          check.data.categories.forEach((cat: any) => {
+            cat.items
+              .filter((item: any) => item.status === 'issue' && !item.resolved)
+              .forEach((item: any) => {
+                const issueKey = `${cat.id}_${item.id}`;
+                const currentCount = issueHistory.get(issueKey) || 0;
+
+                // Only increment if this is the next consecutive occurrence
+                if (currentCount === 0 || previousChecks[currentCount - 1]?.data?.categories
+                  ?.find((c: any) => c.id === cat.id)?.items
+                  ?.find((i: any) => i.id === item.id && i.status === 'issue')) {
+                  issueHistory.set(issueKey, currentCount + 1);
+                }
+              });
+          });
+        }
+      }
+
+      // Extract open issues with persistence count
+      if (previousCheck && previousCheck.categories) {
+        openIssues = previousCheck.categories
+          .flatMap((cat: any) =>
+            cat.items
+              .filter((item: any) => item.status === 'issue' && !item.resolved)
+              .map((item: any) => {
+                const issueKey = `${cat.id}_${item.id}`;
+                return {
+                  id: issueKey,
+                  category: cat.name,
+                  category_id: cat.id,
+                  item_id: item.id,
+                  item: item.label,
+                  note: item.note || '',
+                  reported_date: previousCheck.check_date,
+                  photos: item.photos || [],
+                  resolved: false,
+                  persistence_count: issueHistory.get(issueKey) || 1
+                };
+              })
+          );
       }
     }
 
@@ -168,7 +204,9 @@ export async function GET(request: NextRequest) {
       vehicle_info: {
         id: vehicle.id,
         name: vehicle.name,
-        license_plate: vehicle.license_plate
+        license_plate: vehicle.license_plate,
+        category_id: vehicle.category_id?.[0] || null,
+        category_name: vehicle.category_id?.[1] || null
       },
       driver_info: {
         id: employeeId,
