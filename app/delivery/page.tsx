@@ -2362,7 +2362,7 @@ export default function DeliveryPage() {
               {/* Campo Chilometri */}
               {vehicleCheckData && (
                 <div className="mt-4">
-                  <label className="block text-sm font-semibold text-indigo-100 mb-2">
+                  <label className="block text-base font-bold text-white mb-2">
                     📏 Chilometraggio Attuale
                   </label>
                   <input
@@ -2376,7 +2376,7 @@ export default function DeliveryPage() {
                       });
                     }}
                     placeholder="Es: 125000"
-                    className="w-full px-4 py-3 rounded-lg text-gray-900 font-bold text-lg focus:ring-2 focus:ring-white focus:outline-none"
+                    className="w-full px-5 py-4 rounded-xl bg-white text-gray-900 font-bold text-2xl placeholder-gray-400 focus:ring-4 focus:ring-yellow-400 focus:outline-none shadow-lg"
                     min="0"
                   />
                 </div>
@@ -2401,8 +2401,8 @@ export default function DeliveryPage() {
             </div>
 
             {/* Categories Tabs */}
-            <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
-              <div className="flex gap-2 p-2">
+            <div className="bg-white rounded-xl shadow-lg overflow-x-auto">
+              <div className="flex gap-2 p-3">
                 {filteredVehicleCheckCategories.map(cat => {
                   // Calcola quanti item sono completati (ok o issue) vs totali
                   const categoryData = vehicleCheckData?.categories.find(c => c.id === cat.id);
@@ -2414,17 +2414,17 @@ export default function DeliveryPage() {
                     <button
                       key={cat.id}
                       onClick={() => setActiveCheckCategory(cat.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${
+                      className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-base whitespace-nowrap transition-all ${
                         activeCheckCategory === cat.id
-                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xl scale-105'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-md'
                       }`}
                       style={activeCheckCategory === cat.id ? {} : { color: cat.color }}
                     >
-                      <span className="text-xl">{cat.icon}</span>
+                      <span className="text-2xl">{cat.icon}</span>
                       <span className="flex items-center gap-2">
                         <span>{cat.name}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                        <span className={`text-sm px-2.5 py-1 rounded-full font-bold ${
                           allCompleted
                             ? 'bg-green-500 text-white'
                             : activeCheckCategory === cat.id
@@ -2459,38 +2459,38 @@ export default function DeliveryPage() {
                   return (
                     <div
                       key={item.id}
-                      className="bg-white rounded-xl p-4 shadow-sm border-2"
+                      className="bg-white rounded-2xl p-5 shadow-lg border-4"
                       style={{
                         borderColor: checkItem?.status === 'ok' ? '#10b981' :
                                     checkItem?.status === 'issue' ? '#ef4444' :
-                                    previousIssue ? '#f59e0b' : '#d1d5db'
+                                    previousIssue ? '#f59e0b' : '#e5e7eb'
                       }}
                     >
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900">{item.label}</h3>
+                          <h3 className="font-bold text-lg text-gray-900">{item.label}</h3>
                           {checkItem?.note && (
-                            <p className="text-sm text-gray-600 mt-1">{checkItem.note}</p>
+                            <p className="text-base text-gray-600 mt-2">{checkItem.note}</p>
                           )}
 
                           {/* Previous Issue Badge */}
                           {previousIssue && (
-                            <div className="mt-2 bg-orange-50 border-l-4 border-orange-500 p-2 rounded">
+                            <div className="mt-3 bg-orange-50 border-l-4 border-orange-500 p-3 rounded-lg">
                               <div className="flex items-start gap-2">
-                                <span className="text-orange-600 text-lg flex-shrink-0">⚠️</span>
+                                <span className="text-orange-600 text-2xl flex-shrink-0">⚠️</span>
                                 <div className="flex-1">
-                                  <div className="text-xs font-bold text-orange-800 uppercase">
+                                  <div className="text-sm font-bold text-orange-800 uppercase">
                                     Problema Precedente
                                     {previousIssue.persistence_count && previousIssue.persistence_count > 1 && (
-                                      <span className="ml-1 bg-red-600 text-white px-1.5 py-0.5 rounded-full text-[10px]">
+                                      <span className="ml-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs">
                                         {previousIssue.persistence_count}x
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-xs text-orange-700 mt-0.5">
+                                  <div className="text-sm text-orange-700 mt-1">
                                     {previousIssue.note || 'Nessuna nota'}
                                   </div>
-                                  <div className="text-[10px] text-orange-600 mt-1">
+                                  <div className="text-xs text-orange-600 mt-2">
                                     Rilevato: {new Date(previousIssue.reported_date).toLocaleDateString('it-IT')}
                                   </div>
                                 </div>
@@ -2499,7 +2499,7 @@ export default function DeliveryPage() {
                                     setSelectedIssue(previousIssue);
                                     setShowResolveModal(true);
                                   }}
-                                  className="bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-green-700 transition-colors flex-shrink-0"
+                                  className="bg-green-600 text-white px-4 py-2 rounded-xl text-base font-bold hover:bg-green-700 transition-all shadow-lg flex-shrink-0"
                                 >
                                   ✓ RISOLVI
                                 </button>
@@ -2532,30 +2532,30 @@ export default function DeliveryPage() {
                       )}
 
                       {/* Actions */}
-                      <div className="flex gap-2 mb-2">
+                      <div className="flex gap-3 mb-3">
                         <button
                           onClick={() => markItemStatus(activeCheckCategory, item.id, 'ok')}
-                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                          className={`flex-1 py-4 px-4 rounded-xl text-lg font-bold transition-all shadow-md ${
                             checkItem?.status === 'ok'
-                              ? 'bg-green-500 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-green-100'
+                              ? 'bg-green-500 text-white shadow-green-500/50'
+                              : 'bg-white text-gray-700 hover:bg-green-50 border-2 border-gray-200'
                           }`}
                         >
                           ✅ OK
                         </button>
                         <button
                           onClick={() => markItemStatus(activeCheckCategory, item.id, 'issue')}
-                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                          className={`flex-1 py-4 px-4 rounded-xl text-lg font-bold transition-all shadow-md ${
                             checkItem?.status === 'issue'
-                              ? 'bg-red-500 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-red-100'
+                              ? 'bg-red-500 text-white shadow-red-500/50'
+                              : 'bg-white text-gray-700 hover:bg-red-50 border-2 border-gray-200'
                           }`}
                         >
                           ⚠️ Problema
                         </button>
                         <button
                           onClick={() => capturePhoto(activeCheckCategory, item.id)}
-                          className="bg-blue-500 text-white py-2 px-3 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors"
+                          className="bg-blue-500 text-white py-4 px-5 rounded-xl text-2xl font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/50"
                         >
                           📷
                         </button>
@@ -2567,8 +2567,8 @@ export default function DeliveryPage() {
                           value={checkItem.note || ''}
                           onChange={(e) => updateItemNote(activeCheckCategory, item.id, e.target.value)}
                           placeholder="Descrivi il problema..."
-                          className="w-full p-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500"
-                          rows={2}
+                          className="w-full p-4 border-2 border-red-300 rounded-xl text-base font-medium resize-none focus:outline-none focus:ring-4 focus:ring-red-500 focus:border-red-500 bg-red-50"
+                          rows={3}
                         />
                       )}
                     </div>
