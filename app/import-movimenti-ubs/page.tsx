@@ -56,25 +56,21 @@ export default function ImportMovimentiUBS() {
     async function loadJournals() {
       setLoadingJournals(true)
       try {
-        console.log('📥 Caricamento journals da Odoo...')
         const journals = await fetchJournalsFromOdoo()
-        console.log(`✅ Caricati ${journals.length} journals da Odoo`)
         setAvailableJournals(journals)
       } catch (error) {
         console.error('❌ Errore caricamento journals:', error)
-        // availableJournals sarà [] in caso di errore
       } finally {
         setLoadingJournals(false)
       }
     }
 
     loadJournals()
-  }, []) // Esegui solo al mount del componente
+  }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files
     if (selectedFiles && selectedFiles.length > 0) {
-      // Prendi TUTTI i file selezionati
       const filesArray = Array.from(selectedFiles)
       setFiles(filesArray)
       setParseResults([])
@@ -88,7 +84,6 @@ export default function ImportMovimentiUBS() {
     setParsing(true)
     const results: ParseResult[] = []
 
-    // Processa TUTTI i file uno per uno
     for (let i = 0; i < files.length; i++) {
       setCurrentFileIndex(i)
       const file = files[i]
@@ -105,19 +100,15 @@ export default function ImportMovimentiUBS() {
         const result = await response.json()
         results.push(result)
 
-        // Auto-seleziona journal basandosi su IBAN dal file CSV
         if (result.success && result.accountInfo?.iban) {
           const iban = result.accountInfo.iban
           const matchedJournal = findJournalByIban(iban, availableJournals)
 
           if (matchedJournal) {
-            console.log(`✅ Journal auto-selezionato per IBAN ${iban}: ${matchedJournal.journalName}`)
             setSelectedJournals(prev => ({
               ...prev,
               [i]: matchedJournal.journalId
             }))
-          } else {
-            console.warn(`⚠️ Nessun journal trovato per IBAN: ${iban}`)
           }
         }
       } catch (error) {
@@ -136,7 +127,6 @@ export default function ImportMovimentiUBS() {
   const handleImport = async () => {
     if (parseResults.length === 0) return
 
-    // Validazione: verifica che tutti i file abbiano un journal selezionato
     const missingJournals: number[] = [];
     for (let i = 0; i < parseResults.length; i++) {
       if (!selectedJournals[i]) {
@@ -158,9 +148,8 @@ export default function ImportMovimentiUBS() {
     let totalSkipped = 0
     let totalErrors = 0
     let totalTransactions = 0
-    const allErrorDetails: string[] = [] // Raccoglie TUTTI gli errori dettagliati
+    const allErrorDetails: string[] = []
 
-    // Importa TUTTI i file processati
     for (let i = 0; i < parseResults.length; i++) {
       const parseResult = parseResults[i]
 
@@ -178,7 +167,7 @@ export default function ImportMovimentiUBS() {
           body: JSON.stringify({
             accountInfo: parseResult.accountInfo,
             transactions: parseResult.transactions,
-            journalId: selectedJournals[i] // Passa il journal selezionato
+            journalId: selectedJournals[i]
           })
         })
 
@@ -190,16 +179,13 @@ export default function ImportMovimentiUBS() {
           totalErrors += result.errors || 0
           totalTransactions += result.total || 0
 
-          // Raccogli errori dettagliati
           if (result.errorDetails && result.errorDetails.length > 0) {
             allErrorDetails.push(...result.errorDetails)
-            console.error(`❌ Errori dettagliati file ${i + 1}:`, result.errorDetails)
           }
         } else {
           totalErrors++
           const errorMsg = `File ${i + 1}: ${result.error}`
           allErrorDetails.push(errorMsg)
-          console.error(`❌ Errore importazione file ${i + 1}:`, result.error)
         }
       } catch (error: any) {
         console.error(`Errore importazione file ${i + 1}:`, error)
@@ -210,36 +196,50 @@ export default function ImportMovimentiUBS() {
     }
 
     // Mostra riepilogo finale
-    let message = `🎉 IMPORT COMPLETATO!\n\n`
-    message += `📊 File processati: ${parseResults.length}\n`
-    message += `✅ Movimenti importati: ${totalImported}/${totalTransactions}\n`
+    let message = ''
 
-    if (totalSkipped > 0) {
-      message += `⏭️  Duplicati saltati: ${totalSkipped}\n`
-    }
+    if (totalErrors === 0 && totalSkipped === 0) {
+      message = `🎉 IMPORT COMPLETATO CON SUCCESSO!\n\n`
+      message += `✅ ${totalImported} movimenti importati correttamente\n`
+      message += `📊 Totale transazioni: ${totalTransactions}\n\n`
+      message += `Tutti i movimenti sono stati registrati in Odoo!`
+    } else if (totalImported > 0 && totalErrors === 0) {
+      message = `🎉 IMPORT COMPLETATO!\n\n`
+      message += `✅ Movimenti nuovi importati: ${totalImported}\n`
+      message += `⏭️  Duplicati già presenti: ${totalSkipped}\n`
+      message += `📊 Totale transazioni processate: ${totalTransactions}\n\n`
+      message += `${totalImported} nuovi movimenti sono stati registrati in Odoo.\n`
+      message += `${totalSkipped} movimenti erano già stati importati in precedenza.`
+    } else if (totalImported === 0 && totalSkipped > 0 && totalErrors === 0) {
+      message = `ℹ️ NESSUN NUOVO MOVIMENTO\n\n`
+      message += `⏭️  Tutti i ${totalSkipped} movimenti erano già stati importati in precedenza.\n\n`
+      message += `Non è stato necessario importare nulla - tutto già presente in Odoo!`
+    } else {
+      message = `⚠️ IMPORT COMPLETATO CON ERRORI\n\n`
+      message += `✅ Importati: ${totalImported}\n`
+      if (totalSkipped > 0) {
+        message += `⏭️  Duplicati: ${totalSkipped}\n`
+      }
+      message += `❌ Errori: ${totalErrors}\n`
+      message += `📊 Totale: ${totalTransactions}\n\n`
 
-    if (totalErrors > 0) {
-      message += `\n❌ Errori: ${totalErrors}\n`
-
-      // Mostra i primi 5 errori dettagliati nell'alert
       if (allErrorDetails.length > 0) {
-        message += `\n📋 Primi errori:\n`
-        const errorsToShow = allErrorDetails.slice(0, 5)
+        message += `Primi errori:\n`
+        const errorsToShow = allErrorDetails.slice(0, 3)
         errorsToShow.forEach((error, idx) => {
-          message += `${idx + 1}. ${error}\n`
+          message += `${idx + 1}. ${error.substring(0, 100)}\n`
         })
 
-        if (allErrorDetails.length > 5) {
-          message += `\n... e altri ${allErrorDetails.length - 5} errori.\n`
+        if (allErrorDetails.length > 3) {
+          message += `\n... e altri ${allErrorDetails.length - 3} errori.\n`
         }
       }
 
-      message += `\n⚠️ Apri la console del browser (F12) per vedere tutti i dettagli!\n`
+      message += `\n⚠️ Controlla la console (F12) per i dettagli!`
     }
 
     alert(message)
 
-    // Reset
     setFiles([])
     setParseResults([])
     setCurrentFileIndex(0)
@@ -247,40 +247,40 @@ export default function ImportMovimentiUBS() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 sm:p-6 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-blue-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-4 rounded-xl">
-                <FileText className="w-8 h-8 text-white" />
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 mb-6 md:mb-8 border border-blue-100">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-3 md:p-4 rounded-lg md:rounded-xl flex-shrink-0">
+                <FileText className="w-6 h-6 md:w-8 md:h-8 text-white" />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent truncate">
                   Import Movimenti UBS
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-sm md:text-base text-gray-600 hidden sm:block">
                   Carica il file CSV esportato dalla tua UBS e-banking
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  v3.0 - Sistema anti-duplicati Odoo (unique_import_id)
+                  v3.0 - Sistema anti-duplicati Odoo
                 </p>
               </div>
             </div>
 
             {/* Pulsanti Navigazione */}
-            <div className="flex items-center gap-3">
-              <Link href="/super-dashboard">
-                <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-lg font-semibold shadow-lg transition-all">
-                  <ArrowLeft className="w-5 h-5" />
-                  <span>Indietro</span>
+            <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+              <Link href="/super-dashboard" className="flex-1 sm:flex-none">
+                <button className="w-full flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-lg font-semibold shadow-lg transition-all text-sm sm:text-base">
+                  <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">Indietro</span>
                 </button>
               </Link>
-              <Link href="/">
-                <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg font-semibold shadow-lg transition-all">
-                  <Home className="w-5 h-5" />
-                  <span>Home</span>
+              <Link href="/" className="flex-1 sm:flex-none">
+                <button className="w-full flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg font-semibold shadow-lg transition-all text-sm sm:text-base">
+                  <Home className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">Home</span>
                 </button>
               </Link>
             </div>
@@ -288,15 +288,15 @@ export default function ImportMovimentiUBS() {
         </div>
 
         {/* Upload Section */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-blue-100">
-          <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-            <Upload className="w-6 h-6 text-blue-600" />
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 mb-6 md:mb-8 border border-blue-100">
+          <h2 className="text-lg md:text-xl font-bold mb-4 md:mb-6 flex items-center gap-2">
+            <Upload className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
             Carica File CSV
           </h2>
 
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {/* File Input */}
-            <div className="border-2 border-dashed border-blue-300 rounded-xl p-8 text-center hover:border-blue-500 transition-colors">
+            <div className="border-2 border-dashed border-blue-300 rounded-xl p-6 md:p-8 text-center hover:border-blue-500 active:border-blue-600 transition-colors">
               <input
                 type="file"
                 accept=".csv"
@@ -305,15 +305,15 @@ export default function ImportMovimentiUBS() {
                 className="hidden"
                 id="csv-upload"
               />
-              <label htmlFor="csv-upload" className="cursor-pointer">
-                <div className="flex flex-col items-center gap-4">
-                  <Upload className="w-16 h-16 text-blue-400" />
+              <label htmlFor="csv-upload" className="cursor-pointer block">
+                <div className="flex flex-col items-center gap-3 md:gap-4">
+                  <Upload className="w-12 h-12 md:w-16 md:h-16 text-blue-400" />
                   <div>
-                    <p className="text-lg font-semibold text-gray-700">
+                    <p className="text-base md:text-lg font-semibold text-gray-700">
                       Click per selezionare i file CSV
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Puoi selezionare più file contemporaneamente - verranno processati tutti insieme
+                    <p className="text-xs sm:text-sm text-gray-500 mt-1 px-2">
+                      Puoi selezionare più file contemporaneamente
                     </p>
                   </div>
                 </div>
@@ -324,14 +324,14 @@ export default function ImportMovimentiUBS() {
             {files.length > 0 && (
               <div className="space-y-3">
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <FileText className="w-8 h-8 text-blue-600" />
+                      <FileText className="w-6 h-6 md:w-8 md:h-8 text-blue-600 flex-shrink-0" />
                       <div>
-                        <p className="font-semibold text-gray-800">
-                          {files.length} file selezionati
+                        <p className="font-semibold text-gray-800 text-sm md:text-base">
+                          {files.length} file selezionat{files.length > 1 ? 'i' : 'o'}
                         </p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-xs sm:text-sm text-gray-600">
                           {(files.reduce((acc, f) => acc + f.size, 0) / 1024).toFixed(2)} KB totali
                         </p>
                       </div>
@@ -339,13 +339,13 @@ export default function ImportMovimentiUBS() {
                     <button
                       onClick={handleParse}
                       disabled={parsing}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50"
+                      className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 sm:px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 text-sm md:text-base"
                     >
-                      {parsing ? `Analizzando ${currentFileIndex + 1}/${files.length}...` : `Analizza Tutti (${files.length})`}
+                      {parsing ? `Analizzando ${currentFileIndex + 1}/${files.length}...` : `Analizza ${files.length > 1 ? 'Tutti' : ''} (${files.length})`}
                     </button>
+                  </div>
                 </div>
               </div>
-            </div>
             )}
           </div>
         </div>
@@ -355,83 +355,83 @@ export default function ImportMovimentiUBS() {
           <div className="space-y-6">
             {parseResults.map((parseResult, idx) => (
               <div key={idx}>
-                <h3 className="text-lg font-bold text-gray-700 mb-3">
-                  File {idx + 1}/{parseResults.length}: {files[idx]?.name}
+                <h3 className="text-base sm:text-lg font-bold text-gray-700 mb-3 px-2">
+                  File {idx + 1}/{parseResults.length}: <span className="text-sm sm:text-base break-all">{files[idx]?.name}</span>
                 </h3>
 
                 {/* Account Info */}
                 {parseResult.success && parseResult.accountInfo && (
-              <div className="bg-white rounded-2xl shadow-xl p-8 border border-green-100">
-                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
+              <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 border border-green-100">
+                <h2 className="text-lg md:text-xl font-bold mb-4 md:mb-6 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
                   Informazioni Conto
                 </h2>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-4 rounded-xl">
-                    <p className="text-sm text-gray-600 mb-1">IBAN</p>
-                    <p className="font-bold text-gray-800">{parseResult.accountInfo.iban}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                  <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-3 md:p-4 rounded-xl">
+                    <p className="text-xs md:text-sm text-gray-600 mb-1">IBAN</p>
+                    <p className="font-bold text-gray-800 text-sm md:text-base break-all">{parseResult.accountInfo.iban}</p>
                   </div>
-                  <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-4 rounded-xl">
-                    <p className="text-sm text-gray-600 mb-1">Periodo</p>
-                    <p className="font-bold text-gray-800">
+                  <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-3 md:p-4 rounded-xl">
+                    <p className="text-xs md:text-sm text-gray-600 mb-1">Periodo</p>
+                    <p className="font-bold text-gray-800 text-xs sm:text-sm md:text-base">
                       {parseResult.accountInfo.startDate} → {parseResult.accountInfo.endDate}
                     </p>
                   </div>
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl">
-                    <p className="text-sm text-gray-600 mb-1">Saldo Iniziale</p>
-                    <p className="font-bold text-green-700">
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 md:p-4 rounded-xl">
+                    <p className="text-xs md:text-sm text-gray-600 mb-1">Saldo Iniziale</p>
+                    <p className="font-bold text-green-700 text-sm md:text-base">
                       {parseResult.accountInfo.currency} {parseResult.accountInfo.startBalance.toLocaleString('de-CH', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl">
-                    <p className="text-sm text-gray-600 mb-1">Saldo Finale</p>
-                    <p className="font-bold text-green-700">
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 md:p-4 rounded-xl">
+                    <p className="text-xs md:text-sm text-gray-600 mb-1">Saldo Finale</p>
+                    <p className="font-bold text-green-700 text-sm md:text-base">
                       {parseResult.accountInfo.currency} {parseResult.accountInfo.endBalance.toLocaleString('de-CH', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
                 </div>
 
                 {parseResult.stats && (
-                  <div className="grid grid-cols-3 gap-4 mt-4">
-                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mt-4">
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 md:p-4 rounded-xl">
                       <div className="flex items-center gap-2 mb-1">
-                        <TrendingUp className="w-5 h-5 text-green-600" />
-                        <p className="text-sm text-gray-600">Entrate</p>
+                        <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
+                        <p className="text-xs md:text-sm text-gray-600">Entrate</p>
                       </div>
-                      <p className="font-bold text-xl text-green-700">
+                      <p className="font-bold text-lg md:text-xl text-green-700">
                         CHF {parseResult.stats.totalIncome.toLocaleString('de-CH', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
-                    <div className="bg-gradient-to-br from-red-50 to-pink-50 p-4 rounded-xl">
+                    <div className="bg-gradient-to-br from-red-50 to-pink-50 p-3 md:p-4 rounded-xl">
                       <div className="flex items-center gap-2 mb-1">
-                        <TrendingDown className="w-5 h-5 text-red-600" />
-                        <p className="text-sm text-gray-600">Uscite</p>
+                        <TrendingDown className="w-4 h-4 md:w-5 md:h-5 text-red-600" />
+                        <p className="text-xs md:text-sm text-gray-600">Uscite</p>
                       </div>
-                      <p className="font-bold text-xl text-red-700">
+                      <p className="font-bold text-lg md:text-xl text-red-700">
                         CHF {parseResult.stats.totalExpense.toLocaleString('de-CH', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
-                    <div className={`bg-gradient-to-br p-4 rounded-xl ${parseResult.stats.netChange >= 0 ? 'from-green-50 to-emerald-50' : 'from-red-50 to-pink-50'}`}>
-                      <p className="text-sm text-gray-600 mb-1">Variazione Netta</p>
-                      <p className={`font-bold text-xl ${parseResult.stats.netChange >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    <div className={`bg-gradient-to-br p-3 md:p-4 rounded-xl ${parseResult.stats.netChange >= 0 ? 'from-green-50 to-emerald-50' : 'from-red-50 to-pink-50'}`}>
+                      <p className="text-xs md:text-sm text-gray-600 mb-1">Variazione Netta</p>
+                      <p className={`font-bold text-lg md:text-xl ${parseResult.stats.netChange >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                         CHF {parseResult.stats.netChange.toLocaleString('de-CH', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
                 )}
 
-                {/* Journal Selection - NUOVO */}
+                {/* Journal Selection */}
                 {availableJournals.length > 0 && (
-                  <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl mt-6 border-2 border-purple-200">
+                  <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-4 md:p-6 rounded-xl mt-4 md:mt-6 border-2 border-purple-200">
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="bg-purple-600 p-2 rounded-lg">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="bg-purple-600 p-2 rounded-lg flex-shrink-0">
+                        <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                         </svg>
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-gray-800">Registro Bancario Odoo</p>
+                        <p className="text-xs md:text-sm font-bold text-gray-800">Registro Bancario Odoo</p>
                         <p className="text-xs text-gray-600">Seleziona dove registrare queste transazioni</p>
                       </div>
                     </div>
@@ -445,7 +445,7 @@ export default function ImportMovimentiUBS() {
                           [idx]: journalId
                         }))
                       }}
-                      className="w-full px-4 py-3 bg-white border-2 border-purple-300 rounded-lg font-semibold text-gray-800 hover:border-purple-500 focus:border-purple-600 focus:ring-2 focus:ring-purple-200 transition-all cursor-pointer"
+                      className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border-2 border-purple-300 rounded-lg font-semibold text-gray-800 hover:border-purple-500 focus:border-purple-600 focus:ring-2 focus:ring-purple-200 transition-all cursor-pointer text-sm md:text-base"
                     >
                       <option value="">-- Seleziona registro bancario --</option>
                       {availableJournals.map(journal => (
@@ -458,8 +458,8 @@ export default function ImportMovimentiUBS() {
                     {/* Info IBAN match */}
                     {parseResult.suggestedJournal && selectedJournals[idx] === parseResult.suggestedJournal.journalId && (
                       <div className="mt-3 flex items-center gap-2 text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg">
-                        <CheckCircle className="w-4 h-4" />
-                        <span>
+                        <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                        <span className="break-all">
                           ✅ Registro suggerito automaticamente da IBAN: <strong>{parseResult.accountInfo.iban}</strong>
                         </span>
                       </div>
@@ -468,8 +468,8 @@ export default function ImportMovimentiUBS() {
                     {/* Warning IBAN non riconosciuto */}
                     {!parseResult.suggestedJournal && parseResult.accountInfo.iban && (
                       <div className="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-lg">
-                        <AlertCircle className="w-4 h-4" />
-                        <span>
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <span className="break-all">
                           ⚠️ IBAN {parseResult.accountInfo.iban} non riconosciuto. Seleziona manualmente il registro corretto.
                         </span>
                       </div>
@@ -481,10 +481,10 @@ export default function ImportMovimentiUBS() {
 
             {/* Transactions List */}
             {parseResult.success && parseResult.transactions && parseResult.transactions.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-xl p-8 border border-blue-100">
-                <div className="mb-6">
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <FileText className="w-6 h-6 text-blue-600" />
+              <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 border border-blue-100">
+                <div className="mb-4 md:mb-6">
+                  <h2 className="text-lg md:text-xl font-bold flex items-center gap-2">
+                    <FileText className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
                     Movimenti Trovati ({parseResult.transactions.length})
                   </h2>
                 </div>
@@ -493,34 +493,34 @@ export default function ImportMovimentiUBS() {
                   {parseResult.transactions.map((tx, i) => (
                     <div
                       key={i}
-                      className={`border rounded-xl p-4 hover:shadow-md transition-shadow ${
+                      className={`border rounded-lg md:rounded-xl p-3 md:p-4 hover:shadow-md transition-shadow ${
                         tx.type === 'income' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 md:gap-3 mb-2">
                             {tx.type === 'income' ? (
-                              <TrendingUp className="w-5 h-5 text-green-600" />
+                              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-green-600 flex-shrink-0" />
                             ) : (
-                              <TrendingDown className="w-5 h-5 text-red-600" />
+                              <TrendingDown className="w-4 h-4 md:w-5 md:h-5 text-red-600 flex-shrink-0" />
                             )}
-                            <p className="font-bold text-gray-800">{tx.beneficiary}</p>
+                            <p className="font-bold text-gray-800 text-sm md:text-base truncate">{tx.beneficiary}</p>
                           </div>
-                          <p className="text-sm text-gray-600 mb-1">{tx.description}</p>
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <p className="text-xs md:text-sm text-gray-600 mb-1 break-words">{tx.description}</p>
+                          <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs text-gray-500">
                             <span>📅 {tx.date}</span>
-                            <span>🏦 {tx.transactionNr}</span>
+                            <span className="break-all">🏦 {tx.transactionNr}</span>
                             {tx.paymentReason && (
-                              <span className="font-semibold text-blue-700">💳 Zahlungsgrund: {tx.paymentReason}</span>
+                              <span className="font-semibold text-blue-700 break-words">💳 Zahlungsgrund: {tx.paymentReason}</span>
                             )}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className={`text-2xl font-bold ${tx.type === 'income' ? 'text-green-700' : 'text-red-700'}`}>
+                        <div className="text-left sm:text-right flex-shrink-0">
+                          <p className={`text-xl md:text-2xl font-bold ${tx.type === 'income' ? 'text-green-700' : 'text-red-700'}`}>
                             {tx.type === 'income' ? '+' : '-'} CHF {Math.abs(tx.amount).toLocaleString('de-CH', { minimumFractionDigits: 2 })}
                           </p>
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-xs md:text-sm text-gray-600 mt-1">
                             Saldo: CHF {tx.balance.toLocaleString('de-CH', { minimumFractionDigits: 2 })}
                           </p>
                         </div>
@@ -533,16 +533,16 @@ export default function ImportMovimentiUBS() {
 
             {/* Errors */}
             {!parseResult.success && parseResult.errors && (
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-8">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-red-700">
-                  <XCircle className="w-6 h-6" />
+              <div className="bg-red-50 border border-red-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8">
+                <h2 className="text-lg md:text-xl font-bold mb-4 flex items-center gap-2 text-red-700">
+                  <XCircle className="w-5 h-5 md:w-6 md:h-6" />
                   Errori
                 </h2>
                 <ul className="space-y-2">
                   {parseResult.errors.map((error, i) => (
-                    <li key={i} className="flex items-start gap-2 text-red-700">
-                      <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                      <span>{error}</span>
+                    <li key={i} className="flex items-start gap-2 text-xs md:text-sm text-red-700">
+                      <AlertCircle className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0 mt-0.5" />
+                      <span className="break-words">{error}</span>
                     </li>
                   ))}
                 </ul>
@@ -557,10 +557,10 @@ export default function ImportMovimentiUBS() {
                 <button
                   onClick={handleImport}
                   disabled={importing}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-12 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all disabled:opacity-50 flex items-center gap-3"
+                  className="w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 sm:px-12 py-3 md:py-4 rounded-xl font-bold text-base md:text-lg hover:shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3"
                 >
-                  <Download className="w-6 h-6" />
-                  {importing ? `Importando ${currentFileIndex + 1}/${parseResults.length}...` : `Importa Tutti in Odoo (${parseResults.length} file)`}
+                  <Download className="w-5 h-5 md:w-6 md:h-6" />
+                  {importing ? `Importando ${currentFileIndex + 1}/${parseResults.length}...` : `Importa ${parseResults.length > 1 ? 'Tutti' : ''} in Odoo (${parseResults.length} file)`}
                 </button>
               </div>
             )}
@@ -569,33 +569,33 @@ export default function ImportMovimentiUBS() {
 
         {/* Instructions */}
         {parseResults.length === 0 && (
-          <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-8 border border-blue-200">
-            <h2 className="text-xl font-bold mb-4 text-gray-800">
+          <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 border border-blue-200">
+            <h2 className="text-lg md:text-xl font-bold mb-4 text-gray-800">
               📖 Come usare
             </h2>
-            <ol className="space-y-3 text-gray-700">
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">1</span>
+            <ol className="space-y-3 text-gray-700 text-sm md:text-base">
+              <li className="flex items-start gap-2 md:gap-3">
+                <span className="flex-shrink-0 w-6 h-6 md:w-8 md:h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs md:text-base">1</span>
                 <span>Vai su <strong>UBS e-banking</strong> → Accounts and Cards → Overview</span>
               </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">2</span>
+              <li className="flex items-start gap-2 md:gap-3">
+                <span className="flex-shrink-0 w-6 h-6 md:w-8 md:h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs md:text-base">2</span>
                 <span>Seleziona il conto <strong>UBS CHF 701J</strong></span>
               </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">3</span>
+              <li className="flex items-start gap-2 md:gap-3">
+                <span className="flex-shrink-0 w-6 h-6 md:w-8 md:h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs md:text-base">3</span>
                 <span>Click su <strong>Transactions</strong> e poi sull'icona <strong>CSV/Excel</strong></span>
               </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">4</span>
+              <li className="flex items-start gap-2 md:gap-3">
+                <span className="flex-shrink-0 w-6 h-6 md:w-8 md:h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs md:text-base">4</span>
                 <span>Scarica il file CSV e caricalo qui sopra</span>
               </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">5</span>
+              <li className="flex items-start gap-2 md:gap-3">
+                <span className="flex-shrink-0 w-6 h-6 md:w-8 md:h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs md:text-base">5</span>
                 <span>Click su <strong>"Analizza File"</strong> per vedere i movimenti</span>
               </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">6</span>
+              <li className="flex items-start gap-2 md:gap-3">
+                <span className="flex-shrink-0 w-6 h-6 md:w-8 md:h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-xs md:text-base">6</span>
                 <span>Click su <strong>"Importa in Odoo"</strong> per registrare i movimenti</span>
               </li>
             </ol>

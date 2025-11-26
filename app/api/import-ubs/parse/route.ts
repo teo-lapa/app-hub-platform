@@ -269,8 +269,6 @@ export async function POST(request: NextRequest) {
             totalIncome += amount
           }
 
-          console.log(`✅ Usando Einzelbetrag: ${einzelbetrag} per ${beschreibung1.substring(0, 50)}`)
-
         } else if (gutschrift && gutschrift !== '') {
           // Entrata normale
           amount = parseFloat(gutschrift.replace(',', '.'))
@@ -302,13 +300,6 @@ export async function POST(request: NextRequest) {
         // Estrai Zahlungsgrund da Beschreibung3
         const paymentReason = extractPaymentReason(beschreibung3)
 
-        // Debug log
-        if (paymentReason) {
-          console.log(`✅ Zahlungsgrund trovato: "${paymentReason}" da: ${beschreibung3.substring(0, 100)}`)
-        } else {
-          console.log(`⚠️ Zahlungsgrund NON trovato in: ${beschreibung3.substring(0, 100)}`)
-        }
-
         const balance = parseFloat(saldo.replace(',', '.') || '0')
 
         // Gestione date per righe Sammelauftrag:
@@ -323,7 +314,6 @@ export async function POST(request: NextRequest) {
         } else if (lastValidDate) {
           // Nessuna data in questa riga - usa l'ultima data valida (riga madre Sammelauftrag)
           finalDate = lastValidDate
-          console.log(`📅 Usando data dalla riga madre Sammelauftrag: ${lastValidDate} per ${beschreibung1.substring(0, 50)}`)
         } else {
           // Fallback estremo: usa data di oggi
           finalDate = new Date().toISOString().split('T')[0]
