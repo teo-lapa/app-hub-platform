@@ -185,6 +185,8 @@ export async function POST(request: NextRequest) {
         country_id: switzerlandId || false,
         state_id: ticinoId || false,
         comment: lead.description || false,
+        partner_latitude: lead.partner_latitude || false,
+        partner_longitude: lead.partner_longitude || false,
       };
 
       // Add Google Place ID to comment if present in description

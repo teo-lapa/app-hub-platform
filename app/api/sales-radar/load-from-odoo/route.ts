@@ -766,41 +766,25 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Build a set of Place IDs from existing customers to avoid showing duplicate leads
-        // When a lead is converted to a contact, the Place ID is stored in the comment field
-        const existingPlaceIds = new Set<string>();
+        // Build a map of existing customers by coordinates and name to avoid showing duplicate leads
+        // CRITICAL: Customers ALWAYS have priority over leads - if same location/name exists, skip the lead
+        const existingCustomerKeys = new Set<string>();
 
-        // We need to fetch the customers again to check their comment fields for Place IDs
-        // Or we can store this info when we create markers above
-        try {
-          const customerIdsInMarkers = markers
-            .filter(m => m.type === 'customer')
-            .map(m => m.id);
+        for (const marker of markers) {
+          if (marker.type === 'customer') {
+            // Create unique key from coordinates (rounded to 4 decimals ~ 10m precision)
+            const lat = Math.round(marker.latitude * 10000) / 10000;
+            const lng = Math.round(marker.longitude * 10000) / 10000;
+            const coordKey = `${lat},${lng}`;
+            existingCustomerKeys.add(coordKey);
 
-          if (customerIdsInMarkers.length > 0) {
-            const customersWithComments = await client.searchRead(
-              'res.partner',
-              [['id', 'in', customerIdsInMarkers]],
-              ['id', 'comment'],
-              0
-            );
-
-            for (const customer of customersWithComments) {
-              if (customer.comment) {
-                const placeIdMatch = customer.comment.match(/Google Place ID:\s*([^\n]+)/);
-                if (placeIdMatch) {
-                  const placeId = placeIdMatch[1].trim();
-                  existingPlaceIds.add(placeId);
-                  console.log(`[LOAD-FROM-ODOO] 📍 Customer "${customer.id}" has Place ID: ${placeId}`);
-                }
-              }
-            }
+            // Also create key from normalized name for matching
+            const nameKey = marker.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+            existingCustomerKeys.add(nameKey);
           }
-        } catch (e) {
-          console.warn('[LOAD-FROM-ODOO] Errore recupero Place IDs da customers:', e);
         }
 
-        console.log(`[LOAD-FROM-ODOO] 🔍 Found ${existingPlaceIds.size} Place IDs from existing customers`);
+        console.log(`[LOAD-FROM-ODOO] 🔍 Found ${markers.filter(m => m.type === 'customer').length} customers, created ${existingCustomerKeys.size} unique keys`);
 
         for (const lead of leads) {
           // Parse coordinates from description
@@ -808,19 +792,23 @@ export async function GET(request: NextRequest) {
 
           if (!coords) continue; // Skip leads without coordinates
 
-          // CRITICAL: Check if this lead has been converted to a contact
-          // Extract Place ID from lead description
-          let leadPlaceId: string | null = null;
-          if (lead.description) {
-            const placeIdMatch = lead.description.match(/Place ID:\s*([^\n]+)/);
-            if (placeIdMatch) {
-              leadPlaceId = placeIdMatch[1].trim();
-            }
+          // CRITICAL: Check if a customer exists at the same location or with same name
+          // Create keys for this lead
+          const leadLat = Math.round(coords.latitude * 10000) / 10000;
+          const leadLng = Math.round(coords.longitude * 10000) / 10000;
+          const leadCoordKey = `${leadLat},${leadLng}`;
+
+          const leadName = (lead.partner_name || lead.name || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+          const leadNameKey = leadName;
+
+          // Skip this lead if a customer already exists at same coordinates OR with same name
+          if (existingCustomerKeys.has(leadCoordKey)) {
+            console.log(`[LOAD-FROM-ODOO] ⚠️ Skipping lead "${lead.partner_name || lead.name}" - customer exists at same coordinates (${leadCoordKey})`);
+            continue;
           }
 
-          // Skip this lead if a customer marker already exists with the same Place ID
-          if (leadPlaceId && existingPlaceIds.has(leadPlaceId)) {
-            console.log(`[LOAD-FROM-ODOO] ⚠️ Skipping lead "${lead.name}" - already exists as customer (Place ID: ${leadPlaceId})`);
+          if (leadNameKey && existingCustomerKeys.has(leadNameKey)) {
+            console.log(`[LOAD-FROM-ODOO] ⚠️ Skipping lead "${lead.partner_name || lead.name}" - customer exists with same name`);
             continue;
           }
 
