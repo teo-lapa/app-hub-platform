@@ -211,7 +211,9 @@ export async function POST(request: NextRequest) {
         city: partnerValues.city,
         zip: partnerValues.zip,
         state_id: partnerValues.state_id,
-        country_id: partnerValues.country_id
+        country_id: partnerValues.country_id,
+        partner_latitude: partnerValues.partner_latitude,
+        partner_longitude: partnerValues.partner_longitude
       });
 
       // Create partner

@@ -738,7 +738,8 @@ export async function GET(request: NextRequest) {
             'street', 'street2', 'zip', 'city',
             'description', // Contains coordinates
             'tag_ids', // Tags
-            'website' // Website URL
+            'website', // Website URL
+            'partner_id' // To check if lead was converted to contact
           ],
           0, // No limit, we'll filter by distance
           'name asc'
