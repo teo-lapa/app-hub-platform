@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       'search_read',
       [],
       {
-        domain: [['driver_id', '=', employeeId]],
+        domain: [['driver_employee_id', '=', employeeId]],  // FIXED: use driver_employee_id not driver_id
         fields: ['id', 'name', 'license_plate'],
         limit: 1
       }
