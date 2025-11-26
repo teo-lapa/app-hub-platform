@@ -1726,15 +1726,16 @@ export default function DeliveryPage() {
       doc.text(`Veicolo: ${vehicleInfo.name}`, 20, 35);
       doc.text(`Targa: ${vehicleInfo.license_plate || 'N/A'}`, 20, 42);
       doc.text(`Autista: ${session?.name || 'N/A'}`, 20, 49);
-      doc.text(`Data: ${new Date(vehicleCheckData.check_date).toLocaleDateString('it-IT')}`, 20, 56);
+      doc.text(`Chilometraggio: ${vehicleCheckData.odometer || 'N/D'} km`, 20, 56);
+      doc.text(`Data: ${new Date(vehicleCheckData.check_date).toLocaleDateString('it-IT')}`, 20, 63);
 
       // Summary
       doc.setFontSize(14);
-      doc.text('Riepilogo Controllo', 20, 70);
+      doc.text('Riepilogo Controllo', 20, 77);
       doc.setFontSize(10);
-      doc.text(`Elementi OK: ${vehicleCheckData.summary.ok_count}`, 20, 78);
-      doc.text(`Problemi Aperti: ${vehicleCheckData.summary.open_issues}`, 80, 78);
-      doc.text(`Problemi Risolti: ${vehicleCheckData.summary.resolved_issues}`, 140, 78);
+      doc.text(`Elementi OK: ${vehicleCheckData.summary.ok_count}`, 20, 85);
+      doc.text(`Problemi Aperti: ${vehicleCheckData.summary.open_issues}`, 80, 85);
+      doc.text(`Problemi Risolti: ${vehicleCheckData.summary.resolved_issues}`, 140, 85);
 
       // Filtra solo problemi aperti (status='issue' && !resolved)
       // Usa SOLO le categorie VISIBILI, non tutte (esclude FRIGO per veicoli non refrigerati)
@@ -1753,10 +1754,10 @@ export default function DeliveryPage() {
 
       if (openIssuesList.length > 0) {
         doc.setFontSize(14);
-        doc.text('Problemi Aperti', 20, 93);
+        doc.text('Problemi Aperti', 20, 100);
 
         autoTable(doc, {
-          startY: 98,
+          startY: 105,
           head: [['Categoria', 'Elemento', 'Nota']],
           body: openIssuesList,
           styles: { fontSize: 9 },
@@ -1765,7 +1766,7 @@ export default function DeliveryPage() {
       } else {
         doc.setFontSize(12);
         doc.setTextColor(16, 185, 129);
-        doc.text('Nessun problema aperto', 20, 98);
+        doc.text('Nessun problema aperto', 20, 105);
       }
 
       // Footer
@@ -2350,13 +2351,36 @@ export default function DeliveryPage() {
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-6 shadow-lg text-white">
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-4xl">🚗</span>
-                <div>
+                <div className="flex-1">
                   <h2 className="text-2xl font-bold">Controllo Veicolo</h2>
                   <p className="text-indigo-100 text-sm">
                     {vehicleInfo ? `${vehicleInfo.name} - ${vehicleInfo.license_plate || 'N/A'}` : 'Caricamento...'}
                   </p>
                 </div>
               </div>
+
+              {/* Campo Chilometri */}
+              {vehicleCheckData && (
+                <div className="mt-4">
+                  <label className="block text-sm font-semibold text-indigo-100 mb-2">
+                    📏 Chilometraggio Attuale
+                  </label>
+                  <input
+                    type="number"
+                    value={vehicleCheckData.odometer || ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? parseInt(e.target.value) : undefined;
+                      setVehicleCheckData({
+                        ...vehicleCheckData,
+                        odometer: value
+                      });
+                    }}
+                    placeholder="Es: 125000"
+                    className="w-full px-4 py-3 rounded-lg text-gray-900 font-bold text-lg focus:ring-2 focus:ring-white focus:outline-none"
+                    min="0"
+                  />
+                </div>
+              )}
 
               {vehicleCheckData && (
                 <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-indigo-400">

@@ -104,6 +104,7 @@ export interface VehicleCheckData {
   vehicle_id: number;
   vehicle_name: string;
   vehicle_license_plate?: string;
+  odometer?: number; // Chilometri del veicolo
   categories: VehicleCheckCategory[];
   summary: {
     total_items: number;
