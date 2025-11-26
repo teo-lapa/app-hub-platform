@@ -199,6 +199,7 @@ export async function POST(request: NextRequest) {
     const transactions: Transaction[] = []
     let totalIncome = 0
     let totalExpense = 0
+    let lastValidDate = '' // Traccia l'ultima data valida per le righe figlie di Sammelauftrag
 
     if (isUBS) {
       // Parser UBS (formato originale con punto e virgola)
@@ -310,10 +311,23 @@ export async function POST(request: NextRequest) {
 
         const balance = parseFloat(saldo.replace(',', '.') || '0')
 
-        // Usa valutadatum, se vuoto prova buchungsdatum, se vuoto prova abschlussdatum
-        // Se tutti vuoti, usa la data di oggi come fallback
+        // Gestione date per righe Sammelauftrag:
+        // Se i campi data sono tutti vuoti, usa l'ultima data valida (dalla riga madre del Sammelauftrag)
         const dateStr = convertDateFormat(valutadatum || buchungsdatum || abschlussdatum)
-        const finalDate = dateStr || new Date().toISOString().split('T')[0] // YYYY-MM-DD formato
+
+        let finalDate: string
+        if (dateStr) {
+          // Abbiamo una data valida - salvala per le righe figlie successive
+          finalDate = dateStr
+          lastValidDate = dateStr
+        } else if (lastValidDate) {
+          // Nessuna data in questa riga - usa l'ultima data valida (riga madre Sammelauftrag)
+          finalDate = lastValidDate
+          console.log(`📅 Usando data dalla riga madre Sammelauftrag: ${lastValidDate} per ${beschreibung1.substring(0, 50)}`)
+        } else {
+          // Fallback estremo: usa data di oggi
+          finalDate = new Date().toISOString().split('T')[0]
+        }
 
         transactions.push({
           date: finalDate,
