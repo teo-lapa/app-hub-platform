@@ -15,7 +15,7 @@ interface Transaction {
 
 // Helper functions - Updated 2025-11-11
 function convertDateFormat(dateStr: string): string {
-  // Converte DD.MM.YYYY o DD-MM-YYYY a YYYY-MM-DD
+  // Converte DD.MM.YYYY, DD-MM-YYYY o DD/MM/YYYY a YYYY-MM-DD
   if (!dateStr) return ''
 
   // Se già in formato corretto YYYY-MM-DD, ritorna così com'è
@@ -31,6 +31,12 @@ function convertDateFormat(dateStr: string): string {
 
   // Gestisci DD-MM-YYYY
   parts = dateStr.split('-')
+  if (parts.length === 3 && parts[0].length <= 2) {
+    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+  }
+
+  // Gestisci DD/MM/YYYY (aggiunto per supportare formato con slash)
+  parts = dateStr.split('/')
   if (parts.length === 3 && parts[0].length <= 2) {
     return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
   }
