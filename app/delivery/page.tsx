@@ -2225,40 +2225,6 @@ export default function DeliveryPage() {
               )}
             </div>
 
-            {/* Banner problemi aperti */}
-            {openIssues.length > 0 && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 m-4">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">🔴</span>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-red-800 mb-1">
-                      {openIssues.length} Problem{openIssues.length > 1 ? 'i' : 'a'} Apert{openIssues.length > 1 ? 'i' : 'o'}
-                    </h3>
-                    <div className="space-y-2">
-                      {openIssues.map((issue) => (
-                        <div key={issue.id} className="text-sm text-red-700 bg-white rounded p-2">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="font-semibold">{issue.category} - {issue.item}</div>
-                              <div className="text-xs mt-1">{issue.note}</div>
-                              <div className="text-xs text-red-500 mt-1">
-                                Segnalato: {new Date(issue.reported_date).toLocaleDateString('it-IT')}
-                              </div>
-                            </div>
-                            {issue.persistence_count && issue.persistence_count > 1 && (
-                              <div className="ml-2 px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold whitespace-nowrap">
-                                ⚠️ Persiste da {issue.persistence_count} controlli
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Tabs categorie */}
             {vehicleCheckData && (
               <>
