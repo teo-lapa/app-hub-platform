@@ -310,8 +310,13 @@ export async function POST(request: NextRequest) {
 
         const balance = parseFloat(saldo.replace(',', '.') || '0')
 
+        // Usa valutadatum, se vuoto prova buchungsdatum, se vuoto prova abschlussdatum
+        // Se tutti vuoti, usa la data di oggi come fallback
+        const dateStr = convertDateFormat(valutadatum || buchungsdatum || abschlussdatum)
+        const finalDate = dateStr || new Date().toISOString().split('T')[0] // YYYY-MM-DD formato
+
         transactions.push({
-          date: convertDateFormat(valutadatum || buchungsdatum || abschlussdatum),
+          date: finalDate,
           valutaDate: convertDateFormat(valutadatum),
           description,
           beneficiary,
