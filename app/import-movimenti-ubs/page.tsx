@@ -188,8 +188,14 @@ export default function ImportMovimentiUBS() {
           totalSkipped += result.skipped || 0
           totalErrors += result.errors || 0
           totalTransactions += result.total || 0
+
+          // Log errori dettagliati se presenti
+          if (result.errorDetails && result.errorDetails.length > 0) {
+            console.error(`❌ Errori dettagliati file ${i + 1}:`, result.errorDetails)
+          }
         } else {
           totalErrors++
+          console.error(`❌ Errore importazione file ${i + 1}:`, result.error)
         }
       } catch (error) {
         console.error(`Errore importazione file ${i + 1}:`, error)
@@ -207,7 +213,8 @@ export default function ImportMovimentiUBS() {
     }
 
     if (totalErrors > 0) {
-      message += `❌ Errori: ${totalErrors}\n`
+      message += `❌ Errori: ${totalErrors}\n\n`
+      message += `⚠️ IMPORTANTE: Apri la console del browser (F12) per vedere i dettagli degli errori!\n`
     }
 
     alert(message)
