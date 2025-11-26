@@ -17,6 +17,7 @@ interface OdooClient {
 class OdooRPC implements OdooClient {
   uid: number | null = null;
   sessionId: string | null = null;
+  private cookies: string | null = null;
 
   private async authenticate() {
     try {
@@ -37,11 +38,26 @@ class OdooRPC implements OdooClient {
         })
       });
 
+      // Estrai TUTTI i cookies dalla risposta
+      const setCookies = response.headers.getSetCookie ? response.headers.getSetCookie() : [];
+      if (setCookies && setCookies.length > 0) {
+        // Estrai solo la parte nome=valore dai cookies (rimuovi expires, path, etc)
+        this.cookies = setCookies
+          .map(cookie => cookie.split(';')[0])
+          .join('; ');
+      }
+
       const data = await response.json();
 
       if (data.result && data.result.uid) {
         this.uid = data.result.uid;
         this.sessionId = data.result.session_id;
+
+        // Se non abbiamo cookies dalla risposta HTTP, usa almeno il session_id dal JSON
+        if (!this.cookies && this.sessionId) {
+          this.cookies = `session_id=${this.sessionId}`;
+        }
+
         return true;
       }
 
@@ -53,9 +69,9 @@ class OdooRPC implements OdooClient {
   }
 
   private async ensureAuthenticated() {
-    if (!this.uid) {
-      await this.authenticate();
-    }
+    // SEMPRE autentica ad ogni chiamata in ambiente serverless
+    // perché le sessioni non persistono tra le richieste
+    await this.authenticate();
   }
 
   async searchRead(model: string, domain: any[], fields: string[], limit: number = 100, offset: number = 0): Promise<any[]> {
@@ -65,7 +81,7 @@ class OdooRPC implements OdooClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': `session_id=${this.sessionId}`
+        'Cookie': this.cookies || `session_id=${this.sessionId}`
       },
       body: JSON.stringify({
         jsonrpc: '2.0',
@@ -102,7 +118,7 @@ class OdooRPC implements OdooClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': `session_id=${this.sessionId}`
+        'Cookie': this.cookies || `session_id=${this.sessionId}`
       },
       body: JSON.stringify({
         jsonrpc: '2.0',
@@ -134,7 +150,7 @@ class OdooRPC implements OdooClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': `session_id=${this.sessionId}`
+        'Cookie': this.cookies || `session_id=${this.sessionId}`
       },
       body: JSON.stringify({
         jsonrpc: '2.0',
@@ -166,7 +182,7 @@ class OdooRPC implements OdooClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': `session_id=${this.sessionId}`
+        'Cookie': this.cookies || `session_id=${this.sessionId}`
       },
       body: JSON.stringify({
         jsonrpc: '2.0',
