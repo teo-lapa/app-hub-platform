@@ -968,7 +968,7 @@ export default function SalesRadarPage() {
       const result = await response.json();
 
       if (result.success) {
-        alert(`✅ Lead convertito con successo!\n\nIl contatto è stato creato in Odoo.\n\nRicarica i dati per vedere il nuovo contatto.`);
+        alert(`✅ Lead convertito con successo!\n\nIl contatto è stato creato in Odoo con tutti i dati dell'indirizzo (città, provincia).\n\nRicarica i dati da ODOO per vedere il nuovo contatto.`);
 
         // Rimuovi il lead dalla mappa (è stato convertito e archiviato)
         setPlaces(prev => prev.filter(p => (p.leadId || p.id) !== leadId));
@@ -976,10 +976,7 @@ export default function SalesRadarPage() {
         // Chiudi il popup
         setSelectedPlace(null);
 
-        // Apri Odoo (opzionale)
-        if (result.odoo_url) {
-          window.open(result.odoo_url, '_blank');
-        }
+        // NON aprire Odoo automaticamente - l'utente deve rimanere sulla mappa
       } else {
         alert('❌ Errore conversione: ' + (result.error || 'Errore sconosciuto'));
       }
