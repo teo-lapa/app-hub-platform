@@ -12,19 +12,19 @@ export async function GET(request: NextRequest) {
   try {
     const odoo = await getOdooClient();
 
-    // Carica TUTTI i journal e poi filtra manualmente
-    const allJournals = await odoo.searchRead(
+    // Carica solo journal ATTIVI di tipo bank o cash
+    const journals = await odoo.searchRead(
       'account.journal',
-      [],  // Nessun filtro
+      [
+        ['active', '=', true],  // Solo journal attivi
+        '|',
+        ['type', '=', 'bank'],
+        ['type', '=', 'cash']
+      ],
       ['id', 'name', 'code', 'currency_id', 'bank_account_id', 'type']
     );
 
-    // Filtra solo quelli di tipo bank o cash
-    const journals = allJournals.filter((j: any) =>
-      j.type === 'bank' || j.type === 'cash'
-    );
-
-    console.log(`✅ Recuperati ${journals.length} journals (bank o cash) da Odoo`);
+    console.log(`✅ Recuperati ${journals.length} journals attivi (bank o cash) da Odoo`);
 
     if (!journals || journals.length === 0) {
       return NextResponse.json({
