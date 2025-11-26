@@ -107,7 +107,7 @@ interface EnrichedPlace extends PlaceData {
   isLead?: boolean;
   leadId?: number;
   notInTarget?: boolean;
-  color?: 'green' | 'orange' | 'grey' | 'red';
+  color?: 'green' | 'orange' | 'grey' | 'red' | 'purple';
   latitude?: number;
   longitude?: number;
   lat?: number;
