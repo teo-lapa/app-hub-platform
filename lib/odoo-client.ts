@@ -39,7 +39,18 @@ class OdooRPC implements OdooClient {
       });
 
       // Estrai TUTTI i cookies dalla risposta
-      const setCookies = response.headers.getSetCookie ? response.headers.getSetCookie() : [];
+      // Usa getSetCookie() se disponibile (Node 18.16+), altrimenti fallback a get('set-cookie')
+      let setCookies: string[] = [];
+      if (typeof response.headers.getSetCookie === 'function') {
+        setCookies = response.headers.getSetCookie();
+      } else {
+        // Fallback per versioni più vecchie di Node.js
+        const cookieHeader = response.headers.get('set-cookie');
+        if (cookieHeader) {
+          setCookies = cookieHeader.split(',').map(c => c.trim());
+        }
+      }
+
       if (setCookies && setCookies.length > 0) {
         // Estrai solo la parte nome=valore dai cookies (rimuovi expires, path, etc)
         this.cookies = setCookies
