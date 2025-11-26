@@ -78,7 +78,7 @@ export default function TimeAttendanceAdminPage() {
   const [exportConfig, setExportConfig] = useState({
     employeeMode: 'all' as 'all' | 'single',
     selectedEmployee: null as number | null,
-    period: 'month' as 'today' | 'yesterday' | 'week' | 'month' | 'last_month' | 'custom',
+    period: 'today' as 'today' | 'yesterday' | 'week' | 'month' | 'last_month' | 'custom',
     customStart: '',
     customEnd: '',
     format: 'excel' as 'csv' | 'excel' | 'pdf',

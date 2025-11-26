@@ -104,11 +104,11 @@ export async function GET(request: NextRequest) {
       format,
     });
 
-    // Date di default: ultimo mese
+    // Date di default: oggi (se non specificate)
     const endDate = endDateStr ? new Date(endDateStr) : new Date();
     const startDate = startDateStr
       ? new Date(startDateStr)
-      : new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+      : new Date(endDate); // Default a oggi invece di 30 giorni fa
 
     startDate.setHours(0, 0, 0, 0);
     endDate.setHours(23, 59, 59, 999);
@@ -209,6 +209,13 @@ export async function GET(request: NextRequest) {
           endDate: endDate.toISOString(),
           queryUsed: contactId ? 'WITH contact_id filter' : 'WITHOUT contact_id filter (all employees)'
         });
+
+        // Ritorna errore invece di generare file vuoto
+        return NextResponse.json({
+          success: false,
+          error: 'Nessuna timbratura trovata nel periodo selezionato',
+          details: `Periodo: ${startDate.toLocaleDateString('it-IT')} - ${endDate.toLocaleDateString('it-IT')}`,
+        }, { status: 404 });
       }
     } catch (dbError) {
       console.warn('Database non disponibile:', dbError);
