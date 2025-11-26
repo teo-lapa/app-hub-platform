@@ -788,6 +788,13 @@ export async function GET(request: NextRequest) {
         console.log(`[LOAD-FROM-ODOO] 🔍 Found ${markers.filter(m => m.type === 'customer').length} customers, created ${existingCustomerKeys.size} unique keys`);
 
         for (const lead of leads) {
+          // CRITICAL: Skip leads that have been converted to contacts (partner_id exists)
+          // These leads are archived and linked to a res.partner - we don't want to show them
+          if (lead.partner_id) {
+            console.log(`[LOAD-FROM-ODOO] ⚠️ Skipping lead "${lead.partner_name || lead.name}" - already converted to contact (partner_id: ${lead.partner_id[0]})`);
+            continue;
+          }
+
           // Parse coordinates from description
           const coords = parseCoordinatesFromDescription(lead.description);
 
