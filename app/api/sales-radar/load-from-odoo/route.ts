@@ -447,7 +447,8 @@ export async function GET(request: NextRequest) {
             'street', 'street2', 'zip', 'city',
             'partner_latitude', 'partner_longitude',
             'category_id', // Tags
-            'website' // Website URL
+            'website', // Website URL
+            'comment' // Contains Google Place ID if converted from lead
           ],
           0, // No limit, we'll filter by distance
           'name asc'
@@ -765,11 +766,63 @@ export async function GET(request: NextRequest) {
           }
         }
 
+        // Build a set of Place IDs from existing customers to avoid showing duplicate leads
+        // When a lead is converted to a contact, the Place ID is stored in the comment field
+        const existingPlaceIds = new Set<string>();
+
+        // We need to fetch the customers again to check their comment fields for Place IDs
+        // Or we can store this info when we create markers above
+        try {
+          const customerIdsInMarkers = markers
+            .filter(m => m.type === 'customer')
+            .map(m => m.id);
+
+          if (customerIdsInMarkers.length > 0) {
+            const customersWithComments = await client.searchRead(
+              'res.partner',
+              [['id', 'in', customerIdsInMarkers]],
+              ['id', 'comment'],
+              0
+            );
+
+            for (const customer of customersWithComments) {
+              if (customer.comment) {
+                const placeIdMatch = customer.comment.match(/Google Place ID:\s*([^\n]+)/);
+                if (placeIdMatch) {
+                  const placeId = placeIdMatch[1].trim();
+                  existingPlaceIds.add(placeId);
+                  console.log(`[LOAD-FROM-ODOO] 📍 Customer "${customer.id}" has Place ID: ${placeId}`);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[LOAD-FROM-ODOO] Errore recupero Place IDs da customers:', e);
+        }
+
+        console.log(`[LOAD-FROM-ODOO] 🔍 Found ${existingPlaceIds.size} Place IDs from existing customers`);
+
         for (const lead of leads) {
           // Parse coordinates from description
           const coords = parseCoordinatesFromDescription(lead.description);
 
           if (!coords) continue; // Skip leads without coordinates
+
+          // CRITICAL: Check if this lead has been converted to a contact
+          // Extract Place ID from lead description
+          let leadPlaceId: string | null = null;
+          if (lead.description) {
+            const placeIdMatch = lead.description.match(/Place ID:\s*([^\n]+)/);
+            if (placeIdMatch) {
+              leadPlaceId = placeIdMatch[1].trim();
+            }
+          }
+
+          // Skip this lead if a customer marker already exists with the same Place ID
+          if (leadPlaceId && existingPlaceIds.has(leadPlaceId)) {
+            console.log(`[LOAD-FROM-ODOO] ⚠️ Skipping lead "${lead.name}" - already exists as customer (Place ID: ${leadPlaceId})`);
+            continue;
+          }
 
           // Calculate distance
           const distance = calculateDistance(latitude, longitude, coords.latitude, coords.longitude);
