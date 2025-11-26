@@ -59,6 +59,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 [IMPORT-UBS] Ricevute ${transactions.length} transazioni`)
     console.log(`💰 [IMPORT-UBS] Valuta: ${accountInfo.currency}`)
+    console.log(`🏦 [IMPORT-UBS] IBAN: ${accountInfo.iban}`)
+    console.log(`📁 [IMPORT-UBS] Journal ID ricevuto: ${requestedJournalId || 'NON SPECIFICATO'}`)
 
     // Ottieni la sessione Odoo dai cookies dell'utente
     const cookieHeader = request.headers.get('cookie')
@@ -91,6 +93,7 @@ export async function POST(request: NextRequest) {
       const transaction = transactions[i]
 
       try {
+        console.log(`🔄 [IMPORT-UBS] Processando movimento ${i + 1}/${transactions.length}: ${transaction.beneficiary} - ${transaction.amount}`)
         const uniqueImportId = generateUniqueImportId(transaction, accountInfo.iban)
 
         // Prepara importo con segno corretto
@@ -154,7 +157,9 @@ export async function POST(request: NextRequest) {
             errors++
             const errorMsg = `Riga ${i + 1}: ${createError.message}`
             errorDetails.push(errorMsg)
-            console.error(`❌ [IMPORT-UBS] Errore creazione movimento:`, createError.message)
+            console.error(`❌ [IMPORT-UBS] Errore creazione movimento riga ${i + 1}:`, createError.message)
+            console.error(`❌ [IMPORT-UBS] Errore completo:`, createError)
+            console.error(`❌ [IMPORT-UBS] Dati transazione che ha fallito:`, JSON.stringify(lineData, null, 2))
           }
         }
 
