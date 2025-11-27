@@ -68,6 +68,33 @@ export async function POST(request: NextRequest) {
 
     console.log(`📅 [CREATE-ACTIVITY] Creating activity for ${resModel} ${resId}:`, body.summary);
 
+    // Get model ID from ir.model (Odoo requires res_model_id, not res_model!)
+    let resModelId: number | null = null;
+    try {
+      const modelRecords = await client.callKw(
+        'ir.model',
+        'search_read',
+        [[['model', '=', resModel]]],
+        {
+          fields: ['id', 'model', 'name'],
+          limit: 1
+        }
+      );
+      if (modelRecords.length > 0) {
+        resModelId = modelRecords[0].id;
+        console.log(`✅ [CREATE-ACTIVITY] Model ID for ${resModel}: ${resModelId}`);
+      } else {
+        throw new Error(`Model ${resModel} not found in ir.model`);
+      }
+    } catch (error) {
+      console.error('❌ [CREATE-ACTIVITY] Cannot get model ID:', error);
+      return NextResponse.json({
+        success: false,
+        error: `Impossibile trovare il modello ${resModel}`,
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }, { status: 500 });
+    }
+
     // Get current user ID
     let currentUserId: number | null = null;
     try {
@@ -135,7 +162,7 @@ export async function POST(request: NextRequest) {
 
     // Prepare activity values
     const activityValues: any = {
-      res_model: resModel, // Model = crm.lead o res.partner
+      res_model_id: resModelId, // Model ID from ir.model (required!)
       res_id: resId, // ID del lead o contatto
       summary: body.summary,
       note: body.note || false,
