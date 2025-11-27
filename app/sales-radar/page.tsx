@@ -1282,10 +1282,15 @@ export default function SalesRadarPage() {
               </button>
               <button
                 onClick={() => {
-                  setMapMode('static');
-                  setPlaceType(''); // Reset filtro tipo attività in modalità Odoo
-                  setKeyword(''); // Reset anche keyword per sicurezza
-                  // La mappa si ricarica automaticamente tramite useEffect quando mapMode cambia
+                  if (mapMode === 'static') {
+                    // Se già in modalità Odoo, ricarica i dati
+                    loadStaticMap();
+                  } else {
+                    setMapMode('static');
+                    setPlaceType(''); // Reset filtro tipo attività in modalità Odoo
+                    setKeyword(''); // Reset anche keyword per sicurezza
+                    // La mappa si ricarica automaticamente tramite useEffect quando mapMode cambia
+                  }
                 }}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   mapMode === 'static'
