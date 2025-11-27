@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
     const client = createOdooRPCClient(sessionId);
     const body: CreateAppointmentBody = await request.json();
 
+    console.log(`📥 [CREATE-APPOINTMENT] Received request body:`, JSON.stringify(body, null, 2));
+
     // Validate required fields
     if (!body.partner_id && !body.lead_id) {
       return NextResponse.json({
@@ -222,8 +224,12 @@ export async function POST(request: NextRequest) {
       }
 
       // If it's a partner (contact), add them as attendee
+      console.log(`📋 [CREATE-APPOINTMENT] Partner check: isLead=${isLead}, body.partner_id=${body.partner_id}, type=${typeof body.partner_id}`);
       if (!isLead && body.partner_id) {
         calendarEventValues.partner_ids = [[6, 0, [body.partner_id]]]; // Many2many command
+        console.log(`✅ [CREATE-APPOINTMENT] Added partner_ids for contact: ${body.partner_id}`);
+      } else if (!isLead) {
+        console.log(`⚠️ [CREATE-APPOINTMENT] Partner ID missing! Cannot add attendee for contact.`);
       }
 
       // Remove false values
@@ -244,7 +250,8 @@ export async function POST(request: NextRequest) {
       console.log(`✅ [CREATE-APPOINTMENT] Calendar event created: ID ${calendarEventId}`);
 
     } catch (error) {
-      console.warn('⚠️ [CREATE-APPOINTMENT] Cannot create calendar event:', error);
+      console.error('❌ [CREATE-APPOINTMENT] CALENDAR EVENT CREATION FAILED:', error);
+      console.error('❌ [CREATE-APPOINTMENT] Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       // Don't fail the whole request if calendar event fails
     }
 

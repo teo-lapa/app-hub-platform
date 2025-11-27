@@ -756,12 +756,32 @@ export default function SalesRadarPage() {
 
         const placeToUse = notePlace || selectedPlace;
 
-        // Se siamo nel form appuntamento o task, trascriviamo solo senza salvare nota
+        // Se siamo nel form appuntamento o task, trascriviamo e salviamo anche l'audio
         if (activityType === 'appointment' || activityType === 'task') {
-          // Solo trascrizione - invia audio per ottenere il testo
+          // Trascrizione + salvataggio audio come allegato
           const formData = new FormData();
           formData.append('audio', audioBlob, 'voice-note.webm');
-          formData.append('transcribe_only', 'true'); // Flag per solo trascrizione
+          formData.append('transcribe_only', 'true'); // Flag per trascrizione (senza postare nel chatter)
+
+          // Aggiungi lead_id e lead_type per salvare l'audio come allegato
+          if (placeToUse) {
+            const isPartner = placeToUse.existsInOdoo || placeToUse.type === 'customer' || placeToUse.color === 'green' || placeToUse.color === 'purple';
+            const isLead = placeToUse.isLead || placeToUse.type === 'lead';
+
+            if (isPartner) {
+              const partnerId = placeToUse.odooCustomer?.id || placeToUse.id;
+              if (partnerId) {
+                formData.append('lead_id', partnerId.toString());
+                formData.append('lead_type', 'partner');
+              }
+            } else if (isLead) {
+              const leadId = placeToUse.leadId || placeToUse.id;
+              if (leadId) {
+                formData.append('lead_id', leadId.toString());
+                formData.append('lead_type', 'lead');
+              }
+            }
+          }
 
           try {
             const response = await fetch('/api/sales-radar/voice-note', {
@@ -776,6 +796,10 @@ export default function SalesRadarPage() {
                 setAppointmentNote((prev) => prev ? `${prev}\n${result.transcription}` : result.transcription);
               } else if (activityType === 'task') {
                 setTaskDescription((prev) => prev ? `${prev}\n${result.transcription}` : result.transcription);
+              }
+
+              if (result.attachment_id) {
+                console.log(`✅ Audio salvato come allegato: ${result.attachment_id}`);
               }
             }
           } catch (error) {

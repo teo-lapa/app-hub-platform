@@ -102,9 +102,9 @@ export async function POST(request: NextRequest) {
       transcribeOnly = formData.get('transcribe_only') === 'true';
     }
 
-    // If transcribe_only, we just need the audio - no lead_id required
+    // If transcribe_only, we transcribe the audio and optionally save the audio file
     if (transcribeOnly && audioFile) {
-      console.log('[VOICE-NOTE] Transcribe-only mode - just transcribing audio');
+      console.log('[VOICE-NOTE] Transcribe-only mode - transcribing audio');
 
       // Validate audio file type
       const fileType = audioFile.type || 'audio/webm';
@@ -134,10 +134,35 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
+      // If lead_id and lead_type are provided, also save the audio file as attachment
+      let attachmentId: number | null = null;
+      if (leadIdStr && leadType && ['lead', 'partner'].includes(leadType)) {
+        const leadId = parseInt(leadIdStr, 10);
+        if (!isNaN(leadId) && leadId > 0) {
+          try {
+            const timestamp = new Date().toLocaleString('it-IT', {
+              dateStyle: 'short',
+              timeStyle: 'short'
+            });
+            attachmentId = await saveAudioAttachment(
+              client,
+              audioFile,
+              leadId,
+              leadType,
+              timestamp
+            );
+            console.log(`[VOICE-NOTE] Audio saved as attachment: ${attachmentId}`);
+          } catch (e) {
+            console.warn('[VOICE-NOTE] Could not save audio attachment:', e);
+          }
+        }
+      }
+
       return NextResponse.json({
         success: true,
         transcription: transcriptionText.trim(),
-        transcribe_only: true
+        transcribe_only: true,
+        attachment_id: attachmentId
       });
     }
 
