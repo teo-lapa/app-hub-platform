@@ -192,7 +192,36 @@ export default function AIImageStudioPage() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Compress and resize image to reduce payload size
+  const compressImage = (base64: string, maxWidth: number, quality: number): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Resize if larger than maxWidth
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Compress to JPEG with quality
+        const compressed = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressed);
+      };
+      img.src = base64;
+    });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -202,16 +231,25 @@ export default function AIImageStudioPage() {
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const base64 = event.target?.result as string;
-      setBaseImage(base64);
-      setBaseImagePreview(base64);
+
+      // Compress image if larger than 500KB
+      let finalImage = base64;
+      if (base64.length > 500000) {
+        toast.loading('Compressione immagine...');
+        finalImage = await compressImage(base64, 1024, 0.7);
+        toast.dismiss();
+      }
+
+      setBaseImage(finalImage);
+      setBaseImagePreview(finalImage);
       toast.success('Immagine caricata!');
     };
     reader.readAsDataURL(file);
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -221,10 +259,19 @@ export default function AIImageStudioPage() {
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const base64 = event.target?.result as string;
-      setLogoImage(base64);
-      setLogoPreview(base64);
+
+      // Compress logo - keep it small (max 300px, high quality)
+      let finalLogo = base64;
+      if (base64.length > 100000) {
+        toast.loading('Compressione logo...');
+        finalLogo = await compressImage(base64, 300, 0.8);
+        toast.dismiss();
+      }
+
+      setLogoImage(finalLogo);
+      setLogoPreview(finalLogo);
       setIncludeLogo(true);
       toast.success('Logo aziendale caricato!');
     };
