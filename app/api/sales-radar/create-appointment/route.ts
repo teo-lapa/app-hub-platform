@@ -167,7 +167,75 @@ export async function POST(request: NextRequest) {
       throw new Error('Creazione appuntamento fallita');
     }
 
-    console.log(`✅ [CREATE-APPOINTMENT] Appointment created: ID ${newActivityId}`);
+    console.log(`✅ [CREATE-APPOINTMENT] Activity created: ID ${newActivityId}`);
+
+    // === CREATE CALENDAR EVENT ===
+    // This makes the appointment appear in Odoo Calendar
+    let calendarEventId: number | null = null;
+    try {
+      // Create datetime strings for start and stop (1 hour duration by default)
+      const startDateTime = `${body.date} ${body.time}:00`;
+      const [hours, minutes] = body.time.split(':').map(Number);
+      const endHours = hours + 1; // 1 hour duration
+      const endTime = `${endHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      const stopDateTime = `${body.date} ${endTime}:00`;
+
+      // Get lead/partner name for the event title
+      let recordName = '';
+      try {
+        const records = await client.searchRead(
+          resModel,
+          [['id', '=', resId]],
+          ['name'],
+          1
+        );
+        recordName = records[0]?.name || '';
+      } catch (e) {
+        console.warn('⚠️ [CREATE-APPOINTMENT] Cannot get record name:', e);
+      }
+
+      const calendarEventValues: any = {
+        name: recordName ? `Appuntamento - ${recordName}` : `Appuntamento - ${body.date} alle ${body.time}`,
+        start: startDateTime,
+        stop: stopDateTime,
+        description: body.note || '',
+        user_id: currentUserId || false,
+        // Link to the lead/partner
+        res_model: resModel,
+        res_id: resId,
+      };
+
+      // If it's a lead, also set opportunity_id
+      if (isLead && body.lead_id) {
+        calendarEventValues.opportunity_id = body.lead_id;
+      }
+
+      // If we have a partner_id, add attendees
+      if (body.partner_id) {
+        calendarEventValues.partner_ids = [[6, 0, [body.partner_id]]]; // Many2many command
+      }
+
+      // Remove false values
+      Object.keys(calendarEventValues).forEach(key => {
+        if (calendarEventValues[key] === false) {
+          delete calendarEventValues[key];
+        }
+      });
+
+      console.log(`📅 [CREATE-APPOINTMENT] Creating calendar event:`, calendarEventValues);
+
+      calendarEventId = await client.callKw(
+        'calendar.event',
+        'create',
+        [calendarEventValues]
+      );
+
+      console.log(`✅ [CREATE-APPOINTMENT] Calendar event created: ID ${calendarEventId}`);
+
+    } catch (error) {
+      console.warn('⚠️ [CREATE-APPOINTMENT] Cannot create calendar event:', error);
+      // Don't fail the whole request if calendar event fails
+    }
 
     // Get created activity with all details
     const createdActivities = await client.searchRead(
@@ -185,6 +253,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       activity_id: newActivityId,
+      calendar_event_id: calendarEventId,
       activity: {
         id: createdActivity.id,
         summary: createdActivity.summary,
@@ -194,7 +263,8 @@ export async function POST(request: NextRequest) {
         user: createdActivity.user_id ? createdActivity.user_id[1] : '',
         create_date: createdActivity.create_date
       },
-      odoo_url: `${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${resId}&model=${resModel}&view_type=form`
+      odoo_url: `${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${resId}&model=${resModel}&view_type=form`,
+      calendar_url: `${process.env.NEXT_PUBLIC_ODOO_URL}/web#action=158&model=calendar.event&view_type=calendar`
     });
 
   } catch (error) {
