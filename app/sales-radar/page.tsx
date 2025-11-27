@@ -754,18 +754,45 @@ export default function SalesRadarPage() {
         const audioBlob = new Blob(chunks, { type: 'audio/webm' });
         setAudioChunks([]);
 
-        // Send to API for transcription
-        // Usa notePlace se siamo nel modal Note, altrimenti selectedPlace
         const placeToUse = notePlace || selectedPlace;
-        if (placeToUse) {
-          await saveVoiceNote(audioBlob, placeToUse);
 
-          // Se era dal modal con "Non in Target" espanso, marca come 'other' e chiudi
-          if (notePlace && notTargetExpanded) {
-            await markAsNotTarget('other');
-            setShowNoteModal(false);
-            setNotePlace(null);
-            setNotTargetExpanded(false);
+        // Se siamo nel form appuntamento o task, trascriviamo solo senza salvare nota
+        if (activityType === 'appointment' || activityType === 'task') {
+          // Solo trascrizione - invia audio per ottenere il testo
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'voice-note.webm');
+          formData.append('transcribe_only', 'true'); // Flag per solo trascrizione
+
+          try {
+            const response = await fetch('/api/sales-radar/voice-note', {
+              method: 'POST',
+              body: formData
+            });
+            const result = await response.json();
+
+            if (result.success && result.transcription) {
+              // Metti la trascrizione nel campo appropriato
+              if (activityType === 'appointment') {
+                setAppointmentNote((prev) => prev ? `${prev}\n${result.transcription}` : result.transcription);
+              } else if (activityType === 'task') {
+                setTaskDescription((prev) => prev ? `${prev}\n${result.transcription}` : result.transcription);
+              }
+            }
+          } catch (error) {
+            console.error('Errore trascrizione:', error);
+          }
+        } else {
+          // Comportamento normale per "Aggiungi Nota" - salva come nota sul contatto
+          if (placeToUse) {
+            await saveVoiceNote(audioBlob, placeToUse);
+
+            // Se era dal modal con "Non in Target" espanso, marca come 'other' e chiudi
+            if (notePlace && notTargetExpanded) {
+              await markAsNotTarget('other');
+              setShowNoteModal(false);
+              setNotePlace(null);
+              setNotTargetExpanded(false);
+            }
           }
         }
 
@@ -904,7 +931,18 @@ export default function SalesRadarPage() {
       note: appointmentNote
     };
 
-    console.log('📅 [SAVE-APPOINTMENT] Request:', { isPartner, isLead, notePlace, ...requestBody });
+    console.log('📅 [SAVE-APPOINTMENT] Request:', {
+      isPartner,
+      isLead,
+      'notePlace.id': notePlace.id,
+      'notePlace.odooCustomer?.id': notePlace.odooCustomer?.id,
+      'notePlace.type': notePlace.type,
+      'notePlace.color': notePlace.color,
+      'notePlace.existsInOdoo': notePlace.existsInOdoo,
+      partnerIdValue,
+      leadIdValue,
+      ...requestBody
+    });
 
     setIsSavingNote(true);
     try {

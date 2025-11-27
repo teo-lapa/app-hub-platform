@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
     let leadIdStr: string | null = null;
     let leadType: 'lead' | 'partner' | null = null;
     let textNote: string | null = null;
+    let transcribeOnly = false;
 
     if (contentType.includes('application/json')) {
       // JSON request (for written notes)
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
       leadIdStr = body.lead_id?.toString();
       leadType = body.lead_type;
       textNote = body.text_note;
+      transcribeOnly = body.transcribe_only === true;
     } else {
       // FormData request (for audio notes)
       const formData = await request.formData();
@@ -97,6 +99,46 @@ export async function POST(request: NextRequest) {
       leadIdStr = formData.get('lead_id') as string | null;
       leadType = formData.get('lead_type') as 'lead' | 'partner' | null;
       textNote = formData.get('text_note') as string | null;
+      transcribeOnly = formData.get('transcribe_only') === 'true';
+    }
+
+    // If transcribe_only, we just need the audio - no lead_id required
+    if (transcribeOnly && audioFile) {
+      console.log('[VOICE-NOTE] Transcribe-only mode - just transcribing audio');
+
+      // Validate audio file type
+      const fileType = audioFile.type || 'audio/webm';
+      if (!fileType.startsWith('audio/')) {
+        return NextResponse.json({
+          success: false,
+          error: 'Il file deve essere un audio'
+        }, { status: 400 });
+      }
+
+      // Send to OpenAI Whisper API for transcription
+      const openai = getOpenAIClient();
+      const transcription = await openai.audio.transcriptions.create({
+        file: audioFile,
+        model: 'whisper-1',
+        language: 'it',
+        response_format: 'json',
+      });
+
+      const transcriptionText = transcription.text;
+      console.log('[VOICE-NOTE] Transcription completed (transcribe-only):', transcriptionText);
+
+      if (!transcriptionText || transcriptionText.trim() === '') {
+        return NextResponse.json({
+          success: false,
+          error: 'Trascrizione vuota - nessun audio riconosciuto'
+        }, { status: 400 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        transcription: transcriptionText.trim(),
+        transcribe_only: true
+      });
     }
 
     // Validate required fields
