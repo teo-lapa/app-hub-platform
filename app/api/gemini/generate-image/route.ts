@@ -41,29 +41,55 @@ export async function POST(request: NextRequest) {
 
     // Build branding instructions
     let brandingInstructions = '';
-    if (includeLogo && companyMotto) {
-      brandingInstructions = ` Include subtle branding elements with the motto "${companyMotto}" integrated elegantly.`;
+    if (includeLogo && logoImage) {
+      brandingInstructions = '\n\nLOGO: Add the provided company logo as a small, elegant watermark in the bottom right corner. The logo should be subtle but visible, maintaining professional quality.';
+      if (companyMotto) {
+        brandingInstructions += ` Also include the motto "${companyMotto}" near the logo in an elegant font.`;
+      }
+    } else if (includeLogo && companyMotto) {
+      brandingInstructions = ` Include the motto "${companyMotto}" as elegant text in the image.`;
     } else if (includeLogo) {
-      brandingInstructions = ' Include space for corporate branding elements.';
+      brandingInstructions = ' Include space for corporate branding elements in the bottom right corner.';
     }
 
     // Build prompt with aspect ratio, tone and branding
     const fullPrompt = `${prompt}. Style: ${toneStyle}. Image aspect ratio: ${aspectRatio || '1:1'}.${brandingInstructions}`;
 
+    console.log('Full prompt:', fullPrompt);
+    console.log('Has logo image:', !!logoImage);
+
     const startTime = Date.now();
     let result;
 
+    // Build content array
+    const contents: any[] = [];
+
+    // Add base image if provided (image-to-image)
     if (baseImage) {
-      // Image-to-image: extract base64 from data URL
       const base64Data = baseImage.replace(/^data:image\/\w+;base64,/, '');
       const mimeMatch = baseImage.match(/^data:(image\/\w+);base64,/);
       const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+      contents.push({ inlineData: { mimeType, data: base64Data } });
+    }
 
-      result = await model.generateContent([
-        { inlineData: { mimeType, data: base64Data } },
-        fullPrompt
-      ]);
+    // Add logo image if provided
+    if (logoImage) {
+      const cleanLogoBase64 = logoImage.replace(/^data:image\/\w+;base64,/, '');
+      const logoMimeMatch = logoImage.match(/^data:(image\/\w+);base64,/);
+      const logoMimeType = logoMimeMatch ? logoMimeMatch[1] : 'image/png';
+      contents.push({ inlineData: { mimeType: logoMimeType, data: cleanLogoBase64 } });
+      console.log('Logo added to request');
+    }
+
+    // Add the prompt
+    contents.push(fullPrompt);
+
+    // Generate content
+    if (contents.length > 1) {
+      // Has images (base image and/or logo)
+      result = await model.generateContent(contents);
     } else {
+      // Text only
       result = await model.generateContent(fullPrompt);
     }
 
