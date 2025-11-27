@@ -891,9 +891,13 @@ export default function SalesRadarPage() {
     const isPartner = notePlace.existsInOdoo || notePlace.type === 'customer' || notePlace.color === 'green' || notePlace.color === 'purple';
     const isLead = notePlace.isLead || notePlace.type === 'lead';
 
+    // Per i lead, l'ID può essere in leadId o direttamente in id
+    const leadIdValue = isLead ? (notePlace.leadId || notePlace.id) : undefined;
+    const partnerIdValue = isPartner ? (notePlace.id || notePlace.odooCustomer?.id) : undefined;
+
     const requestBody = {
-      partner_id: isPartner ? (notePlace.id || notePlace.odooCustomer?.id) : undefined,
-      lead_id: isLead ? notePlace.leadId : undefined,
+      partner_id: partnerIdValue,
+      lead_id: leadIdValue,
       date: appointmentDate,
       time: appointmentTime,
       note: appointmentNote
@@ -934,9 +938,13 @@ export default function SalesRadarPage() {
     const isPartner = notePlace.existsInOdoo || notePlace.type === 'customer' || notePlace.color === 'green' || notePlace.color === 'purple';
     const isLead = notePlace.isLead || notePlace.type === 'lead';
 
+    // Per i lead, l'ID può essere in leadId o direttamente in id
+    const leadIdValue = isLead ? (notePlace.leadId || notePlace.id) : undefined;
+    const partnerIdValue = isPartner ? (notePlace.id || notePlace.odooCustomer?.id) : undefined;
+
     const requestBody = {
-      partner_id: isPartner ? (notePlace.id || notePlace.odooCustomer?.id) : undefined,
-      lead_id: isLead ? notePlace.leadId : undefined,
+      partner_id: partnerIdValue,
+      lead_id: leadIdValue,
       activity_type: 'task',
       summary: taskTitle,
       note: taskDescription,
