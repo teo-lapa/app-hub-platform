@@ -893,7 +893,8 @@ export default function SalesRadarPage() {
 
     // Per i lead, l'ID può essere in leadId o direttamente in id
     const leadIdValue = isLead ? (notePlace.leadId || notePlace.id) : undefined;
-    const partnerIdValue = isPartner ? (notePlace.id || notePlace.odooCustomer?.id) : undefined;
+    // Per i partner, l'ID Odoo è in odooCustomer.id (il notePlace.id potrebbe essere Google Places ID!)
+    const partnerIdValue = isPartner ? (notePlace.odooCustomer?.id || notePlace.id) : undefined;
 
     const requestBody = {
       partner_id: partnerIdValue,
@@ -903,7 +904,7 @@ export default function SalesRadarPage() {
       note: appointmentNote
     };
 
-    console.log('📅 [SAVE-APPOINTMENT] Request:', { isPartner, isLead, ...requestBody });
+    console.log('📅 [SAVE-APPOINTMENT] Request:', { isPartner, isLead, notePlace, ...requestBody });
 
     setIsSavingNote(true);
     try {
@@ -940,7 +941,8 @@ export default function SalesRadarPage() {
 
     // Per i lead, l'ID può essere in leadId o direttamente in id
     const leadIdValue = isLead ? (notePlace.leadId || notePlace.id) : undefined;
-    const partnerIdValue = isPartner ? (notePlace.id || notePlace.odooCustomer?.id) : undefined;
+    // Per i partner, l'ID Odoo è in odooCustomer.id (il notePlace.id potrebbe essere Google Places ID!)
+    const partnerIdValue = isPartner ? (notePlace.odooCustomer?.id || notePlace.id) : undefined;
 
     const requestBody = {
       partner_id: partnerIdValue,
@@ -952,7 +954,7 @@ export default function SalesRadarPage() {
       priority: taskPriority
     };
 
-    console.log('📋 [SAVE-ACTIVITY] Request:', { isPartner, isLead, ...requestBody });
+    console.log('📋 [SAVE-ACTIVITY] Request:', { isPartner, isLead, notePlace, ...requestBody });
 
     setIsSavingNote(true);
     try {
