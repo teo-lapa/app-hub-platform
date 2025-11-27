@@ -81,6 +81,10 @@ export default function AIImageStudioPage() {
   const [imageJustGenerated, setImageJustGenerated] = useState(false);
   const [buttonHover, setButtonHover] = useState(false);
 
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [socialCaption, setSocialCaption] = useState('');
+
   // Initialize speech recognition
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -237,23 +241,66 @@ export default function AIImageStudioPage() {
     toast.success('Download avviato!');
   };
 
-  const handleShare = async () => {
+  // Generate social caption based on prompt and tone
+  const generateSocialCaption = () => {
+    const toneEmojis: Record<Tone, string[]> = {
+      professional: ['💼', '✨', '🎯', '📈'],
+      casual: ['😊', '👋', '🙌', '💫'],
+      fun: ['🎉', '🔥', '💥', '🚀'],
+      luxury: ['✨', '💎', '👑', '🌟']
+    };
+
+    const emojis = toneEmojis[tone];
+    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+    // Create a nice social media description
+    let caption = `${randomEmoji} ${prompt}`;
+
+    if (companyMotto) {
+      caption += `\n\n"${companyMotto}"`;
+    }
+
+    // Add hashtags based on content
+    const baseHashtags = ['#AIGenerated', '#NanoBanana', '#AIArt', '#CreativeAI'];
+    const toneHashtags: Record<Tone, string[]> = {
+      professional: ['#Business', '#Professional', '#Quality'],
+      casual: ['#Lifestyle', '#Daily', '#Vibes'],
+      fun: ['#Fun', '#Creative', '#Amazing'],
+      luxury: ['#Luxury', '#Premium', '#Exclusive']
+    };
+
+    const allHashtags = [...baseHashtags, ...toneHashtags[tone]];
+    caption += `\n\n${allHashtags.join(' ')}`;
+
+    return caption;
+  };
+
+  const handleShare = () => {
     if (!generatedImage) return;
 
-    const hashtags = '#AIImage #NanoBanana #GeneratedArt #AIArt';
-    const shareText = `${prompt}\n\n${hashtags}`;
+    // Generate caption and open modal
+    const caption = generateSocialCaption();
+    setSocialCaption(caption);
+    setShowShareModal(true);
+  };
+
+  const handleCopyAndDownload = async () => {
+    if (!generatedImage) return;
 
     try {
-      await navigator.clipboard.writeText(shareText);
+      // Copy text to clipboard
+      await navigator.clipboard.writeText(socialCaption);
 
+      // Download image
       const link = document.createElement('a');
       link.href = generatedImage;
       link.download = `ai-image-${Date.now()}.png`;
       link.click();
 
-      toast.success('Descrizione copiata e immagine scaricata!');
+      toast.success('Testo copiato + Immagine scaricata! Ora incolla sui social 📱');
+      setShowShareModal(false);
     } catch (error) {
-      toast.error('Errore durante la preparazione per la condivisione');
+      toast.error('Errore durante la preparazione');
     }
   };
 
@@ -829,6 +876,82 @@ export default function AIImageStudioPage() {
         </button>
 
       </div>
+
+      {/* SHARE MODAL */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setShowShareModal(false)}>
+          <div
+            className="bg-slate-800 rounded-2xl border border-slate-600 max-w-md w-full p-4 animate-bounce-in shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-2 rounded-lg">
+                  <Share2 className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold">Condividi Social</h3>
+                  <p className="text-slate-400 text-xs">Pronto per Instagram, Facebook, LinkedIn...</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-slate-400" />
+              </button>
+            </div>
+
+            {/* Image Preview */}
+            {generatedImage && (
+              <div className="mb-4 rounded-xl overflow-hidden border border-slate-600">
+                <img src={generatedImage} alt="Preview" className="w-full h-40 object-cover" />
+              </div>
+            )}
+
+            {/* Caption Preview */}
+            <div className="mb-4">
+              <label className="text-xs text-slate-400 font-medium mb-2 block">
+                📝 Descrizione per i social (modificabile)
+              </label>
+              <textarea
+                value={socialCaption}
+                onChange={(e) => setSocialCaption(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm min-h-[150px] resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            {/* Action Button - One button does both */}
+            <button
+              onClick={handleCopyAndDownload}
+              className="w-full flex items-center justify-center space-x-3 px-4 py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white font-bold rounded-xl transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] group"
+            >
+              <Copy className="h-5 w-5 group-hover:scale-110 transition-transform" />
+              <span>Copia Testo + Scarica Immagine</span>
+              <Download className="h-5 w-5 group-hover:animate-bounce" />
+            </button>
+
+            {/* Instructions */}
+            <div className="mt-3 p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+              <div className="text-xs text-slate-400 space-y-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-purple-400">1.</span>
+                  <span>Clicca il pulsante sopra</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-purple-400">2.</span>
+                  <span>Apri il social (Instagram, Facebook...)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-purple-400">3.</span>
+                  <span>Incolla il testo (Ctrl+V) e allega l'immagine scaricata</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
