@@ -2543,147 +2543,211 @@ export default function SalesRadarPage() {
 
             ) : activityType === 'appointment' ? (
               /* FORM APPUNTAMENTO */
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2">Data</label>
-                  <input
-                    type="date"
-                    value={appointmentDate}
-                    onChange={(e) => setAppointmentDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 cursor-pointer"
-                    required
-                    style={{ colorScheme: 'light' }}
-                    onClick={(e) => (e.target as HTMLInputElement).showPicker()}
-                  />
-                </div>
+              <>
+                {isRecording ? (
+                  <div className="space-y-4">
+                    <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center">
+                      <div className="w-16 h-16 mx-auto mb-3 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                        <span className="text-white text-2xl">🎤</span>
+                      </div>
+                      <p className="text-red-700 font-semibold text-lg">Registrazione in corso...</p>
+                      <p className="text-red-600 text-sm mt-1">Parla ora per aggiungere note all'appuntamento</p>
+                    </div>
+                    <button
+                      onClick={() => stopRecording()}
+                      className="w-full px-4 py-4 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-lg flex items-center justify-center gap-2"
+                    >
+                      STOP - Termina Registrazione
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Data</label>
+                      <input
+                        type="date"
+                        value={appointmentDate}
+                        onChange={(e) => setAppointmentDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 cursor-pointer"
+                        required
+                        style={{ colorScheme: 'light' }}
+                        onClick={(e) => (e.target as HTMLInputElement).showPicker()}
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2">Ora</label>
-                  <input
-                    type="time"
-                    value={appointmentTime}
-                    onChange={(e) => setAppointmentTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 cursor-pointer"
-                    style={{ colorScheme: 'light' }}
-                    onClick={(e) => (e.target as HTMLInputElement).showPicker()}
-                  />
-                </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Ora</label>
+                      <input
+                        type="time"
+                        value={appointmentTime}
+                        onChange={(e) => setAppointmentTime(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 cursor-pointer"
+                        style={{ colorScheme: 'light' }}
+                        onClick={(e) => (e.target as HTMLInputElement).showPicker()}
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2">Note (opzionale)</label>
-                  <textarea
-                    value={appointmentNote}
-                    onChange={(e) => setAppointmentNote(e.target.value)}
-                    placeholder="Aggiungi dettagli sull'appuntamento..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    rows={3}
-                  />
-                </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Note (opzionale)</label>
+                      {/* Voice Note Button */}
+                      <button
+                        onClick={() => {
+                          setSelectedPlace(notePlace);
+                          startRecording();
+                        }}
+                        className="w-full mb-2 px-4 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-left font-medium flex items-center gap-3"
+                      >
+                        <span className="text-xl">🎤</span>
+                        <span>Registra nota vocale</span>
+                      </button>
+                      {/* Written Note */}
+                      <textarea
+                        value={appointmentNote}
+                        onChange={(e) => setAppointmentNote(e.target.value)}
+                        placeholder="Oppure scrivi qui..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        rows={3}
+                      />
+                    </div>
 
-                <button
-                  onClick={saveAppointment}
-                  disabled={!appointmentDate || !appointmentTime || isSavingNote}
-                  className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSavingNote ? 'Salvataggio...' : 'Salva Appuntamento'}
-                </button>
+                    <button
+                      onClick={saveAppointment}
+                      disabled={!appointmentDate || !appointmentTime || isSavingNote}
+                      className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSavingNote ? 'Salvataggio...' : 'Salva Appuntamento'}
+                    </button>
 
-                <button
-                  onClick={() => setActivityType('menu')}
-                  className="w-full px-4 py-2 text-gray-600 hover:text-gray-900 font-medium flex items-center justify-center gap-2"
-                >
-                  <span>← Indietro</span>
-                </button>
-              </div>
+                    <button
+                      onClick={() => setActivityType('menu')}
+                      className="w-full px-4 py-2 text-gray-600 hover:text-gray-900 font-medium flex items-center justify-center gap-2"
+                    >
+                      <span>← Indietro</span>
+                    </button>
+                  </div>
+                )}
+              </>
 
             ) : activityType === 'task' ? (
               /* FORM TASK */
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2">Titolo</label>
-                  <input
-                    type="text"
-                    value={taskTitle}
-                    onChange={(e) => setTaskTitle(e.target.value)}
-                    placeholder="Es: Chiamare per preventivo"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2">Descrizione</label>
-                  <textarea
-                    value={taskDescription}
-                    onChange={(e) => setTaskDescription(e.target.value)}
-                    placeholder="Dettagli del task..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2">Data Scadenza</label>
-                  <input
-                    type="date"
-                    value={taskDueDate}
-                    onChange={(e) => setTaskDueDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 cursor-pointer"
-                    style={{ colorScheme: 'light' }}
-                    onClick={(e) => (e.target as HTMLInputElement).showPicker()}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2">Priorità</label>
-                  <div className="grid grid-cols-3 gap-2">
+              <>
+                {isRecording ? (
+                  <div className="space-y-4">
+                    <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center">
+                      <div className="w-16 h-16 mx-auto mb-3 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                        <span className="text-white text-2xl">🎤</span>
+                      </div>
+                      <p className="text-red-700 font-semibold text-lg">Registrazione in corso...</p>
+                      <p className="text-red-600 text-sm mt-1">Parla ora per aggiungere descrizione all'attività</p>
+                    </div>
                     <button
-                      onClick={() => setTaskPriority('low')}
-                      className={`px-3 py-2 rounded-lg font-medium transition-all ${
-                        taskPriority === 'low'
-                          ? 'bg-green-600 text-white'
-                          : 'bg-green-100 text-green-700 hover:bg-green-200'
-                      }`}
+                      onClick={() => stopRecording()}
+                      className="w-full px-4 py-4 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-lg flex items-center justify-center gap-2"
                     >
-                      Bassa
-                    </button>
-                    <button
-                      onClick={() => setTaskPriority('medium')}
-                      className={`px-3 py-2 rounded-lg font-medium transition-all ${
-                        taskPriority === 'medium'
-                          ? 'bg-yellow-600 text-white'
-                          : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                      }`}
-                    >
-                      Media
-                    </button>
-                    <button
-                      onClick={() => setTaskPriority('high')}
-                      className={`px-3 py-2 rounded-lg font-medium transition-all ${
-                        taskPriority === 'high'
-                          ? 'bg-red-600 text-white'
-                          : 'bg-red-100 text-red-700 hover:bg-red-200'
-                      }`}
-                    >
-                      Alta
+                      STOP - Termina Registrazione
                     </button>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Titolo</label>
+                      <input
+                        type="text"
+                        value={taskTitle}
+                        onChange={(e) => setTaskTitle(e.target.value)}
+                        placeholder="Es: Chiamare per preventivo"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      />
+                    </div>
 
-                <button
-                  onClick={saveActivity}
-                  disabled={!taskTitle.trim() || isSavingNote}
-                  className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSavingNote ? 'Salvataggio...' : 'Salva Attività'}
-                </button>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Descrizione</label>
+                      {/* Voice Note Button */}
+                      <button
+                        onClick={() => {
+                          setSelectedPlace(notePlace);
+                          startRecording();
+                        }}
+                        className="w-full mb-2 px-4 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-left font-medium flex items-center gap-3"
+                      >
+                        <span className="text-xl">🎤</span>
+                        <span>Registra descrizione vocale</span>
+                      </button>
+                      {/* Written Description */}
+                      <textarea
+                        value={taskDescription}
+                        onChange={(e) => setTaskDescription(e.target.value)}
+                        placeholder="Oppure scrivi qui..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        rows={3}
+                      />
+                    </div>
 
-                <button
-                  onClick={() => setActivityType('menu')}
-                  className="w-full px-4 py-2 text-gray-600 hover:text-gray-900 font-medium flex items-center justify-center gap-2"
-                >
-                  <span>← Indietro</span>
-                </button>
-              </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Data Scadenza</label>
+                      <input
+                        type="date"
+                        value={taskDueDate}
+                        onChange={(e) => setTaskDueDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 cursor-pointer"
+                        style={{ colorScheme: 'light' }}
+                        onClick={(e) => (e.target as HTMLInputElement).showPicker()}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Priorità</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          onClick={() => setTaskPriority('low')}
+                          className={`px-3 py-2 rounded-lg font-medium transition-all ${
+                            taskPriority === 'low'
+                              ? 'bg-green-600 text-white'
+                              : 'bg-green-100 text-green-700 hover:bg-green-200'
+                          }`}
+                        >
+                          Bassa
+                        </button>
+                        <button
+                          onClick={() => setTaskPriority('medium')}
+                          className={`px-3 py-2 rounded-lg font-medium transition-all ${
+                            taskPriority === 'medium'
+                              ? 'bg-yellow-600 text-white'
+                              : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                          }`}
+                        >
+                          Media
+                        </button>
+                        <button
+                          onClick={() => setTaskPriority('high')}
+                          className={`px-3 py-2 rounded-lg font-medium transition-all ${
+                            taskPriority === 'high'
+                              ? 'bg-red-600 text-white'
+                              : 'bg-red-100 text-red-700 hover:bg-red-200'
+                          }`}
+                        >
+                          Alta
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={saveActivity}
+                      disabled={!taskTitle.trim() || isSavingNote}
+                      className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSavingNote ? 'Salvataggio...' : 'Salva Attività'}
+                    </button>
+
+                    <button
+                      onClick={() => setActivityType('menu')}
+                      className="w-full px-4 py-2 text-gray-600 hover:text-gray-900 font-medium flex items-center justify-center gap-2"
+                    >
+                      <span>← Indietro</span>
+                    </button>
+                  </div>
+                )}
+              </>
 
             ) : activityType === 'notarget' ? (
               /* OPZIONI ESCLUSIONE */

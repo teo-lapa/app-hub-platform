@@ -200,18 +200,29 @@ export async function POST(request: NextRequest) {
         stop: stopDateTime,
         description: body.note || '',
         user_id: currentUserId || false,
-        // Link to the lead/partner
-        res_model: resModel,
-        res_id: resId,
       };
 
-      // If it's a lead, also set opportunity_id
+      // If it's a lead, link to the opportunity
       if (isLead && body.lead_id) {
         calendarEventValues.opportunity_id = body.lead_id;
+        // Also try to get the partner from the lead to add as attendee
+        try {
+          const leadData = await client.searchRead(
+            'crm.lead',
+            [['id', '=', body.lead_id]],
+            ['partner_id'],
+            1
+          );
+          if (leadData[0]?.partner_id) {
+            calendarEventValues.partner_ids = [[6, 0, [leadData[0].partner_id[0]]]];
+          }
+        } catch (e) {
+          console.warn('⚠️ [CREATE-APPOINTMENT] Cannot get partner from lead:', e);
+        }
       }
 
-      // If we have a partner_id, add attendees
-      if (body.partner_id) {
+      // If it's a partner (contact), add them as attendee
+      if (!isLead && body.partner_id) {
         calendarEventValues.partner_ids = [[6, 0, [body.partner_id]]]; // Many2many command
       }
 
