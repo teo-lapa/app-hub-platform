@@ -2510,6 +2510,7 @@ export default function SalesRadarPage() {
                     value={appointmentDate}
                     onChange={(e) => setAppointmentDate(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    required
                   />
                 </div>
 
