@@ -104,20 +104,52 @@ export async function GET(request: NextRequest) {
       format,
     });
 
+    // Usa timezone Europe/Rome per calcoli corretti (come dashboard)
+    const TIMEZONE = 'Europe/Rome';
+
+    // Helper per calcolare i bounds di un giorno in timezone Rome
+    // Restituisce date UTC che corrispondono a mezzanotte-23:59 in Rome
+    const getRomeDayBounds = (refDate: Date) => {
+      // Ottieni la data in formato Rome
+      const romeStr = refDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+      const [year, month, day] = romeStr.split('-').map(Number);
+
+      // Determina se è ora legale in Italia
+      const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+      const romeTime = testDate.toLocaleString('en-US', { timeZone: TIMEZONE, hour: 'numeric', hour12: false });
+      const utcHour = testDate.getUTCHours();
+      const romeHour = parseInt(romeTime);
+      const offsetHours = romeHour - utcHour;
+
+      // Crea mezzanotte Rome in UTC
+      // Se offsetHours è 1 (CET), mezzanotte Rome = 23:00 UTC del giorno prima
+      // Se offsetHours è 2 (CEST), mezzanotte Rome = 22:00 UTC del giorno prima
+      const midnightUTC = Date.UTC(year, month - 1, day, 0, 0, 0) - (offsetHours * 60 * 60 * 1000);
+      const endOfDayUTC = midnightUTC + (24 * 60 * 60 * 1000) - 1; // 23:59:59.999 Rome
+
+      return {
+        start: new Date(midnightUTC),
+        end: new Date(endOfDayUTC),
+        dateStr: romeStr
+      };
+    };
+
     // Date di default: oggi (se non specificate)
-    const endDate = endDateStr ? new Date(endDateStr) : new Date();
-    const startDate = startDateStr
-      ? new Date(startDateStr)
-      : new Date(endDate); // Default a oggi invece di 30 giorni fa
+    const endDateRef = endDateStr ? new Date(endDateStr + 'T12:00:00Z') : new Date();
+    const startDateRef = startDateStr ? new Date(startDateStr + 'T12:00:00Z') : endDateRef;
 
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
+    // Calcola bounds corretti considerando timezone Rome
+    const startBounds = getRomeDayBounds(startDateRef);
+    const endBounds = getRomeDayBounds(endDateRef);
 
-    console.log('[Export] Date range:', {
+    const startDate = startBounds.start;
+    const endDate = endBounds.end;
+
+    console.log('[Export] Date range (Rome timezone):', {
       start: startDate.toISOString(),
       end: endDate.toISOString(),
-      startLocal: startDate.toLocaleString('it-IT'),
-      endLocal: endDate.toLocaleString('it-IT'),
+      startLocal: startDate.toLocaleString('it-IT', { timeZone: TIMEZONE }),
+      endLocal: endDate.toLocaleString('it-IT', { timeZone: TIMEZONE }),
     });
 
     // Query entries
