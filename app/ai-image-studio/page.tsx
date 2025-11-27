@@ -84,6 +84,7 @@ export default function AIImageStudioPage() {
   // Share modal state
   const [showShareModal, setShowShareModal] = useState(false);
   const [socialCaption, setSocialCaption] = useState('');
+  const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -286,47 +287,64 @@ export default function AIImageStudioPage() {
     toast.success('Download avviato!');
   };
 
-  // Generate social caption based on prompt and tone
-  const generateSocialCaption = () => {
-    const toneEmojis: Record<Tone, string[]> = {
-      professional: ['💼', '✨', '🎯', '📈'],
-      casual: ['😊', '👋', '🙌', '💫'],
-      fun: ['🎉', '🔥', '💥', '🚀'],
-      luxury: ['✨', '💎', '👑', '🌟']
-    };
+  // Generate social caption using AI copywriter
+  const generateSocialCaption = async (): Promise<string> => {
+    try {
+      const toneDescriptions: Record<Tone, string> = {
+        professional: 'professionale e autorevole',
+        casual: 'casual e amichevole',
+        fun: 'divertente e coinvolgente',
+        luxury: 'elegante e sofisticato'
+      };
 
-    const emojis = toneEmojis[tone];
-    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+      const copywriterPrompt = `Sei un copywriter esperto per social media. Scrivi una descrizione accattivante per questo post:
 
-    // Create a nice social media description
-    let caption = `${randomEmoji} ${prompt}`;
+CONTENUTO IMMAGINE: ${prompt}
+TONO: ${toneDescriptions[tone]}
+${companyMotto ? `MOTTO AZIENDALE: "${companyMotto}"` : ''}
 
-    if (companyMotto) {
-      caption += `\n\n"${companyMotto}"`;
+REGOLE:
+- Scrivi in italiano
+- Usa 2-4 emoji pertinenti (non troppi)
+- Massimo 2-3 frasi accattivanti
+- Aggiungi 5-8 hashtag rilevanti alla fine
+- NON usare hashtag generici come #AIGenerated
+- Sii creativo e coinvolgente
+- Se c'è un motto aziendale, includilo elegantemente
+
+Rispondi SOLO con il testo del post, nient'altro.`;
+
+      const response = await fetch('/api/gemini/generate-caption', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: copywriterPrompt })
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore generazione caption');
+      }
+
+      const data = await response.json();
+      return data.caption || data.text || 'Scopri questa immagine! ✨';
+    } catch (error) {
+      console.error('Error generating caption:', error);
+      // Fallback semplice
+      return `✨ ${prompt}\n\n#Food #Italia #Delicious #Foodie #Yummy`;
     }
-
-    // Add hashtags based on content
-    const baseHashtags = ['#AIGenerated', '#NanoBanana', '#AIArt', '#CreativeAI'];
-    const toneHashtags: Record<Tone, string[]> = {
-      professional: ['#Business', '#Professional', '#Quality'],
-      casual: ['#Lifestyle', '#Daily', '#Vibes'],
-      fun: ['#Fun', '#Creative', '#Amazing'],
-      luxury: ['#Luxury', '#Premium', '#Exclusive']
-    };
-
-    const allHashtags = [...baseHashtags, ...toneHashtags[tone]];
-    caption += `\n\n${allHashtags.join(' ')}`;
-
-    return caption;
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (!generatedImage) return;
 
-    // Generate caption and open modal
-    const caption = generateSocialCaption();
-    setSocialCaption(caption);
+    // Open modal immediately with loading state
     setShowShareModal(true);
+    setIsGeneratingCaption(true);
+    setSocialCaption('');
+
+    // Generate caption with AI
+    const caption = await generateSocialCaption();
+    setSocialCaption(caption);
+    setIsGeneratingCaption(false);
   };
 
   const handleCopyAndDownload = async () => {
@@ -957,20 +975,32 @@ export default function AIImageStudioPage() {
 
             {/* Caption Preview */}
             <div className="mb-4">
-              <label className="text-xs text-slate-400 font-medium mb-2 block">
-                📝 Descrizione per i social (modificabile)
+              <label className="text-xs text-slate-400 font-medium mb-2 block flex items-center space-x-2">
+                <span>✍️ Descrizione AI Copywriter</span>
+                {isGeneratingCaption && (
+                  <span className="text-purple-400 animate-pulse">(generazione in corso...)</span>
+                )}
               </label>
-              <textarea
-                value={socialCaption}
-                onChange={(e) => setSocialCaption(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm min-h-[150px] resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
+              {isGeneratingCaption ? (
+                <div className="w-full px-3 py-8 bg-slate-900/50 border border-slate-600 rounded-lg flex flex-col items-center justify-center space-y-3">
+                  <Loader2 className="h-8 w-8 text-purple-500 animate-spin" />
+                  <span className="text-slate-400 text-sm">Il copywriter AI sta scrivendo...</span>
+                </div>
+              ) : (
+                <textarea
+                  value={socialCaption}
+                  onChange={(e) => setSocialCaption(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm min-h-[150px] resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="La descrizione apparirà qui..."
+                />
+              )}
             </div>
 
             {/* Action Button - One button does both */}
             <button
               onClick={handleCopyAndDownload}
-              className="w-full flex items-center justify-center space-x-3 px-4 py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white font-bold rounded-xl transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] group"
+              disabled={isGeneratingCaption || !socialCaption}
+              className="w-full flex items-center justify-center space-x-3 px-4 py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white font-bold rounded-xl transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               <Copy className="h-5 w-5 group-hover:scale-110 transition-transform" />
               <span>Copia Testo + Scarica Immagine</span>
