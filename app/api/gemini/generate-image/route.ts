@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
     }
 
-    const { prompt, aspectRatio, baseImage } = await request.json();
+    const { prompt, aspectRatio, baseImage, tone, includeLogo, logoImage, companyMotto } = await request.json();
 
     if (!prompt?.trim()) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -24,12 +24,31 @@ export async function POST(request: NextRequest) {
     console.log('Generating image with Gemini 2.5 Flash Image');
     console.log('Prompt:', prompt.substring(0, 100) + '...');
     console.log('Aspect Ratio:', aspectRatio);
+    console.log('Tone:', tone);
+    console.log('Include Logo:', includeLogo);
     console.log('Has base image:', !!baseImage);
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
 
-    // Build prompt with aspect ratio hint
-    const fullPrompt = `${prompt}. Image aspect ratio: ${aspectRatio || '1:1'}.`;
+    // Build tone description
+    const toneDescriptions: Record<string, string> = {
+      professional: 'professional, clean, corporate style',
+      casual: 'casual, relaxed, friendly atmosphere',
+      fun: 'fun, playful, vibrant and colorful',
+      luxury: 'luxury, elegant, premium high-end aesthetic'
+    };
+    const toneStyle = toneDescriptions[tone] || toneDescriptions.professional;
+
+    // Build branding instructions
+    let brandingInstructions = '';
+    if (includeLogo && companyMotto) {
+      brandingInstructions = ` Include subtle branding elements with the motto "${companyMotto}" integrated elegantly.`;
+    } else if (includeLogo) {
+      brandingInstructions = ' Include space for corporate branding elements.';
+    }
+
+    // Build prompt with aspect ratio, tone and branding
+    const fullPrompt = `${prompt}. Style: ${toneStyle}. Image aspect ratio: ${aspectRatio || '1:1'}.${brandingInstructions}`;
 
     const startTime = Date.now();
     let result;

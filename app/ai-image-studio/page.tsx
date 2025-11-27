@@ -5,6 +5,8 @@ import { ArrowLeft, Home, Sparkles, Wand2, Upload, Image as ImageIcon, Loader2, 
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
+type Tone = 'professional' | 'casual' | 'fun' | 'luxury';
+
 export default function AIImageStudioPage() {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -13,6 +15,15 @@ export default function AIImageStudioPage() {
   const [baseImage, setBaseImage] = useState<string | null>(null);
   const [baseImagePreview, setBaseImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Tone of Voice
+  const [tone, setTone] = useState<Tone>('professional');
+
+  // Branding states
+  const [includeLogo, setIncludeLogo] = useState(false);
+  const [logoImage, setLogoImage] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [companyMotto, setCompanyMotto] = useState('');
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -30,7 +41,11 @@ export default function AIImageStudioPage() {
         body: JSON.stringify({
           prompt,
           aspectRatio,
-          baseImage
+          baseImage,
+          tone,
+          includeLogo,
+          logoImage: logoImage || undefined,
+          companyMotto: companyMotto || undefined
         })
       });
 
@@ -66,6 +81,25 @@ export default function AIImageStudioPage() {
       setBaseImage(base64);
       setBaseImagePreview(base64);
       toast.success('Immagine caricata!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Seleziona un file immagine valido per il logo');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setLogoImage(base64);
+      setLogoPreview(base64);
+      toast.success('Logo aziendale caricato!');
     };
     reader.readAsDataURL(file);
   };
@@ -194,6 +228,112 @@ export default function AIImageStudioPage() {
                     } disabled:opacity-50`}
                   >
                     {ratio}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Branding Aziendale */}
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <label className="text-sm font-medium text-slate-300">
+                  Branding Aziendale
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeLogo}
+                    onChange={(e) => setIncludeLogo(e.target.checked)}
+                    disabled={isGenerating}
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-900/50 text-purple-500 focus:ring-2 focus:ring-purple-500"
+                  />
+                  <span className="text-xs text-slate-300">Includi logo/motto</span>
+                </label>
+              </div>
+
+              {includeLogo && (
+                <>
+                  {/* Upload Logo */}
+                  <div className="mb-4">
+                    <label className="block text-xs text-slate-300 mb-2">
+                      Logo Aziendale (opzionale)
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/svg+xml"
+                      onChange={handleLogoUpload}
+                      disabled={isGenerating}
+                      className="hidden"
+                      id="logo-upload"
+                    />
+                    <label
+                      htmlFor="logo-upload"
+                      className="flex items-center justify-center space-x-2 px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg hover:border-purple-500/50 transition-colors cursor-pointer text-sm text-slate-300"
+                    >
+                      <Upload className="h-4 w-4" />
+                      <span>Carica Logo</span>
+                    </label>
+
+                    {logoPreview && (
+                      <div className="mt-2 relative inline-block">
+                        <img
+                          src={logoPreview}
+                          alt="Logo"
+                          className="h-16 w-auto object-contain rounded border border-slate-600 bg-white/5 p-2"
+                        />
+                        <button
+                          onClick={() => {
+                            setLogoImage(null);
+                            setLogoPreview(null);
+                          }}
+                          className="absolute -top-2 -right-2 p-1 bg-red-500 hover:bg-red-600 rounded-full text-white"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Motto Aziendale */}
+                  <div>
+                    <label className="block text-xs text-slate-300 mb-2">
+                      Motto/Slogan (opzionale)
+                    </label>
+                    <input
+                      type="text"
+                      value={companyMotto}
+                      onChange={(e) => setCompanyMotto(e.target.value)}
+                      placeholder="Es: Qualità Italiana dal 1950"
+                      maxLength={100}
+                      className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder:text-slate-500 text-sm"
+                      disabled={isGenerating}
+                    />
+                    <div className="text-xs text-slate-500 mt-1 text-right">
+                      {companyMotto.length}/100
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Tone of Voice */}
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 p-6">
+              <label className="block text-sm font-medium text-slate-300 mb-3">
+                Tone of Voice
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(['professional', 'casual', 'fun', 'luxury'] as Tone[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTone(t)}
+                    disabled={isGenerating}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      tone === t
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-slate-900/50 text-slate-300 border border-slate-600 hover:border-purple-500/50'
+                    } disabled:opacity-50 capitalize`}
+                  >
+                    {t === 'professional' ? 'Professional' : t === 'casual' ? 'Casual' : t === 'fun' ? 'Fun' : 'Luxury'}
                   </button>
                 ))}
               </div>
