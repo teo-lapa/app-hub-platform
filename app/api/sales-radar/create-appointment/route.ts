@@ -196,6 +196,23 @@ export async function POST(request: NextRequest) {
         console.warn('⚠️ [CREATE-APPOINTMENT] Cannot get record name:', e);
       }
 
+      // Get the current user's partner_id (needed to show event in user's calendar)
+      let currentUserPartnerId: number | null = null;
+      try {
+        const users = await client.searchRead(
+          'res.users',
+          [['id', '=', currentUserId]],
+          ['partner_id'],
+          1
+        );
+        if (users[0]?.partner_id) {
+          currentUserPartnerId = users[0].partner_id[0];
+          console.log(`👤 [CREATE-APPOINTMENT] Current user partner_id: ${currentUserPartnerId}`);
+        }
+      } catch (e) {
+        console.warn('⚠️ [CREATE-APPOINTMENT] Cannot get current user partner_id:', e);
+      }
+
       const calendarEventValues: any = {
         name: recordName ? `Appuntamento - ${recordName}` : `Appuntamento - ${body.date} alle ${body.time}`,
         start: startDateTime,
@@ -204,10 +221,15 @@ export async function POST(request: NextRequest) {
         user_id: currentUserId || false,
       };
 
-      // If it's a lead, link to the opportunity
+      // Build partner_ids array - MUST include current user's partner to show in their calendar
+      const attendeeIds: number[] = [];
+      if (currentUserPartnerId) {
+        attendeeIds.push(currentUserPartnerId);
+      }
+
+      // If it's a lead, link to the opportunity and add lead's partner
       if (isLead && body.lead_id) {
         calendarEventValues.opportunity_id = body.lead_id;
-        // Also try to get the partner from the lead to add as attendee
         try {
           const leadData = await client.searchRead(
             'crm.lead',
@@ -215,8 +237,8 @@ export async function POST(request: NextRequest) {
             ['partner_id'],
             1
           );
-          if (leadData[0]?.partner_id) {
-            calendarEventValues.partner_ids = [[6, 0, [leadData[0].partner_id[0]]]];
+          if (leadData[0]?.partner_id && !attendeeIds.includes(leadData[0].partner_id[0])) {
+            attendeeIds.push(leadData[0].partner_id[0]);
           }
         } catch (e) {
           console.warn('⚠️ [CREATE-APPOINTMENT] Cannot get partner from lead:', e);
@@ -226,10 +248,18 @@ export async function POST(request: NextRequest) {
       // If it's a partner (contact), add them as attendee
       console.log(`📋 [CREATE-APPOINTMENT] Partner check: isLead=${isLead}, body.partner_id=${body.partner_id}, type=${typeof body.partner_id}`);
       if (!isLead && body.partner_id) {
-        calendarEventValues.partner_ids = [[6, 0, [body.partner_id]]]; // Many2many command
-        console.log(`✅ [CREATE-APPOINTMENT] Added partner_ids for contact: ${body.partner_id}`);
+        if (!attendeeIds.includes(body.partner_id)) {
+          attendeeIds.push(body.partner_id);
+        }
+        console.log(`✅ [CREATE-APPOINTMENT] Added partner as attendee: ${body.partner_id}`);
       } else if (!isLead) {
         console.log(`⚠️ [CREATE-APPOINTMENT] Partner ID missing! Cannot add attendee for contact.`);
+      }
+
+      // Set partner_ids with all attendees
+      if (attendeeIds.length > 0) {
+        calendarEventValues.partner_ids = [[6, 0, attendeeIds]];
+        console.log(`👥 [CREATE-APPOINTMENT] All attendees: ${JSON.stringify(attendeeIds)}`);
       }
 
       // Remove false values
