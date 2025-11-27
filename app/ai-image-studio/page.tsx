@@ -85,6 +85,7 @@ export default function AIImageStudioPage() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [socialCaption, setSocialCaption] = useState('');
   const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
+  const [captionLanguage, setCaptionLanguage] = useState<'it' | 'en' | 'de' | 'fr' | 'es'>('it');
 
   // Initialize speech recognition
   useEffect(() => {
@@ -287,32 +288,44 @@ export default function AIImageStudioPage() {
     toast.success('Download avviato!');
   };
 
+  // Language configurations
+  const languageConfig = {
+    it: { name: 'Italiano', flag: '🇮🇹', instruction: 'Scrivi in italiano' },
+    en: { name: 'English', flag: '🇬🇧', instruction: 'Write in English' },
+    de: { name: 'Deutsch', flag: '🇩🇪', instruction: 'Schreibe auf Deutsch' },
+    fr: { name: 'Français', flag: '🇫🇷', instruction: 'Écris en français' },
+    es: { name: 'Español', flag: '🇪🇸', instruction: 'Escribe en español' }
+  };
+
   // Generate social caption using AI copywriter
-  const generateSocialCaption = async (): Promise<string> => {
+  const generateSocialCaption = async (language: 'it' | 'en' | 'de' | 'fr' | 'es' = 'it'): Promise<string> => {
     try {
-      const toneDescriptions: Record<Tone, string> = {
-        professional: 'professionale e autorevole',
-        casual: 'casual e amichevole',
-        fun: 'divertente e coinvolgente',
-        luxury: 'elegante e sofisticato'
+      const toneDescriptions: Record<Tone, Record<string, string>> = {
+        professional: { it: 'professionale e autorevole', en: 'professional and authoritative', de: 'professionell und seriös', fr: 'professionnel et autoritaire', es: 'profesional y autoritario' },
+        casual: { it: 'casual e amichevole', en: 'casual and friendly', de: 'lässig und freundlich', fr: 'décontracté et amical', es: 'casual y amigable' },
+        fun: { it: 'divertente e coinvolgente', en: 'fun and engaging', de: 'lustig und fesselnd', fr: 'amusant et engageant', es: 'divertido y atractivo' },
+        luxury: { it: 'elegante e sofisticato', en: 'elegant and sophisticated', de: 'elegant und raffiniert', fr: 'élégant et sophistiqué', es: 'elegante y sofisticado' }
       };
 
-      const copywriterPrompt = `Sei un copywriter esperto per social media. Scrivi una descrizione accattivante per questo post:
+      const langConfig = languageConfig[language];
+      const toneText = toneDescriptions[tone][language];
 
-CONTENUTO IMMAGINE: ${prompt}
-TONO: ${toneDescriptions[tone]}
-${companyMotto ? `MOTTO AZIENDALE: "${companyMotto}"` : ''}
+      const copywriterPrompt = `You are an expert social media copywriter. Write an engaging description for this post:
 
-REGOLE:
-- Scrivi in italiano
-- Usa 2-4 emoji pertinenti (non troppi)
-- Massimo 2-3 frasi accattivanti
-- Aggiungi 5-8 hashtag rilevanti alla fine
-- NON usare hashtag generici come #AIGenerated
-- Sii creativo e coinvolgente
-- Se c'è un motto aziendale, includilo elegantemente
+IMAGE CONTENT: ${prompt}
+TONE: ${toneText}
+${companyMotto ? `COMPANY MOTTO: "${companyMotto}"` : ''}
 
-Rispondi SOLO con il testo del post, nient'altro.`;
+RULES:
+- ${langConfig.instruction}
+- Use 2-4 relevant emojis (not too many)
+- Maximum 2-3 catchy sentences
+- Add 5-8 relevant hashtags at the end
+- DO NOT use generic hashtags like #AIGenerated
+- Be creative and engaging
+- If there's a company motto, include it elegantly
+
+Reply ONLY with the post text, nothing else.`;
 
       const response = await fetch('/api/gemini/generate-caption', {
         method: 'POST',
@@ -340,9 +353,22 @@ Rispondi SOLO con il testo del post, nient'altro.`;
     setShowShareModal(true);
     setIsGeneratingCaption(true);
     setSocialCaption('');
+    setCaptionLanguage('it');
 
-    // Generate caption with AI
-    const caption = await generateSocialCaption();
+    // Generate caption with AI in Italian by default
+    const caption = await generateSocialCaption('it');
+    setSocialCaption(caption);
+    setIsGeneratingCaption(false);
+  };
+
+  // Regenerate caption in a different language
+  const handleChangeLanguage = async (language: 'it' | 'en' | 'de' | 'fr' | 'es') => {
+    if (language === captionLanguage && socialCaption) return; // Already in this language
+
+    setCaptionLanguage(language);
+    setIsGeneratingCaption(true);
+
+    const caption = await generateSocialCaption(language);
     setSocialCaption(caption);
     setIsGeneratingCaption(false);
   };
@@ -973,6 +999,30 @@ Rispondi SOLO con il testo del post, nient'altro.`;
               </div>
             )}
 
+            {/* Language Selector */}
+            <div className="mb-3">
+              <label className="text-xs text-slate-400 font-medium mb-2 block">
+                🌍 Lingua della descrizione
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {(['it', 'en', 'de', 'fr', 'es'] as const).map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => handleChangeLanguage(lang)}
+                    disabled={isGeneratingCaption}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      captionLanguage === lang
+                        ? 'bg-purple-500 text-white shadow-lg'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <span>{languageConfig[lang].flag}</span>
+                    <span>{languageConfig[lang].name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Caption Preview */}
             <div className="mb-4">
               <label className="text-xs text-slate-400 font-medium mb-2 block flex items-center space-x-2">
@@ -984,7 +1034,7 @@ Rispondi SOLO con il testo del post, nient'altro.`;
               {isGeneratingCaption ? (
                 <div className="w-full px-3 py-8 bg-slate-900/50 border border-slate-600 rounded-lg flex flex-col items-center justify-center space-y-3">
                   <Loader2 className="h-8 w-8 text-purple-500 animate-spin" />
-                  <span className="text-slate-400 text-sm">Il copywriter AI sta scrivendo...</span>
+                  <span className="text-slate-400 text-sm">Il copywriter AI sta scrivendo in {languageConfig[captionLanguage].name}...</span>
                 </div>
               ) : (
                 <textarea
