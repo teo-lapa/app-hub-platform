@@ -158,6 +158,76 @@ export async function GET(request: NextRequest) {
     try {
       let result;
 
+      // Prima recupera l'ultima entry PRIMA del periodo per ogni contatto
+      // Serve per includere clock_in che sono iniziati prima del range
+      let lastEntriesBeforeResult;
+      if (contactId) {
+        lastEntriesBeforeResult = await sql`
+          SELECT DISTINCT ON (contact_id)
+            id,
+            contact_id,
+            company_id,
+            entry_type,
+            timestamp,
+            latitude,
+            longitude,
+            qr_code_verified,
+            location_name,
+            break_type,
+            break_max_minutes,
+            contact_name
+          FROM ta_time_entries
+          WHERE company_id = ${parseInt(companyId)}
+            AND contact_id = ${parseInt(contactId)}
+            AND timestamp < ${startDate.toISOString()}
+          ORDER BY contact_id, timestamp DESC
+        `;
+      } else {
+        lastEntriesBeforeResult = await sql`
+          SELECT DISTINCT ON (contact_id)
+            id,
+            contact_id,
+            company_id,
+            entry_type,
+            timestamp,
+            latitude,
+            longitude,
+            qr_code_verified,
+            location_name,
+            break_type,
+            break_max_minutes,
+            contact_name
+          FROM ta_time_entries
+          WHERE company_id = ${parseInt(companyId)}
+            AND timestamp < ${startDate.toISOString()}
+          ORDER BY contact_id, timestamp DESC
+        `;
+      }
+
+      // Filtra solo i clock_in/break_start/break_end (dipendenti ancora in servizio)
+      const previousEntries = lastEntriesBeforeResult.rows
+        .filter(row =>
+          row.entry_type === 'clock_in' ||
+          row.entry_type === 'break_start' ||
+          row.entry_type === 'break_end'
+        )
+        .map(row => ({
+          id: row.id,
+          contact_id: row.contact_id,
+          company_id: row.company_id,
+          entry_type: row.entry_type,
+          timestamp: row.timestamp,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          qr_code_verified: row.qr_code_verified,
+          location_name: row.location_name,
+          break_type: row.break_type,
+          break_max_minutes: row.break_max_minutes,
+          contact_name: row.contact_name || undefined,
+        }));
+
+      console.log('[Export] Found previous entries (still on duty):', previousEntries.length);
+
       // Query CON contact_name per evitare chiamate Odoo inutili
       if (contactId) {
         result = await sql`
@@ -203,7 +273,7 @@ export async function GET(request: NextRequest) {
         `;
       }
 
-      entries = result.rows.map(row => ({
+      const currentEntries = result.rows.map(row => ({
         id: row.id,
         contact_id: row.contact_id,
         company_id: row.company_id,
@@ -218,8 +288,17 @@ export async function GET(request: NextRequest) {
         contact_name: row.contact_name || undefined,
       }));
 
+      // Combina entries precedenti + entries del periodo
+      // Ordina per contact_id e timestamp
+      entries = [...previousEntries, ...currentEntries].sort((a, b) => {
+        if (a.contact_id !== b.contact_id) return a.contact_id - b.contact_id;
+        return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      });
+
       console.log('[Export] Query result:', {
-        entriesCount: entries.length,
+        previousEntriesCount: previousEntries.length,
+        currentEntriesCount: currentEntries.length,
+        totalEntriesCount: entries.length,
         dateRange: `${startDate.toISOString()} to ${endDate.toISOString()}`,
         companyIdUsed: companyId,
         contactIdUsed: contactId || 'ALL EMPLOYEES',
@@ -430,8 +509,34 @@ export async function GET(request: NextRequest) {
       let lastClockIn: Date | null = null;
       let lastBreakStart: { time: Date; type: 'coffee_break' | 'lunch_break' | null } | null = null;
 
+      // Calcola bounds del giorno corrente
+      const dayDate = new Date(report.date + 'T12:00:00Z');
+      const dayBounds = getRomeDayBounds(dayDate);
+      const dayStartTime = dayBounds.start.getTime();
+      const dayEndTime = dayBounds.end.getTime();
+
+      // Controlla se c'era un clock_in attivo prima del giorno
       for (const entry of report.entries) {
         const entryTime = new Date(entry.timestamp);
+        if (entryTime.getTime() < dayStartTime) {
+          // Entry prima del giorno corrente
+          if (entry.entry_type === 'clock_in' || entry.entry_type === 'break_end') {
+            lastClockIn = new Date(dayStartTime); // Inizia a contare dalla mezzanotte
+          } else if (entry.entry_type === 'break_start') {
+            lastBreakStart = { time: new Date(dayStartTime), type: entry.break_type || null };
+          }
+        }
+      }
+
+      for (const entry of report.entries) {
+        const entryTime = new Date(entry.timestamp);
+        const entryTimeMs = entryTime.getTime();
+
+        // Salta entries prima del giorno corrente (già processate sopra)
+        if (entryTimeMs < dayStartTime) continue;
+
+        // Limita entries alla fine del giorno
+        const effectiveTime = Math.min(entryTimeMs, dayEndTime);
 
         switch (entry.entry_type) {
           case 'clock_in':
@@ -439,7 +544,7 @@ export async function GET(request: NextRequest) {
             break;
           case 'clock_out':
             if (lastClockIn) {
-              workingTime += entryTime.getTime() - lastClockIn.getTime();
+              workingTime += effectiveTime - lastClockIn.getTime();
               lastClockIn = null;
             }
             break;
@@ -448,7 +553,7 @@ export async function GET(request: NextRequest) {
             break;
           case 'break_end':
             if (lastBreakStart) {
-              const breakDuration = entryTime.getTime() - lastBreakStart.time.getTime();
+              const breakDuration = effectiveTime - lastBreakStart.time.getTime();
               const breakMinutes = Math.round(breakDuration / (1000 * 60));
               breakTime += breakDuration;
 
@@ -459,14 +564,16 @@ export async function GET(request: NextRequest) {
                 lunchBreakTime += breakDuration;
               }
 
-              // Aggiungi dettaglio pausa
-              report.breaks.push({
-                type: lastBreakStart.type || 'coffee_break',
-                name: lastBreakStart.type === 'lunch_break' ? 'Pausa Pranzo' : 'Pausa Caffè',
-                start: lastBreakStart.time.toISOString(),
-                end: entryTime.toISOString(),
-                duration_minutes: breakMinutes,
-              });
+              // Aggiungi dettaglio pausa solo se nel range del giorno
+              if (lastBreakStart.time.getTime() >= dayStartTime) {
+                report.breaks.push({
+                  type: lastBreakStart.type || 'coffee_break',
+                  name: lastBreakStart.type === 'lunch_break' ? 'Pausa Pranzo' : 'Pausa Caffè',
+                  start: lastBreakStart.time.toISOString(),
+                  end: entryTime.toISOString(),
+                  duration_minutes: breakMinutes,
+                });
+              }
 
               lastBreakStart = null;
             }
@@ -474,25 +581,43 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Se c'è una pausa ancora aperta, la contiamo fino ad ora
-      if (lastBreakStart) {
-        const breakDuration = Date.now() - lastBreakStart.time.getTime();
-        const breakMinutes = Math.round(breakDuration / (1000 * 60));
-        breakTime += breakDuration;
+      // Determina se il giorno è completo o in corso
+      const isDayComplete = dayEndTime < Date.now();
+      const endTimeForCalculation = isDayComplete ? dayEndTime : Date.now();
 
-        if (lastBreakStart.type === 'coffee_break') {
-          coffeeBreakTime += breakDuration;
-        } else if (lastBreakStart.type === 'lunch_break') {
-          lunchBreakTime += breakDuration;
+      // Se ancora in servizio, calcola ore fino a fine giorno o ora corrente
+      if (lastClockIn) {
+        const clockInTime = lastClockIn.getTime();
+        if (clockInTime < dayEndTime) {
+          workingTime += endTimeForCalculation - clockInTime;
         }
+      }
 
-        report.breaks.push({
-          type: lastBreakStart.type || 'coffee_break',
-          name: lastBreakStart.type === 'lunch_break' ? 'Pausa Pranzo' : 'Pausa Caffè',
-          start: lastBreakStart.time.toISOString(),
-          end: null, // ancora in corso
-          duration_minutes: breakMinutes,
-        });
+      // Se c'è una pausa ancora aperta, la contiamo fino a fine giorno o ora corrente
+      if (lastBreakStart) {
+        const breakStartTime = lastBreakStart.time.getTime();
+        if (breakStartTime < dayEndTime) {
+          const breakDuration = endTimeForCalculation - breakStartTime;
+          const breakMinutes = Math.round(breakDuration / (1000 * 60));
+          breakTime += breakDuration;
+
+          if (lastBreakStart.type === 'coffee_break') {
+            coffeeBreakTime += breakDuration;
+          } else if (lastBreakStart.type === 'lunch_break') {
+            lunchBreakTime += breakDuration;
+          }
+
+          // Aggiungi dettaglio pausa solo se nel range del giorno
+          if (breakStartTime >= dayStartTime) {
+            report.breaks.push({
+              type: lastBreakStart.type || 'coffee_break',
+              name: lastBreakStart.type === 'lunch_break' ? 'Pausa Pranzo' : 'Pausa Caffè',
+              start: lastBreakStart.time.toISOString(),
+              end: null, // ancora in corso
+              duration_minutes: breakMinutes,
+            });
+          }
+        }
       }
 
       report.break_minutes = Math.round(breakTime / (1000 * 60));
