@@ -192,7 +192,7 @@ export default function AIImageStudioPage() {
     }
   };
 
-  // Compress and resize image to reduce payload size
+  // Compress and resize image to reduce payload size for Vercel limits (4.5MB max)
   const compressImage = (base64: string, maxWidth: number, quality: number): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -205,6 +205,10 @@ export default function AIImageStudioPage() {
         if (width > maxWidth) {
           height = (height * maxWidth) / width;
           width = maxWidth;
+        }
+        if (height > maxWidth) {
+          width = (width * maxWidth) / height;
+          height = maxWidth;
         }
 
         canvas.width = width;
@@ -234,13 +238,10 @@ export default function AIImageStudioPage() {
     reader.onload = async (event) => {
       const base64 = event.target?.result as string;
 
-      // Compress image if larger than 500KB
-      let finalImage = base64;
-      if (base64.length > 500000) {
-        toast.loading('Compressione immagine...');
-        finalImage = await compressImage(base64, 1024, 0.7);
-        toast.dismiss();
-      }
+      // Always compress base images to stay under Vercel limits
+      toast.loading('Ottimizzazione immagine...');
+      const finalImage = await compressImage(base64, 800, 0.6);
+      toast.dismiss();
 
       setBaseImage(finalImage);
       setBaseImagePreview(finalImage);
@@ -262,13 +263,10 @@ export default function AIImageStudioPage() {
     reader.onload = async (event) => {
       const base64 = event.target?.result as string;
 
-      // Compress logo - keep it small (max 300px, high quality)
-      let finalLogo = base64;
-      if (base64.length > 100000) {
-        toast.loading('Compressione logo...');
-        finalLogo = await compressImage(base64, 300, 0.8);
-        toast.dismiss();
-      }
+      // Always compress logo to very small size for Vercel
+      toast.loading('Ottimizzazione logo...');
+      const finalLogo = await compressImage(base64, 200, 0.6);
+      toast.dismiss();
 
       setLogoImage(finalLogo);
       setLogoPreview(finalLogo);
