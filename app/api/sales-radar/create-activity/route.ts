@@ -68,6 +68,16 @@ export async function POST(request: NextRequest) {
 
     console.log(`📅 [CREATE-ACTIVITY] Creating activity for ${resModel} ${resId}:`, body.summary);
 
+    // Get current user ID
+    let currentUserId: number | null = null;
+    try {
+      const currentUser = await client.getCurrentUser();
+      currentUserId = currentUser?.id || null;
+      console.log(`👤 [CREATE-ACTIVITY] Current user: ${currentUser?.name} (ID: ${currentUserId})`);
+    } catch (error) {
+      console.warn('⚠️ [CREATE-ACTIVITY] Cannot get current user:', error);
+    }
+
     // Get activity type ID based on type
     let activityTypeId: number | false = false;
 
@@ -131,6 +141,7 @@ export async function POST(request: NextRequest) {
       note: body.note || false,
       activity_type_id: activityTypeId,
       date_deadline: body.date_deadline || new Date().toISOString().split('T')[0], // Default oggi
+      user_id: currentUserId || false, // Assegna all'utente corrente
     };
 
     // Remove false values

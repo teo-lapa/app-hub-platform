@@ -64,6 +64,16 @@ export async function POST(request: NextRequest) {
 
     console.log(`📅 [CREATE-APPOINTMENT] Creating appointment for ${resModel} ${resId} on ${body.date} at ${body.time}`);
 
+    // Get current user ID
+    let currentUserId: number | null = null;
+    try {
+      const currentUser = await client.getCurrentUser();
+      currentUserId = currentUser?.id || null;
+      console.log(`👤 [CREATE-APPOINTMENT] Current user: ${currentUser?.name} (ID: ${currentUserId})`);
+    } catch (error) {
+      console.warn('⚠️ [CREATE-APPOINTMENT] Cannot get current user:', error);
+    }
+
     // Get "Meeting" activity type ID
     let meetingTypeId: number | false = false;
 
@@ -107,6 +117,7 @@ export async function POST(request: NextRequest) {
       note: body.note ? `Ora: ${body.time}\n\n${body.note}` : `Ora: ${body.time}`,
       activity_type_id: meetingTypeId,
       date_deadline: body.date, // Data scadenza = data appuntamento
+      user_id: currentUserId || false, // Assegna all'utente corrente
     };
 
     // Remove false values
