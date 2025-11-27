@@ -4,7 +4,7 @@ import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 export const dynamic = 'force-dynamic';
 
 interface CreateActivityBody {
-  partner_id: number;
+  partner_id?: number;
   lead_id?: number;
   activity_type: 'call' | 'meeting' | 'task' | 'appointment';
   summary: string;
@@ -47,10 +47,10 @@ export async function POST(request: NextRequest) {
     const body: CreateActivityBody = await request.json();
 
     // Validate required fields
-    if (!body.partner_id) {
+    if (!body.partner_id && !body.lead_id) {
       return NextResponse.json({
         success: false,
-        error: 'Campo "partner_id" richiesto'
+        error: 'Campo "partner_id" o "lead_id" richiesto'
       }, { status: 400 });
     }
 
@@ -61,7 +61,12 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`📅 [CREATE-ACTIVITY] Creating activity for partner ${body.partner_id}:`, body.summary);
+    // Determina se è un lead o un partner
+    const isLead = !!body.lead_id;
+    const resModel = isLead ? 'crm.lead' : 'res.partner';
+    const resId = isLead ? body.lead_id : body.partner_id;
+
+    console.log(`📅 [CREATE-ACTIVITY] Creating activity for ${resModel} ${resId}:`, body.summary);
 
     // Get activity type ID based on type
     let activityTypeId: number | false = false;
@@ -120,8 +125,8 @@ export async function POST(request: NextRequest) {
 
     // Prepare activity values
     const activityValues: any = {
-      res_model: 'res.partner', // Model = contatto
-      res_id: body.partner_id, // ID del contatto
+      res_model: resModel, // Model = crm.lead o res.partner
+      res_id: resId, // ID del lead o contatto
       summary: body.summary,
       note: body.note || false,
       activity_type_id: activityTypeId,

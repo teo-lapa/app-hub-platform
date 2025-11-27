@@ -911,13 +911,18 @@ export default function SalesRadarPage() {
   const saveActivity = async () => {
     if (!notePlace || !taskTitle.trim()) return;
 
+    // Determina se è un partner (cliente esistente) o un lead
+    const isPartner = notePlace.existsInOdoo || notePlace.type === 'customer' || notePlace.color === 'green' || notePlace.color === 'purple';
+    const isLead = notePlace.isLead || notePlace.type === 'lead';
+
     setIsSavingNote(true);
     try {
       const response = await fetch('/api/sales-radar/create-activity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          partner_id: notePlace.id || notePlace.leadId,
+          partner_id: isPartner ? (notePlace.id || notePlace.odooCustomer?.id) : undefined,
+          lead_id: isLead ? notePlace.leadId : undefined,
           activity_type: 'task',
           summary: taskTitle,
           note: taskDescription,
