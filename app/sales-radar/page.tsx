@@ -819,16 +819,31 @@ export default function SalesRadarPage() {
 
   // Open Activity Modal (from InfoWindow)
   const openNoteModal = (place: any) => {
+    console.log('📋 [OPEN-NOTE-MODAL] Place data:', {
+      id: place.id,
+      leadId: place.leadId,
+      isLead: place.isLead,
+      type: place.type,
+      color: place.color,
+      existsInOdoo: place.existsInOdoo,
+      name: place.name
+    });
+
+    // Calcola domani come data di default
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0]; // YYYY-MM-DD
+
     setNotePlace(place);
     setActivityType('menu'); // Start with menu
     setWrittenNote('');
     setNotTargetExpanded(false);
-    setAppointmentDate('');
-    setAppointmentTime('');
+    setAppointmentDate(tomorrowStr); // Default: domani
+    setAppointmentTime('12:00'); // Default: 12:00
     setAppointmentNote('');
     setTaskTitle('');
     setTaskDescription('');
-    setTaskDueDate('');
+    setTaskDueDate(tomorrowStr); // Default: domani
     setTaskPriority('medium');
     setShowNoteModal(true);
   };
@@ -876,18 +891,22 @@ export default function SalesRadarPage() {
     const isPartner = notePlace.existsInOdoo || notePlace.type === 'customer' || notePlace.color === 'green' || notePlace.color === 'purple';
     const isLead = notePlace.isLead || notePlace.type === 'lead';
 
+    const requestBody = {
+      partner_id: isPartner ? (notePlace.id || notePlace.odooCustomer?.id) : undefined,
+      lead_id: isLead ? notePlace.leadId : undefined,
+      date: appointmentDate,
+      time: appointmentTime,
+      note: appointmentNote
+    };
+
+    console.log('📅 [SAVE-APPOINTMENT] Request:', { isPartner, isLead, ...requestBody });
+
     setIsSavingNote(true);
     try {
       const response = await fetch('/api/sales-radar/create-appointment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          partner_id: isPartner ? (notePlace.id || notePlace.odooCustomer?.id) : undefined,
-          lead_id: isLead ? notePlace.leadId : undefined,
-          date: appointmentDate,
-          time: appointmentTime,
-          note: appointmentNote
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const result = await response.json();
@@ -915,20 +934,24 @@ export default function SalesRadarPage() {
     const isPartner = notePlace.existsInOdoo || notePlace.type === 'customer' || notePlace.color === 'green' || notePlace.color === 'purple';
     const isLead = notePlace.isLead || notePlace.type === 'lead';
 
+    const requestBody = {
+      partner_id: isPartner ? (notePlace.id || notePlace.odooCustomer?.id) : undefined,
+      lead_id: isLead ? notePlace.leadId : undefined,
+      activity_type: 'task',
+      summary: taskTitle,
+      note: taskDescription,
+      date_deadline: taskDueDate || undefined,
+      priority: taskPriority
+    };
+
+    console.log('📋 [SAVE-ACTIVITY] Request:', { isPartner, isLead, ...requestBody });
+
     setIsSavingNote(true);
     try {
       const response = await fetch('/api/sales-radar/create-activity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          partner_id: isPartner ? (notePlace.id || notePlace.odooCustomer?.id) : undefined,
-          lead_id: isLead ? notePlace.leadId : undefined,
-          activity_type: 'task',
-          summary: taskTitle,
-          note: taskDescription,
-          date_deadline: taskDueDate || undefined,
-          priority: taskPriority
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const result = await response.json();
