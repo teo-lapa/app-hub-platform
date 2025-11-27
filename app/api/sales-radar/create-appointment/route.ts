@@ -4,7 +4,7 @@ import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
 export const dynamic = 'force-dynamic';
 
 interface CreateAppointmentBody {
-  partner_id: number;
+  partner_id?: number;
   lead_id?: number;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
@@ -43,10 +43,10 @@ export async function POST(request: NextRequest) {
     const body: CreateAppointmentBody = await request.json();
 
     // Validate required fields
-    if (!body.partner_id) {
+    if (!body.partner_id && !body.lead_id) {
       return NextResponse.json({
         success: false,
-        error: 'Campo "partner_id" richiesto'
+        error: 'Campo "partner_id" o "lead_id" richiesto'
       }, { status: 400 });
     }
 
@@ -57,7 +57,12 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`📅 [CREATE-APPOINTMENT] Creating appointment for partner ${body.partner_id} on ${body.date} at ${body.time}`);
+    // Determina se è un lead o un partner
+    const isLead = !!body.lead_id;
+    const resModel = isLead ? 'crm.lead' : 'res.partner';
+    const resId = isLead ? body.lead_id : body.partner_id;
+
+    console.log(`📅 [CREATE-APPOINTMENT] Creating appointment for ${resModel} ${resId} on ${body.date} at ${body.time}`);
 
     // Get "Meeting" activity type ID
     let meetingTypeId: number | false = false;
@@ -96,8 +101,8 @@ export async function POST(request: NextRequest) {
 
     // Prepare activity values
     const activityValues: any = {
-      res_model: 'res.partner', // Model = contatto
-      res_id: body.partner_id, // ID del contatto
+      res_model: resModel, // Model = crm.lead o res.partner
+      res_id: resId, // ID del lead o contatto
       summary: `Appuntamento - ${body.date} alle ${body.time}`,
       note: body.note ? `Ora: ${body.time}\n\n${body.note}` : `Ora: ${body.time}`,
       activity_type_id: meetingTypeId,
@@ -151,7 +156,7 @@ export async function POST(request: NextRequest) {
         user: createdActivity.user_id ? createdActivity.user_id[1] : '',
         create_date: createdActivity.create_date
       },
-      odoo_url: `${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${body.partner_id}&model=res.partner&view_type=form`
+      odoo_url: `${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${resId}&model=${resModel}&view_type=form`
     });
 
   } catch (error) {

@@ -872,13 +872,18 @@ export default function SalesRadarPage() {
   const saveAppointment = async () => {
     if (!notePlace || !appointmentDate || !appointmentTime) return;
 
+    // Determina se è un partner (cliente esistente) o un lead
+    const isPartner = notePlace.existsInOdoo || notePlace.type === 'customer' || notePlace.color === 'green' || notePlace.color === 'purple';
+    const isLead = notePlace.isLead || notePlace.type === 'lead';
+
     setIsSavingNote(true);
     try {
       const response = await fetch('/api/sales-radar/create-appointment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          partner_id: notePlace.id || notePlace.leadId,
+          partner_id: isPartner ? (notePlace.id || notePlace.odooCustomer?.id) : undefined,
+          lead_id: isLead ? notePlace.leadId : undefined,
           date: appointmentDate,
           time: appointmentTime,
           note: appointmentNote
@@ -2586,7 +2591,9 @@ export default function SalesRadarPage() {
                     type="date"
                     value={taskDueDate}
                     onChange={(e) => setTaskDueDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 cursor-pointer"
+                    style={{ colorScheme: 'light' }}
+                    onClick={(e) => (e.target as HTMLInputElement).showPicker()}
                   />
                 </div>
 
