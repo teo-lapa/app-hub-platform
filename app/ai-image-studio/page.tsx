@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   Home, Sparkles, Wand2, Upload, Image as ImageIcon,
   Loader2, Download, Copy, X, Share2, Mic, MicOff, Type,
-  Palette, Building2, ChevronDown, Lightbulb
+  Palette, Building2, ChevronDown, Lightbulb, Zap, Star
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -12,6 +12,42 @@ import toast from 'react-hot-toast';
 type Tone = 'professional' | 'casual' | 'fun' | 'luxury';
 type InputMode = 'text' | 'audio';
 type ActiveDropdown = 'format' | 'image' | 'style' | 'brand' | 'examples' | null;
+
+// Floating particle component
+const FloatingParticle = ({ delay, duration, size, color, left }: { delay: number; duration: number; size: number; color: string; left: number }) => (
+  <div
+    className={`absolute rounded-full opacity-60 animate-float pointer-events-none ${color}`}
+    style={{
+      width: size,
+      height: size,
+      left: `${left}%`,
+      bottom: '-20px',
+      animationDelay: `${delay}s`,
+      animationDuration: `${duration}s`,
+    }}
+  />
+);
+
+// Sparkle burst animation
+const SparkleEffect = ({ active }: { active: boolean }) => {
+  if (!active) return null;
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {[...Array(12)].map((_, i) => (
+        <div
+          key={i}
+          className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-sparkle-burst"
+          style={{
+            left: '50%',
+            top: '50%',
+            animationDelay: `${i * 0.1}s`,
+            transform: `rotate(${i * 30}deg)`,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 export default function AIImageStudioPage() {
   // Main states
@@ -39,6 +75,11 @@ export default function AIImageStudioPage() {
 
   // Active dropdown
   const [activeDropdown, setActiveDropdown] = useState<ActiveDropdown>(null);
+
+  // Animation states
+  const [showSparkles, setShowSparkles] = useState(false);
+  const [imageJustGenerated, setImageJustGenerated] = useState(false);
+  const [buttonHover, setButtonHover] = useState(false);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -109,6 +150,7 @@ export default function AIImageStudioPage() {
 
     setIsGenerating(true);
     setActiveDropdown(null);
+    setShowSparkles(true);
     const loadingToast = toast.loading('Nano Banana sta creando la tua immagine...');
 
     try {
@@ -133,6 +175,8 @@ export default function AIImageStudioPage() {
       }
 
       setGeneratedImage(data.image.dataUrl);
+      setImageJustGenerated(true);
+      setTimeout(() => setImageJustGenerated(false), 1500);
       toast.success('Immagine generata con successo!', { id: loadingToast });
 
     } catch (error: any) {
@@ -140,6 +184,7 @@ export default function AIImageStudioPage() {
       toast.error(error.message || 'Errore durante la generazione dell\'immagine', { id: loadingToast });
     } finally {
       setIsGenerating(false);
+      setShowSparkles(false);
     }
   };
 
@@ -241,59 +286,162 @@ export default function AIImageStudioPage() {
     luxury: { label: 'Luxury', emoji: '✨' }
   };
 
-  const formatLabels: Record<string, string> = {
-    '1:1': '1:1',
-    '16:9': '16:9',
-    '4:3': '4:3',
-    '9:16': '9:16'
-  };
-
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen min-h-[100dvh] bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 relative overflow-hidden">
+      {/* Custom CSS for animations */}
+      <style jsx global>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0; }
+          10% { opacity: 0.6; }
+          90% { opacity: 0.6; }
+          100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+        }
+        @keyframes sparkle-burst {
+          0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+          100% { transform: translate(-50%, -50%) translateX(100px) scale(1); opacity: 0; }
+        }
+        @keyframes pulse-glow {
+          0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
+          50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.8), 0 0 60px rgba(236, 72, 153, 0.4); }
+        }
+        @keyframes wiggle {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(-3deg); }
+          75% { transform: rotate(3deg); }
+        }
+        @keyframes bounce-in {
+          0% { transform: scale(0.3); opacity: 0; }
+          50% { transform: scale(1.05); }
+          70% { transform: scale(0.9); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @keyframes gradient-shift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .animate-float { animation: float linear infinite; }
+        .animate-sparkle-burst { animation: sparkle-burst 0.6s ease-out forwards; }
+        .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+        .animate-wiggle { animation: wiggle 0.5s ease-in-out; }
+        .animate-bounce-in { animation: bounce-in 0.6s ease-out; }
+        .animate-shimmer {
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+          background-size: 200% 100%;
+          animation: shimmer 2s infinite;
+        }
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient-shift 3s ease infinite;
+        }
+        .hover-lift {
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .hover-lift:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+      `}</style>
+
+      {/* Floating particles background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(15)].map((_, i) => (
+          <FloatingParticle
+            key={i}
+            delay={i * 1.5}
+            duration={15 + Math.random() * 10}
+            size={4 + Math.random() * 8}
+            color={['bg-purple-500', 'bg-pink-500', 'bg-orange-400', 'bg-yellow-400'][i % 4]}
+            left={Math.random() * 100}
+          />
+        ))}
+      </div>
+
+      {/* Animated gradient orbs */}
+      <div className="absolute top-20 left-10 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-20 right-10 w-80 h-80 bg-pink-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+
       {/* Header compatto */}
-      <div className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-50">
+      <div className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-700/50 sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-3">
           <div className="py-2 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Link
                 href="/dashboard"
-                className="p-1.5 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg border border-slate-600 transition-colors"
+                className="p-1.5 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg border border-slate-600 transition-all hover:scale-105 hover:border-purple-500/50"
               >
                 <Home className="h-4 w-4 text-slate-300" />
               </Link>
               <div className="flex items-center space-x-2">
-                <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 p-1.5 rounded-lg">
-                  <Sparkles className="h-4 w-4 text-white" />
+                <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 p-1.5 rounded-lg animate-gradient relative overflow-hidden">
+                  <Sparkles className="h-4 w-4 text-white relative z-10" />
+                  <div className="absolute inset-0 animate-shimmer" />
                 </div>
                 <span className="text-sm font-bold text-white">AI Image Studio</span>
-                <span className="text-xs">🍌</span>
+                <span className="text-lg animate-bounce">🍌</span>
               </div>
             </div>
+            {/* Magic wand indicator */}
+            {isGenerating && (
+              <div className="flex items-center space-x-2 text-purple-400">
+                <Wand2 className="h-4 w-4 animate-wiggle" />
+                <span className="text-xs">Magia in corso...</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-3 py-3 space-y-3">
+      <div className="max-w-4xl mx-auto px-3 py-3 space-y-3 relative z-10">
 
         {/* IMMAGINE GENERATA */}
-        <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 p-3">
-          <div className="aspect-square max-h-[45vh] bg-slate-900/50 border border-slate-700 rounded-xl flex items-center justify-center overflow-hidden">
+        <div className={`bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 p-3 transition-all duration-300 ${isGenerating ? 'animate-pulse-glow' : ''}`}>
+          <div className={`aspect-square max-h-[45vh] bg-slate-900/50 border border-slate-700 rounded-xl flex items-center justify-center overflow-hidden relative ${imageJustGenerated ? 'animate-bounce-in' : ''}`}>
+            <SparkleEffect active={showSparkles} />
+
             {generatedImage ? (
               <img
                 src={generatedImage}
                 alt="Immagine generata"
-                className="w-full h-full object-contain"
+                className={`w-full h-full object-contain transition-all duration-500 ${imageJustGenerated ? 'scale-105' : 'scale-100'}`}
               />
             ) : isGenerating ? (
-              <div className="text-center space-y-3">
-                <Loader2 className="h-10 w-10 text-purple-500 mx-auto animate-spin" />
-                <div className="text-slate-400 text-xs">Generazione...</div>
+              <div className="text-center space-y-4">
+                {/* Animated loading */}
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-full border-4 border-purple-500/30 border-t-purple-500 animate-spin mx-auto" />
+                  <Sparkles className="h-8 w-8 text-purple-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-purple-400 text-sm font-medium">Creazione in corso...</div>
+                  <div className="flex justify-center space-x-1">
+                    {[...Array(3)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"
+                        style={{ animationDelay: `${i * 0.2}s` }}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="text-center space-y-2 p-4">
-                <Sparkles className="h-10 w-10 text-slate-600 mx-auto" />
-                <div className="text-slate-500 text-xs">L'immagine apparirà qui</div>
+              <div className="text-center space-y-3 p-4 group cursor-pointer" onClick={() => document.querySelector('textarea')?.focus()}>
+                <div className="relative">
+                  <Sparkles className="h-12 w-12 text-slate-600 mx-auto group-hover:text-purple-500 transition-colors group-hover:animate-wiggle" />
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full animate-ping opacity-75" />
+                </div>
+                <div className="text-slate-500 text-sm group-hover:text-slate-400 transition-colors">
+                  Scrivi un prompt e clicca Genera!
+                </div>
+                <div className="text-slate-600 text-xs">
+                  La magia inizia da qui ✨
+                </div>
               </div>
             )}
           </div>
@@ -303,23 +451,23 @@ export default function AIImageStudioPage() {
             <div className="mt-3 grid grid-cols-3 gap-2">
               <button
                 onClick={handleShare}
-                className="flex items-center justify-center space-x-1.5 px-2 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-lg transition-colors text-sm"
+                className="flex items-center justify-center space-x-1.5 px-2 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-lg transition-all text-sm hover-lift group"
               >
-                <Share2 className="h-4 w-4" />
+                <Share2 className="h-4 w-4 group-hover:animate-wiggle" />
                 <span>Share</span>
               </button>
               <button
                 onClick={handleDownload}
-                className="flex items-center justify-center space-x-1.5 px-2 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors text-sm"
+                className="flex items-center justify-center space-x-1.5 px-2 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-all text-sm hover-lift group"
               >
-                <Download className="h-4 w-4" />
+                <Download className="h-4 w-4 group-hover:animate-bounce" />
                 <span>Save</span>
               </button>
               <button
                 onClick={handleCopyToClipboard}
-                className="flex items-center justify-center space-x-1.5 px-2 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm"
+                className="flex items-center justify-center space-x-1.5 px-2 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-all text-sm hover-lift group"
               >
-                <Copy className="h-4 w-4" />
+                <Copy className="h-4 w-4 group-hover:scale-110 transition-transform" />
                 <span>Copia</span>
               </button>
             </div>
@@ -332,88 +480,93 @@ export default function AIImageStudioPage() {
             {/* Format Button */}
             <button
               onClick={() => toggleDropdown('format')}
-              className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+              className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap hover-lift ${
                 activeDropdown === 'format'
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-slate-800/60 text-slate-300 border border-slate-600'
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                  : 'bg-slate-800/60 text-slate-300 border border-slate-600 hover:border-purple-500/50'
               }`}
             >
               <span>{aspectRatio}</span>
-              <ChevronDown className="h-3 w-3" />
+              <ChevronDown className={`h-3 w-3 transition-transform ${activeDropdown === 'format' ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Image Button */}
             <button
               onClick={() => toggleDropdown('image')}
-              className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+              className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap hover-lift ${
                 activeDropdown === 'image'
-                  ? 'bg-purple-500 text-white'
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
                   : baseImagePreview
-                    ? 'bg-emerald-600 text-white border border-emerald-500'
-                    : 'bg-slate-800/60 text-slate-300 border border-slate-600'
+                    ? 'bg-emerald-600 text-white border border-emerald-500 shadow-lg shadow-emerald-500/30'
+                    : 'bg-slate-800/60 text-slate-300 border border-slate-600 hover:border-purple-500/50'
               }`}
             >
               <ImageIcon className="h-4 w-4" />
               <span>Img</span>
+              {baseImagePreview && <Star className="h-3 w-3 fill-current" />}
             </button>
 
             {/* Style Button */}
             <button
               onClick={() => toggleDropdown('style')}
-              className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+              className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap hover-lift ${
                 activeDropdown === 'style'
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-slate-800/60 text-slate-300 border border-slate-600'
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                  : 'bg-slate-800/60 text-slate-300 border border-slate-600 hover:border-purple-500/50'
               }`}
             >
               <Palette className="h-4 w-4" />
-              <span>{toneLabels[tone].emoji}</span>
+              <span className="text-base">{toneLabels[tone].emoji}</span>
             </button>
 
             {/* Brand Button */}
             <button
               onClick={() => toggleDropdown('brand')}
-              className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+              className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap hover-lift ${
                 activeDropdown === 'brand'
-                  ? 'bg-purple-500 text-white'
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
                   : includeLogo
-                    ? 'bg-emerald-600 text-white border border-emerald-500'
-                    : 'bg-slate-800/60 text-slate-300 border border-slate-600'
+                    ? 'bg-emerald-600 text-white border border-emerald-500 shadow-lg shadow-emerald-500/30'
+                    : 'bg-slate-800/60 text-slate-300 border border-slate-600 hover:border-purple-500/50'
               }`}
             >
               <Building2 className="h-4 w-4" />
               <span>Brand</span>
+              {includeLogo && <Zap className="h-3 w-3 fill-current" />}
             </button>
 
             {/* Examples Button */}
             <button
               onClick={() => toggleDropdown('examples')}
-              className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+              className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap hover-lift ${
                 activeDropdown === 'examples'
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-slate-800/60 text-slate-300 border border-slate-600'
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                  : 'bg-slate-800/60 text-slate-300 border border-slate-600 hover:border-purple-500/50'
               }`}
             >
-              <Lightbulb className="h-4 w-4" />
+              <Lightbulb className={`h-4 w-4 ${activeDropdown === 'examples' ? 'fill-yellow-400 text-yellow-400' : ''}`} />
             </button>
           </div>
 
           {/* Dropdown Panels */}
           {activeDropdown && (
-            <div className="mt-2 bg-slate-800/90 backdrop-blur-sm rounded-xl border border-slate-600/50 p-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="mt-2 bg-slate-800/90 backdrop-blur-sm rounded-xl border border-slate-600/50 p-3 animate-bounce-in shadow-xl">
               {/* Format Dropdown */}
               {activeDropdown === 'format' && (
                 <div className="space-y-2">
-                  <div className="text-xs text-slate-400 font-medium mb-2">Formato Immagine</div>
+                  <div className="text-xs text-slate-400 font-medium mb-2 flex items-center space-x-2">
+                    <span>Formato Immagine</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-slate-600 to-transparent" />
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {['1:1', '16:9', '4:3', '9:16'].map((ratio) => (
                       <button
                         key={ratio}
                         onClick={() => { setAspectRatio(ratio); setActiveDropdown(null); }}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all hover-lift ${
                           aspectRatio === ratio
-                            ? 'bg-purple-500 text-white'
-                            : 'bg-slate-900/50 text-slate-300 border border-slate-600 hover:border-purple-500/50'
+                            ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                            : 'bg-slate-900/50 text-slate-300 border border-slate-600 hover:border-purple-500/50 hover:bg-slate-800/50'
                         }`}
                       >
                         {ratio}
@@ -426,7 +579,10 @@ export default function AIImageStudioPage() {
               {/* Image Dropdown */}
               {activeDropdown === 'image' && (
                 <div className="space-y-3">
-                  <div className="text-xs text-slate-400 font-medium">Immagine Base (opzionale)</div>
+                  <div className="text-xs text-slate-400 font-medium flex items-center space-x-2">
+                    <span>Immagine Base (opzionale)</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-slate-600 to-transparent" />
+                  </div>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -438,17 +594,17 @@ export default function AIImageStudioPage() {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isGenerating}
-                    className="flex items-center space-x-2 px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-sm text-slate-300 hover:border-purple-500/50 w-full"
+                    className="flex items-center space-x-2 px-4 py-2.5 bg-slate-900/50 border border-slate-600 border-dashed rounded-lg text-sm text-slate-300 hover:border-purple-500/50 w-full hover:bg-slate-800/50 transition-all group"
                   >
-                    <Upload className="h-4 w-4" />
+                    <Upload className="h-4 w-4 group-hover:animate-bounce" />
                     <span>{baseImagePreview ? 'Cambia Immagine' : 'Carica Immagine'}</span>
                   </button>
                   {baseImagePreview && (
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-3 p-2 bg-slate-900/30 rounded-lg">
                       <img src={baseImagePreview} alt="Base" className="h-16 w-auto object-contain rounded border border-slate-600" />
                       <button
                         onClick={() => { setBaseImage(null); setBaseImagePreview(null); }}
-                        className="p-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-white"
+                        className="p-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-white hover:scale-110 transition-transform"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -460,19 +616,22 @@ export default function AIImageStudioPage() {
               {/* Style Dropdown */}
               {activeDropdown === 'style' && (
                 <div className="space-y-2">
-                  <div className="text-xs text-slate-400 font-medium mb-2">Stile Immagine</div>
+                  <div className="text-xs text-slate-400 font-medium mb-2 flex items-center space-x-2">
+                    <span>Stile Immagine</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-slate-600 to-transparent" />
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     {(['professional', 'casual', 'fun', 'luxury'] as Tone[]).map((t) => (
                       <button
                         key={t}
                         onClick={() => { setTone(t); setActiveDropdown(null); }}
-                        className={`flex items-center justify-center space-x-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                        className={`flex items-center justify-center space-x-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover-lift ${
                           tone === t
-                            ? 'bg-purple-500 text-white'
-                            : 'bg-slate-900/50 text-slate-300 border border-slate-600 hover:border-purple-500/50'
+                            ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                            : 'bg-slate-900/50 text-slate-300 border border-slate-600 hover:border-purple-500/50 hover:bg-slate-800/50'
                         }`}
                       >
-                        <span>{toneLabels[t].emoji}</span>
+                        <span className="text-lg">{toneLabels[t].emoji}</span>
                         <span>{toneLabels[t].label}</span>
                       </button>
                     ))}
@@ -484,21 +643,26 @@ export default function AIImageStudioPage() {
               {activeDropdown === 'brand' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="text-xs text-slate-400 font-medium">Branding Aziendale</div>
-                    <label className="flex items-center space-x-2 cursor-pointer">
+                    <div className="text-xs text-slate-400 font-medium flex items-center space-x-2">
+                      <span>Branding Aziendale</span>
+                    </div>
+                    <label className="flex items-center space-x-2 cursor-pointer group">
+                      <div className={`w-10 h-5 rounded-full transition-all ${includeLogo ? 'bg-purple-500' : 'bg-slate-600'} relative`}>
+                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow ${includeLogo ? 'left-5' : 'left-0.5'}`} />
+                      </div>
+                      <span className="text-xs text-slate-300">{includeLogo ? 'ON' : 'OFF'}</span>
                       <input
                         type="checkbox"
                         checked={includeLogo}
                         onChange={(e) => setIncludeLogo(e.target.checked)}
                         disabled={isGenerating}
-                        className="w-4 h-4 rounded border-slate-600 bg-slate-900/50 text-purple-500"
+                        className="hidden"
                       />
-                      <span className="text-xs text-slate-300">Attivo</span>
                     </label>
                   </div>
 
                   {includeLogo && (
-                    <div className="space-y-3">
+                    <div className="space-y-3 animate-bounce-in">
                       <input
                         type="file"
                         accept="image/png,image/jpeg,image/svg+xml"
@@ -509,17 +673,17 @@ export default function AIImageStudioPage() {
                       />
                       <label
                         htmlFor="logo-upload"
-                        className="flex items-center space-x-2 px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg cursor-pointer text-sm text-slate-300 hover:border-purple-500/50 w-full"
+                        className="flex items-center space-x-2 px-4 py-2.5 bg-slate-900/50 border border-slate-600 border-dashed rounded-lg cursor-pointer text-sm text-slate-300 hover:border-purple-500/50 w-full transition-all group"
                       >
-                        <Upload className="h-4 w-4" />
+                        <Upload className="h-4 w-4 group-hover:animate-bounce" />
                         <span>{logoPreview ? 'Cambia Logo' : 'Carica Logo'}</span>
                       </label>
                       {logoPreview && (
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-3 p-2 bg-slate-900/30 rounded-lg">
                           <img src={logoPreview} alt="Logo" className="h-10 w-auto object-contain rounded" />
                           <button
                             onClick={() => { setLogoImage(null); setLogoPreview(null); }}
-                            className="p-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-white"
+                            className="p-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-white hover:scale-110 transition-transform"
                           >
                             <X className="h-4 w-4" />
                           </button>
@@ -531,7 +695,7 @@ export default function AIImageStudioPage() {
                         onChange={(e) => setCompanyMotto(e.target.value)}
                         placeholder="Motto/Slogan aziendale"
                         maxLength={100}
-                        className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 text-sm"
+                        className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all"
                         disabled={isGenerating}
                       />
                     </div>
@@ -542,16 +706,20 @@ export default function AIImageStudioPage() {
               {/* Examples Dropdown */}
               {activeDropdown === 'examples' && (
                 <div className="space-y-2">
-                  <div className="text-xs text-slate-400 font-medium mb-2">Esempi di Prompt</div>
+                  <div className="text-xs text-slate-400 font-medium mb-2 flex items-center space-x-2">
+                    <Lightbulb className="h-3 w-3 text-yellow-400" />
+                    <span>Esempi di Prompt</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-slate-600 to-transparent" />
+                  </div>
                   <div className="space-y-1.5">
                     {suggestedPrompts.map((suggestion, idx) => (
                       <button
                         key={idx}
-                        onClick={() => { setPrompt(suggestion); setActiveDropdown(null); }}
+                        onClick={() => { setPrompt(suggestion); setActiveDropdown(null); toast.success('Prompt selezionato!'); }}
                         disabled={isGenerating}
-                        className="w-full text-left px-3 py-2 bg-slate-900/50 hover:bg-slate-700/50 border border-slate-600/50 rounded-lg text-xs text-slate-300 hover:text-white transition-all"
+                        className="w-full text-left px-3 py-2 bg-slate-900/50 hover:bg-slate-700/50 border border-slate-600/50 rounded-lg text-xs text-slate-300 hover:text-white transition-all hover:border-purple-500/30 group"
                       >
-                        {suggestion}
+                        <span className="group-hover:text-purple-400 transition-colors">💡</span> {suggestion}
                       </button>
                     ))}
                   </div>
@@ -569,8 +737,8 @@ export default function AIImageStudioPage() {
               onClick={() => setInputMode('text')}
               className={`flex items-center justify-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 inputMode === 'text'
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-slate-900/50 text-slate-400 border border-slate-600'
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+                  : 'bg-slate-900/50 text-slate-400 border border-slate-600 hover:border-purple-500/50'
               }`}
             >
               <Type className="h-3 w-3" />
@@ -580,8 +748,8 @@ export default function AIImageStudioPage() {
               onClick={() => setInputMode('audio')}
               className={`flex items-center justify-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 inputMode === 'audio'
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-slate-900/50 text-slate-400 border border-slate-600'
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+                  : 'bg-slate-900/50 text-slate-400 border border-slate-600 hover:border-purple-500/50'
               }`}
             >
               <Mic className="h-3 w-3" />
@@ -594,8 +762,8 @@ export default function AIImageStudioPage() {
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Descrivi l'immagine che vuoi generare..."
-              className="w-full px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder:text-slate-500 min-h-[80px] resize-none text-sm"
+              placeholder="✨ Descrivi l'immagine dei tuoi sogni..."
+              className="w-full px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder:text-slate-500 min-h-[80px] resize-none text-sm transition-all"
               disabled={isGenerating}
             />
           ) : (
@@ -605,25 +773,28 @@ export default function AIImageStudioPage() {
                 disabled={isGenerating}
                 className={`w-full flex items-center justify-center space-x-2 px-3 py-5 rounded-lg font-medium transition-all ${
                   isRecording
-                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
-                    : 'bg-slate-900/50 border border-slate-600 text-slate-300 hover:border-purple-500/50'
+                    ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30'
+                    : 'bg-slate-900/50 border border-slate-600 border-dashed text-slate-300 hover:border-purple-500/50 hover:bg-slate-800/50'
                 }`}
               >
                 {isRecording ? (
                   <>
-                    <MicOff className="h-5 w-5" />
+                    <div className="relative">
+                      <MicOff className="h-5 w-5" />
+                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-ping" />
+                    </div>
                     <span className="text-sm">Tocca per fermare</span>
                   </>
                 ) : (
                   <>
                     <Mic className="h-5 w-5" />
-                    <span className="text-sm">Tocca e parla</span>
+                    <span className="text-sm">🎤 Tocca e parla</span>
                   </>
                 )}
               </button>
               {prompt && (
-                <div className="p-2.5 bg-slate-900/50 border border-slate-600 rounded-lg">
-                  <div className="text-xs text-slate-400 mb-1">Trascrizione:</div>
+                <div className="p-2.5 bg-slate-900/50 border border-slate-600 rounded-lg animate-bounce-in">
+                  <div className="text-xs text-slate-400 mb-1">📝 Trascrizione:</div>
                   <div className="text-white text-sm">{prompt}</div>
                 </div>
               )}
@@ -635,17 +806,24 @@ export default function AIImageStudioPage() {
         <button
           onClick={handleGenerate}
           disabled={isGenerating || !prompt.trim()}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl"
+          onMouseEnter={() => setButtonHover(true)}
+          onMouseLeave={() => setButtonHover(false)}
+          className={`w-full flex items-center justify-center space-x-2 px-4 py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl hover:shadow-purple-500/25 animate-gradient relative overflow-hidden group ${!isGenerating && prompt.trim() ? 'hover:scale-[1.02]' : ''}`}
         >
+          {/* Shimmer effect */}
+          <div className="absolute inset-0 animate-shimmer opacity-30" />
+
           {isGenerating ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Generazione...</span>
+              <span>Creazione magica...</span>
+              <Sparkles className="h-4 w-4 animate-pulse" />
             </>
           ) : (
             <>
-              <Sparkles className="h-5 w-5" />
-              <span>Genera Immagine 🍌</span>
+              <Sparkles className={`h-5 w-5 ${buttonHover ? 'animate-wiggle' : ''}`} />
+              <span>Genera Immagine</span>
+              <span className="text-lg">🍌</span>
             </>
           )}
         </button>
