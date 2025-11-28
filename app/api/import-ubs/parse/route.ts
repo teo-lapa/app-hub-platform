@@ -169,8 +169,13 @@ export async function POST(request: NextRequest) {
         if (!line) continue
 
         if (line.startsWith('Conto,')) {
-          const accountMatch = line.match(/(\d{7}-\d{2})/)
-          if (accountMatch) accountInfo.accountNumber = accountMatch[1]
+          const accountMatch = line.match(/(\d+)-(\d{2,5})/)
+          if (accountMatch) {
+            // Normalizza il numero conto rimuovendo zeri iniziali
+            // Es: 0397749-51 → 3977497-51
+            const normalized = `${parseInt(accountMatch[1])}-${accountMatch[2]}`
+            accountInfo.accountNumber = normalized
+          }
         } else if (line.startsWith('Saldo,')) {
           const balanceMatch = line.match(/Saldo,([0-9']+\.\d{2})/)
           if (balanceMatch) {

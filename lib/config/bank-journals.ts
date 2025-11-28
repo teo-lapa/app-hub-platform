@@ -30,6 +30,24 @@ export const BANK_JOURNALS: BankJournalConfig[] = [
     currency: 'EUR',
     accountNumber: '0278 00122087.60',
     description: 'Conto corrente UBS in euro'
+  },
+  {
+    iban: 'CH62 0483 5397 7497 5100 0',
+    journalId: 12,
+    journalName: 'Credit Suisse SA 751000',
+    journalCode: 'BNK3',
+    currency: 'CHF',
+    accountNumber: '3977497-51',
+    description: 'Conto principale Credit Suisse (ex CS, ora UBS)'
+  },
+  {
+    iban: 'CH35 0483 5397 7497 5100 1',
+    journalId: 13,
+    journalName: 'Credit Suisse 0.1 751001',
+    journalCode: 'BNK4',
+    currency: 'CHF',
+    accountNumber: '3977497-51001',
+    description: 'Conto secondario Credit Suisse (ex CS, ora UBS)'
   }
 ];
 
@@ -94,10 +112,16 @@ export function findJournalByIban(
 }
 
 // Helper per trovare journal da numero conto (per Credit Suisse)
-export function findJournalByAccountNumber(accountNumber: string): BankJournalConfig | undefined {
+export function findJournalByAccountNumber(
+  accountNumber: string,
+  journals?: BankJournalConfig[]
+): BankJournalConfig | undefined {
   if (!accountNumber) return undefined;
 
-  return BANK_JOURNALS.find(j => j.accountNumber === accountNumber);
+  // Usa journals passati come parametro o fallback a BANK_JOURNALS statico
+  const journalsToSearch = journals || BANK_JOURNALS;
+
+  return journalsToSearch.find(j => j.accountNumber === accountNumber);
 }
 
 // Helper per ottenere journal predefinito basato su valuta
