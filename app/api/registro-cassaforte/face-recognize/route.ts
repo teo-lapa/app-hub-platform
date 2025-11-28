@@ -4,7 +4,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Jetson Nano configuration
-const JETSON_URL = process.env.JETSON_URL || 'http://192.168.1.171:3100';
+const JETSON_URL = process.env.JETSON_OCR_URL || process.env.JETSON_URL || 'http://192.168.1.171:3100';
 
 /**
  * POST /api/registro-cassaforte/face-recognize
