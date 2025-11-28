@@ -55,31 +55,38 @@ export async function GET(request: NextRequest) {
 
     console.log(`[SALES-RADAR-ACTIVITY] Fetching ONLY Sales Radar activities for period: ${period}, from: ${startDateStr}`);
 
-    // 1. Find ALL Sales Radar related tags (including "Non interessato", "Non in Target", etc.)
-    // These are tags used by the Sales Radar app for categorizing leads
-    const salesRadarTagNames = [
-      'Sales Radar',
-      'Non interessato',
-      'Non in Target',
-      'Non in target'  // Case variation
-    ];
-
+    // 1. Find ALL Sales Radar related tags using multiple search strategies
+    // Tags used by Sales Radar app: "Sales Radar", "Non interessato", "Non in Target", etc.
     let salesRadarTagIds: number[] = [];
     try {
-      const tags = await client.searchRead(
+      // First, get ALL tags from CRM to see what's available
+      const allTags = await client.searchRead(
         'crm.tag',
-        [['name', 'in', salesRadarTagNames]],
+        [],
         ['id', 'name'],
         0
       );
-      if (tags.length > 0) {
-        salesRadarTagIds = tags.map((t: any) => t.id);
-        console.log(`[SALES-RADAR-ACTIVITY] Found Sales Radar tags: ${tags.map((t: any) => `${t.name}(${t.id})`).join(', ')}`);
+      console.log(`[SALES-RADAR-ACTIVITY] All available CRM tags: ${allTags.map((t: any) => `${t.name}(${t.id})`).join(', ')}`);
+
+      // Filter tags that match Sales Radar patterns (case insensitive)
+      const salesRadarPatterns = [
+        /sales\s*radar/i,
+        /non\s*interessato/i,
+        /non\s*in\s*target/i
+      ];
+
+      const matchingTags = allTags.filter((t: any) =>
+        salesRadarPatterns.some(pattern => pattern.test(t.name))
+      );
+
+      if (matchingTags.length > 0) {
+        salesRadarTagIds = matchingTags.map((t: any) => t.id);
+        console.log(`[SALES-RADAR-ACTIVITY] Found Sales Radar tags: ${matchingTags.map((t: any) => `${t.name}(${t.id})`).join(', ')}`);
       } else {
-        console.warn('[SALES-RADAR-ACTIVITY] No Sales Radar tags found!');
+        console.warn('[SALES-RADAR-ACTIVITY] No Sales Radar tags found! Available tags:', allTags.map((t: any) => t.name).join(', '));
       }
     } catch (e) {
-      console.warn('[SALES-RADAR-ACTIVITY] Error fetching Sales Radar tags:', e);
+      console.warn('[SALES-RADAR-ACTIVITY] Error fetching tags:', e);
     }
 
     // 2. Fetch leads with ANY Sales Radar tag created in the period (including archived)
