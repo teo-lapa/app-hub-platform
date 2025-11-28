@@ -69,10 +69,13 @@ export async function GET(request: NextRequest) {
       console.log(`[SALES-RADAR-ACTIVITY] All available CRM tags: ${allTags.map((t: any) => `${t.name}(${t.id})`).join(', ')}`);
 
       // Filter tags that match Sales Radar patterns (case insensitive)
+      // Tags from mark-not-target: "Chiuso definitivamente", "Non interessato", "Non in Target"
+      // Main tag: "Sales Radar"
       const salesRadarPatterns = [
         /sales\s*radar/i,
         /non\s*interessato/i,
-        /non\s*in\s*target/i
+        /non\s*in\s*target/i,
+        /chiuso\s*definitivamente/i
       ];
 
       const matchingTags = allTags.filter((t: any) =>
