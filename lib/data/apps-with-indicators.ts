@@ -131,6 +131,21 @@ export const mockApps: App[] = [
     createdAt: new Date('2025-11-28'),
     updatedAt: new Date('2025-11-28'),
   },
+  {
+    id: 'registro-cassaforte',
+    name: 'Registro Cassaforte [P]',
+    description: 'Registra versamenti in contanti nella cassaforte aziendale. Riconoscimento facciale, conteggio automatico banconote CHF con AI, registrazione video e integrazione contabile Odoo.',
+    icon: '🔐',
+    badge: 'PRO',
+    category: 'Finance',
+    url: '/registro-cassaforte',
+    requiredRole: 'dipendente',
+    isNew: true,
+    isPopular: false,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-11-28'),
+    updatedAt: new Date('2025-11-28'),
+  },
 ];
 
 // Le app Standalone in /apps/

@@ -262,31 +262,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Also fetch res.users names for create_uid fields
-    const allUserIds = new Set<number>();
-    leadsCreated.forEach(l => { if (l.create_uid?.[0]) allUserIds.add(l.create_uid[0]); });
-    calendarEvents.forEach(e => { if (e.create_uid?.[0]) allUserIds.add(e.create_uid[0]); });
-    scheduledActivities.forEach(a => { if (a.create_uid?.[0]) allUserIds.add(a.create_uid[0]); });
-
-    let resUsersMap: Record<number, string> = {};
-    if (allUserIds.size > 0) {
-      try {
-        const resUsers = await client.searchRead(
-          'res.users',
-          [['id', 'in', Array.from(allUserIds)]],
-          ['id', 'name', 'partner_id'],
-          0
-        );
-        resUsers.forEach((u: any) => {
-          resUsersMap[u.id] = u.name;
-          // Also map partner_id to name
-          if (u.partner_id && Array.isArray(u.partner_id)) {
-            usersMap[u.partner_id[0]] = { name: u.name };
-          }
-        });
-      } catch (e) {
-        console.warn('[SALES-RADAR-ACTIVITY] Error fetching res.users:', e);
-      }
+    // Fetch ALL res.users to create partner_id -> user_id mapping
+    // This is needed to normalize IDs (messages use partner_id, but we want to group by user_id)
+    let resUsersMap: Record<number, string> = {}; // user_id -> name
+    let partnerToUserMap: Record<number, number> = {}; // partner_id -> user_id
+    try {
+      const resUsers = await client.searchRead(
+        'res.users',
+        [['active', 'in', [true, false]]], // Include inactive users
+        ['id', 'name', 'partner_id'],
+        0
+      );
+      resUsers.forEach((u: any) => {
+        resUsersMap[u.id] = u.name;
+        // Create reverse mapping: partner_id -> user_id
+        if (u.partner_id && Array.isArray(u.partner_id)) {
+          partnerToUserMap[u.partner_id[0]] = u.id;
+          usersMap[u.partner_id[0]] = { name: u.name };
+        }
+      });
+      console.log(`[SALES-RADAR-ACTIVITY] Loaded ${resUsers.length} users for ID normalization`);
+    } catch (e) {
+      console.warn('[SALES-RADAR-ACTIVITY] Error fetching res.users:', e);
     }
 
     // 10. Fetch lead names for messages (no partners since we only fetch from leads now)
@@ -330,15 +327,21 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Helper function to get user name
-    const getUserName = (userId: number, isResUserId: boolean = false): string => {
-      if (isResUserId && resUsersMap[userId]) {
-        return resUsersMap[userId];
+    // Helper function to get user name and normalize user ID
+    // This ensures that both res.users IDs and res.partner IDs map to the same user
+    const getUserInfo = (id: number, isResUserId: boolean = false): { id: number; name: string } => {
+      if (isResUserId) {
+        // id is already a res.users ID
+        return {
+          id,
+          name: resUsersMap[id] || (id > 0 ? 'Utente sconosciuto' : 'Sistema')
+        };
+      } else {
+        // id is a res.partner ID, need to convert to res.users ID
+        const normalizedUserId = partnerToUserMap[id] || id;
+        const name = resUsersMap[normalizedUserId] || usersMap[id]?.name || (id > 0 ? 'Utente sconosciuto' : 'Sistema');
+        return { id: normalizedUserId, name };
       }
-      if (usersMap[userId]) {
-        return usersMap[userId].name;
-      }
-      return userId > 0 ? 'Utente sconosciuto' : 'Sistema';
     };
 
     // 11. Build activity timeline
@@ -362,18 +365,18 @@ export async function GET(request: NextRequest) {
 
     // Add lead creation activities
     leadsCreated.forEach(lead => {
-      const userId = lead.create_uid?.[0] || 0;
-      const userName = getUserName(userId, true);
+      const rawUserId = lead.create_uid?.[0] || 0;
+      const userInfo = getUserInfo(rawUserId, true);
 
       // Skip system users
-      if (userName === 'Utente' || userName === 'OdooBot') return;
+      if (userInfo.name === 'Utente' || userInfo.name === 'OdooBot') return;
 
       activities.push({
         id: `lead_${lead.id}`,
         type: 'lead_created',
         timestamp: lead.create_date,
-        userId,
-        userName,
+        userId: userInfo.id,
+        userName: userInfo.name,
         targetName: lead.name,
         targetType: 'lead',
         targetId: lead.id,
@@ -386,18 +389,18 @@ export async function GET(request: NextRequest) {
 
     // Add calendar event activities
     calendarEvents.forEach(event => {
-      const userId = event.create_uid?.[0] || 0;
-      const userName = getUserName(userId, true);
+      const rawUserId = event.create_uid?.[0] || 0;
+      const userInfo = getUserInfo(rawUserId, true);
 
       // Skip system users
-      if (userName === 'Utente' || userName === 'OdooBot') return;
+      if (userInfo.name === 'Utente' || userInfo.name === 'OdooBot') return;
 
       activities.push({
         id: `calendar_${event.id}`,
         type: 'calendar_event',
         timestamp: event.create_date,
-        userId,
-        userName,
+        userId: userInfo.id,
+        userName: userInfo.name,
         targetName: event.name || 'Appuntamento',
         targetType: 'calendar',
         targetId: event.id,
@@ -407,11 +410,11 @@ export async function GET(request: NextRequest) {
 
     // Add scheduled activity activities
     scheduledActivities.forEach(act => {
-      const userId = act.create_uid?.[0] || 0;
-      const userName = getUserName(userId, true);
+      const rawUserId = act.create_uid?.[0] || 0;
+      const userInfo = getUserInfo(rawUserId, true);
 
       // Skip system users
-      if (userName === 'Utente' || userName === 'OdooBot') return;
+      if (userInfo.name === 'Utente' || userInfo.name === 'OdooBot') return;
 
       const activityTypeName = act.activity_type_id ?
         (Array.isArray(act.activity_type_id) ? act.activity_type_id[1] : 'Attività') : 'Attività';
@@ -420,8 +423,8 @@ export async function GET(request: NextRequest) {
         id: `activity_${act.id}`,
         type: 'scheduled_activity',
         timestamp: act.create_date,
-        userId,
-        userName,
+        userId: userInfo.id,
+        userName: userInfo.name,
         targetName: act.summary || activityTypeName,
         targetType: 'activity',
         targetId: act.id,
@@ -431,16 +434,16 @@ export async function GET(request: NextRequest) {
 
     // Add message-based activities
     allMessages.forEach(msg => {
-      const authorId = msg.author_id?.[0] || msg.create_uid?.[0] || 0;
+      // author_id is a res.partner ID, need to normalize to res.users ID
+      const authorPartnerId = msg.author_id?.[0] || 0;
+      const userInfo = getUserInfo(authorPartnerId, false); // false = it's a partner_id
       const targetType = msg.model === 'crm.lead' ? 'lead' : 'partner';
       const targetName = targetType === 'lead'
         ? leadsMap[msg.res_id] || `Lead #${msg.res_id}`
         : partnersMap[msg.res_id] || `Cliente #${msg.res_id}`;
 
-      const userName = getUserName(authorId, false);
-
       // Skip system users and automatic imports
-      if (userName === 'Utente' || userName === 'OdooBot' || userName === 'Sistema') return;
+      if (userInfo.name === 'Utente' || userInfo.name === 'OdooBot' || userInfo.name === 'Sistema') return;
 
       // Check if this message has tracking values (field changes)
       const tracking = trackingByMessage[msg.id] || [];
@@ -494,8 +497,8 @@ export async function GET(request: NextRequest) {
             id: `track_${tv.id}`,
             type: activityType,
             timestamp: msg.date,
-            userId: authorId,
-            userName,
+            userId: userInfo.id,
+            userName: userInfo.name,
             targetName,
             targetType: targetType as 'lead' | 'partner',
             targetId: msg.res_id,
@@ -522,8 +525,8 @@ export async function GET(request: NextRequest) {
           id: `msg_${msg.id}`,
           type: isVoice ? 'voice_note' : 'written_note',
           timestamp: msg.date,
-          userId: authorId,
-          userName,
+          userId: userInfo.id,
+          userName: userInfo.name,
           targetName,
           targetType: targetType as 'lead' | 'partner',
           targetId: msg.res_id,
@@ -544,8 +547,8 @@ export async function GET(request: NextRequest) {
           id: `note_${msg.id}`,
           type: 'note_added',
           timestamp: msg.date,
-          userId: authorId,
-          userName,
+          userId: userInfo.id,
+          userName: userInfo.name,
           targetName,
           targetType: targetType as 'lead' | 'partner',
           targetId: msg.res_id,
