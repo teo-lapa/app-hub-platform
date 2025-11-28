@@ -18,7 +18,9 @@ const MARKER_COLORS: Record<SalesRadarActivity['type'], string> = {
   tag_added: '#F59E0B',         // Yellow
   tag_removed: '#F59E0B',       // Yellow
   note_added: '#06B6D4',        // Cyan
-  field_updated: '#6B7280'      // Gray
+  field_updated: '#6B7280',     // Gray
+  calendar_event: '#8B5CF6',    // Violet
+  scheduled_activity: '#EC4899' // Pink
 };
 
 export default function ActivityMap({ activities }: ActivityMapProps) {

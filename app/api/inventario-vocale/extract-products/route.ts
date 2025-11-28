@@ -145,14 +145,16 @@ Se non trovi prodotti, rispondi con un array vuoto: []`;
       }
 
       // Add IDs and validate/clean products
-      products = parsed.map((p: any, index: number) => ({
+      products = parsed.map((p: Record<string, unknown>, index: number): ExtractedProduct => ({
         id: `prod_${Date.now()}_${index}`,
         name: String(p.name || '').trim(),
-        quantity: typeof p.quantity === 'number' ? p.quantity : parseFloat(p.quantity) || 1,
+        quantity: typeof p.quantity === 'number' ? p.quantity : parseFloat(String(p.quantity)) || 1,
         unit: String(p.unit || 'pz').trim(),
         category: p.category === 'non_food' ? 'non_food' : 'food',
         notes: p.notes ? String(p.notes).trim() : undefined,
-        confidence: ['high', 'medium', 'low'].includes(p.confidence) ? p.confidence : 'medium'
+        confidence: (['high', 'medium', 'low'] as const).includes(p.confidence as 'high' | 'medium' | 'low')
+          ? (p.confidence as 'high' | 'medium' | 'low')
+          : 'medium'
       })).filter((p: ExtractedProduct) => p.name.length > 0);
 
     } catch (parseError) {

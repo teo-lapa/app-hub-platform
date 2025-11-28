@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Radar, Users, Mic, FileText, MapPin, Clock, User, ExternalLink,
   ArrowLeft, Filter, Calendar, TrendingUp, RefreshCw, ChevronDown,
-  Search, X, Activity, Target, Eye
+  Search, X, Activity, Target, Eye, CalendarDays, CheckSquare
 } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -23,7 +23,7 @@ const ActivityMap = dynamic(() => import('./ActivityMap'), {
 
 type ViewMode = 'timeline' | 'vendors' | 'map';
 type ActivityType = 'all' | 'lead_created' | 'voice_note' | 'written_note' | 'stage_change' |
-                    'lead_archived' | 'lead_reactivated' | 'tag_added' | 'note_added';
+                    'lead_archived' | 'lead_reactivated' | 'tag_added' | 'note_added' | 'calendar_event' | 'scheduled_activity';
 
 export default function SalesRadarActivityPage() {
   const [data, setData] = useState<SalesRadarActivityData | null>(null);
@@ -144,6 +144,10 @@ export default function SalesRadarActivityPage() {
         return <Target className="w-4 h-4 text-yellow-400" />;
       case 'note_added':
         return <FileText className="w-4 h-4 text-cyan-400" />;
+      case 'calendar_event':
+        return <CalendarDays className="w-4 h-4 text-pink-400" />;
+      case 'scheduled_activity':
+        return <CheckSquare className="w-4 h-4 text-teal-400" />;
       case 'field_updated':
         return <Activity className="w-4 h-4 text-gray-400" />;
       default:
@@ -169,6 +173,10 @@ export default function SalesRadarActivityPage() {
         return 'ha modificato tag di';
       case 'note_added':
         return 'ha aggiunto nota a';
+      case 'calendar_event':
+        return 'ha creato appuntamento';
+      case 'scheduled_activity':
+        return 'ha pianificato attività';
       case 'field_updated':
         return 'ha modificato';
       default:
@@ -275,7 +283,7 @@ export default function SalesRadarActivityPage() {
         ) : data ? (
           <>
             {/* Summary Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -304,7 +312,33 @@ export default function SalesRadarActivityPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="bg-gradient-to-br from-pink-500/20 to-pink-600/10 border border-pink-500/30 rounded-xl p-5"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <CalendarDays className="w-5 h-5 text-pink-400" />
+                  <span className="text-pink-200 text-sm font-medium">Appuntamenti</span>
+                </div>
+                <div className="text-4xl font-bold text-white">{data.summary.calendarEvents || 0}</div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
+                className="bg-gradient-to-br from-teal-500/20 to-teal-600/10 border border-teal-500/30 rounded-xl p-5"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <CheckSquare className="w-5 h-5 text-teal-400" />
+                  <span className="text-teal-200 text-sm font-medium">Attività Pianificate</span>
+                </div>
+                <div className="text-4xl font-bold text-white">{data.summary.scheduledActivities || 0}</div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
                 className="bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-500/30 rounded-xl p-5"
               >
                 <div className="flex items-center gap-3 mb-2">
@@ -333,7 +367,7 @@ export default function SalesRadarActivityPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
+                transition={{ delay: 0.35 }}
                 className="bg-gradient-to-br from-red-500/20 to-red-600/10 border border-red-500/30 rounded-xl p-5"
               >
                 <div className="flex items-center gap-3 mb-2">
@@ -346,7 +380,7 @@ export default function SalesRadarActivityPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
+                transition={{ delay: 0.4 }}
                 className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border border-yellow-500/30 rounded-xl p-5"
               >
                 <div className="flex items-center gap-3 mb-2">
@@ -362,7 +396,7 @@ export default function SalesRadarActivityPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
+                transition={{ delay: 0.45 }}
                 className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 border border-cyan-500/30 rounded-xl p-5"
               >
                 <div className="flex items-center gap-3 mb-2">
@@ -491,8 +525,13 @@ export default function SalesRadarActivityPage() {
                       >
                         <option value="all">Tutte le attività</option>
                         <option value="lead_created">Lead creati</option>
+                        <option value="calendar_event">Appuntamenti</option>
+                        <option value="scheduled_activity">Attività pianificate</option>
                         <option value="voice_note">Note vocali</option>
                         <option value="written_note">Note scritte</option>
+                        <option value="stage_change">Cambi stato</option>
+                        <option value="lead_archived">Lead archiviati</option>
+                        <option value="tag_added">Tag modificati</option>
                       </select>
                     </div>
                   </div>
@@ -767,10 +806,18 @@ function VendorsView({
 
             {/* Stats & Action */}
             <div className="flex items-center gap-8">
-              <div className="hidden md:flex items-center gap-4 flex-wrap">
+              <div className="hidden md:flex items-center gap-3 flex-wrap">
                 <div className="text-center">
                   <div className="text-orange-400 font-bold text-lg">{vendor.leadsCreated}</div>
                   <div className="text-xs text-slate-500">Lead</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-pink-400 font-bold text-lg">{vendor.calendarEvents || 0}</div>
+                  <div className="text-xs text-slate-500">Appunt.</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-teal-400 font-bold text-lg">{vendor.scheduledActivities || 0}</div>
+                  <div className="text-xs text-slate-500">Attività</div>
                 </div>
                 <div className="text-center">
                   <div className="text-purple-400 font-bold text-lg">{vendor.voiceNotes}</div>
@@ -786,7 +833,7 @@ function VendorsView({
                 </div>
                 <div className="text-center">
                   <div className="text-red-400 font-bold text-lg">{vendor.leadsArchived}</div>
-                  <div className="text-xs text-slate-500">Archiviati</div>
+                  <div className="text-xs text-slate-500">Archiv.</div>
                 </div>
                 <div className="text-center">
                   <div className="text-yellow-400 font-bold text-lg">{vendor.tagsAdded}</div>
@@ -810,6 +857,14 @@ function VendorsView({
               <div
                 className="bg-orange-500 transition-all"
                 style={{ width: `${(vendor.leadsCreated / vendor.totalInteractions) * 100}%` }}
+              />
+              <div
+                className="bg-pink-500 transition-all"
+                style={{ width: `${((vendor.calendarEvents || 0) / vendor.totalInteractions) * 100}%` }}
+              />
+              <div
+                className="bg-teal-500 transition-all"
+                style={{ width: `${((vendor.scheduledActivities || 0) / vendor.totalInteractions) * 100}%` }}
               />
               <div
                 className="bg-purple-500 transition-all"
@@ -838,6 +893,12 @@ function VendorsView({
               <span className="w-2 h-2 bg-orange-500 rounded-full" /> Lead
             </span>
             <span className="flex items-center gap-1">
+              <span className="w-2 h-2 bg-pink-500 rounded-full" /> Appunt.
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 bg-teal-500 rounded-full" /> Attività
+            </span>
+            <span className="flex items-center gap-1">
               <span className="w-2 h-2 bg-purple-500 rounded-full" /> Vocali
             </span>
             <span className="flex items-center gap-1">
@@ -847,7 +908,7 @@ function VendorsView({
               <span className="w-2 h-2 bg-green-500 rounded-full" /> Stati
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-red-500 rounded-full" /> Archiviati
+              <span className="w-2 h-2 bg-red-500 rounded-full" /> Archiv.
             </span>
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 bg-yellow-500 rounded-full" /> Tag

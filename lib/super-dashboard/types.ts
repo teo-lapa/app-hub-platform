@@ -269,12 +269,12 @@ export interface SalesRadarActivity {
   id: string;
   type: 'lead_created' | 'voice_note' | 'written_note' | 'stage_change' |
         'lead_archived' | 'lead_reactivated' | 'tag_added' | 'tag_removed' |
-        'note_added' | 'field_updated';
+        'note_added' | 'field_updated' | 'calendar_event' | 'scheduled_activity';
   timestamp: string;
   userId: number;
   userName: string;
   targetName: string;
-  targetType: 'lead' | 'partner';
+  targetType: 'lead' | 'partner' | 'calendar' | 'activity';
   targetId: number;
   location?: {
     lat: number;
@@ -297,6 +297,8 @@ export interface SalesRadarVendorStats {
   leadsReactivated: number;
   tagsAdded: number;
   notesAdded: number;
+  calendarEvents: number;
+  scheduledActivities: number;
   totalInteractions: number;
 }
 
@@ -310,6 +312,8 @@ export interface SalesRadarActivitySummary {
   leadsReactivated: number;
   tagsAdded: number;
   notesAdded: number;
+  calendarEvents: number;
+  scheduledActivities: number;
   activeVendors: number;
   period: string;
   startDate: string;

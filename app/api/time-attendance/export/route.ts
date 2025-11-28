@@ -6,23 +6,9 @@ import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
-// Estendi jsPDF per autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: {
-      head?: string[][];
-      body?: (string | number)[][];
-      startY?: number;
-      theme?: string;
-      headStyles?: { fillColor?: number[]; textColor?: number[]; fontSize?: number };
-      bodyStyles?: { fontSize?: number };
-      columnStyles?: Record<number, { cellWidth?: number | 'auto' }>;
-      margin?: { top?: number; left?: number; right?: number };
-      didDrawPage?: (data: { cursor: { y: number } }) => void;
-    }) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
+// Type per jsPDF con autoTable (evita conflitto con @types/jspdf-autotable)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type JsPDFWithAutoTable = jsPDF & { autoTable: (options: any) => jsPDF; lastAutoTable: { finalY: number } };
 
 interface TimeEntry {
   id: string;
@@ -790,8 +776,7 @@ export async function GET(request: NextRequest) {
 
     // Formato PDF
     if (format === 'pdf') {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const doc = new jsPDF();
+      const doc = new jsPDF() as JsPDFWithAutoTable;
 
       // Header
       doc.setFontSize(20);

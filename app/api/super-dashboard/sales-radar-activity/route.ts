@@ -6,10 +6,12 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/super-dashboard/sales-radar-activity
  *
- * Recupera le attività recenti dal Sales Radar:
- * - Lead creati con tag "Sales Radar"
+ * Recupera TUTTE le attività dei venditori:
+ * - TUTTI i lead creati (non solo quelli con tag Sales Radar)
  * - Note/messaggi nel chatter (vocali e scritte)
- * - Statistiche per venditore
+ * - Appuntamenti calendario (calendar.event)
+ * - Attività schedulate (mail.activity)
+ * - Cambi stato, archiviazioni, tag
  *
  * Query params:
  * - period: 'today' | 'week' | 'month' (default: 'week')
@@ -53,43 +55,115 @@ export async function GET(request: NextRequest) {
 
     console.log(`[SALES-RADAR-ACTIVITY] Fetching activity for period: ${period}, from: ${startDateStr}`);
 
-    // 1. Find "Sales Radar" tag ID
-    let salesRadarTagId: number | null = null;
+    // 1. Get sales team users (venditori)
+    let salesUsers: any[] = [];
     try {
-      const tags = await client.searchRead(
-        'crm.tag',
-        [['name', '=', 'Sales Radar']],
-        ['id'],
-        1
+      // Get users that are salespeople (have sales team or are in sales group)
+      const teams = await client.searchRead(
+        'crm.team',
+        [],
+        ['id', 'name', 'member_ids'],
+        0
       );
-      if (tags.length > 0) {
-        salesRadarTagId = tags[0].id;
-      }
-    } catch (e) {
-      console.warn('[SALES-RADAR-ACTIVITY] Could not find Sales Radar tag:', e);
-    }
 
-    // 2. Fetch leads created with Sales Radar tag in the period
-    let leadsCreated: any[] = [];
-    if (salesRadarTagId) {
-      try {
-        leadsCreated = await client.searchRead(
-          'crm.lead',
-          [
-            ['tag_ids', 'in', [salesRadarTagId]],
-            ['create_date', '>=', startDateStr]
-          ],
-          ['id', 'name', 'create_date', 'create_uid', 'partner_latitude', 'partner_longitude', 'street', 'phone'],
-          100
+      const salesUserIds = new Set<number>();
+      teams.forEach((team: any) => {
+        if (team.member_ids && Array.isArray(team.member_ids)) {
+          team.member_ids.forEach((uid: number) => salesUserIds.add(uid));
+        }
+      });
+
+      if (salesUserIds.size > 0) {
+        salesUsers = await client.searchRead(
+          'res.users',
+          [['id', 'in', Array.from(salesUserIds)]],
+          ['id', 'name', 'partner_id'],
+          0
         );
-        console.log(`[SALES-RADAR-ACTIVITY] Found ${leadsCreated.length} leads created`);
-      } catch (e) {
-        console.warn('[SALES-RADAR-ACTIVITY] Error fetching leads:', e);
       }
+      console.log(`[SALES-RADAR-ACTIVITY] Found ${salesUsers.length} sales users`);
+    } catch (e) {
+      console.warn('[SALES-RADAR-ACTIVITY] Error fetching sales users:', e);
     }
 
-    // 3. Fetch ALL chatter messages (not just FEEDBACK SALES RADAR)
-    // This includes notes, tracking changes, and all vendor interactions
+    // Create map of sales user IDs for filtering
+    const salesUserIdSet = new Set(salesUsers.map(u => u.id));
+    const userPartnerMap: Record<number, number> = {}; // user_id -> partner_id
+    salesUsers.forEach(u => {
+      if (u.partner_id && Array.isArray(u.partner_id)) {
+        userPartnerMap[u.id] = u.partner_id[0];
+      }
+    });
+
+    // 2. Fetch ALL leads created in the period (not just Sales Radar tagged)
+    let leadsCreated: any[] = [];
+    try {
+      // Get leads created by sales users in the period
+      const leadFilters: any[] = [
+        ['create_date', '>=', startDateStr]
+      ];
+
+      // If we have sales users, filter by them
+      if (salesUserIdSet.size > 0) {
+        leadFilters.push(['create_uid', 'in', Array.from(salesUserIdSet)]);
+      }
+
+      leadsCreated = await client.searchRead(
+        'crm.lead',
+        leadFilters,
+        ['id', 'name', 'create_date', 'create_uid', 'partner_latitude', 'partner_longitude', 'street', 'phone', 'tag_ids'],
+        500 // Increased limit
+      );
+      console.log(`[SALES-RADAR-ACTIVITY] Found ${leadsCreated.length} leads created`);
+    } catch (e) {
+      console.warn('[SALES-RADAR-ACTIVITY] Error fetching leads:', e);
+    }
+
+    // 3. Fetch calendar events created by sales users
+    let calendarEvents: any[] = [];
+    try {
+      const calendarFilters: any[] = [
+        ['create_date', '>=', startDateStr]
+      ];
+
+      if (salesUserIdSet.size > 0) {
+        calendarFilters.push(['create_uid', 'in', Array.from(salesUserIdSet)]);
+      }
+
+      calendarEvents = await client.searchRead(
+        'calendar.event',
+        calendarFilters,
+        ['id', 'name', 'start', 'create_date', 'create_uid', 'partner_ids', 'description', 'location'],
+        500
+      );
+      console.log(`[SALES-RADAR-ACTIVITY] Found ${calendarEvents.length} calendar events`);
+    } catch (e) {
+      console.warn('[SALES-RADAR-ACTIVITY] Error fetching calendar events:', e);
+    }
+
+    // 4. Fetch scheduled activities (mail.activity) created by sales users
+    let scheduledActivities: any[] = [];
+    try {
+      const activityFilters: any[] = [
+        ['create_date', '>=', startDateStr]
+      ];
+
+      if (salesUserIdSet.size > 0) {
+        activityFilters.push(['create_uid', 'in', Array.from(salesUserIdSet)]);
+      }
+
+      scheduledActivities = await client.searchRead(
+        'mail.activity',
+        activityFilters,
+        ['id', 'summary', 'note', 'date_deadline', 'create_date', 'create_uid', 'res_model', 'res_id', 'activity_type_id', 'user_id'],
+        500
+      );
+      console.log(`[SALES-RADAR-ACTIVITY] Found ${scheduledActivities.length} scheduled activities`);
+    } catch (e) {
+      console.warn('[SALES-RADAR-ACTIVITY] Error fetching scheduled activities:', e);
+    }
+
+    // 5. Fetch ALL chatter messages
     let allMessages: any[] = [];
     try {
       allMessages = await client.searchRead(
@@ -100,14 +174,14 @@ export async function GET(request: NextRequest) {
           ['message_type', 'in', ['comment', 'notification']]
         ],
         ['id', 'body', 'date', 'author_id', 'model', 'res_id', 'create_uid', 'message_type', 'subtype_id', 'tracking_value_ids'],
-        500
+        1000 // Increased limit
       );
       console.log(`[SALES-RADAR-ACTIVITY] Found ${allMessages.length} messages`);
     } catch (e) {
       console.warn('[SALES-RADAR-ACTIVITY] Error fetching messages:', e);
     }
 
-    // 4. Fetch tracking values for field changes (stage, active, tags, etc.)
+    // 6. Fetch tracking values for field changes
     let trackingValues: any[] = [];
     const messageIds = allMessages.map(m => m.id);
     if (messageIds.length > 0) {
@@ -118,7 +192,7 @@ export async function GET(request: NextRequest) {
             ['mail_message_id', 'in', messageIds]
           ],
           ['id', 'field', 'old_value_char', 'new_value_char', 'old_value_integer', 'new_value_integer', 'mail_message_id'],
-          500
+          1000
         );
         console.log(`[SALES-RADAR-ACTIVITY] Found ${trackingValues.length} tracking values`);
       } catch (e) {
@@ -136,11 +210,24 @@ export async function GET(request: NextRequest) {
       trackingByMessage[msgId].push(tv);
     });
 
-    // 5. Get unique user IDs to fetch user names
+    // 7. Get unique user IDs to fetch user names
     const userIds = new Set<number>();
     leadsCreated.forEach(lead => {
       if (lead.create_uid && Array.isArray(lead.create_uid)) {
         userIds.add(lead.create_uid[0]);
+      }
+    });
+    calendarEvents.forEach(event => {
+      if (event.create_uid && Array.isArray(event.create_uid)) {
+        userIds.add(event.create_uid[0]);
+      }
+    });
+    scheduledActivities.forEach(act => {
+      if (act.create_uid && Array.isArray(act.create_uid)) {
+        userIds.add(act.create_uid[0]);
+      }
+      if (act.user_id && Array.isArray(act.user_id)) {
+        userIds.add(act.user_id[0]);
       }
     });
     allMessages.forEach(msg => {
@@ -152,7 +239,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // 6. Fetch user details
+    // 8. Fetch user details
     let usersMap: Record<number, { name: string; email?: string }> = {};
     if (userIds.size > 0) {
       try {
@@ -170,7 +257,34 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 7. Fetch lead/partner names for messages
+    // Also fetch res.users names for create_uid fields
+    const allUserIds = new Set<number>();
+    leadsCreated.forEach(l => { if (l.create_uid?.[0]) allUserIds.add(l.create_uid[0]); });
+    calendarEvents.forEach(e => { if (e.create_uid?.[0]) allUserIds.add(e.create_uid[0]); });
+    scheduledActivities.forEach(a => { if (a.create_uid?.[0]) allUserIds.add(a.create_uid[0]); });
+
+    let resUsersMap: Record<number, string> = {};
+    if (allUserIds.size > 0) {
+      try {
+        const resUsers = await client.searchRead(
+          'res.users',
+          [['id', 'in', Array.from(allUserIds)]],
+          ['id', 'name', 'partner_id'],
+          0
+        );
+        resUsers.forEach((u: any) => {
+          resUsersMap[u.id] = u.name;
+          // Also map partner_id to name
+          if (u.partner_id && Array.isArray(u.partner_id)) {
+            usersMap[u.partner_id[0]] = { name: u.name };
+          }
+        });
+      } catch (e) {
+        console.warn('[SALES-RADAR-ACTIVITY] Error fetching res.users:', e);
+      }
+    }
+
+    // 9. Fetch lead/partner names for messages
     const leadIdsSet = new Set(allMessages.filter(m => m.model === 'crm.lead').map(m => m.res_id));
     const partnerIdsSet = new Set(allMessages.filter(m => m.model === 'res.partner').map(m => m.res_id));
     const leadIds = Array.from(leadIdsSet);
@@ -211,17 +325,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 8. Build activity timeline
+    // Helper function to get user name
+    const getUserName = (userId: number, isResUserId: boolean = false): string => {
+      if (isResUserId && resUsersMap[userId]) {
+        return resUsersMap[userId];
+      }
+      if (usersMap[userId]) {
+        return usersMap[userId].name;
+      }
+      return userId > 0 ? 'Utente sconosciuto' : 'Sistema';
+    };
+
+    // 10. Build activity timeline
     const activities: Array<{
       id: string;
       type: 'lead_created' | 'voice_note' | 'written_note' | 'stage_change' |
             'lead_archived' | 'lead_reactivated' | 'tag_added' | 'tag_removed' |
-            'note_added' | 'field_updated';
+            'note_added' | 'field_updated' | 'calendar_event' | 'scheduled_activity';
       timestamp: string;
       userId: number;
       userName: string;
       targetName: string;
-      targetType: 'lead' | 'partner';
+      targetType: 'lead' | 'partner' | 'calendar' | 'activity';
       targetId: number;
       location?: { lat: number; lng: number };
       preview?: string;
@@ -233,12 +358,17 @@ export async function GET(request: NextRequest) {
     // Add lead creation activities
     leadsCreated.forEach(lead => {
       const userId = lead.create_uid?.[0] || 0;
+      const userName = getUserName(userId, true);
+
+      // Skip system users
+      if (userName === 'Utente' || userName === 'OdooBot') return;
+
       activities.push({
         id: `lead_${lead.id}`,
         type: 'lead_created',
         timestamp: lead.create_date,
         userId,
-        userName: usersMap[userId]?.name || 'Utente',
+        userName,
         targetName: lead.name,
         targetType: 'lead',
         targetId: lead.id,
@@ -246,6 +376,51 @@ export async function GET(request: NextRequest) {
           lat: lead.partner_latitude,
           lng: lead.partner_longitude
         } : undefined
+      });
+    });
+
+    // Add calendar event activities
+    calendarEvents.forEach(event => {
+      const userId = event.create_uid?.[0] || 0;
+      const userName = getUserName(userId, true);
+
+      // Skip system users
+      if (userName === 'Utente' || userName === 'OdooBot') return;
+
+      activities.push({
+        id: `calendar_${event.id}`,
+        type: 'calendar_event',
+        timestamp: event.create_date,
+        userId,
+        userName,
+        targetName: event.name || 'Appuntamento',
+        targetType: 'calendar',
+        targetId: event.id,
+        preview: event.location || (event.start ? `Inizio: ${new Date(event.start).toLocaleString('it-IT')}` : undefined)
+      });
+    });
+
+    // Add scheduled activity activities
+    scheduledActivities.forEach(act => {
+      const userId = act.create_uid?.[0] || 0;
+      const userName = getUserName(userId, true);
+
+      // Skip system users
+      if (userName === 'Utente' || userName === 'OdooBot') return;
+
+      const activityTypeName = act.activity_type_id ?
+        (Array.isArray(act.activity_type_id) ? act.activity_type_id[1] : 'Attività') : 'Attività';
+
+      activities.push({
+        id: `activity_${act.id}`,
+        type: 'scheduled_activity',
+        timestamp: act.create_date,
+        userId,
+        userName,
+        targetName: act.summary || activityTypeName,
+        targetType: 'activity',
+        targetId: act.id,
+        preview: act.date_deadline ? `Scadenza: ${act.date_deadline}` : undefined
       });
     });
 
@@ -257,10 +432,10 @@ export async function GET(request: NextRequest) {
         ? leadsMap[msg.res_id] || `Lead #${msg.res_id}`
         : partnersMap[msg.res_id] || `Cliente #${msg.res_id}`;
 
-      // Get user name (skip only if explicitly "Utente" which means auto-import)
-      const userName = usersMap[authorId]?.name || (authorId > 0 ? 'Utente sconosciuto' : 'Sistema');
-      // Skip only known automatic imports (user actually named "Utente")
-      if (usersMap[authorId]?.name === 'Utente') return;
+      const userName = getUserName(authorId, false);
+
+      // Skip system users and automatic imports
+      if (userName === 'Utente' || userName === 'OdooBot' || userName === 'Sistema') return;
 
       // Check if this message has tracking values (field changes)
       const tracking = trackingByMessage[msg.id] || [];
@@ -291,7 +466,6 @@ export async function GET(request: NextRequest) {
             const oldTags = tv.old_value_char || '';
             const newTags = tv.new_value_char || '';
 
-            // Check for "Non interessato", "Non in Target", "Chiuso definitivamente"
             if (newTags.includes('Non interessato') && !oldTags.includes('Non interessato')) {
               activityType = 'tag_added';
               preview = '🚫 Non interessato';
@@ -378,7 +552,7 @@ export async function GET(request: NextRequest) {
     // Sort by timestamp descending (most recent first)
     activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    // 9. Calculate statistics per vendor
+    // 11. Calculate statistics per vendor
     const vendorStats: Record<number, {
       userId: number;
       userName: string;
@@ -390,6 +564,8 @@ export async function GET(request: NextRequest) {
       leadsReactivated: number;
       tagsAdded: number;
       notesAdded: number;
+      calendarEvents: number;
+      scheduledActivities: number;
       totalInteractions: number;
     }> = {};
 
@@ -406,36 +582,54 @@ export async function GET(request: NextRequest) {
           leadsReactivated: 0,
           tagsAdded: 0,
           notesAdded: 0,
+          calendarEvents: 0,
+          scheduledActivities: 0,
           totalInteractions: 0
         };
       }
 
       vendorStats[act.userId].totalInteractions++;
 
-      if (act.type === 'lead_created') {
-        vendorStats[act.userId].leadsCreated++;
-      } else if (act.type === 'voice_note') {
-        vendorStats[act.userId].voiceNotes++;
-      } else if (act.type === 'written_note') {
-        vendorStats[act.userId].writtenNotes++;
-      } else if (act.type === 'stage_change') {
-        vendorStats[act.userId].stageChanges++;
-      } else if (act.type === 'lead_archived') {
-        vendorStats[act.userId].leadsArchived++;
-      } else if (act.type === 'lead_reactivated') {
-        vendorStats[act.userId].leadsReactivated++;
-      } else if (act.type === 'tag_added') {
-        vendorStats[act.userId].tagsAdded++;
-      } else if (act.type === 'note_added') {
-        vendorStats[act.userId].notesAdded++;
+      switch (act.type) {
+        case 'lead_created':
+          vendorStats[act.userId].leadsCreated++;
+          break;
+        case 'voice_note':
+          vendorStats[act.userId].voiceNotes++;
+          break;
+        case 'written_note':
+          vendorStats[act.userId].writtenNotes++;
+          break;
+        case 'stage_change':
+          vendorStats[act.userId].stageChanges++;
+          break;
+        case 'lead_archived':
+          vendorStats[act.userId].leadsArchived++;
+          break;
+        case 'lead_reactivated':
+          vendorStats[act.userId].leadsReactivated++;
+          break;
+        case 'tag_added':
+          vendorStats[act.userId].tagsAdded++;
+          break;
+        case 'note_added':
+          vendorStats[act.userId].notesAdded++;
+          break;
+        case 'calendar_event':
+          vendorStats[act.userId].calendarEvents++;
+          break;
+        case 'scheduled_activity':
+          vendorStats[act.userId].scheduledActivities++;
+          break;
       }
     });
 
     // Convert to array and sort by total interactions
     const vendorStatsArray = Object.values(vendorStats)
+      .filter(v => v.userName !== 'Utente' && v.userName !== 'OdooBot' && v.userName !== 'Sistema')
       .sort((a, b) => b.totalInteractions - a.totalInteractions);
 
-    // 10. Build summary
+    // 12. Build summary
     const summary = {
       totalInteractions: activities.length,
       leadsCreated: activities.filter(a => a.type === 'lead_created').length,
@@ -446,6 +640,8 @@ export async function GET(request: NextRequest) {
       leadsReactivated: activities.filter(a => a.type === 'lead_reactivated').length,
       tagsAdded: activities.filter(a => a.type === 'tag_added').length,
       notesAdded: activities.filter(a => a.type === 'note_added').length,
+      calendarEvents: activities.filter(a => a.type === 'calendar_event').length,
+      scheduledActivities: activities.filter(a => a.type === 'scheduled_activity').length,
       activeVendors: vendorStatsArray.length,
       period,
       startDate: startDateStr
@@ -457,7 +653,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         summary,
-        activities: activities.slice(0, 50), // Limit to 50 most recent
+        activities: activities.slice(0, 200), // Increased limit to 200
         vendorStats: vendorStatsArray
       }
     });
