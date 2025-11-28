@@ -27,6 +27,9 @@ import {
   ChevronRight,
   Scan,
   CreditCard,
+  ScanLine,
+  Eye,
+  XCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -78,6 +81,16 @@ interface DepositSession {
 const BANKNOTE_DENOMINATIONS = [1000, 200, 100, 50, 20, 10];
 const COIN_DENOMINATIONS = [5, 2, 1, 0.5, 0.2, 0.1, 0.05];
 
+// Banknote colors for visual feedback
+const BANKNOTE_COLORS: Record<number, string> = {
+  10: 'from-yellow-400 to-amber-500',
+  20: 'from-red-400 to-rose-500',
+  50: 'from-green-400 to-emerald-500',
+  100: 'from-blue-400 to-indigo-500',
+  200: 'from-amber-600 to-orange-700',
+  1000: 'from-purple-400 to-violet-500',
+};
+
 // ==================== HELPER FUNCTIONS ====================
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('de-CH', {
@@ -94,13 +107,207 @@ const formatTime = (date: Date): string => {
   });
 };
 
+// ==================== CAMERA COMPONENT ====================
+interface CameraScannerProps {
+  onCapture: (imageData: string) => void;
+  onClose: () => void;
+  mode: 'face' | 'banknote';
+  isProcessing: boolean;
+  lastResult?: string;
+}
+
+const CameraScanner: React.FC<CameraScannerProps> = ({
+  onCapture,
+  onClose,
+  mode,
+  isProcessing,
+  lastResult,
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [hasCamera, setHasCamera] = useState(true);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const startCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: mode === 'face' ? 'user' : 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+
+        if (mounted && videoRef.current) {
+          videoRef.current.srcObject = stream;
+          streamRef.current = stream;
+          setIsReady(true);
+        }
+      } catch (error) {
+        console.error('Camera error:', error);
+        setHasCamera(false);
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      mounted = false;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [mode]);
+
+  const captureImage = () => {
+    if (!videoRef.current || !canvasRef.current || isProcessing) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+
+    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    const base64 = imageData.split(',')[1];
+    onCapture(base64);
+  };
+
+  // Auto-capture for banknotes every 2 seconds
+  useEffect(() => {
+    if (mode === 'banknote' && isReady && !isProcessing) {
+      const interval = setInterval(captureImage, 2000);
+      return () => clearInterval(interval);
+    }
+    return undefined;
+  }, [mode, isReady, isProcessing]);
+
+  if (!hasCamera) {
+    return (
+      <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center">
+        <div className="text-center p-8">
+          <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl text-white mb-2">Camera non disponibile</h2>
+          <p className="text-white/60 mb-6">
+            Impossibile accedere alla camera del dispositivo
+          </p>
+          <button
+            onClick={onClose}
+            className="px-6 py-3 bg-white/20 rounded-xl text-white"
+          >
+            Chiudi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black z-50">
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 p-3 bg-black/50 rounded-full"
+      >
+        <X className="w-6 h-6 text-white" />
+      </button>
+
+      {/* Video feed */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="w-full h-full object-cover"
+      />
+
+      {/* Hidden canvas for capture */}
+      <canvas ref={canvasRef} className="hidden" />
+
+      {/* Overlay based on mode */}
+      <div className="absolute inset-0 pointer-events-none">
+        {mode === 'face' ? (
+          // Face scanning overlay
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="w-64 h-80 border-4 border-white/50 rounded-[50%] relative">
+              <motion.div
+                animate={{ top: ['0%', '100%', '0%'] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="absolute left-0 right-0 h-1 bg-cyan-400 shadow-lg shadow-cyan-400/50"
+              />
+            </div>
+          </div>
+        ) : (
+          // Banknote scanning overlay
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="w-[90%] max-w-md aspect-[16/7] border-4 border-white/50 rounded-2xl relative">
+              <motion.div
+                animate={{ left: ['0%', '100%', '0%'] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="absolute top-0 bottom-0 w-1 bg-emerald-400 shadow-lg shadow-emerald-400/50"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Status bar */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+        <div className="text-center">
+          {isProcessing ? (
+            <div className="flex items-center justify-center gap-3">
+              <Loader2 className="w-6 h-6 text-white animate-spin" />
+              <span className="text-white text-lg">Analisi in corso...</span>
+            </div>
+          ) : (
+            <>
+              <p className="text-white/80 text-lg mb-4">
+                {mode === 'face'
+                  ? 'Posiziona il viso nel cerchio'
+                  : 'Posiziona la banconota nel riquadro'}
+              </p>
+
+              {mode === 'face' && (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={captureImage}
+                  className="px-8 py-4 bg-cyan-500 rounded-2xl text-white text-lg font-semibold pointer-events-auto"
+                >
+                  <div className="flex items-center gap-2">
+                    <Camera className="w-6 h-6" />
+                    Scatta Foto
+                  </div>
+                </motion.button>
+              )}
+
+              {lastResult && (
+                <div className="mt-4 px-4 py-2 bg-white/20 rounded-lg inline-block">
+                  <span className="text-white">{lastResult}</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ==================== MAIN COMPONENT ====================
 export default function RegistroCassafortePage() {
   const router = useRouter();
 
   // App State
   const [step, setStep] = useState<
-    'idle' | 'face_scan' | 'enrollment' | 'welcome' | 'select_type' | 'select_pickings' | 'extra_input' | 'counting' | 'confirm' | 'success'
+    'idle' | 'face_scan' | 'enrollment' | 'face_enroll' | 'welcome' | 'select_type' | 'select_pickings' | 'extra_input' | 'counting' | 'banknote_scan' | 'confirm' | 'success'
   >('idle');
 
   // Employee State
@@ -125,8 +332,18 @@ export default function RegistroCassafortePage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isVideoRecording, setIsVideoRecording] = useState(false);
+  const [videoSessionId, setVideoSessionId] = useState<string | null>(null);
   const [depositType, setDepositType] = useState<'from_delivery' | 'extra'>('from_delivery');
+
+  // Camera Scanner State
+  const [showFaceScanner, setShowFaceScanner] = useState(false);
+  const [showBanknoteScanner, setShowBanknoteScanner] = useState(false);
+  const [showEnrollScanner, setShowEnrollScanner] = useState(false);
+  const [isScanningFace, setIsScanningFace] = useState(false);
+  const [isScanningBanknote, setIsScanningBanknote] = useState(false);
+  const [isEnrolling, setIsEnrolling] = useState(false);
+  const [lastScanResult, setLastScanResult] = useState<string | undefined>();
+  const [enrollmentImages, setEnrollmentImages] = useState<string[]>([]);
 
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -188,6 +405,181 @@ export default function RegistroCassafortePage() {
     }
   };
 
+  const startVideoRecording = async () => {
+    try {
+      const response = await fetch('/api/registro-cassaforte/video/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_id: currentEmployee?.id,
+          employee_name: currentEmployee?.name,
+          deposit_type: depositType,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setVideoSessionId(data.session_id);
+        if (!data.camera_offline) {
+          toast.success('Registrazione video avviata');
+        }
+      }
+    } catch (e) {
+      console.error('Error starting video:', e);
+    }
+  };
+
+  const stopVideoRecording = async () => {
+    if (!videoSessionId) return;
+
+    try {
+      await fetch('/api/registro-cassaforte/video/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: videoSessionId,
+        }),
+      });
+    } catch (e) {
+      console.error('Error stopping video:', e);
+    }
+  };
+
+  const recognizeFace = async (imageBase64: string) => {
+    setIsScanningFace(true);
+    try {
+      const formData = new FormData();
+      const blob = await fetch(`data:image/jpeg;base64,${imageBase64}`).then(r => r.blob());
+      formData.append('image', blob, 'face.jpg');
+
+      const response = await fetch('/api/registro-cassaforte/face-recognize', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.recognized && data.employee_id) {
+          // Employee recognized
+          const employee = employees.find(e => e.id === data.employee_id);
+          if (employee) {
+            setCurrentEmployee(employee);
+            setShowFaceScanner(false);
+            toast.success(`Ciao ${employee.name}!`);
+            await loadPendingPayments(employee.id);
+            setStep('select_type');
+          }
+        } else {
+          setLastScanResult(data.message || 'Volto non riconosciuto');
+          toast.error('Volto non riconosciuto. Seleziona manualmente.');
+        }
+      }
+    } catch (e) {
+      console.error('Face recognition error:', e);
+      toast.error('Errore nel riconoscimento facciale');
+    } finally {
+      setIsScanningFace(false);
+    }
+  };
+
+  const recognizeBanknote = async (imageBase64: string) => {
+    setIsScanningBanknote(true);
+    try {
+      const formData = new FormData();
+      const blob = await fetch(`data:image/jpeg;base64,${imageBase64}`).then(r => r.blob());
+      formData.append('image', blob, 'banknote.jpg');
+
+      const response = await fetch('/api/registro-cassaforte/recognize-banknote', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.denomination > 0) {
+          // Banknote recognized - add to count
+          const denomination = data.denomination;
+          setBanknotes(prev => prev.map(b =>
+            b.denomination === denomination
+              ? { ...b, count: b.count + 1 }
+              : b
+          ));
+
+          setLastScanResult(`${denomination} CHF riconosciuto!`);
+          toast.success(`${denomination} CHF aggiunto`);
+
+          // Vibrate for feedback if available
+          if (navigator.vibrate) {
+            navigator.vibrate(100);
+          }
+        } else {
+          setLastScanResult('Riposiziona la banconota');
+        }
+      }
+    } catch (e) {
+      console.error('Banknote recognition error:', e);
+    } finally {
+      setIsScanningBanknote(false);
+    }
+  };
+
+  const enrollFace = async (imageBase64: string) => {
+    // Add image to enrollment collection
+    const newImages = [...enrollmentImages, imageBase64];
+    setEnrollmentImages(newImages);
+
+    if (newImages.length < 3) {
+      setLastScanResult(`Foto ${newImages.length}/3 - Continua...`);
+      toast.success(`Foto ${newImages.length} salvata. Scatta altre ${3 - newImages.length}`);
+      return;
+    }
+
+    // We have 3 images, proceed with enrollment
+    setIsEnrolling(true);
+    setLastScanResult('Registrazione in corso...');
+
+    try {
+      if (!currentEmployee) {
+        throw new Error('Dipendente non selezionato');
+      }
+
+      const formData = new FormData();
+      formData.append('employee_id', String(currentEmployee.id));
+      formData.append('employee_name', currentEmployee.name);
+
+      // Add all images
+      for (let i = 0; i < newImages.length; i++) {
+        const blob = await fetch(`data:image/jpeg;base64,${newImages[i]}`).then(r => r.blob());
+        formData.append(`image_${i}`, blob, `face_${i}.jpg`);
+      }
+
+      const response = await fetch('/api/registro-cassaforte/face-enroll', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Volto registrato con successo!');
+        setShowEnrollScanner(false);
+        setEnrollmentImages([]);
+        // Proceed to deposit type selection
+        await loadPendingPayments(currentEmployee.id);
+        setStep('select_type');
+      } else {
+        throw new Error(data.error || 'Errore nella registrazione');
+      }
+    } catch (e: any) {
+      console.error('Enrollment error:', e);
+      toast.error(e.message || 'Errore nella registrazione del volto');
+      setEnrollmentImages([]);
+      setLastScanResult('Errore - Riprova');
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
+
   const confirmDeposit = async () => {
     if (!currentEmployee) return;
 
@@ -215,6 +607,9 @@ export default function RegistroCassafortePage() {
           coins: coins.filter(c => c.count > 0),
         }),
       });
+
+      // Stop video recording
+      await stopVideoRecording();
 
       if (response.ok) {
         setStep('success');
@@ -262,6 +657,8 @@ export default function RegistroCassafortePage() {
     setCoins(COIN_DENOMINATIONS.map(d => ({ denomination: d, count: 0 })));
     setDepositType('from_delivery');
     setError(null);
+    setVideoSessionId(null);
+    setLastScanResult(undefined);
   };
 
   const updateBanknoteCount = (denomination: number, delta: number) => {
@@ -281,15 +678,32 @@ export default function RegistroCassafortePage() {
   };
 
   const handleStartDeposit = () => {
-    // For MVP, skip face recognition and go directly to employee selection
+    // Try face recognition first
+    setShowFaceScanner(true);
+  };
+
+  const handleSkipFaceRecognition = () => {
+    setShowFaceScanner(false);
     setStep('enrollment');
   };
 
   const handleSelectEmployee = async (employee: Employee) => {
     setCurrentEmployee(employee);
     setSelectedEmployeeId(employee.id);
-    await loadPendingPayments(employee.id);
+    // Show face enrollment step
+    setStep('face_enroll');
+  };
+
+  const handleSkipEnrollment = async () => {
+    if (!currentEmployee) return;
+    await loadPendingPayments(currentEmployee.id);
     setStep('select_type');
+  };
+
+  const handleStartEnrollment = () => {
+    setEnrollmentImages([]);
+    setLastScanResult(undefined);
+    setShowEnrollScanner(true);
   };
 
   const handleSelectType = (type: 'from_delivery' | 'extra') => {
@@ -301,17 +715,23 @@ export default function RegistroCassafortePage() {
     }
   };
 
-  const handleProceedToCounting = () => {
+  const handleProceedToCounting = async () => {
     if (depositType === 'extra' && !extraCustomerName.trim()) {
       toast.error('Inserisci il nome del cliente');
       return;
     }
+    // Start video recording
+    await startVideoRecording();
     setStep('counting');
-    // TODO: Start video recording
   };
 
   const handleConfirm = () => {
     setStep('confirm');
+  };
+
+  const handleOpenBanknoteScanner = () => {
+    setShowBanknoteScanner(true);
+    setLastScanResult(undefined);
   };
 
   // ==================== RENDER FUNCTIONS ====================
@@ -411,6 +831,71 @@ export default function RegistroCassafortePage() {
           <p className="text-white/60">Caricamento dipendenti...</p>
         </div>
       )}
+    </motion.div>
+  );
+
+  // Face Enrollment Screen
+  const renderFaceEnrollScreen = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="min-h-screen p-6"
+    >
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <button
+          onClick={() => setStep('enrollment')}
+          className="p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+        >
+          <ArrowLeft className="w-6 h-6 text-white" />
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-white">Ciao, {currentEmployee?.name}!</h1>
+          <p className="text-white/60">Vuoi registrare il tuo volto?</p>
+        </div>
+      </div>
+
+      {/* Enrollment Options */}
+      <div className="max-w-2xl mx-auto mt-8">
+        <div className="text-center mb-8">
+          <div className="w-32 h-32 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Camera className="w-16 h-16 text-cyan-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-3">Registrazione Volto</h2>
+          <p className="text-white/60 max-w-md mx-auto">
+            Registra il tuo volto per accedere automaticamente la prossima volta senza selezionare il nome dalla lista.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {/* Enroll Button */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleStartEnrollment}
+            className="w-full p-6 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl text-white text-xl font-bold shadow-xl shadow-cyan-500/20"
+          >
+            <div className="flex items-center justify-center gap-3">
+              <Camera className="w-7 h-7" />
+              Registra il mio volto
+            </div>
+          </motion.button>
+
+          {/* Skip Button */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleSkipEnrollment}
+            className="w-full p-5 bg-white/10 hover:bg-white/20 rounded-2xl text-white text-lg font-medium transition-colors"
+          >
+            Salta per ora e continua
+          </motion.button>
+        </div>
+
+        <p className="text-center text-white/40 text-sm mt-6">
+          Serviranno 3 foto del tuo volto da diverse angolazioni
+        </p>
+      </div>
     </motion.div>
   );
 
@@ -629,7 +1114,7 @@ export default function RegistroCassafortePage() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="min-h-screen p-6 pb-32"
+      className="min-h-screen p-6 pb-40"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -649,24 +1134,40 @@ export default function RegistroCassafortePage() {
         </div>
 
         {/* Video Recording Indicator */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-red-500/20 rounded-full">
-          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-          <span className="text-red-400 text-sm font-medium">REC</span>
-        </div>
+        {videoSessionId && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-red-500/20 rounded-full">
+            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+            <span className="text-red-400 text-sm font-medium">REC</span>
+          </div>
+        )}
       </div>
 
       <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Banknotes */}
         <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-6 border border-white/20">
-          <div className="flex items-center gap-3 mb-6">
-            <Banknote className="w-7 h-7 text-emerald-400" />
-            <h2 className="text-xl font-bold text-white">Banconote</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Banknote className="w-7 h-7 text-emerald-400" />
+              <h2 className="text-xl font-bold text-white">Banconote</h2>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleOpenBanknoteScanner}
+              className="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 rounded-xl text-emerald-400 font-medium flex items-center gap-2 transition-colors"
+            >
+              <ScanLine className="w-5 h-5" />
+              Scanner
+            </motion.button>
           </div>
 
           <div className="space-y-3">
             {banknotes.map((b) => (
               <div key={b.denomination} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
-                <span className="text-lg text-white font-medium">{b.denomination} CHF</span>
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-5 rounded bg-gradient-to-r ${BANKNOTE_COLORS[b.denomination]}`} />
+                  <span className="text-lg text-white font-medium">{b.denomination} CHF</span>
+                </div>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => updateBanknoteCount(b.denomination, -1)}
@@ -884,6 +1385,7 @@ export default function RegistroCassafortePage() {
       <AnimatePresence mode="wait">
         {step === 'idle' && renderIdleScreen()}
         {step === 'enrollment' && renderEnrollmentScreen()}
+        {step === 'face_enroll' && renderFaceEnrollScreen()}
         {step === 'select_type' && renderSelectTypeScreen()}
         {step === 'select_pickings' && renderSelectPickingsScreen()}
         {step === 'extra_input' && renderExtraInputScreen()}
@@ -891,6 +1393,79 @@ export default function RegistroCassafortePage() {
         {step === 'confirm' && renderConfirmScreen()}
         {step === 'success' && renderSuccessScreen()}
       </AnimatePresence>
+
+      {/* Face Scanner Overlay */}
+      {showFaceScanner && (
+        <div className="fixed inset-0 z-50">
+          <CameraScanner
+            mode="face"
+            onCapture={recognizeFace}
+            onClose={handleSkipFaceRecognition}
+            isProcessing={isScanningFace}
+            lastResult={lastScanResult}
+          />
+          {/* Skip button */}
+          <div className="absolute bottom-24 left-0 right-0 flex justify-center z-10">
+            <button
+              onClick={handleSkipFaceRecognition}
+              className="px-6 py-3 bg-white/20 backdrop-blur rounded-xl text-white font-medium"
+            >
+              Salta e seleziona manualmente
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Banknote Scanner Overlay */}
+      {showBanknoteScanner && (
+        <CameraScanner
+          mode="banknote"
+          onCapture={recognizeBanknote}
+          onClose={() => {
+            setShowBanknoteScanner(false);
+            setLastScanResult(undefined);
+          }}
+          isProcessing={isScanningBanknote}
+          lastResult={lastScanResult}
+        />
+      )}
+
+      {/* Face Enrollment Scanner Overlay */}
+      {showEnrollScanner && (
+        <div className="fixed inset-0 z-50">
+          <CameraScanner
+            mode="face"
+            onCapture={enrollFace}
+            onClose={() => {
+              setShowEnrollScanner(false);
+              setEnrollmentImages([]);
+              setLastScanResult(undefined);
+            }}
+            isProcessing={isEnrolling}
+            lastResult={lastScanResult || `Foto ${enrollmentImages.length}/3`}
+          />
+          {/* Progress indicator */}
+          <div className="absolute top-20 left-0 right-0 flex justify-center z-10">
+            <div className="px-6 py-3 bg-black/70 backdrop-blur rounded-xl">
+              <div className="flex items-center gap-3">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className={`w-4 h-4 rounded-full ${
+                      i < enrollmentImages.length
+                        ? 'bg-emerald-500'
+                        : 'bg-white/30'
+                    }`}
+                  />
+                ))}
+                <span className="text-white ml-2">
+                  {enrollmentImages.length}/3 foto
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

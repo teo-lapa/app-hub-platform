@@ -21,6 +21,8 @@ const classifierService = USE_OLLAMA
   : require('./classifier');
 const queueManager = require('./queue');
 const contactClassifier = require('./contact-classifier');
+const banknoteRecognition = require('./banknote-recognition');
+const faceRecognition = require('./face-recognition');
 
 // Log which classifier is being used
 console.log(`🤖 AI Classifier: ${USE_OLLAMA ? 'Ollama Llama 3.2 3B (Local)' : 'Cloud API'}`);
@@ -555,6 +557,158 @@ app.post('/api/v1/extract-contact', upload.single('file'), async (req, res) => {
 });
 
 // ============================================
+// BANKNOTE RECOGNITION ENDPOINTS
+// ============================================
+
+/**
+ * POST /api/v1/banknote/recognize
+ * Recognize CHF banknote denomination from image
+ */
+app.post('/api/v1/banknote/recognize', async (req, res) => {
+  try {
+    const { image, method } = req.body;
+
+    if (!image) {
+      return res.status(400).json({ error: 'Image required (base64)' });
+    }
+
+    logger.info('Banknote recognition request received');
+
+    const result = await banknoteRecognition.recognize(image, { method });
+
+    res.json(result);
+
+  } catch (error) {
+    logger.error('Banknote recognition error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/v1/banknote/denominations
+ * Get list of valid CHF denominations
+ */
+app.get('/api/v1/banknote/denominations', (req, res) => {
+  res.json({
+    currency: 'CHF',
+    banknotes: banknoteRecognition.VALID_DENOMINATIONS,
+    colors: banknoteRecognition.DENOMINATION_COLORS
+  });
+});
+
+// ============================================
+// FACE RECOGNITION ENDPOINTS
+// ============================================
+
+/**
+ * POST /api/v1/face/recognize
+ * Recognize face from image
+ */
+app.post('/api/v1/face/recognize', async (req, res) => {
+  try {
+    const { image, threshold } = req.body;
+
+    if (!image) {
+      return res.status(400).json({ error: 'Image required (base64)' });
+    }
+
+    logger.info('Face recognition request received');
+
+    const result = await faceRecognition.recognize(image, { threshold });
+
+    res.json(result);
+
+  } catch (error) {
+    logger.error('Face recognition error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/v1/face/enroll
+ * Enroll a new face for an employee
+ */
+app.post('/api/v1/face/enroll', async (req, res) => {
+  try {
+    const { employee_id, employee_name, images } = req.body;
+
+    if (!employee_id || !employee_name) {
+      return res.status(400).json({ error: 'Employee ID and name required' });
+    }
+
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      return res.status(400).json({ error: 'At least one image required' });
+    }
+
+    logger.info(`Face enrollment request for ${employee_name} (${images.length} images)`);
+
+    const result = await faceRecognition.enroll(employee_id, employee_name, images);
+
+    res.json(result);
+
+  } catch (error) {
+    logger.error('Face enrollment error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/v1/face/enroll/:employeeId
+ * Delete face enrollment for an employee
+ */
+app.delete('/api/v1/face/enroll/:employeeId', async (req, res) => {
+  try {
+    const employeeId = parseInt(req.params.employeeId);
+
+    if (!employeeId) {
+      return res.status(400).json({ error: 'Employee ID required' });
+    }
+
+    const result = await faceRecognition.deleteEnrollment(employeeId);
+
+    res.json(result);
+
+  } catch (error) {
+    logger.error('Face deletion error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/v1/face/enrolled
+ * Get list of enrolled employees
+ */
+app.get('/api/v1/face/enrolled', (req, res) => {
+  const enrolled = faceRecognition.getEnrolledEmployees();
+  res.json({
+    count: enrolled.length,
+    employees: enrolled
+  });
+});
+
+/**
+ * GET /api/v1/face/enrolled/:employeeId
+ * Check if employee is enrolled
+ */
+app.get('/api/v1/face/enrolled/:employeeId', (req, res) => {
+  const employeeId = parseInt(req.params.employeeId);
+  const isEnrolled = faceRecognition.isEnrolled(employeeId);
+  res.json({ employee_id: employeeId, enrolled: isEnrolled });
+});
+
+// ============================================
 // ERROR HANDLERS
 // ============================================
 
@@ -685,6 +839,12 @@ async function startServer() {
     logger.info('Initializing contact classifier...');
     await contactClassifier.initialize();
 
+    logger.info('Initializing banknote recognition...');
+    await banknoteRecognition.initialize();
+
+    logger.info('Initializing face recognition...');
+    await faceRecognition.initialize();
+
     logger.info('Initializing job queue...');
     await queueManager.initialize();
 
@@ -693,6 +853,8 @@ async function startServer() {
       logger.info(`🚀 Jetson OCR Server running on port ${PORT}`);
       logger.info(`📍 Health check: http://localhost:${PORT}/api/v1/health`);
       logger.info(`📊 Metrics: http://localhost:${PORT}/api/v1/metrics`);
+      logger.info(`💰 Banknote: http://localhost:${PORT}/api/v1/banknote/recognize`);
+      logger.info(`👤 Face: http://localhost:${PORT}/api/v1/face/recognize`);
     });
 
   } catch (error) {

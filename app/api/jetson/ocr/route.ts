@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const JETSON_OCR_URL = process.env.JETSON_OCR_URL || 'https://pencil-intl-adipex-knowledgestorm.trycloudflare.com';
+const JETSON_OCR_URL = process.env.JETSON_OCR_URL || 'https://belts-competition-hardware-casey.trycloudflare.com';
 const JETSON_WEBHOOK_SECRET = process.env.JETSON_WEBHOOK_SECRET || 'jetson-ocr-secret-2025';
 
 export const runtime = 'nodejs';
