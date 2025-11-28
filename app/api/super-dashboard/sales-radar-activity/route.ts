@@ -55,38 +55,46 @@ export async function GET(request: NextRequest) {
 
     console.log(`[SALES-RADAR-ACTIVITY] Fetching ONLY Sales Radar activities for period: ${period}, from: ${startDateStr}`);
 
-    // 1. First, find the "Sales Radar" tag ID
-    let salesRadarTagId: number | null = null;
+    // 1. Find ALL Sales Radar related tags (including "Non interessato", "Non in Target", etc.)
+    // These are tags used by the Sales Radar app for categorizing leads
+    const salesRadarTagNames = [
+      'Sales Radar',
+      'Non interessato',
+      'Non in Target',
+      'Non in target'  // Case variation
+    ];
+
+    let salesRadarTagIds: number[] = [];
     try {
       const tags = await client.searchRead(
         'crm.tag',
-        [['name', '=', 'Sales Radar']],
+        [['name', 'in', salesRadarTagNames]],
         ['id', 'name'],
-        1
+        0
       );
       if (tags.length > 0) {
-        salesRadarTagId = tags[0].id;
-        console.log(`[SALES-RADAR-ACTIVITY] Found Sales Radar tag ID: ${salesRadarTagId}`);
+        salesRadarTagIds = tags.map((t: any) => t.id);
+        console.log(`[SALES-RADAR-ACTIVITY] Found Sales Radar tags: ${tags.map((t: any) => `${t.name}(${t.id})`).join(', ')}`);
       } else {
-        console.warn('[SALES-RADAR-ACTIVITY] Sales Radar tag not found!');
+        console.warn('[SALES-RADAR-ACTIVITY] No Sales Radar tags found!');
       }
     } catch (e) {
-      console.warn('[SALES-RADAR-ACTIVITY] Error fetching Sales Radar tag:', e);
+      console.warn('[SALES-RADAR-ACTIVITY] Error fetching Sales Radar tags:', e);
     }
 
-    // 2. Fetch ONLY leads with "Sales Radar" tag created in the period (including archived)
+    // 2. Fetch leads with ANY Sales Radar tag created in the period (including archived)
     let leadsCreated: any[] = [];
     let salesRadarLeadIds: number[] = [];
     try {
-      // CRITICAL: Only fetch leads with Sales Radar tag
-      if (salesRadarTagId) {
+      // CRITICAL: Fetch leads with ANY of the Sales Radar tags
+      if (salesRadarTagIds.length > 0) {
         // Use callKw with active_test: false to include archived leads
         leadsCreated = await client.callKw(
           'crm.lead',
           'search_read',
           [[
             ['create_date', '>=', startDateStr],
-            ['tag_ids', 'in', [salesRadarTagId]]
+            ['tag_ids', 'in', salesRadarTagIds]
           ]],
           {
             fields: ['id', 'name', 'create_date', 'create_uid', 'partner_latitude', 'partner_longitude', 'street', 'phone', 'tag_ids', 'active'],
@@ -96,22 +104,22 @@ export async function GET(request: NextRequest) {
         );
         salesRadarLeadIds = leadsCreated.map((l: any) => l.id);
       } else {
-        console.warn('[SALES-RADAR-ACTIVITY] No Sales Radar tag found, returning empty leads');
+        console.warn('[SALES-RADAR-ACTIVITY] No Sales Radar tags found, returning empty leads');
       }
-      console.log(`[SALES-RADAR-ACTIVITY] Found ${leadsCreated.length} Sales Radar leads created (including archived)`);
+      console.log(`[SALES-RADAR-ACTIVITY] Found ${leadsCreated.length} Sales Radar leads created (including archived with Non interessato/Non in Target)`);
     } catch (e) {
       console.warn('[SALES-RADAR-ACTIVITY] Error fetching leads:', e);
     }
 
-    // 3. Also fetch ALL leads with Sales Radar tag (including ARCHIVED) for linking activities
+    // 3. Also fetch ALL leads with ANY Sales Radar tag (including ARCHIVED) for linking activities
     let allSalesRadarLeadIds: number[] = [...salesRadarLeadIds];
     try {
-      if (salesRadarTagId) {
+      if (salesRadarTagIds.length > 0) {
         // Use callKw with active_test: false to include archived leads
         const allSalesRadarLeads = await client.callKw(
           'crm.lead',
           'search_read',
-          [[['tag_ids', 'in', [salesRadarTagId]]]],
+          [[['tag_ids', 'in', salesRadarTagIds]]],
           { fields: ['id'], context: { active_test: false } }
         );
         allSalesRadarLeadIds = allSalesRadarLeads.map((l: any) => l.id);
