@@ -74,48 +74,48 @@ export async function GET(request: NextRequest) {
       console.warn('[SALES-RADAR-ACTIVITY] Error fetching Sales Radar tag:', e);
     }
 
-    // 2. Fetch ONLY leads with "Sales Radar" tag created in the period
+    // 2. Fetch ONLY leads with "Sales Radar" tag created in the period (including archived)
     let leadsCreated: any[] = [];
     let salesRadarLeadIds: number[] = [];
     try {
-      const leadFilters: any[] = [
-        ['create_date', '>=', startDateStr]
-      ];
-
       // CRITICAL: Only fetch leads with Sales Radar tag
       if (salesRadarTagId) {
-        leadFilters.push(['tag_ids', 'in', [salesRadarTagId]]);
+        // Use callKw with active_test: false to include archived leads
+        leadsCreated = await client.callKw(
+          'crm.lead',
+          'search_read',
+          [[
+            ['create_date', '>=', startDateStr],
+            ['tag_ids', 'in', [salesRadarTagId]]
+          ]],
+          {
+            fields: ['id', 'name', 'create_date', 'create_uid', 'partner_latitude', 'partner_longitude', 'street', 'phone', 'tag_ids', 'active'],
+            limit: 500,
+            context: { active_test: false }
+          }
+        );
+        salesRadarLeadIds = leadsCreated.map((l: any) => l.id);
       } else {
-        // If tag not found, return empty - no Sales Radar leads
         console.warn('[SALES-RADAR-ACTIVITY] No Sales Radar tag found, returning empty leads');
       }
-
-      if (salesRadarTagId) {
-        leadsCreated = await client.searchRead(
-          'crm.lead',
-          leadFilters,
-          ['id', 'name', 'create_date', 'create_uid', 'partner_latitude', 'partner_longitude', 'street', 'phone', 'tag_ids'],
-          500
-        );
-        salesRadarLeadIds = leadsCreated.map(l => l.id);
-      }
-      console.log(`[SALES-RADAR-ACTIVITY] Found ${leadsCreated.length} Sales Radar leads created`);
+      console.log(`[SALES-RADAR-ACTIVITY] Found ${leadsCreated.length} Sales Radar leads created (including archived)`);
     } catch (e) {
       console.warn('[SALES-RADAR-ACTIVITY] Error fetching leads:', e);
     }
 
-    // 3. Also fetch ALL leads with Sales Radar tag (not just created in period) for linking activities
+    // 3. Also fetch ALL leads with Sales Radar tag (including ARCHIVED) for linking activities
     let allSalesRadarLeadIds: number[] = [...salesRadarLeadIds];
     try {
       if (salesRadarTagId) {
-        const allSalesRadarLeads = await client.searchRead(
+        // Use callKw with active_test: false to include archived leads
+        const allSalesRadarLeads = await client.callKw(
           'crm.lead',
-          [['tag_ids', 'in', [salesRadarTagId]]],
-          ['id'],
-          0
+          'search_read',
+          [[['tag_ids', 'in', [salesRadarTagId]]]],
+          { fields: ['id'], context: { active_test: false } }
         );
         allSalesRadarLeadIds = allSalesRadarLeads.map((l: any) => l.id);
-        console.log(`[SALES-RADAR-ACTIVITY] Found ${allSalesRadarLeadIds.length} total Sales Radar leads for activity linking`);
+        console.log(`[SALES-RADAR-ACTIVITY] Found ${allSalesRadarLeadIds.length} total Sales Radar leads (including archived) for activity linking`);
       }
     } catch (e) {
       console.warn('[SALES-RADAR-ACTIVITY] Error fetching all Sales Radar leads:', e);
