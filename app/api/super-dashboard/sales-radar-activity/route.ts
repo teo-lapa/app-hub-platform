@@ -225,13 +225,28 @@ export async function GET(request: NextRequest) {
 
     // Create map of tracking values by message ID
     const trackingByMessage: Record<number, any[]> = {};
+    const uniqueFields = new Set<string>();
     trackingValues.forEach(tv => {
       const msgId = Array.isArray(tv.mail_message_id) ? tv.mail_message_id[0] : tv.mail_message_id;
       if (!trackingByMessage[msgId]) {
         trackingByMessage[msgId] = [];
       }
       trackingByMessage[msgId].push(tv);
+      uniqueFields.add(tv.field);
     });
+    console.log(`[SALES-RADAR-ACTIVITY] Unique tracked fields: ${Array.from(uniqueFields).join(', ')}`);
+
+    // Log any tag-related tracking values for debugging
+    const tagTrackings = trackingValues.filter(tv =>
+      tv.field?.toLowerCase().includes('tag') ||
+      tv.old_value_char?.toLowerCase().includes('interessato') ||
+      tv.new_value_char?.toLowerCase().includes('interessato') ||
+      tv.old_value_char?.toLowerCase().includes('target') ||
+      tv.new_value_char?.toLowerCase().includes('target')
+    );
+    if (tagTrackings.length > 0) {
+      console.log(`[SALES-RADAR-ACTIVITY] Tag-related trackings: ${JSON.stringify(tagTrackings.slice(0, 5))}`);
+    }
 
     // 8. Get unique user IDs to fetch user names
     const userIds = new Set<number>();
