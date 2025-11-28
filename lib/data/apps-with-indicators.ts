@@ -116,6 +116,21 @@ export const mockApps: App[] = [
     createdAt: new Date('2025-11-18'),
     updatedAt: new Date('2025-11-18'),
   },
+  {
+    id: 'voice-inventory',
+    name: 'Inventario Vocale [P]',
+    description: 'Fai l\'inventario parlando! Registra audio nel frigo/magazzino (funziona offline), l\'AI estrae automaticamente prodotti e quantità. Export PDF/Excel e storico completo.',
+    icon: '🎤',
+    badge: 'PRO',
+    category: 'AI & Tech',
+    url: '/inventario-vocale',
+    requiredRole: 'cliente_premium',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-11-28'),
+    updatedAt: new Date('2025-11-28'),
+  },
 ];
 
 // Le app Standalone in /apps/
