@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent, BarChart, Building2, Activity, RefreshCcw, X, ChevronDown, ChevronUp, Radar } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent, BarChart, Building2, Activity, RefreshCcw, X, ChevronDown, ChevronUp, Radar, Calculator } from 'lucide-react';
 import Link from 'next/link';
 
 interface KPICardProps {
@@ -27,6 +27,7 @@ function KPICard({ title, value, change, changeType, icon, gradient, subtitle, i
       case 'Analisi Prodotti': return '/analisi-prodotto';
       case 'Banca': return '/import-movimenti-ubs';
       case 'App Usage': return '/super-dashboard/app-usage';
+      case 'Budget': return '/super-dashboard/budget';
       // Revenue, Orders, Customers pages non ancora implementate
       default: return '#';
     }
@@ -540,6 +541,15 @@ export function KPISummarySection({ period }: KPISummarySectionProps) {
       icon: <Activity className="w-6 h-6 text-white" />,
       gradient: 'from-teal-500 to-cyan-600',
       subtitle: 'Monitora utilizzo delle app e statistiche',
+    },
+    {
+      title: 'Budget',
+      value: 'Planner',
+      change: '',
+      changeType: 'neutral' as const,
+      icon: <Calculator className="w-6 h-6 text-white" />,
+      gradient: 'from-emerald-500 to-green-600',
+      subtitle: 'Pianifica budget per fatturato',
     },
   ];
 
