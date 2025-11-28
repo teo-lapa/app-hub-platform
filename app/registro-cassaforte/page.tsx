@@ -329,7 +329,8 @@ export default function RegistroCassafortePage() {
   );
 
   // UI State
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [videoSessionId, setVideoSessionId] = useState<string | null>(null);
@@ -351,8 +352,10 @@ export default function RegistroCassafortePage() {
 
   // ==================== EFFECTS ====================
 
-  // Clock update
+  // Mount and clock update - client-only to avoid hydration mismatch
   useEffect(() => {
+    setIsMounted(true);
+    setCurrentTime(new Date());
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -754,15 +757,15 @@ export default function RegistroCassafortePage() {
         </motion.div>
         <h1 className="text-4xl font-bold text-white mb-4">Registro Cassaforte</h1>
         <div className="text-6xl font-mono text-white/90 mb-2">
-          {formatTime(currentTime)}
+          {currentTime ? formatTime(currentTime) : '--:--:--'}
         </div>
         <div className="text-xl text-white/60">
-          {currentTime.toLocaleDateString('it-CH', {
+          {currentTime ? currentTime.toLocaleDateString('it-CH', {
             weekday: 'long',
             day: 'numeric',
             month: 'long',
             year: 'numeric'
-          })}
+          }) : '---'}
         </div>
       </div>
 
