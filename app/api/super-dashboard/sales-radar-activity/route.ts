@@ -6,12 +6,12 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/super-dashboard/sales-radar-activity
  *
- * Recupera TUTTE le attività dei venditori:
- * - TUTTI i lead creati (non solo quelli con tag Sales Radar)
- * - Note/messaggi nel chatter (vocali e scritte)
- * - Appuntamenti calendario (calendar.event)
- * - Attività schedulate (mail.activity)
- * - Cambi stato, archiviazioni, tag
+ * Recupera SOLO le attività che provengono dall'app Sales Radar:
+ * - Lead creati con tag "Sales Radar"
+ * - Note vocali/scritte con "FEEDBACK SALES RADAR" nel body
+ * - Appuntamenti calendario collegati a lead Sales Radar
+ * - Attività schedulate su lead Sales Radar
+ * - Cambi stato, archiviazioni, tag sui lead Sales Radar
  *
  * Query params:
  * - period: 'today' | 'week' | 'month' (default: 'week')
@@ -53,135 +53,140 @@ export async function GET(request: NextRequest) {
 
     const startDateStr = startDate.toISOString().split('T')[0];
 
-    console.log(`[SALES-RADAR-ACTIVITY] Fetching activity for period: ${period}, from: ${startDateStr}`);
+    console.log(`[SALES-RADAR-ACTIVITY] Fetching ONLY Sales Radar activities for period: ${period}, from: ${startDateStr}`);
 
-    // 1. Get sales team users (venditori)
-    let salesUsers: any[] = [];
+    // 1. First, find the "Sales Radar" tag ID
+    let salesRadarTagId: number | null = null;
     try {
-      // Get users that are salespeople (have sales team or are in sales group)
-      const teams = await client.searchRead(
-        'crm.team',
-        [],
-        ['id', 'name', 'member_ids'],
-        0
+      const tags = await client.searchRead(
+        'crm.tag',
+        [['name', '=', 'Sales Radar']],
+        ['id', 'name'],
+        1
       );
-
-      const salesUserIds = new Set<number>();
-      teams.forEach((team: any) => {
-        if (team.member_ids && Array.isArray(team.member_ids)) {
-          team.member_ids.forEach((uid: number) => salesUserIds.add(uid));
-        }
-      });
-
-      if (salesUserIds.size > 0) {
-        salesUsers = await client.searchRead(
-          'res.users',
-          [['id', 'in', Array.from(salesUserIds)]],
-          ['id', 'name', 'partner_id'],
-          0
-        );
+      if (tags.length > 0) {
+        salesRadarTagId = tags[0].id;
+        console.log(`[SALES-RADAR-ACTIVITY] Found Sales Radar tag ID: ${salesRadarTagId}`);
+      } else {
+        console.warn('[SALES-RADAR-ACTIVITY] Sales Radar tag not found!');
       }
-      console.log(`[SALES-RADAR-ACTIVITY] Found ${salesUsers.length} sales users`);
     } catch (e) {
-      console.warn('[SALES-RADAR-ACTIVITY] Error fetching sales users:', e);
+      console.warn('[SALES-RADAR-ACTIVITY] Error fetching Sales Radar tag:', e);
     }
 
-    // Create map of sales user IDs for filtering
-    const salesUserIdSet = new Set(salesUsers.map(u => u.id));
-    const userPartnerMap: Record<number, number> = {}; // user_id -> partner_id
-    salesUsers.forEach(u => {
-      if (u.partner_id && Array.isArray(u.partner_id)) {
-        userPartnerMap[u.id] = u.partner_id[0];
-      }
-    });
-
-    // 2. Fetch ALL leads created in the period (not just Sales Radar tagged)
+    // 2. Fetch ONLY leads with "Sales Radar" tag created in the period
     let leadsCreated: any[] = [];
+    let salesRadarLeadIds: number[] = [];
     try {
-      // Get leads created by sales users in the period
       const leadFilters: any[] = [
         ['create_date', '>=', startDateStr]
       ];
 
-      // If we have sales users, filter by them
-      if (salesUserIdSet.size > 0) {
-        leadFilters.push(['create_uid', 'in', Array.from(salesUserIdSet)]);
+      // CRITICAL: Only fetch leads with Sales Radar tag
+      if (salesRadarTagId) {
+        leadFilters.push(['tag_ids', 'in', [salesRadarTagId]]);
+      } else {
+        // If tag not found, return empty - no Sales Radar leads
+        console.warn('[SALES-RADAR-ACTIVITY] No Sales Radar tag found, returning empty leads');
       }
 
-      leadsCreated = await client.searchRead(
-        'crm.lead',
-        leadFilters,
-        ['id', 'name', 'create_date', 'create_uid', 'partner_latitude', 'partner_longitude', 'street', 'phone', 'tag_ids'],
-        500 // Increased limit
-      );
-      console.log(`[SALES-RADAR-ACTIVITY] Found ${leadsCreated.length} leads created`);
+      if (salesRadarTagId) {
+        leadsCreated = await client.searchRead(
+          'crm.lead',
+          leadFilters,
+          ['id', 'name', 'create_date', 'create_uid', 'partner_latitude', 'partner_longitude', 'street', 'phone', 'tag_ids'],
+          500
+        );
+        salesRadarLeadIds = leadsCreated.map(l => l.id);
+      }
+      console.log(`[SALES-RADAR-ACTIVITY] Found ${leadsCreated.length} Sales Radar leads created`);
     } catch (e) {
       console.warn('[SALES-RADAR-ACTIVITY] Error fetching leads:', e);
     }
 
-    // 3. Fetch calendar events created by sales users
+    // 3. Also fetch ALL leads with Sales Radar tag (not just created in period) for linking activities
+    let allSalesRadarLeadIds: number[] = [...salesRadarLeadIds];
+    try {
+      if (salesRadarTagId) {
+        const allSalesRadarLeads = await client.searchRead(
+          'crm.lead',
+          [['tag_ids', 'in', [salesRadarTagId]]],
+          ['id'],
+          0
+        );
+        allSalesRadarLeadIds = allSalesRadarLeads.map((l: any) => l.id);
+        console.log(`[SALES-RADAR-ACTIVITY] Found ${allSalesRadarLeadIds.length} total Sales Radar leads for activity linking`);
+      }
+    } catch (e) {
+      console.warn('[SALES-RADAR-ACTIVITY] Error fetching all Sales Radar leads:', e);
+    }
+
+    // 4. Fetch calendar events ONLY linked to Sales Radar leads (via opportunity_id)
     let calendarEvents: any[] = [];
     try {
-      const calendarFilters: any[] = [
-        ['create_date', '>=', startDateStr]
-      ];
+      if (allSalesRadarLeadIds.length > 0) {
+        const calendarFilters: any[] = [
+          ['create_date', '>=', startDateStr],
+          ['opportunity_id', 'in', allSalesRadarLeadIds]
+        ];
 
-      if (salesUserIdSet.size > 0) {
-        calendarFilters.push(['create_uid', 'in', Array.from(salesUserIdSet)]);
+        calendarEvents = await client.searchRead(
+          'calendar.event',
+          calendarFilters,
+          ['id', 'name', 'start', 'create_date', 'create_uid', 'partner_ids', 'description', 'location', 'opportunity_id'],
+          500
+        );
       }
-
-      calendarEvents = await client.searchRead(
-        'calendar.event',
-        calendarFilters,
-        ['id', 'name', 'start', 'create_date', 'create_uid', 'partner_ids', 'description', 'location'],
-        500
-      );
-      console.log(`[SALES-RADAR-ACTIVITY] Found ${calendarEvents.length} calendar events`);
+      console.log(`[SALES-RADAR-ACTIVITY] Found ${calendarEvents.length} calendar events linked to Sales Radar leads`);
     } catch (e) {
       console.warn('[SALES-RADAR-ACTIVITY] Error fetching calendar events:', e);
     }
 
-    // 4. Fetch scheduled activities (mail.activity) created by sales users
+    // 5. Fetch scheduled activities ONLY linked to Sales Radar leads
     let scheduledActivities: any[] = [];
     try {
-      const activityFilters: any[] = [
-        ['create_date', '>=', startDateStr]
-      ];
+      if (allSalesRadarLeadIds.length > 0) {
+        const activityFilters: any[] = [
+          ['create_date', '>=', startDateStr],
+          ['res_model', '=', 'crm.lead'],
+          ['res_id', 'in', allSalesRadarLeadIds]
+        ];
 
-      if (salesUserIdSet.size > 0) {
-        activityFilters.push(['create_uid', 'in', Array.from(salesUserIdSet)]);
+        scheduledActivities = await client.searchRead(
+          'mail.activity',
+          activityFilters,
+          ['id', 'summary', 'note', 'date_deadline', 'create_date', 'create_uid', 'res_model', 'res_id', 'activity_type_id', 'user_id'],
+          500
+        );
       }
-
-      scheduledActivities = await client.searchRead(
-        'mail.activity',
-        activityFilters,
-        ['id', 'summary', 'note', 'date_deadline', 'create_date', 'create_uid', 'res_model', 'res_id', 'activity_type_id', 'user_id'],
-        500
-      );
-      console.log(`[SALES-RADAR-ACTIVITY] Found ${scheduledActivities.length} scheduled activities`);
+      console.log(`[SALES-RADAR-ACTIVITY] Found ${scheduledActivities.length} scheduled activities on Sales Radar leads`);
     } catch (e) {
       console.warn('[SALES-RADAR-ACTIVITY] Error fetching scheduled activities:', e);
     }
 
-    // 5. Fetch ALL chatter messages
+    // 6. Fetch chatter messages ONLY from Sales Radar leads
     let allMessages: any[] = [];
     try {
-      allMessages = await client.searchRead(
-        'mail.message',
-        [
-          ['date', '>=', startDateStr],
-          ['model', 'in', ['crm.lead', 'res.partner']],
-          ['message_type', 'in', ['comment', 'notification']]
-        ],
-        ['id', 'body', 'date', 'author_id', 'model', 'res_id', 'create_uid', 'message_type', 'subtype_id', 'tracking_value_ids'],
-        1000 // Increased limit
-      );
-      console.log(`[SALES-RADAR-ACTIVITY] Found ${allMessages.length} messages`);
+      if (allSalesRadarLeadIds.length > 0) {
+        // Only fetch messages on Sales Radar leads
+        allMessages = await client.searchRead(
+          'mail.message',
+          [
+            ['date', '>=', startDateStr],
+            ['model', '=', 'crm.lead'],
+            ['res_id', 'in', allSalesRadarLeadIds],
+            ['message_type', 'in', ['comment', 'notification']]
+          ],
+          ['id', 'body', 'date', 'author_id', 'model', 'res_id', 'create_uid', 'message_type', 'subtype_id', 'tracking_value_ids'],
+          1000
+        );
+      }
+      console.log(`[SALES-RADAR-ACTIVITY] Found ${allMessages.length} messages on Sales Radar leads`);
     } catch (e) {
       console.warn('[SALES-RADAR-ACTIVITY] Error fetching messages:', e);
     }
 
-    // 6. Fetch tracking values for field changes
+    // 7. Fetch tracking values for field changes
     let trackingValues: any[] = [];
     const messageIds = allMessages.map(m => m.id);
     if (messageIds.length > 0) {
@@ -210,7 +215,7 @@ export async function GET(request: NextRequest) {
       trackingByMessage[msgId].push(tv);
     });
 
-    // 7. Get unique user IDs to fetch user names
+    // 8. Get unique user IDs to fetch user names
     const userIds = new Set<number>();
     leadsCreated.forEach(lead => {
       if (lead.create_uid && Array.isArray(lead.create_uid)) {
@@ -239,7 +244,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // 8. Fetch user details
+    // 9. Fetch user details
     let usersMap: Record<number, { name: string; email?: string }> = {};
     if (userIds.size > 0) {
       try {
@@ -284,7 +289,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 9. Fetch lead/partner names for messages
+    // 10. Fetch lead names for messages (no partners since we only fetch from leads now)
     const leadIdsSet = new Set(allMessages.filter(m => m.model === 'crm.lead').map(m => m.res_id));
     const partnerIdsSet = new Set(allMessages.filter(m => m.model === 'res.partner').map(m => m.res_id));
     const leadIds = Array.from(leadIdsSet);
@@ -336,7 +341,7 @@ export async function GET(request: NextRequest) {
       return userId > 0 ? 'Utente sconosciuto' : 'Sistema';
     };
 
-    // 10. Build activity timeline
+    // 11. Build activity timeline
     const activities: Array<{
       id: string;
       type: 'lead_created' | 'voice_note' | 'written_note' | 'stage_change' |
@@ -552,7 +557,7 @@ export async function GET(request: NextRequest) {
     // Sort by timestamp descending (most recent first)
     activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    // 11. Calculate statistics per vendor
+    // 12. Calculate statistics per vendor
     const vendorStats: Record<number, {
       userId: number;
       userName: string;
@@ -629,7 +634,7 @@ export async function GET(request: NextRequest) {
       .filter(v => v.userName !== 'Utente' && v.userName !== 'OdooBot' && v.userName !== 'Sistema')
       .sort((a, b) => b.totalInteractions - a.totalInteractions);
 
-    // 12. Build summary
+    // 13. Build summary
     const summary = {
       totalInteractions: activities.length,
       leadsCreated: activities.filter(a => a.type === 'lead_created').length,
