@@ -6,17 +6,18 @@ async function fetchAllBankJournals() {
 
     const client = await getOdooClient();
 
-    // Search for all bank journals
+    // Search for ACTIVE bank journals only
     const journals = await client.searchRead(
       'account.journal',
-      [['type', '=', 'bank']],
+      [['type', '=', 'bank'], ['active', '=', true]],
       [
         'id',
         'name',
         'code',
         'currency_id',
         'bank_account_id',
-        'bank_acc_number'
+        'bank_acc_number',
+        'active'
       ],
       1000, // limit
       0     // offset
