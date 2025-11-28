@@ -58,9 +58,10 @@ export async function GET(request: NextRequest) {
     // 1. Find ALL Sales Radar related tags using multiple search strategies
     // Tags used by Sales Radar app: "Sales Radar", "Non interessato", "Non in Target", etc.
     let salesRadarTagIds: number[] = [];
+    let allTags: any[] = [];
     try {
       // First, get ALL tags from CRM to see what's available
-      const allTags = await client.searchRead(
+      allTags = await client.searchRead(
         'crm.tag',
         [],
         ['id', 'name'],
@@ -137,6 +138,53 @@ export async function GET(request: NextRequest) {
       }
     } catch (e) {
       console.warn('[SALES-RADAR-ACTIVITY] Error fetching all Sales Radar leads:', e);
+    }
+
+    // 3.5 Fetch leads that were TAGGED with "Non interessato", "Non in Target", "Chiuso definitivamente" in the period
+    // These are leads where write_date is in the period but create_date is before
+    // (meaning they were modified = tagged after being created)
+    // Filter for only the "marking" tags (not the generic "Sales Radar" tag)
+    let taggedLeads: any[] = [];
+    try {
+      // Find the specific "marking" tag IDs (Non interessato, Non in Target, Chiuso definitivamente)
+      const markingTagIds = salesRadarTagIds.filter((tagId: number) => {
+        const tag = allTags.find((t: any) => t.id === tagId);
+        return tag && (
+          /non\s*interessato/i.test(tag.name) ||
+          /non\s*in\s*target/i.test(tag.name) ||
+          /chiuso\s*definitivamente/i.test(tag.name)
+        );
+      });
+
+      if (markingTagIds.length > 0) {
+        // Fetch leads that have marking tags AND were modified in the period
+        taggedLeads = await client.callKw(
+          'crm.lead',
+          'search_read',
+          [[
+            ['tag_ids', 'in', markingTagIds],
+            ['write_date', '>=', startDateStr]
+          ]],
+          {
+            fields: ['id', 'name', 'write_date', 'create_date', 'write_uid', 'tag_ids', 'active'],
+            limit: 500,
+            context: { active_test: false }
+          }
+        );
+
+        // Filter to only include leads where the tag was added AFTER creation
+        // (write_date is significantly after create_date, or lead was archived)
+        taggedLeads = taggedLeads.filter((lead: any) => {
+          const createTime = new Date(lead.create_date).getTime();
+          const writeTime = new Date(lead.write_date).getTime();
+          // Consider it a "tag added" if modified more than 5 minutes after creation or if archived
+          return !lead.active || (writeTime - createTime > 5 * 60 * 1000);
+        });
+
+        console.log(`[SALES-RADAR-ACTIVITY] Found ${taggedLeads.length} leads tagged with Non interessato/Non in Target/Chiuso in the period`);
+      }
+    } catch (e) {
+      console.warn('[SALES-RADAR-ACTIVITY] Error fetching tagged leads:', e);
     }
 
     // 4. Fetch calendar events ONLY linked to Sales Radar leads (via opportunity_id)
@@ -225,13 +273,28 @@ export async function GET(request: NextRequest) {
 
     // Create map of tracking values by message ID
     const trackingByMessage: Record<number, any[]> = {};
+    const uniqueFields = new Set<string>();
     trackingValues.forEach(tv => {
       const msgId = Array.isArray(tv.mail_message_id) ? tv.mail_message_id[0] : tv.mail_message_id;
       if (!trackingByMessage[msgId]) {
         trackingByMessage[msgId] = [];
       }
       trackingByMessage[msgId].push(tv);
+      uniqueFields.add(tv.field);
     });
+    console.log(`[SALES-RADAR-ACTIVITY] Unique tracked fields: ${Array.from(uniqueFields).join(', ')}`);
+
+    // Log any tag-related tracking values for debugging
+    const tagTrackings = trackingValues.filter(tv =>
+      tv.field?.toLowerCase().includes('tag') ||
+      tv.old_value_char?.toLowerCase().includes('interessato') ||
+      tv.new_value_char?.toLowerCase().includes('interessato') ||
+      tv.old_value_char?.toLowerCase().includes('target') ||
+      tv.new_value_char?.toLowerCase().includes('target')
+    );
+    if (tagTrackings.length > 0) {
+      console.log(`[SALES-RADAR-ACTIVITY] Tag-related trackings: ${JSON.stringify(tagTrackings.slice(0, 5))}`);
+    }
 
     // 8. Get unique user IDs to fetch user names
     const userIds = new Set<number>();
@@ -402,6 +465,42 @@ export async function GET(request: NextRequest) {
           lat: lead.partner_latitude,
           lng: lead.partner_longitude
         } : undefined
+      });
+    });
+
+    // Add tag activities for leads marked with "Non interessato", "Non in Target", "Chiuso definitivamente"
+    taggedLeads.forEach(lead => {
+      const rawUserId = lead.write_uid?.[0] || 0;
+      const userInfo = getUserInfo(rawUserId, true);
+
+      // Skip system users
+      if (userInfo.name === 'Utente' || userInfo.name === 'OdooBot') return;
+
+      // Determine which tag was added based on the lead's tags
+      let tagName = 'Non in Target';
+      const leadTagIds = lead.tag_ids || [];
+      const tagObjects = allTags.filter((t: any) => leadTagIds.includes(t.id));
+      for (const tag of tagObjects) {
+        if (/chiuso\s*definitivamente/i.test(tag.name)) {
+          tagName = '🔒 Chiuso definitivamente';
+          break;
+        } else if (/non\s*interessato/i.test(tag.name)) {
+          tagName = '🚫 Non interessato';
+        } else if (/non\s*in\s*target/i.test(tag.name) && tagName !== '🚫 Non interessato') {
+          tagName = '❌ Non in Target';
+        }
+      }
+
+      activities.push({
+        id: `tag_${lead.id}`,
+        type: 'tag_added',
+        timestamp: lead.write_date,
+        userId: userInfo.id,
+        userName: userInfo.name,
+        targetName: lead.name,
+        targetType: 'lead',
+        targetId: lead.id,
+        preview: tagName
       });
     });
 

@@ -36,6 +36,7 @@
     "csv-parse": "^6.1.0",
     "dexie": "^3.2.7",
     "dotenv": "^17.2.3",
+    "face-api.js": "^0.22.2",
     "framer-motion": "^10.16.16",
     "fuse.js": "^7.1.0",
     "html5-qrcode": "^2.3.8",

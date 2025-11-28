@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Jetson Nano configuration
-const JETSON_URL = process.env.JETSON_URL || 'http://192.168.1.171:3100';
+const JETSON_URL = process.env.JETSON_OCR_URL || process.env.JETSON_URL || 'http://192.168.1.171:3100';
 
 // CHF Banknote denominations
 const VALID_DENOMINATIONS = [10, 20, 50, 100, 200, 1000];
