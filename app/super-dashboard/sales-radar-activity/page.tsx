@@ -602,14 +602,30 @@ export default function SalesRadarActivityPage() {
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Drawer Header */}
-                <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-violet-600 p-4 z-10">
+                <div className={`sticky top-0 p-4 z-10 ${
+                  selectedActivity.type === 'calendar_event' ? 'bg-gradient-to-r from-pink-600 to-rose-600' :
+                  selectedActivity.type === 'scheduled_activity' ? 'bg-gradient-to-r from-teal-600 to-cyan-600' :
+                  selectedActivity.type === 'lead_created' ? 'bg-gradient-to-r from-orange-600 to-amber-600' :
+                  'bg-gradient-to-r from-indigo-600 to-violet-600'
+                }`}>
                   <div className="flex items-center justify-between">
                     <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        {getActivityIcon(selectedActivity.type)}
+                        <span className="text-white/80 text-sm">
+                          {selectedActivity.type === 'calendar_event' ? 'Appuntamento' :
+                           selectedActivity.type === 'scheduled_activity' ? 'Attività Pianificata' :
+                           selectedActivity.type === 'lead_created' ? 'Lead Creato' :
+                           selectedActivity.type === 'voice_note' ? 'Nota Vocale' :
+                           selectedActivity.type === 'written_note' ? 'Nota Scritta' :
+                           selectedActivity.targetType === 'lead' ? 'Lead' : 'Cliente'}
+                        </span>
+                      </div>
                       <h3 className="text-lg font-bold text-white truncate">
                         {selectedActivity.targetName}
                       </h3>
-                      <p className="text-indigo-200 text-sm">
-                        {selectedActivity.targetType === 'lead' ? 'Lead' : 'Cliente'} - {selectedActivity.userName}
+                      <p className="text-white/70 text-sm">
+                        {selectedActivity.userName} - {formatTimestamp(selectedActivity.timestamp)}
                       </p>
                     </div>
                     <button
@@ -623,33 +639,172 @@ export default function SalesRadarActivityPage() {
 
                 {/* Drawer Content */}
                 <div className="p-4">
-                  {loadingDetails ? (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  ) : activityDetails ? (
-                    <div className="space-y-3">
-                      {/* Note - clicca per aprire in Odoo */}
-                      <p className="text-slate-400 text-xs mb-2">Clicca su una nota per aprirla in Odoo</p>
-
-                      {activityDetails.messages.filter((m: any) => m.isSalesRadar).map((msg: any) => (
-                        <SalesRadarMessage
-                          key={msg.id}
-                          msg={msg}
-                          odooUrl={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com'}/web#id=${selectedActivity.targetId}&model=${selectedActivity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
-                        />
-                      ))}
-
-                      {activityDetails.messages.filter((m: any) => m.isSalesRadar).length === 0 && (
-                        <p className="text-slate-500 text-sm text-center py-4">
-                          Nessuna nota Sales Radar trovata
+                  {/* Contenuto specifico per tipo di attività */}
+                  {selectedActivity.type === 'calendar_event' && (
+                    <div className="space-y-4">
+                      <div className="bg-pink-500/10 border border-pink-500/30 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <CalendarDays className="w-5 h-5 text-pink-400" />
+                          <span className="text-pink-200 font-medium">Dettagli Appuntamento</span>
+                        </div>
+                        {selectedActivity.preview && (
+                          <p className="text-white text-sm mb-2">{selectedActivity.preview}</p>
+                        )}
+                        <p className="text-slate-400 text-xs">
+                          Creato da {selectedActivity.userName}
                         </p>
+                      </div>
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com'}/web#id=${selectedActivity.targetId}&model=calendar.event&view_type=form`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Apri in Odoo
+                      </a>
+                    </div>
+                  )}
+
+                  {selectedActivity.type === 'scheduled_activity' && (
+                    <div className="space-y-4">
+                      <div className="bg-teal-500/10 border border-teal-500/30 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <CheckSquare className="w-5 h-5 text-teal-400" />
+                          <span className="text-teal-200 font-medium">Dettagli Attività</span>
+                        </div>
+                        {selectedActivity.preview && (
+                          <p className="text-white text-sm mb-2">{selectedActivity.preview}</p>
+                        )}
+                        <p className="text-slate-400 text-xs">
+                          Pianificata da {selectedActivity.userName}
+                        </p>
+                      </div>
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com'}/web#id=${selectedActivity.targetId}&model=mail.activity&view_type=form`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Apri in Odoo
+                      </a>
+                    </div>
+                  )}
+
+                  {selectedActivity.type === 'lead_created' && (
+                    <div className="space-y-4">
+                      <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Target className="w-5 h-5 text-orange-400" />
+                          <span className="text-orange-200 font-medium">Nuovo Lead</span>
+                        </div>
+                        <p className="text-white font-medium">{selectedActivity.targetName}</p>
+                        <p className="text-slate-400 text-xs mt-2">
+                          Creato da {selectedActivity.userName}
+                        </p>
+                        {selectedActivity.location && (
+                          <p className="text-slate-400 text-xs mt-1">
+                            <MapPin className="w-3 h-3 inline mr-1" />
+                            {selectedActivity.location.lat.toFixed(4)}, {selectedActivity.location.lng.toFixed(4)}
+                          </p>
+                        )}
+                      </div>
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com'}/web#id=${selectedActivity.targetId}&model=crm.lead&view_type=form`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Apri Lead in Odoo
+                      </a>
+                    </div>
+                  )}
+
+                  {(selectedActivity.type === 'stage_change' || selectedActivity.type === 'tag_added' || selectedActivity.type === 'lead_archived' || selectedActivity.type === 'lead_reactivated') && (
+                    <div className="space-y-4">
+                      <div className="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          {getActivityIcon(selectedActivity.type)}
+                          <span className="text-slate-200 font-medium">
+                            {selectedActivity.type === 'stage_change' ? 'Cambio Stato' :
+                             selectedActivity.type === 'tag_added' ? 'Tag Modificato' :
+                             selectedActivity.type === 'lead_archived' ? 'Lead Archiviato' :
+                             'Lead Riattivato'}
+                          </span>
+                        </div>
+                        {selectedActivity.preview && (
+                          <p className="text-white text-sm mb-2">{selectedActivity.preview}</p>
+                        )}
+                        <p className="text-slate-400 text-xs">
+                          Da {selectedActivity.userName}
+                        </p>
+                      </div>
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com'}/web#id=${selectedActivity.targetId}&model=${selectedActivity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Apri in Odoo
+                      </a>
+                    </div>
+                  )}
+
+                  {(selectedActivity.type === 'voice_note' || selectedActivity.type === 'written_note' || selectedActivity.type === 'note_added') && (
+                    <>
+                      {loadingDetails ? (
+                        <div className="flex items-center justify-center py-12">
+                          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : activityDetails ? (
+                        <div className="space-y-3">
+                          <p className="text-slate-400 text-xs mb-2">Clicca su una nota per aprirla in Odoo</p>
+
+                          {activityDetails.messages.filter((m: any) => m.isSalesRadar).map((msg: any) => (
+                            <SalesRadarMessage
+                              key={msg.id}
+                              msg={msg}
+                              odooUrl={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com'}/web#id=${selectedActivity.targetId}&model=${selectedActivity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
+                            />
+                          ))}
+
+                          {activityDetails.messages.filter((m: any) => m.isSalesRadar).length === 0 && (
+                            <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
+                              {selectedActivity.preview && (
+                                <p className="text-white text-sm">{selectedActivity.preview}</p>
+                              )}
+                              <a
+                                href={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com'}/web#id=${selectedActivity.targetId}&model=${selectedActivity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-indigo-400 text-sm mt-2 hover:underline"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Vedi in Odoo
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
+                          {selectedActivity.preview && (
+                            <p className="text-white text-sm">{selectedActivity.preview}</p>
+                          )}
+                          <a
+                            href={`${process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com'}/web#id=${selectedActivity.targetId}&model=${selectedActivity.targetType === 'lead' ? 'crm.lead' : 'res.partner'}&view_type=form`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-indigo-400 text-sm mt-2 hover:underline"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            Vedi in Odoo
+                          </a>
+                        </div>
                       )}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-slate-400">
-                      <p>Clicca su un&apos;attività per vedere i dettagli</p>
-                    </div>
+                    </>
                   )}
                 </div>
               </motion.div>
