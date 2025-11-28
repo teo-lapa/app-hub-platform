@@ -88,32 +88,60 @@ export async function POST(request: NextRequest) {
       discrepancy = body.amount - body.expected_amount;
     }
 
-    // Trova o crea un partner generico per i versamenti cassaforte
-    // Per ora usiamo un partner generico "Versamenti Cassaforte"
+    // Determina il partner_id corretto
     let partnerId: number | null = null;
+    let partnerName: string = '';
 
-    // Cerca partner esistente
-    const existingPartners = await sessionManager.callKw(
-      'res.partner',
-      'search_read',
-      [[['name', '=', 'Versamenti Cassaforte']]],
-      { fields: ['id'], limit: 1 }
-    );
+    if (body.type === 'from_delivery' && body.picking_ids && body.picking_ids.length > 0) {
+      // Per versamenti da consegne, recupera il cliente reale dal primo picking
+      try {
+        const pickings = await sessionManager.callKw(
+          'stock.picking',
+          'search_read',
+          [[['id', 'in', body.picking_ids]]],
+          { fields: ['id', 'partner_id'], limit: 1 }
+        );
 
-    if (existingPartners.length > 0) {
-      partnerId = existingPartners[0].id;
-    } else {
-      // Crea partner generico
-      partnerId = await sessionManager.callKw(
+        if (pickings.length > 0 && pickings[0].partner_id) {
+          partnerId = Array.isArray(pickings[0].partner_id)
+            ? pickings[0].partner_id[0]
+            : pickings[0].partner_id;
+          partnerName = Array.isArray(pickings[0].partner_id)
+            ? pickings[0].partner_id[1]
+            : '';
+          console.log(`📦 Cliente recuperato dal picking: ${partnerName} (ID: ${partnerId})`);
+        }
+      } catch (pickingError) {
+        console.warn('⚠️ Errore recupero cliente dal picking:', pickingError);
+      }
+    }
+
+    // Se non abbiamo trovato un cliente dal picking, usa il partner generico
+    if (!partnerId) {
+      // Cerca partner esistente "Versamenti Cassaforte"
+      const existingPartners = await sessionManager.callKw(
         'res.partner',
-        'create',
-        [{
-          name: 'Versamenti Cassaforte',
-          is_company: false,
-          customer_rank: 1,
-          comment: 'Partner generico per versamenti in cassaforte',
-        }]
+        'search_read',
+        [[['name', '=', 'Versamenti Cassaforte']]],
+        { fields: ['id'], limit: 1 }
       );
+
+      if (existingPartners.length > 0) {
+        partnerId = existingPartners[0].id;
+      } else {
+        // Crea partner generico
+        partnerId = await sessionManager.callKw(
+          'res.partner',
+          'create',
+          [{
+            name: 'Versamenti Cassaforte',
+            is_company: false,
+            customer_rank: 1,
+            comment: 'Partner generico per versamenti in cassaforte',
+          }]
+        );
+      }
+      partnerName = 'Versamenti Cassaforte';
     }
 
     // Crea il pagamento in Odoo

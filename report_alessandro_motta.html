@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Performance - Alessandro Motta</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 10px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .header .date {
+            margin-top: 15px;
+            font-size: 0.9em;
+            opacity: 0.7;
+        }
+
+        .section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section h2 {
+            color: #1a1a2e;
+            border-bottom: 3px solid #e94560;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .section h3 {
+            color: #16213e;
+            margin: 20px 0 10px 0;
+            font-size: 1.2em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #1a1a2e;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f8f8f8;
+        }
+
+        .highlight-row {
+            background: #fff3cd !important;
+            font-weight: bold;
+        }
+
+        .positive {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .negative {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-box.warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .stat-box.success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .stat-box .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-box .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .comparison-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .person-box {
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .person-box.mihai {
+            background: #d4edda;
+            border: 2px solid #28a745;
+        }
+
+        .person-box.alessandro {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+        }
+
+        .person-box .name {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .person-box .value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .checklist {
+            background: #e8f5e9;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #28a745;
+        }
+
+        .checklist ul {
+            list-style: none;
+            padding-left: 10px;
+        }
+
+        .checklist li {
+            padding: 8px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .checklist li:before {
+            content: "☐";
+            position: absolute;
+            left: 0;
+            font-size: 1.2em;
+        }
+
+        .target-box {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #2196f3;
+            margin: 15px 0;
+        }
+
+        .target-box h4 {
+            color: #1565c0;
+            margin-bottom: 10px;
+        }
+
+        .problem-box {
+            background: #ffebee;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #f44336;
+            margin: 15px 0;
+        }
+
+        .problem-box h4 {
+            color: #c62828;
+            margin-bottom: 10px;
+        }
+
+        .action-box {
+            background: #fff8e1;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #ff9800;
+            margin: 15px 0;
+        }
+
+        .action-box h4 {
+            color: #e65100;
+            margin-bottom: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .container {
+                max-width: 100%;
+            }
+            .section {
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>REPORT PERFORMANCE</h1>
+            <div class="subtitle">Alessandro Motta - Analisi Trimestrale</div>
+            <div class="date">Periodo: Settembre - Novembre 2025</div>
+        </div>
+
+        <!-- SEZIONE 1: RIEPILOGO -->
+        <div class="section">
+            <h2>1. Riepilogo Performance</h2>
+
+            <div class="stat-grid">
+                <div class="stat-box success">
+                    <span class="number">895</span>
+                    <span class="label">Ordini Totali</span>
+                </div>
+                <div class="stat-box">
+                    <span class="number">CHF 257k</span>
+                    <span class="label">Fatturato 3 Mesi</span>
+                </div>
+                <div class="stat-box warning">
+                    <span class="number">2°</span>
+                    <span class="label">Posizione Classifica</span>
+                </div>
+            </div>
+
+            <h3>Andamento Mensile</h3>
+            <table>
+                <tr>
+                    <th>Mese</th>
+                    <th>Ordini</th>
+                    <th>Fatturato</th>
+                    <th>Trend</th>
+                </tr>
+                <tr>
+                    <td>Settembre 2025</td>
+                    <td>278</td>
+                    <td>CHF 81,680</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td>Ottobre 2025</td>
+                    <td>302</td>
+                    <td>CHF 86,571</td>
+                    <td class="positive">+6%</td>
+                </tr>
+                <tr>
+                    <td>Novembre 2025</td>
+                    <td>306</td>
+                    <td>CHF 86,892</td>
+                    <td class="positive">+0.4%</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- SEZIONE 2: CONFRONTO CON MIHAI -->
+        <div class="section">
+            <h2>2. Confronto con Mihai Nita</h2>
+            <p style="margin-bottom: 20px; color: #666;"><em>Entrambi lavorano sul campo - confronto diretto tra agenti esterni</em></p>
+
+            <table>
+                <tr>
+                    <th>Metrica</th>
+                    <th>Mihai</th>
+                    <th>Alessandro</th>
+                    <th>Differenza</th>
+                </tr>
+                <tr>
+                    <td><strong>Fatturato Totale</strong></td>
+                    <td>CHF 350,072</td>
+                    <td>CHF 257,286</td>
+                    <td class="negative">-26.5%</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td><strong>Media per Ordine</strong></td>
+                    <td>CHF 357</td>
+                    <td>CHF 288</td>
+                    <td class="negative">-19.3%</td>
+                </tr>
+                <tr>
+                    <td><strong>Ordini Totali</strong></td>
+                    <td>981</td>
+                    <td>893</td>
+                    <td class="negative">-9%</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td><strong>Nuovi Clienti</strong></td>
+                    <td>12</td>
+                    <td>6</td>
+                    <td class="negative">-50%</td>
+                </tr>
+                <tr>
+                    <td><strong>Clienti Serviti</strong></td>
+                    <td>82</td>
+                    <td>91</td>
+                    <td class="positive">+11%</td>
+                </tr>
+            </table>
+
+            <div class="problem-box">
+                <h4>PUNTO CRITICO: Media Ordine</h4>
+                <p>Ogni ordine di Alessandro vale <strong>CHF 69 in meno</strong> rispetto a Mihai. Su 893 ordini, questo significa <strong>CHF 61,617 di fatturato perso</strong>.</p>
+            </div>
+        </div>
+
+        <!-- SEZIONE 3: DISTRIBUZIONE ORDINI -->
+        <div class="section page-break">
+            <h2>3. Distribuzione Ordini per Importo</h2>
+
+            <table>
+                <tr>
+                    <th>Fascia Importo</th>
+                    <th>Mihai</th>
+                    <th>Alessandro</th>
+                    <th>Analisi</th>
+                </tr>
+                <tr>
+                    <td>CHF 0-100</td>
+                    <td>21.9%</td>
+                    <td>21.3%</td>
+                    <td>Simile</td>
+                </tr>
+                <tr>
+                    <td>CHF 100-300</td>
+                    <td>35.5%</td>
+                    <td>43.3%</td>
+                    <td class="negative">Troppi ordini piccoli</td>
+                </tr>
+                <tr>
+                    <td>CHF 300-500</td>
+                    <td>17.9%</td>
+                    <td>21.9%</td>
+                    <td>OK</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td>CHF 500-1000</td>
+                    <td>19.4%</td>
+                    <td>11.0%</td>
+                    <td class="negative">-43% ordini medi</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td>CHF 1000+</td>
+                    <td>5.3% (52 ordini)</td>
+                    <td>2.5% (22 ordini)</td>
+                    <td class="negative">-58% ordini grandi</td>
+                </tr>
+            </table>
+
+            <div class="problem-box">
+                <h4>PROBLEMA: Mancano gli Ordini Grandi</h4>
+                <p>Alessandro ha <strong>30 ordini in meno</strong> sopra i CHF 1000. Non sta facendo upselling, non propone prodotti aggiuntivi quando è dal cliente.</p>
+            </div>
+        </div>
+
+        <!-- SEZIONE 4: PRODOTTI -->
+        <div class="section">
+            <h2>4. Vendita Prodotti Base</h2>
+
+            <h3>Confronto Farina (Prodotto Chiave)</h3>
+            <div class="comparison-box">
+                <div class="person-box mihai">
+                    <div class="name">MIHAI</div>
+                    <div class="value">CHF 27,080</div>
+                    <div>Farina 00 Verace 25kg</div>
+                </div>
+                <div class="person-box alessandro">
+                    <div class="name">ALESSANDRO</div>
+                    <div class="value">CHF 3,959</div>
+                    <div>Farina 00 Verace 25kg</div>
+                </div>
+            </div>
+
+            <div class="problem-box">
+                <h4>PROBLEMA GRAVE: La Farina</h4>
+                <p>Mihai vende <strong>7 volte più farina</strong> di Alessandro. La farina è un prodotto base che OGNI pizzeria deve comprare. Se i clienti di Alessandro non la comprano da noi, <strong>la comprano dalla concorrenza</strong>.</p>
+                <p style="margin-top: 10px;"><strong>Domanda da fare:</strong> "Dove comprano la farina i tuoi clienti?"</p>
+            </div>
+
+            <h3>Top 5 Prodotti - Confronto</h3>
+            <table>
+                <tr>
+                    <th>Prodotto</th>
+                    <th>Mihai</th>
+                    <th>Alessandro</th>
+                </tr>
+                <tr>
+                    <td>Farina 00 Verace 25kg</td>
+                    <td class="positive">CHF 27,080</td>
+                    <td class="negative">CHF 3,959</td>
+                </tr>
+                <tr>
+                    <td>Fiordilatte Julienne</td>
+                    <td>CHF 16,922</td>
+                    <td>CHF 13,606</td>
+                </tr>
+                <tr>
+                    <td>Olio EVO Pallade 5L</td>
+                    <td>CHF 9,240</td>
+                    <td>CHF 5,988</td>
+                </tr>
+                <tr>
+                    <td>Pelati Sica 6x2500g</td>
+                    <td>CHF 6,558</td>
+                    <td>CHF 3,707</td>
+                </tr>
+                <tr>
+                    <td>Grana Padano Grattugiato</td>
+                    <td>CHF 5,910</td>
+                    <td class="positive">CHF 11,163</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- SEZIONE 5: ANALISI GIORNI -->
+        <div class="section page-break">
+            <h2>5. Performance per Giorno</h2>
+
+            <table>
+                <tr>
+                    <th>Giorno</th>
+                    <th>Mihai (Fatturato)</th>
+                    <th>Alessandro (Fatturato)</th>
+                    <th>Differenza</th>
+                </tr>
+                <tr>
+                    <td>Lunedì</td>
+                    <td>CHF 64,799</td>
+                    <td>CHF 56,175</td>
+                    <td class="negative">-13%</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td>Martedì</td>
+                    <td>CHF 109,997</td>
+                    <td>CHF 43,981</td>
+                    <td class="negative">-60%</td>
+                </tr>
+                <tr>
+                    <td>Mercoledì</td>
+                    <td>CHF 40,534</td>
+                    <td>CHF 55,396</td>
+                    <td class="positive">+37%</td>
+                </tr>
+                <tr>
+                    <td>Giovedì</td>
+                    <td>CHF 40,656</td>
+                    <td>CHF 51,661</td>
+                    <td class="positive">+27%</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td>Venerdì</td>
+                    <td>CHF 65,448</td>
+                    <td>CHF 23,511</td>
+                    <td class="negative">-64%</td>
+                </tr>
+                <tr>
+                    <td>Sabato</td>
+                    <td>CHF 14,826</td>
+                    <td>CHF 4,086</td>
+                    <td class="negative">-72%</td>
+                </tr>
+            </table>
+
+            <div class="problem-box">
+                <h4>PROBLEMA: Martedì e Venerdì</h4>
+                <p><strong>Martedì:</strong> Mihai fattura CHF 110k, Alessandro solo CHF 44k. Differenza di CHF 66k!</p>
+                <p><strong>Venerdì:</strong> Mihai fattura CHF 65k, Alessandro solo CHF 23k. Il venerdì Alessandro praticamente non lavora a pieno regime.</p>
+            </div>
+        </div>
+
+        <!-- SEZIONE 6: CRM E LEAD -->
+        <div class="section">
+            <h2>6. CRM - Lead e Conversioni</h2>
+
+            <div class="stat-grid">
+                <div class="stat-box warning">
+                    <span class="number">152</span>
+                    <span class="label">Lead Totali</span>
+                </div>
+                <div class="stat-box warning">
+                    <span class="number">148</span>
+                    <span class="label">Fermi su "Chiamare Giovedì"</span>
+                </div>
+                <div class="stat-box warning">
+                    <span class="number">2</span>
+                    <span class="label">Lead Convertiti</span>
+                </div>
+            </div>
+
+            <div class="problem-box">
+                <h4>TASSO CONVERSIONE: 1.3%</h4>
+                <p>Su 152 lead, solo 2 sono diventati clienti. <strong>148 lead sono fermi</strong> nello stage "Chiamare Giovedì" da settimane.</p>
+                <p style="margin-top: 10px;">Il Sales Radar genera contatti, ma Alessandro non li lavora.</p>
+            </div>
+        </div>
+
+        <!-- SEZIONE 7: OBIETTIVI -->
+        <div class="section page-break">
+            <h2>7. Obiettivi di Miglioramento</h2>
+
+            <h3>Target Mensili</h3>
+            <table>
+                <tr>
+                    <th>Obiettivo</th>
+                    <th>Attuale</th>
+                    <th>Target</th>
+                    <th>Azione</th>
+                </tr>
+                <tr>
+                    <td>Media Ordine</td>
+                    <td class="negative">CHF 288</td>
+                    <td class="positive">CHF 330</td>
+                    <td>Upselling ad ogni visita</td>
+                </tr>
+                <tr>
+                    <td>Nuovi Clienti/Mese</td>
+                    <td class="negative">2</td>
+                    <td class="positive">4</td>
+                    <td>Lavorare i lead del CRM</td>
+                </tr>
+                <tr>
+                    <td>Lead Convertiti/Mese</td>
+                    <td class="negative">0.6</td>
+                    <td class="positive">4</td>
+                    <td>Follow-up sistematico</td>
+                </tr>
+                <tr>
+                    <td>Vendita Farina/Mese</td>
+                    <td class="negative">CHF 1,300</td>
+                    <td class="positive">CHF 6,000</td>
+                    <td>Proporre a ogni cliente</td>
+                </tr>
+                <tr>
+                    <td>Fatturato Venerdì</td>
+                    <td class="negative">CHF 5,800</td>
+                    <td class="positive">CHF 12,000</td>
+                    <td>Giornata completa</td>
+                </tr>
+            </table>
+
+            <div class="target-box">
+                <h4>OBIETTIVO FATTURATO</h4>
+                <p>Se Alessandro raggiunge questi target, il fatturato mensile può passare da <strong>CHF 86k a CHF 105k</strong> (+22%).</p>
+            </div>
+        </div>
+
+        <!-- SEZIONE 8: CHECKLIST -->
+        <div class="section">
+            <h2>8. Checklist Visita Cliente</h2>
+            <p style="margin-bottom: 15px; color: #666;"><em>Da usare PRIMA di lasciare ogni cliente</em></p>
+
+            <div class="checklist">
+                <ul>
+                    <li><strong>FARINA</strong> - Ne ha abbastanza per la settimana? Quale tipo usa?</li>
+                    <li><strong>OLIO</strong> - Sta finendo? Proponi formato convenienza 5L</li>
+                    <li><strong>MOZZARELLA/FIORDILATTE</strong> - Quanta ne consuma? Offri promo quantità</li>
+                    <li><strong>PELATI</strong> - Controlla scorte, proponi cartone 6x2500g</li>
+                    <li><strong>GRANA PADANO</strong> - Grattugiato o scaglie? Proponi entrambi</li>
+                    <li><strong>DETERSIONE</strong> - Prodotti pulizia? Rotoloni carta?</li>
+                    <li><strong>SURGELATI</strong> - Porcini, pasta fresca, dolci?</li>
+                    <li><strong>NOVITÀ DEL MESE</strong> - Presenta almeno 1 prodotto nuovo</li>
+                </ul>
+            </div>
+
+            <div class="action-box">
+                <h4>REGOLA D'ORO</h4>
+                <p>"Non andare via dal cliente senza aver proposto almeno 3 prodotti in più rispetto a quello che ha chiesto."</p>
+            </div>
+        </div>
+
+        <!-- SEZIONE 9: PIANO AZIONE -->
+        <div class="section">
+            <h2>9. Piano d'Azione Immediato</h2>
+
+            <h3>Settimana 1-2</h3>
+            <div class="action-box">
+                <h4>AFFIANCAMENTO</h4>
+                <p>2 giorni con Mihai (Martedì + Giovedì) per osservare:</p>
+                <ul style="margin-top: 10px; margin-left: 20px;">
+                    <li>Come propone i prodotti</li>
+                    <li>Come gestisce gli ordini grandi</li>
+                    <li>Come chiude le vendite</li>
+                </ul>
+            </div>
+
+            <h3>Settimana 3-4</h3>
+            <div class="action-box">
+                <h4>FOCUS FARINA</h4>
+                <p>Obiettivo: proporre farina a TUTTI i clienti pizzeria/ristorante. Target: 20 sacchi/settimana.</p>
+            </div>
+
+            <h3>Ogni Settimana</h3>
+            <div class="action-box">
+                <h4>REVIEW VENERDÌ</h4>
+                <p>15 minuti insieme per controllare:</p>
+                <ul style="margin-top: 10px; margin-left: 20px;">
+                    <li>Numero ordini vs target</li>
+                    <li>Media ordine</li>
+                    <li>Lead lavorati nel CRM</li>
+                    <li>Vendita prodotti base</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- SEZIONE 10: CONCLUSIONE -->
+        <div class="section">
+            <h2>10. Conclusione</h2>
+
+            <div class="target-box">
+                <h4>I PUNTI DI FORZA</h4>
+                <ul style="margin-left: 20px;">
+                    <li>Secondo venditore per fatturato</li>
+                    <li>Buona gestione clienti esistenti (80% ricorrenti)</li>
+                    <li>Crescita costante mese su mese</li>
+                    <li>91 clienti serviti (più di Mihai)</li>
+                </ul>
+            </div>
+
+            <div class="problem-box">
+                <h4>LE AREE DI MIGLIORAMENTO</h4>
+                <ul style="margin-left: 20px;">
+                    <li><strong>Upselling:</strong> Media ordine troppo bassa (-19% vs Mihai)</li>
+                    <li><strong>Prodotti base:</strong> Farina venduta 7x meno di Mihai</li>
+                    <li><strong>Acquisizione:</strong> Solo 6 nuovi clienti in 3 mesi</li>
+                    <li><strong>CRM:</strong> 148 lead non lavorati</li>
+                    <li><strong>Venerdì:</strong> Giornata a metà regime</li>
+                </ul>
+            </div>
+
+            <div style="background: #1a1a2e; color: white; padding: 25px; border-radius: 10px; margin-top: 20px; text-align: center;">
+                <h3 style="margin-bottom: 15px;">MESSAGGIO CHIAVE</h3>
+                <p style="font-size: 1.1em;">"Sei bravo a mantenere i clienti, ma devi vendergli di più ogni volta.<br>I prodotti base devono essere comprati da noi, non dalla concorrenza.<br>I lead vanno lavorati, non lasciati fermi."</p>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <p>Report generato il 28 Novembre 2025</p>
+            <p>Dati estratti da Odoo - Periodo: Settembre - Novembre 2025</p>
+        </div>
+    </div>
+</body>
+</html>
