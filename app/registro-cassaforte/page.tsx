@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Vault,
+  Lock,
   User,
   Clock,
   Banknote,
@@ -150,6 +150,7 @@ export default function RegistroCassafortePage() {
       }, 10000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [step]);
 
   // Load employees on mount
@@ -353,7 +354,7 @@ export default function RegistroCassafortePage() {
         className="px-12 py-6 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl text-white text-2xl font-bold shadow-2xl shadow-emerald-500/30"
       >
         <div className="flex items-center gap-4">
-          <Vault className="w-10 h-10" />
+          <Lock className="w-10 h-10" />
           VERSA SOLDI
         </div>
       </motion.button>
