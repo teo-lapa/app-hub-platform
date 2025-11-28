@@ -103,15 +103,17 @@ export async function POST(request: NextRequest) {
     const text = await file.text()
     const lines = text.split('\n')
 
-    // Rileva tipo file (UBS, UBS Carta di Credito, o Credit Suisse)
-    const isUBS = text.includes('Kontonummer:') && text.includes('IBAN:')
+    // Rileva tipo file (UBS tedesco, UBS italiano, UBS Carta di Credito, o Credit Suisse)
+    const isUBSGerman = text.includes('Kontonummer:') && text.includes('IBAN:')
+    const isUBSItalian = text.includes('Numero di conto:') && text.includes('IBAN:')
+    const isUBS = isUBSGerman || isUBSItalian
     const isUBSCreditCard = text.includes('Kartennummer') && text.includes('Buchungstext') && !text.includes('IBAN:')
     const isCreditSuisse = text.includes('Registrazioni') && text.includes('Data di registrazione,Testo')
 
     if (!isUBS && !isUBSCreditCard && !isCreditSuisse) {
       return NextResponse.json({
         success: false,
-        errors: ['Formato file non riconosciuto. Supportati: UBS, UBS Carta di Credito e Credit Suisse']
+        errors: ['Formato file non riconosciuto. Supportati: UBS (tedesco/italiano), UBS Carta di Credito e Credit Suisse']
       })
     }
 
@@ -130,35 +132,40 @@ export async function POST(request: NextRequest) {
     let headerIndex = -1
 
     if (isUBS) {
-      // Parsea header UBS (formato originale)
+      // Parsea header UBS (formato tedesco o italiano)
       for (let i = 0; i < Math.min(10, lines.length); i++) {
         const line = lines[i].trim()
         if (!line) continue
 
         const parts = line.split(';')
 
-        if (line.startsWith('Kontonummer:')) {
+        // Supporta sia tedesco che italiano
+        if (line.startsWith('Kontonummer:') || line.startsWith('Numero di conto:')) {
           accountInfo.accountNumber = parts[1]?.trim() || ''
         } else if (line.startsWith('IBAN:')) {
           accountInfo.iban = parts[1]?.trim() || ''
-        } else if (line.startsWith('Von:')) {
+        } else if (line.startsWith('Von:') || line.startsWith('Dal:')) {
           accountInfo.startDate = parts[1]?.trim() || ''
-        } else if (line.startsWith('Bis:')) {
+        } else if (line.startsWith('Bis:') || line.startsWith('Al:')) {
           accountInfo.endDate = parts[1]?.trim() || ''
-        } else if (line.startsWith('Anfangssaldo:')) {
+        } else if (line.startsWith('Anfangssaldo:') || line.startsWith('Saldo iniziale:')) {
           accountInfo.startBalance = parseFloat(parts[1]?.replace(',', '.') || '0')
-        } else if (line.startsWith('Schlusssaldo:')) {
+        } else if (line.startsWith('Schlusssaldo:') || line.startsWith('Saldo finale:')) {
           accountInfo.endBalance = parseFloat(parts[1]?.replace(',', '.') || '0')
-        } else if (line.startsWith('Bewertet in:')) {
+        } else if (line.startsWith('Bewertet in:') || line.startsWith('Valutazione in:')) {
           accountInfo.currency = parts[1]?.trim() || 'CHF'
-        } else if (line.startsWith('Anzahl Transaktionen')) {
+        } else if (line.startsWith('Anzahl Transaktionen') || line.startsWith('Numero di transazioni')) {
           accountInfo.transactionCount = parseInt(parts[1]?.trim() || '0')
         }
       }
 
-      // Trova header transazioni UBS
+      // Trova header transazioni UBS (tedesco o italiano)
       for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes('Abschlussdatum;') && lines[i].includes('Buchungsdatum;')) {
+        const line = lines[i]
+        // Tedesco: Abschlussdatum;Buchungsdatum
+        // Italiano: Data dell'operazione;Ora dell'operazione;Data di contabilizzazione
+        if ((line.includes('Abschlussdatum;') && line.includes('Buchungsdatum;')) ||
+            (line.includes('Data dell\'operazione;') && line.includes('Data di contabilizzazione;'))) {
           headerIndex = i
           break
         }
@@ -231,7 +238,10 @@ export async function POST(request: NextRequest) {
     let lastValidDate = '' // Traccia l'ultima data valida per le righe figlie di Sammelauftrag
 
     if (isUBS) {
-      // Parser UBS (formato originale con punto e virgola)
+      // Determina se è formato italiano (ha colonna "Ora dell'operazione")
+      const isItalianFormat = lines[headerIndex].includes('Ora dell\'operazione;')
+
+      // Parser UBS (formato tedesco o italiano con punto e virgola)
       for (let i = headerIndex + 1; i < lines.length; i++) {
         const line = lines[i].trim()
         if (!line) continue
@@ -257,18 +267,38 @@ export async function POST(request: NextRequest) {
         if (parts.length < 10) continue // Minimo 10 colonne fino a Transaktions-Nr.
 
         try {
-        const abschlussdatum = parts[0]?.trim()
-        const buchungsdatum = parts[2]?.trim()
-        const valutadatum = parts[3]?.trim()
-        const currency = parts[4]?.trim()
-        const belastung = parts[5]?.trim() // Uscita
-        const gutschrift = parts[6]?.trim() // Entrata
-        const einzelbetrag = parts[7]?.trim() // Importo singolo per Sammelauftrag
-        const saldo = parts[8]?.trim()
-        const transaktionsNr = parts[9]?.trim()
-        const beschreibung1 = parts[10]?.replace(/^"(.*)"$/, '$1').trim()
-        const beschreibung2 = parts[11]?.replace(/^"(.*)"$/, '$1').trim()
-        const beschreibung3 = parts[12]?.replace(/^"(.*)"$/, '$1').trim()
+        // Adatta indici colonne in base al formato
+        let abschlussdatum, buchungsdatum, valutadatum, currency, belastung, gutschrift, einzelbetrag, saldo, transaktionsNr, beschreibung1, beschreibung2, beschreibung3
+
+        if (isItalianFormat) {
+          // Formato italiano (con colonna "Ora dell'operazione" in posizione 1)
+          abschlussdatum = parts[0]?.trim() // Data dell'operazione
+          buchungsdatum = parts[2]?.trim() // Data di contabilizzazione
+          valutadatum = parts[3]?.trim() // Data di valuta
+          currency = parts[4]?.trim() // Moneta
+          belastung = parts[5]?.trim() // Addebito
+          gutschrift = parts[6]?.trim() // Accredito
+          einzelbetrag = parts[7]?.trim() // Importo singolo
+          saldo = parts[8]?.trim() // Saldo
+          transaktionsNr = parts[9]?.trim() // N. di transazione
+          beschreibung1 = parts[10]?.replace(/^"(.*)"$/, '$1').trim() // Descrizione1
+          beschreibung2 = parts[11]?.replace(/^"(.*)"$/, '$1').trim() // Descrizione2
+          beschreibung3 = parts[12]?.replace(/^"(.*)"$/, '$1').trim() // Descrizione3
+        } else {
+          // Formato tedesco (originale)
+          abschlussdatum = parts[0]?.trim()
+          buchungsdatum = parts[2]?.trim()
+          valutadatum = parts[3]?.trim()
+          currency = parts[4]?.trim()
+          belastung = parts[5]?.trim() // Uscita
+          gutschrift = parts[6]?.trim() // Entrata
+          einzelbetrag = parts[7]?.trim() // Importo singolo per Sammelauftrag
+          saldo = parts[8]?.trim()
+          transaktionsNr = parts[9]?.trim()
+          beschreibung1 = parts[10]?.replace(/^"(.*)"$/, '$1').trim()
+          beschreibung2 = parts[11]?.replace(/^"(.*)"$/, '$1').trim()
+          beschreibung3 = parts[12]?.replace(/^"(.*)"$/, '$1').trim()
+        }
 
         // Calcola importo
         let amount = 0
