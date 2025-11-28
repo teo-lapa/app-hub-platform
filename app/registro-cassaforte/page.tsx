@@ -33,6 +33,12 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import {
+  loadModels,
+  getFaceEmbeddingFromBase64,
+  findBestMatch,
+  serializeEmbedding,
+} from '@/lib/face-recognition';
 
 // ==================== TYPES ====================
 interface Employee {
@@ -346,6 +352,10 @@ export default function RegistroCassafortePage() {
   const [lastScanResult, setLastScanResult] = useState<string | undefined>();
   const [enrollmentImages, setEnrollmentImages] = useState<string[]>([]);
 
+  // Face Recognition State (face-api.js)
+  const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
+  const [enrolledFaces, setEnrolledFaces] = useState<Array<{ employee_id: number; employee_name: string; embedding: number[] }>>([]);
+
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -376,6 +386,32 @@ export default function RegistroCassafortePage() {
   // Load employees on mount
   useEffect(() => {
     loadEmployees();
+  }, []);
+
+  // Load face-api.js models and enrolled faces
+  useEffect(() => {
+    const initFaceRecognition = async () => {
+      try {
+        console.log('Loading face recognition models...');
+        const loaded = await loadModels();
+        setFaceModelsLoaded(loaded);
+        if (loaded) {
+          console.log('✅ Face models loaded successfully');
+        }
+
+        // Load enrolled faces from API
+        const response = await fetch('/api/registro-cassaforte/face-embeddings');
+        if (response.ok) {
+          const data = await response.json();
+          setEnrolledFaces(data.embeddings || []);
+          console.log(`Loaded ${data.embeddings?.length || 0} enrolled faces`);
+        }
+      } catch (error) {
+        console.error('Error initializing face recognition:', error);
+      }
+    };
+
+    initFaceRecognition();
   }, []);
 
   // ==================== API CALLS ====================
@@ -451,31 +487,44 @@ export default function RegistroCassafortePage() {
   const recognizeFace = async (imageBase64: string) => {
     setIsScanningFace(true);
     try {
-      const formData = new FormData();
-      const blob = await fetch(`data:image/jpeg;base64,${imageBase64}`).then(r => r.blob());
-      formData.append('image', blob, 'face.jpg');
+      if (!faceModelsLoaded) {
+        toast.error('Modelli di riconoscimento non ancora caricati. Riprova.');
+        return;
+      }
 
-      const response = await fetch('/api/registro-cassaforte/face-recognize', {
-        method: 'POST',
-        body: formData,
-      });
+      // Get face embedding using face-api.js (client-side)
+      const embedding = await getFaceEmbeddingFromBase64(imageBase64);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.recognized && data.employee_id) {
-          // Employee recognized
-          const employee = employees.find(e => e.id === data.employee_id);
-          if (employee) {
-            setCurrentEmployee(employee);
-            setShowFaceScanner(false);
-            toast.success(`Ciao ${employee.name}!`);
-            await loadPendingPayments(employee.id);
-            setStep('select_type');
-          }
-        } else {
-          setLastScanResult(data.message || 'Volto non riconosciuto');
-          toast.error('Volto non riconosciuto. Seleziona manualmente.');
+      if (!embedding) {
+        setLastScanResult('Nessun volto rilevato');
+        toast.error('Nessun volto rilevato. Posiziona meglio il viso.');
+        return;
+      }
+
+      console.log('Face embedding extracted, comparing with enrolled faces...');
+
+      // Compare with enrolled faces
+      if (enrolledFaces.length === 0) {
+        setLastScanResult('Nessun volto registrato nel sistema');
+        toast.error('Nessun volto registrato. Effettua la registrazione.');
+        return;
+      }
+
+      const match = findBestMatch(embedding, enrolledFaces, 0.5);
+
+      if (match) {
+        // Employee recognized!
+        const employee = employees.find(e => e.id === match.employee_id);
+        if (employee) {
+          setCurrentEmployee(employee);
+          setShowFaceScanner(false);
+          toast.success(`Ciao ${employee.employee_name || employee.name}! (${Math.round(match.similarity * 100)}% match)`);
+          await loadPendingPayments(employee.id);
+          setStep('select_type');
         }
+      } else {
+        setLastScanResult('Volto non riconosciuto');
+        toast.error('Volto non riconosciuto. Seleziona manualmente.');
       }
     } catch (e) {
       console.error('Face recognition error:', e);
@@ -537,33 +586,58 @@ export default function RegistroCassafortePage() {
       return;
     }
 
-    // We have 3 images, proceed with enrollment
+    // We have 3 images, proceed with enrollment using face-api.js
     setIsEnrolling(true);
-    setLastScanResult('Registrazione in corso...');
+    setLastScanResult('Analisi in corso...');
 
     try {
       if (!currentEmployee) {
         throw new Error('Dipendente non selezionato');
       }
 
-      const formData = new FormData();
-      formData.append('employee_id', String(currentEmployee.id));
-      formData.append('employee_name', currentEmployee.name);
-
-      // Add all images
-      for (let i = 0; i < newImages.length; i++) {
-        const blob = await fetch(`data:image/jpeg;base64,${newImages[i]}`).then(r => r.blob());
-        formData.append(`image_${i}`, blob, `face_${i}.jpg`);
+      if (!faceModelsLoaded) {
+        throw new Error('Modelli di riconoscimento non caricati');
       }
 
-      const response = await fetch('/api/registro-cassaforte/face-enroll', {
+      // Extract face embedding from the best image (use the last one as it's likely the best)
+      let bestEmbedding: Float32Array | null = null;
+
+      for (const img of newImages) {
+        const embedding = await getFaceEmbeddingFromBase64(img);
+        if (embedding) {
+          bestEmbedding = embedding;
+          break; // Use the first valid embedding
+        }
+      }
+
+      if (!bestEmbedding) {
+        throw new Error('Nessun volto rilevato nelle foto. Riprova.');
+      }
+
+      // Save embedding to database
+      const response = await fetch('/api/registro-cassaforte/face-embeddings', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_id: currentEmployee.id,
+          employee_name: currentEmployee.name,
+          embedding: serializeEmbedding(bestEmbedding),
+        }),
       });
 
       const data = await response.json();
 
       if (data.success) {
+        // Update local enrolled faces list
+        setEnrolledFaces(prev => [
+          ...prev.filter(f => f.employee_id !== currentEmployee.id),
+          {
+            employee_id: currentEmployee.id,
+            employee_name: currentEmployee.name,
+            embedding: serializeEmbedding(bestEmbedding!),
+          },
+        ]);
+
         toast.success('Volto registrato con successo!');
         setShowEnrollScanner(false);
         setEnrollmentImages([]);
@@ -571,7 +645,7 @@ export default function RegistroCassafortePage() {
         await loadPendingPayments(currentEmployee.id);
         setStep('select_type');
       } else {
-        throw new Error(data.error || 'Errore nella registrazione');
+        throw new Error(data.error || 'Errore nel salvataggio');
       }
     } catch (e: any) {
       console.error('Enrollment error:', e);

@@ -28,6 +28,9 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+
+# face embeddings data
+/data/
 .env.vercel
 .env.production
 .env.development
