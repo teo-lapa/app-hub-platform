@@ -35,9 +35,9 @@ export async function GET(request: NextRequest) {
 
     // 3. Lista tutti i contact_id distinti
     const contactsResult = await sql`
-      SELECT DISTINCT contact_id, company_id, contact_name, COUNT(*) as entries_count
+      SELECT DISTINCT contact_id, company_id, COUNT(*) as entries_count
       FROM ta_time_entries
-      GROUP BY contact_id, company_id, contact_name
+      GROUP BY contact_id, company_id
       ORDER BY entries_count DESC
       LIMIT ${limit}
     `;
@@ -65,8 +65,7 @@ export async function GET(request: NextRequest) {
           latitude,
           longitude,
           location_name,
-          break_type,
-          contact_name
+          break_type
         FROM ta_time_entries
         WHERE company_id = ${parseInt(companyId)}
         ORDER BY timestamp DESC
@@ -88,8 +87,7 @@ export async function GET(request: NextRequest) {
           latitude,
           longitude,
           location_name,
-          break_type,
-          contact_name
+          break_type
         FROM ta_time_entries
         WHERE contact_id = ${parseInt(contactId)}
         ORDER BY timestamp DESC
@@ -107,7 +105,6 @@ export async function GET(request: NextRequest) {
         entry_type,
         timestamp,
         location_name,
-        contact_name,
         created_at
       FROM ta_time_entries
       ORDER BY created_at DESC
@@ -131,8 +128,7 @@ export async function GET(request: NextRequest) {
         contact_id,
         company_id,
         entry_type,
-        timestamp,
-        contact_name
+        timestamp
       FROM ta_time_entries
       WHERE DATE(timestamp AT TIME ZONE 'Europe/Rome') = CURRENT_DATE
       ORDER BY timestamp DESC

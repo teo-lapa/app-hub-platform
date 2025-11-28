@@ -22,7 +22,6 @@ interface TimeEntry {
   location_name?: string;
   break_type?: 'coffee_break' | 'lunch_break';
   break_max_minutes?: number;
-  contact_name?: string; // Nome salvato localmente per export
 }
 
 interface BreakDetail {
@@ -160,8 +159,7 @@ export async function GET(request: NextRequest) {
             qr_code_verified,
             location_name,
             break_type,
-            break_max_minutes,
-            contact_name
+            break_max_minutes
           FROM ta_time_entries
           WHERE company_id = ${parseInt(companyId)}
             AND contact_id = ${parseInt(contactId)}
@@ -181,8 +179,7 @@ export async function GET(request: NextRequest) {
             qr_code_verified,
             location_name,
             break_type,
-            break_max_minutes,
-            contact_name
+            break_max_minutes
           FROM ta_time_entries
           WHERE company_id = ${parseInt(companyId)}
             AND timestamp < ${startDate.toISOString()}
@@ -209,12 +206,11 @@ export async function GET(request: NextRequest) {
           location_name: row.location_name,
           break_type: row.break_type,
           break_max_minutes: row.break_max_minutes,
-          contact_name: row.contact_name || undefined,
         }));
 
       console.log('[Export] Found previous entries (still on duty):', previousEntries.length);
 
-      // Query CON contact_name per evitare chiamate Odoo inutili
+      // Query entries nel periodo
       if (contactId) {
         result = await sql`
           SELECT
@@ -228,8 +224,7 @@ export async function GET(request: NextRequest) {
             qr_code_verified,
             location_name,
             break_type,
-            break_max_minutes,
-            contact_name
+            break_max_minutes
           FROM ta_time_entries
           WHERE contact_id = ${parseInt(contactId)}
             AND timestamp >= ${startDate.toISOString()}
@@ -249,8 +244,7 @@ export async function GET(request: NextRequest) {
             qr_code_verified,
             location_name,
             break_type,
-            break_max_minutes,
-            contact_name
+            break_max_minutes
           FROM ta_time_entries
           WHERE company_id = ${parseInt(companyId)}
             AND timestamp >= ${startDate.toISOString()}
@@ -271,7 +265,6 @@ export async function GET(request: NextRequest) {
         location_name: row.location_name,
         break_type: row.break_type,
         break_max_minutes: row.break_max_minutes,
-        contact_name: row.contact_name || undefined,
       }));
 
       // Combina entries precedenti + entries del periodo
@@ -291,7 +284,6 @@ export async function GET(request: NextRequest) {
         sampleEntry: entries[0] || 'no entries',
         firstTenEntries: entries.slice(0, 10).map(e => ({
           contact_id: e.contact_id,
-          contact_name: e.contact_name,
           entry_type: e.entry_type,
           timestamp: e.timestamp
         }))
@@ -321,22 +313,12 @@ export async function GET(request: NextRequest) {
     // Raggruppa per giorno e contatto
     const dailyReports: Map<string, DailyReport> = new Map();
 
-    // Prima raccogli i nomi dai dati locali (contact_name salvato nelle entries)
+    // Raccogli tutti i contact_id unici
     const contactIds = Array.from(new Set(entries.map(e => e.contact_id)));
     const contactInfo: Map<number, ContactInfo> = new Map();
 
-    // Raccogli nomi dalle entries (priorità ai dati locali)
-    for (const entry of entries) {
-      if (entry.contact_name && !contactInfo.has(entry.contact_id)) {
-        contactInfo.set(entry.contact_id, {
-          name: entry.contact_name,
-          company_name: '-', // Verrà aggiornato da Odoo se disponibile
-        });
-      }
-    }
-
-    // Per i contatti senza nome locale, prova Odoo
-    const contactsWithoutName = contactIds.filter(id => !contactInfo.has(id));
+    // Tutti i contatti devono essere recuperati da Odoo
+    const contactsWithoutName = contactIds;
 
     if (contactsWithoutName.length > 0) {
       console.log(`[Export] Fetching ${contactsWithoutName.length} contacts from Odoo:`, contactsWithoutName);
