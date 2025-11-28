@@ -103,14 +103,15 @@ export async function POST(request: NextRequest) {
     const text = await file.text()
     const lines = text.split('\n')
 
-    // Rileva tipo file (UBS o Credit Suisse)
+    // Rileva tipo file (UBS, UBS Carta di Credito, o Credit Suisse)
     const isUBS = text.includes('Kontonummer:') && text.includes('IBAN:')
+    const isUBSCreditCard = text.includes('Kartennummer') && text.includes('Buchungstext') && !text.includes('IBAN:')
     const isCreditSuisse = text.includes('Registrazioni') && text.includes('Data di registrazione,Testo')
 
-    if (!isUBS && !isCreditSuisse) {
+    if (!isUBS && !isUBSCreditCard && !isCreditSuisse) {
       return NextResponse.json({
         success: false,
-        errors: ['Formato file non riconosciuto. Supportati: UBS e Credit Suisse']
+        errors: ['Formato file non riconosciuto. Supportati: UBS, UBS Carta di Credito e Credit Suisse']
       })
     }
 
@@ -162,7 +163,30 @@ export async function POST(request: NextRequest) {
           break
         }
       }
-    } else {
+    } else if (isUBSCreditCard) {
+      // Parsea header UBS Credit Card
+      for (let i = 0; i < Math.min(10, lines.length); i++) {
+        const line = lines[i].trim()
+        if (!line || line.startsWith('sep=')) continue
+
+        const parts = line.split(';')
+
+        // Prima riga di dati ha il numero conto
+        if (parts.length >= 3 && /^\d{4}\s+\d{4}\s+\d{4}$/.test(parts[0]?.trim())) {
+          accountInfo.accountNumber = parts[0]?.trim().replace(/\s/g, '') || ''
+          accountInfo.currency = 'CHF' // UBS Credit Card è sempre CHF
+          break
+        }
+      }
+
+      // Trova header transazioni UBS Credit Card
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes('Kontonummer;') && lines[i].includes('Kartennummer;') && lines[i].includes('Buchungstext;')) {
+          headerIndex = i
+          break
+        }
+      }
+    } else if (isCreditSuisse) {
       // Parsea header Credit Suisse
       for (let i = 0; i < Math.min(10, lines.length); i++) {
         const line = lines[i].trim()
@@ -339,7 +363,89 @@ export async function POST(request: NextRequest) {
           console.error('Errore parsing riga UBS:', error)
         }
       }
-    } else {
+    } else if (isUBSCreditCard) {
+      // Parser UBS Credit Card (formato con punto e virgola)
+      for (let i = headerIndex + 1; i < lines.length; i++) {
+        const line = lines[i].trim()
+        if (!line || line.startsWith('sep=')) continue
+
+        // Parse CSV con punto e virgola
+        const parts: string[] = []
+        let current = ''
+        let inQuotes = false
+
+        for (let j = 0; j < line.length; j++) {
+          const char = line[j]
+          if (char === '"') {
+            inQuotes = !inQuotes
+          } else if (char === ';' && !inQuotes) {
+            parts.push(current.trim())
+            current = ''
+          } else {
+            current += char
+          }
+        }
+        parts.push(current.trim())
+
+        if (parts.length < 11) continue // Minimo 11 colonne
+
+        try {
+          const kontonummer = parts[0]?.trim()
+          const kartennummer = parts[1]?.trim()
+          const karteninhaber = parts[2]?.trim()
+          const einkaufsdatum = parts[3]?.trim() // Data acquisto
+          const buchungstext = parts[4]?.trim() // Descrizione
+          const branche = parts[5]?.trim() // Categoria
+          const betrag = parts[6]?.trim() // Importo originale
+          const originalwaehrung = parts[7]?.trim() // Valuta originale
+          const kurs = parts[8]?.trim() // Tasso cambio
+          const waehrung = parts[9]?.trim() // Valuta finale (CHF)
+          const belastung = parts[10]?.trim() // Addebito in CHF
+          const gutschrift = parts[11]?.trim() // Accredito in CHF (raro)
+          const buchung = parts[12]?.trim() // Data contabilizzazione
+
+          // Calcola importo
+          let amount = 0
+          let type: 'income' | 'expense' = 'expense'
+
+          if (belastung && belastung !== '') {
+            // Uscita (caso più comune per carta credito)
+            amount = -parseFloat(belastung.replace(',', '.'))
+            type = 'expense'
+            totalExpense += Math.abs(amount)
+          } else if (gutschrift && gutschrift !== '') {
+            // Entrata (es: rimborsi)
+            amount = parseFloat(gutschrift.replace(',', '.'))
+            type = 'income'
+            totalIncome += amount
+          }
+
+          if (amount === 0) continue
+
+          // Costruisci descrizione completa
+          let description = buchungstext
+          if (branche && branche !== buchungstext) {
+            description += ` (${branche})`
+          }
+          if (originalwaehrung && originalwaehrung !== 'CHF' && betrag) {
+            description += ` - ${betrag} ${originalwaehrung}`
+          }
+
+          transactions.push({
+            date: convertDateFormat(buchung || einkaufsdatum),
+            valutaDate: convertDateFormat(einkaufsdatum),
+            description,
+            beneficiary: buchungstext.substring(0, 40), // Primi 40 caratteri del testo
+            amount,
+            balance: 0, // Credit card non ha saldo running
+            transactionNr: kartennummer,
+            type
+          })
+        } catch (error) {
+          console.error('Errore parsing riga UBS Credit Card:', error)
+        }
+      }
+    } else if (isCreditSuisse) {
       // Parser Credit Suisse (formato con virgola come separatore)
       for (let i = headerIndex + 1; i < lines.length; i++) {
         const line = lines[i].trim()
