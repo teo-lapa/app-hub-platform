@@ -1,40 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { neon } from '@neondatabase/serverless';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// File-based storage for face embeddings (simple, no database required)
-const DATA_DIR = path.join(process.cwd(), 'data');
-const EMBEDDINGS_FILE = path.join(DATA_DIR, 'face-embeddings.json');
+// Get database connection
+function getDb() {
+  const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!connectionString) {
+    throw new Error('Database connection string not found');
+  }
+  return neon(connectionString);
+}
 
 interface FaceEmbedding {
+  id?: number;
   employee_id: number;
   employee_name: string;
   embedding: number[];
-  created_at: string;
+  created_at?: string;
 }
 
-/**
- * Load embeddings from file
- */
-async function loadEmbeddings(): Promise<FaceEmbedding[]> {
+// Initialize table if it doesn't exist
+async function ensureTable() {
+  const sql = getDb();
   try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    const data = await fs.readFile(EMBEDDINGS_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return [];
+    await sql`
+      CREATE TABLE IF NOT EXISTS face_embeddings (
+        id SERIAL PRIMARY KEY,
+        employee_id INTEGER NOT NULL UNIQUE,
+        employee_name TEXT NOT NULL,
+        embedding DOUBLE PRECISION[] NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_face_embeddings_employee_id
+      ON face_embeddings(employee_id)
+    `;
+  } catch (error) {
+    // Table might already exist, ignore error
+    console.log('Table check/creation:', error);
   }
-}
-
-/**
- * Save embeddings to file
- */
-async function saveEmbeddings(embeddings: FaceEmbedding[]): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(EMBEDDINGS_FILE, JSON.stringify(embeddings, null, 2));
 }
 
 /**
@@ -43,11 +50,18 @@ async function saveEmbeddings(embeddings: FaceEmbedding[]): Promise<void> {
  */
 export async function GET() {
   try {
-    const embeddings = await loadEmbeddings();
+    await ensureTable();
+    const sql = getDb();
+
+    const embeddings = await sql`
+      SELECT employee_id, employee_name, embedding, created_at
+      FROM face_embeddings
+      ORDER BY created_at DESC
+    `;
 
     return NextResponse.json({
       success: true,
-      embeddings,
+      embeddings: embeddings || [],
     });
 
   } catch (error: any) {
@@ -83,31 +97,27 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Load existing embeddings
-    const embeddings = await loadEmbeddings();
+    await ensureTable();
+    const sql = getDb();
 
-    // Remove existing embedding for this employee (if any)
-    const filteredEmbeddings = embeddings.filter(e => e.employee_id !== employee_id);
-
-    // Add new embedding
-    const newEmbedding: FaceEmbedding = {
-      employee_id,
-      employee_name,
-      embedding,
-      created_at: new Date().toISOString(),
-    };
-
-    filteredEmbeddings.push(newEmbedding);
-
-    // Save to file
-    await saveEmbeddings(filteredEmbeddings);
+    // Upsert: insert or update if employee_id already exists
+    const result = await sql`
+      INSERT INTO face_embeddings (employee_id, employee_name, embedding, created_at)
+      VALUES (${employee_id}, ${employee_name}, ${embedding}, NOW())
+      ON CONFLICT (employee_id)
+      DO UPDATE SET
+        employee_name = EXCLUDED.employee_name,
+        embedding = EXCLUDED.embedding,
+        created_at = NOW()
+      RETURNING *
+    `;
 
     console.log(`✅ Face embedding saved for ${employee_name} (ID: ${employee_id})`);
 
     return NextResponse.json({
       success: true,
       message: 'Face embedding saved',
-      data: newEmbedding,
+      data: result[0],
     });
 
   } catch (error: any) {
@@ -135,14 +145,15 @@ export async function DELETE(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Load existing embeddings
-    const embeddings = await loadEmbeddings();
+    await ensureTable();
+    const sql = getDb();
 
-    // Filter out the employee
-    const filteredEmbeddings = embeddings.filter(e => e.employee_id !== parseInt(employeeId));
+    await sql`
+      DELETE FROM face_embeddings
+      WHERE employee_id = ${parseInt(employeeId)}
+    `;
 
-    // Save back
-    await saveEmbeddings(filteredEmbeddings);
+    console.log(`🗑️ Face embedding deleted for employee ${employeeId}`);
 
     return NextResponse.json({
       success: true,
