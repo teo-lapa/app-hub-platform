@@ -518,7 +518,7 @@ export default function RegistroCassafortePage() {
         if (employee) {
           setCurrentEmployee(employee);
           setShowFaceScanner(false);
-          toast.success(`Ciao ${employee.employee_name || employee.name}! (${Math.round(match.similarity * 100)}% match)`);
+          toast.success(`Ciao ${employee.name}! (${Math.round(match.similarity * 100)}% match)`);
           await loadPendingPayments(employee.id);
           setStep('select_type');
         }
