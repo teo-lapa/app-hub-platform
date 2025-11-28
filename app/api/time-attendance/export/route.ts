@@ -147,6 +147,8 @@ export async function GET(request: NextRequest) {
       // Serve per includere clock_in che sono iniziati prima del range
       let lastEntriesBeforeResult;
       if (contactId) {
+        // Quando c'è contact_id specifico, NON filtriamo per company_id
+        // perché il contact potrebbe aver timbrato per diverse aziende
         lastEntriesBeforeResult = await sql`
           SELECT DISTINCT ON (contact_id)
             id,
@@ -161,8 +163,7 @@ export async function GET(request: NextRequest) {
             break_type,
             break_max_minutes
           FROM ta_time_entries
-          WHERE company_id = ${parseInt(companyId)}
-            AND contact_id = ${parseInt(contactId)}
+          WHERE contact_id = ${parseInt(contactId)}
             AND timestamp < ${startDate.toISOString()}
           ORDER BY contact_id, timestamp DESC
         `;
