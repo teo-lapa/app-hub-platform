@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Upload, FileText, CheckCircle, XCircle, AlertCircle, Download, TrendingUp, TrendingDown, ArrowLeft, Home } from 'lucide-react'
 import Link from 'next/link'
 import type { BankJournalConfig } from '@/lib/config/bank-journals'
-import { fetchJournalsFromOdoo, findJournalByIban } from '@/lib/config/bank-journals'
+import { getAllJournals, findJournalByIban } from '@/lib/config/bank-journals'
 
 interface Transaction {
   date: string
@@ -59,21 +59,17 @@ export default function ImportMovimentiUBS() {
     errorDetails: string[]
   } | null>(null)
 
-  // Carica i journal da Odoo all'apertura della pagina
+  // Carica i journal dalla configurazione statica
   useEffect(() => {
-    async function loadJournals() {
-      setLoadingJournals(true)
-      try {
-        const journals = await fetchJournalsFromOdoo()
-        setAvailableJournals(journals)
-      } catch (error) {
-        console.error('❌ Errore caricamento journals:', error)
-      } finally {
-        setLoadingJournals(false)
-      }
+    setLoadingJournals(true)
+    try {
+      const journals = getAllJournals()
+      setAvailableJournals(journals)
+    } catch (error) {
+      console.error('❌ Errore caricamento journals:', error)
+    } finally {
+      setLoadingJournals(false)
     }
-
-    loadJournals()
   }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
