@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 import jwt from 'jsonwebtoken';
 
 export const dynamic = 'force-dynamic';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'lapa-hub-secret-key-2024';
-
-// Extend jsPDF type for autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
 
 interface ExtractedProduct {
   id: string;
@@ -30,14 +21,6 @@ interface ExtractedProduct {
  * POST /api/inventario-vocale/export/pdf
  *
  * Export inventory to PDF
- *
- * Request: JSON
- * {
- *   session_id?: string,  // If provided, export from database
- *   products?: ExtractedProduct[],  // If provided, export directly
- *   location?: string,
- *   transcription?: string
- * }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -55,9 +38,9 @@ export async function POST(request: NextRequest) {
     const token = request.cookies.get('token')?.value;
     if (token) {
       try {
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
-        userName = decoded.name || '';
-        companyName = decoded.azienda || '';
+        const decoded = jwt.verify(token, JWT_SECRET) as Record<string, unknown>;
+        userName = String(decoded.name || '');
+        companyName = String(decoded.azienda || '');
       } catch (e) {
         console.warn('[VOICE-INVENTORY] Invalid token');
       }
@@ -86,7 +69,6 @@ export async function POST(request: NextRequest) {
       userName = row.user_name || userName;
       companyName = row.company_name || companyName;
     } else if (directProducts) {
-      // Use direct data
       products = directProducts;
       location = directLocation || '';
       transcription = directTranscription || '';
@@ -99,32 +81,41 @@ export async function POST(request: NextRequest) {
 
     // Create PDF
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
 
     // Header
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Inventario Vocale', 105, 20, { align: 'center' });
+    doc.setFillColor(147, 51, 234); // Purple
+    doc.rect(0, 0, pageWidth, 35, 'F');
 
-    // Company name
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INVENTARIO VOCALE', pageWidth / 2, 18, { align: 'center' });
+
     if (companyName) {
-      doc.setFontSize(14);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
-      doc.text(companyName, 105, 30, { align: 'center' });
+      doc.text(companyName, pageWidth / 2, 28, { align: 'center' });
     }
 
-    // Metadata
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+
+    // Metadata section
+    let yPos = 50;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    let yPos = 45;
 
-    doc.text(`Data: ${createdAt.toLocaleDateString('it-IT', {
+    const dateStr = createdAt.toLocaleDateString('it-IT', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    })}`, 14, yPos);
+    });
+
+    doc.text(`Data: ${dateStr}`, 14, yPos);
     yPos += 6;
 
     if (location) {
@@ -137,76 +128,105 @@ export async function POST(request: NextRequest) {
       yPos += 6;
     }
 
-    doc.text(`Totale prodotti: ${products.length}`, 14, yPos);
-    yPos += 10;
-
-    // Summary by category
+    // Summary
     const foodProducts = products.filter(p => p.category === 'food');
     const nonFoodProducts = products.filter(p => p.category === 'non_food');
 
-    doc.setFont('helvetica', 'bold');
-    doc.text('Riepilogo:', 14, yPos);
-    yPos += 6;
-    doc.setFont('helvetica', 'normal');
-    doc.text(`- Prodotti Food: ${foodProducts.length}`, 20, yPos);
     yPos += 5;
-    doc.text(`- Prodotti Non-Food: ${nonFoodProducts.length}`, 20, yPos);
+    doc.setFillColor(240, 240, 240);
+    doc.rect(14, yPos - 4, pageWidth - 28, 22, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('RIEPILOGO', 20, yPos + 2);
+    yPos += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Totale prodotti: ${products.length}`, 20, yPos);
+    doc.text(`Food: ${foodProducts.length}`, 80, yPos);
+    doc.text(`Non-Food: ${nonFoodProducts.length}`, 120, yPos);
+    yPos += 15;
+
+    // Products header
+    doc.setFillColor(147, 51, 234);
+    doc.rect(14, yPos, pageWidth - 28, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('PRODOTTO', 16, yPos + 5.5);
+    doc.text('QTA', 100, yPos + 5.5);
+    doc.text('CATEGORIA', 130, yPos + 5.5);
+    doc.text('CONF.', 165, yPos + 5.5);
     yPos += 10;
 
-    // Products table
-    const tableData = products.map(p => [
-      p.name,
-      `${p.quantity} ${p.unit}`,
-      p.category === 'food' ? 'Food' : 'Non-Food',
-      p.confidence === 'high' ? 'Alta' : p.confidence === 'medium' ? 'Media' : 'Bassa',
-      p.notes || '-'
-    ]);
+    // Products list
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
 
-    doc.autoTable({
-      startY: yPos,
-      head: [['Prodotto', 'Quantità', 'Categoria', 'Confidenza', 'Note']],
-      body: tableData,
-      headStyles: {
-        fillColor: [147, 51, 234], // Purple
-        textColor: 255,
-        fontStyle: 'bold'
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245]
-      },
-      styles: {
-        fontSize: 9,
-        cellPadding: 3
-      },
-      columnStyles: {
-        0: { cellWidth: 60 },
-        1: { cellWidth: 30 },
-        2: { cellWidth: 25 },
-        3: { cellWidth: 25 },
-        4: { cellWidth: 40 }
+    products.forEach((product, index) => {
+      // Check if need new page
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
       }
+
+      // Alternate row background
+      if (index % 2 === 0) {
+        doc.setFillColor(250, 250, 250);
+        doc.rect(14, yPos - 4, pageWidth - 28, 8, 'F');
+      }
+
+      // Truncate long names
+      const name = product.name.length > 40 ? product.name.substring(0, 37) + '...' : product.name;
+
+      doc.text(name, 16, yPos);
+      doc.text(`${product.quantity} ${product.unit}`, 100, yPos);
+      doc.text(product.category === 'food' ? 'Food' : 'Non-Food', 130, yPos);
+
+      // Confidence with color
+      const confText = product.confidence === 'high' ? 'Alta' : product.confidence === 'medium' ? 'Media' : 'Bassa';
+      if (product.confidence === 'high') {
+        doc.setTextColor(34, 197, 94); // Green
+      } else if (product.confidence === 'medium') {
+        doc.setTextColor(234, 179, 8); // Yellow
+      } else {
+        doc.setTextColor(239, 68, 68); // Red
+      }
+      doc.text(confText, 165, yPos);
+      doc.setTextColor(0, 0, 0);
+
+      yPos += 8;
     });
 
-    // Transcription (if not too long)
+    // Transcription
     if (transcription && transcription.length < 500) {
-      const finalY = doc.lastAutoTable.finalY + 10;
-      doc.setFontSize(10);
+      yPos += 10;
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFillColor(240, 240, 240);
+      doc.rect(14, yPos - 4, pageWidth - 28, 6, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.text('Trascrizione originale:', 14, finalY);
+      doc.setFontSize(10);
+      doc.text('TRASCRIZIONE ORIGINALE', 16, yPos);
+      yPos += 8;
+
       doc.setFont('helvetica', 'italic');
-      const splitText = doc.splitTextToSize(`"${transcription}"`, 180);
-      doc.text(splitText, 14, finalY + 6);
+      doc.setFontSize(9);
+      const splitText = doc.splitTextToSize(`"${transcription}"`, pageWidth - 32);
+      doc.text(splitText, 16, yPos);
     }
 
-    // Footer
+    // Footer on all pages
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
+      doc.setTextColor(128, 128, 128);
       doc.text(
         `Generato da LAPA - Inventario Vocale | Pagina ${i} di ${pageCount}`,
-        105,
+        pageWidth / 2,
         doc.internal.pageSize.height - 10,
         { align: 'center' }
       );
