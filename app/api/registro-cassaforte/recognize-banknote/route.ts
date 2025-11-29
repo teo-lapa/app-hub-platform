@@ -54,15 +54,24 @@ export async function POST(request: NextRequest) {
    - Look at the large number printed on the note
    - Colors: 10=Yellow, 20=Red, 50=Green, 100=Blue, 200=Brown, 1000=Purple
 
-2. SERIAL NUMBER: Read the serial number printed on the banknote
-   - Swiss banknotes have a serial number format like: 12A3456789 or similar
-   - It's usually printed near the edges of the note
-   - Look for alphanumeric codes (letters and numbers)
+2. SERIAL NUMBER: Read the COMPLETE serial number printed on the banknote
+   - Swiss banknotes have EXACTLY 10 characters: 2 digits + 1 letter + 7 digits (e.g., "18C4545167")
+   - The serial number is printed near the edges of the note
+   - CRITICAL: You MUST read ALL 10 characters clearly
+   - If ANY character is obscured, covered, blurry, or unreadable, return null
+   - DO NOT guess or invent missing characters
+   - DO NOT complete partial serial numbers
+   - Only return a serial number if you can read ALL 10 characters with certainty
 
 Respond ONLY with JSON:
-{"denomination": 100, "serial_number": "12A3456789", "confidence": 0.95}
+{"denomination": 100, "serial_number": "18C4545167", "confidence": 0.95}
 
-If serial number is not visible or unreadable, use "serial_number": null
+IMPORTANT: Return "serial_number": null if:
+- Any part of the serial number is covered (e.g., by a finger)
+- Any character is blurry or unclear
+- You cannot read all 10 characters with 100% certainty
+- The serial number is not fully visible in the image
+
 If not a CHF banknote: {"denomination": 0, "serial_number": null, "confidence": 0}`,
               },
               {
