@@ -306,9 +306,11 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
           className="absolute inset-0 flex items-center justify-center pointer-events-none z-20"
         >
           <div className={`px-8 py-6 rounded-3xl ${
-            lastResult.includes('CHF') && !lastResult.includes('non riconosciuta')
-              ? 'bg-emerald-500/90'
-              : 'bg-red-500/80'
+            lastResult.includes('DUPLICATO')
+              ? 'bg-amber-500/90'
+              : lastResult.includes('✓')
+                ? 'bg-emerald-500/90'
+                : 'bg-red-500/80'
           }`}>
             <p className="text-white text-3xl font-bold text-center">{lastResult}</p>
           </div>
@@ -603,6 +605,12 @@ export default function RegistroCassafortePage() {
     }
   };
 
+  // Helper to check if serial number already exists
+  const isSerialNumberDuplicate = (serialNumber: string): boolean => {
+    if (!serialNumber) return false;
+    return banknotes.some(b => b.serial_numbers.includes(serialNumber));
+  };
+
   const recognizeBanknote = async (imageBase64: string) => {
     setIsScanningBanknote(true);
     setLastScanResult('Analisi in corso...');
@@ -619,10 +627,21 @@ export default function RegistroCassafortePage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.denomination > 0) {
-          // Banknote recognized - add to count and save serial number
           const denomination = data.denomination;
           const serialNumber = data.serial_number;
 
+          // Check for duplicate serial number
+          if (serialNumber && isSerialNumberDuplicate(serialNumber)) {
+            setLastScanResult(`⚠️ DUPLICATO! S/N: ${serialNumber} già registrato`);
+            toast.error('Questa banconota è già stata scansionata!');
+            // Vibrate longer for error
+            if (navigator.vibrate) {
+              navigator.vibrate([100, 50, 100, 50, 100]);
+            }
+            return;
+          }
+
+          // Banknote recognized and not duplicate - add to count
           setBanknotes(prev => prev.map(b =>
             b.denomination === denomination
               ? {
@@ -637,11 +656,11 @@ export default function RegistroCassafortePage() {
 
           // Show result with serial number if available
           const resultMsg = serialNumber
-            ? `${denomination} CHF - S/N: ${serialNumber}`
-            : `${denomination} CHF riconosciuto!`;
+            ? `✓ ${denomination} CHF - S/N: ${serialNumber}`
+            : `✓ ${denomination} CHF riconosciuto!`;
           setLastScanResult(resultMsg);
 
-          // Vibrate for feedback if available
+          // Vibrate for success
           if (navigator.vibrate) {
             navigator.vibrate(200);
           }
