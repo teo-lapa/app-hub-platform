@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
     const productIds = Array.from(new Set(orderLines.map((line: any) => line.product_id[0])));
     console.log(`✅ Found ${orderLines.length} order lines with ${productIds.length} unique products`);
 
-    // STEP 3: Batch fetch ALL products (cost price)
+    // STEP 3: Batch fetch ALL products (cost price + product_tmpl_id for pricelist matching)
     console.log('🏷️ [ANALISI-MENSILE-API] Batch fetching products...');
     const products = await callOdoo(
       cookies,
@@ -171,12 +171,20 @@ export async function GET(request: NextRequest) {
           ['id', 'in', productIds],
           ['company_id', 'in', [1, false]]
         ],
-        fields: ['id', 'name', 'default_code', 'list_price', 'standard_price']
+        fields: ['id', 'name', 'default_code', 'list_price', 'standard_price', 'product_tmpl_id']
       }
     );
 
     const productMap = new Map(products.map((p: any) => [p.id, p]));
-    console.log(`✅ Fetched ${products.length} products`);
+    // Also create a map from product_id to product_tmpl_id for pricelist matching
+    const productToTemplateMap = new Map<number, number>();
+    products.forEach((p: any) => {
+      if (p.product_tmpl_id) {
+        productToTemplateMap.set(p.id, p.product_tmpl_id[0]);
+      }
+    });
+    const productTmplIds = Array.from(new Set(productToTemplateMap.values()));
+    console.log(`✅ Fetched ${products.length} products (${productTmplIds.length} unique templates)`);
 
     // STEP 4: Fetch pricelists to get base_pricelist info
     console.log('💰 [ANALISI-MENSILE-API] Fetching pricelists...');
@@ -195,7 +203,8 @@ export async function GET(request: NextRequest) {
     console.log(`✅ Fetched ${pricelists.length} pricelists`);
 
     // STEP 5: Batch fetch ALL pricelist items for customer pricelists
-    console.log('📋 [ANALISI-MENSILE-API] Batch fetching pricelist items...');
+    // Search by BOTH product_id (variant) AND product_tmpl_id (template) since rules can be defined at either level
+    console.log('📋 [ANALISI-MENSILE-API] Batch fetching pricelist items (variant + template rules)...');
     const pricelistItems = await callOdoo(
       cookies,
       'product.pricelist.item',
@@ -204,21 +213,37 @@ export async function GET(request: NextRequest) {
       {
         domain: [
           ['pricelist_id', 'in', pricelistIds],
-          ['product_id', 'in', productIds]
+          '|',
+          ['product_id', 'in', productIds],
+          ['product_tmpl_id', 'in', productTmplIds]
         ],
-        fields: ['id', 'pricelist_id', 'product_id', 'compute_price', 'fixed_price', 'base', 'base_pricelist_id', 'price_discount', 'price_surcharge']
+        fields: ['id', 'pricelist_id', 'product_id', 'product_tmpl_id', 'applied_on', 'compute_price', 'fixed_price', 'base', 'base_pricelist_id', 'price_discount', 'price_surcharge']
       }
     );
 
-    // Create lookup map: "pricelistId-productId" -> item
+    // Create lookup maps:
+    // - "pricelistId-productId" -> item (for variant-specific rules)
+    // - "pricelistId-tmplId" -> item (for template-level rules)
     const customerPricelistItemMap = new Map<string, any>();
+    const customerPricelistTmplMap = new Map<string, any>();
     const basePricelistIdsNeeded = new Set<number>();
 
     pricelistItems.forEach((item: any) => {
       const pricelistId = item.pricelist_id[0];
-      const productId = item.product_id[0];
-      const key = `${pricelistId}-${productId}`;
-      customerPricelistItemMap.set(key, item);
+
+      // Variant-specific rule (applied_on = '0_product_variant')
+      if (item.product_id) {
+        const productId = item.product_id[0];
+        const key = `${pricelistId}-${productId}`;
+        customerPricelistItemMap.set(key, item);
+      }
+
+      // Template-level rule (applied_on = '1_product')
+      if (item.product_tmpl_id) {
+        const tmplId = item.product_tmpl_id[0];
+        const key = `${pricelistId}-${tmplId}`;
+        customerPricelistTmplMap.set(key, item);
+      }
 
       // Collect base pricelist IDs for items that use formula with base=pricelist
       if (item.base === 'pricelist' && item.base_pricelist_id) {
@@ -226,7 +251,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    console.log(`✅ Found ${pricelistItems.length} pricelist items`);
+    console.log(`✅ Found ${pricelistItems.length} pricelist items (${customerPricelistItemMap.size} variant rules, ${customerPricelistTmplMap.size} template rules)`);
 
     // STEP 6: Fetch base pricelist items (for products without fixed price)
     // First, get the "global" rules from customer pricelists (applied_on = '3_global' with base = pricelist)
@@ -257,11 +282,12 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ Found ${globalRules.length} global rules, need ${basePricelistIdsNeeded.size} base pricelists`);
 
-    // STEP 7: Fetch items from base pricelists
+    // STEP 7: Fetch items from base pricelists (also including template-level rules)
     let basePricelistItemMap = new Map<string, any>();
+    let basePricelistTmplMap = new Map<string, any>();
 
     if (basePricelistIdsNeeded.size > 0) {
-      console.log('📋 [ANALISI-MENSILE-API] Fetching base pricelist items...');
+      console.log('📋 [ANALISI-MENSILE-API] Fetching base pricelist items (variant + template)...');
       const basePricelistItems = await callOdoo(
         cookies,
         'product.pricelist.item',
@@ -270,21 +296,34 @@ export async function GET(request: NextRequest) {
         {
           domain: [
             ['pricelist_id', 'in', Array.from(basePricelistIdsNeeded)],
+            ['compute_price', '=', 'fixed'],
+            '|',
             ['product_id', 'in', productIds],
-            ['compute_price', '=', 'fixed']
+            ['product_tmpl_id', 'in', productTmplIds]
           ],
-          fields: ['id', 'pricelist_id', 'product_id', 'fixed_price']
+          fields: ['id', 'pricelist_id', 'product_id', 'product_tmpl_id', 'fixed_price']
         }
       );
 
       basePricelistItems.forEach((item: any) => {
         const pricelistId = item.pricelist_id[0];
-        const productId = item.product_id[0];
-        const key = `${pricelistId}-${productId}`;
-        basePricelistItemMap.set(key, item);
+
+        // Variant-specific rule
+        if (item.product_id) {
+          const productId = item.product_id[0];
+          const key = `${pricelistId}-${productId}`;
+          basePricelistItemMap.set(key, item);
+        }
+
+        // Template-level rule
+        if (item.product_tmpl_id) {
+          const tmplId = item.product_tmpl_id[0];
+          const key = `${pricelistId}-${tmplId}`;
+          basePricelistTmplMap.set(key, item);
+        }
       });
 
-      console.log(`✅ Fetched ${basePricelistItems.length} base pricelist items`);
+      console.log(`✅ Fetched ${basePricelistItems.length} base pricelist items (${basePricelistItemMap.size} variant, ${basePricelistTmplMap.size} template)`);
     }
 
     // Fetch base pricelist names
@@ -344,15 +383,25 @@ export async function GET(request: NextRequest) {
       const customerPricelistId = order.pricelist_id?.[0];
 
       // Check if product has fixed price in customer pricelist
-      const customerItemKey = `${customerPricelistId}-${line.product_id[0]}`;
-      const customerItem = customerPricelistItemMap.get(customerItemKey);
+      // Priority: 1. Variant-specific rule (product_id), 2. Template-level rule (product_tmpl_id)
+      const productId = line.product_id[0];
+      const productTmplId = productToTemplateMap.get(productId);
+
+      const variantItemKey = `${customerPricelistId}-${productId}`;
+      const tmplItemKey = productTmplId ? `${customerPricelistId}-${productTmplId}` : null;
+
+      // Check variant rule first, then template rule
+      let customerItem = customerPricelistItemMap.get(variantItemKey);
+      if (!customerItem && tmplItemKey) {
+        customerItem = customerPricelistTmplMap.get(tmplItemKey);
+      }
 
       let priceGroup: 'fixed' | 'base_pricelist';
       let referencePrice: number;
       let referencePricelistName: string;
 
       if (customerItem && customerItem.compute_price === 'fixed') {
-        // GROUP 1: Fixed price in customer pricelist
+        // GROUP 1: Fixed price in customer pricelist (variant or template rule)
         priceGroup = 'fixed';
         referencePrice = customerItem.fixed_price;
         referencePricelistName = pricelistMap.get(customerPricelistId)?.name || 'Listino Cliente';
@@ -365,9 +414,14 @@ export async function GET(request: NextRequest) {
         const basePricelistId = globalRule?.base_pricelist_id?.[0];
 
         if (basePricelistId) {
-          // Look for fixed price in base pricelist
-          const baseItemKey = `${basePricelistId}-${line.product_id[0]}`;
-          const baseItem = basePricelistItemMap.get(baseItemKey);
+          // Look for fixed price in base pricelist (check variant first, then template)
+          const baseVariantKey = `${basePricelistId}-${productId}`;
+          const baseTmplKey = productTmplId ? `${basePricelistId}-${productTmplId}` : null;
+
+          let baseItem = basePricelistItemMap.get(baseVariantKey);
+          if (!baseItem && baseTmplKey) {
+            baseItem = basePricelistTmplMap.get(baseTmplKey);
+          }
 
           if (baseItem) {
             referencePrice = baseItem.fixed_price;
