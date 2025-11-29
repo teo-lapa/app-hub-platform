@@ -859,6 +859,11 @@ export default function RegistroCassafortePage() {
   );
 
   // Employee Selection (Enrollment)
+  // Filter out employees who already have face enrolled (they must use face recognition)
+  const availableEmployees = employees.filter(emp =>
+    !enrolledFaces.some(face => face.employee_id === emp.id)
+  );
+
   const renderEnrollmentScreen = () => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -879,9 +884,9 @@ export default function RegistroCassafortePage() {
         </div>
       </div>
 
-      {/* Employee List */}
+      {/* Employee List - only show employees without face enrolled */}
       <div className="grid grid-cols-2 gap-4 max-w-4xl mx-auto">
-        {employees.map((employee) => (
+        {availableEmployees.map((employee) => (
           <motion.button
             key={employee.id}
             whileHover={{ scale: 1.02 }}
@@ -901,6 +906,14 @@ export default function RegistroCassafortePage() {
           </motion.button>
         ))}
       </div>
+
+      {availableEmployees.length === 0 && employees.length > 0 && (
+        <div className="text-center py-12">
+          <UserCheck className="w-16 h-16 text-emerald-400/40 mx-auto mb-4" />
+          <p className="text-white/60 text-lg">Tutti i dipendenti hanno già registrato il volto</p>
+          <p className="text-white/40 mt-2">Usa il riconoscimento facciale per accedere</p>
+        </div>
+      )}
 
       {employees.length === 0 && (
         <div className="text-center py-12">
