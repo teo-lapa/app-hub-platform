@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Tab } from '@headlessui/react';
 import {
   ArrowLeft,
   TrendingUp,
@@ -20,12 +21,16 @@ import {
   Layers,
   Search,
   ExternalLink,
-  Percent
+  Percent,
+  FileText,
+  AlertTriangle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { MonthlyAnalysisLine, MonthlyAnalysisStats, MonthlyAnalysisResponse } from '@/lib/types/monthly-analysis';
+import FattureBozzaTab from '@/components/controllo-prezzi/FattureBozzaTab';
+import AlertTab from '@/components/controllo-prezzi/AlertTab';
 import toast from 'react-hot-toast';
 
 export default function AnalisiMensilePage() {
@@ -327,6 +332,44 @@ export default function AnalisiMensilePage() {
       />
 
       <main className="max-w-7xl mx-auto px-4 py-6 pb-32">
+        <Tab.Group>
+          {/* Tab Navigation */}
+          <Tab.List className="flex gap-2 mb-6 glass rounded-xl p-2">
+            <Tab className={({ selected }) =>
+              `flex-1 px-6 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+                selected
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`
+            }>
+              <Package className="w-5 h-5" />
+              Analisi Ordini
+            </Tab>
+            <Tab className={({ selected }) =>
+              `flex-1 px-6 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+                selected
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`
+            }>
+              <FileText className="w-5 h-5" />
+              Fatture in Bozza
+            </Tab>
+            <Tab className={({ selected }) =>
+              `flex-1 px-6 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+                selected
+                  ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`
+            }>
+              <AlertTriangle className="w-5 h-5" />
+              Alert
+            </Tab>
+          </Tab.List>
+
+          <Tab.Panels>
+            {/* Tab 1: Analisi Ordini (contenuto esistente) */}
+            <Tab.Panel>
         {/* Controls Bar */}
         <div className="glass rounded-2xl p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
@@ -1065,6 +1108,19 @@ export default function AnalisiMensilePage() {
             </div>
           </>
         )}
+            </Tab.Panel>
+
+            {/* Tab 2: Fatture in Bozza */}
+            <Tab.Panel>
+              <FattureBozzaTab />
+            </Tab.Panel>
+
+            {/* Tab 3: Alert */}
+            <Tab.Panel>
+              <AlertTab />
+            </Tab.Panel>
+          </Tab.Panels>
+        </Tab.Group>
       </main>
 
       {/* Selection Summary Bar - Fixed at bottom */}

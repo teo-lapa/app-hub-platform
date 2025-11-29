@@ -62,3 +62,56 @@ export interface MonthlyAnalysisResponse {
   performanceMs: number;
   error?: string;
 }
+
+// ============================================================
+// Types per Fatture in Bozza
+// ============================================================
+
+export interface DraftInvoiceAnalysis {
+  invoiceId: number;
+  invoiceName: string;
+  customerId: number;
+  customerName: string;
+  totalAmount: number;
+  invoiceDate: string;
+  growthEmoji: string;
+  growthType: 'new' | 'higher' | 'lower' | 'equal';
+  deltaVsPrevious: number;
+  previousInvoiceTotal: number | null;
+  previousInvoiceId: number | null;
+  anomalyProducts: AnomalyProduct[];
+}
+
+export interface AnomalyProduct {
+  productId: number;
+  productName: string;
+  prices: PriceData[];
+  hasMultiplePrices: boolean;
+  hasZeroPrice: boolean;
+  hasHighMargin: boolean;
+  hasOfferTag: boolean;
+}
+
+export interface PriceData {
+  priceUnit: number;
+  saleOrderId: number | null;
+  saleOrderName: string | null;
+  saleOrderTags: string[];
+  marginPercent: number;
+}
+
+export interface DraftInvoiceStats {
+  totalInvoices: number;
+  newCustomers: number;
+  higherPrices: number;
+  lowerPrices: number;
+  totalAnomalies: number;
+}
+
+export interface DraftInvoiceResponse {
+  success: boolean;
+  invoices: DraftInvoiceAnalysis[];
+  stats: DraftInvoiceStats;
+  performanceMs: number;
+  error?: string;
+}
