@@ -93,23 +93,54 @@ export async function POST(request: NextRequest) {
     let partnerName: string = '';
 
     if (body.type === 'from_delivery' && body.picking_ids && body.picking_ids.length > 0) {
-      // Per versamenti da consegne, recupera il cliente reale dal primo picking
+      // Per versamenti da consegne, recupera il cliente AZIENDA (non il contatto di consegna)
       try {
         const pickings = await sessionManager.callKw(
           'stock.picking',
           'search_read',
           [[['id', 'in', body.picking_ids]]],
-          { fields: ['id', 'partner_id'], limit: 1 }
+          { fields: ['id', 'partner_id', 'sale_id'], limit: 1 }
         );
 
         if (pickings.length > 0 && pickings[0].partner_id) {
-          partnerId = Array.isArray(pickings[0].partner_id)
+          const deliveryPartnerId = Array.isArray(pickings[0].partner_id)
             ? pickings[0].partner_id[0]
             : pickings[0].partner_id;
-          partnerName = Array.isArray(pickings[0].partner_id)
-            ? pickings[0].partner_id[1]
-            : '';
-          console.log(`📦 Cliente recuperato dal picking: ${partnerName} (ID: ${partnerId})`);
+
+          // Recupera il partner di consegna per trovare l'azienda madre
+          const deliveryPartner = await sessionManager.callKw(
+            'res.partner',
+            'search_read',
+            [[['id', '=', deliveryPartnerId]]],
+            { fields: ['id', 'name', 'parent_id', 'commercial_partner_id', 'type'], limit: 1 }
+          );
+
+          if (deliveryPartner.length > 0) {
+            // commercial_partner_id è l'azienda principale per la fatturazione
+            // Altrimenti usa parent_id, altrimenti il partner stesso se è già l'azienda
+            if (deliveryPartner[0].commercial_partner_id) {
+              partnerId = Array.isArray(deliveryPartner[0].commercial_partner_id)
+                ? deliveryPartner[0].commercial_partner_id[0]
+                : deliveryPartner[0].commercial_partner_id;
+              partnerName = Array.isArray(deliveryPartner[0].commercial_partner_id)
+                ? deliveryPartner[0].commercial_partner_id[1]
+                : '';
+              console.log(`🏢 Azienda commerciale: ${partnerName} (ID: ${partnerId})`);
+            } else if (deliveryPartner[0].parent_id) {
+              partnerId = Array.isArray(deliveryPartner[0].parent_id)
+                ? deliveryPartner[0].parent_id[0]
+                : deliveryPartner[0].parent_id;
+              partnerName = Array.isArray(deliveryPartner[0].parent_id)
+                ? deliveryPartner[0].parent_id[1]
+                : '';
+              console.log(`🏢 Azienda madre: ${partnerName} (ID: ${partnerId})`);
+            } else {
+              // Il partner è già l'azienda (nessun parent)
+              partnerId = deliveryPartnerId;
+              partnerName = deliveryPartner[0].name || '';
+              console.log(`🏢 Partner diretto (azienda): ${partnerName} (ID: ${partnerId})`);
+            }
+          }
         }
       } catch (pickingError) {
         console.warn('⚠️ Errore recupero cliente dal picking:', pickingError);

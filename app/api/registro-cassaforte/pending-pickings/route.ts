@@ -73,6 +73,17 @@ export async function GET(request: NextRequest) {
         { fields: ['id', 'body', 'date'] }
       );
 
+      // Prima controlla se questo picking è già stato versato in cassaforte
+      const alreadyDeposited = messages.some((msg: any) => {
+        const body = msg.body?.toLowerCase() || '';
+        return body.includes('versato in cassaforte');
+      });
+
+      // Se già versato, salta questo picking
+      if (alreadyDeposited) {
+        continue;
+      }
+
       // Cerca messaggi con "INCASSO PAGAMENTO" e metodo "contanti" o "cash"
       for (const msg of messages) {
         const body = msg.body?.toLowerCase() || '';
@@ -82,9 +93,6 @@ export async function GET(request: NextRequest) {
           const amountMatch = body.match(/(?:€|chf)\s*([\d.,]+)/i);
           if (amountMatch) {
             const amount = parseFloat(amountMatch[1].replace(',', '.'));
-
-            // TODO: Verificare se questo incasso è già stato versato
-            // Per ora, aggiungiamo tutti gli incassi trovati
 
             pendingPayments.push({
               picking_id: picking.id,
