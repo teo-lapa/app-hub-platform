@@ -183,9 +183,9 @@ export async function findSimilarHighPerformingPosts(params: {
       WHERE
         sp.status = 'shared'
         AND sp.engagement_rate >= ${minEngagement}
-        ${params.platform ? sql`AND pe.platform = ${params.platform}` : sql``}
-        ${params.productCategory ? sql`AND pe.product_category = ${params.productCategory}` : sql``}
-        ${params.targetCanton ? sql`AND pe.target_canton = ${params.targetCanton}` : sql``}
+        AND (${!params.platform} OR pe.platform = ${params.platform || ''})
+        AND (${!params.productCategory} OR pe.product_category = ${params.productCategory || ''})
+        AND (${!params.targetCanton} OR pe.target_canton = ${params.targetCanton || ''})
         AND 1 - (pe.embedding <=> ${embeddingVector}::vector) > 0.78
       ORDER BY
         pe.performance_score DESC,

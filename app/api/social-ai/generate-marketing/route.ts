@@ -335,7 +335,7 @@ export async function POST(request: NextRequest) {
           ${socialPlatform},
           ${contentType},
           ${copywritingResult.caption},
-          ${copywritingResult.hashtags},
+          ${JSON.stringify(copywritingResult.hashtags)},
           ${copywritingResult.cta},
           ${tone},
           ${videoStyle},

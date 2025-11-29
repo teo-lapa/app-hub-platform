@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS social_posts (
 
   -- Generated Content
   caption TEXT NOT NULL,
-  hashtags TEXT[], -- Array di hashtags (es: ['#ZurichFood', '#SwissGastro'])
+  hashtags TEXT, -- JSON array di hashtags (es: '["#ZurichFood", "#SwissGastro"]')
   cta TEXT, -- Call to Action
 
   -- Media URLs (Vercel Blob Storage)
@@ -173,11 +173,11 @@ CREATE TABLE IF NOT EXISTS brand_settings (
 
   -- Default Preferences
   default_tone VARCHAR(50) CHECK (default_tone IN ('professional', 'casual', 'fun', 'luxury')),
-  default_platforms TEXT[] DEFAULT ARRAY['instagram', 'facebook'], -- Preferenze piattaforme
+  default_platforms TEXT DEFAULT '["instagram","facebook"]', -- JSON array preferenze piattaforme
   default_canton VARCHAR(100), -- Canton di default per targeting
 
   -- Hashtags Personalizzati
-  custom_hashtags TEXT[] DEFAULT '{}', -- Hashtags sempre inclusi
+  custom_hashtags TEXT DEFAULT '[]', -- JSON array hashtags sempre inclusi
 
   -- Timestamps
   created_at TIMESTAMP DEFAULT NOW(),
