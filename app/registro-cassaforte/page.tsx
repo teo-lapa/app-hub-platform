@@ -970,16 +970,6 @@ export default function RegistroCassafortePage() {
               Registra il mio volto
             </div>
           </motion.button>
-
-          {/* Skip Button */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleSkipEnrollment}
-            className="w-full p-5 bg-white/10 hover:bg-white/20 rounded-2xl text-white text-lg font-medium transition-colors"
-          >
-            Salta per ora e continua
-          </motion.button>
         </div>
 
         <p className="text-center text-white/40 text-sm mt-6">
