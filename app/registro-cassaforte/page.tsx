@@ -933,9 +933,18 @@ export default function RegistroCassafortePage() {
       toast.error('Inserisci il nome del cliente');
       return;
     }
-    // Start video recording
-    await startVideoRecording();
-    setStep('counting');
+    // Show loading state while starting video recording
+    setIsLoading(true);
+    try {
+      // Start video recording
+      await startVideoRecording();
+      setStep('counting');
+    } catch (error) {
+      console.error('Errore avvio registrazione:', error);
+      toast.error('Errore durante l\'avvio della registrazione');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleConfirm = () => {
@@ -1249,10 +1258,20 @@ export default function RegistroCassafortePage() {
         {selectedPayments.length > 0 && (
           <button
             onClick={handleProceedToCounting}
-            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 rounded-xl text-white font-semibold flex items-center gap-2 transition-colors"
+            disabled={isLoading}
+            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 disabled:cursor-wait rounded-xl text-white font-semibold flex items-center gap-2 transition-colors"
           >
-            Continua
-            <ChevronRight className="w-5 h-5" />
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Caricamento...
+              </>
+            ) : (
+              <>
+                Continua
+                <ChevronRight className="w-5 h-5" />
+              </>
+            )}
           </button>
         )}
       </div>
@@ -1370,10 +1389,17 @@ export default function RegistroCassafortePage() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={handleProceedToCounting}
-          disabled={!extraCustomerName.trim()}
-          className="w-full py-5 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl text-white text-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!extraCustomerName.trim() || isLoading}
+          className="w-full py-5 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl text-white text-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
         >
-          Continua al Conteggio
+          {isLoading ? (
+            <>
+              <Loader2 className="w-6 h-6 animate-spin" />
+              Caricamento...
+            </>
+          ) : (
+            'Continua al Conteggio'
+          )}
         </motion.button>
       </div>
     </motion.div>
