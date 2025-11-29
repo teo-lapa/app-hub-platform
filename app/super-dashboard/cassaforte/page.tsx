@@ -16,6 +16,8 @@ import {
   Calendar,
   Banknote,
   X,
+  FileText,
+  ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
@@ -28,6 +30,8 @@ interface PendingPayment {
   amount: number;
   date: string;
   driver_name: string;
+  invoice_id: number | null;
+  invoice_name: string | null;
 }
 
 interface CassaforteItem {
@@ -317,9 +321,23 @@ export default function CassafortePage() {
                         <span>{item.picking_name}</span>
                         <span>{item.date}</span>
                       </div>
-                      <div className="text-xs text-white/40 mt-1">
-                        <User className="w-3 h-3 inline mr-1" />
-                        {item.driver_name}
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="text-xs text-white/40">
+                          <User className="w-3 h-3 inline mr-1" />
+                          {item.driver_name}
+                        </div>
+                        {item.invoice_id && item.invoice_name && (
+                          <a
+                            href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${item.invoice_id}&model=account.move&view_type=form`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                          >
+                            <FileText className="w-3 h-3" />
+                            {item.invoice_name}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -94,6 +94,40 @@ export async function GET(request: NextRequest) {
           if (amountMatch) {
             const amount = parseFloat(amountMatch[1].replace(',', '.'));
 
+            // Recupera la fattura dal sale order
+            let invoiceId: number | null = null;
+            let invoiceName: string | null = null;
+
+            if (picking.sale_id) {
+              const saleId = Array.isArray(picking.sale_id) ? picking.sale_id[0] : picking.sale_id;
+              try {
+                const saleOrders = await sessionManager.callKw(
+                  'sale.order',
+                  'search_read',
+                  [[['id', '=', saleId]]],
+                  { fields: ['invoice_ids'], limit: 1 }
+                );
+
+                if (saleOrders.length > 0 && saleOrders[0].invoice_ids && saleOrders[0].invoice_ids.length > 0) {
+                  // Prendi la prima fattura
+                  const firstInvoiceId = saleOrders[0].invoice_ids[0];
+                  const invoices = await sessionManager.callKw(
+                    'account.move',
+                    'search_read',
+                    [[['id', '=', firstInvoiceId]]],
+                    { fields: ['id', 'name'], limit: 1 }
+                  );
+
+                  if (invoices.length > 0) {
+                    invoiceId = invoices[0].id;
+                    invoiceName = invoices[0].name;
+                  }
+                }
+              } catch (invoiceError) {
+                console.warn(`⚠️ Errore recupero fattura per picking ${picking.id}:`, invoiceError);
+              }
+            }
+
             pendingPayments.push({
               picking_id: picking.id,
               picking_name: picking.name,
@@ -103,6 +137,8 @@ export async function GET(request: NextRequest) {
               date: picking.date_done?.split(' ')[0] || '',
               driver_name: picking.user_id ? picking.user_id[1] : 'Non assegnato',
               message_id: msg.id,
+              invoice_id: invoiceId,
+              invoice_name: invoiceName,
             });
           }
         }
