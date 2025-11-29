@@ -32,6 +32,7 @@ interface PendingPayment {
   driver_name: string;
   invoice_id: number | null;
   invoice_name: string | null;
+  invoice_amount: number | null;
 }
 
 interface CassaforteItem {
@@ -47,6 +48,9 @@ interface CassaforteItem {
   type: 'deposit' | 'withdrawal';
   invoice_id: number | null;
   invoice_name: string | null;
+  invoice_amount: number | null;
+  picking_name: string | null;
+  sale_order_name: string | null;
 }
 
 interface CassaforteData {
@@ -317,7 +321,12 @@ export default function CassafortePage() {
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-white font-medium">{item.partner_name}</span>
-                        <span className="text-amber-400 font-bold">{formatCurrency(item.amount)}</span>
+                        <div className="text-right">
+                          <div className="text-amber-400 font-bold">{formatCurrency(item.amount)}</div>
+                          {item.invoice_amount && item.invoice_amount !== item.amount && (
+                            <div className="text-xs text-white/40">Fatt: {formatCurrency(item.invoice_amount)}</div>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center justify-between text-sm text-white/60">
                         <span>{item.picking_name}</span>
@@ -377,35 +386,65 @@ export default function CassafortePage() {
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-white font-medium">{item.partner_name}</span>
-                        <span className="text-emerald-400 font-bold">{formatCurrency(item.amount)}</span>
+                        <div className="text-right">
+                          <div className="text-emerald-400 font-bold">{formatCurrency(item.amount)}</div>
+                          {item.invoice_amount && item.invoice_amount !== item.amount && (
+                            <div className="text-xs text-white/40">Fatt: {formatCurrency(item.invoice_amount)}</div>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center justify-between text-sm text-white/60">
                         <span className="truncate max-w-[200px]" title={item.payment_ref}>
+                          <User className="w-3 h-3 inline mr-1" />
                           {item.employee_name}
                         </span>
-                        <span>{formatDate(item.date)}</span>
+                        <span>
+                          <Calendar className="w-3 h-3 inline mr-1" />
+                          {formatDate(item.date)}
+                        </span>
                       </div>
-                      <div className="flex items-center justify-between mt-2">
-                        {item.is_reconciled ? (
-                          <div className="text-xs text-emerald-400">
-                            <CheckCircle className="w-3 h-3 inline mr-1" />
-                            Riconciliato
-                          </div>
-                        ) : (
-                          <div />
-                        )}
-                        {item.invoice_id && item.invoice_name && (
-                          <a
-                            href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${item.invoice_id}&model=account.move&view_type=form`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                          >
-                            <FileText className="w-3 h-3" />
-                            {item.invoice_name}
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
+                      {/* Traceability section */}
+                      <div className="mt-3 pt-3 border-t border-white/10">
+                        <div className="text-xs text-white/50 mb-2">Tracciabilità:</div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {item.picking_name && (
+                            <div className="text-white/70">
+                              <span className="text-white/40">Picking: </span>
+                              {item.picking_name}
+                            </div>
+                          )}
+                          {item.sale_order_name && (
+                            <div className="text-white/70">
+                              <span className="text-white/40">Ordine: </span>
+                              {item.sale_order_name}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          {item.is_reconciled ? (
+                            <div className="text-xs text-emerald-400">
+                              <CheckCircle className="w-3 h-3 inline mr-1" />
+                              Riconciliato
+                            </div>
+                          ) : (
+                            <div className="text-xs text-amber-400/60">
+                              <Clock className="w-3 h-3 inline mr-1" />
+                              Da riconciliare
+                            </div>
+                          )}
+                          {item.invoice_id && item.invoice_name && (
+                            <a
+                              href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${item.invoice_id}&model=account.move&view_type=form`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                            >
+                              <FileText className="w-3 h-3" />
+                              {item.invoice_name}
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

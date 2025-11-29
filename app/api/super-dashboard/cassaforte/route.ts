@@ -20,6 +20,9 @@ interface CassaforteItem {
   type: 'deposit' | 'withdrawal';
   invoice_id: number | null;
   invoice_name: string | null;
+  invoice_amount: number | null;
+  picking_name: string | null;
+  sale_order_name: string | null;
 }
 
 /**
@@ -69,40 +72,53 @@ export async function GET(request: NextRequest) {
       const paymentRef = line.payment_ref?.toLowerCase() || '';
       const isWithdrawal = paymentRef.includes('prelievo');
 
-      // Extract employee name from payment_ref
-      // Format: "Versamento Cassaforte - Employee Name - ..." or "Prelievo Cassaforte - Employee Name"
+      // Extract employee name, picking name, and sale order from payment_ref
+      // Format: "Versamento Cassaforte - Employee Name - Partner - Picking - SaleOrder"
       let employeeName = 'N/D';
+      let pickingName: string | null = null;
+      let saleOrderName: string | null = null;
       const refParts = (line.payment_ref || '').split(' - ');
       if (refParts.length >= 2) {
         employeeName = refParts[1];
+      }
+      if (refParts.length >= 4) {
+        pickingName = refParts[3];
+      }
+      if (refParts.length >= 5) {
+        saleOrderName = refParts[4];
       }
 
       // Try to find the associated invoice for deposits
       let invoiceId: number | null = null;
       let invoiceName: string | null = null;
+      let invoiceAmount: number | null = null;
 
       if (!isWithdrawal && line.partner_id) {
         const partnerId = Array.isArray(line.partner_id) ? line.partner_id[0] : line.partner_id;
         try {
-          // Search for invoices from this partner around the same date
+          // Search for invoices from this partner with similar amount (within a range)
+          const depositAmount = Math.abs(line.amount);
+
+          // First try to find invoice with matching amount
           const invoices = await sessionManager.callKw(
             'account.move',
             'search_read',
             [[
               ['partner_id', '=', partnerId],
               ['move_type', 'in', ['out_invoice', 'out_refund']],
-              ['invoice_date', '>=', line.date],
-              ['invoice_date', '<=', line.date],
               ['state', '=', 'posted'],
+              ['amount_total', '>=', depositAmount - 1],
+              ['amount_total', '<=', depositAmount + 1],
             ]],
-            { fields: ['id', 'name', 'amount_total'], limit: 1, order: 'id desc' }
+            { fields: ['id', 'name', 'amount_total', 'invoice_date'], limit: 1, order: 'invoice_date desc, id desc' }
           );
 
           if (invoices.length > 0) {
             invoiceId = invoices[0].id;
             invoiceName = invoices[0].name;
+            invoiceAmount = invoices[0].amount_total;
           } else {
-            // If no exact date match, try to find most recent invoice for this partner
+            // If no amount match, find most recent invoice for this partner
             const recentInvoices = await sessionManager.callKw(
               'account.move',
               'search_read',
@@ -117,6 +133,7 @@ export async function GET(request: NextRequest) {
             if (recentInvoices.length > 0) {
               invoiceId = recentInvoices[0].id;
               invoiceName = recentInvoices[0].name;
+              invoiceAmount = recentInvoices[0].amount_total;
             }
           }
         } catch (invoiceError) {
@@ -137,6 +154,9 @@ export async function GET(request: NextRequest) {
         type: isWithdrawal ? 'withdrawal' : 'deposit',
         invoice_id: invoiceId,
         invoice_name: invoiceName,
+        invoice_amount: invoiceAmount,
+        picking_name: pickingName,
+        sale_order_name: saleOrderName,
       };
 
       if (isWithdrawal) {

@@ -97,6 +97,7 @@ export async function GET(request: NextRequest) {
             // Recupera la fattura dal sale order
             let invoiceId: number | null = null;
             let invoiceName: string | null = null;
+            let invoiceAmount: number | null = null;
 
             if (picking.sale_id) {
               const saleId = Array.isArray(picking.sale_id) ? picking.sale_id[0] : picking.sale_id;
@@ -115,12 +116,13 @@ export async function GET(request: NextRequest) {
                     'account.move',
                     'search_read',
                     [[['id', '=', firstInvoiceId]]],
-                    { fields: ['id', 'name'], limit: 1 }
+                    { fields: ['id', 'name', 'amount_total'], limit: 1 }
                   );
 
                   if (invoices.length > 0) {
                     invoiceId = invoices[0].id;
                     invoiceName = invoices[0].name;
+                    invoiceAmount = invoices[0].amount_total;
                   }
                 }
               } catch (invoiceError) {
@@ -139,6 +141,7 @@ export async function GET(request: NextRequest) {
               message_id: msg.id,
               invoice_id: invoiceId,
               invoice_name: invoiceName,
+              invoice_amount: invoiceAmount,
             });
           }
         }

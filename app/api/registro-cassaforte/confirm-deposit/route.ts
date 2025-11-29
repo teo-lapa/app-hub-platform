@@ -73,10 +73,26 @@ export async function POST(request: NextRequest) {
       .join(', ');
 
     let communication = `Versamento Cassaforte - ${body.employee_name}`;
+    let pickingNames: string[] = [];
+    let saleOrderNames: string[] = [];
+
     if (body.type === 'from_delivery') {
-      communication += ` - Da consegne`;
+      // Recupera i nomi dei picking e sale order per tracciabilità
       if (body.picking_ids && body.picking_ids.length > 0) {
-        communication += ` (${body.picking_ids.length} incassi)`;
+        try {
+          const pickingDetails = await sessionManager.callKw(
+            'stock.picking',
+            'search_read',
+            [[['id', 'in', body.picking_ids]]],
+            { fields: ['id', 'name', 'sale_id'] }
+          );
+          pickingNames = pickingDetails.map((p: any) => p.name).filter(Boolean);
+          saleOrderNames = pickingDetails
+            .map((p: any) => Array.isArray(p.sale_id) ? p.sale_id[1] : null)
+            .filter(Boolean);
+        } catch (e) {
+          console.warn('⚠️ Errore recupero dettagli picking:', e);
+        }
       }
     } else {
       communication += ` - Extra: ${body.customer_name}`;
@@ -173,6 +189,18 @@ export async function POST(request: NextRequest) {
         );
       }
       partnerName = 'Versamenti Cassaforte';
+    }
+
+    // Completa la comunicazione con tutti i dati di tracciabilità
+    // Format: "Versamento Cassaforte - Employee - Partner - Picking - SaleOrder"
+    if (body.type === 'from_delivery' && partnerName) {
+      communication += ` - ${partnerName}`;
+      if (pickingNames.length > 0) {
+        communication += ` - ${pickingNames.join(', ')}`;
+      }
+      if (saleOrderNames.length > 0) {
+        communication += ` - ${saleOrderNames.join(', ')}`;
+      }
     }
 
     // In Odoo 17, creiamo direttamente una bank statement line nel registro Cash
