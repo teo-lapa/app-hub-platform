@@ -123,10 +123,16 @@ export default function ControlloPrezziPage() {
   };
 
   // Seleziona categoria e mostra prodotti/richieste
-  const handleSelectCategory = async (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all' | 'setup_pricelists') => {
+  const handleSelectCategory = async (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all' | 'setup_pricelists' | 'analisi_mensile') => {
     // Se è setup_pricelists, vai alla pagina dedicata
     if (category === 'setup_pricelists') {
       router.push('/controllo-prezzi/imposta-listini');
+      return;
+    }
+
+    // Se è analisi_mensile, vai alla pagina dedicata
+    if (category === 'analisi_mensile') {
+      router.push('/controllo-prezzi/analisi-mensile');
       return;
     }
 

@@ -11,8 +11,9 @@ interface PriceCategoryFilterBarProps {
     blocked: number;
     all: number;
     setup_pricelists: number;
+    analisi_mensile?: number;
   };
-  onSelect: (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all' | 'setup_pricelists') => void;
+  onSelect: (category: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all' | 'setup_pricelists' | 'analisi_mensile') => void;
 }
 
 const PRICE_CATEGORIES: PriceCategory[] = [
@@ -64,6 +65,14 @@ const PRICE_CATEGORIES: PriceCategory[] = [
     gradient: 'from-purple-500 to-purple-700',
     count: 0,
   },
+  {
+    id: 'analisi_mensile',
+    name: 'ANALISI MENSILE',
+    icon: '📅',
+    description: 'Verifica prezzi vs listini',
+    gradient: 'from-cyan-500 to-cyan-700',
+    count: 0,
+  },
 ];
 
 export function PriceCategoryFilterBar({
@@ -97,9 +106,9 @@ export function PriceCategoryFilterBar({
       )}
 
       {/* Griglia filtri */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 max-w-7xl mx-auto">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 max-w-7xl mx-auto">
         {PRICE_CATEGORIES.map((category, index) => {
-          const count = counts[category.id];
+          const count = counts[category.id as keyof typeof counts] || 0;
           const isHighlighted = count === maxCount && maxCount > 0;
 
           return (

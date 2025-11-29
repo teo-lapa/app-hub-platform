@@ -43,7 +43,7 @@ export interface PriceCheckProduct {
 }
 
 export interface PriceCategory {
-  id: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all' | 'setup_pricelists';
+  id: 'below_critical' | 'critical_to_avg' | 'above_avg' | 'blocked' | 'all' | 'setup_pricelists' | 'analisi_mensile';
   name: string;
   icon: string;
   description: string;
