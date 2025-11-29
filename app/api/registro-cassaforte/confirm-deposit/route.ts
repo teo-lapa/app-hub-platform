@@ -215,6 +215,62 @@ export async function POST(request: NextRequest) {
       console.warn('⚠️ Errore conferma payment (potrebbe essere già confermato):', postError);
     }
 
+    // Crea una riga nel registro Cash (bank statement line) per la riconciliazione
+    let statementLineId: number | null = null;
+    try {
+      // Cerca o crea un bank statement aperto per il journal Cash
+      const today = new Date().toISOString().split('T')[0];
+
+      // Cerca statement esistente aperto per oggi
+      let statements = await sessionManager.callKw(
+        'account.bank.statement',
+        'search_read',
+        [[
+          ['journal_id', '=', CASH_JOURNAL_ID],
+          ['state', '=', 'open'],
+        ]],
+        { fields: ['id', 'name'], limit: 1, order: 'date desc' }
+      );
+
+      let statementId: number;
+
+      if (statements.length > 0) {
+        statementId = statements[0].id;
+        console.log(`📋 Usando statement esistente: ${statements[0].name} (ID: ${statementId})`);
+      } else {
+        // Crea nuovo statement
+        statementId = await sessionManager.callKw(
+          'account.bank.statement',
+          'create',
+          [{
+            journal_id: CASH_JOURNAL_ID,
+            date: today,
+            name: `Cassaforte ${today}`,
+          }]
+        );
+        console.log(`📋 Creato nuovo statement ID: ${statementId}`);
+      }
+
+      // Crea la riga nello statement
+      statementLineId = await sessionManager.callKw(
+        'account.bank.statement.line',
+        'create',
+        [{
+          statement_id: statementId,
+          journal_id: CASH_JOURNAL_ID,
+          date: today,
+          payment_ref: communication,
+          partner_id: partnerId,
+          amount: body.amount,
+        }]
+      );
+      console.log(`✅ Statement line creata: ${statementLineId}`);
+
+    } catch (statementError: any) {
+      console.warn('⚠️ Errore creazione statement line:', statementError.message);
+      // Non blocchiamo - il pagamento è stato creato comunque
+    }
+
     // Aggiungi nota nel chatter con dettagli completi
     const noteBody = `
       <h3>🔐 Versamento Cassaforte</h3>
