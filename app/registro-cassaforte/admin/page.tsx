@@ -1,26 +1,29 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
   User,
   UserCheck,
-  UserX,
   Trash2,
   RefreshCw,
   Shield,
-  Lock,
   Loader2,
-  CheckCircle,
   AlertTriangle,
   Camera,
+  X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import {
+  loadModels,
+  getFaceEmbeddingFromBase64,
+  findBestMatch,
+} from '@/lib/face-recognition';
 
-// Admin key for access
-const ADMIN_KEY = 'lapa2025';
+// Admin email - only this user can access admin
+const ADMIN_EMAIL = 'paul@lapa.ch';
 
 interface Employee {
   id: number;
@@ -38,26 +41,148 @@ interface FaceEmbedding {
 export default function RegistroCassaforteAdminPage() {
   const router = useRouter();
 
+  // Auth state
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [showFaceScanner, setShowFaceScanner] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Face recognition state
+  const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
+  const [enrolledFaces, setEnrolledFaces] = useState<Array<{ employee_id: number; employee_name: string; embedding: number[] }>>([]);
+
+  // Data state
   const [isLoading, setIsLoading] = useState(true);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [enrolledFaces, setEnrolledFaces] = useState<FaceEmbedding[]>([]);
+  const [enrolledFacesData, setEnrolledFacesData] = useState<FaceEmbedding[]>([]);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Check authorization via URL parameter
+  // Camera refs
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Load face recognition models
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const adminKey = params.get('admin');
+    const initFaceRecognition = async () => {
+      try {
+        await loadModels();
+        setFaceModelsLoaded(true);
+        // Load enrolled faces for recognition
+        await loadEnrolledFaces();
+      } catch (error) {
+        console.error('Failed to load face models:', error);
+        toast.error('Errore nel caricamento dei modelli facciali');
+      }
+    };
+    initFaceRecognition();
+  }, []);
 
-    if (adminKey !== ADMIN_KEY) {
-      toast.error('Non sei autorizzato ad accedere a questa pagina');
-      router.push('/registro-cassaforte');
-      return;
+  const loadEnrolledFaces = async () => {
+    try {
+      const response = await fetch('/api/registro-cassaforte/face-embeddings');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.embeddings) {
+          setEnrolledFaces(data.embeddings.map((e: any) => ({
+            employee_id: e.employee_id,
+            employee_name: e.employee_name,
+            embedding: e.embedding,
+          })));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading enrolled faces:', error);
     }
+  };
 
-    setIsAuthorized(true);
-    loadData();
-  }, [router]);
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: 640, height: 480 }
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (error) {
+      console.error('Camera error:', error);
+      toast.error('Impossibile accedere alla camera');
+      setShowFaceScanner(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    if (showFaceScanner) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => stopCamera();
+  }, [showFaceScanner]);
+
+  const captureAndRecognize = async () => {
+    if (!videoRef.current || !canvasRef.current || !faceModelsLoaded) return;
+
+    setIsAuthenticating(true);
+    setAuthError(null);
+
+    try {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+
+      const imageData = canvas.toDataURL('image/jpeg', 0.8);
+      const base64 = imageData.split(',')[1];
+
+      const embedding = await getFaceEmbeddingFromBase64(base64);
+      if (!embedding) {
+        setAuthError('Nessun volto rilevato. Riprova.');
+        setIsAuthenticating(false);
+        return;
+      }
+
+      const match = findBestMatch(embedding, enrolledFaces, 0.5);
+
+      if (match) {
+        // Find the employee
+        const empResponse = await fetch('/api/registro-cassaforte/employees');
+        if (empResponse.ok) {
+          const empData = await empResponse.json();
+          const employee = empData.employees?.find((e: Employee) => e.id === match.employee_id);
+
+          if (employee && employee.work_email === ADMIN_EMAIL) {
+            // Admin authenticated!
+            setIsAuthorized(true);
+            setShowFaceScanner(false);
+            toast.success(`Benvenuto Admin, ${employee.name}!`);
+            loadData();
+          } else {
+            setAuthError(`${match.employee_name} non è autorizzato come admin`);
+          }
+        }
+      } else {
+        setAuthError('Volto non riconosciuto');
+      }
+    } catch (error) {
+      console.error('Face recognition error:', error);
+      setAuthError('Errore nel riconoscimento');
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -69,11 +194,11 @@ export default function RegistroCassaforteAdminPage() {
         setEmployees(empData.employees || []);
       }
 
-      // Load enrolled faces
+      // Load enrolled faces data
       const facesResponse = await fetch('/api/registro-cassaforte/face-embeddings');
       if (facesResponse.ok) {
         const facesData = await facesResponse.json();
-        setEnrolledFaces(facesData.embeddings || []);
+        setEnrolledFacesData(facesData.embeddings || []);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -96,8 +221,8 @@ export default function RegistroCassaforteAdminPage() {
 
       if (response.ok) {
         toast.success(`Riconoscimento facciale di ${employeeName} eliminato`);
-        // Refresh data
         await loadData();
+        await loadEnrolledFaces(); // Refresh enrolled faces for recognition
       } else {
         const data = await response.json();
         throw new Error(data.error || 'Errore nella cancellazione');
@@ -111,11 +236,11 @@ export default function RegistroCassaforteAdminPage() {
   };
 
   const isEnrolled = (employeeId: number) => {
-    return enrolledFaces.some(f => f.employee_id === employeeId);
+    return enrolledFacesData.some(f => f.employee_id === employeeId);
   };
 
   const getEnrollmentDate = (employeeId: number) => {
-    const face = enrolledFaces.find(f => f.employee_id === employeeId);
+    const face = enrolledFacesData.find(f => f.employee_id === employeeId);
     if (face?.created_at) {
       return new Date(face.created_at).toLocaleDateString('it-CH', {
         day: '2-digit',
@@ -128,15 +253,120 @@ export default function RegistroCassaforteAdminPage() {
     return null;
   };
 
-  // Show loading while checking auth
+  // Not authorized yet - show face scanner
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-white animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-10 h-10 text-amber-400" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-2">Accesso Admin</h1>
+            <p className="text-white/60">
+              Verifica la tua identità con il riconoscimento facciale
+            </p>
+          </div>
+
+          {!showFaceScanner ? (
+            <div className="space-y-4">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowFaceScanner(true)}
+                disabled={!faceModelsLoaded}
+                className="w-full p-6 bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl text-white text-xl font-bold shadow-xl disabled:opacity-50"
+              >
+                <div className="flex items-center justify-center gap-3">
+                  {faceModelsLoaded ? (
+                    <>
+                      <Camera className="w-7 h-7" />
+                      Verifica Identità
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 className="w-7 h-7 animate-spin" />
+                      Caricamento modelli...
+                    </>
+                  )}
+                </div>
+              </motion.button>
+
+              <button
+                onClick={() => router.push('/registro-cassaforte')}
+                className="w-full p-4 bg-white/10 hover:bg-white/20 rounded-2xl text-white font-medium transition-colors"
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <ArrowLeft className="w-5 h-5" />
+                  Torna Indietro
+                </div>
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              {/* Camera view */}
+              <div className="relative rounded-2xl overflow-hidden bg-black aspect-[4/3]">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                />
+                <canvas ref={canvasRef} className="hidden" />
+
+                {/* Close button */}
+                <button
+                  onClick={() => setShowFaceScanner(false)}
+                  className="absolute top-3 right-3 p-2 bg-black/50 rounded-full"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </button>
+
+                {/* Face guide */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-48 h-48 border-4 border-amber-400/50 rounded-full" />
+                </div>
+
+                {/* Error message */}
+                {authError && (
+                  <div className="absolute bottom-4 left-4 right-4 p-3 bg-red-500/90 rounded-xl">
+                    <p className="text-white text-center font-medium">{authError}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Capture button */}
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={captureAndRecognize}
+                disabled={isAuthenticating}
+                className="w-full mt-4 p-4 bg-amber-500 hover:bg-amber-600 rounded-2xl text-white font-bold transition-colors disabled:opacity-50"
+              >
+                {isAuthenticating ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Verifica in corso...
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center gap-2">
+                    <Camera className="w-5 h-5" />
+                    Scatta e Verifica
+                  </div>
+                )}
+              </motion.button>
+            </div>
+          )}
+
+          <p className="text-center text-white/40 text-sm mt-6">
+            Solo paul@lapa.ch può accedere a questa pagina
+          </p>
+        </div>
       </div>
     );
   }
 
+  // Authorized - show admin panel
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
       {/* Header */}
@@ -173,11 +403,11 @@ export default function RegistroCassaforteAdminPage() {
           <div className="text-white/60 text-sm">Dipendenti totali</div>
         </div>
         <div className="p-4 bg-emerald-500/20 backdrop-blur-lg rounded-2xl border border-emerald-400/30">
-          <div className="text-3xl font-bold text-emerald-400">{enrolledFaces.length}</div>
+          <div className="text-3xl font-bold text-emerald-400">{enrolledFacesData.length}</div>
           <div className="text-emerald-300/60 text-sm">Volti registrati</div>
         </div>
         <div className="p-4 bg-amber-500/20 backdrop-blur-lg rounded-2xl border border-amber-400/30">
-          <div className="text-3xl font-bold text-amber-400">{employees.length - enrolledFaces.length}</div>
+          <div className="text-3xl font-bold text-amber-400">{employees.length - enrolledFacesData.length}</div>
           <div className="text-amber-300/60 text-sm">Da registrare</div>
         </div>
       </div>

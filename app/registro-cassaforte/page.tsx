@@ -447,14 +447,8 @@ export default function RegistroCassafortePage() {
 
   // ==================== EFFECTS ====================
 
-  // Check admin access via URL parameter (?admin=lapa2025)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const adminKey = params.get('admin');
-    if (adminKey === 'lapa2025') {
-      setIsAdmin(true);
-    }
-  }, []);
+  // Note: Admin access is now determined by face recognition
+  // When the user is recognized as paul@lapa.ch, isAdmin is set to true
 
   // Mount and clock update - client-only to avoid hydration mismatch
   useEffect(() => {
@@ -612,7 +606,15 @@ export default function RegistroCassafortePage() {
         if (employee) {
           setCurrentEmployee(employee);
           setShowFaceScanner(false);
-          toast.success(`Ciao ${employee.name}! (${Math.round(match.similarity * 100)}% match)`);
+
+          // Check if this employee is admin (paul@lapa.ch)
+          if (employee.work_email === ADMIN_EMAIL) {
+            setIsAdmin(true);
+            toast.success(`Ciao ${employee.name}! (Admin) (${Math.round(match.similarity * 100)}% match)`);
+          } else {
+            toast.success(`Ciao ${employee.name}! (${Math.round(match.similarity * 100)}% match)`);
+          }
+
           await loadPendingPayments(employee.id);
           setStep('select_type');
         }
@@ -998,30 +1000,22 @@ export default function RegistroCassafortePage() {
         </div>
       </motion.button>
 
-      {/* Admin Button - only visible with ?admin=lapa2025 */}
-      {isAdmin && (
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => router.push('/registro-cassaforte/admin?admin=lapa2025')}
-          className="mt-8 px-6 py-3 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 rounded-xl text-amber-400 font-medium transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5" />
-            Gestione Admin
-          </div>
-        </motion.button>
-      )}
     </motion.div>
   );
 
   // Employee Selection (Enrollment)
   // Filter out employees who already have face enrolled (they must use face recognition)
-  const availableEmployees = employees.filter(emp =>
-    !enrolledFaces.some(face => face.employee_id === emp.id)
-  );
+  // EXCEPTION: Admin (paul@lapa.ch recognized by face) can see ALL employees to re-enroll anyone
+  const availableEmployees = employees.filter(emp => {
+    const hasEnrolledFace = enrolledFaces.some(face => face.employee_id === emp.id);
+
+    // Admin can see ALL employees (to re-enroll anyone)
+    if (isAdmin) {
+      return true;
+    }
+    // Normal users can only see employees without enrolled face
+    return !hasEnrolledFace;
+  });
 
   const renderEnrollmentScreen = () => (
     <motion.div
@@ -1043,27 +1037,53 @@ export default function RegistroCassafortePage() {
         </div>
       </div>
 
-      {/* Employee List - only show employees without face enrolled */}
+      {/* Employee List - only show employees without face enrolled (or all for admin) */}
       <div className="grid grid-cols-2 gap-4 max-w-4xl mx-auto">
-        {availableEmployees.map((employee) => (
-          <motion.button
-            key={employee.id}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => handleSelectEmployee(employee)}
-            className="p-6 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 hover:bg-white/20 transition-all text-left"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <User className="w-7 h-7 text-white" />
+        {availableEmployees.map((employee) => {
+          const hasEnrolledFace = enrolledFaces.some(face => face.employee_id === employee.id);
+          const isReEnrolling = isAdmin && hasEnrolledFace;
+
+          return (
+            <motion.button
+              key={employee.id}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleSelectEmployee(employee)}
+              className={`p-6 backdrop-blur-lg rounded-2xl border transition-all text-left ${
+                isReEnrolling
+                  ? 'bg-amber-500/20 border-amber-400/40 hover:bg-amber-500/30'
+                  : 'bg-white/10 border-white/20 hover:bg-white/20'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center ${
+                  isReEnrolling
+                    ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                    : hasEnrolledFace
+                      ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
+                      : 'bg-gradient-to-br from-blue-500 to-purple-600'
+                }`}>
+                  {isReEnrolling ? (
+                    <RefreshCw className="w-7 h-7 text-white" />
+                  ) : hasEnrolledFace ? (
+                    <UserCheck className="w-7 h-7 text-white" />
+                  ) : (
+                    <User className="w-7 h-7 text-white" />
+                  )}
+                </div>
+                <div>
+                  <div className="text-xl font-semibold text-white">{employee.name}</div>
+                  <div className="text-sm text-white/60">
+                    {employee.department_id?.[1] || 'Dipendente'}
+                    {isReEnrolling && (
+                      <span className="ml-2 text-amber-400">• Ri-registra volto</span>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div>
-                <div className="text-xl font-semibold text-white">{employee.name}</div>
-                <div className="text-sm text-white/60">{employee.department_id?.[1] || 'Dipendente'}</div>
-              </div>
-            </div>
-          </motion.button>
-        ))}
+            </motion.button>
+          );
+        })}
       </div>
 
       {availableEmployees.length === 0 && employees.length > 0 && (
@@ -1190,6 +1210,25 @@ export default function RegistroCassafortePage() {
           <p className="text-white/60">Altri soldi (non da consegne)</p>
         </motion.button>
       </div>
+
+      {/* Admin Button - only visible when logged in as admin */}
+      {isAdmin && (
+        <div className="max-w-3xl mx-auto mt-8">
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => router.push('/registro-cassaforte/admin')}
+            className="w-full p-4 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 rounded-2xl text-amber-400 font-medium transition-colors"
+          >
+            <div className="flex items-center justify-center gap-3">
+              <Shield className="w-6 h-6" />
+              <span className="text-lg">Gestione Admin - Volti Dipendenti</span>
+            </div>
+          </motion.button>
+        </div>
+      )}
     </motion.div>
   );
 
