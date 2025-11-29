@@ -126,6 +126,47 @@ export default function AnalisiMensilePage() {
   const filteredFixedLines = useMemo(() => filterLines(fixedPriceLines), [fixedPriceLines, filterDirection, searchQuery, showOnlyDiscounted]);
   const filteredBaseLines = useMemo(() => filterLines(basePriceLines), [basePriceLines, filterDirection, searchQuery, showOnlyDiscounted]);
 
+  // Calculate dynamic stats based on filtered lines
+  const filteredStats = useMemo(() => {
+    const allFiltered = [...filteredFixedLines, ...filteredBaseLines];
+
+    // Fixed price stats
+    const fixedHigherCount = filteredFixedLines.filter(l => l.direction === 'higher').length;
+    const fixedLowerCount = filteredFixedLines.filter(l => l.direction === 'lower').length;
+    const fixedTotalDiffCHF = filteredFixedLines.reduce((sum, l) => sum + l.priceDiffCHF, 0);
+    const fixedTotalProfitCHF = filteredFixedLines.reduce((sum, l) => sum + l.profitCHF, 0);
+
+    // Base price stats
+    const baseHigherCount = filteredBaseLines.filter(l => l.direction === 'higher').length;
+    const baseLowerCount = filteredBaseLines.filter(l => l.direction === 'lower').length;
+    const baseTotalDiffCHF = filteredBaseLines.reduce((sum, l) => sum + l.priceDiffCHF, 0);
+    const baseTotalProfitCHF = filteredBaseLines.reduce((sum, l) => sum + l.profitCHF, 0);
+
+    // Total stats
+    const totalLines = allFiltered.length;
+    const totalDiffCHF = fixedTotalDiffCHF + baseTotalDiffCHF;
+    const totalProfitCHF = fixedTotalProfitCHF + baseTotalProfitCHF;
+    const totalMarginPercent = allFiltered.reduce((sum, l) => sum + l.marginPercent, 0);
+    const averageMarginPercent = totalLines > 0 ? totalMarginPercent / totalLines : 0;
+
+    return {
+      totalLines,
+      totalDiffCHF,
+      totalProfitCHF,
+      averageMarginPercent,
+      // Fixed
+      fixedPriceCount: filteredFixedLines.length,
+      fixedHigherCount,
+      fixedLowerCount,
+      fixedTotalDiffCHF,
+      // Base
+      basePriceCount: filteredBaseLines.length,
+      baseHigherCount,
+      baseLowerCount,
+      baseTotalDiffCHF,
+    };
+  }, [filteredFixedLines, filteredBaseLines]);
+
   // Group lines by customer or product
   type GroupedLines = { key: string; name: string; lines: MonthlyAnalysisLine[]; totalDiff: number; totalProfit: number }[];
 
@@ -412,31 +453,31 @@ export default function AnalisiMensilePage() {
           </div>
         </div>
 
-        {/* KPI Cards */}
+        {/* KPI Cards - Dynamic based on filters */}
         {stats && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="glass rounded-xl p-4 border-l-4 border-blue-500">
-              <div className="text-3xl font-bold text-blue-400">{stats.totalLines}</div>
+              <div className="text-3xl font-bold text-blue-400">{filteredStats.totalLines}</div>
               <div className="text-sm text-slate-400">Prodotti Totali</div>
             </div>
 
             <div className="glass rounded-xl p-4 border-l-4 border-green-500">
-              <div className="text-3xl font-bold text-green-400">
-                +CHF {(stats.fixedTotalDiffCHF + stats.baseTotalDiffCHF).toFixed(0)}
+              <div className={`text-3xl font-bold ${filteredStats.totalDiffCHF >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {filteredStats.totalDiffCHF >= 0 ? '+' : ''}CHF {filteredStats.totalDiffCHF.toFixed(0)}
               </div>
               <div className="text-sm text-slate-400">Delta Totale</div>
             </div>
 
             <div className="glass rounded-xl p-4 border-l-4 border-yellow-500">
-              <div className="text-3xl font-bold text-yellow-400">
-                CHF {stats.totalProfitCHF.toFixed(0)}
+              <div className={`text-3xl font-bold ${filteredStats.totalProfitCHF >= 0 ? 'text-yellow-400' : 'text-red-400'}`}>
+                CHF {filteredStats.totalProfitCHF.toFixed(0)}
               </div>
               <div className="text-sm text-slate-400">Profitto Totale</div>
             </div>
 
             <div className="glass rounded-xl p-4 border-l-4 border-purple-500">
               <div className="text-3xl font-bold text-purple-400">
-                {stats.averageMarginPercent.toFixed(1)}%
+                {filteredStats.averageMarginPercent.toFixed(1)}%
               </div>
               <div className="text-sm text-slate-400">Margine Medio</div>
             </div>
@@ -458,13 +499,13 @@ export default function AnalisiMensilePage() {
                 <div className="flex items-center gap-3">
                   <Lock className="w-5 h-5 text-blue-400" />
                   <span className="text-lg font-bold text-white">
-                    PREZZI BLOCCATI ({stats?.fixedPriceCount || 0})
+                    PREZZI BLOCCATI ({filteredStats.fixedPriceCount})
                   </span>
                   <span className="text-sm text-slate-400">
-                    Sopra: <span className="text-green-400">{stats?.fixedHigherCount || 0}</span> |
-                    Sotto: <span className="text-red-400">{stats?.fixedLowerCount || 0}</span> |
-                    Delta: <span className={`${(stats?.fixedTotalDiffCHF || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      CHF {(stats?.fixedTotalDiffCHF || 0).toFixed(2)}
+                    Sopra: <span className="text-green-400">{filteredStats.fixedHigherCount}</span> |
+                    Sotto: <span className="text-red-400">{filteredStats.fixedLowerCount}</span> |
+                    Delta: <span className={`${filteredStats.fixedTotalDiffCHF >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      CHF {filteredStats.fixedTotalDiffCHF.toFixed(2)}
                     </span>
                   </span>
                 </div>
@@ -744,13 +785,13 @@ export default function AnalisiMensilePage() {
                 <div className="flex items-center gap-3">
                   <List className="w-5 h-5 text-purple-400" />
                   <span className="text-lg font-bold text-white">
-                    LISTINO BASE ({stats?.basePriceCount || 0})
+                    LISTINO BASE ({filteredStats.basePriceCount})
                   </span>
                   <span className="text-sm text-slate-400">
-                    Sopra: <span className="text-green-400">{stats?.baseHigherCount || 0}</span> |
-                    Sotto: <span className="text-red-400">{stats?.baseLowerCount || 0}</span> |
-                    Delta: <span className={`${(stats?.baseTotalDiffCHF || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      CHF {(stats?.baseTotalDiffCHF || 0).toFixed(2)}
+                    Sopra: <span className="text-green-400">{filteredStats.baseHigherCount}</span> |
+                    Sotto: <span className="text-red-400">{filteredStats.baseLowerCount}</span> |
+                    Delta: <span className={`${filteredStats.baseTotalDiffCHF >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      CHF {filteredStats.baseTotalDiffCHF.toFixed(2)}
                     </span>
                   </span>
                 </div>
