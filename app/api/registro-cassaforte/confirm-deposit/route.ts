@@ -31,7 +31,8 @@ interface DepositRequest {
 
 /**
  * POST /api/registro-cassaforte/confirm-deposit
- * Registra un versamento in cassaforte creando un account.payment in Odoo
+ * Registra un versamento in cassaforte creando una bank statement line nel registro Cash di Odoo.
+ * La statement line crea automaticamente il move contabile e appare nella riconciliazione bancaria.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -62,7 +63,6 @@ export async function POST(request: NextRequest) {
     const sessionManager = getOdooSessionManager();
 
     // Costruisci la comunicazione/memo
-    const timestamp = new Date().toISOString();
     const banknotesSummary = body.banknotes
       .filter(b => b.count > 0)
       .map(b => `${b.count}x${b.denomination}CHF`)
@@ -175,71 +175,43 @@ export async function POST(request: NextRequest) {
       partnerName = 'Versamenti Cassaforte';
     }
 
-    // Crea il pagamento in Odoo
-    const paymentData = {
-      payment_type: 'inbound',
-      partner_type: 'customer',
-      partner_id: partnerId,
-      amount: body.amount,
-      journal_id: CASH_JOURNAL_ID,
-      payment_method_line_id: 1, // Default cash method
-      ref: communication,
-      // Campi custom (se esistono in Odoo)
-      // x_safe_employee_id: body.employee_id,
-      // x_safe_employee_name: body.employee_name,
-      // x_safe_deposit_type: body.type,
-      // x_safe_banknotes: banknotesSummary,
-      // x_safe_coins: coinsSummary,
-      // x_safe_discrepancy: discrepancy,
-    };
+    // In Odoo 17, creiamo direttamente una bank statement line nel registro Cash
+    // Questo crea automaticamente il move contabile e appare nella riconciliazione bancaria
+    const today = new Date().toISOString().split('T')[0];
 
-    console.log('📝 Creazione payment:', paymentData);
+    console.log('📝 Creazione statement line nel registro Cash...');
 
-    const paymentId = await sessionManager.callKw(
-      'account.payment',
+    const statementLineId = await sessionManager.callKw(
+      'account.bank.statement.line',
       'create',
-      [paymentData]
+      [{
+        journal_id: CASH_JOURNAL_ID,
+        date: today,
+        payment_ref: communication,
+        partner_id: partnerId,
+        amount: body.amount,
+      }]
     );
 
-    console.log('✅ Payment creato:', paymentId);
+    console.log(`✅ Statement line creata: ${statementLineId}`);
 
-    // Conferma il pagamento (action_post)
+    // Recupera il move_id creato automaticamente dalla statement line
+    let moveId: number | null = null;
     try {
-      await sessionManager.callKw(
-        'account.payment',
-        'action_post',
-        [[paymentId]]
-      );
-      console.log('✅ Payment confermato');
-    } catch (postError) {
-      console.warn('⚠️ Errore conferma payment (potrebbe essere già confermato):', postError);
-    }
-
-    // Crea una riga nel registro Cash (bank statement line) per la riconciliazione
-    // In Odoo 17+, le bank statement lines possono essere create direttamente senza statement
-    let statementLineId: number | null = null;
-    try {
-      const today = new Date().toISOString().split('T')[0];
-
-      // In Odoo 17, creiamo direttamente la statement line
-      // Il journal gestisce automaticamente lo statement
-      statementLineId = await sessionManager.callKw(
+      const statementLine = await sessionManager.callKw(
         'account.bank.statement.line',
-        'create',
-        [{
-          journal_id: CASH_JOURNAL_ID,
-          date: today,
-          payment_ref: communication,
-          partner_id: partnerId,
-          amount: body.amount,
-        }]
+        'search_read',
+        [[['id', '=', statementLineId]]],
+        { fields: ['move_id'], limit: 1 }
       );
-      console.log(`✅ Statement line creata: ${statementLineId}`);
-
-    } catch (statementError: any) {
-      console.error('❌ Errore creazione statement line:', statementError.message);
-      console.error('   Dettagli:', JSON.stringify(statementError));
-      // Non blocchiamo - il pagamento è stato creato comunque
+      if (statementLine.length > 0 && statementLine[0].move_id) {
+        moveId = Array.isArray(statementLine[0].move_id)
+          ? statementLine[0].move_id[0]
+          : statementLine[0].move_id;
+        console.log(`✅ Move ID associato: ${moveId}`);
+      }
+    } catch (e) {
+      console.warn('⚠️ Errore recupero move_id:', e);
     }
 
     // Aggiungi nota nel chatter con dettagli completi
@@ -259,20 +231,23 @@ export async function POST(request: NextRequest) {
       </ul>
     `;
 
-    try {
-      await sessionManager.callKw(
-        'mail.message',
-        'create',
-        [{
-          body: noteBody,
-          model: 'account.payment',
-          res_id: paymentId,
-          message_type: 'comment',
-          subtype_id: 2, // Note subtype
-        }]
-      );
-    } catch (noteError) {
-      console.warn('⚠️ Errore creazione nota:', noteError);
+    // Aggiungi nota nel chatter del move contabile (se disponibile)
+    if (moveId) {
+      try {
+        await sessionManager.callKw(
+          'mail.message',
+          'create',
+          [{
+            body: noteBody,
+            model: 'account.move',
+            res_id: moveId,
+            message_type: 'comment',
+            subtype_id: 2, // Note subtype
+          }]
+        );
+      } catch (noteError) {
+        console.warn('⚠️ Errore creazione nota sul move:', noteError);
+      }
     }
 
     // Se il versamento è da consegne, aggiungi nota anche sui picking
@@ -283,7 +258,7 @@ export async function POST(request: NextRequest) {
             'mail.message',
             'create',
             [{
-              body: `<p>💰 <strong>Versato in cassaforte</strong> da ${body.employee_name} - Payment ID: ${paymentId}</p>`,
+              body: `<p>💰 <strong>Versato in cassaforte</strong> da ${body.employee_name} - Statement Line ID: ${statementLineId}${moveId ? ` (Move: ${moveId})` : ''}</p>`,
               model: 'stock.picking',
               res_id: pickingId,
               message_type: 'comment',
@@ -298,13 +273,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      payment_id: paymentId,
+      statement_line_id: statementLineId,
+      move_id: moveId,
       message: 'Versamento registrato con successo',
       data: {
         amount: body.amount,
         employee: body.employee_name,
         type: body.type,
         discrepancy: discrepancy,
+        partner_name: partnerName,
       },
     });
 
