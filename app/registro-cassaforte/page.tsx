@@ -634,6 +634,15 @@ export default function RegistroCassafortePage() {
     return banknotes.some(b => b.serial_numbers.includes(serialNumber));
   };
 
+  // Helper to validate serial number format (Swiss banknotes have 10 characters: 1 letter + 9 digits)
+  const isValidSerialNumber = (serialNumber: string): boolean => {
+    if (!serialNumber) return false;
+    // Remove any spaces or special characters
+    const cleaned = serialNumber.replace(/[^A-Za-z0-9]/g, '');
+    // Swiss CHF banknotes have exactly 10 characters
+    return cleaned.length === 10;
+  };
+
   const recognizeBanknote = async (imageBase64: string) => {
     setIsScanningBanknote(true);
     setLastScanResult('Analisi in corso...');
@@ -653,10 +662,11 @@ export default function RegistroCassafortePage() {
           const denomination = data.denomination;
           const serialNumber = data.serial_number;
 
-          // MANDATORY: Serial number must be read for the banknote to be accepted
-          if (!serialNumber) {
-            setLastScanResult('⚠️ Numero di serie non leggibile. Riprova!');
-            toast.error('Inquadra meglio il numero di serie');
+          // MANDATORY: Serial number must be complete (10 characters for Swiss banknotes)
+          if (!serialNumber || !isValidSerialNumber(serialNumber)) {
+            const cleanedLength = serialNumber ? serialNumber.replace(/[^A-Za-z0-9]/g, '').length : 0;
+            setLastScanResult(`⚠️ Numero di serie incompleto (${cleanedLength}/10). Riprova!`);
+            toast.error('Inquadra meglio - numero di serie non completo');
             // Vibrate for warning
             if (navigator.vibrate) {
               navigator.vibrate([100, 50, 100]);
