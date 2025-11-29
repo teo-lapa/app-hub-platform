@@ -18,10 +18,9 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { useUser } from '@stackframe/stack';
 
-// Admin email allowed to manage face enrollments
-const ADMIN_EMAIL = 'paul@lapa.ch';
+// Admin key for access
+const ADMIN_KEY = 'lapa2025';
 
 interface Employee {
   id: number;
@@ -38,7 +37,6 @@ interface FaceEmbedding {
 
 export default function RegistroCassaforteAdminPage() {
   const router = useRouter();
-  const user = useUser();
 
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,22 +44,12 @@ export default function RegistroCassaforteAdminPage() {
   const [enrolledFaces, setEnrolledFaces] = useState<FaceEmbedding[]>([]);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Check authorization
+  // Check authorization via URL parameter
   useEffect(() => {
-    if (user === null) {
-      // Still loading
-      return;
-    }
+    const params = new URLSearchParams(window.location.search);
+    const adminKey = params.get('admin');
 
-    if (!user) {
-      // Not logged in
-      toast.error('Devi effettuare il login');
-      router.push('/registro-cassaforte');
-      return;
-    }
-
-    const userEmail = user.primaryEmail?.toLowerCase();
-    if (userEmail !== ADMIN_EMAIL) {
+    if (adminKey !== ADMIN_KEY) {
       toast.error('Non sei autorizzato ad accedere a questa pagina');
       router.push('/registro-cassaforte');
       return;
@@ -69,7 +57,7 @@ export default function RegistroCassaforteAdminPage() {
 
     setIsAuthorized(true);
     loadData();
-  }, [user, router]);
+  }, [router]);
 
   const loadData = async () => {
     setIsLoading(true);

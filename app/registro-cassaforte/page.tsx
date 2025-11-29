@@ -32,7 +32,6 @@ import {
   XCircle,
   Shield,
 } from 'lucide-react';
-import { useUser } from '@stackframe/stack';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
@@ -315,10 +314,9 @@ const ADMIN_EMAIL = 'paul@lapa.ch';
 // ==================== MAIN COMPONENT ====================
 export default function RegistroCassafortePage() {
   const router = useRouter();
-  const user = useUser();
 
-  // Check if user is admin
-  const isAdmin = user?.primaryEmail?.toLowerCase() === ADMIN_EMAIL;
+  // Admin state - check via URL parameter for simplicity
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // App State
   const [step, setStep] = useState<
@@ -370,6 +368,15 @@ export default function RegistroCassafortePage() {
   const streamRef = useRef<MediaStream | null>(null);
 
   // ==================== EFFECTS ====================
+
+  // Check admin access via URL parameter (?admin=lapa2025)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const adminKey = params.get('admin');
+    if (adminKey === 'lapa2025') {
+      setIsAdmin(true);
+    }
+  }, []);
 
   // Mount and clock update - client-only to avoid hydration mismatch
   useEffect(() => {
@@ -865,14 +872,14 @@ export default function RegistroCassafortePage() {
         </div>
       </motion.button>
 
-      {/* Admin Button - only visible for paul@lapa.ch */}
+      {/* Admin Button - only visible with ?admin=lapa2025 */}
       {isAdmin && (
         <motion.button
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => router.push('/registro-cassaforte/admin')}
+          onClick={() => router.push('/registro-cassaforte/admin?admin=lapa2025')}
           className="mt-8 px-6 py-3 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 rounded-xl text-amber-400 font-medium transition-colors"
         >
           <div className="flex items-center gap-2">
