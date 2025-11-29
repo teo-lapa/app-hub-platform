@@ -653,8 +653,19 @@ export default function RegistroCassafortePage() {
           const denomination = data.denomination;
           const serialNumber = data.serial_number;
 
+          // MANDATORY: Serial number must be read for the banknote to be accepted
+          if (!serialNumber) {
+            setLastScanResult('⚠️ Numero di serie non leggibile. Riprova!');
+            toast.error('Inquadra meglio il numero di serie');
+            // Vibrate for warning
+            if (navigator.vibrate) {
+              navigator.vibrate([100, 50, 100]);
+            }
+            return;
+          }
+
           // Check for duplicate serial number
-          if (serialNumber && isSerialNumberDuplicate(serialNumber)) {
+          if (isSerialNumberDuplicate(serialNumber)) {
             setLastScanResult(`⚠️ DUPLICATO! S/N: ${serialNumber} già registrato`);
             toast.error('Questa banconota è già stata scansionata!');
             // Vibrate longer for error
@@ -664,24 +675,19 @@ export default function RegistroCassafortePage() {
             return;
           }
 
-          // Banknote recognized and not duplicate - add to count
+          // Banknote recognized with valid serial number - add to count
           setBanknotes(prev => prev.map(b =>
             b.denomination === denomination
               ? {
                   ...b,
                   count: b.count + 1,
-                  serial_numbers: serialNumber
-                    ? [...b.serial_numbers, serialNumber]
-                    : b.serial_numbers
+                  serial_numbers: [...b.serial_numbers, serialNumber]
                 }
               : b
           ));
 
-          // Show result with serial number if available
-          const resultMsg = serialNumber
-            ? `✓ ${denomination} CHF - S/N: ${serialNumber}`
-            : `✓ ${denomination} CHF riconosciuto!`;
-          setLastScanResult(resultMsg);
+          // Show result with serial number
+          setLastScanResult(`✓ ${denomination} CHF - S/N: ${serialNumber}`);
 
           // Vibrate for success
           if (navigator.vibrate) {
