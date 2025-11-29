@@ -300,12 +300,12 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         )}
       </div>
 
-      {/* Result overlay - BIG message in center for banknotes */}
+      {/* Result overlay - BIG message near TOP for banknotes */}
       {mode === 'banknote' && lastResult && !isProcessing && (
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="absolute inset-0 flex items-center justify-center pointer-events-none z-20"
+          className="absolute inset-x-0 top-32 flex items-start justify-center pointer-events-none z-20"
         >
           <div className={`px-8 py-6 rounded-3xl ${
             lastResult.includes('DUPLICATO')
