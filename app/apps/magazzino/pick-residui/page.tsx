@@ -17,6 +17,7 @@ interface StockPicking {
   origin: string | false;
   group_id: [number, string] | false;
   scheduled_date: string | false;
+  backorder_id: [number, string] | false;
 }
 
 interface StockMove {
@@ -139,9 +140,14 @@ export default function PickResiduiPage() {
   // --------------------------------------------------------------------------
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [isLoading, setIsLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('Pronto. Clicca CERCA per caricare i pick residui.');
+  const [statusMessage, setStatusMessage] = useState('Pronto. Clicca CERCA per caricare i pick.');
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
+
+  // Filtro per data: 'oggi' | 'ieri' | 'domani' | 'tutti'
+  const [dateFilter, setDateFilter] = useState<'oggi' | 'ieri' | 'domani' | 'tutti'>('oggi');
+  // Filtro per tipo: 'tutti' | 'residui' | 'attesa'
+  const [typeFilter, setTypeFilter] = useState<'tutti' | 'residui' | 'attesa'>('tutti');
 
   // Dati principali
   const [picks, setPicks] = useState<StockPicking[]>([]);
@@ -244,6 +250,43 @@ export default function PickResiduiPage() {
   };
 
   // --------------------------------------------------------------------------
+  // HELPER: Calcola date per filtro
+  // --------------------------------------------------------------------------
+
+  const getDateRange = (filter: 'oggi' | 'ieri' | 'domani' | 'tutti'): { start: string; end: string } | null => {
+    if (filter === 'tutti') return null;
+
+    const now = new Date();
+    let targetDate: Date;
+
+    switch (filter) {
+      case 'ieri':
+        targetDate = new Date(now);
+        targetDate.setDate(targetDate.getDate() - 1);
+        break;
+      case 'domani':
+        targetDate = new Date(now);
+        targetDate.setDate(targetDate.getDate() + 1);
+        break;
+      case 'oggi':
+      default:
+        targetDate = now;
+        break;
+    }
+
+    // Inizio e fine giornata (UTC per Odoo)
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return {
+      start: startOfDay.toISOString().replace('T', ' ').slice(0, 19),
+      end: endOfDay.toISOString().replace('T', ' ').slice(0, 19),
+    };
+  };
+
+  // --------------------------------------------------------------------------
   // LOAD DATA
   // --------------------------------------------------------------------------
 
@@ -252,23 +295,44 @@ export default function PickResiduiPage() {
     setStatusMessage('Carico…');
 
     try {
+      // Costruisci domain base
+      const domain: any[] = [
+        ['name', 'ilike', 'PICK'],
+        ['state', 'not in', ['done', 'cancel']],
+      ];
+
+      // Filtro per tipo: residui (backorder) o in attesa (confirmed/waiting)
+      if (typeFilter === 'residui') {
+        domain.push(['backorder_id', '!=', false]);
+      } else if (typeFilter === 'attesa') {
+        domain.push(['backorder_id', '=', false]);
+        domain.push(['state', 'in', ['confirmed', 'waiting', 'assigned']]);
+      }
+      // 'tutti' = non aggiunge filtri aggiuntivi
+
+      // Filtro per data
+      const dateRange = getDateRange(dateFilter);
+      if (dateRange) {
+        domain.push(['scheduled_date', '>=', dateRange.start]);
+        domain.push(['scheduled_date', '<=', dateRange.end]);
+      }
+
       const picksData = await searchRead<StockPicking>(
         'stock.picking',
-        [
-          ['backorder_id', '!=', false],
-          ['name', 'ilike', 'PICK'],
-          ['state', 'not in', ['done', 'cancel']],
-        ],
-        ['id', 'name', 'state', 'partner_id', 'driver_id', 'carrier_id', 'sale_id', 'origin', 'group_id', 'scheduled_date'],
+        domain,
+        ['id', 'name', 'state', 'partner_id', 'driver_id', 'carrier_id', 'sale_id', 'origin', 'group_id', 'scheduled_date', 'backorder_id'],
         0,
-        'name asc'
+        'scheduled_date asc, name asc'
       );
+
+      const dateLabel = dateFilter === 'tutti' ? '' : ` per ${dateFilter}`;
+      const typeLabel = typeFilter === 'tutti' ? '' : (typeFilter === 'residui' ? ' (residui)' : ' (in attesa)');
 
       if (!picksData.length) {
         setPicks([]);
         setMoves([]);
         setGroups(new Map());
-        setStatusMessage('Nessun pick residuo.');
+        setStatusMessage(`Nessun pick trovato${dateLabel}${typeLabel}.`);
         return;
       }
 
@@ -333,7 +397,7 @@ export default function PickResiduiPage() {
       setMetaByMove(newMetaByMove);
       setLineInfoByMove(newLineInfoByMove);
       setGroups(newGroups);
-      setStatusMessage(`Caricati ${picksData.length} pick residui`);
+      setStatusMessage(`Caricati ${picksData.length} pick${dateLabel}${typeLabel}`);
 
       // Carica info prodotti (stock e arrivi) in background
       loadProductsInfo(movesData);
@@ -790,11 +854,30 @@ export default function PickResiduiPage() {
         })
       : '-';
 
+    // Stato pick con icona e colore
+    const stateInfo = {
+      assigned: { label: 'Pronto', icon: '✅', color: '#16a34a' },
+      confirmed: { label: 'In Attesa', icon: '⏳', color: '#f59e0b' },
+      waiting: { label: 'In Attesa', icon: '⏳', color: '#f59e0b' },
+      draft: { label: 'Bozza', icon: '📝', color: '#6b7280' },
+    }[pick.state] || { label: pick.state, icon: '❓', color: '#6b7280' };
+
+    // Verifica se è un residuo (backorder)
+    const isBackorder = pick.backorder_id !== false;
+
     return (
       <div key={pick.id} className="card">
         <div className="pick-head">
           <span className="pill">
             📦 <b>{pick.name}</b>
+          </span>
+          {isBackorder && (
+            <span className="pill" style={{ background: '#fef3c7', color: '#92400e', borderColor: '#fcd34d' }}>
+              🔄 Residuo
+            </span>
+          )}
+          <span className="pill" style={{ background: `${stateInfo.color}20`, color: stateInfo.color, borderColor: stateInfo.color }}>
+            {stateInfo.icon} {stateInfo.label}
           </span>
           <span className="pill">
             Cliente: <b>{pick.partner_id ? pick.partner_id[1] : '-'}</b>
@@ -802,7 +885,6 @@ export default function PickResiduiPage() {
           <span className="pill">
             📅 Consegna: <b>{deliveryDate}</b>
           </span>
-          <span className="pill">{pick.state}</span>
           <span className="pill">
             🧾 Ordine: <b>{saleName || '-'}</b>
           </span>
@@ -1079,6 +1161,52 @@ export default function PickResiduiPage() {
         .info {
           color: var(--muted);
           font-size: 13px;
+        }
+
+        .filters-bar {
+          display: flex;
+          gap: 16px;
+          align-items: center;
+          flex-wrap: wrap;
+          padding: 12px 0;
+          margin-bottom: 8px;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .filter-group {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+
+        .filter-label {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--muted);
+          margin-right: 4px;
+        }
+
+        .btn.filter-btn {
+          padding: 6px 12px;
+          font-size: 12px;
+          border-radius: 8px;
+          background: var(--chip);
+          color: var(--muted);
+          border: 1px solid var(--border);
+          transition: all 0.15s;
+        }
+
+        .btn.filter-btn:hover {
+          border-color: var(--accent);
+          color: var(--text);
+        }
+
+        .btn.filter-btn.active {
+          background: var(--accent);
+          color: var(--btnText);
+          border-color: var(--accent);
+          font-weight: 700;
         }
 
         .group {
@@ -1418,6 +1546,22 @@ export default function PickResiduiPage() {
             padding: 6px 10px;
             font-size: 11px;
           }
+          .btn.filter-btn {
+            padding: 5px 10px;
+            font-size: 11px;
+          }
+          .filters-bar {
+            gap: 10px;
+            padding: 10px 0;
+          }
+          .filter-group {
+            gap: 4px;
+          }
+          .filter-label {
+            font-size: 11px;
+            width: 100%;
+            margin-bottom: 4px;
+          }
           input[type='number'] {
             width: 90px;
             padding: 8px 10px;
@@ -1502,13 +1646,65 @@ export default function PickResiduiPage() {
             >
               🏠 Home
             </a>
-            <div className="title">Pick Residui – Edit rapido</div>
+            <div className="title">Pick – Edit rapido</div>
             <button className="btn ghost" type="button" onClick={toggleTheme} title="Cambia tema">
               {theme === 'light' ? '☀️ Chiaro' : '🌙 Scuro'}
             </button>
             <button className="btn green" type="button" onClick={handleLoad} disabled={isLoading}>
               {isLoading ? <span className="loading"></span> : 'CERCA'}
             </button>
+          </div>
+
+          {/* Filtri per data e tipo */}
+          <div className="filters-bar">
+            <div className="filter-group">
+              <span className="filter-label">📅 Data:</span>
+              <button
+                className={`btn filter-btn ${dateFilter === 'ieri' ? 'active' : ''}`}
+                onClick={() => setDateFilter('ieri')}
+              >
+                Ieri
+              </button>
+              <button
+                className={`btn filter-btn ${dateFilter === 'oggi' ? 'active' : ''}`}
+                onClick={() => setDateFilter('oggi')}
+              >
+                Oggi
+              </button>
+              <button
+                className={`btn filter-btn ${dateFilter === 'domani' ? 'active' : ''}`}
+                onClick={() => setDateFilter('domani')}
+              >
+                Domani
+              </button>
+              <button
+                className={`btn filter-btn ${dateFilter === 'tutti' ? 'active' : ''}`}
+                onClick={() => setDateFilter('tutti')}
+              >
+                Tutti
+              </button>
+            </div>
+            <div className="filter-group">
+              <span className="filter-label">📦 Tipo:</span>
+              <button
+                className={`btn filter-btn ${typeFilter === 'tutti' ? 'active' : ''}`}
+                onClick={() => setTypeFilter('tutti')}
+              >
+                Tutti
+              </button>
+              <button
+                className={`btn filter-btn ${typeFilter === 'attesa' ? 'active' : ''}`}
+                onClick={() => setTypeFilter('attesa')}
+              >
+                In Attesa
+              </button>
+              <button
+                className={`btn filter-btn ${typeFilter === 'residui' ? 'active' : ''}`}
+                onClick={() => setTypeFilter('residui')}
+              >
+                Residui
+              </button>
+            </div>
             <div className="info">
               Invio salva la riga • Raggruppo per <b>Autista</b> e <b>Giro</b>
             </div>

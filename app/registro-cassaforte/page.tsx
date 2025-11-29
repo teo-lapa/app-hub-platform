@@ -882,14 +882,6 @@ export default function RegistroCassafortePage() {
     setLastScanResult(undefined);
   };
 
-  const updateBanknoteCount = (denomination: number, delta: number) => {
-    setBanknotes(prev => prev.map(b =>
-      b.denomination === denomination
-        ? { ...b, count: Math.max(0, b.count + delta) }
-        : b
-    ));
-  };
-
   const updateCoinCount = (denomination: number, delta: number) => {
     setCoins(prev => prev.map(c =>
       c.denomination === denomination
@@ -1447,19 +1439,7 @@ export default function RegistroCassafortePage() {
                   <span className="text-lg text-white font-medium">{b.denomination} CHF</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => updateBanknoteCount(b.denomination, -1)}
-                    className="w-10 h-10 rounded-full bg-red-500/20 hover:bg-red-500/30 flex items-center justify-center transition-colors"
-                  >
-                    <Minus className="w-5 h-5 text-red-400" />
-                  </button>
                   <span className="w-12 text-center text-2xl font-bold text-white">{b.count}</span>
-                  <button
-                    onClick={() => updateBanknoteCount(b.denomination, 1)}
-                    className="w-10 h-10 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 flex items-center justify-center transition-colors"
-                  >
-                    <Plus className="w-5 h-5 text-emerald-400" />
-                  </button>
                   <span className="w-24 text-right text-white/60">
                     {formatCurrency(b.denomination * b.count)}
                   </span>
