@@ -15,7 +15,8 @@ export interface MonthlyAnalysisLine {
 
   // Quantita e prezzi
   quantity: number;
-  soldPrice: number;           // price_unit dalla riga ordine
+  soldPrice: number;           // price_unit dalla riga ordine (prezzo lordo)
+  effectivePrice: number;      // prezzo effettivo dopo sconto: soldPrice * (1 - discount/100)
   referencePrice: number;      // prezzo fisso OPPURE prezzo listino base
   costPrice: number;           // standard_price (costo acquisto)
   discount: number;            // sconto applicato (%)

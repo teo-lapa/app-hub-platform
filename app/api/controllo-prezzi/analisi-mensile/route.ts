@@ -383,11 +383,14 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Calculate differences
-      const priceDiffCHF = soldPrice - referencePrice;
-      const priceDiffPercent = referencePrice > 0 ? ((soldPrice - referencePrice) / referencePrice) * 100 : 0;
-      const profitCHF = (soldPrice - costPrice) * quantity;
-      const marginPercent = costPrice > 0 ? ((soldPrice - costPrice) / costPrice) * 100 : 0;
+      // Calculate effective price after discount
+      const effectivePrice = soldPrice * (1 - discount / 100);
+
+      // Calculate differences (using effective price after discount)
+      const priceDiffCHF = effectivePrice - referencePrice;
+      const priceDiffPercent = referencePrice > 0 ? ((effectivePrice - referencePrice) / referencePrice) * 100 : 0;
+      const profitCHF = (effectivePrice - costPrice) * quantity;
+      const marginPercent = costPrice > 0 ? ((effectivePrice - costPrice) / costPrice) * 100 : 0;
 
       // Determine direction
       let direction: 'higher' | 'lower' | 'equal';
@@ -411,6 +414,7 @@ export async function GET(request: NextRequest) {
         commitmentDate: order.commitment_date || order.date_order || '',
         quantity,
         soldPrice,
+        effectivePrice,
         referencePrice,
         costPrice,
         discount,

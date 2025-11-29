@@ -573,8 +573,15 @@ export default function AnalisiMensilePage() {
                                       <td className="p-2 text-right font-mono text-orange-400">
                                         {line.costPrice.toFixed(2)}
                                       </td>
-                                      <td className="p-2 text-right font-mono text-blue-400">
-                                        {line.soldPrice.toFixed(2)}
+                                      <td className="p-2 text-right">
+                                        <div className="font-mono text-blue-400">
+                                          {line.effectivePrice.toFixed(2)}
+                                        </div>
+                                        {line.discount > 0 && (
+                                          <div className="text-xs text-slate-500 line-through">
+                                            {line.soldPrice.toFixed(2)}
+                                          </div>
+                                        )}
                                       </td>
                                       <td className="p-2 text-right">
                                         {line.discount > 0 ? (
@@ -663,8 +670,15 @@ export default function AnalisiMensilePage() {
                                   <td className="p-2 text-right font-mono text-orange-400">
                                     {line.costPrice.toFixed(2)}
                                   </td>
-                                  <td className="p-2 text-right font-mono text-blue-400">
-                                    {line.soldPrice.toFixed(2)}
+                                  <td className="p-2 text-right">
+                                    <div className="font-mono text-blue-400">
+                                      {line.effectivePrice.toFixed(2)}
+                                    </div>
+                                    {line.discount > 0 && (
+                                      <div className="text-xs text-slate-500 line-through">
+                                        {line.soldPrice.toFixed(2)}
+                                      </div>
+                                    )}
                                   </td>
                                   <td className="p-2 text-right">
                                     {line.discount > 0 ? (
@@ -846,8 +860,15 @@ export default function AnalisiMensilePage() {
                                       <td className="p-2 text-right font-mono text-orange-400">
                                         {line.costPrice.toFixed(2)}
                                       </td>
-                                      <td className="p-2 text-right font-mono text-purple-400">
-                                        {line.soldPrice.toFixed(2)}
+                                      <td className="p-2 text-right">
+                                        <div className="font-mono text-purple-400">
+                                          {line.effectivePrice.toFixed(2)}
+                                        </div>
+                                        {line.discount > 0 && (
+                                          <div className="text-xs text-slate-500 line-through">
+                                            {line.soldPrice.toFixed(2)}
+                                          </div>
+                                        )}
                                       </td>
                                       <td className="p-2 text-right">
                                         {line.discount > 0 ? (
@@ -937,8 +958,15 @@ export default function AnalisiMensilePage() {
                                   <td className="p-2 text-right font-mono text-orange-400">
                                     {line.costPrice.toFixed(2)}
                                   </td>
-                                  <td className="p-2 text-right font-mono text-purple-400">
-                                    {line.soldPrice.toFixed(2)}
+                                  <td className="p-2 text-right">
+                                    <div className="font-mono text-purple-400">
+                                      {line.effectivePrice.toFixed(2)}
+                                    </div>
+                                    {line.discount > 0 && (
+                                      <div className="text-xs text-slate-500 line-through">
+                                        {line.soldPrice.toFixed(2)}
+                                      </div>
+                                    )}
                                   </td>
                                   <td className="p-2 text-right">
                                     {line.discount > 0 ? (
