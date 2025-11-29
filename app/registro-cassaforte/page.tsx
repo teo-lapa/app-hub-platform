@@ -122,6 +122,9 @@ interface CameraScannerProps {
   mode: 'face' | 'banknote';
   isProcessing: boolean;
   lastResult?: string;
+  // For banknote mode - show totals
+  currentTotal?: number;
+  expectedTotal?: number;
 }
 
 const CameraScanner: React.FC<CameraScannerProps> = ({
@@ -130,6 +133,8 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
   mode,
   isProcessing,
   lastResult,
+  currentTotal = 0,
+  expectedTotal,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -211,6 +216,11 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
     );
   }
 
+  // Format currency helper
+  const formatCHF = (amount: number) => {
+    return new Intl.NumberFormat('de-CH', { style: 'currency', currency: 'CHF' }).format(amount);
+  };
+
   return (
     <div className="fixed inset-0 bg-black z-50">
       {/* Close button */}
@@ -220,6 +230,34 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
       >
         <X className="w-6 h-6 text-white" />
       </button>
+
+      {/* Totals bar for banknote mode - TOP of screen */}
+      {mode === 'banknote' && (
+        <div className="absolute top-4 left-4 right-16 z-10">
+          <div className="bg-black/70 backdrop-blur-sm rounded-2xl p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-white/60 text-sm">Totale contato</div>
+                <div className="text-3xl font-bold text-emerald-400">{formatCHF(currentTotal)}</div>
+              </div>
+              {expectedTotal !== undefined && expectedTotal > 0 && (
+                <div className="text-right">
+                  <div className="text-white/60 text-sm">Atteso</div>
+                  <div className="text-xl font-semibold text-white">{formatCHF(expectedTotal)}</div>
+                  <div className={`text-sm font-medium ${
+                    currentTotal >= expectedTotal ? 'text-emerald-400' : 'text-amber-400'
+                  }`}>
+                    {currentTotal >= expectedTotal
+                      ? '✓ Completo'
+                      : `Mancano ${formatCHF(expectedTotal - currentTotal)}`
+                    }
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Video feed */}
       <video
@@ -1570,6 +1608,8 @@ export default function RegistroCassafortePage() {
           }}
           isProcessing={isScanningBanknote}
           lastResult={lastScanResult}
+          currentTotal={calculateTotal()}
+          expectedTotal={depositType === 'from_delivery' ? calculateExpectedTotal() : undefined}
         />
       )}
 
