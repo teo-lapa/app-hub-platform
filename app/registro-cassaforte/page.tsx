@@ -30,7 +30,9 @@ import {
   ScanLine,
   Eye,
   XCircle,
+  Shield,
 } from 'lucide-react';
+import { useUser } from '@stackframe/stack';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
@@ -307,9 +309,16 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
   );
 };
 
+// Admin email
+const ADMIN_EMAIL = 'paul@lapa.ch';
+
 // ==================== MAIN COMPONENT ====================
 export default function RegistroCassafortePage() {
   const router = useRouter();
+  const user = useUser();
+
+  // Check if user is admin
+  const isAdmin = user?.primaryEmail?.toLowerCase() === ADMIN_EMAIL;
 
   // App State
   const [step, setStep] = useState<
@@ -855,6 +864,23 @@ export default function RegistroCassafortePage() {
           VERSA SOLDI
         </div>
       </motion.button>
+
+      {/* Admin Button - only visible for paul@lapa.ch */}
+      {isAdmin && (
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => router.push('/registro-cassaforte/admin')}
+          className="mt-8 px-6 py-3 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 rounded-xl text-amber-400 font-medium transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Shield className="w-5 h-5" />
+            Gestione Admin
+          </div>
+        </motion.button>
+      )}
     </motion.div>
   );
 
