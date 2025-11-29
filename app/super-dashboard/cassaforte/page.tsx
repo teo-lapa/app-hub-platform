@@ -45,6 +45,8 @@ interface CassaforteItem {
   is_reconciled: boolean;
   create_date: string;
   type: 'deposit' | 'withdrawal';
+  invoice_id: number | null;
+  invoice_name: string | null;
 }
 
 interface CassaforteData {
@@ -383,12 +385,28 @@ export default function CassafortePage() {
                         </span>
                         <span>{formatDate(item.date)}</span>
                       </div>
-                      {item.is_reconciled && (
-                        <div className="text-xs text-emerald-400 mt-1">
-                          <CheckCircle className="w-3 h-3 inline mr-1" />
-                          Riconciliato
-                        </div>
-                      )}
+                      <div className="flex items-center justify-between mt-2">
+                        {item.is_reconciled ? (
+                          <div className="text-xs text-emerald-400">
+                            <CheckCircle className="w-3 h-3 inline mr-1" />
+                            Riconciliato
+                          </div>
+                        ) : (
+                          <div />
+                        )}
+                        {item.invoice_id && item.invoice_name && (
+                          <a
+                            href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${item.invoice_id}&model=account.move&view_type=form`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                          >
+                            <FileText className="w-3 h-3" />
+                            {item.invoice_name}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

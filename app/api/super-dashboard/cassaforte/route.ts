@@ -18,6 +18,8 @@ interface CassaforteItem {
   is_reconciled: boolean;
   create_date: string;
   type: 'deposit' | 'withdrawal';
+  invoice_id: number | null;
+  invoice_name: string | null;
 }
 
 /**
@@ -75,6 +77,53 @@ export async function GET(request: NextRequest) {
         employeeName = refParts[1];
       }
 
+      // Try to find the associated invoice for deposits
+      let invoiceId: number | null = null;
+      let invoiceName: string | null = null;
+
+      if (!isWithdrawal && line.partner_id) {
+        const partnerId = Array.isArray(line.partner_id) ? line.partner_id[0] : line.partner_id;
+        try {
+          // Search for invoices from this partner around the same date
+          const invoices = await sessionManager.callKw(
+            'account.move',
+            'search_read',
+            [[
+              ['partner_id', '=', partnerId],
+              ['move_type', 'in', ['out_invoice', 'out_refund']],
+              ['invoice_date', '>=', line.date],
+              ['invoice_date', '<=', line.date],
+              ['state', '=', 'posted'],
+            ]],
+            { fields: ['id', 'name', 'amount_total'], limit: 1, order: 'id desc' }
+          );
+
+          if (invoices.length > 0) {
+            invoiceId = invoices[0].id;
+            invoiceName = invoices[0].name;
+          } else {
+            // If no exact date match, try to find most recent invoice for this partner
+            const recentInvoices = await sessionManager.callKw(
+              'account.move',
+              'search_read',
+              [[
+                ['partner_id', '=', partnerId],
+                ['move_type', 'in', ['out_invoice', 'out_refund']],
+                ['state', '=', 'posted'],
+              ]],
+              { fields: ['id', 'name', 'amount_total', 'invoice_date'], limit: 1, order: 'invoice_date desc, id desc' }
+            );
+
+            if (recentInvoices.length > 0) {
+              invoiceId = recentInvoices[0].id;
+              invoiceName = recentInvoices[0].name;
+            }
+          }
+        } catch (invoiceError) {
+          console.warn(`⚠️ Errore recupero fattura per statement line ${line.id}:`, invoiceError);
+        }
+      }
+
       const item: CassaforteItem = {
         id: line.id,
         date: line.date,
@@ -86,6 +135,8 @@ export async function GET(request: NextRequest) {
         is_reconciled: line.is_reconciled,
         create_date: line.create_date,
         type: isWithdrawal ? 'withdrawal' : 'deposit',
+        invoice_id: invoiceId,
+        invoice_name: invoiceName,
       };
 
       if (isWithdrawal) {
