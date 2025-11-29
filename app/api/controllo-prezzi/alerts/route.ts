@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callOdoo } from '@/lib/odoo';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import type {
   Alert,
   AlertStats,
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const { cookies, nextUrl } = request;
+    const { nextUrl } = request;
     const action = nextUrl.searchParams.get('action') || 'generate';
 
     initializeRules();
@@ -46,6 +46,14 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Authenticate with Odoo
+    const userCookies = request.headers.get('cookie');
+    const { cookies: odooCookies } = await getOdooSession(userCookies || undefined);
+
+    if (!odooCookies) {
+      throw new Error('Failed to authenticate with Odoo');
+    }
+
     console.log('[Alerts] Generating alerts...');
 
     const newAlerts: Alert[] = [];
@@ -54,7 +62,7 @@ export async function GET(request: NextRequest) {
     // STEP 1: Fetch Recent Draft Invoices
     // ============================================================
     const draftInvoices = await callOdoo(
-      cookies,
+      odooCookies,
       'account.move',
       'search_read',
       [[
@@ -86,7 +94,7 @@ export async function GET(request: NextRequest) {
     }
 
     const invoiceLines = await callOdoo(
-      cookies,
+      odooCookies,
       'account.move.line',
       'search_read',
       [[
@@ -112,14 +120,14 @@ export async function GET(request: NextRequest) {
     // ============================================================
     // STEP 3: Fetch Products for Cost Data
     // ============================================================
-    const productIds = [...new Set(
+    const productIds = Array.from(new Set(
       invoiceLines
         .filter((line: any) => line.product_id)
         .map((line: any) => line.product_id[0])
-    )];
+    ));
 
     const products = await callOdoo(
-      cookies,
+      odooCookies,
       'product.product',
       'search_read',
       [[
@@ -129,7 +137,7 @@ export async function GET(request: NextRequest) {
       { fields: ['id', 'name', 'default_code', 'standard_price', 'list_price'] }
     );
 
-    const productMap = new Map(products.map((p: any) => [p.id, p]));
+    const productMap = new Map<number, any>(products.map((p: any) => [p.id, p]));
 
     // ============================================================
     // STEP 4: Generate Alerts Based on Rules

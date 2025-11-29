@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callOdoo } from '@/lib/odoo';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import type {
   DraftInvoiceAnalysis,
   AnomalyProduct,
@@ -51,7 +51,13 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const { cookies } = request;
+    // Authenticate with Odoo
+    const userCookies = request.headers.get('cookie');
+    const { cookies: odooCookies } = await getOdooSession(userCookies || undefined);
+
+    if (!odooCookies) {
+      throw new Error('Failed to authenticate with Odoo');
+    }
 
     console.log('[Fatture Bozza] Inizio fetch...');
 
@@ -59,7 +65,7 @@ export async function GET(request: NextRequest) {
     // STEP 1: Fetch Draft Invoices
     // ============================================================
     const draftInvoices: DraftInvoice[] = await callOdoo(
-      cookies,
+      odooCookies,
       'account.move',
       'search_read',
       [[
@@ -97,7 +103,7 @@ export async function GET(request: NextRequest) {
     const allLineIds = draftInvoices.flatMap(inv => inv.invoice_line_ids);
 
     const invoiceLines: InvoiceLine[] = await callOdoo(
-      cookies,
+      odooCookies,
       'account.move.line',
       'search_read',
       [[
@@ -126,10 +132,10 @@ export async function GET(request: NextRequest) {
     // ============================================================
     // STEP 3: Fetch Previous Invoices for Each Partner
     // ============================================================
-    const partnerIds = [...new Set(draftInvoices.map(inv => inv.partner_id[0]))];
+    const partnerIds = Array.from(new Set(draftInvoices.map(inv => inv.partner_id[0])));
 
     const previousInvoices: any[] = await callOdoo(
-      cookies,
+      odooCookies,
       'account.move',
       'search_read',
       [[
@@ -167,7 +173,7 @@ export async function GET(request: NextRequest) {
 
     if (allSaleLineIds.length > 0) {
       const saleLines: SaleLine[] = await callOdoo(
-        cookies,
+        odooCookies,
         'sale.order.line',
         'search_read',
         [[['id', 'in', allSaleLineIds]]],
@@ -179,11 +185,11 @@ export async function GET(request: NextRequest) {
         saleLineToOrderMap.set(sl.id, sl.order_id[0]);
       });
 
-      const saleOrderIds = [...new Set(saleLines.map(sl => sl.order_id[0]))];
+      const saleOrderIds = Array.from(new Set(saleLines.map(sl => sl.order_id[0])));
 
       if (saleOrderIds.length > 0) {
         const saleOrders: SaleOrder[] = await callOdoo(
-          cookies,
+          odooCookies,
           'sale.order',
           'search_read',
           [[['id', 'in', saleOrderIds]]],
@@ -199,14 +205,14 @@ export async function GET(request: NextRequest) {
     // ============================================================
     // STEP 5: Fetch Products (for cost calculation)
     // ============================================================
-    const productIds = [...new Set(
+    const productIds = Array.from(new Set(
       invoiceLines
-        .filter(line => line.product_id)
-        .map(line => line.product_id![0])
-    )];
+        .filter(line => line.product_id && Array.isArray(line.product_id))
+        .map(line => (line.product_id as [number, string])[0])
+    ));
 
     const products: Product[] = await callOdoo(
-      cookies,
+      odooCookies,
       'product.product',
       'search_read',
       [[
@@ -324,8 +330,9 @@ export async function GET(request: NextRequest) {
       // Filter anomaly products
       const anomalyProducts: AnomalyProduct[] = [];
 
-      for (const [productId, prices] of productData.entries()) {
-        const productName = lines.find(l => l.product_id?.[0] === productId)?.product_id?.[1] || 'Unknown';
+      for (const [productId, prices] of Array.from(productData.entries())) {
+        const productLine = lines.find(l => l.product_id && Array.isArray(l.product_id) && l.product_id[0] === productId);
+        const productName = productLine?.product_id ? (productLine.product_id as [number, string])[1] : 'Unknown';
 
         const hasMultiplePrices = prices.length >= 2;
         const hasZeroPrice = prices.some(p => p.priceUnit === 0);
