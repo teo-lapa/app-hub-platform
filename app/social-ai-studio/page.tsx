@@ -5,12 +5,18 @@ import {
   ArrowLeft, Home, Sparkles, Upload, Image as ImageIcon,
   Video, Loader2, Download, Instagram, Facebook, Linkedin,
   CheckCircle2, Wand2, MessageSquare, Hash, Target,
-  Play, X, Package, Share2
+  Play, X, Package, Share2, BarChart3, TrendingUp, Award,
+  AlertCircle, Zap
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import ProductSelector from '@/components/social-ai/ProductSelector';
 import ShareMenu from '@/components/social-ai/ShareMenu';
+import {
+  getSentimentEmoji,
+  getRecommendationColor,
+  getEngagementLevel
+} from '@/lib/social-ai/sentiment-analyzer';
 
 type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
 type ContentType = 'image' | 'video' | 'both';
@@ -18,12 +24,23 @@ type Tone = 'professional' | 'casual' | 'fun' | 'luxury';
 type VideoStyle = 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion' | 'orbital' | 'reassembly';
 type VideoDuration = 6 | 12 | 30;
 
+interface SentimentAnalysis {
+  sentiment: 'positive' | 'neutral' | 'negative';
+  sentimentScore: number;
+  predictedEngagement: number;
+  qualityScore: number;
+  strengths: string[];
+  improvements: string[];
+  recommendation: 'ready_to_post' | 'needs_improvement' | 'regenerate';
+}
+
 interface MarketingResult {
   copywriting: {
     caption: string;
     hashtags: string[];
     cta: string;
   };
+  sentiment?: SentimentAnalysis;
   image?: {
     dataUrl: string;
   };
@@ -56,6 +73,11 @@ export default function SocialAIStudioPage() {
   const [logoImage, setLogoImage] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [companyMotto, setCompanyMotto] = useState('');
+
+  // Geo-Targeting states
+  const [targetCanton, setTargetCanton] = useState('');
+  const [targetCity, setTargetCity] = useState('');
+  const [productCategory, setProductCategory] = useState('');
 
   // Generation states
   const [isGenerating, setIsGenerating] = useState(false);
@@ -261,7 +283,11 @@ export default function SocialAIStudioPage() {
           // Branding
           includeLogo,
           logoImage: logoImage || undefined,
-          companyMotto: companyMotto || undefined
+          companyMotto: companyMotto || undefined,
+          // Geo-Targeting & RAG
+          productCategory: productCategory || undefined,
+          targetCanton: targetCanton || undefined,
+          targetCity: targetCity || undefined
         })
       });
 
@@ -439,6 +465,15 @@ export default function SocialAIStudioPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Analytics Button */}
+              <Link
+                href="/social-ai-studio/analytics"
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg transition-all group shadow-lg"
+              >
+                <BarChart3 className="h-5 w-5 text-white" />
+                <span className="text-white font-medium hidden sm:inline">Analytics</span>
+              </Link>
             </div>
           </div>
         </div>
@@ -882,6 +917,85 @@ export default function SocialAIStudioPage() {
               />
             </div>
 
+            {/* Geo-Targeting & RAG */}
+            <div className="bg-gradient-to-br from-blue-900/20 to-cyan-900/20 backdrop-blur-sm rounded-xl border border-cyan-500/30 p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-2xl">🇨🇭</span>
+                <h3 className="text-lg font-semibold text-cyan-300">Geo-Targeting & Smart RAG</h3>
+              </div>
+              <p className="text-xs text-cyan-300/70 mb-4">
+                💡 L'AI imparerà dai post simili performanti nel Canton selezionato
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-cyan-300 mb-2">
+                    Canton Svizzero
+                  </label>
+                  <select
+                    value={targetCanton}
+                    onChange={(e) => setTargetCanton(e.target.value)}
+                    className="w-full px-4 py-2 bg-slate-900/50 border border-cyan-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-white text-sm"
+                    disabled={isGenerating}
+                  >
+                    <option value="">Nessuno</option>
+                    <option value="Zürich">🏙️ Zürich</option>
+                    <option value="Bern">🏛️ Bern</option>
+                    <option value="Ticino">🏔️ Ticino</option>
+                    <option value="Vaud">🍷 Vaud</option>
+                    <option value="Genève">🌍 Genève</option>
+                    <option value="Basel-Stadt">🎨 Basel</option>
+                    <option value="Luzern">🌊 Luzern</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-cyan-300 mb-2">
+                    Città (opzionale)
+                  </label>
+                  <input
+                    type="text"
+                    value={targetCity}
+                    onChange={(e) => setTargetCity(e.target.value)}
+                    placeholder={targetCanton === 'Zürich' ? 'Es: Zürich' : targetCanton === 'Ticino' ? 'Es: Lugano' : 'Es: Bern'}
+                    className="w-full px-4 py-2 bg-slate-900/50 border border-cyan-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-white placeholder:text-slate-500 text-sm"
+                    disabled={isGenerating}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-cyan-300 mb-2">
+                  Categoria Prodotto (per RAG)
+                </label>
+                <select
+                  value={productCategory}
+                  onChange={(e) => setProductCategory(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-900/50 border border-cyan-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-white text-sm"
+                  disabled={isGenerating}
+                >
+                  <option value="">Auto-detect</option>
+                  <option value="Food">🍽️ Food & Alimenti</option>
+                  <option value="Gastro">🍴 Gastro & Ristorazione</option>
+                  <option value="Beverage">🍷 Beverage & Vini</option>
+                  <option value="Dairy">🧀 Latticini & Formaggi</option>
+                  <option value="Fresh">🥬 Prodotti Freschi</option>
+                  <option value="Frozen">❄️ Surgelati</option>
+                </select>
+              </div>
+
+              {(targetCanton || productCategory) && (
+                <div className="mt-3 p-3 bg-cyan-900/20 border border-cyan-500/30 rounded-lg">
+                  <p className="text-xs text-cyan-300/90">
+                    ✨ <strong>RAG Attivo:</strong> L'AI cercherà post simili performanti
+                    {targetCanton && ` nel Canton ${targetCanton}`}
+                    {productCategory && ` nella categoria ${productCategory}`}
+                    {' '}per ottimizzare hashtags e CTA.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Pulsante Genera */}
             <button
               onClick={handleGenerate}
@@ -1000,6 +1114,135 @@ export default function SocialAIStudioPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Sentiment Analysis */}
+                {result.sentiment && (
+                  <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 backdrop-blur-sm rounded-xl border border-blue-500/30 p-4 sm:p-6">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <TrendingUp className="h-5 w-5 text-blue-400" />
+                      <h3 className="text-white font-semibold">AI Sentiment Analysis</h3>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 ml-auto" />
+                    </div>
+
+                    {/* Sentiment & Engagement */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {/* Sentiment Badge */}
+                      <div className="bg-slate-900/50 rounded-lg p-3 border border-blue-500/30">
+                        <div className="text-xs text-blue-300 mb-1">Sentiment</div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-2xl">{getSentimentEmoji(result.sentiment.sentiment)}</span>
+                          <div>
+                            <div className="text-white font-semibold capitalize">{result.sentiment.sentiment}</div>
+                            <div className="text-xs text-blue-400">Score: {result.sentiment.sentimentScore.toFixed(2)}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Predicted Engagement */}
+                      <div className="bg-slate-900/50 rounded-lg p-3 border border-blue-500/30">
+                        <div className="text-xs text-blue-300 mb-1">Predicted Engagement</div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-2xl">{getEngagementLevel(result.sentiment.predictedEngagement).emoji}</span>
+                          <div>
+                            <div className={`font-bold text-lg ${getEngagementLevel(result.sentiment.predictedEngagement).color}`}>
+                              {result.sentiment.predictedEngagement.toFixed(1)}%
+                            </div>
+                            <div className="text-xs text-blue-400">
+                              {getEngagementLevel(result.sentiment.predictedEngagement).label}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quality Score */}
+                    <div className="bg-slate-900/50 rounded-lg p-3 border border-blue-500/30 mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-xs text-blue-300 flex items-center space-x-1">
+                          <Award className="h-3 w-3" />
+                          <span>Quality Score</span>
+                        </div>
+                        <div className="text-white font-bold text-lg">{result.sentiment.qualityScore}/100</div>
+                      </div>
+                      <div className="w-full bg-slate-700 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all ${
+                            result.sentiment.qualityScore >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                            result.sentiment.qualityScore >= 60 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
+                            result.sentiment.qualityScore >= 40 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
+                            'bg-gradient-to-r from-red-500 to-pink-500'
+                          }`}
+                          style={{ width: `${result.sentiment.qualityScore}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    {/* Recommendation Badge */}
+                    <div className={`rounded-lg p-3 mb-4 border ${
+                      result.sentiment.recommendation === 'ready_to_post' ? 'bg-green-900/20 border-green-500/30' :
+                      result.sentiment.recommendation === 'needs_improvement' ? 'bg-yellow-900/20 border-yellow-500/30' :
+                      'bg-red-900/20 border-red-500/30'
+                    }`}>
+                      <div className="flex items-center space-x-2">
+                        {result.sentiment.recommendation === 'ready_to_post' ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-400" />
+                        ) : result.sentiment.recommendation === 'needs_improvement' ? (
+                          <AlertCircle className="h-5 w-5 text-yellow-400" />
+                        ) : (
+                          <X className="h-5 w-5 text-red-400" />
+                        )}
+                        <div>
+                          <div className={`font-semibold ${getRecommendationColor(result.sentiment.recommendation)}`}>
+                            {result.sentiment.recommendation === 'ready_to_post' ? '✅ Ready to Post!' :
+                             result.sentiment.recommendation === 'needs_improvement' ? '⚠️ Needs Improvement' :
+                             '❌ Regenerate Content'}
+                          </div>
+                          <div className="text-xs text-slate-400 mt-0.5">
+                            {result.sentiment.recommendation === 'ready_to_post' ? 'Excellent quality - share immediately' :
+                             result.sentiment.recommendation === 'needs_improvement' ? 'Good but can be optimized' :
+                             'Consider regenerating with different parameters'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Strengths */}
+                    {result.sentiment.strengths.length > 0 && (
+                      <div className="mb-3">
+                        <div className="text-xs text-green-300 mb-2 flex items-center space-x-1 font-medium">
+                          <Zap className="h-3 w-3" />
+                          <span>Strengths</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {result.sentiment.strengths.map((strength, idx) => (
+                            <div key={idx} className="flex items-start space-x-2 text-sm">
+                              <span className="text-green-400 mt-0.5">✓</span>
+                              <span className="text-green-200">{strength}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Improvements */}
+                    {result.sentiment.improvements.length > 0 && (
+                      <div>
+                        <div className="text-xs text-yellow-300 mb-2 flex items-center space-x-1 font-medium">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>Suggested Improvements</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {result.sentiment.improvements.map((improvement, idx) => (
+                            <div key={idx} className="flex items-start space-x-2 text-sm">
+                              <span className="text-yellow-400 mt-0.5">→</span>
+                              <span className="text-yellow-200">{improvement}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Immagine */}
                 {result.image && (

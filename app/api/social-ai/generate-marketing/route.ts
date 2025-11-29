@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { sql } from '@vercel/postgres';
+import { findSimilarHighPerformingPosts, extractRAGInsights } from '@/lib/social-ai/embedding-service';
+import { analyzeSentiment, type SentimentAnalysis } from '@/lib/social-ai/sentiment-analyzer';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minuti per generazione completa (video può richiedere tempo)
@@ -81,6 +84,12 @@ interface GenerateMarketingRequest {
   includeLogo?: boolean;     // Se true, include logo e motto nell'immagine/video
   logoImage?: string;        // Logo aziendale (base64) - opzionale
   companyMotto?: string;      // Slogan/Motto aziendale - opzionale
+
+  // Geo-Targeting & RAG
+  productCategory?: string;  // Categoria prodotto per RAG matching (es: 'Food', 'Gastro', 'Beverage')
+  targetCanton?: string;     // Canton Svizzero per hashtags localizzati (es: 'Zürich', 'Bern', 'Ticino')
+  targetCity?: string;       // Città target (es: 'Zürich', 'Lugano')
+  targetLanguage?: string;   // Lingua target (es: 'de', 'it', 'fr', 'en')
 }
 
 interface MarketingResult {
@@ -99,10 +108,12 @@ interface MarketingResult {
     status: 'generating' | 'completed' | 'failed';
     estimatedTime: number; // secondi
   };
+  sentiment?: SentimentAnalysis; // Sentiment & engagement prediction
   metadata: {
     platform: string;
     aspectRatio: string;
     generatedAt: string;
+    postId?: string; // UUID del post salvato nel database
   };
 }
 
@@ -122,7 +133,12 @@ export async function POST(request: NextRequest) {
       videoDuration = 6,    // Default: 6 secondi
       includeLogo = false,
       logoImage,        // Logo aziendale (base64) - opzionale
-      companyMotto      // Slogan/Motto aziendale - opzionale
+      companyMotto,     // Slogan/Motto aziendale - opzionale
+      // Geo-Targeting & RAG
+      productCategory,
+      targetCanton,
+      targetCity,
+      targetLanguage
     } = body;
 
     // Validazione
@@ -176,7 +192,7 @@ export async function POST(request: NextRequest) {
 
     const agents = [];
 
-    // AGENT 1: Copywriting (sempre attivo)
+    // AGENT 1: Copywriting (sempre attivo) - con RAG
     agents.push(
       generateCopywriting(ai, {
         productName: cleanedName,
@@ -184,7 +200,9 @@ export async function POST(request: NextRequest) {
         platform: socialPlatform,
         tone,
         targetAudience,
-        productImageBase64: cleanBase64
+        productImageBase64: cleanBase64,
+        productCategory,
+        targetCanton
       })
     );
 
@@ -233,9 +251,41 @@ export async function POST(request: NextRequest) {
     const imageResult = results[1] as { data: string; mimeType: string; dataUrl: string } | null;
     const videoResult = results[2] as { operationId: string; status: string; estimatedTime: number } | null;
 
+    // ==========================================
+    // 🧠 SENTIMENT ANALYSIS & ENGAGEMENT PREDICTION
+    // ==========================================
+    let sentimentResult: SentimentAnalysis | undefined;
+
+    try {
+      if (isDev) {
+        console.log('[SENTIMENT] Analyzing generated copy...');
+      }
+
+      sentimentResult = await analyzeSentiment({
+        caption: copywritingResult.caption,
+        hashtags: copywritingResult.hashtags,
+        cta: copywritingResult.cta,
+        platform: socialPlatform,
+        tone,
+        productName: cleanedName
+      });
+
+      if (isDev) {
+        console.log('[SENTIMENT] ✓ Analysis complete:', {
+          sentiment: sentimentResult.sentiment,
+          predictedEngagement: `${sentimentResult.predictedEngagement}%`,
+          recommendation: sentimentResult.recommendation
+        });
+      }
+    } catch (sentimentError) {
+      console.error('[SENTIMENT] Analysis failed:', sentimentError);
+      // Continue without sentiment - graceful degradation
+    }
+
     // Costruisci risposta
     const result: MarketingResult = {
       copywriting: copywritingResult,
+      sentiment: sentimentResult, // Add sentiment analysis
       metadata: {
         platform: socialPlatform,
         aspectRatio,
@@ -249,6 +299,77 @@ export async function POST(request: NextRequest) {
 
     if (videoResult) {
       result.video = videoResult as { operationId: string; status: 'generating' | 'completed' | 'failed'; estimatedTime: number };
+    }
+
+    // ==========================================
+    // 💾 SAVE TO DATABASE
+    // ==========================================
+    try {
+      // Determine aspect ratio for storage
+      const videoStyle = body.videoStyle || 'default';
+
+      // Save post to database (with geo-targeting fields)
+      const savedPost = await sql`
+        INSERT INTO social_posts (
+          product_name,
+          product_category,
+          platform,
+          content_type,
+          caption,
+          hashtags,
+          cta,
+          tone,
+          video_style,
+          video_duration,
+          aspect_ratio,
+          logo_url,
+          company_motto,
+          target_canton,
+          target_city,
+          target_language,
+          status,
+          created_at
+        ) VALUES (
+          ${cleanedName},
+          ${productCategory || null},
+          ${socialPlatform},
+          ${contentType},
+          ${copywritingResult.caption},
+          ${copywritingResult.hashtags},
+          ${copywritingResult.cta},
+          ${tone},
+          ${videoStyle},
+          ${videoDuration || 6},
+          ${aspectRatio},
+          ${logoImage || null},
+          ${companyMotto || null},
+          ${targetCanton || null},
+          ${targetCity || null},
+          ${targetLanguage || null},
+          'draft',
+          NOW()
+        )
+        RETURNING id
+      `;
+
+      const postId = savedPost.rows[0]?.id;
+
+      if (isDev && postId) {
+        console.log(`[DATABASE] ✓ Post saved with ID: ${postId}`);
+      }
+
+      // Add post ID to result metadata
+      result.metadata = {
+        ...result.metadata,
+        postId
+      };
+
+    } catch (dbError: any) {
+      // Log error but don't fail the request - data is still returned to user
+      console.error('[DATABASE] Failed to save post:', dbError.message);
+      if (isDev) {
+        console.error('[DATABASE] Error details:', dbError);
+      }
     }
 
     return NextResponse.json({
@@ -281,8 +402,56 @@ async function generateCopywriting(
     tone: string;
     targetAudience: string;
     productImageBase64: string;
+    productCategory?: string;
+    targetCanton?: string;
   }
 ): Promise<{ caption: string; hashtags: string[]; cta: string }> {
+
+  // ==========================================
+  // 🧠 RAG: Find similar high-performing posts
+  // ==========================================
+  let ragInsights = '';
+
+  try {
+    if (isDev) {
+      console.log('[RAG] Searching for similar high-performing posts...');
+    }
+
+    const similarPosts = await findSimilarHighPerformingPosts({
+      productName: params.productName,
+      platform: params.platform,
+      productCategory: params.productCategory,
+      targetCanton: params.targetCanton,
+      minEngagement: 3.0,
+      limit: 5
+    });
+
+    if (similarPosts.length > 0) {
+      const insights = await extractRAGInsights(similarPosts);
+
+      ragInsights = `
+
+📊 PERFORMANCE DATA (from ${similarPosts.length} similar high-performing posts):
+- Top Hashtags: ${insights.topHashtags.slice(0, 8).join(', ')}
+- Successful CTAs: ${insights.successfulCTAs.slice(0, 2).join(' | ')}
+- Average Engagement: ${insights.avgEngagement.toFixed(2)}%
+- Effective Tone: ${insights.tonePatterns.join(', ')}
+
+💡 RECOMMENDATION: Use these proven hashtags and CTA style for maximum engagement.`;
+
+      if (isDev) {
+        console.log('[RAG] ✓ Found insights from', similarPosts.length, 'similar posts');
+        console.log('[RAG] Top hashtags:', insights.topHashtags.slice(0, 5));
+      }
+    } else {
+      if (isDev) {
+        console.log('[RAG] No similar posts found - using default strategy');
+      }
+    }
+  } catch (ragError) {
+    console.error('[RAG] Failed to fetch insights:', ragError);
+    // Continue without RAG insights - graceful degradation
+  }
 
   const prompt = `Sei un esperto copywriter specializzato in social media marketing.
 
@@ -291,7 +460,7 @@ CONTESTO:
 - Descrizione: ${params.productDescription || 'Vedi immagine'}
 - Piattaforma: ${params.platform}
 - Tone of voice: ${params.tone}
-- Target audience: ${params.targetAudience}
+- Target audience: ${params.targetAudience}${ragInsights}
 
 TASK:
 Analizza l'immagine del prodotto e crea un post marketing completo per ${params.platform}.
@@ -305,7 +474,7 @@ STRUTTURA RISPOSTA (formato JSON):
 
 REGOLE:
 - Caption: emozionale, breve, engaging
-- Hashtags: 5-8 hashtags rilevanti e popolari per ${params.platform}
+- Hashtags: 5-8 hashtags rilevanti e popolari per ${params.platform}${ragInsights ? '\n- PRIORITÀ: Usa gli hashtags suggeriti dai dati di performance' : ''}
 - CTA: chiaro e orientato all'azione, DEVE includere "www.lapa.ch" (es: "Visita www.lapa.ch", "Scopri di più su www.lapa.ch", "Ordina su www.lapa.ch")
 - Tone: ${params.tone}
 - NON usare emoji se il tone è "professional"
