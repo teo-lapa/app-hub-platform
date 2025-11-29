@@ -15,9 +15,10 @@ const openai = new OpenAI({
 /**
  * POST /api/registro-cassaforte/recognize-banknote
  * Riconosce una banconota CHF dall'immagine usando OpenAI GPT-4o-mini
+ * Estrae: denominazione e numero di serie
  *
  * Request: multipart/form-data with 'image' field
- * Response: { denomination: number, confidence: number, currency: string }
+ * Response: { denomination: number, serial_number: string, confidence: number, currency: string }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -47,22 +48,22 @@ export async function POST(request: NextRequest) {
             content: [
               {
                 type: 'text',
-                text: `Identify this Swiss Franc (CHF) banknote denomination.
+                text: `Analyze this Swiss Franc (CHF) banknote image.
 
-Valid CHF denominations: 10, 20, 50, 100, 200, 1000
+1. DENOMINATION: Identify the value (10, 20, 50, 100, 200, or 1000 CHF)
+   - Look at the large number printed on the note
+   - Colors: 10=Yellow, 20=Red, 50=Green, 100=Blue, 200=Brown, 1000=Purple
 
-Swiss banknote colors:
-- 10 CHF = Yellow/golden
-- 20 CHF = Red
-- 50 CHF = Green
-- 100 CHF = Blue
-- 200 CHF = Brown/orange
-- 1000 CHF = Purple/violet
+2. SERIAL NUMBER: Read the serial number printed on the banknote
+   - Swiss banknotes have a serial number format like: 12A3456789 or similar
+   - It's usually printed near the edges of the note
+   - Look for alphanumeric codes (letters and numbers)
 
-Look at the large number on the note and the color.
+Respond ONLY with JSON:
+{"denomination": 100, "serial_number": "12A3456789", "confidence": 0.95}
 
-Respond ONLY with JSON: {"denomination": NUMBER, "confidence": 0.95}
-If not a CHF banknote or unclear: {"denomination": 0, "confidence": 0}`,
+If serial number is not visible or unreadable, use "serial_number": null
+If not a CHF banknote: {"denomination": 0, "serial_number": null, "confidence": 0}`,
               },
               {
                 type: 'image_url',
@@ -73,7 +74,7 @@ If not a CHF banknote or unclear: {"denomination": 0, "confidence": 0}`,
             ],
           },
         ],
-        max_tokens: 50,
+        max_tokens: 100,
       });
 
       const gptResponse = response.choices[0]?.message?.content || '';
@@ -87,6 +88,7 @@ If not a CHF banknote or unclear: {"denomination": 0, "confidence": 0}`,
           return NextResponse.json({
             success: true,
             denomination: parsed.denomination,
+            serial_number: parsed.serial_number || null,
             confidence: parsed.confidence || 0.9,
             currency: 'CHF',
             method: 'openai_vision',
@@ -99,6 +101,7 @@ If not a CHF banknote or unclear: {"denomination": 0, "confidence": 0}`,
         success: false,
         error: 'Banconota non riconosciuta',
         denomination: 0,
+        serial_number: null,
         confidence: 0,
       });
 
@@ -109,6 +112,7 @@ If not a CHF banknote or unclear: {"denomination": 0, "confidence": 0}`,
         success: false,
         error: 'Errore nel riconoscimento. Riprova.',
         denomination: 0,
+        serial_number: null,
         confidence: 0,
       });
     }

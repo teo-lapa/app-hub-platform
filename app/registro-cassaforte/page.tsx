@@ -63,6 +63,7 @@ interface PendingPayment {
 interface BanknoteCount {
   denomination: number;
   count: number;
+  serial_numbers: string[]; // Numeri di serie delle banconote scansionate
 }
 
 interface CoinCount {
@@ -188,14 +189,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
     onCapture(base64);
   };
 
-  // Auto-capture for banknotes every 2 seconds
-  useEffect(() => {
-    if (mode === 'banknote' && isReady && !isProcessing) {
-      const interval = setInterval(captureImage, 2000);
-      return () => clearInterval(interval);
-    }
-    return undefined;
-  }, [mode, isReady, isProcessing]);
+  // NO auto-capture - manual click only for banknotes
 
   if (!hasCamera) {
     return (
@@ -266,40 +260,61 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         )}
       </div>
 
+      {/* Result overlay - BIG message in center for banknotes */}
+      {mode === 'banknote' && lastResult && !isProcessing && (
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="absolute inset-0 flex items-center justify-center pointer-events-none z-20"
+        >
+          <div className={`px-8 py-6 rounded-3xl ${
+            lastResult.includes('CHF') && !lastResult.includes('non riconosciuta')
+              ? 'bg-emerald-500/90'
+              : 'bg-red-500/80'
+          }`}>
+            <p className="text-white text-3xl font-bold text-center">{lastResult}</p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Status bar */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
         <div className="text-center">
           {isProcessing ? (
             <div className="flex items-center justify-center gap-3">
-              <Loader2 className="w-6 h-6 text-white animate-spin" />
-              <span className="text-white text-lg">Analisi in corso...</span>
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
+              <span className="text-white text-2xl font-medium">Analisi in corso...</span>
             </div>
           ) : (
             <>
               <p className="text-white/80 text-lg mb-4">
                 {mode === 'face'
                   ? 'Posiziona il viso nel cerchio'
-                  : 'Posiziona la banconota nel riquadro'}
+                  : 'Tocca il pulsante per scansionare'}
               </p>
 
-              {mode === 'face' && (
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={captureImage}
-                  className="px-8 py-4 bg-cyan-500 rounded-2xl text-white text-lg font-semibold pointer-events-auto"
-                >
-                  <div className="flex items-center gap-2">
-                    <Camera className="w-6 h-6" />
-                    Scatta Foto
-                  </div>
-                </motion.button>
-              )}
-
-              {lastResult && (
-                <div className="mt-4 px-4 py-2 bg-white/20 rounded-lg inline-block">
-                  <span className="text-white">{lastResult}</span>
+              {/* Capture button for both modes */}
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={captureImage}
+                className={`px-8 py-4 rounded-2xl text-white text-lg font-semibold pointer-events-auto ${
+                  mode === 'face' ? 'bg-cyan-500' : 'bg-emerald-500'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {mode === 'face' ? (
+                    <>
+                      <Camera className="w-6 h-6" />
+                      Scatta Foto
+                    </>
+                  ) : (
+                    <>
+                      <ScanLine className="w-6 h-6" />
+                      Scansiona Banconota
+                    </>
+                  )}
                 </div>
-              )}
+              </motion.button>
             </>
           )}
         </div>
@@ -335,7 +350,7 @@ export default function RegistroCassafortePage() {
 
   // Counting State
   const [banknotes, setBanknotes] = useState<BanknoteCount[]>(
-    BANKNOTE_DENOMINATIONS.map(d => ({ denomination: d, count: 0 }))
+    BANKNOTE_DENOMINATIONS.map(d => ({ denomination: d, count: 0, serial_numbers: [] }))
   );
   const [coins, setCoins] = useState<CoinCount[]>(
     COIN_DENOMINATIONS.map(d => ({ denomination: d, count: 0 }))
@@ -552,6 +567,7 @@ export default function RegistroCassafortePage() {
 
   const recognizeBanknote = async (imageBase64: string) => {
     setIsScanningBanknote(true);
+    setLastScanResult('Analisi in corso...');
     try {
       const formData = new FormData();
       const blob = await fetch(`data:image/jpeg;base64,${imageBase64}`).then(r => r.blob());
@@ -565,27 +581,41 @@ export default function RegistroCassafortePage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.denomination > 0) {
-          // Banknote recognized - add to count
+          // Banknote recognized - add to count and save serial number
           const denomination = data.denomination;
+          const serialNumber = data.serial_number;
+
           setBanknotes(prev => prev.map(b =>
             b.denomination === denomination
-              ? { ...b, count: b.count + 1 }
+              ? {
+                  ...b,
+                  count: b.count + 1,
+                  serial_numbers: serialNumber
+                    ? [...b.serial_numbers, serialNumber]
+                    : b.serial_numbers
+                }
               : b
           ));
 
-          setLastScanResult(`${denomination} CHF riconosciuto!`);
-          toast.success(`${denomination} CHF aggiunto`);
+          // Show result with serial number if available
+          const resultMsg = serialNumber
+            ? `${denomination} CHF - S/N: ${serialNumber}`
+            : `${denomination} CHF riconosciuto!`;
+          setLastScanResult(resultMsg);
 
           // Vibrate for feedback if available
           if (navigator.vibrate) {
-            navigator.vibrate(100);
+            navigator.vibrate(200);
           }
         } else {
-          setLastScanResult('Riposiziona la banconota');
+          setLastScanResult('Banconota non riconosciuta. Riprova.');
         }
+      } else {
+        setLastScanResult('Errore. Riprova.');
       }
     } catch (e) {
       console.error('Banknote recognition error:', e);
+      setLastScanResult('Errore di connessione');
     } finally {
       setIsScanningBanknote(false);
     }
@@ -746,7 +776,7 @@ export default function RegistroCassafortePage() {
     setPendingPayments([]);
     setSelectedPayments([]);
     setExtraCustomerName('');
-    setBanknotes(BANKNOTE_DENOMINATIONS.map(d => ({ denomination: d, count: 0 })));
+    setBanknotes(BANKNOTE_DENOMINATIONS.map(d => ({ denomination: d, count: 0, serial_numbers: [] })));
     setCoins(COIN_DENOMINATIONS.map(d => ({ denomination: d, count: 0 })));
     setDepositType('from_delivery');
     setError(null);
