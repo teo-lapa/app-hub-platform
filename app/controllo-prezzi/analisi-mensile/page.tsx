@@ -14,7 +14,13 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  Calculator
+  Calculator,
+  Users,
+  Package,
+  Layers,
+  Search,
+  ExternalLink,
+  Percent
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -52,6 +58,12 @@ export default function AnalisiMensilePage() {
   const [fixedExpanded, setFixedExpanded] = useState(true);
   const [baseExpanded, setBaseExpanded] = useState(true);
   const [filterDirection, setFilterDirection] = useState<'all' | 'higher' | 'lower'>('all');
+  const [groupBy, setGroupBy] = useState<'none' | 'customer' | 'product'>('none');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showOnlyDiscounted, setShowOnlyDiscounted] = useState(false);
+
+  // Odoo URL for links
+  const odooBaseUrl = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 
   // Load data
   const loadData = async () => {
@@ -83,16 +95,68 @@ export default function AnalisiMensilePage() {
     loadData();
   }, [month]);
 
-  // Filter lines by direction
-  const filteredFixedLines = useMemo(() => {
-    if (filterDirection === 'all') return fixedPriceLines;
-    return fixedPriceLines.filter(l => l.direction === filterDirection);
-  }, [fixedPriceLines, filterDirection]);
+  // Filter lines by direction, search, and discount
+  const filterLines = (lines: MonthlyAnalysisLine[]) => {
+    let filtered = lines;
 
-  const filteredBaseLines = useMemo(() => {
-    if (filterDirection === 'all') return basePriceLines;
-    return basePriceLines.filter(l => l.direction === filterDirection);
-  }, [basePriceLines, filterDirection]);
+    // Filter by direction
+    if (filterDirection !== 'all') {
+      filtered = filtered.filter(l => l.direction === filterDirection);
+    }
+
+    // Filter by discount
+    if (showOnlyDiscounted) {
+      filtered = filtered.filter(l => l.discount > 0);
+    }
+
+    // Filter by search query
+    if (searchQuery.length >= 2) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(l =>
+        l.productName.toLowerCase().includes(query) ||
+        l.productCode.toLowerCase().includes(query) ||
+        l.customerName.toLowerCase().includes(query) ||
+        l.orderName.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  };
+
+  const filteredFixedLines = useMemo(() => filterLines(fixedPriceLines), [fixedPriceLines, filterDirection, searchQuery, showOnlyDiscounted]);
+  const filteredBaseLines = useMemo(() => filterLines(basePriceLines), [basePriceLines, filterDirection, searchQuery, showOnlyDiscounted]);
+
+  // Group lines by customer or product
+  type GroupedLines = { key: string; name: string; lines: MonthlyAnalysisLine[]; totalDiff: number; totalProfit: number }[];
+
+  const groupLines = (lines: MonthlyAnalysisLine[]): GroupedLines => {
+    if (groupBy === 'none') return [];
+
+    const groupMap = new Map<string, { name: string; lines: MonthlyAnalysisLine[] }>();
+
+    lines.forEach(line => {
+      const key = groupBy === 'customer' ? String(line.customerId) : String(line.productId);
+      const name = groupBy === 'customer' ? line.customerName : (line.productCode || line.productName);
+
+      if (!groupMap.has(key)) {
+        groupMap.set(key, { name, lines: [] });
+      }
+      groupMap.get(key)!.lines.push(line);
+    });
+
+    return Array.from(groupMap.entries())
+      .map(([key, { name, lines }]) => ({
+        key,
+        name,
+        lines,
+        totalDiff: lines.reduce((sum, l) => sum + l.priceDiffCHF, 0),
+        totalProfit: lines.reduce((sum, l) => sum + l.profitCHF, 0)
+      }))
+      .sort((a, b) => Math.abs(b.totalDiff) - Math.abs(a.totalDiff));
+  };
+
+  const groupedFixedLines = useMemo(() => groupLines(filteredFixedLines), [filteredFixedLines, groupBy]);
+  const groupedBaseLines = useMemo(() => groupLines(filteredBaseLines), [filteredBaseLines, groupBy]);
 
   // Get current lines based on active group
   const currentLines = activeGroup === 'fixed' ? filteredFixedLines : filteredBaseLines;
@@ -273,7 +337,60 @@ export default function AnalisiMensilePage() {
               </button>
             </div>
 
+            {/* Divider */}
+            <div className="h-8 w-px bg-slate-600 hidden lg:block" />
+
+            {/* Group By */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-400 hidden sm:inline">Raggruppa:</span>
+              <button
+                onClick={() => setGroupBy(groupBy === 'none' ? 'customer' : groupBy === 'customer' ? 'product' : 'none')}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                  groupBy !== 'none'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                {groupBy === 'none' && <><Layers className="w-4 h-4" /> Nessuno</>}
+                {groupBy === 'customer' && <><Users className="w-4 h-4" /> Cliente</>}
+                {groupBy === 'product' && <><Package className="w-4 h-4" /> Prodotto</>}
+              </button>
+            </div>
+
+            {/* Discount Filter */}
+            <button
+              onClick={() => setShowOnlyDiscounted(!showOnlyDiscounted)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                showOnlyDiscounted
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              <Percent className="w-4 h-4" />
+              {showOnlyDiscounted ? 'Con Sconto' : 'Sconto'}
+            </button>
+
             <div className="flex-1" />
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cerca prodotto, cliente..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 w-48 lg:w-64"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
 
             {/* Actions */}
             <button
@@ -379,7 +496,9 @@ export default function AnalisiMensilePage() {
                               <th className="p-2 w-10"></th>
                               <th className="p-2">Prodotto</th>
                               <th className="p-2">Cliente</th>
+                              <th className="p-2 text-right">Costo</th>
                               <th className="p-2 text-right">Venduto</th>
+                              <th className="p-2 text-right">Sconto</th>
                               <th className="p-2 text-right">Bloccato</th>
                               <th className="p-2 text-right">Diff</th>
                               <th className="p-2 text-right">Margine</th>
@@ -387,64 +506,206 @@ export default function AnalisiMensilePage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {filteredFixedLines.map((line) => (
-                              <tr
-                                key={line.lineId}
-                                className={`border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors ${
-                                  line.direction === 'higher' ? 'border-l-4 border-l-green-500' :
-                                  line.direction === 'lower' ? 'border-l-4 border-l-red-500' : ''
-                                }`}
-                              >
-                                <td className="p-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedIds.has(line.lineId)}
-                                    onChange={() => toggleSelection(line.lineId)}
-                                    className="w-4 h-4 rounded accent-blue-500"
-                                  />
-                                </td>
-                                <td className="p-2">
-                                  <div className="font-medium text-white truncate max-w-[200px]" title={line.productName}>
-                                    {line.productCode || line.productName.slice(0, 30)}
-                                  </div>
-                                  <div className="text-xs text-slate-500">{line.orderName}</div>
-                                </td>
-                                <td className="p-2 text-slate-300 truncate max-w-[150px]" title={line.customerName}>
-                                  {line.customerName}
-                                </td>
-                                <td className="p-2 text-right font-mono text-blue-400">
-                                  {line.soldPrice.toFixed(2)}
-                                </td>
-                                <td className="p-2 text-right font-mono text-slate-400">
-                                  {line.referencePrice.toFixed(2)}
-                                </td>
-                                <td className="p-2 text-right">
-                                  <span className={`font-mono font-bold ${
-                                    line.direction === 'higher' ? 'text-green-400' :
-                                    line.direction === 'lower' ? 'text-red-400' : 'text-slate-400'
-                                  }`}>
-                                    {line.priceDiffCHF >= 0 ? '+' : ''}{line.priceDiffCHF.toFixed(2)}
-                                  </span>
-                                  <span className={`ml-1 text-xs ${
-                                    line.direction === 'higher' ? 'text-green-400/70' :
-                                    line.direction === 'lower' ? 'text-red-400/70' : 'text-slate-500'
-                                  }`}>
-                                    ({line.priceDiffPercent >= 0 ? '+' : ''}{line.priceDiffPercent.toFixed(1)}%)
-                                  </span>
-                                </td>
-                                <td className="p-2 text-right">
-                                  <span className={`font-mono ${
-                                    line.marginPercent >= 30 ? 'text-green-400' :
-                                    line.marginPercent >= 20 ? 'text-yellow-400' : 'text-red-400'
-                                  }`}>
-                                    {line.marginPercent.toFixed(1)}%
-                                  </span>
-                                </td>
-                                <td className="p-2 text-right font-mono text-emerald-400">
-                                  {line.profitCHF.toFixed(2)}
-                                </td>
-                              </tr>
-                            ))}
+                            {groupBy !== 'none' ? (
+                              // Grouped view
+                              groupedFixedLines.map((group) => (
+                                <React.Fragment key={group.key}>
+                                  <tr className="bg-blue-900/30 border-b border-slate-600">
+                                    <td colSpan={10} className="p-3">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          {groupBy === 'customer' ? <Users className="w-4 h-4 text-blue-400" /> : <Package className="w-4 h-4 text-blue-400" />}
+                                          <span className="font-bold text-white">{group.name}</span>
+                                          <span className="text-slate-400">({group.lines.length} righe)</span>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                          <span className={`font-mono font-bold ${group.totalDiff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                            Delta: {group.totalDiff >= 0 ? '+' : ''}{group.totalDiff.toFixed(2)} CHF
+                                          </span>
+                                          <span className="font-mono text-emerald-400">
+                                            Profitto: {group.totalProfit.toFixed(2)} CHF
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                  {group.lines.map((line) => (
+                                    <tr
+                                      key={line.lineId}
+                                      className={`border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors ${
+                                        line.direction === 'higher' ? 'border-l-4 border-l-green-500' :
+                                        line.direction === 'lower' ? 'border-l-4 border-l-red-500' : ''
+                                      }`}
+                                    >
+                                      <td className="p-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedIds.has(line.lineId)}
+                                          onChange={() => toggleSelection(line.lineId)}
+                                          className="w-4 h-4 rounded accent-blue-500"
+                                        />
+                                      </td>
+                                      <td className="p-2">
+                                        <div className="font-medium text-white truncate max-w-[200px]" title={line.productName}>
+                                          {line.productCode || line.productName.slice(0, 30)}
+                                        </div>
+                                        <a
+                                          href={`${odooBaseUrl}/web#id=${line.orderId}&model=sale.order&view_type=form`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1"
+                                        >
+                                          {line.orderName}
+                                          <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                      </td>
+                                      <td className="p-2">
+                                        <a
+                                          href={`${odooBaseUrl}/web#id=${line.customerId}&model=res.partner&view_type=form`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-slate-300 hover:text-blue-300 hover:underline truncate max-w-[150px] block"
+                                          title={line.customerName}
+                                        >
+                                          {line.customerName}
+                                        </a>
+                                      </td>
+                                      <td className="p-2 text-right font-mono text-orange-400">
+                                        {line.costPrice.toFixed(2)}
+                                      </td>
+                                      <td className="p-2 text-right font-mono text-blue-400">
+                                        {line.soldPrice.toFixed(2)}
+                                      </td>
+                                      <td className="p-2 text-right">
+                                        {line.discount > 0 ? (
+                                          <span className="font-mono text-amber-400 font-bold">
+                                            -{line.discount.toFixed(1)}%
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-600">-</span>
+                                        )}
+                                      </td>
+                                      <td className="p-2 text-right font-mono text-slate-400">
+                                        {line.referencePrice.toFixed(2)}
+                                      </td>
+                                      <td className="p-2 text-right">
+                                        <span className={`font-mono font-bold ${
+                                          line.direction === 'higher' ? 'text-green-400' :
+                                          line.direction === 'lower' ? 'text-red-400' : 'text-slate-400'
+                                        }`}>
+                                          {line.priceDiffCHF >= 0 ? '+' : ''}{line.priceDiffCHF.toFixed(2)}
+                                        </span>
+                                        <span className={`ml-1 text-xs ${
+                                          line.direction === 'higher' ? 'text-green-400/70' :
+                                          line.direction === 'lower' ? 'text-red-400/70' : 'text-slate-500'
+                                        }`}>
+                                          ({line.priceDiffPercent >= 0 ? '+' : ''}{line.priceDiffPercent.toFixed(1)}%)
+                                        </span>
+                                      </td>
+                                      <td className="p-2 text-right">
+                                        <span className={`font-mono ${
+                                          line.marginPercent >= 30 ? 'text-green-400' :
+                                          line.marginPercent >= 20 ? 'text-yellow-400' : 'text-red-400'
+                                        }`}>
+                                          {line.marginPercent.toFixed(1)}%
+                                        </span>
+                                      </td>
+                                      <td className="p-2 text-right font-mono text-emerald-400">
+                                        {line.profitCHF.toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </React.Fragment>
+                              ))
+                            ) : (
+                              // Flat view
+                              filteredFixedLines.map((line) => (
+                                <tr
+                                  key={line.lineId}
+                                  className={`border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors ${
+                                    line.direction === 'higher' ? 'border-l-4 border-l-green-500' :
+                                    line.direction === 'lower' ? 'border-l-4 border-l-red-500' : ''
+                                  }`}
+                                >
+                                  <td className="p-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedIds.has(line.lineId)}
+                                      onChange={() => toggleSelection(line.lineId)}
+                                      className="w-4 h-4 rounded accent-blue-500"
+                                    />
+                                  </td>
+                                  <td className="p-2">
+                                    <div className="font-medium text-white truncate max-w-[200px]" title={line.productName}>
+                                      {line.productCode || line.productName.slice(0, 30)}
+                                    </div>
+                                    <a
+                                      href={`${odooBaseUrl}/web#id=${line.orderId}&model=sale.order&view_type=form`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1"
+                                    >
+                                      {line.orderName}
+                                      <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                  </td>
+                                  <td className="p-2">
+                                    <a
+                                      href={`${odooBaseUrl}/web#id=${line.customerId}&model=res.partner&view_type=form`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-slate-300 hover:text-blue-300 hover:underline truncate max-w-[150px] block"
+                                      title={line.customerName}
+                                    >
+                                      {line.customerName}
+                                    </a>
+                                  </td>
+                                  <td className="p-2 text-right font-mono text-orange-400">
+                                    {line.costPrice.toFixed(2)}
+                                  </td>
+                                  <td className="p-2 text-right font-mono text-blue-400">
+                                    {line.soldPrice.toFixed(2)}
+                                  </td>
+                                  <td className="p-2 text-right">
+                                    {line.discount > 0 ? (
+                                      <span className="font-mono text-amber-400 font-bold">
+                                        -{line.discount.toFixed(1)}%
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-600">-</span>
+                                    )}
+                                  </td>
+                                  <td className="p-2 text-right font-mono text-slate-400">
+                                    {line.referencePrice.toFixed(2)}
+                                  </td>
+                                  <td className="p-2 text-right">
+                                    <span className={`font-mono font-bold ${
+                                      line.direction === 'higher' ? 'text-green-400' :
+                                      line.direction === 'lower' ? 'text-red-400' : 'text-slate-400'
+                                    }`}>
+                                      {line.priceDiffCHF >= 0 ? '+' : ''}{line.priceDiffCHF.toFixed(2)}
+                                    </span>
+                                    <span className={`ml-1 text-xs ${
+                                      line.direction === 'higher' ? 'text-green-400/70' :
+                                      line.direction === 'lower' ? 'text-red-400/70' : 'text-slate-500'
+                                    }`}>
+                                      ({line.priceDiffPercent >= 0 ? '+' : ''}{line.priceDiffPercent.toFixed(1)}%)
+                                    </span>
+                                  </td>
+                                  <td className="p-2 text-right">
+                                    <span className={`font-mono ${
+                                      line.marginPercent >= 30 ? 'text-green-400' :
+                                      line.marginPercent >= 20 ? 'text-yellow-400' : 'text-red-400'
+                                    }`}>
+                                      {line.marginPercent.toFixed(1)}%
+                                    </span>
+                                  </td>
+                                  <td className="p-2 text-right font-mono text-emerald-400">
+                                    {line.profitCHF.toFixed(2)}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
                           </tbody>
                         </table>
 
@@ -507,7 +768,9 @@ export default function AnalisiMensilePage() {
                               <th className="p-2 w-10"></th>
                               <th className="p-2">Prodotto</th>
                               <th className="p-2">Cliente</th>
+                              <th className="p-2 text-right">Costo</th>
                               <th className="p-2 text-right">Venduto</th>
+                              <th className="p-2 text-right">Sconto</th>
                               <th className="p-2 text-right">Listino</th>
                               <th className="p-2 text-right">Diff</th>
                               <th className="p-2 text-right">Margine</th>
@@ -515,64 +778,208 @@ export default function AnalisiMensilePage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {filteredBaseLines.map((line) => (
-                              <tr
-                                key={line.lineId}
-                                className={`border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors ${
-                                  line.direction === 'higher' ? 'border-l-4 border-l-green-500' :
-                                  line.direction === 'lower' ? 'border-l-4 border-l-red-500' : ''
-                                }`}
-                              >
-                                <td className="p-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedIds.has(line.lineId)}
-                                    onChange={() => toggleSelection(line.lineId)}
-                                    className="w-4 h-4 rounded accent-purple-500"
-                                  />
-                                </td>
-                                <td className="p-2">
-                                  <div className="font-medium text-white truncate max-w-[200px]" title={line.productName}>
-                                    {line.productCode || line.productName.slice(0, 30)}
-                                  </div>
-                                  <div className="text-xs text-slate-500">{line.orderName} | {line.referencePricelistName}</div>
-                                </td>
-                                <td className="p-2 text-slate-300 truncate max-w-[150px]" title={line.customerName}>
-                                  {line.customerName}
-                                </td>
-                                <td className="p-2 text-right font-mono text-purple-400">
-                                  {line.soldPrice.toFixed(2)}
-                                </td>
-                                <td className="p-2 text-right font-mono text-slate-400">
-                                  {line.referencePrice.toFixed(2)}
-                                </td>
-                                <td className="p-2 text-right">
-                                  <span className={`font-mono font-bold ${
-                                    line.direction === 'higher' ? 'text-green-400' :
-                                    line.direction === 'lower' ? 'text-red-400' : 'text-slate-400'
-                                  }`}>
-                                    {line.priceDiffCHF >= 0 ? '+' : ''}{line.priceDiffCHF.toFixed(2)}
-                                  </span>
-                                  <span className={`ml-1 text-xs ${
-                                    line.direction === 'higher' ? 'text-green-400/70' :
-                                    line.direction === 'lower' ? 'text-red-400/70' : 'text-slate-500'
-                                  }`}>
-                                    ({line.priceDiffPercent >= 0 ? '+' : ''}{line.priceDiffPercent.toFixed(1)}%)
-                                  </span>
-                                </td>
-                                <td className="p-2 text-right">
-                                  <span className={`font-mono ${
-                                    line.marginPercent >= 30 ? 'text-green-400' :
-                                    line.marginPercent >= 20 ? 'text-yellow-400' : 'text-red-400'
-                                  }`}>
-                                    {line.marginPercent.toFixed(1)}%
-                                  </span>
-                                </td>
-                                <td className="p-2 text-right font-mono text-emerald-400">
-                                  {line.profitCHF.toFixed(2)}
-                                </td>
-                              </tr>
-                            ))}
+                            {groupBy !== 'none' ? (
+                              // Grouped view
+                              groupedBaseLines.map((group) => (
+                                <React.Fragment key={group.key}>
+                                  <tr className="bg-purple-900/30 border-b border-slate-600">
+                                    <td colSpan={10} className="p-3">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          {groupBy === 'customer' ? <Users className="w-4 h-4 text-purple-400" /> : <Package className="w-4 h-4 text-purple-400" />}
+                                          <span className="font-bold text-white">{group.name}</span>
+                                          <span className="text-slate-400">({group.lines.length} righe)</span>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                          <span className={`font-mono font-bold ${group.totalDiff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                            Delta: {group.totalDiff >= 0 ? '+' : ''}{group.totalDiff.toFixed(2)} CHF
+                                          </span>
+                                          <span className="font-mono text-emerald-400">
+                                            Profitto: {group.totalProfit.toFixed(2)} CHF
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                  {group.lines.map((line) => (
+                                    <tr
+                                      key={line.lineId}
+                                      className={`border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors ${
+                                        line.direction === 'higher' ? 'border-l-4 border-l-green-500' :
+                                        line.direction === 'lower' ? 'border-l-4 border-l-red-500' : ''
+                                      }`}
+                                    >
+                                      <td className="p-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedIds.has(line.lineId)}
+                                          onChange={() => toggleSelection(line.lineId)}
+                                          className="w-4 h-4 rounded accent-purple-500"
+                                        />
+                                      </td>
+                                      <td className="p-2">
+                                        <div className="font-medium text-white truncate max-w-[200px]" title={line.productName}>
+                                          {line.productCode || line.productName.slice(0, 30)}
+                                        </div>
+                                        <a
+                                          href={`${odooBaseUrl}/web#id=${line.orderId}&model=sale.order&view_type=form`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1"
+                                        >
+                                          {line.orderName}
+                                          <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                        <div className="text-xs text-slate-500">{line.referencePricelistName}</div>
+                                      </td>
+                                      <td className="p-2">
+                                        <a
+                                          href={`${odooBaseUrl}/web#id=${line.customerId}&model=res.partner&view_type=form`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-slate-300 hover:text-purple-300 hover:underline truncate max-w-[150px] block"
+                                          title={line.customerName}
+                                        >
+                                          {line.customerName}
+                                        </a>
+                                      </td>
+                                      <td className="p-2 text-right font-mono text-orange-400">
+                                        {line.costPrice.toFixed(2)}
+                                      </td>
+                                      <td className="p-2 text-right font-mono text-purple-400">
+                                        {line.soldPrice.toFixed(2)}
+                                      </td>
+                                      <td className="p-2 text-right">
+                                        {line.discount > 0 ? (
+                                          <span className="font-mono text-amber-400 font-bold">
+                                            -{line.discount.toFixed(1)}%
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-600">-</span>
+                                        )}
+                                      </td>
+                                      <td className="p-2 text-right font-mono text-slate-400">
+                                        {line.referencePrice.toFixed(2)}
+                                      </td>
+                                      <td className="p-2 text-right">
+                                        <span className={`font-mono font-bold ${
+                                          line.direction === 'higher' ? 'text-green-400' :
+                                          line.direction === 'lower' ? 'text-red-400' : 'text-slate-400'
+                                        }`}>
+                                          {line.priceDiffCHF >= 0 ? '+' : ''}{line.priceDiffCHF.toFixed(2)}
+                                        </span>
+                                        <span className={`ml-1 text-xs ${
+                                          line.direction === 'higher' ? 'text-green-400/70' :
+                                          line.direction === 'lower' ? 'text-red-400/70' : 'text-slate-500'
+                                        }`}>
+                                          ({line.priceDiffPercent >= 0 ? '+' : ''}{line.priceDiffPercent.toFixed(1)}%)
+                                        </span>
+                                      </td>
+                                      <td className="p-2 text-right">
+                                        <span className={`font-mono ${
+                                          line.marginPercent >= 30 ? 'text-green-400' :
+                                          line.marginPercent >= 20 ? 'text-yellow-400' : 'text-red-400'
+                                        }`}>
+                                          {line.marginPercent.toFixed(1)}%
+                                        </span>
+                                      </td>
+                                      <td className="p-2 text-right font-mono text-emerald-400">
+                                        {line.profitCHF.toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </React.Fragment>
+                              ))
+                            ) : (
+                              // Flat view
+                              filteredBaseLines.map((line) => (
+                                <tr
+                                  key={line.lineId}
+                                  className={`border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors ${
+                                    line.direction === 'higher' ? 'border-l-4 border-l-green-500' :
+                                    line.direction === 'lower' ? 'border-l-4 border-l-red-500' : ''
+                                  }`}
+                                >
+                                  <td className="p-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedIds.has(line.lineId)}
+                                      onChange={() => toggleSelection(line.lineId)}
+                                      className="w-4 h-4 rounded accent-purple-500"
+                                    />
+                                  </td>
+                                  <td className="p-2">
+                                    <div className="font-medium text-white truncate max-w-[200px]" title={line.productName}>
+                                      {line.productCode || line.productName.slice(0, 30)}
+                                    </div>
+                                    <a
+                                      href={`${odooBaseUrl}/web#id=${line.orderId}&model=sale.order&view_type=form`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1"
+                                    >
+                                      {line.orderName}
+                                      <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                    <div className="text-xs text-slate-500">{line.referencePricelistName}</div>
+                                  </td>
+                                  <td className="p-2">
+                                    <a
+                                      href={`${odooBaseUrl}/web#id=${line.customerId}&model=res.partner&view_type=form`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-slate-300 hover:text-purple-300 hover:underline truncate max-w-[150px] block"
+                                      title={line.customerName}
+                                    >
+                                      {line.customerName}
+                                    </a>
+                                  </td>
+                                  <td className="p-2 text-right font-mono text-orange-400">
+                                    {line.costPrice.toFixed(2)}
+                                  </td>
+                                  <td className="p-2 text-right font-mono text-purple-400">
+                                    {line.soldPrice.toFixed(2)}
+                                  </td>
+                                  <td className="p-2 text-right">
+                                    {line.discount > 0 ? (
+                                      <span className="font-mono text-amber-400 font-bold">
+                                        -{line.discount.toFixed(1)}%
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-600">-</span>
+                                    )}
+                                  </td>
+                                  <td className="p-2 text-right font-mono text-slate-400">
+                                    {line.referencePrice.toFixed(2)}
+                                  </td>
+                                  <td className="p-2 text-right">
+                                    <span className={`font-mono font-bold ${
+                                      line.direction === 'higher' ? 'text-green-400' :
+                                      line.direction === 'lower' ? 'text-red-400' : 'text-slate-400'
+                                    }`}>
+                                      {line.priceDiffCHF >= 0 ? '+' : ''}{line.priceDiffCHF.toFixed(2)}
+                                    </span>
+                                    <span className={`ml-1 text-xs ${
+                                      line.direction === 'higher' ? 'text-green-400/70' :
+                                      line.direction === 'lower' ? 'text-red-400/70' : 'text-slate-500'
+                                    }`}>
+                                      ({line.priceDiffPercent >= 0 ? '+' : ''}{line.priceDiffPercent.toFixed(1)}%)
+                                    </span>
+                                  </td>
+                                  <td className="p-2 text-right">
+                                    <span className={`font-mono ${
+                                      line.marginPercent >= 30 ? 'text-green-400' :
+                                      line.marginPercent >= 20 ? 'text-yellow-400' : 'text-red-400'
+                                    }`}>
+                                      {line.marginPercent.toFixed(1)}%
+                                    </span>
+                                  </td>
+                                  <td className="p-2 text-right font-mono text-emerald-400">
+                                    {line.profitCHF.toFixed(2)}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
                           </tbody>
                         </table>
 

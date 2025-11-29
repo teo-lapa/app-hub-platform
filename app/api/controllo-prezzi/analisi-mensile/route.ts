@@ -340,6 +340,7 @@ export async function GET(request: NextRequest) {
       const soldPrice = line.price_unit;
       const costPrice = product.standard_price || 0;
       const quantity = line.product_uom_qty || 1;
+      const discount = line.discount || 0;
       const customerPricelistId = order.pricelist_id?.[0];
 
       // Check if product has fixed price in customer pricelist
@@ -412,6 +413,7 @@ export async function GET(request: NextRequest) {
         soldPrice,
         referencePrice,
         costPrice,
+        discount,
         priceDiffCHF,
         priceDiffPercent,
         profitCHF,

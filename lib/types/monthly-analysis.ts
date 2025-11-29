@@ -18,6 +18,7 @@ export interface MonthlyAnalysisLine {
   soldPrice: number;           // price_unit dalla riga ordine
   referencePrice: number;      // prezzo fisso OPPURE prezzo listino base
   costPrice: number;           // standard_price (costo acquisto)
+  discount: number;            // sconto applicato (%)
 
   // Calcoli
   priceDiffCHF: number;        // soldPrice - referencePrice
