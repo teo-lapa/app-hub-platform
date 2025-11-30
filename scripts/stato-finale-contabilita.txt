@@ -1,0 +1,181 @@
+🚀 ODOO CHIUSURA 2024 ANALYZER
+================================================================================
+🔌 Connessione a Odoo: https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com
+📊 Database: lapadevadmin-lapa-v2-staging-2406-25408900
+👤 Username: paul@lapa.ch
+✅ Autenticazione riuscita! UID: 7
+
+================================================================================
+📊 REPORT ANALISI CONTABILITÀ ODOO - CHIUSURA 2024
+================================================================================
+
+🔍 CONTI PROBLEMATICI
+--------------------------------------------------------------------------------
+
+💰 Calcolo saldo conto 1001...
+   Dare: 311,991.14
+   Avere: 25,410.63
+   Saldo: 286,580.51
+   Movimenti: 498
+
+💰 Calcolo saldo conto 1022...
+   Dare: 4,171,596.19
+   Avere: 4,023,046.95
+   Saldo: 148,549.24
+   Movimenti: 3789
+
+💰 Calcolo saldo conto 1023...
+   Dare: 6,750,647.40
+   Avere: 6,835,220.71
+   Saldo: -84,573.31
+   Movimenti: 9157
+
+💰 Calcolo saldo conto 10901...
+   Dare: 4,812,450.19
+   Avere: 4,996,362.82
+   Saldo: -183,912.63
+   Movimenti: 219
+
+💰 Calcolo saldo conto 1099...
+   Dare: 158,958.49
+   Avere: 219,800.90
+   Saldo: -60,842.41
+   Movimenti: 7
+
+💰 Calcolo saldo conto 1170...
+   Dare: 204,039.09
+   Avere: 38,546.11
+   Saldo: 165,492.98
+   Movimenti: 4257
+
+💰 Calcolo saldo conto 2016...
+   Dare: 17,892.99
+   Avere: 17,892.99
+   Saldo: 0.00
+   Movimenti: 2
+
+🏦 CONTI BANCARI
+--------------------------------------------------------------------------------
+
+🏦 Verifica Saldi Conti Bancari...
+
+💰 Calcolo saldo conto 1021...
+   Dare: 89,258.71
+   Avere: 243,408.64
+   Saldo: -154,149.93
+   Movimenti: 585
+
+💰 Calcolo saldo conto 1022...
+   Dare: 4,171,596.19
+   Avere: 4,023,046.95
+   Saldo: 148,549.24
+   Movimenti: 3789
+
+💰 Calcolo saldo conto 1023...
+   Dare: 6,750,647.40
+   Avere: 6,835,220.71
+   Saldo: -84,573.31
+   Movimenti: 9157
+
+💰 Calcolo saldo conto 1024...
+   Dare: 8,103,378.96
+   Avere: 7,981,824.31
+   Saldo: 121,554.65
+   Movimenti: 4730
+
+💰 Calcolo saldo conto 1025...
+   Dare: 4,358,419.24
+   Avere: 4,250,151.57
+   Saldo: 108,267.67
+   Movimenti: 846
+
+💰 Calcolo saldo conto 1026...
+   Dare: 718,642.28
+   Avere: 347,188.58
+   Saldo: 371,453.70
+   Movimenti: 1946
+
+💰 Calcolo saldo conto 1027...
+   Dare: 90,000.00
+   Avere: 76,967.78
+   Saldo: 13,032.22
+   Movimenti: 8
+
+💰 Calcolo saldo conto 1028...
+   Dare: 38,741.31
+   Avere: 40,081.74
+   Saldo: -1,340.43
+   Movimenti: 175
+
+💰 Calcolo saldo conto 1029...
+   Dare: 10,526.76
+   Avere: 11,524.04
+   Saldo: -997.28
+   Movimenti: 130
+
+💰 Calcolo saldo conto 1030...
+⚠️  Conto 1030 non trovato
+
+💰 Calcolo saldo conto 1031...
+⚠️  Conto 1031 non trovato
+
+💰 Calcolo saldo conto 1032...
+⚠️  Conto 1032 non trovato
+
+💰 Calcolo saldo conto 1033...
+⚠️  Conto 1033 non trovato
+
+💰 Calcolo saldo conto 1034...
+   Dare: 94.26
+   Avere: 0.00
+   Saldo: 94.26
+   Movimenti: 2
+
+💳 Estrazione Outstanding Receipts e Payments...
+✅ Trovate 889 righe non riconciliate
+   1023: 685 righe, Totale: -203,476.65
+   1022: 204 righe, Totale: 130,552.85
+
+🔄 Analisi Konto 10901 Liquiditätstransfer...
+
+💰 Calcolo saldo conto 10901...
+   Dare: 4,812,450.19
+   Avere: 4,996,362.82
+   Saldo: -183,912.63
+   Movimenti: 219
+   📊 Categorizzazione:
+      cambi_valuta: 57 movimenti, Totale: -144,052.71
+      carte_credito: 9 movimenti, Totale: 25,449.01
+      altri: 153 movimenti, Totale: -65,308.93
+
+✅ Report salvato in: odoo_chiusura_2024_report.json
+
+================================================================================
+📌 RIEPILOGO PROBLEMI DA RISOLVERE
+================================================================================
+
+⚠️  Trovati 5 problemi:
+
+1. [ALTA] 1001 Cash
+   Problema: Saldo cassa eccessivo: CHF 286,580.51
+   Azione: Riconciliare e verificare errori di registrazione
+
+2. [🚨 CRITICA] 1022 Outstanding Receipts
+   Problema: Incassi non riconciliati: CHF 148,549.24
+   Azione: Riconciliare TUTTI i pagamenti clienti prima della chiusura
+
+3. [🚨 CRITICA] 1023 Outstanding Payments
+   Problema: Pagamenti non riconciliati: CHF -84,573.31
+   Azione: Riconciliare TUTTI i pagamenti fornitori prima della chiusura
+
+4. [ALTA] 10901 Liquiditätstransfer
+   Problema: Conto trasferimenti non a zero: CHF -183,912.63
+   Azione: Riclassificare cambi valuta e bonifici interbancari
+
+5. [MEDIA] 1099 Transferkonto
+   Problema: Conto trasferimento non chiuso: CHF -60,842.41
+   Azione: Chiudere su conto Patrimonio Netto (differenze apertura)
+
+================================================================================
+
+✅ Analisi completata con successo!

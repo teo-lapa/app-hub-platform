@@ -1,0 +1,182 @@
+================================================================================
+RESET COMPLETO CONTABILIT[*] 2024 - COMMERCIALISTA SVIZZERO
+================================================================================
+Start: 2025-11-16 18:25:17
+
+[AUTH] Autenticazione su lapadevadmin-lapa-v2-staging-2406-25408900...
+[OK] Autenticato come UID 7
+
+================================================================================
+STEP 1: BACKUP COMPLETO MOVIMENTI 2024
+================================================================================
+[LOG] BACKUP COMPLETO
+      Inizio backup tutti i movimenti 2024
+
+[FOUND] 15074 movimenti 2024
+
+[BACKUP] Fetching move lines in batches of 1000...
+  Batch 1/16: fetching 1000 moves...
+  -> 9364 lines fetched
+  Batch 2/16: fetching 1000 moves...
+  -> 10400 lines fetched
+  Batch 3/16: fetching 1000 moves...
+  -> 9627 lines fetched
+  Batch 4/16: fetching 1000 moves...
+  -> 9115 lines fetched
+  Batch 5/16: fetching 1000 moves...
+  -> 9873 lines fetched
+  Batch 6/16: fetching 1000 moves...
+  -> 8928 lines fetched
+  Batch 7/16: fetching 1000 moves...
+  -> 9323 lines fetched
+  Batch 8/16: fetching 1000 moves...
+  -> 4263 lines fetched
+  Batch 9/16: fetching 1000 moves...
+  -> 9543 lines fetched
+  Batch 10/16: fetching 1000 moves...
+  -> 9749 lines fetched
+  Batch 11/16: fetching 1000 moves...
+  -> 5077 lines fetched
+  Batch 12/16: fetching 1000 moves...
+  -> 8167 lines fetched
+  Batch 13/16: fetching 1000 moves...
+  -> 9227 lines fetched
+  Batch 14/16: fetching 1000 moves...
+  -> 8132 lines fetched
+  Batch 15/16: fetching 1000 moves...
+  -> 2902 lines fetched
+  Batch 16/16: fetching 74 moves...
+  -> 152 lines fetched
+
+[OK] Total: 123842 righe contabili
+[LOG] BACKUP COMPLETATO
+      File: backup-pre-reset-20251116_182546.json
+
+================================================================================
+STEP 2: PULIZIA KONTO 1024 UBS CHF
+================================================================================
+[LOG] PULIZIA 1024
+      Inizio pulizia UBS CHF - Bank statements duplicati
+
+[*] SALDO PRE-PULIZIA 1024:
+   Dare: 974,298.40
+   Avere: 25,899.90
+   Saldo: 948,398.50
+   Righe: 188
+
+[FOUND] 22 journal bancari
+
+[FOUND] 47 movimenti bancari da analizzare
+[*] 0 movimenti posted da eliminare
+[LOG] NESSUNA ELIMINAZIONE
+      Nessun movimento da eliminare per 1024
+
+================================================================================
+STEP 3: PULIZIA KONTO 1025 UBS EUR
+================================================================================
+[LOG] PULIZIA 1025
+      Inizio pulizia UBS EUR - Bank statements duplicati
+
+[*] SALDO PRE-PULIZIA 1025:
+   Dare: 2,330,931.42
+   Avere: 2,309,039.85
+   Saldo: 21,891.57
+   Righe: 443
+
+[FOUND] 22 journal bancari
+
+[FOUND] 652 movimenti bancari da analizzare
+[*] 442 movimenti posted da eliminare
+   [*]  Move 63332: BNK2/2024/00473 | 2024-08-16 | 933.01
+   [*]  Move 63328: BNK2/2024/00472 | 2024-08-16 | 1285.66
+   [*]  Move 63158: BNK2/2024/00471 | 2024-08-15 | 172.00
+   [*]  Move 63156: BNK2/2024/00470 | 2024-08-15 | 9297.45
+   [*]  Move 63157: BNK2/2024/00469 | 2024-08-15 | 2249.00
+   [*]  Move 63155: BNK2/2024/00468 | 2024-08-09 | 15430.50
+   [*]  Move 62349: BNK2/2024/00467 | 2024-08-08 | 24205.38
+   [*]  Move 62348: BNK2/2024/00466 | 2024-08-07 | 180000.00
+   [*]  Move 62347: BNK2/2024/00465 | 2024-08-06 | 1724.63
+   [*]  Move 62346: BNK2/2024/00464 | 2024-08-03 | 140.00
+   ... e altri 432 movimenti
+
+[DELETE] ELIMINAZIONE DIRETTA IN BATCH di 442 movimenti...
+[INFO] Skipping button_draft (troppo lento) - delete diretto con admin privileges
+   [ERROR] Errore eliminazione batch 0-50: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00473 (63332)'>
+[LOG] ERRORE BATCH
+      Errore eliminazione batch 0-50: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00473 (63332)'>
+   [ERROR] Errore eliminazione batch 50-100: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00423 (60756)'>
+[LOG] ERRORE BATCH
+      Errore eliminazione batch 50-100: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00423 (60756)'>
+   [ERROR] Errore eliminazione batch 100-150: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00370 (58281)'>
+[LOG] ERRORE BATCH
+      Errore eliminazione batch 100-150: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00370 (58281)'>
+   [ERROR] Errore eliminazione batch 150-200: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00319 (47196)'>
+[LOG] ERRORE BATCH
+      Errore eliminazione batch 150-200: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00319 (47196)'>
+   [ERROR] Errore eliminazione batch 200-250: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00267 (47146)'>
+[LOG] ERRORE BATCH
+      Errore eliminazione batch 200-250: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00267 (47146)'>
+   [ERROR] Errore eliminazione batch 250-300: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00215 (47093)'>
+[LOG] ERRORE BATCH
+      Errore eliminazione batch 250-300: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00215 (47093)'>
+   [ERROR] Errore eliminazione batch 300-350: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00166 (47044)'>
+[LOG] ERRORE BATCH
+      Errore eliminazione batch 300-350: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00166 (47044)'>
+   [ERROR] Errore eliminazione batch 350-400: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00115 (46996)'>
+[LOG] ERRORE BATCH
+      Errore eliminazione batch 350-400: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00115 (46996)'>
+   [ERROR] Errore eliminazione batch 400-442: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00032 (34199)'>
+[LOG] ERRORE BATCH
+      Errore eliminazione batch 400-442: <Fault 2: 'Impossibile effettuare questa modifica su una registrazione riconciliata, sono modificabili solo alcuni campi non legali. Annullare prima la riconciliazione.\nRegistrazione contabile (ID): BNK2/2024/00032 (34199)'>
+
+[*] SALDO POST-PULIZIA 1025:
+   Dare: 2,330,931.42
+   Avere: 2,309,039.85
+   Saldo: 21,891.57
+   Righe: 443
+[LOG] PULIZIA COMPLETATA 1025
+      {'deleted': 0, 'balance_before': 21891.56999999999, 'balance_after': 21891.56999999999, 'delta': 0.0, 'lines_before': 443, 'lines_after': 443}
+
+================================================================================
+STEP 4: PULIZIA KONTO 1026 CREDIT SUISSE
+================================================================================
+[LOG] PULIZIA CREDIT SUISSE
+      Eliminazione 3 movimenti specifici (CHF 193K)
+
+[*] SALDO PRE-PULIZIA Credit Suisse:
+   Saldo: 356,419.86 CHF
+
+[*] Movimenti da eliminare:
+   [DEL]  Move 58103: BNK3/2024/00867 | 2024-06-03 | 132,834.54
+   [DEL]  Move 58101: BNK3/2024/00866 | 2024-06-03 | 50,000.00
+   [DEL]  Move 95413: RET23/2024/01/0007 | 2024-01-31 | 10,903.87
+   [ERROR] Errore eliminazione Move 58103: <Fault 2: 'Non puoi eliminare un movimento contabile registrato. Non giocare con i tuoi rendiconti. Imposta la registrazione contabile come bozza prima di eliminarla.'>
+   [ERROR] Errore eliminazione Move 58101: <Fault 2: 'Non puoi eliminare un movimento contabile registrato. Non giocare con i tuoi rendiconti. Imposta la registrazione contabile come bozza prima di eliminarla.'>
+   [ERROR] Errore eliminazione Move 95413: <Fault 2: 'Non puoi eliminare un movimento contabile registrato. Non giocare con i tuoi rendiconti. Imposta la registrazione contabile come bozza prima di eliminarla.'>
+
+[*] SALDO POST-PULIZIA Credit Suisse:
+   Saldo: 356,419.86 CHF
+   Delta: 0.00 CHF
+[LOG] CREDIT SUISSE COMPLETATO
+      {'deleted': 0, 'balance_before': 356419.86, 'balance_after': 356419.86, 'delta': 0.0}
+
+================================================================================
+STEP 5: VERIFICA POST-PULIZIA E REPORT FINALE
+================================================================================
+
+================================================================================
+[*] RESET COMPLETATO CON SUCCESSO
+================================================================================
+[*]  Durata totale: 0:00:40.750742
+[*]  Movimenti eliminati: 0
+[*] Backup salvato: backup-pre-reset-20251116_182546.json
+[*] Report salvato: pulizia-completata-20251116_182559.json
+
+SALDI FINALI:
+  1024_UBS_CHF: 948,398.50 (188 righe)
+  1025_UBS_EUR: 21,891.57 (443 righe)
+  1026_CREDIT_SUISSE: 356,419.86 (1919 righe)
+
+[*]  12 errori riscontrati (vedi log)
+[*] PRONTO PER FASE 2: NO
+================================================================================

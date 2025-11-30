@@ -38,8 +38,11 @@ export default function EmailAIMonitorPage() {
 
     if (success === 'gmail_connected') {
       alert('Gmail connesso con successo!');
-      // Reload to fetch connection
-      window.location.replace('/email-ai-monitor');
+      // Rimuovi query params dall'URL senza ricaricare la pagina
+      window.history.replaceState({}, '', '/email-ai-monitor');
+      // Check connection con delay per dare tempo al cookie di essere settato
+      setTimeout(() => checkConnection(), 100);
+      return;
     }
 
     if (error) {
@@ -48,7 +51,7 @@ export default function EmailAIMonitorPage() {
 
     // Get connection_id from cookie or fetch from API
     checkConnection();
-  }, []);
+  }, [searchParams]); // ✅ Aggiungi searchParams come dependency
 
   useEffect(() => {
     if (connectionId) {
@@ -58,20 +61,20 @@ export default function EmailAIMonitorPage() {
 
   const checkConnection = async () => {
     try {
-      // TODO: Implement API to get user's connection_id
-      // For now, use from cookie
-      const cookies = document.cookie.split(';');
-      const connCookie = cookies.find(c => c.trim().startsWith('gmail_connection_id='));
+      // Check cookie con regex più robusto
+      const match = document.cookie.match(/(?:^|;\s*)gmail_connection_id=([^;]*)/);
 
-      if (connCookie) {
-        const id = connCookie.split('=')[1];
+      if (match && match[1]) {
+        const id = decodeURIComponent(match[1]);
+        console.log('[Email-AI] ✅ Found gmail_connection_id:', id);
         setConnectionId(id);
         setIsConnected(true);
       } else {
+        console.log('[Email-AI] ❌ No gmail_connection_id cookie found');
         setIsConnected(false);
       }
     } catch (error) {
-      console.error('Failed to check connection:', error);
+      console.error('[Email-AI] ❌ Failed to check connection:', error);
       setIsConnected(false);
     } finally {
       setLoading(false);

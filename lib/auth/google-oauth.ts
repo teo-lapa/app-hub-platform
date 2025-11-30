@@ -17,11 +17,14 @@ const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
 
 /**
  * Genera l'URL per il redirect a Google OAuth
+ * @param customRedirectUri - Redirect URI custom (opzionale). Se non fornito, usa GOOGLE_REDIRECT_URI
  */
-export function getGoogleAuthUrl(): string {
+export function getGoogleAuthUrl(customRedirectUri?: string): string {
+  const redirectUri = customRedirectUri || GOOGLE_REDIRECT_URI;
+
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: GOOGLE_REDIRECT_URI,
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify',
     access_type: 'offline',
@@ -33,13 +36,20 @@ export function getGoogleAuthUrl(): string {
 
 /**
  * Scambia il code di autorizzazione per i token
+ * @param code - Authorization code da Google
+ * @param customRedirectUri - Redirect URI custom (opzionale). Deve matchare quello usato in getGoogleAuthUrl
  */
-export async function exchangeCodeForTokens(code: string): Promise<{
+export async function exchangeCodeForTokens(
+  code: string,
+  customRedirectUri?: string
+): Promise<{
   access_token: string;
   id_token: string;
   refresh_token?: string;
   expires_in: number;
 }> {
+  const redirectUri = customRedirectUri || GOOGLE_REDIRECT_URI;
+
   const response = await fetch(GOOGLE_TOKEN_URL, {
     method: 'POST',
     headers: {
@@ -50,7 +60,7 @@ export async function exchangeCodeForTokens(code: string): Promise<{
       client_secret: GOOGLE_CLIENT_SECRET,
       code,
       grant_type: 'authorization_code',
-      redirect_uri: GOOGLE_REDIRECT_URI,
+      redirect_uri: redirectUri,
     }),
   });
 

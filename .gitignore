@@ -28,6 +28,7 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+.env.staging2
 
 # face embeddings data
 /data/
@@ -105,10 +106,14 @@ dev.log
 /tmp/
 /temp/
 
-# Large tarballs
+# Large tarballs and disk images
 *.tar.gz
 *.zip
 *.rar
+*.img
+*.img.xz
+*.iso
+*.exe
 
 # IDE and editor files
 .idea/

@@ -40,9 +40,13 @@ export async function GET(request: NextRequest) {
 
     console.log('[Email-AI] 🔐 Gmail OAuth callback received code');
 
+    // Costruisci GMAIL_AI_REDIRECT_URI (deve matchare quello usato in /api/email-ai/auth/gmail)
+    const gmailRedirectUri = process.env.GMAIL_AI_REDIRECT_URI || `${BASE_URL}/api/email-ai/auth/gmail/callback`;
+    console.log('[Email-AI] 🔐 Using Gmail redirect URI for token exchange:', gmailRedirectUri);
+
     // ========== STEP 1: SCAMBIA CODE PER TOKEN ==========
     console.log('[Email-AI] 🔑 Step 1: Exchanging code for tokens...');
-    const tokens = await exchangeCodeForTokens(code);
+    const tokens = await exchangeCodeForTokens(code, gmailRedirectUri);
     console.log('[Email-AI] ✅ Tokens received from Google');
 
     if (!tokens.refresh_token) {
