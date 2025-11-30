@@ -49,12 +49,6 @@ export async function GET(request: NextRequest) {
     const tokens = await exchangeCodeForTokens(code, gmailRedirectUri);
     console.log('[Email-AI] ✅ Tokens received from Google');
 
-    if (!tokens.refresh_token) {
-      console.warn('[Email-AI] ⚠️ No refresh_token received - user might have already authorized');
-      // In questo caso Google non fornisce refresh_token se l'utente ha già autorizzato
-      // Potremmo mostrare un messaggio all'utente di revocare l'accesso e riprovare
-    }
-
     // Calcola scadenza token (expires_in è in secondi)
     const tokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
@@ -75,10 +69,33 @@ export async function GET(request: NextRequest) {
 
     // Verifica se esiste già una connessione per questo indirizzo Gmail
     const existingConnection = await sql`
-      SELECT id, user_id FROM gmail_connections
+      SELECT id, user_id, refresh_token FROM gmail_connections
       WHERE gmail_address = ${googleUser.email}
       LIMIT 1
     `;
+
+    // ========== VALIDAZIONE REFRESH TOKEN ==========
+    if (!tokens.refresh_token) {
+      console.warn('[Email-AI] ⚠️ No refresh_token received from Google');
+
+      // Se esiste una connessione E non ha refresh_token, DOBBIAMO revocare e riautorizzare
+      if (existingConnection.rows.length > 0 && !existingConnection.rows[0].refresh_token) {
+        console.error('[Email-AI] ❌ CRITICAL: Existing connection has no refresh_token and Google did not send a new one!');
+        console.error('[Email-AI] 💡 User must revoke access at https://myaccount.google.com/permissions and reconnect');
+
+        return NextResponse.redirect(
+          new URL('/email-ai-monitor?error=refresh_token_missing&message=' + encodeURIComponent(
+            'Devi prima revocare l\'accesso a questa app su Google (https://myaccount.google.com/permissions) e poi riconnetterti per ottenere un nuovo token di autenticazione.'
+          ), BASE_URL)
+        );
+      }
+
+      if (existingConnection.rows.length > 0 && existingConnection.rows[0].refresh_token) {
+        console.log('[Email-AI] ℹ️ No new refresh_token but existing connection has one, will keep it');
+      }
+    } else {
+      console.log('[Email-AI] ✅ Refresh token received from Google');
+    }
 
     let connectionId: string;
     let userId: string;
@@ -88,11 +105,21 @@ export async function GET(request: NextRequest) {
       connectionId = existingConnection.rows[0].id;
       userId = existingConnection.rows[0].user_id;
 
+      // Determina quale refresh_token usare:
+      // 1. Se Google ha mandato un nuovo refresh_token, usalo
+      // 2. Altrimenti mantieni quello esistente (già validato sopra che esiste)
+      const refreshTokenToUse = tokens.refresh_token || existingConnection.rows[0].refresh_token;
+
+      console.log('[Email-AI] 🔄 Updating existing connection with:', {
+        hasNewRefreshToken: !!tokens.refresh_token,
+        willUseExistingRefreshToken: !tokens.refresh_token && !!existingConnection.rows[0].refresh_token
+      });
+
       await sql`
         UPDATE gmail_connections
         SET
           access_token = ${tokens.access_token},
-          refresh_token = COALESCE(${tokens.refresh_token}, refresh_token),
+          refresh_token = ${refreshTokenToUse},
           token_expires_at = ${tokenExpiresAt.toISOString()},
           user_name = ${googleUser.name},
           sync_enabled = true,

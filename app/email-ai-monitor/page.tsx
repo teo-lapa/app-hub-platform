@@ -37,6 +37,7 @@ export default function EmailAIMonitorPage() {
     // Check for success/error messages from OAuth callback
     const success = searchParams.get('success');
     const error = searchParams.get('error');
+    const message = searchParams.get('message');
 
     if (success === 'gmail_connected') {
       alert('Gmail connesso con successo!');
@@ -47,8 +48,18 @@ export default function EmailAIMonitorPage() {
       return;
     }
 
+    if (error === 'refresh_token_missing') {
+      // Errore critico: serve revocare accesso su Google
+      const errorMsg = message || 'Devi prima revocare l\'accesso a questa app su Google e poi riconnetterti.';
+      alert(`⚠️ AZIONE RICHIESTA:\n\n${decodeURIComponent(errorMsg)}\n\n1. Vai su https://myaccount.google.com/permissions\n2. Trova "App Hub Platform" e clicca "Rimuovi accesso"\n3. Torna qui e clicca "Connetti Gmail"`);
+      window.history.replaceState({}, '', '/email-ai-monitor');
+      return;
+    }
+
     if (error) {
-      alert(`Errore: ${error}`);
+      const errorMsg = message ? decodeURIComponent(message) : error;
+      alert(`Errore: ${errorMsg}`);
+      window.history.replaceState({}, '', '/email-ai-monitor');
     }
 
     // Get connection_id from cookie or fetch from API
