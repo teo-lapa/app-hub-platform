@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -45,10 +45,9 @@ interface Business {
 export default function BusinessSettingsPage({
   params,
 }: {
-  params: Promise<{ businessId: string }>;
+  params: { businessId: string };
 }) {
-  const resolvedParams = use(params);
-  const businessId = parseInt(resolvedParams.businessId);
+  const businessId = parseInt(params.businessId);
 
   const [business, setBusiness] = useState<Business | null>(null);
   const [platforms, setPlatforms] = useState<Platform[]>([]);
