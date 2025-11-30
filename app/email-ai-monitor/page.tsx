@@ -154,6 +154,36 @@ export default function EmailAIMonitorPage() {
     window.location.href = '/api/email-ai/auth/gmail';
   };
 
+  const disconnectGmail = async () => {
+    if (!confirm('Sei sicuro di voler disconnettere Gmail? Dovrai riconnetterti per usare Email AI Monitor.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/email-ai/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectionId })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to disconnect');
+      }
+
+      alert('Gmail disconnesso con successo!');
+
+      // Reset stato
+      setConnectionId('');
+      setIsConnected(false);
+      setRequiresReauth(false);
+      setAuthError('');
+      setEmails([]);
+    } catch (error: any) {
+      console.error('Error disconnecting Gmail:', error);
+      alert(`Errore durante disconnessione: ${error.message}`);
+    }
+  };
+
   const getUrgencyBadge = (urgency: string) => {
     const badges = {
       urgent: 'bg-red-500 text-white',
@@ -251,6 +281,12 @@ export default function EmailAIMonitorPage() {
                   className="px-6 py-3 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-600 rounded-lg font-semibold transition"
                 >
                   {fetchingNew ? '⏳ Caricamento...' : '🔄 Fetch Nuove Email'}
+                </button>
+                <button
+                  onClick={disconnectGmail}
+                  className="px-4 py-2 bg-red-500/20 border border-red-500 hover:bg-red-500/30 rounded-lg font-medium transition text-red-300"
+                >
+                  🔌 Disconnetti
                 </button>
               </>
             )}
