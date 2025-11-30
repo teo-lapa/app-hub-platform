@@ -29,62 +29,75 @@ interface InstagramMedia {
 }
 
 /**
- * Fetch commenti da Instagram
+ * Fetch commenti da Instagram con paginazione
  */
 export async function fetchInstagramComments(
   credentials: PlatformCredentials,
-  sinceDate?: Date
+  sinceDate?: Date,
+  maxMediaPages: number = 3
 ): Promise<CreateReviewInput[]> {
   if (!credentials.accessToken || !credentials.platformPageId) {
     throw new Error('Credenziali Instagram incomplete: serve accessToken e platformPageId (Instagram Business Account ID)');
   }
 
   const reviews: CreateReviewInput[] = [];
+  let currentPage = 0;
+  let nextPageUrl: string | null = `https://graph.facebook.com/v18.0/${credentials.platformPageId}/media?fields=id,caption,media_type,permalink,timestamp,comments{id,text,timestamp,username,like_count}&access_token=${credentials.accessToken}&limit=25`;
 
-  // 1. Recupera i media recenti
-  const mediaUrl = `https://graph.facebook.com/v18.0/${credentials.platformPageId}/media?fields=id,caption,media_type,permalink,timestamp,comments{id,text,timestamp,username,like_count}&access_token=${credentials.accessToken}&limit=25`;
+  // Paginazione dei media
+  while (nextPageUrl && currentPage < maxMediaPages) {
+    try {
+      const mediaResponse: Response = await fetch(nextPageUrl);
 
-  const mediaResponse = await fetch(mediaUrl);
+      if (!mediaResponse.ok) {
+        const error = await mediaResponse.text();
+        console.error('Instagram API error:', error);
 
-  if (!mediaResponse.ok) {
-    const error = await mediaResponse.text();
-    console.error('Instagram API error:', error);
-
-    if (mediaResponse.status === 401) {
-      throw new Error('Token Instagram scaduto - necessario refresh');
-    }
-    throw new Error(`Errore Instagram API: ${mediaResponse.status}`);
-  }
-
-  const mediaData = await mediaResponse.json();
-
-  // 2. Estrai commenti da ogni media
-  for (const media of mediaData.data || []) {
-    const comments = media.comments?.data || [];
-
-    for (const comment of comments) {
-      // Filtra per data se specificato
-      if (sinceDate && new Date(comment.timestamp) < sinceDate) {
-        continue;
+        if (mediaResponse.status === 401) {
+          throw new Error('Token Instagram scaduto - necessario refresh');
+        }
+        throw new Error(`Errore Instagram API: ${mediaResponse.status}`);
       }
 
-      reviews.push({
-        businessId: credentials.businessId,
-        platform: 'instagram',
-        platformReviewId: comment.id,
-        platformUrl: media.permalink,
-        reviewerName: comment.username,
-        rating: undefined, // Instagram non ha rating stelle
-        content: comment.text,
-        language: detectLanguageSimple(comment.text),
-        reviewDate: new Date(comment.timestamp),
-        rawData: {
-          mediaId: media.id,
-          mediaType: media.media_type,
-          likeCount: comment.like_count,
-          comment
+      const mediaData: any = await mediaResponse.json();
+
+      // Estrai commenti da ogni media
+      for (const media of mediaData.data || []) {
+        const comments = media.comments?.data || [];
+
+        for (const comment of comments) {
+          // Filtra per data se specificato
+          if (sinceDate && new Date(comment.timestamp) < sinceDate) {
+            continue;
+          }
+
+          reviews.push({
+            businessId: credentials.businessId,
+            platform: 'instagram',
+            platformReviewId: comment.id,
+            platformUrl: media.permalink,
+            reviewerName: comment.username,
+            rating: undefined, // Instagram non ha rating stelle
+            content: comment.text,
+            language: detectLanguageSimple(comment.text),
+            reviewDate: new Date(comment.timestamp),
+            rawData: {
+              mediaId: media.id,
+              mediaType: media.media_type,
+              likeCount: comment.like_count,
+              comment
+            }
+          });
         }
-      });
+      }
+
+      // Prossima pagina
+      nextPageUrl = mediaData.paging?.next || null;
+      currentPage++;
+    } catch (error) {
+      console.error(`Errore fetch Instagram page ${currentPage}:`, error);
+      // Continua con i dati già raccolti
+      break;
     }
   }
 
