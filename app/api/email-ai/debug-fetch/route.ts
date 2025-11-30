@@ -66,13 +66,13 @@ export async function GET(request: NextRequest) {
 
       // STEP 3: Try to fetch messages
       debug.step = 'Fetching message IDs from Gmail';
-      const messageIds = await gmailClient.listMessages({ maxResults: 1, query: 'is:unread' });
-      debug.messageCount = messageIds.length;
+      const result = await gmailClient.listMessages({ maxResults: 1, query: 'is:unread' });
+      debug.messageCount = result.messages.length;
 
-      if (messageIds.length > 0) {
+      if (result.messages.length > 0) {
         // STEP 4: Try to fetch one message details
         debug.step = 'Fetching first message details';
-        const firstMessage = await gmailClient.getMessage(messageIds[0]);
+        const firstMessage = await gmailClient.getMessage(result.messages[0]);
         debug.firstMessage = {
           id: firstMessage.id,
           subject: firstMessage.subject,
