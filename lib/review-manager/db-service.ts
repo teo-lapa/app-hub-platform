@@ -17,6 +17,7 @@ import {
   Platform,
   ResponseStatus
 } from './types';
+import { encrypt, decrypt } from './crypto';
 
 // ============================================
 // BUSINESSES
@@ -133,6 +134,12 @@ export async function deleteBusiness(id: number): Promise<boolean> {
  * Connetti una piattaforma a un business
  */
 export async function connectPlatform(input: ConnectPlatformInput): Promise<PlatformCredentials> {
+  // Cifra le credenziali sensibili prima di salvare
+  const encryptedAccessToken = encrypt(input.accessToken);
+  const encryptedRefreshToken = encrypt(input.refreshToken);
+  const encryptedApiKey = encrypt(input.apiKey);
+  const encryptedApiSecret = encrypt(input.apiSecret);
+
   const result = await sql`
     INSERT INTO rm_platform_credentials (
       business_id, platform,
@@ -149,11 +156,11 @@ export async function connectPlatform(input: ConnectPlatformInput): Promise<Plat
       ${input.platformPageId || null},
       ${input.googlePlaceId || null},
       ${input.googleLocationId || null},
-      ${input.accessToken || null},
-      ${input.refreshToken || null},
+      ${encryptedAccessToken},
+      ${encryptedRefreshToken},
       ${input.tokenExpiresAt ? input.tokenExpiresAt.toISOString() : null},
-      ${input.apiKey || null},
-      ${input.apiSecret || null},
+      ${encryptedApiKey},
+      ${encryptedApiSecret},
       true
     )
     ON CONFLICT (business_id, platform) DO UPDATE SET
@@ -570,6 +577,12 @@ function mapBusinessRow(row: Record<string, unknown>): Business {
 }
 
 function mapCredentialsRow(row: Record<string, unknown>): PlatformCredentials {
+  // Decifra le credenziali sensibili recuperate dal database
+  const accessToken = decrypt(row.access_token as string | undefined) || undefined;
+  const refreshToken = decrypt(row.refresh_token as string | undefined) || undefined;
+  const apiKey = decrypt(row.api_key as string | undefined) || undefined;
+  const apiSecret = decrypt(row.api_secret as string | undefined) || undefined;
+
   return {
     id: row.id as number,
     businessId: row.business_id as number,
@@ -579,11 +592,11 @@ function mapCredentialsRow(row: Record<string, unknown>): PlatformCredentials {
     platformPageId: row.platform_page_id as string | undefined,
     googlePlaceId: row.google_place_id as string | undefined,
     googleLocationId: row.google_location_id as string | undefined,
-    accessToken: row.access_token as string | undefined,
-    refreshToken: row.refresh_token as string | undefined,
+    accessToken,
+    refreshToken,
     tokenExpiresAt: row.token_expires_at ? new Date(row.token_expires_at as string) : undefined,
-    apiKey: row.api_key as string | undefined,
-    apiSecret: row.api_secret as string | undefined,
+    apiKey,
+    apiSecret,
     isConnected: row.is_connected as boolean,
     lastSyncAt: row.last_sync_at ? new Date(row.last_sync_at as string) : undefined,
     syncError: row.sync_error as string | undefined,
