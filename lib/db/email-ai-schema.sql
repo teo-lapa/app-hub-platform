@@ -472,16 +472,6 @@ CREATE TRIGGER trigger_email_analytics_updated_at
 
 -- Trigger: Auto-extract sender_domain quando si inserisce email
 DROP TRIGGER IF EXISTS trigger_extract_sender_domain ON email_messages;
-CREATE TRIGGER trigger_extract_sender_domain
-  BEFORE INSERT OR UPDATE OF sender_email ON email_messages
-  FOR EACH ROW
-  EXECUTE FUNCTION (
-    NEW.sender_domain := extract_email_domain(NEW.sender_email);
-    RETURN NEW;
-  );
-
--- Correggi il trigger sopra (sintassi corretta)
-DROP TRIGGER IF EXISTS trigger_extract_sender_domain ON email_messages;
 CREATE OR REPLACE FUNCTION set_sender_domain()
 RETURNS TRIGGER AS $$
 BEGIN
