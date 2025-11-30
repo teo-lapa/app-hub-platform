@@ -6,6 +6,7 @@ import { summarizeEmail } from '@/lib/email-ai/email-summarizer';
 import { generateEmailEmbedding, saveEmailEmbedding } from '@/lib/email-ai/embedding-service';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic'; // Fix: Previene errori build statico
 export const maxDuration = 300; // 5 minuti
 
 /**
