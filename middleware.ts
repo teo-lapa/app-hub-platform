@@ -21,6 +21,7 @@ const excludedAppRoutes = [
   '/pricing',
   '/admin',
   '/gestione-visibilita-app',
+  '/email-ai-monitor',  // Email AI Monitor - has internal OAuth
   '/api',
   '/_next'
 ];
