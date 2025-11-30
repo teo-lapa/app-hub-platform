@@ -114,22 +114,33 @@ export class GmailClient {
     try {
       const accessToken = await this.oauth2Client.getAccessToken();
       if (!accessToken.token) {
+        console.error('[GmailClient] ❌ No valid access token found for connection:', this.connectionId);
         throw new Error('No valid access token');
       }
-    } catch (error) {
+      console.log('[GmailClient] ✅ Access token is valid');
+    } catch (error: any) {
+      console.error('[GmailClient] ⚠️ Token validation failed:', error.message);
+
       // Token scaduto o invalido - prova refresh
       if (this.refreshToken) {
-        console.log('[GmailClient] Access token expired, refreshing...');
-        const newTokens = await refreshAccessToken(this.refreshToken);
+        console.log('[GmailClient] 🔄 Attempting to refresh access token...');
+        try {
+          const newTokens = await refreshAccessToken(this.refreshToken);
+          console.log('[GmailClient] ✅ Access token refreshed successfully');
 
-        this.oauth2Client.setCredentials({
-          access_token: newTokens.access_token,
-          refresh_token: this.refreshToken
-        });
+          this.oauth2Client.setCredentials({
+            access_token: newTokens.access_token,
+            refresh_token: this.refreshToken
+          });
 
-        const expiryDate = Date.now() + newTokens.expires_in * 1000;
-        await this.updateTokenInDatabase(newTokens.access_token, expiryDate);
+          const expiryDate = Date.now() + newTokens.expires_in * 1000;
+          await this.updateTokenInDatabase(newTokens.access_token, expiryDate);
+        } catch (refreshError: any) {
+          console.error('[GmailClient] ❌ Token refresh failed:', refreshError.message);
+          throw new Error(`Failed to refresh access token: ${refreshError.message}`);
+        }
       } else {
+        console.error('[GmailClient] ❌ No refresh token available for connection:', this.connectionId);
         throw new Error('No refresh token available - user must re-authorize');
       }
     }
@@ -401,6 +412,8 @@ export class GmailClient {
    * Helper: Crea istanza Gmail Client da connection_id database
    */
   static async fromConnectionId(connectionId: string): Promise<GmailClient> {
+    console.log('[GmailClient] Loading connection from database:', connectionId);
+
     const result = await sql`
       SELECT
         access_token,
@@ -413,15 +426,31 @@ export class GmailClient {
     `;
 
     if (result.rows.length === 0) {
+      console.error('[GmailClient] ❌ Connection not found or disabled:', connectionId);
       throw new Error(`Gmail connection not found or disabled: ${connectionId}`);
     }
 
     const connection = result.rows[0];
+    const hasRefreshToken = !!connection.refresh_token;
+    const tokenExpiry = new Date(connection.token_expires_at);
+    const isExpired = tokenExpiry < new Date();
+
+    console.log('[GmailClient] 📊 Connection details:', {
+      connectionId,
+      hasRefreshToken,
+      tokenExpiry: tokenExpiry.toISOString(),
+      isExpired,
+      expiresIn: isExpired ? 'expired' : `${Math.round((tokenExpiry.getTime() - Date.now()) / 60000)} minutes`
+    });
+
+    if (!hasRefreshToken) {
+      console.warn('[GmailClient] ⚠️ WARNING: No refresh token found! User may need to re-authorize.');
+    }
 
     return new GmailClient({
       accessToken: connection.access_token,
       refreshToken: connection.refresh_token,
-      tokenExpiresAt: new Date(connection.token_expires_at),
+      tokenExpiresAt: tokenExpiry,
       connectionId
     });
   }

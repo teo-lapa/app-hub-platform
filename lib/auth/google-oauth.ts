@@ -28,7 +28,7 @@ export function getGoogleAuthUrl(customRedirectUri?: string): string {
     response_type: 'code',
     scope: 'openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify',
     access_type: 'offline',
-    prompt: 'select_account', // Forza selezione account
+    prompt: 'consent', // Forza consenso per garantire refresh_token
   });
 
   return `${GOOGLE_AUTH_URL}?${params.toString()}`;

@@ -54,13 +54,54 @@ export async function POST(request: NextRequest) {
     console.log(`[FETCH-EMAILS] Connected to Gmail: ${connection.gmail_address}`);
 
     // ========== STEP 2: INIZIALIZZA GMAIL CLIENT ==========
-    const gmailClient = await GmailClient.fromConnectionId(connectionId);
+    let gmailClient;
+    try {
+      gmailClient = await GmailClient.fromConnectionId(connectionId);
+    } catch (clientError: any) {
+      console.error('[FETCH-EMAILS] Failed to initialize Gmail client:', clientError.message);
+
+      // Se è un errore di token/autenticazione, richiedi riconnessione
+      if (clientError.message.includes('refresh token') ||
+          clientError.message.includes('No valid access token') ||
+          clientError.message.includes('invalid_grant')) {
+        return NextResponse.json({
+          error: 'Connessione Gmail scaduta. Riconnetti il tuo account Gmail.',
+          requiresReauth: true,
+          details: clientError.message
+        }, { status: 401 });
+      }
+
+      // Altri errori
+      return NextResponse.json({
+        error: 'Impossibile connettersi a Gmail',
+        details: clientError.message
+      }, { status: 500 });
+    }
 
     // ========== STEP 3: FETCH MESSAGGI ==========
-    const { messages: messageIds } = await gmailClient.listMessages({
-      maxResults,
-      query
-    });
+    let messageIds;
+    try {
+      const result = await gmailClient.listMessages({
+        maxResults,
+        query
+      });
+      messageIds = result.messages;
+    } catch (fetchError: any) {
+      console.error('[FETCH-EMAILS] Failed to fetch messages:', fetchError.message);
+
+      // Controlla se è un errore di autenticazione
+      if (fetchError.message.includes('401') ||
+          fetchError.message.includes('invalid_grant') ||
+          fetchError.message.includes('Token expired')) {
+        return NextResponse.json({
+          error: 'Token Gmail scaduto. Riconnetti il tuo account.',
+          requiresReauth: true,
+          details: fetchError.message
+        }, { status: 401 });
+      }
+
+      throw fetchError; // Re-throw altri errori per essere catturati dal catch principale
+    }
 
     console.log(`[FETCH-EMAILS] Found ${messageIds.length} messages`);
 

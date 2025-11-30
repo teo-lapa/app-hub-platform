@@ -30,6 +30,8 @@ export default function EmailAIMonitorPage() {
   const [filter, setFilter] = useState<string>('all');
   const [connectionId, setConnectionId] = useState<string>('');
   const [isConnected, setIsConnected] = useState(false);
+  const [requiresReauth, setRequiresReauth] = useState(false);
+  const [authError, setAuthError] = useState<string>('');
 
   useEffect(() => {
     // Check for success/error messages from OAuth callback
@@ -108,6 +110,9 @@ export default function EmailAIMonitorPage() {
     if (!connectionId) return;
 
     setFetchingNew(true);
+    setRequiresReauth(false);
+    setAuthError('');
+
     try {
       const response = await fetch('/api/email-ai/fetch-emails', {
         method: 'POST',
@@ -119,18 +124,27 @@ export default function EmailAIMonitorPage() {
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch new emails');
+      const data = await response.json();
+
+      // Controlla se serve riautenticazione (401)
+      if (response.status === 401 && data.requiresReauth) {
+        console.error('Gmail token scaduto, serve riconnessione');
+        setRequiresReauth(true);
+        setAuthError(data.error || 'Token Gmail scaduto. Riconnetti il tuo account.');
+        return;
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch new emails');
+      }
+
       alert(`Processate ${data.processed} nuove email!`);
 
       // Refresh list
       fetchEmails();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching new emails:', error);
-      alert('Errore nel fetch di nuove email');
+      alert(`Errore nel fetch di nuove email: ${error.message}`);
     } finally {
       setFetchingNew(false);
     }
@@ -188,6 +202,34 @@ export default function EmailAIMonitorPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Reauth Warning Banner */}
+        {requiresReauth && (
+          <div className="mb-6 bg-red-500/20 border-2 border-red-500 rounded-lg p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-4xl">⚠️</span>
+                  <div>
+                    <h3 className="text-xl font-bold text-red-300">
+                      Token Gmail Scaduto
+                    </h3>
+                    <p className="text-red-200 mt-1">{authError}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-300 ml-16">
+                  Il token di accesso è scaduto. Devi riconnettere il tuo account Gmail per continuare a usare l'Email AI Monitor.
+                </p>
+              </div>
+              <button
+                onClick={connectGmail}
+                className="px-6 py-3 bg-red-500 hover:bg-red-600 rounded-lg font-bold text-white transition shadow-lg"
+              >
+                🔄 Riconnetti Gmail
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Connection Status & Actions */}
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
