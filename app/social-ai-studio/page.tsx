@@ -22,7 +22,7 @@ type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
 type ContentType = 'image' | 'video' | 'both';
 type Tone = 'professional' | 'casual' | 'fun' | 'luxury';
 type VideoStyle = 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion' | 'orbital' | 'reassembly';
-type VideoDuration = 6 | 12 | 30;
+type VideoDuration = 4 | 6 | 8; // Veo 3.1 supporta solo 4, 6, 8 secondi (massimo 8s)
 
 interface SentimentAnalysis {
   sentiment: 'positive' | 'neutral' | 'negative';
@@ -245,6 +245,43 @@ export default function SocialAIStudioPage() {
     } catch (error: any) {
       console.error('Errore upload logo:', error);
       toast.error('Errore durante il caricamento del logo');
+    }
+  };
+
+  // ==========================================
+  // Load Default Logo
+  // ==========================================
+  const loadDefaultLogo = async () => {
+    try {
+      toast.loading('Caricamento logo LAPA...');
+
+      const response = await fetch('/logo-lapa.png');
+
+      if (!response.ok) {
+        throw new Error(`Errore nel caricamento: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        setLogoImage(base64);
+        setLogoPreview(base64);
+        toast.dismiss();
+        toast.success('Logo LAPA caricato!');
+      };
+
+      reader.onerror = () => {
+        toast.dismiss();
+        toast.error('Errore nella conversione del logo');
+      };
+
+      reader.readAsDataURL(blob);
+    } catch (error: any) {
+      console.error('Errore caricamento logo predefinito:', error);
+      toast.dismiss();
+      toast.error(error.message || 'Errore durante il caricamento del logo LAPA');
     }
   };
 
@@ -607,21 +644,33 @@ export default function SocialAIStudioPage() {
                     <label className="block text-xs text-purple-300 mb-2">
                       Logo Aziendale (opzionale)
                     </label>
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/svg+xml"
-                      onChange={handleLogoUpload}
-                      disabled={isGenerating}
-                      className="hidden"
-                      id="logo-upload"
-                    />
-                    <label
-                      htmlFor="logo-upload"
-                      className="flex items-center justify-center space-x-2 px-4 py-2 bg-slate-900/50 border border-purple-500/50 rounded-lg hover:border-purple-400 transition-colors cursor-pointer text-sm text-purple-300"
-                    >
-                      <Upload className="h-4 w-4" />
-                      <span>Carica Logo</span>
-                    </label>
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/svg+xml"
+                        onChange={handleLogoUpload}
+                        disabled={isGenerating}
+                        className="hidden"
+                        id="logo-upload"
+                      />
+                      <label
+                        htmlFor="logo-upload"
+                        className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-slate-900/50 border border-purple-500/50 rounded-lg hover:border-purple-400 transition-colors cursor-pointer text-sm text-purple-300"
+                      >
+                        <Upload className="h-4 w-4" />
+                        <span>Carica Logo</span>
+                      </label>
+
+                      {/* Usa Logo LAPA Button */}
+                      <button
+                        onClick={loadDefaultLogo}
+                        disabled={isGenerating}
+                        className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border border-purple-400/50 rounded-lg transition-all cursor-pointer text-sm text-white font-medium disabled:opacity-50"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        <span>Usa logo LAPA</span>
+                      </button>
+                    </div>
 
                     {logoPreview && (
                       <div className="mt-2 relative inline-block">
@@ -844,9 +893,9 @@ export default function SocialAIStudioPage() {
                   <div className="relative pt-1">
                     <input
                       type="range"
-                      min="6"
-                      max="30"
-                      step="6"
+                      min="4"
+                      max="8"
+                      step="2"
                       value={videoDuration}
                       onChange={(e) => setVideoDuration(parseInt(e.target.value) as VideoDuration)}
                       disabled={isGenerating}
@@ -873,9 +922,9 @@ export default function SocialAIStudioPage() {
                         [&::-moz-range-thumb]:cursor-pointer"
                     />
                     <div className="flex justify-between mt-2 text-xs text-purple-300/70">
-                      <span>⚡ Veloce</span>
-                      <span>⏱️ Standard</span>
-                      <span>🎬 Lungo</span>
+                      <span>⚡ 4s</span>
+                      <span>⏱️ 6s</span>
+                      <span>🎬 8s (max)</span>
                     </div>
                   </div>
                 </div>

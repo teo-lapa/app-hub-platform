@@ -78,7 +78,7 @@ interface GenerateMarketingRequest {
   tone?: 'professional' | 'casual' | 'fun' | 'luxury';
   targetAudience?: string;
   videoStyle?: 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion' | 'orbital' | 'reassembly';
-  videoDuration?: 6 | 12 | 30;  // Durata video in secondi (default: 6)
+  videoDuration?: 4 | 6 | 8;  // Durata video in secondi - Veo 3.1 supporta solo 4, 6, 8s (default: 6)
 
   // Branding
   includeLogo?: boolean;     // Se true, include logo e motto nell'immagine/video
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
       tone = 'professional',
       targetAudience = 'pubblico generale',
       videoStyle = 'default',
-      videoDuration = 6,    // Default: 6 secondi
+      videoDuration = 6,    // Default: 6 secondi (Veo 3.1: solo 4, 6, 8s supportati)
       includeLogo = false,
       logoImage,        // Logo aziendale (base64) - opzionale
       companyMotto,     // Slogan/Motto aziendale - opzionale
@@ -339,7 +339,7 @@ export async function POST(request: NextRequest) {
           ${copywritingResult.cta},
           ${tone},
           ${videoStyle},
-          ${videoDuration || 6},
+          ${videoDuration && [4, 6, 8].includes(videoDuration) ? videoDuration : 6},
           ${aspectRatio},
           ${logoImage || null},
           ${companyMotto || null},
@@ -453,34 +453,60 @@ async function generateCopywriting(
     // Continue without RAG insights - graceful degradation
   }
 
-  const prompt = `Sei un esperto copywriter specializzato in social media marketing.
+  const prompt = `Sei un SENIOR COPYWRITER CREATIVO di un'agenzia di marketing premium, specializzato in content strategy per social media.
 
-CONTESTO:
+📊 CONTESTO DI BUSINESS:
 - Prodotto: ${params.productName}
-- Descrizione: ${params.productDescription || 'Vedi immagine'}
+- Descrizione: ${params.productDescription || 'Analizza l\'immagine fornita'}
 - Piattaforma: ${params.platform}
-- Tone of voice: ${params.tone}
-- Target audience: ${params.targetAudience}${ragInsights}
+- Tone of Voice: ${params.tone}
+- Target Audience: ${params.targetAudience}${ragInsights}
 
-TASK:
-Analizza l'immagine del prodotto e crea un post marketing completo per ${params.platform}.
+🎯 OBIETTIVO PRINCIPALE:
+Crea un post marketing AD-READY che CONVERTA visualizzazioni in azioni concrete.
+Il copy deve essere PERSUASIVO, MEMORABILE e ottimizzato per massimizzare engagement e conversioni.
 
-STRUTTURA RISPOSTA (formato JSON):
+📝 OUTPUT RICHIESTO (formato JSON):
 {
-  "caption": "Caption accattivante (max 150 caratteri per ${params.platform})",
-  "hashtags": ["hashtag1", "hashtag2", "hashtag3", "hashtag4", "hashtag5"],
-  "cta": "Call-to-Action efficace"
+  "caption": "Hook potente + Value proposition + Emotional trigger (max 140 caratteri per ${params.platform})",
+  "hashtags": ["#hashtag1", "#hashtag2", "#hashtag3", "#hashtag4", "#hashtag5", "#hashtag6"],
+  "cta": "Call-to-Action irresistibile con urgency/scarcity"
 }
 
-REGOLE:
-- Caption: emozionale, breve, engaging
-- Hashtags: 5-8 hashtags rilevanti e popolari per ${params.platform}${ragInsights ? '\n- PRIORITÀ: Usa gli hashtags suggeriti dai dati di performance' : ''}
-- CTA: chiaro e orientato all'azione, DEVE includere "www.lapa.ch" (es: "Visita www.lapa.ch", "Scopri di più su www.lapa.ch", "Ordina su www.lapa.ch")
-- Tone: ${params.tone}
-- NON usare emoji se il tone è "professional"
-- USA emoji se il tone è "fun" o "casual"
+🎨 REGOLE DI COPYWRITING PROFESSIONALE:
 
-Rispondi SOLO con il JSON, senza markdown o spiegazioni.`;
+CAPTION (Max 140 caratteri):
+- INIZIA con un HOOK irresistibile (domanda provocatoria, dato sorprendente, o beneficio chiave)
+- Comunica il VALORE UNICO del prodotto in modo chiaro e conciso
+- Usa TRIGGER EMOTIVI (curiosità, desiderio, FOMO, aspirazione)
+- Linguaggio SENSORIALE e SPECIFICO (no frasi generiche!)
+- Per ${params.tone === 'professional' ? 'PROFESSIONAL: Tono autorevole, credibile, orientato ai risultati' : params.tone === 'luxury' ? 'LUXURY: Linguaggio esclusivo, sofisticato, aspirazionale' : params.tone === 'fun' ? 'FUN: Energico, giocoso, pieno di personalità 🎉' : 'CASUAL: Conversazionale, autentico, relatable'}
+- EVITA cliché marketing ("Scopri", "Non perdere", "Il migliore", etc.)
+
+HASHTAGS (6-8 strategici):
+- MIX: 2 popolari + 3 mid-tier + 2 niche/branded
+- RILEVANZA: Hashtags specifici del prodotto/settore per ${params.platform}${ragInsights ? '\n- ⚡ PRIORITÀ: USA gli hashtags ad alta performance dai dati RAG forniti' : ''}
+- Combina: #branded #category #trending #location
+- Per ${params.platform === 'linkedin' ? 'LinkedIn: Professional hashtags (#B2B, #Innovation, settore specifico)' : params.platform === 'instagram' ? 'Instagram: Visual + Lifestyle hashtags' : params.platform === 'tiktok' ? 'TikTok: Trending + Discovery hashtags' : 'Facebook: Community + Interest hashtags'}
+
+CTA (Call-to-Action POTENTE):
+- URGENZA: Usa scarcity/urgency ("Solo oggi", "Ultimi pezzi", "Offerta limitata")
+- SPECIFICO: Dì ESATTAMENTE cosa fare ("Ordina ora su www.lapa.ch", "Prenota il tuo su www.lapa.ch", "Richiedi campione su www.lapa.ch")
+- BENEFICIO: Rinforza il valore ("Ricevi consegna gratuita su www.lapa.ch", "Risparmia 20% su www.lapa.ch")
+- DEVE contenere "www.lapa.ch" in modo naturale e strategico
+- Evita CTA deboli ("Scopri di più", "Clicca qui")
+
+EMOJI STRATEGY:
+${params.tone === 'professional' ? '❌ NO EMOJI - Mantieni tono formale e autorevole' : params.tone === 'luxury' ? '✨ Usa emoji minimalisti di lusso (💎🌟✨🥂) - MAX 1-2' : params.tone === 'fun' ? '🎉 USA EMOJI CREATIVI! - Rendi il post vivace e coinvolgente 🚀💥✨' : '👍 USA emoji conversazionali per rendere il post friendly e approachable 😊🌟'}
+
+⚡ BEST PRACTICES FINALI:
+- Analizza ATTENTAMENTE l'immagine del prodotto prima di scrivere
+- Il copy deve RIFLETTERE ciò che si vede nell'immagine
+- Focus su BENEFICI, non features
+- Crea DESIDERIO attraverso storytelling visivo
+- Ottimizza per MOBILE (frasi brevi, impatto immediato)
+
+Rispondi ESCLUSIVAMENTE con il JSON, SENZA markdown backticks, SENZA spiegazioni.`;
 
   try {
     // NUOVO SDK - usa generateContent() con model specificato
@@ -760,7 +786,8 @@ async function generateMarketingVideo(
   }
 
   // Prompt diversi per ogni stile (INGLESE per migliore qualità)
-  // IMPORTANTE: Specifica DURATION in secondi per assicurare video della lunghezza corretta
+  // IMPORTANTE: Veo 3.1 supporta SOLO 4, 6, o 8 secondi (massimo 8s)
+  // NOTA: Il parametro duration deve essere validato e limitato a 4, 6, o 8
   const stylePrompts = {
     default: `Create a premium, hyper-realistic ${duration}-second product video for ${params.platform} social media advertising.
 DURATION: Exactly ${duration} seconds - pace the movement to fill the entire duration smoothly.
@@ -873,7 +900,7 @@ ${brandingLine}`
       },
       config: {
         aspectRatio: veoAspectRatio,
-        durationSeconds: duration,  // Usa il parametro dall'utente (6, 12, o 30 secondi)
+        durationSeconds: [4, 6, 8].includes(duration) ? duration : 6,  // Veo 3.1: solo 4, 6, 8s supportati
         resolution: '720p'
       }
     });
