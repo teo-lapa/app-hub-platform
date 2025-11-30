@@ -5,14 +5,19 @@ import { sql } from '@vercel/postgres';
 // Forza rendering dinamico
 export const dynamic = 'force-dynamic';
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-
 /**
  * GET /api/email-ai/auth/gmail/callback
  * Callback OAuth Google Gmail - salva tokens nel database
  */
 export async function GET(request: NextRequest) {
   try {
+    // Costruisci BASE_URL dalla request invece di usare env var
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const host = request.headers.get('host') || 'localhost:3000';
+    const BASE_URL = `${protocol}://${host}`;
+
+    console.log('[Email-AI] 🌐 BASE_URL:', BASE_URL);
+
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
     const error = searchParams.get('error');
@@ -130,10 +135,11 @@ export async function GET(request: NextRequest) {
       console.log(`[Email-AI] ✅ New Gmail connection created: ${connectionId}`);
     }
 
-    // ========== STEP 4: REDIRECT A DASHBOARD CON SUCCESS ==========
-    const response = NextResponse.redirect(
-      new URL('/email-ai-monitor?success=gmail_connected', BASE_URL)
-    );
+    // ========== STEP 4: REDIRECT A EMAIL-AI-MONITOR CON SUCCESS ==========
+    const redirectUrl = new URL('/email-ai-monitor?success=gmail_connected', BASE_URL);
+    console.log('[Email-AI] 🔄 Redirecting to:', redirectUrl.toString());
+
+    const response = NextResponse.redirect(redirectUrl);
 
     // Salva connection_id in cookie per accesso rapido (httpOnly: false per JS access)
     response.cookies.set('gmail_connection_id', connectionId, {
@@ -144,11 +150,18 @@ export async function GET(request: NextRequest) {
       path: '/',
     });
 
-    console.log('[Email-AI] ✅ Gmail OAuth completed! Redirect to dashboard...');
+    console.log('[Email-AI] ✅ Gmail OAuth completed successfully!');
+    console.log('[Email-AI] 📍 Final redirect URL:', redirectUrl.toString());
+    console.log('[Email-AI] 🍪 Set cookie: gmail_connection_id =', connectionId);
     return response;
 
   } catch (error: any) {
     console.error('[Email-AI] Gmail OAuth callback error:', error);
+    // Costruisci BASE_URL dalla request
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const host = request.headers.get('host') || 'localhost:3000';
+    const BASE_URL = `${protocol}://${host}`;
+
     return NextResponse.redirect(
       new URL(`/email-ai-monitor?error=callback_error&message=${encodeURIComponent(error.message)}`, BASE_URL)
     );
