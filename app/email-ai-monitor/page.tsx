@@ -162,10 +162,20 @@ export default function EmailAIMonitorPage() {
       {/* Header */}
       <div className="border-b border-white/10 bg-black/20">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold">📧 Email AI Monitor</h1>
-          <p className="text-gray-400 mt-1">
-            Gmail intelligente con classificazione AI automatica
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">📧 Email AI Monitor</h1>
+              <p className="text-gray-400 mt-1">
+                Gmail intelligente con classificazione AI automatica
+              </p>
+            </div>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-lg font-semibold transition flex items-center gap-2"
+            >
+              ← Torna al Dashboard
+            </button>
+          </div>
         </div>
       </div>
 
