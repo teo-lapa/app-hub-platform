@@ -7,7 +7,7 @@
  * 4. Download video
  */
 
-const VEO_API_KEY = 'AIzaSyCy1v1IfXOdKRIBjZhh49GmsUn5XzbAc2s';
+const VEO_API_KEY = process.env.VEO_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || '';
 
 async function testVeoKey() {
   console.log('🔑 Testing VEO_API_KEY:', VEO_API_KEY.substring(0, 20) + '...');

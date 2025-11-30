@@ -1,4 +1,4 @@
-const apiKey = "AIzaSyBuHNSxFt4Ua-5ZNj7s5vo5yVTXqcfbKN8";
+const apiKey = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
 async function test() {
   try {

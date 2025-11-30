@@ -135,8 +135,8 @@ TEST 1: Odoo Python Client (Direct)
 Nel Vercel dashboard, aggiungi:
 
 ```bash
-GEMINI_API_KEY=AIzaSyA0YYSCwyCocQPHFOjZyTFf_3HdICL-qDs
-GOOGLE_GEMINI_API_KEY=AIzaSyBuHNSxFt4Ua-5ZNj7s5vo5yVTXqcfbKN8
+GEMINI_API_KEY=your-gemini-api-key-here
+GOOGLE_GEMINI_API_KEY=your-google-gemini-api-key-here
 JETSON_URL=http://10.0.0.108:3100
 
 # (Optional - per override)

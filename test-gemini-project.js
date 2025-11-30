@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
 
-const genAI = new GoogleGenerativeAI('AIzaSyBuHNSxFt4Ua-5ZNj7s5vo5yVTXqcfbKN8');
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY);
 
 async function test() {
   console.log('📄 Carico PDF...');

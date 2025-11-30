@@ -9,7 +9,7 @@ Sales Radar (Dashboard Venditori) utilizza le Google Maps API per fornire funzio
 ### Variabili d'Ambiente Configurate
 
 #### File `.env.local`
-- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="AIzaSyDxuQvGkiJQL8vcP2eudQCWP0MninPmucQ"` (Configurata)
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="your-google-maps-api-key-here"` (Da configurare)
 
 #### Vercel Environment Variables
 - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` - Configurata su tutti gli ambienti:
