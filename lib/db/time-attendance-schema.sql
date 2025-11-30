@@ -254,46 +254,7 @@ CREATE TABLE IF NOT EXISTS ta_employee_shifts (
 CREATE INDEX IF NOT EXISTS idx_ta_employee_shifts_employee ON ta_employee_shifts(employee_id);
 CREATE INDEX IF NOT EXISTS idx_ta_employee_shifts_dates ON ta_employee_shifts(valid_from, valid_to);
 
--- Table 6: Time Entries (timbrature - CORE TABLE)
-CREATE TABLE IF NOT EXISTS ta_time_entries (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID REFERENCES ta_organizations(id) ON DELETE CASCADE,
-  employee_id UUID REFERENCES ta_employees(id) ON DELETE CASCADE,
-  location_id UUID REFERENCES ta_work_locations(id),
-
-  -- Tipo di evento
-  entry_type TEXT NOT NULL CHECK (entry_type IN ('clock_in', 'clock_out', 'break_start', 'break_end')),
-
-  -- Timestamp della timbratura
-  timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-
-  -- Geolocalizzazione (opzionale)
-  latitude DECIMAL(10,8),
-  longitude DECIMAL(11,8),
-  accuracy_meters DECIMAL(6,2),
-  is_within_geofence BOOLEAN,
-
-  -- Metodo di timbratura
-  clock_method TEXT DEFAULT 'manual' CHECK (clock_method IN ('manual', 'geofence_auto', 'kiosk', 'nfc', 'qr')),
-  device_info JSONB DEFAULT '{}'::jsonb, -- user agent, device ID, etc.
-
-  -- Modifiche manuali (audit trail)
-  is_edited BOOLEAN DEFAULT false,
-  edited_by UUID REFERENCES ta_employees(id),
-  edited_at TIMESTAMP,
-  edit_reason TEXT,
-  original_timestamp TIMESTAMP,
-
-  -- Extra
-  note TEXT,
-  photo_url TEXT, -- se richiesta foto
-
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_ta_time_entries_org_employee ON ta_time_entries(org_id, employee_id, timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_ta_time_entries_date ON ta_time_entries(DATE(timestamp));
-CREATE INDEX IF NOT EXISTS idx_ta_time_entries_type ON ta_time_entries(entry_type);
+-- Table 6: Time Entries - RIMOSSA (usa la versione Odoo sopra, righe 14-48)
 
 -- Table 7: Time Entry Requests (richieste correzione/modifica)
 CREATE TABLE IF NOT EXISTS ta_time_entry_requests (
@@ -344,7 +305,12 @@ CREATE INDEX IF NOT EXISTS idx_ta_gdpr_consents_employee ON ta_gdpr_consents(emp
 -- VIEWS
 -- ============================================
 
--- View: Riepilogo giornaliero ore lavorate
+-- NOTA: Le view legacy sono commentate perché usano org_id/employee_id
+-- che non esistono più nella versione Odoo di ta_time_entries.
+-- Usa invece la view ta_contact_daily_summary (riga 105) che è compatibile.
+
+/*
+-- View: Riepilogo giornaliero ore lavorate (LEGACY - NON COMPATIBILE)
 CREATE OR REPLACE VIEW ta_daily_work_summary AS
 SELECT
   te.org_id,
@@ -359,7 +325,7 @@ FROM ta_time_entries te
 JOIN ta_employees e ON e.id = te.employee_id
 GROUP BY te.org_id, te.employee_id, e.name, DATE(te.timestamp AT TIME ZONE 'Europe/Rome');
 
--- View: Dipendenti attualmente in servizio
+-- View: Dipendenti attualmente in servizio (LEGACY - NON COMPATIBILE)
 CREATE OR REPLACE VIEW ta_employees_on_duty AS
 WITH latest_entries AS (
   SELECT DISTINCT ON (employee_id)
@@ -384,6 +350,7 @@ FROM ta_employees e
 LEFT JOIN latest_entries le ON le.employee_id = e.id
 LEFT JOIN ta_work_locations wl ON wl.id = le.location_id
 WHERE e.is_active = true;
+*/
 
 -- ============================================
 -- TRIGGERS

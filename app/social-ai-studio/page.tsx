@@ -16,7 +16,7 @@ import {
   getSentimentEmoji,
   getRecommendationColor,
   getEngagementLevel
-} from '@/lib/social-ai/sentiment-analyzer';
+} from '@/lib/social-ai/sentiment-helpers';
 
 type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
 type ContentType = 'image' | 'video' | 'both';
