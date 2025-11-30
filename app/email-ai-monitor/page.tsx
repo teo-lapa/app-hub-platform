@@ -67,9 +67,14 @@ export default function EmailAIMonitorPage() {
         const id = connCookie.split('=')[1];
         setConnectionId(id);
         setIsConnected(true);
+      } else {
+        setIsConnected(false);
       }
     } catch (error) {
       console.error('Failed to check connection:', error);
+      setIsConnected(false);
+    } finally {
+      setLoading(false);
     }
   };
 
