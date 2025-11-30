@@ -106,7 +106,7 @@ CREATE OR REPLACE VIEW ta_contact_daily_summary AS
 SELECT
   contact_id,
   company_id,
-  DATE(timestamp AT TIME ZONE 'Europe/Rome') as work_date,
+  DATE(timestamp AT TIME ZONE 'Europe/Zurich') as work_date,
   MIN(CASE WHEN entry_type = 'clock_in' THEN timestamp END) as first_clock_in,
   MAX(CASE WHEN entry_type = 'clock_out' THEN timestamp END) as last_clock_out,
   COUNT(CASE WHEN entry_type = 'clock_in' THEN 1 END) as clock_in_count,
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS ta_organizations (
   photo_required BOOLEAN DEFAULT false, -- richiedi foto alla timbratura
 
   -- Impostazioni
-  timezone VARCHAR(50) DEFAULT 'Europe/Rome',
+  timezone VARCHAR(50) DEFAULT 'Europe/Zurich',
   settings JSONB DEFAULT '{}'::jsonb,
 
   is_active BOOLEAN DEFAULT true,
@@ -205,7 +205,7 @@ CREATE TABLE IF NOT EXISTS ta_work_locations (
   radius_meters INT DEFAULT 100, -- raggio geofence
 
   -- Impostazioni
-  timezone VARCHAR(50) DEFAULT 'Europe/Rome',
+  timezone VARCHAR(50) DEFAULT 'Europe/Zurich',
   is_primary BOOLEAN DEFAULT false,
   is_active BOOLEAN DEFAULT true,
 

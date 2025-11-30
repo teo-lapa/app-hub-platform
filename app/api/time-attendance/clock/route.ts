@@ -205,10 +205,10 @@ export async function GET(request: NextRequest) {
       WHERE contact_id = ${parseInt(contactId)} ORDER BY timestamp DESC LIMIT 1
     `;
 
-    // Usa timezone Europe/Rome per calcolare mezzanotte italiana
-    const TIMEZONE = 'Europe/Rome';
+    // Usa timezone Europe/Zurich per calcolare mezzanotte svizzera
+    const TIMEZONE = 'Europe/Zurich';
     const now = new Date();
-    const todayStr = now.toLocaleDateString('en-CA', { timeZone: TIMEZONE }); // YYYY-MM-DD in Rome timezone
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: TIMEZONE }); // YYYY-MM-DD in Zurich timezone
     const todayStart = new Date(todayStr + 'T00:00:00+01:00'); // Mezzanotte CET (approssimato)
 
     // Calcola offset corretto per ora legale/solare

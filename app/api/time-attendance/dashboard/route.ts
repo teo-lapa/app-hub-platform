@@ -111,18 +111,18 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Usa timezone Europe/Rome per calcoli corretti
-    const TIMEZONE = 'Europe/Rome';
+    // Usa timezone Europe/Zurich per calcoli corretti
+    const TIMEZONE = 'Europe/Zurich';
 
-    // Helper robusto per calcolare i bounds di un giorno in timezone Rome
-    // Restituisce date UTC che corrispondono a mezzanotte-23:59 in Rome
+    // Helper robusto per calcolare i bounds di un giorno in timezone Zurich
+    // Restituisce date UTC che corrispondono a mezzanotte-23:59 in Zurich
     const getRomeDayBounds = (refDate: Date) => {
-      // Ottieni la data in formato Rome
+      // Ottieni la data in formato Zurich
       const romeStr = refDate.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
       const [year, month, day] = romeStr.split('-').map(Number);
 
-      // Determina se è ora legale in Italia
-      // L'ora legale in Italia va dall'ultima domenica di marzo all'ultima domenica di ottobre
+      // Determina se è ora legale in Svizzera
+      // L'ora legale in Svizzera va dall'ultima domenica di marzo all'ultima domenica di ottobre
       const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
       const romeTime = testDate.toLocaleString('en-US', { timeZone: TIMEZONE, hour: 'numeric', hour12: false });
       const utcHour = testDate.getUTCHours();
