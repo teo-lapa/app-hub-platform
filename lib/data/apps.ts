@@ -332,7 +332,7 @@ export const mockApps: App[] = [
     badge: 'PRO',
     category: 'AI & Tech',
     url: '/email-ai-monitor',
-    requiredRole: 'cliente_premium',
+    requiredRole: 'dipendente',
     isNew: true,
     isPopular: false,
     controlStatus: 'approved',

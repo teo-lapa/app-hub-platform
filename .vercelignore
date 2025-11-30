@@ -1,0 +1,32 @@
+# Large files
+*.img
+*.img.xz
+*.exe
+rufus.exe
+homeassistant-rpi5.img
+homeassistant-rpi5.img.xz
+raspios-lite.img
+raspios-lite.img.xz
+
+# Documentation (not needed for runtime)
+docs/
+scripts/
+reports/
+
+# Jetson deployment files
+jetson-deployment/
+
+# Test files
+test-*.jpg
+test-*.js
+*.test.js
+*.spec.js
+
+# Python scripts
+*.py
+
+# Temporary files
+*.log
+*.tmp
+staging-page.html
+staging-test.html
