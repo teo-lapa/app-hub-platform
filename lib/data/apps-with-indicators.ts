@@ -146,6 +146,21 @@ export const mockApps: App[] = [
     createdAt: new Date('2025-11-28'),
     updatedAt: new Date('2025-11-28'),
   },
+  {
+    id: 'email-ai-1',
+    name: 'Email AI Monitor',
+    description: 'Monitora Gmail con AI: classificazione automatica urgenza, client/supplier, riassunti intelligenti, sentiment analysis e RAG search. Cron job mattutino e sync on-demand.',
+    icon: '📧',
+    badge: 'PRO',
+    category: 'AI & Tech',
+    url: '/email-ai-monitor',
+    requiredRole: 'dipendente',
+    isNew: true,
+    isPopular: false,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-11-30'),
+    updatedAt: new Date('2025-11-30'),
+  },
 ];
 
 // Le app Standalone in /apps/
