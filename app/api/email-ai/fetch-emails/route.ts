@@ -184,10 +184,6 @@ export async function POST(request: NextRequest) {
         }
 
         // ========== SAVE TO DATABASE ==========
-        // Convert arrays to PostgreSQL array format: {elem1,elem2,elem3}
-        const labelIdsArray = `{${message.labelIds.join(',')}}`;
-        const keywordsArray = `{${classification.keywords.join(',')}}`;
-
         const insertResult = await sql`
           INSERT INTO email_messages (
             connection_id,
@@ -222,7 +218,7 @@ export async function POST(request: NextRequest) {
             ${connectionId},
             ${message.id},
             ${message.threadId},
-            ${labelIdsArray}::text[],
+            ${JSON.stringify(message.labelIds)}::text[],
             ${message.from.email},
             ${message.from.name || null},
             ${senderDomain},
@@ -243,7 +239,7 @@ export async function POST(request: NextRequest) {
             ${summary?.summary || null},
             ${classification.sentiment},
             ${classification.confidence},
-            ${keywordsArray}::text[],
+            ${JSON.stringify(classification.keywords)}::text[],
             ${classification.emailCategory},
             NOW(),
             NOW()
