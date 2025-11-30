@@ -23,7 +23,7 @@ export function getGoogleAuthUrl(): string {
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: GOOGLE_REDIRECT_URI,
     response_type: 'code',
-    scope: 'openid email profile',
+    scope: 'openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify',
     access_type: 'offline',
     prompt: 'select_account', // Forza selezione account
   });
