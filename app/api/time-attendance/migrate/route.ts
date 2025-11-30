@@ -36,10 +36,24 @@ export async function POST(request: NextRequest) {
         location_id UUID,
         location_name TEXT,
         note TEXT,
+        break_type TEXT CHECK (break_type IS NULL OR break_type IN ('coffee_break', 'lunch_break')),
+        break_max_minutes INTEGER,
+        contact_name TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `;
     results.push('✓ ta_time_entries created');
+
+    // Aggiungi colonne mancanti se la tabella esisteva già
+    results.push('Adding missing columns...');
+    try {
+      await sql`ALTER TABLE ta_time_entries ADD COLUMN IF NOT EXISTS break_type TEXT CHECK (break_type IS NULL OR break_type IN ('coffee_break', 'lunch_break'))`;
+      await sql`ALTER TABLE ta_time_entries ADD COLUMN IF NOT EXISTS break_max_minutes INTEGER`;
+      await sql`ALTER TABLE ta_time_entries ADD COLUMN IF NOT EXISTS contact_name TEXT`;
+      results.push('✓ Missing columns added');
+    } catch (e) {
+      results.push('⚠ Some columns may already exist: ' + (e instanceof Error ? e.message : 'Unknown'));
+    }
 
     // Indici
     await sql`CREATE INDEX IF NOT EXISTS idx_ta_time_entries_contact ON ta_time_entries(contact_id, timestamp DESC)`;
