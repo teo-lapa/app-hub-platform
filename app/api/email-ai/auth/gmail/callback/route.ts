@@ -135,9 +135,9 @@ export async function GET(request: NextRequest) {
       new URL('/email-ai-monitor?success=gmail_connected', BASE_URL)
     );
 
-    // Opzionale: salva connection_id in cookie per accesso rapido
+    // Salva connection_id in cookie per accesso rapido (httpOnly: false per JS access)
     response.cookies.set('gmail_connection_id', connectionId, {
-      httpOnly: true,
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60, // 30 giorni
