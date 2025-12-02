@@ -456,7 +456,7 @@ export class GmailClient {
 
     const headers = response.data.payload?.headers || [];
     const messageIdHeader = headers.find(h => h.name?.toLowerCase() === 'message-id');
-    return messageIdHeader?.value;
+    return messageIdHeader?.value || undefined;
   }
 
   /**
