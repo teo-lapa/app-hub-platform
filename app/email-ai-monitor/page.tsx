@@ -104,6 +104,14 @@ const translations = {
     // Badges
     clientBadge: 'Cliente',
     supplierBadge: 'Fornitore',
+
+    // Send Email
+    sendEmail: 'Invia Email',
+    sending: 'Invio in corso...',
+    emailSent: 'Email inviata con successo!',
+    errorSend: "Errore nell'invio email",
+    editReply: 'Modifica risposta prima di inviare',
+    confirmSend: 'Vuoi inviare questa email?',
   },
   en: {
     // Header
@@ -204,6 +212,14 @@ const translations = {
     // Badges
     clientBadge: 'Client',
     supplierBadge: 'Supplier',
+
+    // Send Email
+    sendEmail: 'Send Email',
+    sending: 'Sending...',
+    emailSent: 'Email sent successfully!',
+    errorSend: 'Error sending email',
+    editReply: 'Edit reply before sending',
+    confirmSend: 'Do you want to send this email?',
   },
   de: {
     // Header
@@ -304,6 +320,14 @@ const translations = {
     // Badges
     clientBadge: 'Kunde',
     supplierBadge: 'Lieferant',
+
+    // Send Email
+    sendEmail: 'E-Mail senden',
+    sending: 'Wird gesendet...',
+    emailSent: 'E-Mail erfolgreich gesendet!',
+    errorSend: 'Fehler beim Senden',
+    editReply: 'Antwort vor dem Senden bearbeiten',
+    confirmSend: 'Möchten Sie diese E-Mail senden?',
   }
 };
 
@@ -389,6 +413,8 @@ export default function EmailAIMonitorPage() {
   // Reply State
   const [generatingReply, setGeneratingReply] = useState(false);
   const [replyDraft, setReplyDraft] = useState<ReplyDraft | null>(null);
+  const [editableReply, setEditableReply] = useState<string>('');
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   // Agent State
   const [agentRunning, setAgentRunning] = useState(false);
@@ -617,22 +643,40 @@ export default function EmailAIMonitorPage() {
       if (!response.ok) throw new Error('Action failed');
 
       // Update local state
-      setEmails(prev => prev.map(e => {
-        if (e.id !== emailId) return e;
-
-        switch (action) {
-          case 'markRead': return { ...e, is_read: true };
-          case 'markUnread': return { ...e, is_read: false };
-          case 'star': return { ...e, is_starred: true };
-          case 'unstar': return { ...e, is_starred: false };
-          case 'archive': return { ...e }; // Will be filtered out on refresh
-          case 'moveToSpam': return { ...e, is_spam: true };
-          default: return e;
-        }
-      }));
-
       if (action === 'archive' || action === 'moveToSpam') {
-        fetchEmails(); // Refresh list
+        // Rimuovi email dalla lista immediatamente
+        setEmails(prev => prev.filter(e => e.id !== emailId));
+        // Deseleziona se era selezionata
+        if (selectedEmail?.id === emailId) {
+          setSelectedEmail(null);
+        }
+      } else {
+        // Aggiorna stato locale per altre azioni
+        setEmails(prev => prev.map(e => {
+          if (e.id !== emailId) return e;
+
+          switch (action) {
+            case 'markRead': return { ...e, is_read: true };
+            case 'markUnread': return { ...e, is_read: false };
+            case 'star': return { ...e, is_starred: true };
+            case 'unstar': return { ...e, is_starred: false };
+            default: return e;
+          }
+        }));
+
+        // Aggiorna anche selectedEmail se è quella modificata
+        if (selectedEmail?.id === emailId) {
+          setSelectedEmail(prev => {
+            if (!prev) return null;
+            switch (action) {
+              case 'markRead': return { ...prev, is_read: true };
+              case 'markUnread': return { ...prev, is_read: false };
+              case 'star': return { ...prev, is_starred: true };
+              case 'unstar': return { ...prev, is_starred: false };
+              default: return prev;
+            }
+          });
+        }
       }
     } catch (error) {
       alert('Errore nell\'esecuzione azione');
@@ -658,6 +702,7 @@ export default function EmailAIMonitorPage() {
       if (!response.ok) throw new Error(data.error);
 
       setReplyDraft(data.reply);
+      setEditableReply(data.reply.draftReply);
     } catch (error: any) {
       alert(`Errore generazione risposta: ${error.message}`);
     } finally {
@@ -680,11 +725,54 @@ export default function EmailAIMonitorPage() {
       const data = await response.json();
       if (data.reply) {
         setReplyDraft(data.reply);
+        setEditableReply(data.reply.draftReply);
       }
     } catch (error) {
       alert('Errore generazione risposta rapida');
     } finally {
       setGeneratingReply(false);
+    }
+  };
+
+  // ============= SEND EMAIL =============
+  const sendEmail = async (email: Email) => {
+    if (!editableReply.trim()) {
+      alert(t.editReply);
+      return;
+    }
+
+    if (!confirm(t.confirmSend)) return;
+
+    setSendingEmail(true);
+    try {
+      const response = await fetch('/api/email-ai/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          connectionId,
+          emailId: email.id,
+          to: email.sender_email,
+          subject: email.subject,
+          body: editableReply,
+          isReply: true
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || data.details);
+
+      alert(t.emailSent);
+      setEditableReply('');
+      setReplyDraft(null);
+
+      // Rimuovi email dalla lista dopo risposta (opzionale - archivia)
+      setEmails(prev => prev.filter(e => e.id !== email.id));
+      setSelectedEmail(null);
+    } catch (error: any) {
+      alert(`${t.errorSend}: ${error.message}`);
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -1075,7 +1163,7 @@ export default function EmailAIMonitorPage() {
                   ))}
                 </div>
 
-                {/* Reply Draft */}
+                {/* Reply Draft - Editable */}
                 {replyDraft && (
                   <div className="bg-white/10 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
@@ -1088,17 +1176,41 @@ export default function EmailAIMonitorPage() {
                         </span>
                       </div>
                       <button
-                        onClick={() => navigator.clipboard.writeText(replyDraft.draftReply)}
+                        onClick={() => navigator.clipboard.writeText(editableReply)}
                         className="text-xs px-2 py-1 bg-white/10 hover:bg-white/20 rounded"
                       >
                         📋 {t.copy}
                       </button>
                     </div>
-                    <div className="text-sm whitespace-pre-wrap bg-black/20 rounded p-2 max-h-[150px] overflow-y-auto">
-                      {replyDraft.draftReply}
+
+                    {/* Editable Textarea */}
+                    <textarea
+                      value={editableReply}
+                      onChange={(e) => setEditableReply(e.target.value)}
+                      className="w-full h-32 bg-black/30 rounded p-3 text-sm resize-none border border-white/20 focus:border-blue-500 focus:outline-none"
+                      placeholder={t.editReply}
+                    />
+
+                    {/* Send Button */}
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="text-xs text-gray-400">
+                        A: {selectedEmail.sender_email}
+                      </div>
+                      <button
+                        onClick={() => sendEmail(selectedEmail)}
+                        disabled={sendingEmail || !editableReply.trim()}
+                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 rounded font-bold text-sm flex items-center gap-2"
+                      >
+                        {sendingEmail ? (
+                          <>⏳ {t.sending}</>
+                        ) : (
+                          <>📤 {t.sendEmail}</>
+                        )}
+                      </button>
                     </div>
+
                     {replyDraft.suggestions?.length > 0 && (
-                      <div className="mt-2 text-xs text-gray-400">
+                      <div className="mt-3 text-xs text-gray-400 border-t border-white/10 pt-2">
                         <strong>{t.suggestions}:</strong>
                         <ul className="mt-1 list-disc list-inside">
                           {replyDraft.suggestions.map((s, i) => (
