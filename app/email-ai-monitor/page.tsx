@@ -3,6 +3,312 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+// ============= TRANSLATIONS =============
+const translations = {
+  it: {
+    // Header
+    title: 'Email AI Monitor',
+    subtitle: 'Gmail intelligente con AI',
+    settings: 'Impostazioni',
+    agent: 'Agent AI',
+    dashboard: 'Dashboard',
+
+    // Connection
+    connect: 'Connetti Gmail',
+    connected: 'Connesso',
+    disconnect: 'Disconnetti',
+    fetchEmails: 'Fetch Email',
+    loading: 'Caricamento...',
+
+    // Filters
+    all: 'Tutte',
+    urgent: 'Urgenti',
+    important: 'Importanti',
+    unread: 'Non lette',
+    client: 'Clienti',
+    supplier: 'Fornitori',
+    spam: 'Spam',
+
+    // Email list
+    noEmails: 'Nessuna email',
+    changeFilter: 'Cambia filtro o fetch nuove email',
+    connectToStart: 'Connetti Gmail per iniziare',
+    aiWillAnalyze: 'Il sistema analizzerà le tue email con AI',
+
+    // Email detail
+    backToList: 'Lista',
+    markRead: 'Segna letto',
+    markUnread: 'Segna non letto',
+    addStar: 'Aggiungi stella',
+    removeStar: 'Rimuovi stella',
+    archive: 'Archivia',
+    moveToSpam: 'Sposta in Spam',
+    confirmSpam: 'Spostare in spam?',
+
+    // AI
+    aiSummary: 'AI RIASSUNTO',
+    generateReply: 'Genera Risposta AI',
+    generate: 'Genera',
+    generating: 'Generando...',
+    copy: 'Copia',
+    confidence: 'Confidenza',
+    suggestions: 'Suggerimenti',
+
+    // Quick replies
+    acknowledge: 'Confermo ricezione',
+    thankYou: 'Grazie',
+    requestInfo: 'Richiedi info',
+    scheduleMeeting: 'Fissiamo call',
+
+    // Settings modal
+    settingsTitle: 'Impostazioni Email AI',
+    automation: 'Automazione',
+    autoClassify: 'Classifica automaticamente urgenza/categoria',
+    autoSummarize: 'Genera riassunti automatici',
+    autoMoveSpam: 'Sposta spam automaticamente (attenzione!)',
+    autoDraftReply: 'Genera bozze risposta automatiche',
+    clientDomains: 'Domini Clienti (whitelist priorità alta)',
+    supplierDomains: 'Domini Fornitori',
+    urgentKeywords: 'Parole Chiave Urgenti',
+    spamKeywords: 'Parole Chiave Spam (blacklist)',
+    add: 'Aggiungi',
+    cancel: 'Annulla',
+    saveSettings: 'Salva Impostazioni',
+    saving: 'Salvando...',
+    settingsSaved: 'Impostazioni salvate!',
+
+    // Agent modal
+    agentTitle: 'Agent AI Autonomo',
+    agentDescription: "L'Agent AI processa automaticamente le email applicando le regole configurate: classifica urgenza, marca clienti/fornitori, genera risposte e gestisce spam.",
+    processed: 'Processate',
+    replies: 'Risposte',
+    urgentCount: 'Urgenti',
+    activeRules: 'Regole Attive',
+    ruleClientDomains: 'Marca email da domini clienti come "importante"',
+    ruleSupplierDomains: 'Marca email da domini fornitori',
+    ruleUrgentKeywords: 'Rileva email urgenti da keywords',
+    ruleAutoSpam: 'Auto-sposta spam',
+    ruleAutoReply: 'Genera risposte per clienti',
+    runAgent: 'Esegui Agent su tutte le email',
+    agentRunning: 'Agent in esecuzione...',
+    agentNote: "L'agent processerà le ultime 100 email non archiviate",
+
+    // Errors
+    tokenExpired: 'Token Gmail Scaduto',
+    reconnect: 'Riconnetti',
+    errorAction: "Errore nell'esecuzione azione",
+    errorGenerate: 'Errore generazione risposta',
+    errorSave: 'Errore nel salvataggio',
+    errorAgent: 'Errore agent',
+
+    // Badges
+    clientBadge: 'Cliente',
+    supplierBadge: 'Fornitore',
+  },
+  en: {
+    // Header
+    title: 'Email AI Monitor',
+    subtitle: 'Smart Gmail with AI',
+    settings: 'Settings',
+    agent: 'AI Agent',
+    dashboard: 'Dashboard',
+
+    // Connection
+    connect: 'Connect Gmail',
+    connected: 'Connected',
+    disconnect: 'Disconnect',
+    fetchEmails: 'Fetch Emails',
+    loading: 'Loading...',
+
+    // Filters
+    all: 'All',
+    urgent: 'Urgent',
+    important: 'Important',
+    unread: 'Unread',
+    client: 'Clients',
+    supplier: 'Suppliers',
+    spam: 'Spam',
+
+    // Email list
+    noEmails: 'No emails',
+    changeFilter: 'Change filter or fetch new emails',
+    connectToStart: 'Connect Gmail to start',
+    aiWillAnalyze: 'The system will analyze your emails with AI',
+
+    // Email detail
+    backToList: 'List',
+    markRead: 'Mark as read',
+    markUnread: 'Mark as unread',
+    addStar: 'Add star',
+    removeStar: 'Remove star',
+    archive: 'Archive',
+    moveToSpam: 'Move to Spam',
+    confirmSpam: 'Move to spam?',
+
+    // AI
+    aiSummary: 'AI SUMMARY',
+    generateReply: 'Generate AI Reply',
+    generate: 'Generate',
+    generating: 'Generating...',
+    copy: 'Copy',
+    confidence: 'Confidence',
+    suggestions: 'Suggestions',
+
+    // Quick replies
+    acknowledge: 'Acknowledge receipt',
+    thankYou: 'Thank you',
+    requestInfo: 'Request info',
+    scheduleMeeting: 'Schedule call',
+
+    // Settings modal
+    settingsTitle: 'Email AI Settings',
+    automation: 'Automation',
+    autoClassify: 'Auto-classify urgency/category',
+    autoSummarize: 'Generate automatic summaries',
+    autoMoveSpam: 'Auto-move spam (caution!)',
+    autoDraftReply: 'Auto-generate reply drafts',
+    clientDomains: 'Client Domains (high priority whitelist)',
+    supplierDomains: 'Supplier Domains',
+    urgentKeywords: 'Urgent Keywords',
+    spamKeywords: 'Spam Keywords (blacklist)',
+    add: 'Add',
+    cancel: 'Cancel',
+    saveSettings: 'Save Settings',
+    saving: 'Saving...',
+    settingsSaved: 'Settings saved!',
+
+    // Agent modal
+    agentTitle: 'Autonomous AI Agent',
+    agentDescription: 'The AI Agent automatically processes emails applying configured rules: classifies urgency, marks clients/suppliers, generates replies and manages spam.',
+    processed: 'Processed',
+    replies: 'Replies',
+    urgentCount: 'Urgent',
+    activeRules: 'Active Rules',
+    ruleClientDomains: 'Mark client domain emails as "important"',
+    ruleSupplierDomains: 'Mark supplier domain emails',
+    ruleUrgentKeywords: 'Detect urgent emails by keywords',
+    ruleAutoSpam: 'Auto-move spam',
+    ruleAutoReply: 'Generate replies for clients',
+    runAgent: 'Run Agent on all emails',
+    agentRunning: 'Agent running...',
+    agentNote: 'The agent will process the last 100 non-archived emails',
+
+    // Errors
+    tokenExpired: 'Gmail Token Expired',
+    reconnect: 'Reconnect',
+    errorAction: 'Error executing action',
+    errorGenerate: 'Error generating reply',
+    errorSave: 'Error saving',
+    errorAgent: 'Agent error',
+
+    // Badges
+    clientBadge: 'Client',
+    supplierBadge: 'Supplier',
+  },
+  de: {
+    // Header
+    title: 'Email AI Monitor',
+    subtitle: 'Intelligentes Gmail mit KI',
+    settings: 'Einstellungen',
+    agent: 'KI-Agent',
+    dashboard: 'Dashboard',
+
+    // Connection
+    connect: 'Gmail verbinden',
+    connected: 'Verbunden',
+    disconnect: 'Trennen',
+    fetchEmails: 'E-Mails abrufen',
+    loading: 'Laden...',
+
+    // Filters
+    all: 'Alle',
+    urgent: 'Dringend',
+    important: 'Wichtig',
+    unread: 'Ungelesen',
+    client: 'Kunden',
+    supplier: 'Lieferanten',
+    spam: 'Spam',
+
+    // Email list
+    noEmails: 'Keine E-Mails',
+    changeFilter: 'Filter ändern oder neue E-Mails abrufen',
+    connectToStart: 'Gmail verbinden um zu starten',
+    aiWillAnalyze: 'Das System analysiert Ihre E-Mails mit KI',
+
+    // Email detail
+    backToList: 'Liste',
+    markRead: 'Als gelesen markieren',
+    markUnread: 'Als ungelesen markieren',
+    addStar: 'Stern hinzufügen',
+    removeStar: 'Stern entfernen',
+    archive: 'Archivieren',
+    moveToSpam: 'In Spam verschieben',
+    confirmSpam: 'In Spam verschieben?',
+
+    // AI
+    aiSummary: 'KI-ZUSAMMENFASSUNG',
+    generateReply: 'KI-Antwort generieren',
+    generate: 'Generieren',
+    generating: 'Generiere...',
+    copy: 'Kopieren',
+    confidence: 'Konfidenz',
+    suggestions: 'Vorschläge',
+
+    // Quick replies
+    acknowledge: 'Empfang bestätigen',
+    thankYou: 'Danke',
+    requestInfo: 'Info anfordern',
+    scheduleMeeting: 'Anruf planen',
+
+    // Settings modal
+    settingsTitle: 'Email AI Einstellungen',
+    automation: 'Automatisierung',
+    autoClassify: 'Dringlichkeit/Kategorie automatisch klassifizieren',
+    autoSummarize: 'Automatische Zusammenfassungen generieren',
+    autoMoveSpam: 'Spam automatisch verschieben (Vorsicht!)',
+    autoDraftReply: 'Antwortentwürfe automatisch generieren',
+    clientDomains: 'Kunden-Domains (hohe Priorität)',
+    supplierDomains: 'Lieferanten-Domains',
+    urgentKeywords: 'Dringende Schlüsselwörter',
+    spamKeywords: 'Spam-Schlüsselwörter (Blacklist)',
+    add: 'Hinzufügen',
+    cancel: 'Abbrechen',
+    saveSettings: 'Einstellungen speichern',
+    saving: 'Speichere...',
+    settingsSaved: 'Einstellungen gespeichert!',
+
+    // Agent modal
+    agentTitle: 'Autonomer KI-Agent',
+    agentDescription: 'Der KI-Agent verarbeitet E-Mails automatisch nach konfigurierten Regeln: klassifiziert Dringlichkeit, markiert Kunden/Lieferanten, generiert Antworten und verwaltet Spam.',
+    processed: 'Verarbeitet',
+    replies: 'Antworten',
+    urgentCount: 'Dringend',
+    activeRules: 'Aktive Regeln',
+    ruleClientDomains: 'Kunden-E-Mails als "wichtig" markieren',
+    ruleSupplierDomains: 'Lieferanten-E-Mails markieren',
+    ruleUrgentKeywords: 'Dringende E-Mails anhand von Schlüsselwörtern erkennen',
+    ruleAutoSpam: 'Spam automatisch verschieben',
+    ruleAutoReply: 'Antworten für Kunden generieren',
+    runAgent: 'Agent auf alle E-Mails ausführen',
+    agentRunning: 'Agent läuft...',
+    agentNote: 'Der Agent verarbeitet die letzten 100 nicht archivierten E-Mails',
+
+    // Errors
+    tokenExpired: 'Gmail-Token abgelaufen',
+    reconnect: 'Neu verbinden',
+    errorAction: 'Fehler bei der Ausführung',
+    errorGenerate: 'Fehler beim Generieren der Antwort',
+    errorSave: 'Fehler beim Speichern',
+    errorAgent: 'Agent-Fehler',
+
+    // Badges
+    clientBadge: 'Kunde',
+    supplierBadge: 'Lieferant',
+  }
+};
+
+type Language = 'it' | 'en' | 'de';
+
 interface Email {
   id: string;
   gmail_message_id: string;
@@ -87,6 +393,10 @@ export default function EmailAIMonitorPage() {
   // Agent State
   const [agentRunning, setAgentRunning] = useState(false);
   const [agentStats, setAgentStats] = useState<any>(null);
+
+  // Language State
+  const [lang, setLang] = useState<Language>('it');
+  const t = translations[lang];
 
   // ============= INIT =============
   useEffect(() => {
@@ -454,24 +764,39 @@ export default function EmailAIMonitorPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold flex items-center gap-2">
-                <span>📧</span> Email AI Monitor
+                <span>📧</span> {t.title}
               </h1>
-              <p className="text-gray-400 text-sm">Gmail intelligente con AI</p>
+              <p className="text-gray-400 text-sm">{t.subtitle}</p>
             </div>
             <div className="flex items-center gap-2">
+              {/* Language Selector */}
+              <div className="flex bg-white/10 rounded-lg overflow-hidden">
+                {(['it', 'en', 'de'] as Language[]).map(l => (
+                  <button
+                    key={l}
+                    onClick={() => setLang(l)}
+                    className={`px-2 py-1 text-xs font-bold transition ${
+                      lang === l ? 'bg-blue-500 text-white' : 'hover:bg-white/10'
+                    }`}
+                  >
+                    {l === 'it' ? '🇮🇹' : l === 'en' ? '🇬🇧' : '🇩🇪'}
+                  </button>
+                ))}
+              </div>
+
               {isConnected && (
                 <>
                   <button
                     onClick={() => setShowSettings(true)}
                     className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition flex items-center gap-2"
                   >
-                    <span>⚙️</span> Impostazioni
+                    <span>⚙️</span> {t.settings}
                   </button>
                   <button
                     onClick={() => setShowAgent(true)}
                     className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500 rounded-lg font-medium transition flex items-center gap-2"
                   >
-                    <span>🤖</span> Agent AI
+                    <span>🤖</span> {t.agent}
                   </button>
                 </>
               )}
@@ -479,7 +804,7 @@ export default function EmailAIMonitorPage() {
                 onClick={() => router.push('/dashboard')}
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition"
               >
-                ← Dashboard
+                ← {t.dashboard}
               </button>
             </div>
           </div>
@@ -492,14 +817,14 @@ export default function EmailAIMonitorPage() {
           <div className="mb-6 bg-red-500/20 border-2 border-red-500 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-red-300">Token Gmail Scaduto</h3>
+                <h3 className="font-bold text-red-300">{t.tokenExpired}</h3>
                 <p className="text-sm text-gray-300">{authError}</p>
               </div>
               <button
                 onClick={connectGmail}
                 className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-bold"
               >
-                Riconnetti
+                {t.reconnect}
               </button>
             </div>
           </div>
@@ -513,25 +838,25 @@ export default function EmailAIMonitorPage() {
                 onClick={connectGmail}
                 className="px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold"
               >
-                🔗 Connetti Gmail
+                🔗 {t.connect}
               </button>
             ) : (
               <>
                 <div className="px-3 py-1.5 bg-green-500/20 border border-green-500 rounded-lg text-sm">
-                  ✅ Connesso
+                  ✅ {t.connected}
                 </div>
                 <button
                   onClick={fetchNewEmails}
                   disabled={fetchingNew}
                   className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-600 rounded-lg font-medium transition"
                 >
-                  {fetchingNew ? '⏳ Caricamento...' : '🔄 Fetch Email'}
+                  {fetchingNew ? `⏳ ${t.loading}` : `🔄 ${t.fetchEmails}`}
                 </button>
                 <button
                   onClick={disconnectGmail}
                   className="px-3 py-1.5 bg-red-500/20 border border-red-500 hover:bg-red-500/30 rounded-lg text-sm text-red-300"
                 >
-                  Disconnetti
+                  {t.disconnect}
                 </button>
               </>
             )}
@@ -540,7 +865,7 @@ export default function EmailAIMonitorPage() {
           {/* Filters */}
           {isConnected && (
             <div className="flex flex-wrap gap-1">
-              {['all', 'urgent', 'important', 'unread', 'client', 'supplier', 'spam'].map(f => (
+              {(['all', 'urgent', 'important', 'unread', 'client', 'supplier', 'spam'] as const).map(f => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
@@ -550,7 +875,7 @@ export default function EmailAIMonitorPage() {
                       : 'bg-white/10 hover:bg-white/20'
                   }`}
                 >
-                  {f === 'all' ? 'Tutte' : f.charAt(0).toUpperCase() + f.slice(1)}
+                  {t[f]}
                 </button>
               ))}
             </div>
@@ -564,19 +889,19 @@ export default function EmailAIMonitorPage() {
             {loading ? (
               <div className="text-center py-20">
                 <div className="text-4xl mb-4">⏳</div>
-                <div>Caricamento...</div>
+                <div>{t.loading}</div>
               </div>
             ) : !isConnected ? (
               <div className="text-center py-20">
                 <div className="text-4xl mb-4">📧</div>
-                <div className="text-xl mb-2">Connetti Gmail per iniziare</div>
-                <p className="text-gray-400 text-sm">Il sistema analizzerà le tue email con AI</p>
+                <div className="text-xl mb-2">{t.connectToStart}</div>
+                <p className="text-gray-400 text-sm">{t.aiWillAnalyze}</p>
               </div>
             ) : emails.length === 0 ? (
               <div className="text-center py-20">
                 <div className="text-4xl mb-4">✅</div>
-                <div className="text-xl mb-2">Nessuna email</div>
-                <p className="text-gray-400 text-sm">Cambia filtro o fetch nuove email</p>
+                <div className="text-xl mb-2">{t.noEmails}</div>
+                <p className="text-gray-400 text-sm">{t.changeFilter}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -617,10 +942,10 @@ export default function EmailAIMonitorPage() {
                     {/* Quick Tags */}
                     <div className="flex flex-wrap gap-1 mt-2">
                       {email.is_client && (
-                        <span className="px-1.5 py-0.5 bg-green-500/20 text-green-300 rounded text-xs">Cliente</span>
+                        <span className="px-1.5 py-0.5 bg-green-500/20 text-green-300 rounded text-xs">{t.clientBadge}</span>
                       )}
                       {email.is_supplier && (
-                        <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded text-xs">Fornitore</span>
+                        <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded text-xs">{t.supplierBadge}</span>
                       )}
                       {email.has_attachments && (
                         <span className="px-1.5 py-0.5 bg-gray-500/20 text-gray-300 rounded text-xs">📎</span>
@@ -642,14 +967,14 @@ export default function EmailAIMonitorPage() {
                     onClick={() => setSelectedEmail(null)}
                     className="lg:hidden px-3 py-1 bg-white/10 rounded text-sm"
                   >
-                    ← Lista
+                    ← {t.backToList}
                   </button>
                   <div className="flex gap-1">
                     <button
                       onClick={() => executeAction(selectedEmail.id, selectedEmail.is_read ? 'markUnread' : 'markRead')}
                       disabled={actionLoading === `${selectedEmail.id}-markRead`}
                       className="p-2 bg-white/10 hover:bg-white/20 rounded transition"
-                      title={selectedEmail.is_read ? 'Segna non letto' : 'Segna letto'}
+                      title={selectedEmail.is_read ? t.markUnread : t.markRead}
                     >
                       {selectedEmail.is_read ? '📭' : '📬'}
                     </button>
@@ -657,7 +982,7 @@ export default function EmailAIMonitorPage() {
                       onClick={() => executeAction(selectedEmail.id, selectedEmail.is_starred ? 'unstar' : 'star')}
                       disabled={actionLoading?.startsWith(selectedEmail.id)}
                       className="p-2 bg-white/10 hover:bg-white/20 rounded transition"
-                      title={selectedEmail.is_starred ? 'Rimuovi stella' : 'Aggiungi stella'}
+                      title={selectedEmail.is_starred ? t.removeStar : t.addStar}
                     >
                       {selectedEmail.is_starred ? '⭐' : '☆'}
                     </button>
@@ -665,19 +990,19 @@ export default function EmailAIMonitorPage() {
                       onClick={() => executeAction(selectedEmail.id, 'archive')}
                       disabled={actionLoading?.startsWith(selectedEmail.id)}
                       className="p-2 bg-white/10 hover:bg-white/20 rounded transition"
-                      title="Archivia"
+                      title={t.archive}
                     >
                       📥
                     </button>
                     <button
                       onClick={() => {
-                        if (confirm('Spostare in spam?')) {
+                        if (confirm(t.confirmSpam)) {
                           executeAction(selectedEmail.id, 'moveToSpam');
                         }
                       }}
                       disabled={actionLoading?.startsWith(selectedEmail.id)}
                       className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded transition"
-                      title="Sposta in Spam"
+                      title={t.moveToSpam}
                     >
                       🚫
                     </button>
@@ -706,7 +1031,7 @@ export default function EmailAIMonitorPage() {
               {/* AI Summary */}
               {selectedEmail.ai_summary && (
                 <div className="p-3 bg-blue-500/10 border-b border-white/10">
-                  <div className="text-xs text-blue-300 font-bold mb-1">✨ AI RIASSUNTO</div>
+                  <div className="text-xs text-blue-300 font-bold mb-1">✨ {t.aiSummary}</div>
                   <div className="text-sm">{selectedEmail.ai_summary}</div>
                 </div>
               )}
@@ -721,23 +1046,23 @@ export default function EmailAIMonitorPage() {
               {/* AI Reply Section */}
               <div className="p-4 border-t border-white/10 bg-white/5">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-sm">🤖 Genera Risposta AI</h3>
+                  <h3 className="font-bold text-sm">🤖 {t.generateReply}</h3>
                   <button
                     onClick={() => generateReply(selectedEmail)}
                     disabled={generatingReply}
                     className="px-3 py-1.5 bg-green-500 hover:bg-green-600 disabled:bg-gray-600 rounded text-sm font-medium"
                   >
-                    {generatingReply ? '⏳ Generando...' : '✨ Genera'}
+                    {generatingReply ? `⏳ ${t.generating}` : `✨ ${t.generate}`}
                   </button>
                 </div>
 
                 {/* Quick Reply Buttons */}
                 <div className="flex flex-wrap gap-1 mb-3">
                   {[
-                    { type: 'acknowledge', label: 'Confermo ricezione' },
-                    { type: 'thank_you', label: 'Grazie' },
-                    { type: 'more_info', label: 'Richiedi info' },
-                    { type: 'schedule_meeting', label: 'Fissiamo call' }
+                    { type: 'acknowledge', label: t.acknowledge },
+                    { type: 'thank_you', label: t.thankYou },
+                    { type: 'more_info', label: t.requestInfo },
+                    { type: 'schedule_meeting', label: t.scheduleMeeting }
                   ].map(({ type, label }) => (
                     <button
                       key={type}
@@ -759,14 +1084,14 @@ export default function EmailAIMonitorPage() {
                           {replyDraft.tone}
                         </span>
                         <span className="text-xs text-gray-400">
-                          Confidence: {replyDraft.confidence}%
+                          {t.confidence}: {replyDraft.confidence}%
                         </span>
                       </div>
                       <button
                         onClick={() => navigator.clipboard.writeText(replyDraft.draftReply)}
                         className="text-xs px-2 py-1 bg-white/10 hover:bg-white/20 rounded"
                       >
-                        📋 Copia
+                        📋 {t.copy}
                       </button>
                     </div>
                     <div className="text-sm whitespace-pre-wrap bg-black/20 rounded p-2 max-h-[150px] overflow-y-auto">
@@ -774,7 +1099,7 @@ export default function EmailAIMonitorPage() {
                     </div>
                     {replyDraft.suggestions?.length > 0 && (
                       <div className="mt-2 text-xs text-gray-400">
-                        <strong>Suggerimenti:</strong>
+                        <strong>{t.suggestions}:</strong>
                         <ul className="mt-1 list-disc list-inside">
                           {replyDraft.suggestions.map((s, i) => (
                             <li key={i}>{s}</li>
@@ -808,7 +1133,7 @@ export default function EmailAIMonitorPage() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <h2 className="text-xl font-bold">⚙️ Impostazioni Email AI</h2>
+              <h2 className="text-xl font-bold">⚙️ {t.settingsTitle}</h2>
               <button
                 onClick={() => setShowSettings(false)}
                 className="p-2 hover:bg-white/10 rounded"
@@ -820,13 +1145,13 @@ export default function EmailAIMonitorPage() {
             <div className="p-6 space-y-6">
               {/* Auto Options */}
               <div>
-                <h3 className="font-bold mb-3">Automazione</h3>
+                <h3 className="font-bold mb-3">{t.automation}</h3>
                 <div className="space-y-2">
                   {[
-                    { key: 'auto_classify', label: 'Classifica automaticamente urgenza/categoria' },
-                    { key: 'auto_summarize', label: 'Genera riassunti automatici' },
-                    { key: 'auto_move_spam', label: 'Sposta spam automaticamente (attenzione!)' },
-                    { key: 'auto_draft_reply', label: 'Genera bozze risposta automatiche' }
+                    { key: 'auto_classify', label: t.autoClassify },
+                    { key: 'auto_summarize', label: t.autoSummarize },
+                    { key: 'auto_move_spam', label: t.autoMoveSpam },
+                    { key: 'auto_draft_reply', label: t.autoDraftReply }
                   ].map(({ key, label }) => (
                     <label key={key} className="flex items-center gap-3 cursor-pointer">
                       <input
@@ -843,7 +1168,7 @@ export default function EmailAIMonitorPage() {
 
               {/* Client Domains */}
               <div>
-                <h3 className="font-bold mb-3">Domini Clienti (whitelist priorità alta)</h3>
+                <h3 className="font-bold mb-3">{t.clientDomains}</h3>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
@@ -857,7 +1182,7 @@ export default function EmailAIMonitorPage() {
                     onClick={() => addToList('client_domains', newDomain)}
                     className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded text-sm font-medium"
                   >
-                    + Aggiungi
+                    + {t.add}
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -872,7 +1197,7 @@ export default function EmailAIMonitorPage() {
 
               {/* Supplier Domains */}
               <div>
-                <h3 className="font-bold mb-3">Domini Fornitori</h3>
+                <h3 className="font-bold mb-3">{t.supplierDomains}</h3>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
@@ -885,7 +1210,7 @@ export default function EmailAIMonitorPage() {
                     onClick={() => addToList('supplier_domains', newDomain)}
                     className="px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded text-sm font-medium"
                   >
-                    + Aggiungi
+                    + {t.add}
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -900,7 +1225,7 @@ export default function EmailAIMonitorPage() {
 
               {/* Urgent Keywords */}
               <div>
-                <h3 className="font-bold mb-3">Parole Chiave Urgenti</h3>
+                <h3 className="font-bold mb-3">{t.urgentKeywords}</h3>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
@@ -914,7 +1239,7 @@ export default function EmailAIMonitorPage() {
                     onClick={() => addToList('urgent_keywords', newKeyword)}
                     className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded text-sm font-medium"
                   >
-                    + Aggiungi
+                    + {t.add}
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -929,7 +1254,7 @@ export default function EmailAIMonitorPage() {
 
               {/* Spam Keywords */}
               <div>
-                <h3 className="font-bold mb-3">Parole Chiave Spam (blacklist)</h3>
+                <h3 className="font-bold mb-3">{t.spamKeywords}</h3>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
@@ -942,7 +1267,7 @@ export default function EmailAIMonitorPage() {
                     onClick={() => addToList('spam_keywords', newKeyword)}
                     className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded text-sm font-medium"
                   >
-                    + Aggiungi
+                    + {t.add}
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -961,14 +1286,14 @@ export default function EmailAIMonitorPage() {
                 onClick={() => setShowSettings(false)}
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded font-medium"
               >
-                Annulla
+                {t.cancel}
               </button>
               <button
                 onClick={saveSettings}
                 disabled={settingsLoading}
                 className="px-6 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 rounded font-bold"
               >
-                {settingsLoading ? 'Salvando...' : '💾 Salva Impostazioni'}
+                {settingsLoading ? t.saving : `💾 ${t.saveSettings}`}
               </button>
             </div>
           </div>
@@ -980,7 +1305,7 @@ export default function EmailAIMonitorPage() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-xl max-w-xl w-full">
             <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <h2 className="text-xl font-bold">🤖 Agent AI Autonomo</h2>
+              <h2 className="text-xl font-bold">🤖 {t.agentTitle}</h2>
               <button
                 onClick={() => setShowAgent(false)}
                 className="p-2 hover:bg-white/10 rounded"
@@ -991,8 +1316,7 @@ export default function EmailAIMonitorPage() {
 
             <div className="p-6">
               <p className="text-gray-300 mb-6">
-                L'Agent AI processa automaticamente le email applicando le regole configurate:
-                classifica urgenza, marca clienti/fornitori, genera risposte e gestisce spam.
+                {t.agentDescription}
               </p>
 
               {/* Stats */}
@@ -1000,28 +1324,28 @@ export default function EmailAIMonitorPage() {
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   <div className="bg-white/10 rounded-lg p-4 text-center">
                     <div className="text-2xl font-bold">{agentStats.totalProcessed}</div>
-                    <div className="text-xs text-gray-400">Processate</div>
+                    <div className="text-xs text-gray-400">{t.processed}</div>
                   </div>
                   <div className="bg-white/10 rounded-lg p-4 text-center">
                     <div className="text-2xl font-bold">{agentStats.repliesGenerated}</div>
-                    <div className="text-xs text-gray-400">Risposte</div>
+                    <div className="text-xs text-gray-400">{t.replies}</div>
                   </div>
                   <div className="bg-white/10 rounded-lg p-4 text-center">
                     <div className="text-2xl font-bold">{agentStats.rulesTriggered?.['auto-urgent'] || 0}</div>
-                    <div className="text-xs text-gray-400">Urgenti</div>
+                    <div className="text-xs text-gray-400">{t.urgentCount}</div>
                   </div>
                 </div>
               )}
 
               {/* Rules Summary */}
               <div className="bg-white/5 rounded-lg p-4 mb-6">
-                <h4 className="font-bold mb-2">Regole Attive:</h4>
+                <h4 className="font-bold mb-2">{t.activeRules}:</h4>
                 <ul className="text-sm text-gray-300 space-y-1">
-                  <li>✅ Marca email da domini clienti come "importante"</li>
-                  <li>✅ Marca email da domini fornitori</li>
-                  <li>✅ Rileva email urgenti da keywords</li>
-                  {settings.auto_move_spam && <li>✅ Auto-sposta spam</li>}
-                  {settings.auto_draft_reply && <li>✅ Genera risposte per clienti</li>}
+                  <li>✅ {t.ruleClientDomains}</li>
+                  <li>✅ {t.ruleSupplierDomains}</li>
+                  <li>✅ {t.ruleUrgentKeywords}</li>
+                  {settings.auto_move_spam && <li>✅ {t.ruleAutoSpam}</li>}
+                  {settings.auto_draft_reply && <li>✅ {t.ruleAutoReply}</li>}
                 </ul>
               </div>
 
@@ -1032,15 +1356,15 @@ export default function EmailAIMonitorPage() {
               >
                 {agentRunning ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="animate-spin">⚡</span> Agent in esecuzione...
+                    <span className="animate-spin">⚡</span> {t.agentRunning}
                   </span>
                 ) : (
-                  <span>🚀 Esegui Agent su tutte le email</span>
+                  <span>🚀 {t.runAgent}</span>
                 )}
               </button>
 
               <p className="text-xs text-gray-400 text-center mt-3">
-                L'agent processerà le ultime 100 email non archiviate
+                {t.agentNote}
               </p>
             </div>
           </div>
