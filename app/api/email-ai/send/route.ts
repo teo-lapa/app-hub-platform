@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     // Se è una risposta, ottieni info per threading
     if (isReply && emailId) {
       const emailResult = await sql`
-        SELECT gmail_message_id, thread_id
+        SELECT gmail_message_id, gmail_thread_id
         FROM email_messages
         WHERE id = ${emailId}
         LIMIT 1
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
       if (emailResult.rows.length > 0) {
         const originalEmail = emailResult.rows[0];
-        threadId = originalEmail.thread_id;
+        threadId = originalEmail.gmail_thread_id;
 
         // Ottieni Message-ID per In-Reply-To header
         if (originalEmail.gmail_message_id) {
@@ -75,17 +75,20 @@ export async function POST(request: NextRequest) {
 
     console.log(`[SEND-EMAIL] ✅ Email sent successfully, id: ${result.id}`);
 
-    // Se era una risposta, aggiorna il record nel database
+    // Aggiorna il record nel database per indicare che la risposta è stata inviata
     if (emailId) {
-      await sql`
-        UPDATE email_messages
-        SET
-          reply_sent = true,
-          reply_sent_at = NOW(),
-          reply_message_id = ${result.id},
-          updated_at = NOW()
-        WHERE id = ${emailId}
-      `;
+      try {
+        await sql`
+          UPDATE email_messages
+          SET
+            ai_draft_reply = NULL,
+            updated_at = NOW()
+          WHERE id = ${emailId}
+        `;
+        console.log(`[SEND-EMAIL] Cleared draft reply for email ${emailId}`);
+      } catch (updateError) {
+        console.warn('[SEND-EMAIL] Could not update email record:', updateError);
+      }
     }
 
     return NextResponse.json({
