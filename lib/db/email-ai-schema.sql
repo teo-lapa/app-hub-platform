@@ -127,6 +127,7 @@ CREATE TABLE IF NOT EXISTS email_messages (
   moved_to_folder VARCHAR(255), -- Folder Gmail dove è stata spostata
   replied_at TIMESTAMP, -- Se è stata risposta
   archived_at TIMESTAMP, -- Se è stata archiviata
+  reply_detected BOOLEAN DEFAULT false, -- Se è stata rilevata una risposta nel thread Gmail
 
   -- User Actions
   user_marked_important BOOLEAN DEFAULT false, -- Utente ha marcato come importante

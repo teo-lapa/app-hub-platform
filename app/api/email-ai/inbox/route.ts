@@ -28,6 +28,11 @@ export async function GET(request: NextRequest) {
     let whereConditions: string[] = ['connection_id = $1'];
     const queryParams: any[] = [connectionId];
 
+    // Always exclude archived emails (unless looking at spam)
+    if (filter !== 'spam') {
+      whereConditions.push('archived_at IS NULL');
+    }
+
     switch (filter) {
       case 'urgent':
         whereConditions.push("urgency_level = 'urgent'");

@@ -154,7 +154,7 @@ export function AppGrid() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="grid grid-cols-1 tablet-grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"
+        className="grid grid-cols-2 tablet-grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4"
       >
         {visibleApps.map((app, index) => (
           <AppCard key={app.id} app={app} index={index} />

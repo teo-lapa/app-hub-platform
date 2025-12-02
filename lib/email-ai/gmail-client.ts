@@ -388,6 +388,78 @@ export class GmailClient {
   }
 
   /**
+   * Invia email (risposta o nuova)
+   */
+  async sendEmail(options: {
+    to: string;
+    subject: string;
+    body: string;
+    inReplyTo?: string;      // Message-ID dell'email originale per threading
+    references?: string;      // References header per threading
+    threadId?: string;        // Gmail thread ID per mantenere conversazione
+  }): Promise<{ id: string; threadId: string }> {
+    await this.ensureValidToken();
+
+    // Costruisci email in formato RFC 2822
+    const emailLines = [
+      `To: ${options.to}`,
+      `Subject: ${options.subject}`,
+      'Content-Type: text/plain; charset=utf-8',
+      'MIME-Version: 1.0'
+    ];
+
+    // Aggiungi headers per threading (risposta)
+    if (options.inReplyTo) {
+      emailLines.push(`In-Reply-To: ${options.inReplyTo}`);
+    }
+    if (options.references) {
+      emailLines.push(`References: ${options.references}`);
+    }
+
+    // Corpo email
+    emailLines.push('', options.body);
+
+    const email = emailLines.join('\r\n');
+    const encodedEmail = Buffer.from(email).toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    const response = await this.gmail.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: encodedEmail,
+        threadId: options.threadId // Mantiene nella stessa conversazione
+      }
+    });
+
+    console.log(`[GmailClient] ✅ Email sent to ${options.to}, messageId: ${response.data.id}`);
+
+    return {
+      id: response.data.id || '',
+      threadId: response.data.threadId || ''
+    };
+  }
+
+  /**
+   * Ottieni Message-ID header per threading
+   */
+  async getMessageIdHeader(messageId: string): Promise<string | undefined> {
+    await this.ensureValidToken();
+
+    const response = await this.gmail.users.messages.get({
+      userId: 'me',
+      id: messageId,
+      format: 'metadata',
+      metadataHeaders: ['Message-ID']
+    });
+
+    const headers = response.data.payload?.headers || [];
+    const messageIdHeader = headers.find(h => h.name?.toLowerCase() === 'message-id');
+    return messageIdHeader?.value || undefined;
+  }
+
+  /**
    * Ottieni profilo utente Gmail
    */
   async getProfile(): Promise<{

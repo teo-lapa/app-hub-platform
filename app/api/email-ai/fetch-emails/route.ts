@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
             ${connectionId},
             ${message.id},
             ${message.threadId},
-            ${JSON.stringify(message.labelIds)}::text[],
+            ${`{${message.labelIds.map((l: string) => `"${l}"`).join(',')}}`}::text[],
             ${message.from.email},
             ${message.from.name || null},
             ${senderDomain},
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
             ${summary?.summary || null},
             ${classification.sentiment},
             ${classification.confidence},
-            ${JSON.stringify(classification.keywords)}::text[],
+            ${`{${(classification.keywords || []).map((k: string) => `"${k}"`).join(',')}}`}::text[],
             ${classification.emailCategory},
             NOW(),
             NOW()
