@@ -18,17 +18,26 @@ const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
 /**
  * Genera l'URL per il redirect a Google OAuth
  * @param customRedirectUri - Redirect URI custom (opzionale). Se non fornito, usa GOOGLE_REDIRECT_URI
+ * @param includeGmailScopes - Se true, include gli scope Gmail (per email-ai). Default: false
  */
-export function getGoogleAuthUrl(customRedirectUri?: string): string {
+export function getGoogleAuthUrl(customRedirectUri?: string, includeGmailScopes: boolean = false): string {
   const redirectUri = customRedirectUri || GOOGLE_REDIRECT_URI;
+
+  // Scope base per login
+  let scopes = 'openid email profile';
+
+  // Aggiungi scope Gmail solo se richiesto (per email-ai)
+  if (includeGmailScopes) {
+    scopes += ' https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify';
+  }
 
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify',
-    access_type: 'offline',
-    prompt: 'consent', // Forza consenso per garantire refresh_token
+    scope: scopes,
+    access_type: includeGmailScopes ? 'offline' : 'online', // offline solo per Gmail (refresh token)
+    prompt: includeGmailScopes ? 'consent' : 'select_account', // consent solo per Gmail
   });
 
   return `${GOOGLE_AUTH_URL}?${params.toString()}`;

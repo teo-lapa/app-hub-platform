@@ -26,8 +26,9 @@ export async function GET(request: NextRequest) {
     console.log('[Email-AI] 🔐 Using Gmail redirect URI:', gmailRedirectUri);
 
     // Genera URL di autorizzazione Google con scopes Gmail usando redirect URI custom
-    const authUrl = getGoogleAuthUrl(gmailRedirectUri);
-    console.log('[Email-AI] 🌐 Redirecting to Google OAuth for Gmail');
+    // includeGmailScopes = true per avere accesso a Gmail API
+    const authUrl = getGoogleAuthUrl(gmailRedirectUri, true);
+    console.log('[Email-AI] 🌐 Redirecting to Google OAuth for Gmail (with Gmail scopes)');
 
     // Redirect a Google
     return NextResponse.redirect(authUrl);
