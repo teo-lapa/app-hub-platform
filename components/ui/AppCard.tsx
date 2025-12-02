@@ -120,16 +120,16 @@ export function AppCard({ app, index }: AppCardProps) {
         (!app.url || app.url === '#') ? 'cursor-not-allowed opacity-75' : ''
       }`}
     >
-      <div className="glass-strong rounded-2xl p-6 h-full border transition-all duration-300 hover:border-white/30 dark:hover:border-white/20 hover:shadow-xl hover:shadow-blue-500/10 mobile-card md:glass-strong md:rounded-2xl">
+      <div className="glass-strong rounded-xl p-3 md:p-4 h-full border transition-all duration-300 hover:border-white/30 dark:hover:border-white/20 hover:shadow-xl hover:shadow-blue-500/10 mobile-card md:glass-strong md:rounded-xl">
         {/* Stella Preferiti - Angolo in alto a sinistra */}
         <motion.button
           onClick={handleFavoriteClick}
           whileHover={{ scale: 1.2 }}
           whileTap={{ scale: 0.9 }}
-          className="absolute top-2 left-2 z-10 p-2 rounded-full glass-strong hover:bg-white/20 dark:hover:bg-black/20 transition-colors"
+          className="absolute top-1 left-1 z-10 p-1.5 rounded-full glass-strong hover:bg-white/20 dark:hover:bg-black/20 transition-colors"
         >
           <Star
-            className={`w-5 h-5 transition-all ${
+            className={`w-4 h-4 transition-all ${
               isFav
                 ? 'text-yellow-400 fill-yellow-400'
                 : 'text-gray-400 hover:text-yellow-400'
@@ -138,24 +138,24 @@ export function AppCard({ app, index }: AppCardProps) {
         </motion.button>
 
         {/* Indicatori speciali - Solo icone senza badge testuali */}
-        <div className="flex items-center justify-end mb-4 gap-1">
+        <div className="flex items-center justify-end mb-2 gap-1">
           {app.isNew && (
             <motion.div
               animate={{ scale: [1, 1.1, 1] }}
               transition={{ repeat: Infinity, duration: 2 }}
             >
-              <Sparkles className="w-4 h-4 text-yellow-400" />
+              <Sparkles className="w-3 h-3 text-yellow-400" />
             </motion.div>
           )}
           {app.isPopular && (
-            <Star className="w-4 h-4 text-orange-400 fill-current" />
+            <Star className="w-3 h-3 text-orange-400 fill-current" />
           )}
         </div>
 
         {/* Icona App */}
-        <div className="flex items-center justify-center mb-4">
+        <div className="flex items-center justify-center mb-2">
           <motion.div
-            className="text-6xl"
+            className="text-3xl md:text-4xl"
             animate={isHovered ? { scale: 1.1, rotate: [0, -10, 10, 0] } : { scale: 1 }}
             transition={{ duration: 0.3 }}
           >
@@ -164,11 +164,11 @@ export function AppCard({ app, index }: AppCardProps) {
         </div>
 
         {/* Titolo e Descrizione */}
-        <div className="space-y-3">
-          <h3 className="font-semibold text-lg text-center group-hover:text-blue-400 transition-colors">
+        <div className="space-y-1">
+          <h3 className="font-semibold text-sm md:text-base text-center group-hover:text-blue-400 transition-colors line-clamp-2">
             {app.name}
           </h3>
-          <p className="text-sm text-muted-foreground text-center leading-relaxed">
+          <p className="text-xs text-muted-foreground text-center leading-snug line-clamp-2">
             {app.description}
           </p>
         </div>
