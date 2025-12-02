@@ -23,12 +23,13 @@ export async function POST(request: NextRequest) {
     // Get emails to regenerate (either specific ones or all non-archived)
     let emails;
     if (emailIds && Array.isArray(emailIds) && emailIds.length > 0) {
-      // Regenerate specific emails
+      // Regenerate specific emails - convert array to PostgreSQL array format
+      const emailIdsArray = `{${emailIds.join(',')}}`;
       emails = await sql`
         SELECT id, subject, body_text, snippet, sender_email, sender_name
         FROM email_messages
         WHERE connection_id = ${connectionId}
-          AND id = ANY(${emailIds}::uuid[])
+          AND id = ANY(${emailIdsArray}::uuid[])
           AND is_spam = false
       `;
     } else {
