@@ -120,6 +120,22 @@ const translations = {
     syncRemoved: 'email rimosse (archiviate/risposte)',
     syncUpdated: 'email aggiornate',
     syncTooltip: 'Sincronizza con Gmail (archivia email lette/risposte)',
+
+    // Bulk Actions
+    selected: 'selezionate',
+    selectAll: 'Seleziona tutte',
+    deselectAll: 'Deseleziona',
+    bulkArchive: 'Archivia selezionate',
+    bulkSpam: 'Spam selezionate',
+    bulkDelete: 'Elimina selezionate',
+    confirmBulkArchive: 'Archiviare le email selezionate?',
+    confirmBulkSpam: 'Spostare in spam le email selezionate?',
+
+    // Regenerate summaries
+    regenerateSummaries: 'Rigenera Riassunti',
+    regenerating: 'Rigenerando...',
+    regenerateTooltip: 'Rigenera i riassunti AI nella lingua selezionata',
+    regenerateComplete: 'riassunti rigenerati',
   },
   en: {
     // Header
@@ -236,6 +252,22 @@ const translations = {
     syncRemoved: 'emails removed (archived/replied)',
     syncUpdated: 'emails updated',
     syncTooltip: 'Sync with Gmail (archive read/replied emails)',
+
+    // Bulk Actions
+    selected: 'selected',
+    selectAll: 'Select all',
+    deselectAll: 'Deselect',
+    bulkArchive: 'Archive selected',
+    bulkSpam: 'Spam selected',
+    bulkDelete: 'Delete selected',
+    confirmBulkArchive: 'Archive selected emails?',
+    confirmBulkSpam: 'Move selected emails to spam?',
+
+    // Regenerate summaries
+    regenerateSummaries: 'Regenerate Summaries',
+    regenerating: 'Regenerating...',
+    regenerateTooltip: 'Regenerate AI summaries in selected language',
+    regenerateComplete: 'summaries regenerated',
   },
   de: {
     // Header
@@ -352,6 +384,22 @@ const translations = {
     syncRemoved: 'E-Mails entfernt (archiviert/beantwortet)',
     syncUpdated: 'E-Mails aktualisiert',
     syncTooltip: 'Mit Gmail synchronisieren (gelesene/beantwortete E-Mails archivieren)',
+
+    // Bulk Actions
+    selected: 'ausgewählt',
+    selectAll: 'Alle auswählen',
+    deselectAll: 'Abwählen',
+    bulkArchive: 'Ausgewählte archivieren',
+    bulkSpam: 'Ausgewählte als Spam',
+    bulkDelete: 'Ausgewählte löschen',
+    confirmBulkArchive: 'Ausgewählte E-Mails archivieren?',
+    confirmBulkSpam: 'Ausgewählte E-Mails in Spam verschieben?',
+
+    // Regenerate summaries
+    regenerateSummaries: 'Zusammenfassungen neu erstellen',
+    regenerating: 'Wird neu erstellt...',
+    regenerateTooltip: 'KI-Zusammenfassungen in ausgewählter Sprache neu erstellen',
+    regenerateComplete: 'Zusammenfassungen neu erstellt',
   }
 };
 
@@ -446,6 +494,13 @@ export default function EmailAIMonitorPage() {
 
   // Sync State
   const [syncing, setSyncing] = useState(false);
+
+  // Regenerate Summaries State
+  const [regenerating, setRegenerating] = useState(false);
+
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   // Language State
   const [lang, setLang] = useState<Language>('it');
@@ -582,7 +637,8 @@ export default function EmailAIMonitorPage() {
         body: JSON.stringify({
           connectionId,
           maxResults: 20,
-          query: 'is:unread'
+          query: 'is:unread',
+          language: lang // Pass selected language for AI summaries
         })
       });
 
@@ -602,6 +658,35 @@ export default function EmailAIMonitorPage() {
       alert(`Errore: ${error.message}`);
     } finally {
       setFetchingNew(false);
+    }
+  };
+
+  // ============= REGENERATE SUMMARIES =============
+  const regenerateSummaries = async () => {
+    if (!connectionId) return;
+    if (!confirm(`Rigenerare i riassunti AI in ${lang.toUpperCase()}? Questo potrebbe richiedere alcuni minuti.`)) return;
+
+    setRegenerating(true);
+    try {
+      const response = await fetch('/api/email-ai/regenerate-summaries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          connectionId,
+          language: lang
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error);
+
+      alert(`${data.regenerated} ${t.regenerateComplete}!`);
+      fetchEmails(); // Refresh to show new summaries
+    } catch (error: any) {
+      alert(`Errore: ${error.message}`);
+    } finally {
+      setRegenerating(false);
     }
   };
 
@@ -865,6 +950,61 @@ export default function EmailAIMonitorPage() {
     }
   };
 
+  // ============= BULK ACTIONS =============
+  const toggleSelectEmail = (emailId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(emailId)) {
+        newSet.delete(emailId);
+      } else {
+        newSet.add(emailId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllEmails = () => {
+    if (selectedIds.size === emails.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(emails.map(e => e.id)));
+    }
+  };
+
+  const executeBulkAction = async (action: 'archive' | 'moveToSpam') => {
+    if (selectedIds.size === 0) return;
+
+    const confirmMsg = action === 'archive' ? t.confirmBulkArchive : t.confirmBulkSpam;
+    if (!confirm(confirmMsg)) return;
+
+    setBulkActionLoading(true);
+    try {
+      const promises = Array.from(selectedIds).map(emailId =>
+        fetch('/api/email-ai/actions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ connectionId, emailId, action })
+        })
+      );
+
+      await Promise.all(promises);
+
+      // Rimuovi email dalla lista
+      setEmails(prev => prev.filter(e => !selectedIds.has(e.id)));
+      setSelectedIds(new Set());
+
+      // Deseleziona se era selezionata
+      if (selectedEmail && selectedIds.has(selectedEmail.id)) {
+        setSelectedEmail(null);
+      }
+    } catch (error) {
+      console.error('Bulk action failed:', error);
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   // ============= AGENT =============
   const runAgent = async () => {
     setAgentRunning(true);
@@ -1038,6 +1178,14 @@ export default function EmailAIMonitorPage() {
                   {syncing ? `⏳ ${t.syncing}` : `🔄 ${t.sync}`}
                 </button>
                 <button
+                  onClick={regenerateSummaries}
+                  disabled={regenerating}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-600 rounded-lg font-medium transition"
+                  title={t.regenerateTooltip || 'Regenerate AI summaries'}
+                >
+                  {regenerating ? `⏳ ${t.regenerating}` : `✨ ${lang.toUpperCase()}`}
+                </button>
+                <button
                   onClick={disconnectGmail}
                   className="px-3 py-1.5 bg-red-500/20 border border-red-500 hover:bg-red-500/30 rounded-lg text-sm text-red-300"
                 >
@@ -1090,15 +1238,65 @@ export default function EmailAIMonitorPage() {
               </div>
             ) : (
               <div className="space-y-2">
+                {/* Bulk Actions Bar */}
+                <div className="flex items-center justify-between bg-white/5 rounded-lg p-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={selectAllEmails}
+                      className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-sm"
+                    >
+                      {selectedIds.size === emails.length ? t.deselectAll : t.selectAll}
+                    </button>
+                    {selectedIds.size > 0 && (
+                      <span className="text-sm text-gray-400">
+                        {selectedIds.size} {t.selected}
+                      </span>
+                    )}
+                  </div>
+                  {selectedIds.size > 0 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => executeBulkAction('archive')}
+                        disabled={bulkActionLoading}
+                        className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded text-sm disabled:opacity-50"
+                      >
+                        {bulkActionLoading ? '...' : `📥 ${t.bulkArchive}`}
+                      </button>
+                      <button
+                        onClick={() => executeBulkAction('moveToSpam')}
+                        disabled={bulkActionLoading}
+                        className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded text-sm disabled:opacity-50"
+                      >
+                        {bulkActionLoading ? '...' : `🚫 ${t.bulkSpam}`}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {emails.map(email => (
                   <div
                     key={email.id}
                     onClick={() => setSelectedEmail(email)}
                     className={`bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/10 hover:bg-white/15 transition cursor-pointer ${
                       selectedEmail?.id === email.id ? 'ring-2 ring-blue-500' : ''
-                    } ${!email.is_read ? 'border-l-4 border-l-blue-500' : ''}`}
+                    } ${!email.is_read ? 'border-l-4 border-l-blue-500' : ''} ${selectedIds.has(email.id) ? 'bg-blue-500/20' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-3">
+                      {/* Checkbox */}
+                      <div
+                        onClick={(e) => toggleSelectEmail(email.id, e)}
+                        className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-1 cursor-pointer transition ${
+                          selectedIds.has(email.id)
+                            ? 'bg-blue-500 border-blue-500'
+                            : 'border-gray-400 hover:border-blue-400'
+                        }`}
+                      >
+                        {selectedIds.has(email.id) && (
+                          <svg className="w-full h-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span>{getCategoryIcon(email.email_category)}</span>
@@ -1110,8 +1308,12 @@ export default function EmailAIMonitorPage() {
                         <div className={`text-sm truncate ${!email.is_read ? 'font-semibold' : 'text-gray-300'}`}>
                           {email.subject}
                         </div>
-                        <div className="text-xs text-gray-400 truncate mt-1">
-                          {email.ai_summary || email.snippet}
+                        <div className="text-xs text-gray-400 mt-1 line-clamp-2">
+                          {email.ai_summary ? (
+                            <span className="text-cyan-300">✨ {email.ai_summary}</span>
+                          ) : (
+                            email.snippet
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
