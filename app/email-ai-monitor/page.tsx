@@ -112,6 +112,14 @@ const translations = {
     errorSend: "Errore nell'invio email",
     editReply: 'Modifica risposta prima di inviare',
     confirmSend: 'Vuoi inviare questa email?',
+
+    // Sync
+    sync: 'Sincronizza',
+    syncing: 'Sincronizzando...',
+    syncComplete: 'Sincronizzazione completata',
+    syncRemoved: 'email rimosse (archiviate/risposte)',
+    syncUpdated: 'email aggiornate',
+    syncTooltip: 'Sincronizza con Gmail (archivia email lette/risposte)',
   },
   en: {
     // Header
@@ -220,6 +228,14 @@ const translations = {
     errorSend: 'Error sending email',
     editReply: 'Edit reply before sending',
     confirmSend: 'Do you want to send this email?',
+
+    // Sync
+    sync: 'Sync',
+    syncing: 'Syncing...',
+    syncComplete: 'Sync completed',
+    syncRemoved: 'emails removed (archived/replied)',
+    syncUpdated: 'emails updated',
+    syncTooltip: 'Sync with Gmail (archive read/replied emails)',
   },
   de: {
     // Header
@@ -328,6 +344,14 @@ const translations = {
     errorSend: 'Fehler beim Senden',
     editReply: 'Antwort vor dem Senden bearbeiten',
     confirmSend: 'Möchten Sie diese E-Mail senden?',
+
+    // Sync
+    sync: 'Synchronisieren',
+    syncing: 'Synchronisiere...',
+    syncComplete: 'Synchronisierung abgeschlossen',
+    syncRemoved: 'E-Mails entfernt (archiviert/beantwortet)',
+    syncUpdated: 'E-Mails aktualisiert',
+    syncTooltip: 'Mit Gmail synchronisieren (gelesene/beantwortete E-Mails archivieren)',
   }
 };
 
@@ -420,6 +444,9 @@ export default function EmailAIMonitorPage() {
   const [agentRunning, setAgentRunning] = useState(false);
   const [agentStats, setAgentStats] = useState<any>(null);
 
+  // Sync State
+  const [syncing, setSyncing] = useState(false);
+
   // Language State
   const [lang, setLang] = useState<Language>('it');
   const t = translations[lang];
@@ -453,11 +480,36 @@ export default function EmailAIMonitorPage() {
     checkConnection();
   }, [searchParams]);
 
+  // Auto-sync on initial load, then fetch
+  const [initialSyncDone, setInitialSyncDone] = useState(false);
+
   useEffect(() => {
-    if (connectionId) {
+    const loadEmails = async () => {
+      if (!connectionId) return;
+
+      // Do sync only on initial load (not on filter change)
+      if (!initialSyncDone) {
+        try {
+          setSyncing(true);
+          const syncResponse = await fetch('/api/email-ai/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connectionId })
+          });
+          await syncResponse.json();
+          setInitialSyncDone(true);
+        } catch (e) {
+          console.error('Initial sync failed:', e);
+        } finally {
+          setSyncing(false);
+        }
+      }
+
       fetchEmails();
       fetchSettings();
-    }
+    };
+
+    loadEmails();
   }, [filter, connectionId]);
 
   // ============= CONNECTION =============
@@ -776,6 +828,43 @@ export default function EmailAIMonitorPage() {
     }
   };
 
+  // ============= SYNC =============
+  const syncEmails = async () => {
+    if (!connectionId || syncing) return;
+    setSyncing(true);
+    try {
+      const response = await fetch('/api/email-ai/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectionId })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.requiresReauth) {
+          alert(t.tokenExpired || 'Token expired, please reconnect');
+          return;
+        }
+        throw new Error(data.error || 'Sync failed');
+      }
+
+      // Se ci sono cambiamenti, aggiorna la lista
+      if (data.removed > 0 || data.updated > 0) {
+        await fetchEmails();
+      }
+
+      // Mostra risultato
+      if (data.removed > 0 || data.replied > 0) {
+        console.log(`[SYNC] ${t.syncRemoved}: ${data.removed}, ${t.syncUpdated}: ${data.updated}`);
+      }
+    } catch (error: any) {
+      console.error('Sync failed:', error);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // ============= AGENT =============
   const runAgent = async () => {
     setAgentRunning(true);
@@ -939,6 +1028,14 @@ export default function EmailAIMonitorPage() {
                   className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-600 rounded-lg font-medium transition"
                 >
                   {fetchingNew ? `⏳ ${t.loading}` : `🔄 ${t.fetchEmails}`}
+                </button>
+                <button
+                  onClick={syncEmails}
+                  disabled={syncing}
+                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-600 rounded-lg font-medium transition"
+                  title={t.syncTooltip || 'Sync with Gmail'}
+                >
+                  {syncing ? `⏳ ${t.syncing}` : `🔄 ${t.sync}`}
                 </button>
                 <button
                   onClick={disconnectGmail}
