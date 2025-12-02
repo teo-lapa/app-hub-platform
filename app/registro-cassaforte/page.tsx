@@ -897,6 +897,13 @@ export default function RegistroCassafortePage() {
 
   const handleSkipFaceRecognition = () => {
     setShowFaceScanner(false);
+    // Non permettere accesso diretto alla selezione - deve prima registrarsi
+    toast.error('Per versare soldi devi prima registrarti con il riconoscimento facciale');
+    setStep('idle');
+  };
+
+  const handleStartRegistration = () => {
+    // Va direttamente alla selezione dipendente per registrazione volto
     setStep('enrollment');
   };
 
@@ -988,18 +995,34 @@ export default function RegistroCassafortePage() {
         </div>
       </div>
 
-      {/* Start Button */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={handleStartDeposit}
-        className="px-12 py-6 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl text-white text-2xl font-bold shadow-2xl shadow-emerald-500/30"
-      >
-        <div className="flex items-center gap-4">
-          <Lock className="w-10 h-10" />
-          VERSA SOLDI
-        </div>
-      </motion.button>
+      {/* Start Buttons */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        {/* Versa Soldi - per utenti già registrati */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleStartDeposit}
+          className="px-12 py-6 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl text-white text-2xl font-bold shadow-2xl shadow-emerald-500/30"
+        >
+          <div className="flex items-center gap-4">
+            <Lock className="w-10 h-10" />
+            VERSA SOLDI
+          </div>
+        </motion.button>
+
+        {/* Registrati - per nuovi utenti */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleStartRegistration}
+          className="px-12 py-6 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl text-white text-2xl font-bold shadow-2xl shadow-cyan-500/30"
+        >
+          <div className="flex items-center gap-4">
+            <UserCheck className="w-10 h-10" />
+            REGISTRATI
+          </div>
+        </motion.button>
+      </div>
 
     </motion.div>
   );
