@@ -340,7 +340,9 @@ export default function CatalogoPage() {
       console.log('🔍 [CATALOG] Fetching products with params:', {
         q: searchQuery,
         category: selectedCategory,
+        availability,
         sort: sortBy,
+        purchased: showPurchasedOnly,
         page: pagination.page,
         hasSearched,
         blockIntelligentSort: hasSearched
@@ -366,10 +368,21 @@ export default function CatalogoPage() {
     }
   }, [searchQuery, selectedCategory, availability, sortBy, showPurchasedOnly, pagination.page, pagination.limit, hasSearched]);
 
-  // Fetch products when filters change
+  // Fetch products when filters change (but ONLY after filters are loaded from localStorage)
   useEffect(() => {
+    if (!filtersLoaded) {
+      console.log('⏳ [CATALOG] Waiting for filters to load from localStorage...');
+      return;
+    }
+    console.log('✅ [CATALOG] Filters loaded, fetching products with:', {
+      availability,
+      selectedCategory,
+      sortBy,
+      showPurchasedOnly,
+      showFavoritesOnly
+    });
     fetchProducts();
-  }, [fetchProducts]);
+  }, [fetchProducts, filtersLoaded]);
 
   async function handleAddToCart(productId: number, quantity: number) {
     try {
