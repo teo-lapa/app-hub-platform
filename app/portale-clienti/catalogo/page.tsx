@@ -456,6 +456,14 @@ export default function CatalogoPage() {
 
   const totalCartItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Check if any filters are active (not default values)
+  const hasActiveFilters =
+    selectedCategory !== 'all' ||
+    availability !== 'all' ||
+    sortBy !== 'name' ||
+    showPurchasedOnly ||
+    showFavoritesOnly;
+
   // Sort products: favorites first, then the rest
   const sortedProducts = [...products].sort((a, b) => {
     const aIsFav = favorites.includes(a.id);
@@ -625,6 +633,7 @@ export default function CatalogoPage() {
         onSearch={handleSearch}
         onOpenFilters={() => setIsFilterModalOpen(true)}
         value={searchQuery}
+        hasActiveFilters={hasActiveFilters}
       />
     </div>
   );

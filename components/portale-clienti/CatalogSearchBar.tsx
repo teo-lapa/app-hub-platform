@@ -9,6 +9,7 @@ interface CatalogSearchBarProps {
   placeholder?: string;
   debounceMs?: number;
   value?: string; // Controlled value from parent
+  hasActiveFilters?: boolean; // Show indicator when filters are active
 }
 
 export function CatalogSearchBar({
@@ -16,7 +17,8 @@ export function CatalogSearchBar({
   onOpenFilters,
   placeholder = 'Cerca prodotti per nome o codice...',
   debounceMs = 500, // Increased from 300ms to 500ms for better stability
-  value = '' // Default to empty string
+  value = '', // Default to empty string
+  hasActiveFilters = false
 }: CatalogSearchBarProps) {
   const [query, setQuery] = useState(value);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -86,11 +88,18 @@ export function CatalogSearchBar({
           {/* Filters Button */}
           <button
             onClick={onOpenFilters}
-            className="flex-shrink-0 p-3 min-h-[48px] min-w-[48px] bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl hover:bg-white hover:border-gray-300 transition-all shadow-sm hover:shadow active:scale-95"
+            className={`relative flex-shrink-0 p-3 min-h-[48px] min-w-[48px] backdrop-blur-sm border rounded-xl transition-all shadow-sm hover:shadow active:scale-95 ${
+              hasActiveFilters
+                ? 'bg-orange-500 border-orange-500 hover:bg-orange-600 animate-pulse'
+                : 'bg-white/80 border-gray-200/50 hover:bg-white hover:border-gray-300'
+            }`}
             aria-label="Apri filtri"
-            title="Filtri"
+            title={hasActiveFilters ? 'Filtri attivi - clicca per modificare' : 'Filtri'}
           >
-            <SlidersHorizontal className="h-5 w-5 text-gray-700" />
+            <SlidersHorizontal className={`h-5 w-5 ${hasActiveFilters ? 'text-white' : 'text-gray-700'}`} />
+            {hasActiveFilters && (
+              <span className="absolute -top-1 -right-1 h-3 w-3 bg-white rounded-full border-2 border-orange-500" />
+            )}
           </button>
 
           {/* Search Input Container */}
