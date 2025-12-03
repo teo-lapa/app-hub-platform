@@ -37,14 +37,48 @@ interface PaginationInfo {
   hasMore: boolean;
 }
 
+// localStorage key for filter persistence
+const FILTERS_STORAGE_KEY = 'portale-clienti-catalog-filters';
+
+interface SavedFilters {
+  selectedCategory: string;
+  availability: string;
+  sortBy: string;
+  showPurchasedOnly: boolean;
+  showFavoritesOnly: boolean;
+}
+
+function loadSavedFilters(): SavedFilters | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem(FILTERS_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load saved filters:', e);
+  }
+  return null;
+}
+
+function saveFilters(filters: SavedFilters): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
+  } catch (e) {
+    console.error('Failed to save filters:', e);
+  }
+}
+
 export default function CatalogoPage() {
   const { user } = useAuthStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filtersLoaded, setFiltersLoaded] = useState(false);
 
-  // Filter states
+  // Filter states - will be loaded from localStorage
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [availability, setAvailability] = useState('all');
@@ -75,6 +109,31 @@ export default function CatalogoPage() {
 
   // Filter modal state
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  // Load saved filters on mount
+  useEffect(() => {
+    const saved = loadSavedFilters();
+    if (saved) {
+      setSelectedCategory(saved.selectedCategory || 'all');
+      setAvailability(saved.availability || 'all');
+      setSortBy(saved.sortBy || 'name');
+      setShowPurchasedOnly(saved.showPurchasedOnly || false);
+      setShowFavoritesOnly(saved.showFavoritesOnly || false);
+    }
+    setFiltersLoaded(true);
+  }, []);
+
+  // Save filters when they change
+  useEffect(() => {
+    if (!filtersLoaded) return; // Don't save during initial load
+    saveFilters({
+      selectedCategory,
+      availability,
+      sortBy,
+      showPurchasedOnly,
+      showFavoritesOnly,
+    });
+  }, [selectedCategory, availability, sortBy, showPurchasedOnly, showFavoritesOnly, filtersLoaded]);
 
   // Fetch categories, cart items, and favorites on mount
   useEffect(() => {
