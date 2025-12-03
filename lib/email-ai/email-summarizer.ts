@@ -24,6 +24,7 @@ export async function summarizeEmail(params: {
   bodyText: string;
   senderEmail: string;
   senderName?: string;
+  language?: 'it' | 'en' | 'de'; // Language for the summary
 }): Promise<EmailSummary> {
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
@@ -39,7 +40,17 @@ export async function summarizeEmail(params: {
     const wordCount = params.bodyText.split(/\s+/).length;
     const estimatedReadTime = Math.max(1, Math.ceil(wordCount / 200)); // 200 words/min
 
+    // Language instructions
+    const languageMap = {
+      it: 'Respond ONLY in Italian (Italiano). All text must be in Italian.',
+      en: 'Respond ONLY in English. All text must be in English.',
+      de: 'Respond ONLY in German (Deutsch). All text must be in German.'
+    };
+    const languageInstruction = languageMap[params.language || 'en'];
+
     const prompt = `You are an expert email assistant specialized in creating concise, actionable summaries.
+
+IMPORTANT LANGUAGE REQUIREMENT: ${languageInstruction}
 
 SUMMARIZE THIS EMAIL:
 

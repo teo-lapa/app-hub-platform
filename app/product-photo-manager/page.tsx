@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Package, Barcode, Tag, Eye, ArrowLeft, Home, X, Sparkles, Wand2 } from 'lucide-react';
+import { Search, Package, Barcode, Tag, Eye, ArrowLeft, Home, X, Sparkles, Wand2, ImageOff } from 'lucide-react';
 import Link from 'next/link';
 import { AIImageModal } from '@/components/catalogo-lapa/AIImageModal';
 import { useAppAccess } from '@/hooks/useAppAccess';
@@ -46,6 +46,7 @@ export default function ProductPhotoManagerPage() {
   const [isCacheComplete, setIsCacheComplete] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null); // Prodotto selezionato per popup
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Categoria selezionata
+  const [showOnlyWithoutPhoto, setShowOnlyWithoutPhoto] = useState(false); // Filtro prodotti senza foto
   const [isAIModalOpen, setIsAIModalOpen] = useState(false); // Modal AI
   const [productForAI, setProductForAI] = useState<Product | null>(null); // Prodotto per AI
   const [isMounted, setIsMounted] = useState(false);
@@ -91,6 +92,13 @@ export default function ProductPhotoManagerPage() {
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, isCacheComplete, hasAccess, accessLoading]);
+
+  // Effetto per il filtro "senza foto"
+  useEffect(() => {
+    if (!hasAccess || accessLoading || !isCacheComplete) return;
+    searchInCache(searchQuery, 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showOnlyWithoutPhoto]);
 
   // 🔐 Se accesso negato, mostra schermata di caricamento mentre viene reindirizzato
   if (accessLoading || !hasAccess) {
@@ -220,6 +228,11 @@ export default function ProductPhotoManagerPage() {
     const q = query.toLowerCase().trim();
 
     let filtered = allProducts;
+
+    // Filtro per prodotti senza foto
+    if (showOnlyWithoutPhoto) {
+      filtered = filtered.filter(p => !p.image_256);
+    }
 
     // Filtro per categoria se selezionata
     if (selectedCategory) {
@@ -734,36 +747,54 @@ export default function ProductPhotoManagerPage() {
 
           {/* Barra di ricerca SOPRA I PULSANTI */}
           <div className="px-4 py-3">
-            <div className="relative">
-              {/* Search Icon */}
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10">
-                <Search className="h-5 w-5" />
-              </div>
+            <div className="flex gap-2 items-center">
+              {/* Pulsante filtro "Senza Foto" */}
+              <button
+                onClick={() => setShowOnlyWithoutPhoto(!showOnlyWithoutPhoto)}
+                disabled={!isCacheComplete}
+                className={`flex items-center gap-2 px-4 py-3 min-h-[48px] rounded-xl font-medium transition-all whitespace-nowrap ${
+                  showOnlyWithoutPhoto
+                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
+                    : 'bg-slate-800/80 text-slate-300 border border-slate-600/50 hover:border-orange-500/50 hover:text-white'
+                } ${!isCacheComplete ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={isCacheComplete ? 'Mostra solo prodotti senza foto' : 'Attendi caricamento cache...'}
+              >
+                <ImageOff className="h-5 w-5" />
+                <span className="hidden sm:inline">Senza Foto</span>
+              </button>
 
-              {/* Input Field */}
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cerca prodotti..."
-                className="w-full pl-10 pr-10 py-3 min-h-[48px] bg-slate-800/80 backdrop-blur-sm border border-slate-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:bg-slate-800 transition-all shadow-sm placeholder:text-slate-400 text-white"
-                aria-label="Cerca prodotti"
-              />
-
-              {/* Spinner or Clear Button */}
-              {isAutoSearching ? (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-500"></div>
+              {/* Campo di ricerca */}
+              <div className="relative flex-1">
+                {/* Search Icon */}
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10">
+                  <Search className="h-5 w-5" />
                 </div>
-              ) : searchQuery ? (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded-full transition-all active:scale-90 z-10"
-                  aria-label="Cancella ricerca"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              ) : null}
+
+                {/* Input Field */}
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cerca prodotti..."
+                  className="w-full pl-10 pr-10 py-3 min-h-[48px] bg-slate-800/80 backdrop-blur-sm border border-slate-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:bg-slate-800 transition-all shadow-sm placeholder:text-slate-400 text-white"
+                  aria-label="Cerca prodotti"
+                />
+
+                {/* Spinner or Clear Button */}
+                {isAutoSearching ? (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-500"></div>
+                  </div>
+                ) : searchQuery ? (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded-full transition-all active:scale-90 z-10"
+                    aria-label="Cancella ricerca"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>

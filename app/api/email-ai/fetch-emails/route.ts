@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
     const {
       connectionId,
       maxResults = 10,
-      query = 'is:unread' // Default: solo email non lette
+      query = 'is:unread', // Default: solo email non lette
+      language = 'en' // Language for AI summaries (it, en, de)
     } = body;
 
     if (!connectionId) {
@@ -177,10 +178,11 @@ export async function POST(request: NextRequest) {
             subject: message.subject,
             bodyText: message.bodyText || message.snippet,
             senderEmail: message.from.email,
-            senderName: message.from.name
+            senderName: message.from.name,
+            language: language as 'it' | 'en' | 'de'
           });
 
-          console.log(`[FETCH-EMAILS] Summarized ${messageId}`);
+          console.log(`[FETCH-EMAILS] Summarized ${messageId} in ${language}`);
         }
 
         // ========== SAVE TO DATABASE ==========

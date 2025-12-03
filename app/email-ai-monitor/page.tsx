@@ -120,6 +120,22 @@ const translations = {
     syncRemoved: 'email rimosse (archiviate/risposte)',
     syncUpdated: 'email aggiornate',
     syncTooltip: 'Sincronizza con Gmail (archivia email lette/risposte)',
+
+    // Bulk Actions
+    selected: 'selezionate',
+    selectAll: 'Seleziona tutte',
+    deselectAll: 'Deseleziona',
+    bulkArchive: 'Archivia selezionate',
+    bulkSpam: 'Spam selezionate',
+    bulkDelete: 'Elimina selezionate',
+    confirmBulkArchive: 'Archiviare le email selezionate?',
+    confirmBulkSpam: 'Spostare in spam le email selezionate?',
+
+    // Regenerate summaries
+    regenerateSummaries: 'Rigenera Riassunti',
+    regenerating: 'Rigenerando...',
+    regenerateTooltip: 'Rigenera i riassunti AI nella lingua selezionata',
+    regenerateComplete: 'riassunti rigenerati',
   },
   en: {
     // Header
@@ -236,6 +252,22 @@ const translations = {
     syncRemoved: 'emails removed (archived/replied)',
     syncUpdated: 'emails updated',
     syncTooltip: 'Sync with Gmail (archive read/replied emails)',
+
+    // Bulk Actions
+    selected: 'selected',
+    selectAll: 'Select all',
+    deselectAll: 'Deselect',
+    bulkArchive: 'Archive selected',
+    bulkSpam: 'Spam selected',
+    bulkDelete: 'Delete selected',
+    confirmBulkArchive: 'Archive selected emails?',
+    confirmBulkSpam: 'Move selected emails to spam?',
+
+    // Regenerate summaries
+    regenerateSummaries: 'Regenerate Summaries',
+    regenerating: 'Regenerating...',
+    regenerateTooltip: 'Regenerate AI summaries in selected language',
+    regenerateComplete: 'summaries regenerated',
   },
   de: {
     // Header
@@ -352,6 +384,22 @@ const translations = {
     syncRemoved: 'E-Mails entfernt (archiviert/beantwortet)',
     syncUpdated: 'E-Mails aktualisiert',
     syncTooltip: 'Mit Gmail synchronisieren (gelesene/beantwortete E-Mails archivieren)',
+
+    // Bulk Actions
+    selected: 'ausgewählt',
+    selectAll: 'Alle auswählen',
+    deselectAll: 'Abwählen',
+    bulkArchive: 'Ausgewählte archivieren',
+    bulkSpam: 'Ausgewählte als Spam',
+    bulkDelete: 'Ausgewählte löschen',
+    confirmBulkArchive: 'Ausgewählte E-Mails archivieren?',
+    confirmBulkSpam: 'Ausgewählte E-Mails in Spam verschieben?',
+
+    // Regenerate summaries
+    regenerateSummaries: 'Zusammenfassungen neu erstellen',
+    regenerating: 'Wird neu erstellt...',
+    regenerateTooltip: 'KI-Zusammenfassungen in ausgewählter Sprache neu erstellen',
+    regenerateComplete: 'Zusammenfassungen neu erstellt',
   }
 };
 
@@ -446,6 +494,13 @@ export default function EmailAIMonitorPage() {
 
   // Sync State
   const [syncing, setSyncing] = useState(false);
+
+  // Regenerate Summaries State
+  const [regenerating, setRegenerating] = useState(false);
+
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   // Language State
   const [lang, setLang] = useState<Language>('it');
@@ -582,7 +637,8 @@ export default function EmailAIMonitorPage() {
         body: JSON.stringify({
           connectionId,
           maxResults: 20,
-          query: 'is:unread'
+          query: 'is:unread',
+          language: lang // Pass selected language for AI summaries
         })
       });
 
@@ -602,6 +658,35 @@ export default function EmailAIMonitorPage() {
       alert(`Errore: ${error.message}`);
     } finally {
       setFetchingNew(false);
+    }
+  };
+
+  // ============= REGENERATE SUMMARIES =============
+  const regenerateSummaries = async () => {
+    if (!connectionId) return;
+    if (!confirm(`Rigenerare i riassunti AI in ${lang.toUpperCase()}? Questo potrebbe richiedere alcuni minuti.`)) return;
+
+    setRegenerating(true);
+    try {
+      const response = await fetch('/api/email-ai/regenerate-summaries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          connectionId,
+          language: lang
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error);
+
+      alert(`${data.regenerated} ${t.regenerateComplete}!`);
+      fetchEmails(); // Refresh to show new summaries
+    } catch (error: any) {
+      alert(`Errore: ${error.message}`);
+    } finally {
+      setRegenerating(false);
     }
   };
 
@@ -865,6 +950,61 @@ export default function EmailAIMonitorPage() {
     }
   };
 
+  // ============= BULK ACTIONS =============
+  const toggleSelectEmail = (emailId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(emailId)) {
+        newSet.delete(emailId);
+      } else {
+        newSet.add(emailId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllEmails = () => {
+    if (selectedIds.size === emails.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(emails.map(e => e.id)));
+    }
+  };
+
+  const executeBulkAction = async (action: 'archive' | 'moveToSpam') => {
+    if (selectedIds.size === 0) return;
+
+    const confirmMsg = action === 'archive' ? t.confirmBulkArchive : t.confirmBulkSpam;
+    if (!confirm(confirmMsg)) return;
+
+    setBulkActionLoading(true);
+    try {
+      const promises = Array.from(selectedIds).map(emailId =>
+        fetch('/api/email-ai/actions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ connectionId, emailId, action })
+        })
+      );
+
+      await Promise.all(promises);
+
+      // Rimuovi email dalla lista
+      setEmails(prev => prev.filter(e => !selectedIds.has(e.id)));
+      setSelectedIds(new Set());
+
+      // Deseleziona se era selezionata
+      if (selectedEmail && selectedIds.has(selectedEmail.id)) {
+        setSelectedEmail(null);
+      }
+    } catch (error) {
+      console.error('Bulk action failed:', error);
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   // ============= AGENT =============
   const runAgent = async () => {
     setAgentRunning(true);
@@ -932,20 +1072,27 @@ export default function EmailAIMonitorPage() {
     return icons[category] || icons.other;
   };
 
+  // ============= MOBILE MENU STATE =============
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   // ============= RENDER =============
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white">
       {/* Header */}
-      <div className="border-b border-white/10 bg-black/20">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      <div className="border-b border-white/10 bg-black/20 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <span>📧</span> {t.title}
-              </h1>
-              <p className="text-gray-400 text-sm">{t.subtitle}</p>
-            </div>
+            {/* Title - Compact on mobile */}
             <div className="flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">📧</span>
+              <div>
+                <h1 className="text-base sm:text-2xl font-bold">{t.title}</h1>
+                <p className="text-gray-400 text-xs sm:text-sm hidden sm:block">{t.subtitle}</p>
+              </div>
+            </div>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-2">
               {/* Language Selector */}
               <div className="flex bg-white/10 rounded-lg overflow-hidden">
                 {(['it', 'en', 'de'] as Language[]).map(l => (
@@ -984,22 +1131,76 @@ export default function EmailAIMonitorPage() {
                 ← {t.dashboard}
               </button>
             </div>
+
+            {/* Mobile Navigation */}
+            <div className="flex md:hidden items-center gap-2">
+              {/* Language Selector - Always visible on mobile */}
+              <div className="flex bg-white/10 rounded-lg overflow-hidden">
+                {(['it', 'en', 'de'] as Language[]).map(l => (
+                  <button
+                    key={l}
+                    onClick={() => setLang(l)}
+                    className={`px-1.5 py-1 text-xs font-bold transition ${
+                      lang === l ? 'bg-blue-500 text-white' : 'hover:bg-white/10'
+                    }`}
+                  >
+                    {l === 'it' ? '🇮🇹' : l === 'en' ? '🇬🇧' : '🇩🇪'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Hamburger Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition"
+              >
+                {mobileMenuOpen ? '✕' : '☰'}
+              </button>
+            </div>
           </div>
+
+          {/* Mobile Menu Dropdown */}
+          {mobileMenuOpen && (
+            <div className="md:hidden mt-2 py-2 border-t border-white/10 space-y-2">
+              {isConnected && (
+                <>
+                  <button
+                    onClick={() => { setShowSettings(true); setMobileMenuOpen(false); }}
+                    className="w-full px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition flex items-center gap-2"
+                  >
+                    <span>⚙️</span> {t.settings}
+                  </button>
+                  <button
+                    onClick={() => { setShowAgent(true); setMobileMenuOpen(false); }}
+                    className="w-full px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500 rounded-lg font-medium transition flex items-center gap-2"
+                  >
+                    <span>🤖</span> {t.agent}
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="w-full px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition flex items-center gap-2"
+              >
+                <span>←</span> {t.dashboard}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
         {/* Reauth Warning */}
         {requiresReauth && (
-          <div className="mb-6 bg-red-500/20 border-2 border-red-500 rounded-lg p-4">
-            <div className="flex items-center justify-between">
+          <div className="mb-4 sm:mb-6 bg-red-500/20 border-2 border-red-500 rounded-lg p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h3 className="font-bold text-red-300">{t.tokenExpired}</h3>
-                <p className="text-sm text-gray-300">{authError}</p>
+                <h3 className="font-bold text-red-300 text-sm sm:text-base">{t.tokenExpired}</h3>
+                <p className="text-xs sm:text-sm text-gray-300">{authError}</p>
               </div>
               <button
                 onClick={connectGmail}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-bold"
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-bold text-sm"
               >
                 {t.reconnect}
               </button>
@@ -1007,54 +1208,64 @@ export default function EmailAIMonitorPage() {
           </div>
         )}
 
-        {/* Actions Bar */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        {/* Actions Bar - Mobile optimized */}
+        <div className="mb-4 sm:mb-6 space-y-3">
+          {/* Connection buttons row */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {!isConnected ? (
               <button
                 onClick={connectGmail}
-                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold"
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold text-sm sm:text-base whitespace-nowrap"
               >
                 🔗 {t.connect}
               </button>
             ) : (
               <>
-                <div className="px-3 py-1.5 bg-green-500/20 border border-green-500 rounded-lg text-sm">
-                  ✅ {t.connected}
+                <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-500/20 border border-green-500 rounded-lg text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+                  ✅ <span className="hidden sm:inline">{t.connected}</span>
                 </div>
                 <button
                   onClick={fetchNewEmails}
                   disabled={fetchingNew}
-                  className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-600 rounded-lg font-medium transition"
+                  className="px-2 sm:px-4 py-1.5 sm:py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-600 rounded-lg font-medium transition text-xs sm:text-sm whitespace-nowrap flex-shrink-0"
                 >
-                  {fetchingNew ? `⏳ ${t.loading}` : `🔄 ${t.fetchEmails}`}
+                  {fetchingNew ? '⏳' : '🔄'} <span className="hidden sm:inline">{fetchingNew ? t.loading : t.fetchEmails}</span>
                 </button>
                 <button
                   onClick={syncEmails}
                   disabled={syncing}
-                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-600 rounded-lg font-medium transition"
+                  className="px-2 sm:px-4 py-1.5 sm:py-2 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-600 rounded-lg font-medium transition text-xs sm:text-sm whitespace-nowrap flex-shrink-0"
                   title={t.syncTooltip || 'Sync with Gmail'}
                 >
-                  {syncing ? `⏳ ${t.syncing}` : `🔄 ${t.sync}`}
+                  {syncing ? '⏳' : '🔄'} <span className="hidden sm:inline">{syncing ? t.syncing : t.sync}</span>
+                </button>
+                <button
+                  onClick={regenerateSummaries}
+                  disabled={regenerating}
+                  className="px-2 sm:px-4 py-1.5 sm:py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-600 rounded-lg font-medium transition text-xs sm:text-sm whitespace-nowrap flex-shrink-0"
+                  title={t.regenerateTooltip || 'Regenerate AI summaries'}
+                >
+                  {regenerating ? '⏳' : '✨'} {lang.toUpperCase()}
                 </button>
                 <button
                   onClick={disconnectGmail}
-                  className="px-3 py-1.5 bg-red-500/20 border border-red-500 hover:bg-red-500/30 rounded-lg text-sm text-red-300"
+                  className="px-2 sm:px-3 py-1 sm:py-1.5 bg-red-500/20 border border-red-500 hover:bg-red-500/30 rounded-lg text-xs sm:text-sm text-red-300 whitespace-nowrap flex-shrink-0"
                 >
-                  {t.disconnect}
+                  <span className="sm:hidden">✕</span>
+                  <span className="hidden sm:inline">{t.disconnect}</span>
                 </button>
               </>
             )}
           </div>
 
-          {/* Filters */}
+          {/* Filters - Horizontal scroll on mobile */}
           {isConnected && (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2">
               {(['all', 'urgent', 'important', 'unread', 'client', 'supplier', 'spam'] as const).map(f => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                  className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap flex-shrink-0 ${
                     filter === f
                       ? 'bg-blue-500 text-white'
                       : 'bg-white/10 hover:bg-white/20'
@@ -1068,72 +1279,128 @@ export default function EmailAIMonitorPage() {
         </div>
 
         {/* Main Content */}
-        <div className="flex gap-6">
+        <div className="flex gap-2 sm:gap-6">
           {/* Email List */}
           <div className={`flex-1 ${selectedEmail ? 'hidden lg:block lg:w-1/2' : ''}`}>
             {loading ? (
-              <div className="text-center py-20">
-                <div className="text-4xl mb-4">⏳</div>
-                <div>{t.loading}</div>
+              <div className="text-center py-10 sm:py-20">
+                <div className="text-3xl sm:text-4xl mb-4">⏳</div>
+                <div className="text-sm sm:text-base">{t.loading}</div>
               </div>
             ) : !isConnected ? (
-              <div className="text-center py-20">
-                <div className="text-4xl mb-4">📧</div>
-                <div className="text-xl mb-2">{t.connectToStart}</div>
-                <p className="text-gray-400 text-sm">{t.aiWillAnalyze}</p>
+              <div className="text-center py-10 sm:py-20">
+                <div className="text-3xl sm:text-4xl mb-4">📧</div>
+                <div className="text-lg sm:text-xl mb-2">{t.connectToStart}</div>
+                <p className="text-gray-400 text-xs sm:text-sm">{t.aiWillAnalyze}</p>
               </div>
             ) : emails.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="text-4xl mb-4">✅</div>
-                <div className="text-xl mb-2">{t.noEmails}</div>
-                <p className="text-gray-400 text-sm">{t.changeFilter}</p>
+              <div className="text-center py-10 sm:py-20">
+                <div className="text-3xl sm:text-4xl mb-4">✅</div>
+                <div className="text-lg sm:text-xl mb-2">{t.noEmails}</div>
+                <p className="text-gray-400 text-xs sm:text-sm">{t.changeFilter}</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1 sm:space-y-2">
+                {/* Bulk Actions Bar - Mobile optimized */}
+                <div className="flex items-center justify-between bg-white/5 rounded-lg p-1.5 sm:p-2 mb-1 sm:mb-2">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <button
+                      onClick={selectAllEmails}
+                      className="px-2 sm:px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-xs sm:text-sm"
+                    >
+                      {selectedIds.size === emails.length ? t.deselectAll : t.selectAll}
+                    </button>
+                    {selectedIds.size > 0 && (
+                      <span className="text-xs sm:text-sm text-gray-400">
+                        {selectedIds.size}
+                      </span>
+                    )}
+                  </div>
+                  {selectedIds.size > 0 && (
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <button
+                        onClick={() => executeBulkAction('archive')}
+                        disabled={bulkActionLoading}
+                        className="px-2 sm:px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded text-xs sm:text-sm disabled:opacity-50"
+                      >
+                        {bulkActionLoading ? '...' : '📥'}
+                        <span className="hidden sm:inline"> {t.bulkArchive}</span>
+                      </button>
+                      <button
+                        onClick={() => executeBulkAction('moveToSpam')}
+                        disabled={bulkActionLoading}
+                        className="px-2 sm:px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded text-xs sm:text-sm disabled:opacity-50"
+                      >
+                        {bulkActionLoading ? '...' : '🚫'}
+                        <span className="hidden sm:inline"> {t.bulkSpam}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {emails.map(email => (
                   <div
                     key={email.id}
                     onClick={() => setSelectedEmail(email)}
-                    className={`bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/10 hover:bg-white/15 transition cursor-pointer ${
+                    className={`bg-white/10 backdrop-blur-sm rounded-lg p-2 sm:p-4 border border-white/10 hover:bg-white/15 transition cursor-pointer ${
                       selectedEmail?.id === email.id ? 'ring-2 ring-blue-500' : ''
-                    } ${!email.is_read ? 'border-l-4 border-l-blue-500' : ''}`}
+                    } ${!email.is_read ? 'border-l-4 border-l-blue-500' : ''} ${selectedIds.has(email.id) ? 'bg-blue-500/20' : ''}`}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start justify-between gap-2 sm:gap-3">
+                      {/* Checkbox */}
+                      <div
+                        onClick={(e) => toggleSelectEmail(email.id, e)}
+                        className={`w-4 h-4 sm:w-5 sm:h-5 rounded border-2 flex-shrink-0 mt-0.5 sm:mt-1 cursor-pointer transition ${
+                          selectedIds.has(email.id)
+                            ? 'bg-blue-500 border-blue-500'
+                            : 'border-gray-400 hover:border-blue-400'
+                        }`}
+                      >
+                        {selectedIds.has(email.id) && (
+                          <svg className="w-full h-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span>{getCategoryIcon(email.email_category)}</span>
-                          <span className={`font-medium truncate ${!email.is_read ? 'font-bold' : ''}`}>
+                        <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
+                          <span className="text-sm sm:text-base">{getCategoryIcon(email.email_category)}</span>
+                          <span className={`text-xs sm:text-sm font-medium truncate ${!email.is_read ? 'font-bold' : ''}`}>
                             {email.sender_name || email.sender_email}
                           </span>
-                          {email.is_starred && <span>⭐</span>}
+                          {email.is_starred && <span className="text-xs sm:text-sm">⭐</span>}
                         </div>
-                        <div className={`text-sm truncate ${!email.is_read ? 'font-semibold' : 'text-gray-300'}`}>
+                        <div className={`text-xs sm:text-sm truncate ${!email.is_read ? 'font-semibold' : 'text-gray-300'}`}>
                           {email.subject}
                         </div>
-                        <div className="text-xs text-gray-400 truncate mt-1">
-                          {email.ai_summary || email.snippet}
+                        <div className="text-xs text-gray-400 mt-0.5 sm:mt-1 line-clamp-1 sm:line-clamp-2">
+                          {email.ai_summary ? (
+                            <span className="text-cyan-300">✨ {email.ai_summary}</span>
+                          ) : (
+                            email.snippet
+                          )}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${getUrgencyBadge(email.urgency_level)}`}>
-                          {email.urgency_level.toUpperCase()}
+                      <div className="flex flex-col items-end gap-0.5 sm:gap-1 shrink-0">
+                        <span className={`px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold ${getUrgencyBadge(email.urgency_level)}`}>
+                          {email.urgency_level.toUpperCase().slice(0, 3)}
                         </span>
-                        <span className="text-xs text-gray-400">
-                          {new Date(email.received_date).toLocaleDateString('it-IT')}
+                        <span className="text-[10px] sm:text-xs text-gray-400">
+                          {new Date(email.received_date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
                         </span>
                       </div>
                     </div>
 
-                    {/* Quick Tags */}
-                    <div className="flex flex-wrap gap-1 mt-2">
+                    {/* Quick Tags - Hidden on very small screens */}
+                    <div className="hidden xs:flex flex-wrap gap-1 mt-1 sm:mt-2">
                       {email.is_client && (
-                        <span className="px-1.5 py-0.5 bg-green-500/20 text-green-300 rounded text-xs">{t.clientBadge}</span>
+                        <span className="px-1 sm:px-1.5 py-0.5 bg-green-500/20 text-green-300 rounded text-[10px] sm:text-xs">{t.clientBadge}</span>
                       )}
                       {email.is_supplier && (
-                        <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded text-xs">{t.supplierBadge}</span>
+                        <span className="px-1 sm:px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded text-[10px] sm:text-xs">{t.supplierBadge}</span>
                       )}
                       {email.has_attachments && (
-                        <span className="px-1.5 py-0.5 bg-gray-500/20 text-gray-300 rounded text-xs">📎</span>
+                        <span className="px-1 sm:px-1.5 py-0.5 bg-gray-500/20 text-gray-300 rounded text-[10px] sm:text-xs">📎</span>
                       )}
                     </div>
                   </div>
@@ -1142,15 +1409,15 @@ export default function EmailAIMonitorPage() {
             )}
           </div>
 
-          {/* Email Detail */}
+          {/* Email Detail - Full screen on mobile */}
           {selectedEmail && (
-            <div className="flex-1 lg:w-1/2 bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden">
+            <div className="fixed inset-0 lg:static lg:flex-1 lg:w-1/2 bg-slate-900 lg:bg-white/5 backdrop-blur-sm lg:rounded-lg border-0 lg:border border-white/10 overflow-hidden z-50 lg:z-auto flex flex-col">
               {/* Detail Header */}
-              <div className="p-4 border-b border-white/10 bg-white/5">
-                <div className="flex items-center justify-between mb-3">
+              <div className="p-2 sm:p-4 border-b border-white/10 bg-black/30 lg:bg-white/5 flex-shrink-0">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
                   <button
                     onClick={() => setSelectedEmail(null)}
-                    className="lg:hidden px-3 py-1 bg-white/10 rounded text-sm"
+                    className="px-3 py-1.5 sm:py-1 bg-blue-500 lg:bg-white/10 hover:bg-blue-600 lg:hover:bg-white/20 rounded text-sm font-medium"
                   >
                     ← {t.backToList}
                   </button>
@@ -1158,7 +1425,7 @@ export default function EmailAIMonitorPage() {
                     <button
                       onClick={() => executeAction(selectedEmail.id, selectedEmail.is_read ? 'markUnread' : 'markRead')}
                       disabled={actionLoading === `${selectedEmail.id}-markRead`}
-                      className="p-2 bg-white/10 hover:bg-white/20 rounded transition"
+                      className="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 rounded transition text-sm sm:text-base"
                       title={selectedEmail.is_read ? t.markUnread : t.markRead}
                     >
                       {selectedEmail.is_read ? '📭' : '📬'}
@@ -1166,7 +1433,7 @@ export default function EmailAIMonitorPage() {
                     <button
                       onClick={() => executeAction(selectedEmail.id, selectedEmail.is_starred ? 'unstar' : 'star')}
                       disabled={actionLoading?.startsWith(selectedEmail.id)}
-                      className="p-2 bg-white/10 hover:bg-white/20 rounded transition"
+                      className="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 rounded transition text-sm sm:text-base"
                       title={selectedEmail.is_starred ? t.removeStar : t.addStar}
                     >
                       {selectedEmail.is_starred ? '⭐' : '☆'}
@@ -1174,7 +1441,7 @@ export default function EmailAIMonitorPage() {
                     <button
                       onClick={() => executeAction(selectedEmail.id, 'archive')}
                       disabled={actionLoading?.startsWith(selectedEmail.id)}
-                      className="p-2 bg-white/10 hover:bg-white/20 rounded transition"
+                      className="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 rounded transition text-sm sm:text-base"
                       title={t.archive}
                     >
                       📥
@@ -1186,7 +1453,7 @@ export default function EmailAIMonitorPage() {
                         }
                       }}
                       disabled={actionLoading?.startsWith(selectedEmail.id)}
-                      className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded transition"
+                      className="p-1.5 sm:p-2 bg-red-500/20 hover:bg-red-500/30 rounded transition text-sm sm:text-base"
                       title={t.moveToSpam}
                     >
                       🚫
@@ -1194,55 +1461,55 @@ export default function EmailAIMonitorPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-lg">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500 rounded-full flex items-center justify-center text-sm sm:text-lg flex-shrink-0">
                     {(selectedEmail.sender_name || selectedEmail.sender_email).charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex-1">
-                    <div className="font-bold">{selectedEmail.sender_name || selectedEmail.sender_email}</div>
-                    <div className="text-sm text-gray-400">{selectedEmail.sender_email}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm sm:text-base truncate">{selectedEmail.sender_name || selectedEmail.sender_email}</div>
+                    <div className="text-xs sm:text-sm text-gray-400 truncate">{selectedEmail.sender_email}</div>
                   </div>
-                  <span className={`px-2 py-1 rounded text-xs font-bold ${getUrgencyBadge(selectedEmail.urgency_level)}`}>
+                  <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs font-bold flex-shrink-0 ${getUrgencyBadge(selectedEmail.urgency_level)}`}>
                     {selectedEmail.urgency_level.toUpperCase()}
                   </span>
                 </div>
 
-                <h2 className="text-lg font-semibold mt-3">{selectedEmail.subject}</h2>
-                <div className="text-xs text-gray-400 mt-1">
+                <h2 className="text-sm sm:text-lg font-semibold mt-2 sm:mt-3 line-clamp-2">{selectedEmail.subject}</h2>
+                <div className="text-[10px] sm:text-xs text-gray-400 mt-1">
                   {new Date(selectedEmail.received_date).toLocaleString('it-IT')}
                 </div>
               </div>
 
               {/* AI Summary */}
               {selectedEmail.ai_summary && (
-                <div className="p-3 bg-blue-500/10 border-b border-white/10">
-                  <div className="text-xs text-blue-300 font-bold mb-1">✨ {t.aiSummary}</div>
-                  <div className="text-sm">{selectedEmail.ai_summary}</div>
+                <div className="p-2 sm:p-3 bg-blue-500/10 border-b border-white/10 flex-shrink-0">
+                  <div className="text-[10px] sm:text-xs text-blue-300 font-bold mb-0.5 sm:mb-1">✨ {t.aiSummary}</div>
+                  <div className="text-xs sm:text-sm">{selectedEmail.ai_summary}</div>
                 </div>
               )}
 
-              {/* Email Body */}
-              <div className="p-4 max-h-[300px] overflow-y-auto">
-                <div className="text-sm whitespace-pre-wrap">
+              {/* Email Body - Scrollable */}
+              <div className="p-2 sm:p-4 flex-1 overflow-y-auto min-h-0">
+                <div className="text-xs sm:text-sm whitespace-pre-wrap">
                   {selectedEmail.body_text || selectedEmail.snippet}
                 </div>
               </div>
 
               {/* AI Reply Section */}
-              <div className="p-4 border-t border-white/10 bg-white/5">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-sm">🤖 {t.generateReply}</h3>
+              <div className="p-2 sm:p-4 border-t border-white/10 bg-black/20 lg:bg-white/5 flex-shrink-0">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <h3 className="font-bold text-xs sm:text-sm">🤖 {t.generateReply}</h3>
                   <button
                     onClick={() => generateReply(selectedEmail)}
                     disabled={generatingReply}
-                    className="px-3 py-1.5 bg-green-500 hover:bg-green-600 disabled:bg-gray-600 rounded text-sm font-medium"
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-500 hover:bg-green-600 disabled:bg-gray-600 rounded text-xs sm:text-sm font-medium"
                   >
-                    {generatingReply ? `⏳ ${t.generating}` : `✨ ${t.generate}`}
+                    {generatingReply ? `⏳` : `✨`} <span className="hidden sm:inline">{generatingReply ? t.generating : t.generate}</span>
                   </button>
                 </div>
 
-                {/* Quick Reply Buttons */}
-                <div className="flex flex-wrap gap-1 mb-3">
+                {/* Quick Reply Buttons - Scrollable on mobile */}
+                <div className="flex gap-1 mb-2 sm:mb-3 overflow-x-auto pb-1 scrollbar-hide">
                   {[
                     { type: 'acknowledge', label: t.acknowledge },
                     { type: 'thank_you', label: t.thankYou },
@@ -1253,7 +1520,7 @@ export default function EmailAIMonitorPage() {
                       key={type}
                       onClick={() => generateQuickReply(selectedEmail, type)}
                       disabled={generatingReply}
-                      className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs"
+                      className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-[10px] sm:text-xs whitespace-nowrap flex-shrink-0"
                     >
                       {label}
                     </button>
@@ -1262,21 +1529,21 @@ export default function EmailAIMonitorPage() {
 
                 {/* Reply Draft - Editable */}
                 {replyDraft && (
-                  <div className="bg-white/10 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded">
+                  <div className="bg-white/10 rounded-lg p-2 sm:p-3">
+                    <div className="flex items-center justify-between mb-1 sm:mb-2">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <span className="text-[10px] sm:text-xs bg-blue-500/20 text-blue-300 px-1.5 sm:px-2 py-0.5 rounded">
                           {replyDraft.tone}
                         </span>
-                        <span className="text-xs text-gray-400">
-                          {t.confidence}: {replyDraft.confidence}%
+                        <span className="text-[10px] sm:text-xs text-gray-400">
+                          {replyDraft.confidence}%
                         </span>
                       </div>
                       <button
                         onClick={() => navigator.clipboard.writeText(editableReply)}
-                        className="text-xs px-2 py-1 bg-white/10 hover:bg-white/20 rounded"
+                        className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/10 hover:bg-white/20 rounded"
                       >
-                        📋 {t.copy}
+                        📋
                       </button>
                     </div>
 
@@ -1284,30 +1551,30 @@ export default function EmailAIMonitorPage() {
                     <textarea
                       value={editableReply}
                       onChange={(e) => setEditableReply(e.target.value)}
-                      className="w-full h-32 bg-black/30 rounded p-3 text-sm resize-none border border-white/20 focus:border-blue-500 focus:outline-none"
+                      className="w-full h-24 sm:h-32 bg-black/30 rounded p-2 sm:p-3 text-xs sm:text-sm resize-none border border-white/20 focus:border-blue-500 focus:outline-none"
                       placeholder={t.editReply}
                     />
 
                     {/* Send Button */}
-                    <div className="flex items-center justify-between mt-3">
-                      <div className="text-xs text-gray-400">
+                    <div className="flex items-center justify-between mt-2 sm:mt-3">
+                      <div className="text-[10px] sm:text-xs text-gray-400 truncate max-w-[40%]">
                         A: {selectedEmail.sender_email}
                       </div>
                       <button
                         onClick={() => sendEmail(selectedEmail)}
                         disabled={sendingEmail || !editableReply.trim()}
-                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 rounded font-bold text-sm flex items-center gap-2"
+                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 rounded font-bold text-xs sm:text-sm flex items-center gap-1 sm:gap-2"
                       >
                         {sendingEmail ? (
-                          <>⏳ {t.sending}</>
+                          <>⏳ <span className="hidden sm:inline">{t.sending}</span></>
                         ) : (
-                          <>📤 {t.sendEmail}</>
+                          <>📤 <span className="hidden sm:inline">{t.sendEmail}</span></>
                         )}
                       </button>
                     </div>
 
                     {replyDraft.suggestions?.length > 0 && (
-                      <div className="mt-3 text-xs text-gray-400 border-t border-white/10 pt-2">
+                      <div className="hidden sm:block mt-3 text-xs text-gray-400 border-t border-white/10 pt-2">
                         <strong>{t.suggestions}:</strong>
                         <ul className="mt-1 list-disc list-inside">
                           {replyDraft.suggestions.map((s, i) => (
@@ -1320,12 +1587,12 @@ export default function EmailAIMonitorPage() {
                 )}
               </div>
 
-              {/* Keywords */}
+              {/* Keywords - Hidden on mobile */}
               {selectedEmail.ai_keywords?.length > 0 && (
-                <div className="p-3 border-t border-white/10">
+                <div className="hidden sm:block p-2 sm:p-3 border-t border-white/10 flex-shrink-0">
                   <div className="flex flex-wrap gap-1">
                     {selectedEmail.ai_keywords.map(kw => (
-                      <span key={kw} className="px-2 py-0.5 bg-white/10 rounded text-xs">
+                      <span key={kw} className="px-1.5 sm:px-2 py-0.5 bg-white/10 rounded text-[10px] sm:text-xs">
                         #{kw}
                       </span>
                     ))}
@@ -1337,39 +1604,39 @@ export default function EmailAIMonitorPage() {
         </div>
       </div>
 
-      {/* Settings Modal */}
+      {/* Settings Modal - Full screen on mobile */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <h2 className="text-xl font-bold">⚙️ {t.settingsTitle}</h2>
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-slate-800 rounded-t-xl sm:rounded-xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="p-3 sm:p-4 border-b border-white/10 flex items-center justify-between sticky top-0 bg-slate-800 z-10">
+              <h2 className="text-base sm:text-xl font-bold">⚙️ {t.settingsTitle}</h2>
               <button
                 onClick={() => setShowSettings(false)}
-                className="p-2 hover:bg-white/10 rounded"
+                className="p-2 hover:bg-white/10 rounded text-lg"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
               {/* Auto Options */}
               <div>
-                <h3 className="font-bold mb-3">{t.automation}</h3>
-                <div className="space-y-2">
+                <h3 className="font-bold mb-2 sm:mb-3 text-sm sm:text-base">{t.automation}</h3>
+                <div className="space-y-2 sm:space-y-3">
                   {[
                     { key: 'auto_classify', label: t.autoClassify },
                     { key: 'auto_summarize', label: t.autoSummarize },
                     { key: 'auto_move_spam', label: t.autoMoveSpam },
                     { key: 'auto_draft_reply', label: t.autoDraftReply }
                   ].map(({ key, label }) => (
-                    <label key={key} className="flex items-center gap-3 cursor-pointer">
+                    <label key={key} className="flex items-center gap-3 cursor-pointer p-2 sm:p-0 bg-white/5 sm:bg-transparent rounded-lg">
                       <input
                         type="checkbox"
                         checked={settings[key as keyof Settings] as boolean}
                         onChange={(e) => setSettings({ ...settings, [key]: e.target.checked })}
-                        className="w-5 h-5 rounded"
+                        className="w-5 h-5 sm:w-5 sm:h-5 rounded"
                       />
-                      <span className="text-sm">{label}</span>
+                      <span className="text-xs sm:text-sm">{label}</span>
                     </label>
                   ))}
                 </div>
@@ -1377,14 +1644,14 @@ export default function EmailAIMonitorPage() {
 
               {/* Client Domains */}
               <div>
-                <h3 className="font-bold mb-3">{t.clientDomains}</h3>
+                <h3 className="font-bold mb-2 sm:mb-3 text-sm sm:text-base">{t.clientDomains}</h3>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
                     value={newDomain}
                     onChange={(e) => setNewDomain(e.target.value)}
                     placeholder="es. cliente.it"
-                    className="flex-1 px-3 py-2 bg-white/10 rounded border border-white/20 text-sm"
+                    className="flex-1 px-3 py-2 sm:py-2 bg-white/10 rounded border border-white/20 text-sm"
                     onKeyPress={(e) => e.key === 'Enter' && addToList('client_domains', newDomain)}
                   />
                   <button
@@ -1490,17 +1757,17 @@ export default function EmailAIMonitorPage() {
               </div>
             </div>
 
-            <div className="p-4 border-t border-white/10 flex justify-end gap-2">
+            <div className="p-3 sm:p-4 border-t border-white/10 flex justify-end gap-2 sticky bottom-0 bg-slate-800">
               <button
                 onClick={() => setShowSettings(false)}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded font-medium"
+                className="px-3 sm:px-4 py-2 bg-white/10 hover:bg-white/20 rounded font-medium text-sm sm:text-base"
               >
                 {t.cancel}
               </button>
               <button
                 onClick={saveSettings}
                 disabled={settingsLoading}
-                className="px-6 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 rounded font-bold"
+                className="px-4 sm:px-6 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 rounded font-bold text-sm sm:text-base"
               >
                 {settingsLoading ? t.saving : `💾 ${t.saveSettings}`}
               </button>
@@ -1509,47 +1776,47 @@ export default function EmailAIMonitorPage() {
         </div>
       )}
 
-      {/* Agent Modal */}
+      {/* Agent Modal - Full screen on mobile */}
       {showAgent && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-xl w-full">
-            <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <h2 className="text-xl font-bold">🤖 {t.agentTitle}</h2>
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-slate-800 rounded-t-xl sm:rounded-xl w-full sm:max-w-xl max-h-[90vh] overflow-y-auto">
+            <div className="p-3 sm:p-4 border-b border-white/10 flex items-center justify-between sticky top-0 bg-slate-800 z-10">
+              <h2 className="text-base sm:text-xl font-bold">🤖 {t.agentTitle}</h2>
               <button
                 onClick={() => setShowAgent(false)}
-                className="p-2 hover:bg-white/10 rounded"
+                className="p-2 hover:bg-white/10 rounded text-lg"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-6">
-              <p className="text-gray-300 mb-6">
+            <div className="p-3 sm:p-6">
+              <p className="text-gray-300 mb-4 sm:mb-6 text-xs sm:text-base">
                 {t.agentDescription}
               </p>
 
               {/* Stats */}
               {agentStats && (
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="bg-white/10 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold">{agentStats.totalProcessed}</div>
-                    <div className="text-xs text-gray-400">{t.processed}</div>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
+                  <div className="bg-white/10 rounded-lg p-2 sm:p-4 text-center">
+                    <div className="text-lg sm:text-2xl font-bold">{agentStats.totalProcessed}</div>
+                    <div className="text-[10px] sm:text-xs text-gray-400">{t.processed}</div>
                   </div>
-                  <div className="bg-white/10 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold">{agentStats.repliesGenerated}</div>
-                    <div className="text-xs text-gray-400">{t.replies}</div>
+                  <div className="bg-white/10 rounded-lg p-2 sm:p-4 text-center">
+                    <div className="text-lg sm:text-2xl font-bold">{agentStats.repliesGenerated}</div>
+                    <div className="text-[10px] sm:text-xs text-gray-400">{t.replies}</div>
                   </div>
-                  <div className="bg-white/10 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold">{agentStats.rulesTriggered?.['auto-urgent'] || 0}</div>
-                    <div className="text-xs text-gray-400">{t.urgentCount}</div>
+                  <div className="bg-white/10 rounded-lg p-2 sm:p-4 text-center">
+                    <div className="text-lg sm:text-2xl font-bold">{agentStats.rulesTriggered?.['auto-urgent'] || 0}</div>
+                    <div className="text-[10px] sm:text-xs text-gray-400">{t.urgentCount}</div>
                   </div>
                 </div>
               )}
 
               {/* Rules Summary */}
-              <div className="bg-white/5 rounded-lg p-4 mb-6">
-                <h4 className="font-bold mb-2">{t.activeRules}:</h4>
-                <ul className="text-sm text-gray-300 space-y-1">
+              <div className="bg-white/5 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+                <h4 className="font-bold mb-2 text-sm sm:text-base">{t.activeRules}:</h4>
+                <ul className="text-xs sm:text-sm text-gray-300 space-y-1">
                   <li>✅ {t.ruleClientDomains}</li>
                   <li>✅ {t.ruleSupplierDomains}</li>
                   <li>✅ {t.ruleUrgentKeywords}</li>
@@ -1561,7 +1828,7 @@ export default function EmailAIMonitorPage() {
               <button
                 onClick={runAgent}
                 disabled={agentRunning}
-                className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-600 disabled:to-gray-600 rounded-lg font-bold text-lg transition"
+                className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-600 disabled:to-gray-600 rounded-lg font-bold text-sm sm:text-lg transition"
               >
                 {agentRunning ? (
                   <span className="flex items-center justify-center gap-2">
@@ -1572,7 +1839,7 @@ export default function EmailAIMonitorPage() {
                 )}
               </button>
 
-              <p className="text-xs text-gray-400 text-center mt-3">
+              <p className="text-[10px] sm:text-xs text-gray-400 text-center mt-2 sm:mt-3">
                 {t.agentNote}
               </p>
             </div>
