@@ -301,11 +301,12 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0, isFavorite
               aria-label={isFavorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
             >
               <Star
-                className={`h-5 w-5 drop-shadow-md transition-colors ${
+                className={`h-5 w-5 transition-colors ${
                   isFavorite
-                    ? 'text-yellow-400 fill-yellow-400'
-                    : 'text-white/70 hover:text-yellow-400'
+                    ? 'text-yellow-400 fill-yellow-400 drop-shadow-md'
+                    : 'text-slate-800 fill-white/80 hover:fill-yellow-400 hover:text-yellow-500'
                 }`}
+                strokeWidth={2}
               />
             </button>
           )}
