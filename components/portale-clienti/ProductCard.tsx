@@ -293,14 +293,18 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0, isFavorite
             <button
               onClick={handleToggleFavorite}
               disabled={isTogglingFavorite}
-              className={`p-1 rounded-full transition-all duration-200 ${
-                isFavorite
-                  ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-300'
-                  : 'bg-slate-700/80 text-slate-400 hover:bg-slate-600 hover:text-yellow-400'
-              } ${isTogglingFavorite ? 'opacity-50' : ''}`}
+              className={`p-0.5 transition-all duration-200 ${
+                isTogglingFavorite ? 'opacity-50' : ''
+              }`}
               aria-label={isFavorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
             >
-              <Star className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`} />
+              <Star
+                className={`h-5 w-5 drop-shadow-md transition-colors ${
+                  isFavorite
+                    ? 'text-yellow-400 fill-yellow-400'
+                    : 'text-white/70 hover:text-yellow-400'
+                }`}
+              />
             </button>
           )}
           <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium ${
