@@ -21,6 +21,8 @@ interface FilterModalProps {
   onSortChange: (sortBy: string) => void;
   showPurchasedOnly: boolean;
   onPurchasedOnlyChange: (value: boolean) => void;
+  showFavoritesOnly?: boolean;
+  onFavoritesOnlyChange?: (value: boolean) => void;
 }
 
 export function FilterModal({
@@ -35,6 +37,8 @@ export function FilterModal({
   onSortChange,
   showPurchasedOnly,
   onPurchasedOnlyChange,
+  showFavoritesOnly = false,
+  onFavoritesOnlyChange,
 }: FilterModalProps) {
   if (!isOpen) return null;
 
@@ -78,6 +82,8 @@ export function FilterModal({
             onSortChange={onSortChange}
             showPurchasedOnly={showPurchasedOnly}
             onPurchasedOnlyChange={onPurchasedOnlyChange}
+            showFavoritesOnly={showFavoritesOnly}
+            onFavoritesOnlyChange={onFavoritesOnlyChange}
           />
         </div>
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ShoppingCart, Package, AlertCircle, Tag, Bell, X } from 'lucide-react';
+import { ShoppingCart, Package, AlertCircle, Tag, Bell, X, Star } from 'lucide-react';
 import { ProductReservationModal, ReservationData } from './ProductReservationModal';
 import toast from 'react-hot-toast';
 
@@ -25,15 +25,30 @@ interface ProductCardProps {
   product: Product;
   onAddToCart: (productId: number, quantity: number) => void;
   cartQuantity?: number; // Quantità già nel carrello
+  isFavorite?: boolean; // Se il prodotto è nei preferiti
+  onToggleFavorite?: (productId: number) => void; // Callback per toggle preferito
 }
 
-export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductCardProps) {
+export function ProductCard({ product, onAddToCart, cartQuantity = 0, isFavorite = false, onToggleFavorite }: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const isInCart = cartQuantity > 0;
+
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent opening detail modal
+    if (!onToggleFavorite || isTogglingFavorite) return;
+
+    setIsTogglingFavorite(true);
+    try {
+      await onToggleFavorite(product.id);
+    } finally {
+      setIsTogglingFavorite(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -272,7 +287,22 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductC
         )}
 
         {/* Badge disponibilità piccolo - STILE CATALOGO LAPA */}
-        <div className="absolute top-1.5 right-1.5">
+        <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
+          {/* Stellina Preferito */}
+          {onToggleFavorite && (
+            <button
+              onClick={handleToggleFavorite}
+              disabled={isTogglingFavorite}
+              className={`p-1 rounded-full transition-all duration-200 ${
+                isFavorite
+                  ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-300'
+                  : 'bg-slate-700/80 text-slate-400 hover:bg-slate-600 hover:text-yellow-400'
+              } ${isTogglingFavorite ? 'opacity-50' : ''}`}
+              aria-label={isFavorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+            >
+              <Star className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`} />
+            </button>
+          )}
           <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium ${
             product.available
               ? 'bg-green-500/90 text-white'

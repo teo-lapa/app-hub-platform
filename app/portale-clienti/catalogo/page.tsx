@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ProductCard } from '@/components/portale-clienti/ProductCard';
 import { CatalogSearchBar } from '@/components/portale-clienti/CatalogSearchBar';
 import { FilterModal } from '@/components/portale-clienti/FilterModal';
-import { Loader2, ShoppingCart, ChevronLeft, ChevronRight, PackageX } from 'lucide-react';
+import { Loader2, ShoppingCart, ChevronLeft, ChevronRight, PackageX, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/authStore';
 import toast from 'react-hot-toast';
 
@@ -66,14 +66,127 @@ export default function CatalogoPage() {
   // Cart state (simple local state - you can move to context/zustand later)
   const [cartItems, setCartItems] = useState<{ productId: number; quantity: number }[]>([]);
 
+  // Favorites state
+  const [favorites, setFavorites] = useState<number[]>([]);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+  // AI Order state
+  const [isLoadingAIOrder, setIsLoadingAIOrder] = useState(false);
+
   // Filter modal state
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  // Fetch categories on mount
+  // Fetch categories, cart items, and favorites on mount
   useEffect(() => {
     fetchCategories();
-    fetchCartItems(); // Riabilitato - cache browser risolta
+    fetchCartItems();
+    fetchFavorites();
   }, []);
+
+  // Fetch favorites
+  async function fetchFavorites() {
+    try {
+      const response = await fetch('/api/portale-clienti/product-favorites', {
+        credentials: 'include',
+      });
+      const data = await response.json();
+
+      if (data.success && Array.isArray(data.favorites)) {
+        setFavorites(data.favorites);
+      }
+    } catch (err) {
+      console.error('Failed to fetch favorites:', err);
+    }
+  }
+
+  // Toggle favorite
+  async function handleToggleFavorite(productId: number) {
+    try {
+      // Optimistic update
+      setFavorites((prev) =>
+        prev.includes(productId)
+          ? prev.filter((id) => id !== productId)
+          : [...prev, productId]
+      );
+
+      const response = await fetch('/api/portale-clienti/product-favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ productId }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        // Revert on error
+        await fetchFavorites();
+        throw new Error(data.error);
+      }
+
+      // Update with server response
+      setFavorites(data.favorites);
+
+      toast.success(
+        data.action === 'added'
+          ? 'Aggiunto ai preferiti'
+          : 'Rimosso dai preferiti'
+      );
+    } catch (err: any) {
+      console.error('Failed to toggle favorite:', err);
+      toast.error('Errore nell\'aggiornamento preferiti');
+    }
+  }
+
+  // Handle AI Order - analyze history and fill cart
+  async function handleAIOrder() {
+    try {
+      setIsLoadingAIOrder(true);
+      toast.loading('Analisi storico ordini...', { id: 'ai-order' });
+
+      // Get AI suggestions
+      const suggestResponse = await fetch('/api/portale-clienti/ai-suggest-order', {
+        credentials: 'include',
+      });
+      const suggestData = await suggestResponse.json();
+
+      if (!suggestData.success || !suggestData.suggestions?.length) {
+        toast.error('Nessun prodotto ricorsivo trovato. Ordina più prodotti per attivare questa funzione!', { id: 'ai-order' });
+        return;
+      }
+
+      // Add all suggestions to cart
+      const items = suggestData.suggestions.map((s: any) => ({
+        productId: s.productId,
+        quantity: s.suggestedQuantity,
+      }));
+
+      const cartResponse = await fetch('/api/portale-clienti/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ items }),
+      });
+
+      const cartData = await cartResponse.json();
+
+      if (cartData.error) {
+        throw new Error(cartData.error);
+      }
+
+      toast.success(`${items.length} prodotti aggiunti al carrello!`, { id: 'ai-order' });
+
+      // Refresh cart and redirect
+      await fetchCartItems();
+      window.location.href = '/portale-clienti/carrello';
+
+    } catch (err: any) {
+      console.error('Failed to create AI order:', err);
+      toast.error(err.message || 'Errore nella creazione ordine', { id: 'ai-order' });
+    } finally {
+      setIsLoadingAIOrder(false);
+    }
+  }
 
   // Fetch cart items with ultra-robust error handling
   async function fetchCartItems() {
@@ -272,12 +385,31 @@ export default function CatalogoPage() {
     setPagination((prev) => ({ ...prev, page: 1 })); // Reset to page 1
   }
 
+  function handleFavoritesOnlyChange(value: boolean) {
+    setShowFavoritesOnly(value);
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  }
+
   function handlePageChange(newPage: number) {
     setPagination((prev) => ({ ...prev, page: newPage }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   const totalCartItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Sort products: favorites first, then the rest
+  const sortedProducts = [...products].sort((a, b) => {
+    const aIsFav = favorites.includes(a.id);
+    const bIsFav = favorites.includes(b.id);
+    if (aIsFav && !bIsFav) return -1;
+    if (!aIsFav && bIsFav) return 1;
+    return 0;
+  });
+
+  // Filter by favorites if needed
+  const displayProducts = showFavoritesOnly
+    ? sortedProducts.filter((p) => favorites.includes(p.id))
+    : sortedProducts;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -292,19 +424,32 @@ export default function CatalogoPage() {
               </p>
             </div>
 
-            {/* Cart Badge */}
-            <a
-              href="/portale-clienti/carrello"
-              className="relative flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              <span className="font-medium">Carrello</span>
-              {totalCartItems > 0 && (
-                <span className="absolute -top-2 -right-2 bg-yellow-400 text-gray-900 text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
-                  {totalCartItems}
-                </span>
-              )}
-            </a>
+            <div className="flex items-center gap-3">
+              {/* AI Order Button */}
+              <button
+                onClick={handleAIOrder}
+                disabled={isLoadingAIOrder}
+                className="relative flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Crea ordine intelligente basato sullo storico"
+              >
+                <Sparkles className={`h-5 w-5 ${isLoadingAIOrder ? 'animate-pulse' : ''}`} />
+                <span className="font-medium hidden sm:inline">Ordine AI</span>
+              </button>
+
+              {/* Cart Badge */}
+              <a
+                href="/portale-clienti/carrello"
+                className="relative flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                <span className="font-medium">Carrello</span>
+                {totalCartItems > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-yellow-400 text-gray-900 text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                    {totalCartItems}
+                  </span>
+                )}
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -346,7 +491,7 @@ export default function CatalogoPage() {
           <>
             {/* Products Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-              {products.map((product) => {
+              {displayProducts.map((product) => {
                 const cartItem = cartItems.find(item => item.productId === product.id);
                 const cartQty = cartItem?.quantity || 0;
 
@@ -356,6 +501,8 @@ export default function CatalogoPage() {
                     product={product}
                     onAddToCart={handleAddToCart}
                     cartQuantity={cartQty}
+                    isFavorite={favorites.includes(product.id)}
+                    onToggleFavorite={handleToggleFavorite}
                   />
                 );
               })}
@@ -410,6 +557,8 @@ export default function CatalogoPage() {
         onSortChange={handleSortChange}
         showPurchasedOnly={showPurchasedOnly}
         onPurchasedOnlyChange={handlePurchasedOnlyChange}
+        showFavoritesOnly={showFavoritesOnly}
+        onFavoritesOnlyChange={handleFavoritesOnlyChange}
       />
 
       {/* Bottom Search Bar */}

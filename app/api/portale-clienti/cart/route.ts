@@ -113,8 +113,9 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/portale-clienti/cart
  *
- * Aggiungi prodotto al carrello
- * - Body: { productId: number, quantity: number }
+ * Aggiungi prodotto/i al carrello
+ * - Body singolo: { productId: number, quantity: number }
+ * - Body bulk: { items: [{ productId: number, quantity: number }, ...] }
  * - Recupera info prodotto da Odoo (nome, prezzo, code, uom)
  * - Usa funzione add_to_cart() per aggiungere/incrementare
  * - Verifica disponibilità stock da Odoo
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    console.log('🛒 [CART-API] POST - Aggiungi prodotto al carrello');
+    console.log('🛒 [CART-API] POST - Aggiungi prodotto/i al carrello');
 
     // Extract and verify JWT token
     const token = request.cookies.get('token')?.value;
@@ -156,6 +157,14 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
+
+    // Check if bulk add (array of items)
+    if (body.items && Array.isArray(body.items)) {
+      console.log('📦 [CART-API] Bulk add mode:', body.items.length, 'items');
+      return await handleBulkAdd(body.items, decoded);
+    }
+
+    // Single item add
     const {
       productId,
       quantity,
@@ -396,6 +405,159 @@ export async function POST(request: NextRequest) {
     console.error('💥 [CART-API] POST Error:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Errore nell\'aggiunta del prodotto' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Handle bulk add of multiple products to cart
+ * Used by AI Order feature
+ */
+async function handleBulkAdd(
+  items: { productId: number; quantity: number }[],
+  decoded: any
+): Promise<NextResponse> {
+  try {
+    // Validate items
+    const validItems = items.filter(
+      (item) => item.productId && item.quantity && item.quantity > 0
+    );
+
+    if (validItems.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Nessun prodotto valido da aggiungere' },
+        { status: 400 }
+      );
+    }
+
+    console.log(`📦 [CART-API] Bulk adding ${validItems.length} products`);
+
+    // Get partner_id from Odoo
+    const userPartners = await callOdooAsAdmin(
+      'res.partner',
+      'search_read',
+      [],
+      {
+        domain: [['email', '=', decoded.email]],
+        fields: ['id', 'name'],
+        limit: 1
+      }
+    );
+
+    if (!userPartners || userPartners.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Cliente non identificato' },
+        { status: 401 }
+      );
+    }
+
+    const partnerId = userPartners[0].id;
+
+    // Get or create cart
+    const cartResult = await sql`
+      SELECT get_or_create_cart(
+        ${decoded.email}::VARCHAR,
+        ${partnerId}::INTEGER,
+        NULL::VARCHAR
+      ) as cart_id
+    `;
+
+    const cartId = cartResult.rows[0].cart_id;
+
+    // Get all product IDs
+    const productIds = validItems.map((item) => item.productId);
+
+    // Fetch all products info from Odoo in one call
+    const products = await callOdooAsAdmin(
+      'product.product',
+      'search_read',
+      [],
+      {
+        domain: [['id', 'in', productIds]],
+        fields: [
+          'id',
+          'name',
+          'default_code',
+          'list_price',
+          'qty_available',
+          'uom_id',
+          'active',
+          'sale_ok',
+        ],
+      }
+    );
+
+    // Create a map for quick lookup
+    const productMap = new Map<number, any>();
+    for (const product of products) {
+      productMap.set(product.id, product);
+    }
+
+    // Add each product to cart
+    let addedCount = 0;
+    const errors: string[] = [];
+
+    for (const item of validItems) {
+      const product = productMap.get(item.productId);
+
+      if (!product) {
+        errors.push(`Prodotto ${item.productId} non trovato`);
+        continue;
+      }
+
+      if (!product.active || !product.sale_ok) {
+        errors.push(`${product.name} non disponibile per la vendita`);
+        continue;
+      }
+
+      // For AI orders, we allow adding even if stock is low
+      // The checkout process will validate final availability
+
+      try {
+        await sql`
+          SELECT add_to_cart(
+            ${cartId}::BIGINT,
+            ${product.id}::INTEGER,
+            ${product.name}::VARCHAR,
+            ${product.default_code || null}::VARCHAR,
+            ${item.quantity}::DECIMAL,
+            ${product.list_price}::DECIMAL,
+            ${product.uom_id ? product.uom_id[1] : 'Unità'}::VARCHAR
+          ) as item_id
+        `;
+
+        addedCount++;
+        console.log(`✅ [CART-API] Added ${product.name} x ${item.quantity}`);
+      } catch (addError: any) {
+        console.error(`❌ [CART-API] Failed to add ${product.name}:`, addError.message);
+        errors.push(`Errore aggiungendo ${product.name}`);
+      }
+    }
+
+    console.log(`✅ [CART-API] Bulk add completed: ${addedCount}/${validItems.length} products added`);
+
+    // Get updated cart summary
+    const summaryResult = await sql`
+      SELECT get_cart_summary(${cartId}::BIGINT) as summary
+    `;
+
+    const summary = summaryResult.rows[0].summary;
+
+    return NextResponse.json({
+      success: true,
+      message: `${addedCount} prodotti aggiunti al carrello`,
+      addedCount,
+      totalRequested: validItems.length,
+      errors: errors.length > 0 ? errors : undefined,
+      cart: summary.cart,
+      items: summary.items || []
+    });
+
+  } catch (error: any) {
+    console.error('💥 [CART-API] Bulk add error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Errore nell\'aggiunta dei prodotti' },
       { status: 500 }
     );
   }

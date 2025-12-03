@@ -1,6 +1,6 @@
 'use client';
 
-import { Filter, Package, Grid3x3, History } from 'lucide-react';
+import { Filter, Package, Grid3x3, History, Star } from 'lucide-react';
 
 interface Category {
   id: number;
@@ -18,6 +18,8 @@ interface ProductFiltersProps {
   onSortChange: (sortBy: string) => void;
   showPurchasedOnly: boolean;
   onPurchasedOnlyChange: (value: boolean) => void;
+  showFavoritesOnly?: boolean;
+  onFavoritesOnlyChange?: (value: boolean) => void;
 }
 
 export function ProductFilters({
@@ -30,6 +32,8 @@ export function ProductFilters({
   onSortChange,
   showPurchasedOnly,
   onPurchasedOnlyChange,
+  showFavoritesOnly = false,
+  onFavoritesOnlyChange,
 }: ProductFiltersProps) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
@@ -38,6 +42,36 @@ export function ProductFilters({
         <Filter className="h-5 w-5 text-gray-600" />
         <h2 className="font-semibold text-gray-900">Filtri</h2>
       </div>
+
+      {/* Favorites Toggle */}
+      {onFavoritesOnlyChange && (
+        <div className="pb-4 border-b border-gray-200">
+          <label className="flex items-center justify-between cursor-pointer group">
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4 text-yellow-500" />
+              <span className="text-sm font-medium text-gray-700">
+                Solo Preferiti
+              </span>
+            </div>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={showFavoritesOnly}
+                onChange={(e) => onFavoritesOnlyChange(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-yellow-500 peer-focus:ring-2 peer-focus:ring-yellow-300 transition-colors"></div>
+              <div className="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-5"></div>
+            </div>
+          </label>
+          {showFavoritesOnly && (
+            <p className="mt-2 text-xs text-yellow-600 flex items-center gap-1">
+              <Star className="h-3 w-3" />
+              Mostra solo prodotti con stellina
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Purchased Products Toggle */}
       <div className="pb-4 border-b border-gray-200">
@@ -142,6 +176,7 @@ export function ProductFilters({
           onAvailabilityChange('all');
           onSortChange('name');
           onPurchasedOnlyChange(false);
+          onFavoritesOnlyChange?.(false);
         }}
         className="w-full px-4 py-3 min-h-[48px] text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
       >
