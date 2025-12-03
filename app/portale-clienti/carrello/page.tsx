@@ -262,11 +262,20 @@ export default function CarrelloPage() {
   // Loading State
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-emerald-400 mx-auto mb-4" />
-          <p className="text-slate-300 text-lg">Caricamento carrello...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50 flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          >
+            <Loader2 className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          </motion.div>
+          <p className="text-gray-600 text-lg font-medium">Caricamento carrello...</p>
+        </motion.div>
       </div>
     );
   }
@@ -274,25 +283,31 @@ export default function CarrelloPage() {
   // Error State
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-red-50 flex items-center justify-center p-4">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-slate-800/60 backdrop-blur-sm border border-red-500/50 rounded-2xl p-8 max-w-md w-full text-center"
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="bg-white/80 backdrop-blur-xl border border-red-200 rounded-2xl p-8 max-w-md w-full text-center shadow-xl"
         >
-          <div className="bg-red-500/20 rounded-full p-4 inline-flex mb-4">
-            <AlertCircle className="h-12 w-12 text-red-400" />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <motion.div
+            className="bg-red-100 rounded-full p-4 inline-flex mb-4"
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <AlertCircle className="h-12 w-12 text-red-500" />
+          </motion.div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Errore di Caricamento
           </h2>
-          <p className="text-slate-300 mb-6">{error}</p>
-          <button
+          <p className="text-gray-600 mb-6">{error}</p>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => fetchCart()}
-            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors"
+            className="px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white rounded-xl font-semibold transition-all shadow-lg"
           >
             Riprova
-          </button>
+          </motion.button>
         </motion.div>
       </div>
     );
@@ -301,7 +316,7 @@ export default function CarrelloPage() {
   // Empty Cart State
   if (!cart || cart.items.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50">
         <div className="max-w-7xl mx-auto px-4 py-8">
           {/* Header */}
           <motion.div
@@ -311,13 +326,13 @@ export default function CarrelloPage() {
           >
             <button
               onClick={() => router.push('/portale-clienti/catalogo')}
-              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4"
+              className="flex items-center gap-2 text-gray-500 hover:text-red-600 transition-colors mb-4"
             >
               <ArrowLeft className="h-5 w-5" />
               <span>Torna al catalogo</span>
             </button>
-            <h1 className="text-4xl font-bold text-white flex items-center gap-3">
-              <ShoppingCart className="h-10 w-10 text-emerald-400" />
+            <h1 className="text-4xl font-bold text-gray-900 flex items-center gap-3">
+              <ShoppingCart className="h-10 w-10 text-red-500" />
               Carrello
             </h1>
           </motion.div>
@@ -329,21 +344,28 @@ export default function CarrelloPage() {
             transition={{ delay: 0.2 }}
             className="flex flex-col items-center justify-center py-20"
           >
-            <div className="bg-slate-800/30 rounded-full p-8 mb-6">
-              <PackageX className="h-24 w-24 text-slate-600" />
-            </div>
-            <h2 className="text-3xl font-bold text-white mb-3">
+            <motion.div
+              animate={{
+                y: [0, -10, 0],
+                rotate: [0, 5, -5, 0]
+              }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              className="bg-gradient-to-br from-orange-100 to-red-100 rounded-full p-8 mb-6 shadow-lg"
+            >
+              <PackageX className="h-24 w-24 text-orange-400" />
+            </motion.div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">
               Il tuo carrello è vuoto
             </h2>
-            <p className="text-slate-400 text-lg mb-8 text-center max-w-md">
+            <p className="text-gray-500 text-lg mb-8 text-center max-w-md">
               Non hai ancora aggiunto prodotti al carrello. Esplora il nostro
               catalogo e inizia a fare acquisti!
             </p>
             <motion.button
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(239, 68, 68, 0.3)" }}
               whileTap={{ scale: 0.95 }}
               onClick={() => router.push('/portale-clienti/catalogo')}
-              className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl font-bold text-lg shadow-lg transition-all"
+              className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white rounded-xl font-bold text-lg shadow-lg transition-all"
             >
               <Sparkles className="h-6 w-6" />
               Esplora Catalogo
@@ -356,7 +378,7 @@ export default function CarrelloPage() {
 
   // Cart with items
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <motion.div
@@ -366,20 +388,27 @@ export default function CarrelloPage() {
         >
           <button
             onClick={() => router.push('/portale-clienti/catalogo')}
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4"
+            className="flex items-center gap-2 text-gray-500 hover:text-red-600 transition-colors mb-4 group"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <motion.div whileHover={{ x: -3 }}>
+              <ArrowLeft className="h-5 w-5" />
+            </motion.div>
             <span>Torna al catalogo</span>
           </button>
 
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-4xl font-bold text-white flex items-center gap-3 mb-2">
-                <ShoppingCart className="h-10 w-10 text-emerald-400" />
+              <h1 className="text-4xl font-bold text-gray-900 flex items-center gap-3 mb-2">
+                <motion.div
+                  animate={{ rotate: [0, -10, 10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                >
+                  <ShoppingCart className="h-10 w-10 text-red-500" />
+                </motion.div>
                 Carrello
               </h1>
-              <p className="text-slate-400">
-                {cart.totalItems} {cart.totalItems === 1 ? 'prodotto' : 'prodotti'} nel carrello
+              <p className="text-gray-500">
+                {cart.items.length} {cart.items.length === 1 ? 'prodotto' : 'prodotti'} nel carrello
               </p>
             </div>
 
@@ -388,15 +417,21 @@ export default function CarrelloPage() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', bounce: 0.5 }}
-              className="bg-gradient-to-r from-emerald-500/20 to-blue-500/20 border border-emerald-500/30 rounded-xl px-6 py-3"
+              whileHover={{ scale: 1.05 }}
+              className="bg-white/80 backdrop-blur-sm border border-orange-200 rounded-2xl px-6 py-3 shadow-lg"
             >
-              <p className="text-sm text-slate-400 mb-1">Subtotale</p>
-              <p className="text-2xl font-bold text-yellow-400">
+              <p className="text-sm text-gray-500 mb-1">Subtotale</p>
+              <motion.p
+                key={cart.subtotal}
+                initial={{ scale: 1.2, color: '#ef4444' }}
+                animate={{ scale: 1, color: '#ea580c' }}
+                className="text-2xl font-bold text-orange-600"
+              >
                 {new Intl.NumberFormat('it-CH', {
                   style: 'currency',
                   currency: 'CHF',
                 }).format(cart.subtotal)}
-              </p>
+              </motion.p>
             </motion.div>
           </div>
         </motion.div>
@@ -422,20 +457,20 @@ export default function CarrelloPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: cart.items.length * 0.05 + 0.2 }}
-              className="bg-gradient-to-br from-slate-800/60 to-slate-900/60 backdrop-blur-sm border border-slate-600/50 rounded-xl p-6"
+              className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-lg"
             >
-              <label className="block text-white font-semibold mb-3">
+              <label className="block text-gray-900 font-semibold mb-3">
                 Note Consegna (opzionale)
               </label>
               <textarea
                 value={deliveryNotes}
                 onChange={(e) => setDeliveryNotes(e.target.value)}
                 placeholder="Inserisci eventuali note per la consegna..."
-                rows={4}
+                rows={3}
                 maxLength={500}
-                className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all resize-none"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 transition-all resize-none"
               />
-              <p className="text-xs text-slate-400 mt-2">
+              <p className="text-xs text-gray-400 mt-2">
                 {deliveryNotes.length}/500 caratteri
               </p>
             </motion.div>
@@ -445,7 +480,7 @@ export default function CarrelloPage() {
           <div className="lg:col-span-1">
             <CartSummary
               subtotal={cart.subtotal}
-              totalItems={cart.totalItems}
+              totalItems={cart.items.length}
               onCheckout={handleCheckout}
               isCheckingOut={isCheckingOut}
             />

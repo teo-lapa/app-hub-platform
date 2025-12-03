@@ -99,36 +99,36 @@ export function CartSummary({
       animate={{ opacity: 1, y: 0 }}
       className="sticky top-4"
     >
-      <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-2xl border border-slate-600/50 overflow-hidden shadow-2xl">
+      <div className="bg-white/90 backdrop-blur-xl rounded-2xl border border-gray-200 overflow-hidden shadow-xl">
         {/* Header with current tier */}
-        <div className="relative p-6 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 border-b border-slate-600/50">
+        <div className="relative p-5 bg-gradient-to-r from-orange-50 to-red-50 border-b border-gray-100">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xl font-bold text-white">Riepilogo Ordine</h2>
+            <h2 className="text-lg font-bold text-gray-900">Riepilogo Ordine</h2>
             {currentTier !== 'base' && (
               <motion.div
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: 'spring', bounce: 0.5 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-red-500 rounded-full shadow-md"
               >
                 <Sparkles className="h-4 w-4 text-white" />
-                <span className="text-sm font-bold text-white uppercase">
+                <span className="text-xs font-bold text-white uppercase">
                   {currentTier === 'premium' ? 'Premium' : currentTier === 'discount' ? 'Sconto' : 'Free Ship'}
                 </span>
               </motion.div>
             )}
           </div>
-          <p className="text-slate-300 text-sm">
+          <p className="text-gray-500 text-sm">
             {totalItems} {totalItems === 1 ? 'prodotto' : 'prodotti'}
           </p>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-5 space-y-5">
           {/* Gamification Progress */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Target className="h-5 w-5 text-emerald-400" />
-              <h3 className="text-sm font-semibold text-white">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="h-5 w-5 text-orange-500" />
+              <h3 className="text-sm font-semibold text-gray-900">
                 Obiettivi Ordine
               </h3>
             </div>
@@ -138,7 +138,7 @@ export function CartSummary({
               const colorClasses = {
                 emerald: 'from-emerald-500 to-green-500',
                 blue: 'from-blue-500 to-cyan-500',
-                yellow: 'from-yellow-500 to-orange-500',
+                yellow: 'from-orange-500 to-amber-500',
               }[milestone.color];
 
               return (
@@ -147,15 +147,15 @@ export function CartSummary({
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="space-y-2"
+                  className="space-y-1.5"
                 >
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <Icon className={`h-4 w-4 ${
-                        milestone.achieved ? 'text-' + milestone.color + '-400' : 'text-slate-500'
+                        milestone.achieved ? 'text-green-500' : 'text-gray-400'
                       }`} />
                       <span className={
-                        milestone.achieved ? 'text-white font-medium' : 'text-slate-400'
+                        milestone.achieved ? 'text-gray-900 font-medium' : 'text-gray-500'
                       }>
                         {milestone.title}
                       </span>
@@ -164,19 +164,19 @@ export function CartSummary({
                       <motion.span
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="text-emerald-400 font-bold"
+                        className="text-green-500 font-bold text-xs"
                       >
                         ✓ Sbloccato!
                       </motion.span>
                     ) : (
-                      <span className="text-slate-400 text-xs">
+                      <span className="text-gray-400 text-xs">
                         mancano {formatPrice(milestone.remaining)}
                       </span>
                     )}
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="relative h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                  <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${milestone.progress}%` }}
@@ -187,14 +187,14 @@ export function CartSummary({
                       <motion.div
                         animate={{
                           x: ['0%', '100%', '0%'],
-                          opacity: [0.5, 0.8, 0.5],
+                          opacity: [0.3, 0.6, 0.3],
                         }}
                         transition={{
                           duration: 2,
                           repeat: Infinity,
                           ease: 'linear',
                         }}
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent"
                       />
                     )}
                   </div>
@@ -208,15 +208,16 @@ export function CartSummary({
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30"
+              whileHover={{ scale: 1.02 }}
+              className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200"
             >
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-purple-400" />
+                <TrendingUp className="h-5 w-5 text-purple-500" />
                 <div>
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-sm font-semibold text-gray-900">
                     Punti Fedeltà
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-gray-500">
                     Guadagnerai con questo ordine
                   </p>
                 </div>
@@ -224,9 +225,9 @@ export function CartSummary({
               <div className="text-right">
                 <motion.p
                   key={loyaltyPoints}
-                  initial={{ scale: 1.3, color: '#a78bfa' }}
-                  animate={{ scale: 1, color: '#c084fc' }}
-                  className="text-2xl font-bold text-purple-400"
+                  initial={{ scale: 1.3, color: '#9333ea' }}
+                  animate={{ scale: 1, color: '#a855f7' }}
+                  className="text-2xl font-bold text-purple-500"
                 >
                   +{loyaltyPoints}
                 </motion.p>
@@ -235,8 +236,8 @@ export function CartSummary({
           )}
 
           {/* Price Breakdown */}
-          <div className="space-y-3 pt-4 border-t border-slate-600/50">
-            <div className="flex items-center justify-between text-slate-300">
+          <div className="space-y-2.5 pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between text-gray-600">
               <span>Subtotale</span>
               <span className="font-medium">{formatPrice(subtotal)}</span>
             </div>
@@ -245,7 +246,7 @@ export function CartSummary({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-between text-emerald-400"
+                className="flex items-center justify-between text-green-600"
               >
                 <div className="flex items-center gap-1.5">
                   <Truck className="h-4 w-4" />
@@ -259,7 +260,7 @@ export function CartSummary({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-between text-blue-400"
+                className="flex items-center justify-between text-blue-600"
               >
                 <div className="flex items-center gap-1.5">
                   <Gift className="h-4 w-4" />
@@ -272,14 +273,14 @@ export function CartSummary({
             )}
 
             {/* Total */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-600/50">
-              <span className="text-xl font-bold text-white">Totale</span>
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+              <span className="text-lg font-bold text-gray-900">Totale</span>
               <motion.div
                 key={total}
-                initial={{ scale: 1.2, color: '#fbbf24' }}
-                animate={{ scale: 1, color: '#fbbf24' }}
+                initial={{ scale: 1.2, color: '#ef4444' }}
+                animate={{ scale: 1, color: '#ea580c' }}
                 transition={{ duration: 0.3 }}
-                className="text-3xl font-bold text-yellow-400"
+                className="text-2xl font-bold text-orange-600"
               >
                 {formatPrice(total)}
               </motion.div>
@@ -288,20 +289,20 @@ export function CartSummary({
 
           {/* Checkout Button */}
           <motion.button
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ scale: 1.02, boxShadow: "0 15px 30px rgba(239, 68, 68, 0.25)" }}
             whileTap={{ scale: 0.98 }}
             onClick={onCheckout}
             disabled={isCheckingOut || totalItems === 0}
-            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl font-bold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white rounded-xl font-bold text-base shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            <CreditCard className="h-6 w-6" />
+            <CreditCard className="h-5 w-5" />
             {isCheckingOut ? 'Elaborazione...' : 'Procedi al Checkout'}
           </motion.button>
 
           {/* Continue Shopping Link */}
           <button
             onClick={() => router.push('/portale-clienti/catalogo')}
-            className="w-full text-center text-slate-400 hover:text-white text-sm font-medium transition-colors"
+            className="w-full text-center text-gray-500 hover:text-red-600 text-sm font-medium transition-colors"
           >
             ← Continua gli acquisti
           </button>
@@ -314,17 +315,21 @@ export function CartSummary({
           initial={{ opacity: 0, y: 20, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ delay: 0.5, type: 'spring', bounce: 0.5 }}
-          className="mt-4 p-4 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-xl"
+          className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-orange-200 rounded-xl shadow-md"
         >
           <div className="flex items-center gap-3">
-            <div className="bg-yellow-500/20 rounded-full p-2">
-              <Award className="h-6 w-6 text-yellow-400" />
-            </div>
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 1, repeat: Infinity, repeatDelay: 2 }}
+              className="bg-orange-100 rounded-full p-2"
+            >
+              <Award className="h-6 w-6 text-orange-500" />
+            </motion.div>
             <div>
-              <p className="text-sm font-bold text-yellow-400">
-                🎉 Achievement Unlocked!
+              <p className="text-sm font-bold text-orange-600">
+                Achievement Unlocked!
               </p>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-gray-600">
                 Sei diventato Cliente Premium!
               </p>
             </div>

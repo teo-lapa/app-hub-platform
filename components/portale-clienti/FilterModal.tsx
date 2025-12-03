@@ -21,6 +21,8 @@ interface FilterModalProps {
   onSortChange: (sortBy: string) => void;
   showPurchasedOnly: boolean;
   onPurchasedOnlyChange: (value: boolean) => void;
+  showFavoritesOnly?: boolean;
+  onFavoritesOnlyChange?: (value: boolean) => void;
 }
 
 export function FilterModal({
@@ -35,6 +37,8 @@ export function FilterModal({
   onSortChange,
   showPurchasedOnly,
   onPurchasedOnlyChange,
+  showFavoritesOnly = false,
+  onFavoritesOnlyChange,
 }: FilterModalProps) {
   if (!isOpen) return null;
 
@@ -48,15 +52,20 @@ export function FilterModal({
         onClick={onClose}
       />
 
-      {/* Modal */}
+      {/* Modal - Centered and compact */}
       <div
-        className={`fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 max-h-[85vh] overflow-y-auto ${
-          isOpen ? 'translate-y-0' : 'translate-y-full'
+        className={`fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none ${
+          isOpen ? 'opacity-100' : 'opacity-0'
         }`}
       >
+        <div
+          className={`bg-white rounded-2xl shadow-2xl w-full max-w-sm max-h-[70vh] overflow-y-auto pointer-events-auto transform transition-all duration-300 ${
+            isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+          }`}
+        >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-4 flex items-center justify-between rounded-t-3xl z-10">
-          <h2 className="text-lg font-semibold text-gray-900">Filtri</h2>
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between rounded-t-2xl z-10">
+          <h2 className="text-base font-semibold text-gray-900">Filtri</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-full transition-all active:scale-90"
@@ -78,17 +87,20 @@ export function FilterModal({
             onSortChange={onSortChange}
             showPurchasedOnly={showPurchasedOnly}
             onPurchasedOnlyChange={onPurchasedOnlyChange}
+            showFavoritesOnly={showFavoritesOnly}
+            onFavoritesOnlyChange={onFavoritesOnlyChange}
           />
         </div>
 
         {/* Apply Button */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 safe-area-bottom">
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-3">
           <button
             onClick={onClose}
-            className="w-full py-3 min-h-[48px] bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 active:scale-[0.98] transition-all shadow-lg"
+            className="w-full py-2.5 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 active:scale-[0.98] transition-all shadow-lg text-sm"
           >
             Applica filtri
           </button>
+        </div>
         </div>
       </div>
     </>

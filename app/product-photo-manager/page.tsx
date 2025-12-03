@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Package, Barcode, Tag, Eye, ArrowLeft, Home, X, Sparkles, Wand2, ImageOff } from 'lucide-react';
+import { Search, Package, Barcode, Tag, Eye, ArrowLeft, Home, X, Sparkles, Wand2, ImageOff, Filter, PackageCheck, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { AIImageModal } from '@/components/catalogo-lapa/AIImageModal';
 import { useAppAccess } from '@/hooks/useAppAccess';
@@ -47,6 +47,9 @@ export default function ProductPhotoManagerPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null); // Prodotto selezionato per popup
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Categoria selezionata
   const [showOnlyWithoutPhoto, setShowOnlyWithoutPhoto] = useState(false); // Filtro prodotti senza foto
+  const [showOnlyWithStock, setShowOnlyWithStock] = useState(false); // Filtro prodotti con giacenza
+  const [showOnlyLowQualityPhotos, setShowOnlyLowQualityPhotos] = useState(false); // Filtro foto di bassa qualità
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false); // Pannello filtri espanso
   const [isAIModalOpen, setIsAIModalOpen] = useState(false); // Modal AI
   const [productForAI, setProductForAI] = useState<Product | null>(null); // Prodotto per AI
   const [isMounted, setIsMounted] = useState(false);
@@ -93,12 +96,12 @@ export default function ProductPhotoManagerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, isCacheComplete, hasAccess, accessLoading]);
 
-  // Effetto per il filtro "senza foto"
+  // Effetto per i filtri
   useEffect(() => {
     if (!hasAccess || accessLoading || !isCacheComplete) return;
     searchInCache(searchQuery, 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showOnlyWithoutPhoto]);
+  }, [showOnlyWithoutPhoto, showOnlyWithStock, showOnlyLowQualityPhotos]);
 
   // 🔐 Se accesso negato, mostra schermata di caricamento mentre viene reindirizzato
   if (accessLoading || !hasAccess) {
@@ -234,6 +237,24 @@ export default function ProductPhotoManagerPage() {
       filtered = filtered.filter(p => !p.image_256);
     }
 
+    // Filtro per prodotti con giacenza
+    if (showOnlyWithStock) {
+      filtered = filtered.filter(p => (p.qty_available ?? 0) > 0);
+    }
+
+    // Filtro per foto di bassa qualità (piccole, placeholder, o sospette)
+    if (showOnlyLowQualityPhotos) {
+      filtered = filtered.filter(p => {
+        if (!p.image_256) return false; // Deve avere una foto
+        // Immagini base64 molto corte potrebbero essere placeholder o di bassa qualità
+        // Una foto decente in base64 ha almeno 5000 caratteri circa
+        const isSmallImage = p.image_256.length < 5000;
+        // Controlla se l'immagine sembra essere un placeholder generico (molto piccola)
+        const isTinyImage = p.image_256.length < 2000;
+        return isSmallImage || isTinyImage;
+      });
+    }
+
     // Filtro per categoria se selezionata
     if (selectedCategory) {
       if (selectedCategory === 'SECCO') {
@@ -307,6 +328,16 @@ export default function ProductPhotoManagerPage() {
   };
 
   const totalPages = Math.ceil(totalProducts / productsPerPage);
+
+  // Conta filtri attivi
+  const activeFiltersCount = [showOnlyWithoutPhoto, showOnlyWithStock, showOnlyLowQualityPhotos].filter(Boolean).length;
+
+  // Reset tutti i filtri
+  const resetAllFilters = () => {
+    setShowOnlyWithoutPhoto(false);
+    setShowOnlyWithStock(false);
+    setShowOnlyLowQualityPhotos(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -745,22 +776,94 @@ export default function ProductPhotoManagerPage() {
             </div>
           </div>
 
-          {/* Barra di ricerca SOPRA I PULSANTI */}
+          {/* Pannello filtri espandibile */}
+          {isFiltersOpen && (
+            <div className="px-4 py-3 border-b border-slate-700/50 bg-slate-800/50">
+              <div className="flex flex-wrap gap-2">
+                {/* Filtro Senza Foto */}
+                <button
+                  onClick={() => setShowOnlyWithoutPhoto(!showOnlyWithoutPhoto)}
+                  disabled={!isCacheComplete}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    showOnlyWithoutPhoto
+                      ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
+                      : 'bg-slate-700/80 text-slate-300 border border-slate-600/50 hover:border-orange-500/50 hover:text-white'
+                  } ${!isCacheComplete ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <ImageOff className="h-4 w-4" />
+                  Senza Foto
+                </button>
+
+                {/* Filtro Con Giacenza */}
+                <button
+                  onClick={() => setShowOnlyWithStock(!showOnlyWithStock)}
+                  disabled={!isCacheComplete}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    showOnlyWithStock
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
+                      : 'bg-slate-700/80 text-slate-300 border border-slate-600/50 hover:border-green-500/50 hover:text-white'
+                  } ${!isCacheComplete ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <PackageCheck className="h-4 w-4" />
+                  Con Giacenza
+                </button>
+
+                {/* Filtro Foto da Migliorare */}
+                <button
+                  onClick={() => setShowOnlyLowQualityPhotos(!showOnlyLowQualityPhotos)}
+                  disabled={!isCacheComplete}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    showOnlyLowQualityPhotos
+                      ? 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white shadow-lg'
+                      : 'bg-slate-700/80 text-slate-300 border border-slate-600/50 hover:border-yellow-500/50 hover:text-white'
+                  } ${!isCacheComplete ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title="Mostra prodotti con foto di bassa qualità o placeholder"
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  Foto da Migliorare
+                </button>
+
+                {/* Reset filtri */}
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={resetAllFilters}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all"
+                  >
+                    <X className="h-4 w-4" />
+                    Reset ({activeFiltersCount})
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Barra di ricerca e pulsante filtri */}
           <div className="px-4 py-3">
             <div className="flex gap-2 items-center">
-              {/* Pulsante filtro "Senza Foto" */}
+              {/* Pulsante Filtri */}
               <button
-                onClick={() => setShowOnlyWithoutPhoto(!showOnlyWithoutPhoto)}
+                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                 disabled={!isCacheComplete}
-                className={`flex items-center gap-2 px-4 py-3 min-h-[48px] rounded-xl font-medium transition-all whitespace-nowrap ${
-                  showOnlyWithoutPhoto
-                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
-                    : 'bg-slate-800/80 text-slate-300 border border-slate-600/50 hover:border-orange-500/50 hover:text-white'
+                className={`flex items-center gap-2 px-4 py-3 min-h-[48px] rounded-xl font-medium transition-all whitespace-nowrap relative ${
+                  isFiltersOpen || activeFiltersCount > 0
+                    ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-800/80 text-slate-300 border border-slate-600/50 hover:border-purple-500/50 hover:text-white'
                 } ${!isCacheComplete ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title={isCacheComplete ? 'Mostra solo prodotti senza foto' : 'Attendi caricamento cache...'}
+                title={isCacheComplete ? 'Apri pannello filtri' : 'Attendi caricamento cache...'}
               >
-                <ImageOff className="h-5 w-5" />
-                <span className="hidden sm:inline">Senza Foto</span>
+                <Filter className="h-5 w-5" />
+                <span className="hidden sm:inline">Filtri</span>
+                {isFiltersOpen ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronUp className="h-4 w-4" />
+                )}
+                {/* Badge contatore filtri attivi */}
+                {activeFiltersCount > 0 && !isFiltersOpen && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {activeFiltersCount}
+                  </span>
+                )}
               </button>
 
               {/* Campo di ricerca */}

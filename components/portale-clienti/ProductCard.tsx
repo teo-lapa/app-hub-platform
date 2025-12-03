@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ShoppingCart, Package, AlertCircle, Tag, Bell, X } from 'lucide-react';
+import { ShoppingCart, Package, AlertCircle, Tag, Bell, X, Star } from 'lucide-react';
 import { ProductReservationModal, ReservationData } from './ProductReservationModal';
 import toast from 'react-hot-toast';
 
@@ -25,15 +25,31 @@ interface ProductCardProps {
   product: Product;
   onAddToCart: (productId: number, quantity: number) => void;
   cartQuantity?: number; // Quantità già nel carrello
+  isFavorite?: boolean; // Se il prodotto è nei preferiti
+  onToggleFavorite?: (productId: number) => void; // Callback per toggle preferito
 }
 
-export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductCardProps) {
+export function ProductCard({ product, onAddToCart, cartQuantity = 0, isFavorite = false, onToggleFavorite }: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [showQuantitySelector, setShowQuantitySelector] = useState(false);
   const isInCart = cartQuantity > 0;
+
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent opening detail modal
+    if (!onToggleFavorite || isTogglingFavorite) return;
+
+    setIsTogglingFavorite(true);
+    try {
+      await onToggleFavorite(product.id);
+    } finally {
+      setIsTogglingFavorite(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -44,6 +60,7 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductC
     try {
       await onAddToCart(product.id, quantity);
       setQuantity(1); // Reset quantity after adding
+      setShowQuantitySelector(false); // Hide selector after adding
     } finally {
       setIsAdding(false);
     }
@@ -272,7 +289,27 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductC
         )}
 
         {/* Badge disponibilità piccolo - STILE CATALOGO LAPA */}
-        <div className="absolute top-1.5 right-1.5">
+        <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
+          {/* Stellina Preferito */}
+          {onToggleFavorite && (
+            <button
+              onClick={handleToggleFavorite}
+              disabled={isTogglingFavorite}
+              className={`p-0.5 transition-all duration-200 ${
+                isTogglingFavorite ? 'opacity-50' : ''
+              }`}
+              aria-label={isFavorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+            >
+              <Star
+                className={`h-5 w-5 transition-colors ${
+                  isFavorite
+                    ? 'text-yellow-400 fill-yellow-400 drop-shadow-md'
+                    : 'text-slate-800 fill-white/80 hover:fill-yellow-400 hover:text-yellow-500'
+                }`}
+                strokeWidth={2}
+              />
+            </button>
+          )}
           <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium ${
             product.available
               ? 'bg-green-500/90 text-white'
@@ -284,116 +321,132 @@ export function ProductCard({ product, onAddToCart, cartQuantity = 0 }: ProductC
 
         {/* Badge prezzo speciale se presente */}
         {product.hasCustomPrice && (
-          <div className="absolute bottom-1.5 left-1.5">
+          <div className="absolute bottom-8 left-1.5">
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-blue-500/90 text-white">
               <Tag className="h-2.5 w-2.5" />
               Offerta
             </span>
           </div>
         )}
+
+        {/* Nome prodotto overlay in basso */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-2 pt-6">
+          <h3 className="text-[11px] font-semibold text-white line-clamp-2 leading-tight drop-shadow-md">
+            {product.name}
+          </h3>
+        </div>
       </div>
 
       {/* Contenuto card */}
       <div className="p-2">
-        <h3 className="text-xs font-semibold text-white mb-1 line-clamp-2 leading-tight group-hover:text-emerald-400 transition-colors">
-          {product.name}
-        </h3>
-
         {/* Codice prodotto */}
         {product.code && (
-          <div className="text-slate-400 text-[10px] mb-1 truncate">
+          <div className="text-slate-400 text-[10px] mb-1.5 truncate">
             {product.code}
           </div>
         )}
 
-        {/* Footer card */}
-        <div className="pt-1.5 mt-1 border-t border-slate-600/50 space-y-1">
-          {/* Prezzo e Unità */}
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-sm font-bold text-emerald-400">
-                {formatPrice(product.price)}
+        {/* Prezzo, Unità e Disponibilità */}
+        <div className="flex items-center justify-between flex-wrap gap-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-bold text-emerald-400">
+              {formatPrice(product.price)}
+            </span>
+            {product.hasCustomPrice && product.originalPrice > product.price && (
+              <span className="text-[9px] text-slate-500 line-through">
+                {formatPrice(product.originalPrice)}
               </span>
-              {product.hasCustomPrice && product.originalPrice > product.price && (
-                <span className="text-[9px] text-slate-500 line-through ml-1">
-                  {formatPrice(product.originalPrice)}
-                </span>
-              )}
-            </div>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
             {/* Badge Unità di misura */}
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
               {product.unit}
             </span>
-          </div>
-
-          {/* Quantità disponibile */}
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-slate-400">Disponibili:</span>
-            <span className={`font-semibold ${
-              product.available ? 'text-green-400' : 'text-red-400'
+            {/* Disponibilità con colore visibile */}
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold ${
+              product.available
+                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                : 'bg-red-500/20 text-red-400 border border-red-500/30'
             }`}>
               {product.quantity}
             </span>
           </div>
         </div>
 
-        {/* Sezione Add to Cart - MANTIENE FUNZIONALITÀ E-COMMERCE */}
+        {/* Sezione Add to Cart */}
         {product.available ? (
-          <div className="mt-2 pt-2 border-t border-slate-600/50 space-y-2">
-            {/* Quantity Selector */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="px-3 py-2 min-h-[44px] bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
-                aria-label="Diminuisci quantita"
-              >
-                -
-              </button>
-              <input
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="flex-1 text-center bg-slate-700 text-white text-sm py-2 min-h-[44px] rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                min="1"
-                max={product.quantity}
-              />
-              <button
-                onClick={() => setQuantity(Math.min(product.quantity, quantity + 1))}
-                className="px-3 py-2 min-h-[44px] bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
-                aria-label="Aumenta quantita"
-              >
-                +
-              </button>
-            </div>
+          <div className="mt-2 pt-2 border-t border-slate-600/50">
+            {showQuantitySelector ? (
+              <div className="space-y-2">
+                {/* Quantity Selector */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
+                    aria-label="Diminuisci quantita"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="flex-1 text-center bg-slate-700 text-white text-sm py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-0"
+                    min="1"
+                    max={product.quantity}
+                  />
+                  <button
+                    onClick={() => setQuantity(Math.min(product.quantity, quantity + 1))}
+                    className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
+                    aria-label="Aumenta quantita"
+                  >
+                    +
+                  </button>
+                </div>
 
-            {/* Add to Cart Button */}
-            <button
-              onClick={handleAddToCart}
-              disabled={isAdding}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                isInCart
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white'
-                  : 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white'
-              }`}
-              aria-label={isInCart ? 'Già nel carrello' : 'Aggiungi al carrello'}
-            >
-              <ShoppingCart className="h-4 w-4" />
-              {isAdding
-                ? 'Aggiunta...'
-                : isInCart
-                  ? `Nel carrello (${cartQuantity})`
-                  : 'Aggiungi al Carrello'
-              }
-            </button>
+                {/* Confirm & Cancel buttons */}
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => {
+                      setShowQuantitySelector(false);
+                      setQuantity(1);
+                    }}
+                    className="flex-1 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-medium rounded-lg transition-colors"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={isAdding}
+                    className="flex-1 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {isAdding ? '...' : 'Conferma'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowQuantitySelector(true)}
+                className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  isInCart
+                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30'
+                    : 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                }`}
+              >
+                <ShoppingCart className="h-3.5 w-3.5" />
+                {isInCart ? `In carrello (${cartQuantity})` : '+ Carrello'}
+              </button>
+            )}
           </div>
         ) : (
           <div className="mt-2 pt-2 border-t border-slate-600/50">
             <button
               onClick={() => setIsReservationModalOpen(true)}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-[0.98]"
             >
-              <Bell className="h-4 w-4" />
-              Prenota Prodotto
+              <Bell className="h-3.5 w-3.5" />
+              Prenota
             </button>
           </div>
         )}

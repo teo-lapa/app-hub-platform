@@ -109,7 +109,8 @@ export function CartItemCard({
           dragElastic={0.2}
           onDragEnd={handleDragEnd}
           style={{ x, opacity }}
-          className={`bg-gradient-to-br from-slate-800/60 to-slate-900/60 backdrop-blur-sm rounded-xl border border-slate-600/50 overflow-hidden transition-all duration-300 ${
+          whileHover={{ scale: 1.01, boxShadow: "0 10px 40px rgba(0,0,0,0.08)" }}
+          className={`bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-200 overflow-hidden transition-all duration-300 shadow-lg ${
             isRemoving ? 'opacity-50 pointer-events-none' : ''
           }`}
         >
@@ -118,20 +119,21 @@ export function CartItemCard({
               {/* Product Image - Show only if available */}
               {item.image !== '/placeholder-product.png' && (
                 <motion.div
-                  whileHover={{ scale: 1.05, rotate: 2 }}
-                  className="relative w-24 h-24 rounded-lg bg-slate-700/30 flex-shrink-0 overflow-hidden"
+                  whileHover={{ scale: 1.05 }}
+                  className="relative w-20 h-20 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 flex-shrink-0 overflow-hidden border border-gray-100"
                 >
                   <img
                     src={item.image}
                     alt={item.productName}
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain p-1"
                   />
 
                   {/* Quantity Badge */}
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute -top-2 -right-2 bg-gradient-to-br from-emerald-500 to-blue-500 text-white text-xs font-bold rounded-full h-7 w-7 flex items-center justify-center shadow-lg border-2 border-slate-900"
+                    whileHover={{ scale: 1.1 }}
+                    className="absolute -top-2 -right-2 bg-gradient-to-br from-red-500 to-orange-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center shadow-md"
                   >
                     {item.quantity}
                   </motion.div>
@@ -142,16 +144,16 @@ export function CartItemCard({
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2 leading-tight">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2 leading-tight">
                       {item.productName}
                     </h3>
                     {item.productCode && (
-                      <p className="text-xs text-slate-400 mb-2 truncate">
+                      <p className="text-xs text-gray-400 mb-2 truncate">
                         {item.productCode}
                       </p>
                     )}
                     {item.category && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-600 border border-orange-200">
                         {item.category.split('/')[0].trim()}
                       </span>
                     )}
@@ -159,10 +161,10 @@ export function CartItemCard({
 
                   {/* Desktop Delete Button */}
                   <motion.button
-                    whileHover={{ scale: 1.1, rotate: 10 }}
+                    whileHover={{ scale: 1.1, rotate: 10, backgroundColor: 'rgba(239, 68, 68, 0.2)' }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => setShowConfirmDelete(true)}
-                    className="hidden md:flex items-center justify-center min-w-[48px] min-h-[48px] p-3 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                    className="hidden md:flex items-center justify-center min-w-[44px] min-h-[44px] p-2.5 rounded-xl bg-red-50 text-red-500 hover:text-red-600 transition-colors"
                     aria-label="Rimuovi prodotto"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -181,20 +183,16 @@ export function CartItemCard({
                         pattern="[0-9]*"
                         value={localQuantity}
                         onChange={(e) => {
-                          // Allow free typing - just update local state
                           setLocalQuantity(e.target.value);
                         }}
                         onBlur={async (e) => {
-                          // On blur, validate and update
                           const value = e.target.value.trim();
                           let newQty = parseInt(value);
 
-                          // Handle invalid input
                           if (isNaN(newQty) || value === '') {
                             newQty = item.quantity;
                           }
 
-                          // Clamp to valid range
                           if (newQty < 1) {
                             newQty = 1;
                           } else if (newQty > item.maxQuantity) {
@@ -202,17 +200,14 @@ export function CartItemCard({
                             toast.error(`Massimo ${item.maxQuantity} unità disponibili`);
                           }
 
-                          // Update local state
                           setLocalQuantity(newQty.toString());
 
-                          // Only call API if quantity actually changed
                           if (newQty !== item.quantity) {
                             setIsUpdating(true);
                             try {
                               await onUpdateQuantity(item.id, newQty);
                             } catch (error: any) {
                               toast.error(error.message || 'Errore aggiornamento');
-                              // Revert to original quantity on error
                               setLocalQuantity(item.quantity.toString());
                             } finally {
                               setIsUpdating(false);
@@ -220,7 +215,6 @@ export function CartItemCard({
                           }
                         }}
                         onKeyDown={(e) => {
-                          // Submit on Enter key
                           if (e.key === 'Enter') {
                             e.currentTarget.blur();
                           }
@@ -229,9 +223,9 @@ export function CartItemCard({
                         disabled={isUpdating}
                         min="1"
                         max={item.maxQuantity}
-                        className="w-24 text-center text-lg font-bold text-white bg-slate-700 hover:bg-slate-600 border-2 border-slate-600 hover:border-emerald-500 rounded-lg px-3 py-3 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all disabled:opacity-50"
+                        className="w-20 text-center text-base font-bold text-gray-900 bg-gray-50 hover:bg-white border-2 border-gray-200 hover:border-red-400 rounded-xl px-2 py-2.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all disabled:opacity-50"
                       />
-                      <span className="text-sm text-slate-400 font-medium">
+                      <span className="text-sm text-gray-500 font-medium">
                         {item.unit}
                       </span>
                     </div>
@@ -239,8 +233,8 @@ export function CartItemCard({
                     {/* Cartone Button (if packaging available) */}
                     {item.packagingQty && item.packagingQty > 0 && (
                       <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={{ scale: 1.03, boxShadow: "0 4px 15px rgba(249, 115, 22, 0.3)" }}
+                        whileTap={{ scale: 0.97 }}
                         onClick={async () => {
                           const cartoniQty = Math.floor(item.quantity / item.packagingQty!);
                           const newCartoni = cartoniQty + 1;
@@ -260,7 +254,7 @@ export function CartItemCard({
                           }
                         }}
                         disabled={isUpdating}
-                        className="px-3 py-2 min-h-[44px] bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                        className="px-3 py-2 min-h-[40px] bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 shadow-md"
                       >
                         <span>+ {item.packagingName || 'Cartone'}</span>
                         <span className="text-[10px] opacity-80">({item.packagingQty} {item.unit})</span>
@@ -270,15 +264,15 @@ export function CartItemCard({
 
                   {/* Price */}
                   <div className="text-right">
-                    <div className="text-xs text-slate-400 mb-0.5">
+                    <div className="text-xs text-gray-400 mb-0.5">
                       {formatPrice(item.price)} × {item.quantity}
                     </div>
                     <motion.div
                       key={itemTotal}
-                      initial={{ scale: 1.2, color: '#10b981' }}
-                      animate={{ scale: 1, color: '#fbbf24' }}
+                      initial={{ scale: 1.2, color: '#ef4444' }}
+                      animate={{ scale: 1, color: '#ea580c' }}
                       transition={{ duration: 0.3 }}
-                      className="text-lg font-bold text-yellow-400"
+                      className="text-lg font-bold text-orange-600"
                     >
                       {formatPrice(itemTotal)}
                     </motion.div>
@@ -290,7 +284,7 @@ export function CartItemCard({
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-2 flex items-center gap-1.5 text-xs text-yellow-400"
+                    className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-lg"
                   >
                     <AlertTriangle className="h-3.5 w-3.5" />
                     <span>Disponibilità limitata: max {item.maxQuantity}</span>
@@ -302,7 +296,7 @@ export function CartItemCard({
 
           {/* Mobile: Swipe hint */}
           <div className="md:hidden px-4 pb-2">
-            <p className="text-xs text-slate-500 text-center">
+            <p className="text-xs text-gray-400 text-center">
               ← Scorri per eliminare
             </p>
           </div>
@@ -315,7 +309,7 @@ export function CartItemCard({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setShowConfirmDelete(false)}
         >
           <motion.div
@@ -323,21 +317,25 @@ export function CartItemCard({
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.9, y: 20 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 max-w-sm w-full border border-red-500/30 shadow-2xl"
+            className="bg-white rounded-2xl p-6 max-w-sm w-full border border-gray-200 shadow-2xl"
           >
-            <div className="flex items-center justify-center mb-4">
-              <div className="bg-red-500/20 rounded-full p-3">
-                <Trash2 className="h-8 w-8 text-red-400" />
+            <motion.div
+              className="flex items-center justify-center mb-4"
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            >
+              <div className="bg-red-100 rounded-full p-3">
+                <Trash2 className="h-8 w-8 text-red-500" />
               </div>
-            </div>
+            </motion.div>
 
-            <h3 className="text-xl font-bold text-white text-center mb-2">
+            <h3 className="text-xl font-bold text-gray-900 text-center mb-2">
               Rimuovere prodotto?
             </h3>
 
-            <p className="text-slate-400 text-center mb-6">
+            <p className="text-gray-500 text-center mb-6">
               Sei sicuro di voler rimuovere{' '}
-              <span className="text-white font-semibold">
+              <span className="text-gray-900 font-semibold">
                 {item.productName}
               </span>{' '}
               dal carrello?
@@ -348,17 +346,17 @@ export function CartItemCard({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowConfirmDelete(false)}
-                className="flex-1 px-4 py-4 min-h-[48px] bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors"
+                className="flex-1 px-4 py-3.5 min-h-[48px] bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors"
               >
                 Annulla
               </motion.button>
 
               <motion.button
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, boxShadow: "0 10px 25px rgba(239, 68, 68, 0.3)" }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleRemove}
                 disabled={isRemoving}
-                className="flex-1 px-4 py-4 min-h-[48px] bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all disabled:opacity-50"
+                className="flex-1 px-4 py-3.5 min-h-[48px] bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-medium transition-all disabled:opacity-50 shadow-lg"
               >
                 {isRemoving ? 'Rimozione...' : 'Rimuovi'}
               </motion.button>
