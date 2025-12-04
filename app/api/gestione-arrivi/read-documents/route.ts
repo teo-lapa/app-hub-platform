@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
     console.log(`🤖 Chiamata Gemini 2.5 Flash con ${parts.length} documenti...`);
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-preview-05-20',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0,
         responseMimeType: 'application/json'
