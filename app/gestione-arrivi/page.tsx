@@ -151,6 +151,8 @@ export default function GestioneArriviPage() {
             expiry_date: line.expiry_date
           })),
           attachment_ids: arrival.attachments?.map((a: any) => a.id) || [],
+          // Passa la risposta grezza di Gemini per salvarla sul P.O.
+          raw_gemini_response: readData.documents?.[0]?.raw_response || null,
           skip_validation: false,
           skip_invoice: false
         })

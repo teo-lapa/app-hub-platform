@@ -46,6 +46,7 @@ interface OdooMoveLine {
  * 5. Mette a zero le righe non matchate
  * 6. (Opzionale) Valida il picking
  * 7. (Opzionale) Crea la fattura bozza
+ * 8. Salva JSON trascrizione sul Purchase Order
  */
 export async function POST(request: NextRequest) {
   try {
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
       skip_validation,      // Se true, non validare il picking
       skip_invoice,         // Se true, non creare la fattura
       attachment_ids,       // IDs degli allegati da collegare alla fattura
+      raw_gemini_response,  // JSON grezzo da Gemini (per salvare sul P.O.)
     } = body;
 
     if (!picking_id) {
@@ -93,6 +95,53 @@ export async function POST(request: NextRequest) {
     const picking = pickings[0];
     const supplierId = picking.partner_id?.[0];
     console.log(`📋 Picking: ${picking.name}, Stato: ${picking.state}, Fornitore ID: ${supplierId}`);
+
+    // ===== Trova il Purchase Order ID dal picking.origin =====
+    let purchaseOrderId: number | null = null;
+    let purchaseOrderName: string | null = null;
+
+    if (picking.origin) {
+      const pos = await callOdoo(cookies, 'purchase.order', 'search_read', [
+        [['name', '=', picking.origin]],
+        ['id', 'name']
+      ]);
+
+      if (pos && pos.length > 0) {
+        purchaseOrderId = pos[0].id;
+        purchaseOrderName = pos[0].name;
+        console.log(`📦 Purchase Order trovato: ${purchaseOrderName} (ID: ${purchaseOrderId})`);
+      }
+    }
+
+    // ===== Salva JSON trascrizione sul Purchase Order =====
+    if (purchaseOrderId && raw_gemini_response) {
+      console.log('💾 Salvando JSON trascrizione sul P.O....');
+
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[:.]/g, '-').substring(0, 19);
+      const jsonFilename = `trascrizione_documenti_${timestamp}.json`;
+
+      const jsonContent = JSON.stringify({
+        timestamp: now.toISOString(),
+        picking_id: picking_id,
+        picking_name: picking.name,
+        purchase_order: purchaseOrderName,
+        parsed_products: parsed_products,
+        raw_response: raw_gemini_response
+      }, null, 2);
+
+      const base64Json = Buffer.from(jsonContent).toString('base64');
+
+      await callOdoo(cookies, 'ir.attachment', 'create', [{
+        name: jsonFilename,
+        datas: base64Json,
+        mimetype: 'application/json',
+        res_model: 'purchase.order',
+        res_id: purchaseOrderId,
+      }]);
+
+      console.log(`✅ JSON trascrizione salvato: ${jsonFilename}`);
+    }
 
     // Se già completato, salta
     if (picking.state === 'done') {
@@ -477,11 +526,16 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
           results.warnings.push('Fattura bozza già esistente');
           console.log(`⚠️ Fattura già esistente: ${existingInvoices[0].name}`);
         } else {
+          // Crea fattura collegata al Purchase Order
           const invoiceData: any = {
             move_type: 'in_invoice',
             partner_id: supplierId,
             invoice_origin: picking.origin || picking.name,
           };
+
+          // Se abbiamo il P.O. ID, colleghiamo la fattura direttamente
+          // Nota: In Odoo, la fattura fornitore si collega al P.O. tramite invoice_origin
+          // e le righe si collegano tramite purchase_line_id sulle account.move.line
 
           invoiceId = await callOdoo(
             cookies,
@@ -499,28 +553,53 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
           console.log(`✅ Fattura creata: ${invoiceName}`);
         }
 
-        // Allega i documenti alla fattura
+        // Allega SOLO i documenti che sono fatture (non DDT o altri allegati)
         if (invoiceId && attachment_ids && attachment_ids.length > 0) {
-          console.log(`📎 Allegando ${attachment_ids.length} documenti...`);
+          console.log(`📎 Cercando fatture tra ${attachment_ids.length} allegati...`);
 
-          for (const attId of attachment_ids) {
+          // Leggi tutti gli allegati per filtrare solo le fatture
+          const allAttachments = await callOdoo(cookies, 'ir.attachment', 'read', [
+            attachment_ids,
+            ['id', 'name', 'datas', 'mimetype']
+          ]);
+
+          // Filtra solo i file che sembrano fatture (per nome)
+          const invoiceAttachments = allAttachments.filter((att: any) => {
+            const lowerName = att.name.toLowerCase();
+            return lowerName.includes('fattura') ||
+                   lowerName.includes('fatt') ||
+                   lowerName.includes('invoice') ||
+                   lowerName.includes('inv_') ||
+                   lowerName.includes('inv-') ||
+                   // Se c'è solo un PDF, è probabilmente la fattura
+                   (allAttachments.length === 1 && att.mimetype === 'application/pdf');
+          });
+
+          if (invoiceAttachments.length === 0 && allAttachments.length > 0) {
+            // Se non troviamo fatture per nome, cerca PDF (più probabile che sia fattura)
+            const pdfAttachments = allAttachments.filter((att: any) =>
+              att.mimetype === 'application/pdf'
+            );
+            if (pdfAttachments.length > 0) {
+              invoiceAttachments.push(pdfAttachments[0]); // Prendi solo il primo PDF
+              console.log(`📄 Nessun file "fattura" trovato, uso primo PDF: ${pdfAttachments[0].name}`);
+            }
+          }
+
+          console.log(`📄 Fatture da allegare: ${invoiceAttachments.length} su ${allAttachments.length} totali`);
+
+          for (const attachment of invoiceAttachments) {
             try {
-              const attachment = await callOdoo(cookies, 'ir.attachment', 'read', [
-                [attId],
-                ['name', 'datas', 'mimetype']
-              ]);
-
-              if (attachment && attachment.length > 0) {
-                await callOdoo(cookies, 'ir.attachment', 'create', [{
-                  name: attachment[0].name,
-                  datas: attachment[0].datas,
-                  mimetype: attachment[0].mimetype,
-                  res_model: 'account.move',
-                  res_id: invoiceId,
-                }]);
-              }
+              await callOdoo(cookies, 'ir.attachment', 'create', [{
+                name: attachment.name,
+                datas: attachment.datas,
+                mimetype: attachment.mimetype,
+                res_model: 'account.move',
+                res_id: invoiceId,
+              }]);
+              console.log(`  ✅ Allegato: ${attachment.name}`);
             } catch (e: any) {
-              results.warnings.push(`Errore allegato ${attId}: ${e.message}`);
+              results.warnings.push(`Errore allegato ${attachment.name}: ${e.message}`);
             }
           }
         }
