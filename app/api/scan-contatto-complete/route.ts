@@ -1039,6 +1039,100 @@ Rispondi con JSON:
       }
 
       // ============================================
+      // STEP 3.45: LOGO AZIENDALE (scarica dal sito web)
+      // ============================================
+      if (partnerId && contactType === 'company') {
+        const websiteUrl = finalData.website || webSearchData?.website;
+
+        if (websiteUrl) {
+          console.log(`[Step 3.45] Fetching company logo from: ${websiteUrl}`);
+
+          try {
+            const { writeOdoo } = await import('@/lib/odoo/odoo-helper');
+
+            // Normalizza URL
+            let normalizedUrl = websiteUrl.trim();
+            if (!normalizedUrl.startsWith('http')) {
+              normalizedUrl = 'https://' + normalizedUrl;
+            }
+
+            const baseUrl = new URL(normalizedUrl);
+            const domain = baseUrl.hostname;
+            const protocol = baseUrl.protocol;
+
+            // Pattern comuni per i logo
+            const logoPatterns = [
+              // Favicon (più affidabile)
+              `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+              // Logo diretti
+              `${protocol}//${domain}/logo.png`,
+              `${protocol}//${domain}/logo.jpg`,
+              `${protocol}//${domain}/logo.svg`,
+              `${protocol}//${domain}/images/logo.png`,
+              `${protocol}//${domain}/assets/logo.png`,
+              `${protocol}//${domain}/img/logo.png`,
+              `${protocol}//${domain}/static/logo.png`,
+              // Favicon locale
+              `${protocol}//${domain}/favicon.ico`,
+              `${protocol}//${domain}/favicon.png`,
+            ];
+
+            let logoBase64: string | null = null;
+
+            for (const logoUrl of logoPatterns) {
+              try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 5000);
+
+                const response = await fetch(logoUrl, {
+                  signal: controller.signal,
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; LapaBot/1.0)'
+                  }
+                });
+                clearTimeout(timeout);
+
+                if (response.ok) {
+                  const contentType = response.headers.get('content-type') || '';
+
+                  // Verifica che sia un'immagine
+                  if (contentType.includes('image') || logoUrl.includes('favicon')) {
+                    const buffer = await response.arrayBuffer();
+
+                    // Verifica dimensione (max 500KB)
+                    if (buffer.byteLength > 0 && buffer.byteLength < 500 * 1024) {
+                      logoBase64 = Buffer.from(buffer).toString('base64');
+                      console.log(`[Step 3.45] ✓ Found logo at: ${logoUrl} (${buffer.byteLength} bytes)`);
+                      break;
+                    }
+                  }
+                }
+              } catch (fetchError) {
+                // Continua con il prossimo pattern
+                continue;
+              }
+            }
+
+            // Se trovato un logo, caricalo su Odoo
+            if (logoBase64) {
+              await writeOdoo('res.partner', [partnerId], {
+                image_1920: logoBase64
+              });
+              console.log('[Step 3.45] ✓ Logo uploaded to partner');
+            } else {
+              console.log('[Step 3.45] ⊘ No logo found, skipping');
+            }
+
+          } catch (logoError: any) {
+            console.warn('[Step 3.45] ⚠ Logo fetch error:', logoError.message);
+            // Non aggiungere warning - il logo è opzionale
+          }
+        } else {
+          console.log('[Step 3.45] ⊘ No website URL available for logo fetch');
+        }
+      }
+
+      // ============================================
       // STEP 3.5: INVIA INFO GOOGLE SEARCH AL CHATTER
       // ============================================
       if (webSearchData?.found && partnerId) {
