@@ -594,14 +594,28 @@ Rispondi con JSON:
       // NUOVO: Posizione Fiscale (Svizzera/Liechtenstein)
       // ============================================
       try {
-        // Per clienti svizzeri con partita IVA, cerca posizione fiscale appropriata
-        const fiscalPositions = await searchReadOdoo('account.fiscal.position', [
-          ['country_id', '=', 43] // Svizzera
+        // Cerca posizione fiscale "Svizzera" o "Switzerland" o "Liechtenstein"
+        // Prima prova con nome specifico
+        let fiscalPositions = await searchReadOdoo('account.fiscal.position', [
+          '|', '|', '|',
+          ['name', 'ilike', 'svizzera'],
+          ['name', 'ilike', 'switzerland'],
+          ['name', 'ilike', 'schweiz'],
+          ['name', 'ilike', 'liechtenstein']
         ], ['id', 'name'], 1);
+
+        // Se non trova, prova a cercare quella di default o la prima attiva
+        if (!fiscalPositions || fiscalPositions.length === 0) {
+          fiscalPositions = await searchReadOdoo('account.fiscal.position', [
+            ['active', '=', true]
+          ], ['id', 'name'], 1);
+        }
 
         if (fiscalPositions && fiscalPositions.length > 0) {
           partnerData.property_account_position_id = fiscalPositions[0].id;
-          console.log(`[Fiscal] Assigned fiscal position: ${fiscalPositions[0].name}`);
+          console.log(`[Fiscal] Assigned fiscal position: ${fiscalPositions[0].name} (ID: ${fiscalPositions[0].id})`);
+        } else {
+          console.log('[Fiscal] No fiscal position found');
         }
       } catch (fiscalError) {
         console.warn('[Fiscal] Could not assign fiscal position:', fiscalError);
@@ -682,15 +696,44 @@ Rispondi con JSON:
 
           // Cerca il settore in Odoo
           if (matchedIndustry) {
-            const industries = await searchReadOdoo('res.partner.industry', [
+            // Cerca con nome esatto o simile
+            let industries = await searchReadOdoo('res.partner.industry', [
               ['name', 'ilike', matchedIndustry]
             ], ['id', 'name'], 1);
 
+            // Se non trova, prova a cercare parole chiave più generiche
+            if (!industries || industries.length === 0) {
+              const genericTerms: Record<string, string[]> = {
+                'Food Services': ['food', 'restaurant', 'gastro', 'catering', 'horeca'],
+                'Hotels': ['hotel', 'hospitality', 'lodging'],
+                'Retail': ['retail', 'commerce', 'trade', 'shop'],
+                'Wholesale': ['wholesale', 'distribution', 'import', 'export']
+              };
+
+              const terms = genericTerms[matchedIndustry] || [];
+              for (const term of terms) {
+                industries = await searchReadOdoo('res.partner.industry', [
+                  ['name', 'ilike', term]
+                ], ['id', 'name'], 1);
+                if (industries && industries.length > 0) break;
+              }
+            }
+
             if (industries && industries.length > 0) {
               partnerData.industry_id = industries[0].id;
-              console.log(`[Industry] Assigned industry: ${industries[0].name}`);
+              console.log(`[Industry] Assigned industry: ${industries[0].name} (ID: ${industries[0].id})`);
             } else {
-              console.log(`[Industry] Industry "${matchedIndustry}" not found in Odoo, skipping`);
+              // Prova a creare il settore se non esiste
+              try {
+                const newIndustryId = await createOdoo('res.partner.industry', {
+                  name: matchedIndustry,
+                  active: true
+                });
+                partnerData.industry_id = newIndustryId;
+                console.log(`[Industry] Created new industry: ${matchedIndustry} (ID: ${newIndustryId})`);
+              } catch (createError) {
+                console.log(`[Industry] Industry "${matchedIndustry}" not found and could not create`);
+              }
             }
           }
         } catch (industryError) {
@@ -805,47 +848,47 @@ Rispondi con JSON:
           // Basata sui GIRO esistenti nel sistema
           const DELIVERY_ZONES: Record<string, { keywords: string[], zipRanges?: [number, number][] }> = {
             'GIRO ZURIGO CENTRO': {
-              keywords: ['zürich', 'zurich', 'zuerich'],
-              zipRanges: [[8000, 8099]]
+              keywords: ['zürich', 'zurich', 'zuerich', 'opfikon', 'kloten', 'bachenbülach', 'bülach', 'regensdorf', 'rümlang', 'embrach', 'niederglatt'],
+              zipRanges: [[8000, 8099], [8152, 8197], [8180, 8189]] // Include Zurigo e dintorni nord
             },
             'GIRO ZURIGO EST': {
-              keywords: ['dübendorf', 'wallisellen', 'dietlikon', 'uster', 'wetzikon'],
-              zipRanges: [[8600, 8699], [8610, 8620]]
+              keywords: ['dübendorf', 'wallisellen', 'dietlikon', 'uster', 'wetzikon', 'volketswil', 'fällanden'],
+              zipRanges: [[8600, 8699], [8117, 8135]] // Zurigo est
             },
             'GIRO LAGO SUD': {
-              keywords: ['thalwil', 'horgen', 'wädenswil', 'richterswil', 'lachen', 'rapperswil', 'jona'],
-              zipRanges: [[8800, 8899], [8640, 8645], [8853, 8858]]
+              keywords: ['thalwil', 'horgen', 'wädenswil', 'richterswil', 'lachen', 'rapperswil', 'jona', 'meilen', 'küsnacht', 'zollikon'],
+              zipRanges: [[8700, 8799], [8800, 8899], [8640, 8645], [8853, 8858]]
             },
             'GIRO TURGOVIA-SANGALLO': {
-              keywords: ['winterthur', 'frauenfeld', 'st. gallen', 'st.gallen', 'san gallo', 'wil', 'kreuzlingen'],
-              zipRanges: [[8400, 8499], [8500, 8599], [9000, 9099], [9200, 9299]]
+              keywords: ['winterthur', 'frauenfeld', 'st. gallen', 'st.gallen', 'san gallo', 'wil', 'kreuzlingen', 'arbon', 'romanshorn'],
+              zipRanges: [[8400, 8499], [8500, 8599], [9000, 9499]] // Turgovia e San Gallo
             },
             'GIRO ARGOVIA': {
-              keywords: ['baden', 'aarau', 'brugg', 'lenzburg', 'zofingen', 'wohlen'],
-              zipRanges: [[5000, 5099], [5200, 5299], [5400, 5499], [5600, 5699]]
+              keywords: ['baden', 'aarau', 'brugg', 'lenzburg', 'zofingen', 'wohlen', 'spreitenbach', 'wettingen'],
+              zipRanges: [[5000, 5099], [5200, 5499], [5600, 5699], [8953, 8957]] // Argovia completa
             },
             'GIRO GINEVRA': {
-              keywords: ['genève', 'geneva', 'genf', 'carouge', 'vernier', 'lancy'],
+              keywords: ['genève', 'geneva', 'genf', 'carouge', 'vernier', 'lancy', 'meyrin', 'onex'],
               zipRanges: [[1200, 1299]]
             },
             'GIRO LOSANNA': {
-              keywords: ['lausanne', 'vevey', 'montreux', 'nyon', 'morges', 'renens'],
+              keywords: ['lausanne', 'vevey', 'montreux', 'nyon', 'morges', 'renens', 'pully', 'lutry'],
               zipRanges: [[1000, 1199], [1800, 1899]]
             },
             'GIRO LUCERNA': {
-              keywords: ['luzern', 'lucerne', 'lucerna', 'zug', 'emmen', 'kriens'],
-              zipRanges: [[6000, 6099], [6300, 6399]]
+              keywords: ['luzern', 'lucerne', 'lucerna', 'zug', 'emmen', 'kriens', 'baar', 'cham', 'rotkreuz'],
+              zipRanges: [[6000, 6499]] // Lucerna e Zugo completi
             },
             'GIRO BASILEA': {
-              keywords: ['basel', 'basilea', 'bâle', 'riehen', 'allschwil', 'muttenz'],
-              zipRanges: [[4000, 4099], [4100, 4199]]
+              keywords: ['basel', 'basilea', 'bâle', 'riehen', 'allschwil', 'muttenz', 'pratteln', 'liestal'],
+              zipRanges: [[4000, 4199], [4410, 4499]] // Basilea città e campagna
             },
             'GIRO GLARUS': {
-              keywords: ['glarus', 'glarona', 'näfels', 'mollis'],
+              keywords: ['glarus', 'glarona', 'näfels', 'mollis', 'netstal'],
               zipRanges: [[8750, 8779]]
             },
             'GIRO TICINO': {
-              keywords: ['lugano', 'bellinzona', 'locarno', 'mendrisio', 'chiasso', 'ascona', 'ticino'],
+              keywords: ['lugano', 'bellinzona', 'locarno', 'mendrisio', 'chiasso', 'ascona', 'ticino', 'giubiasco', 'minusio'],
               zipRanges: [[6500, 6999]]
             }
           };
@@ -903,17 +946,23 @@ Rispondi con JSON:
       }
 
       // ============================================
-      // STEP 3.3: GEOLOCALIZZAZIONE (attiva coordinate)
+      // STEP 3.3: GEOLOCALIZZAZIONE (attiva coordinate per TUTTI i contatti)
       // ============================================
       if (partnerId) {
-        console.log('[Step 3.3] Activating geolocation for partner...');
+        console.log('[Step 3.3] Activating geolocation for all partners...');
 
         try {
           const { callOdoo } = await import('@/lib/odoo/odoo-helper');
 
+          // Raccogli tutti gli ID da geolocalizzare
+          const idsToGeolocalize: number[] = [partnerId];
+          if (deliveryAddressId) idsToGeolocalize.push(deliveryAddressId);
+          if (invoiceAddressId) idsToGeolocalize.push(invoiceAddressId);
+
           // Chiama il metodo geo_localize di Odoo che calcola lat/lng dall'indirizzo
-          await callOdoo('res.partner', 'geo_localize', [[partnerId]]);
-          console.log('[Step 3.3] ✓ Geolocation activated for partner');
+          // Passa tutti gli ID insieme per efficienza
+          await callOdoo('res.partner', 'geo_localize', [idsToGeolocalize]);
+          console.log(`[Step 3.3] ✓ Geolocation activated for ${idsToGeolocalize.length} partners: ${idsToGeolocalize.join(', ')}`);
         } catch (geoError: any) {
           console.warn('[Step 3.3] ⚠ Geolocation activation error:', geoError.message);
           warnings.push(`Attivazione geolocalizzazione fallita: ${geoError.message}`);
