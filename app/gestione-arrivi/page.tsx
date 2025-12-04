@@ -500,7 +500,7 @@ export default function GestioneArriviPage() {
                       className={`
                         bg-gray-50 rounded-xl border-2 p-4 transition-all
                         ${arrival.is_processed
-                          ? 'border-green-400 bg-green-50 hover:border-green-500 cursor-pointer hover:shadow-md'
+                          ? 'border-green-400 bg-green-50 opacity-70'
                           : arrival.is_completed
                             ? 'border-yellow-400 bg-yellow-50 hover:border-yellow-500 cursor-pointer hover:shadow-md'
                             : arrival.is_ready
@@ -509,8 +509,12 @@ export default function GestioneArriviPage() {
                         }
                       `}
                       onClick={() => {
-                        // Permetti riprocessamento anche di arrivi completati (per rifare fattura)
-                        if (arrival.is_ready && !batchState.is_running) {
+                        // Permetti click solo se:
+                        // 1. Arrivo pronto e NON completato (normale processing)
+                        // 2. Arrivo completato MA senza fattura (riprocessa per creare fattura)
+                        // NON permettere riprocessamento se già PROCESSATO (con fattura)
+                        const canProcess = arrival.is_ready && !batchState.is_running && !arrival.is_processed;
+                        if (canProcess) {
                           processArrival(arrival);
                         }
                       }}
@@ -530,18 +534,12 @@ export default function GestioneArriviPage() {
                               {arrival.name}
                             </a>
 
-                            {/* Badge PROCESSATO (verde) + pulsante riprocessa */}
+                            {/* Badge PROCESSATO (verde) - già completato, non riprocessabile */}
                             {arrival.is_processed && (
-                              <>
-                                <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-600 text-white flex items-center gap-1">
-                                  <CheckCircle size={12} />
-                                  PROCESSATO
-                                </span>
-                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-700 flex items-center gap-1 hover:bg-gray-300 cursor-pointer">
-                                  <RotateCcw size={12} />
-                                  Riprocessa
-                                </span>
-                              </>
+                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-600 text-white flex items-center gap-1">
+                                <CheckCircle size={12} />
+                                PROCESSATO
+                              </span>
                             )}
 
                             {/* Badge COMPLETATO (solo arrivo fatto, no fattura) + pulsante riprocessa */}
