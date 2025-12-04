@@ -158,22 +158,11 @@ export async function POST(request: NextRequest) {
       console.log(`✅ JSON trascrizione salvato: ${jsonFilename}`);
     }
 
-    // Se già completato, salta
-    if (picking.state === 'done') {
-      return NextResponse.json({
-        success: true,
-        picking_id,
-        picking_name: picking.name,
-        message: 'Picking già completato',
-        results: {
-          updated: 0,
-          created: 0,
-          no_match: 0,
-          set_to_zero: 0,
-          errors: [],
-          warnings: ['Picking già completato']
-        }
-      });
+    // Flag per indicare se il picking è già completato (riprocessamento)
+    const isReprocessing = picking.state === 'done';
+
+    if (isReprocessing) {
+      console.log('🔄 RIPROCESSAMENTO: Picking già completato, salto aggiornamento righe e validazione');
     }
 
     // ===== STEP 2: Carica move lines =====
@@ -332,8 +321,15 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
       }))
     };
 
-    // Processa solo i prodotti matchati
+    // Se è riprocessamento, salta l'aggiornamento delle move lines
+    if (isReprocessing) {
+      console.log('🔄 Riprocessamento: salto aggiornamento move lines');
+      results.warnings.push('Riprocessamento: picking già completato, aggiornamento righe saltato');
+    }
+
+    // Processa solo i prodotti matchati (solo se NON è riprocessamento)
     for (const match of matchedProducts) {
+      if (isReprocessing) continue; // Salta se riprocessamento
       try {
         if (match.action === 'update') {
           usedMoveLineIds.add(match.move_line_id);
@@ -454,38 +450,40 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
       }
     }
 
-    // ===== STEP 6: Metti a ZERO le righe non usate =====
-    console.log('🔍 Verifico righe Odoo non utilizzate...');
-    for (const moveLine of enrichedMoveLines) {
-      if (!usedMoveLineIds.has(moveLine.id)) {
-        try {
-          await callOdoo(cookies, 'stock.move.line', 'write', [
-            [moveLine.id],
-            { qty_done: 0 }
-          ]);
+    // ===== STEP 6: Metti a ZERO le righe non usate (salta se riprocessamento) =====
+    if (!isReprocessing) {
+      console.log('🔍 Verifico righe Odoo non utilizzate...');
+      for (const moveLine of enrichedMoveLines) {
+        if (!usedMoveLineIds.has(moveLine.id)) {
+          try {
+            await callOdoo(cookies, 'stock.move.line', 'write', [
+              [moveLine.id],
+              { qty_done: 0 }
+            ]);
 
-          results.set_to_zero++;
-          results.details.push({
-            action: 'set_to_zero',
-            move_line_id: moveLine.id,
-            product_name: moveLine.product_name,
-            quantity: 0,
-            lot: 'N/A',
-            expiry: 'N/A',
-            reason: 'Riga non trovata nella fattura, impostata a zero'
-          });
+            results.set_to_zero++;
+            results.details.push({
+              action: 'set_to_zero',
+              move_line_id: moveLine.id,
+              product_name: moveLine.product_name,
+              quantity: 0,
+              lot: 'N/A',
+              expiry: 'N/A',
+              reason: 'Riga non trovata nella fattura, impostata a zero'
+            });
 
-          console.log(`⚠️ Riga ${moveLine.id} (${moveLine.product_name}) impostata a qty_done=0`);
-        } catch (error: any) {
-          console.error(`❌ Errore impostazione a zero riga ${moveLine.id}:`, error);
-          results.errors.push(`Errore impostazione a zero riga ${moveLine.id}: ${error.message}`);
+            console.log(`⚠️ Riga ${moveLine.id} (${moveLine.product_name}) impostata a qty_done=0`);
+          } catch (error: any) {
+            console.error(`❌ Errore impostazione a zero riga ${moveLine.id}:`, error);
+            results.errors.push(`Errore impostazione a zero riga ${moveLine.id}: ${error.message}`);
+          }
         }
       }
     }
 
-    // ===== STEP 7: Valida il picking (opzionale) =====
-    let pickingValidated = false;
-    if (!skip_validation) {
+    // ===== STEP 7: Valida il picking (opzionale, salta se riprocessamento) =====
+    let pickingValidated = isReprocessing; // Se riprocessamento, è già validato
+    if (!skip_validation && !isReprocessing) {
       console.log('🔐 Validazione picking...');
 
       try {

@@ -500,16 +500,17 @@ export default function GestioneArriviPage() {
                       className={`
                         bg-gray-50 rounded-xl border-2 p-4 transition-all
                         ${arrival.is_processed
-                          ? 'border-green-400 bg-green-50'
+                          ? 'border-green-400 bg-green-50 hover:border-green-500 cursor-pointer hover:shadow-md'
                           : arrival.is_completed
-                            ? 'opacity-60 border-green-300 bg-green-50'
+                            ? 'border-yellow-400 bg-yellow-50 hover:border-yellow-500 cursor-pointer hover:shadow-md'
                             : arrival.is_ready
                               ? 'border-indigo-200 hover:border-indigo-400 cursor-pointer hover:shadow-md'
                               : 'opacity-75 border-gray-200'
                         }
                       `}
                       onClick={() => {
-                        if (!arrival.is_completed && arrival.is_ready && !batchState.is_running) {
+                        // Permetti riprocessamento anche di arrivi completati (per rifare fattura)
+                        if (arrival.is_ready && !batchState.is_running) {
                           processArrival(arrival);
                         }
                       }}
@@ -520,7 +521,7 @@ export default function GestioneArriviPage() {
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             {/* Link all'arrivo in Odoo */}
                             <a
-                              href={`https://lapa.ch/web#id=${arrival.id}&model=stock.picking&view_type=form`}
+                              href={`https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com/web#id=${arrival.id}&model=stock.picking&view_type=form`}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
@@ -529,20 +530,32 @@ export default function GestioneArriviPage() {
                               {arrival.name}
                             </a>
 
-                            {/* Badge PROCESSATO (verde) */}
+                            {/* Badge PROCESSATO (verde) + pulsante riprocessa */}
                             {arrival.is_processed && (
-                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-600 text-white flex items-center gap-1">
-                                <CheckCircle size={12} />
-                                PROCESSATO
-                              </span>
+                              <>
+                                <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-600 text-white flex items-center gap-1">
+                                  <CheckCircle size={12} />
+                                  PROCESSATO
+                                </span>
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-700 flex items-center gap-1 hover:bg-gray-300 cursor-pointer">
+                                  <RotateCcw size={12} />
+                                  Riprocessa
+                                </span>
+                              </>
                             )}
 
-                            {/* Badge COMPLETATO (solo arrivo fatto, no fattura) */}
+                            {/* Badge COMPLETATO (solo arrivo fatto, no fattura) + pulsante riprocessa */}
                             {arrival.is_completed && !arrival.is_processed && (
-                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-500 text-white flex items-center gap-1">
-                                <CheckCircle size={12} />
-                                ARRIVO OK
-                              </span>
+                              <>
+                                <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-500 text-white flex items-center gap-1">
+                                  <CheckCircle size={12} />
+                                  ARRIVO OK
+                                </span>
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-200 text-orange-800 flex items-center gap-1 hover:bg-orange-300 cursor-pointer">
+                                  <RotateCcw size={12} />
+                                  Riprocessa
+                                </span>
+                              </>
                             )}
 
                             {!arrival.is_completed && arrival.is_ready && (
@@ -579,7 +592,7 @@ export default function GestioneArriviPage() {
                             {/* Link al P.O. */}
                             {arrival.has_purchase_order && (
                               <a
-                                href={`https://lapa.ch/web#id=${arrival.purchase_order_id}&model=purchase.order&view_type=form`}
+                                href={`https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com/web#id=${arrival.purchase_order_id}&model=purchase.order&view_type=form`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
@@ -600,7 +613,7 @@ export default function GestioneArriviPage() {
                             {/* Link alla fattura se esiste */}
                             {arrival.has_invoice && arrival.invoice && (
                               <a
-                                href={`https://lapa.ch/web#id=${arrival.invoice.id}&model=account.move&view_type=form`}
+                                href={`https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com/web#id=${arrival.invoice.id}&model=account.move&view_type=form`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
