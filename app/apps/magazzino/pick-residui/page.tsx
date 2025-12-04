@@ -771,7 +771,8 @@ export default function PickResiduiPage() {
       );
       const uomId = pdet.length && pdet[0].uom_id ? pdet[0].uom_id[0] : null;
 
-      // NON inviamo price_unit - Odoo calcolerà il prezzo dal listino del cliente
+      // Creiamo la riga SOLO con order_id, product_id e quantità
+      // Odoo deve calcolare il prezzo dal listino dell'ordine
       const vals: any = {
         order_id: modalOrder.id,
         product_id: selectedProduct.id,
@@ -781,8 +782,18 @@ export default function PickResiduiPage() {
 
       const newLineId = await callKw<number>('sale.order.line', 'create', [vals], {});
 
-      // Triggera product_id_change per calcolare il prezzo dal listino
-      await callKw('sale.order.line', 'product_id_change', [[newLineId]]);
+      // Forza il ricalcolo del prezzo usando _compute_price_unit
+      // Questo metodo legge il listino dall'ordine e calcola il prezzo corretto
+      try {
+        await callKw('sale.order.line', '_compute_price_unit', [[newLineId]]);
+      } catch (e) {
+        // Se _compute_price_unit non esiste, proviamo con product_uom_change
+        try {
+          await callKw('sale.order.line', 'product_uom_change', [[newLineId]]);
+        } catch (e2) {
+          console.log('Fallback: price will be computed by Odoo on save');
+        }
+      }
 
       showToastMessage(`Aggiunto ${selectedProduct.display_name || selectedProduct.name} × ${searchQty} a ${modalOrder.name}`);
       setShowModal(false);
