@@ -1133,6 +1133,51 @@ Rispondi con JSON:
       }
 
       // ============================================
+      // STEP 3.46: LISTINO PREZZI PERSONALIZZATO
+      // ============================================
+      if (partnerId && contactType === 'company') {
+        console.log('[Step 3.46] Creating personalized pricelist for company...');
+
+        try {
+          const { writeOdoo } = await import('@/lib/odoo/odoo-helper');
+
+          const companyName = partnerData.name || finalData.name || finalData.companyName || 'Azienda';
+
+          // Verifica se esiste già un listino con questo nome
+          const existingPricelist = await searchReadOdoo('product.pricelist', [
+            ['name', '=', companyName]
+          ], ['id', 'name'], 1);
+
+          let pricelistId: number;
+
+          if (existingPricelist && existingPricelist.length > 0) {
+            // Usa il listino esistente
+            pricelistId = existingPricelist[0].id;
+            console.log(`[Step 3.46] Found existing pricelist: ${existingPricelist[0].name} (ID: ${pricelistId})`);
+          } else {
+            // Crea un nuovo listino con il nome dell'azienda
+            // Usa CHF come valuta di default (ID 3 per CHF in Odoo standard)
+            pricelistId = await createOdoo('product.pricelist', {
+              name: companyName,
+              currency_id: 3, // CHF
+              active: true
+            });
+            console.log(`[Step 3.46] Created new pricelist: ${companyName} (ID: ${pricelistId})`);
+          }
+
+          // Assegna il listino al partner
+          await writeOdoo('res.partner', [partnerId], {
+            property_product_pricelist: pricelistId
+          });
+          console.log(`[Step 3.46] ✓ Assigned pricelist ${pricelistId} to partner ${partnerId}`);
+
+        } catch (pricelistError: any) {
+          console.warn('[Step 3.46] ⚠ Pricelist creation error:', pricelistError.message);
+          warnings.push(`Creazione listino prezzi fallita: ${pricelistError.message}`);
+        }
+      }
+
+      // ============================================
       // STEP 3.5: INVIA INFO GOOGLE SEARCH AL CHATTER
       // ============================================
       if (webSearchData?.found && partnerId) {
