@@ -114,6 +114,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ===== Aggiorna riferimento fornitore sul Purchase Order =====
+    if (purchaseOrderId && invoice_info?.number) {
+      console.log(`📝 Aggiornando riferimento fornitore sul P.O.: ${invoice_info.number}`);
+      try {
+        await callOdoo(cookies, 'purchase.order', 'write', [
+          [purchaseOrderId],
+          { partner_ref: invoice_info.number }
+        ]);
+        console.log(`✅ Riferimento fornitore aggiornato sul P.O.`);
+      } catch (refError: any) {
+        console.warn(`⚠️ Impossibile aggiornare riferimento fornitore: ${refError.message}`);
+      }
+    }
+
     // ===== Salva JSON trascrizione sul Purchase Order =====
     if (purchaseOrderId && raw_gemini_response) {
       console.log('💾 Salvando JSON trascrizione sul P.O....');
