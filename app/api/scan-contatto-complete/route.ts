@@ -554,6 +554,150 @@ Rispondi con JSON:
         partnerData.user_id = currentUserId;
       }
 
+      // ============================================
+      // NUOVO: Team di Vendita (basato sul venditore)
+      // ============================================
+      if (currentUserId) {
+        try {
+          // Mappa user_id -> team_id (stessa logica di dashboard-venditori)
+          const USER_TO_TEAM: Record<number, number> = {
+            407: 1,   // Domingos Ferreira → I Maestri del Sapore
+            14: 12,   // Mihai Nita → I Custodi della Tradizione
+            121: 9,   // Alessandro Motta → I Campioni del Gusto
+            7: 5,     // Paul Teodorescu → Team Ticino (default)
+            8: 5,     // Laura Teodorescu → Team Ticino (default)
+            249: 5,   // Gregorio Buccolieri → Team Ticino (default)
+            1: 5,     // LapaBot → Team Ticino (default)
+          };
+
+          // Se l'utente ha un team mappato, usa quello
+          if (USER_TO_TEAM[currentUserId]) {
+            partnerData.team_id = USER_TO_TEAM[currentUserId];
+            console.log(`[Team] Assigned team ${USER_TO_TEAM[currentUserId]} for user ${currentUserId}`);
+          } else {
+            // Altrimenti cerca il team dell'utente in Odoo
+            const userTeams = await searchReadOdoo('crm.team', [
+              ['member_ids', 'in', [currentUserId]]
+            ], ['id', 'name'], 1);
+
+            if (userTeams && userTeams.length > 0) {
+              partnerData.team_id = userTeams[0].id;
+              console.log(`[Team] Found team ${userTeams[0].name} (ID: ${userTeams[0].id}) for user ${currentUserId}`);
+            }
+          }
+        } catch (teamError) {
+          console.warn('[Team] Could not assign team:', teamError);
+        }
+      }
+
+      // ============================================
+      // NUOVO: Posizione Fiscale (Svizzera/Liechtenstein)
+      // ============================================
+      try {
+        // Per clienti svizzeri con partita IVA, cerca posizione fiscale appropriata
+        const fiscalPositions = await searchReadOdoo('account.fiscal.position', [
+          ['country_id', '=', 43] // Svizzera
+        ], ['id', 'name'], 1);
+
+        if (fiscalPositions && fiscalPositions.length > 0) {
+          partnerData.property_account_position_id = fiscalPositions[0].id;
+          console.log(`[Fiscal] Assigned fiscal position: ${fiscalPositions[0].name}`);
+        }
+      } catch (fiscalError) {
+        console.warn('[Fiscal] Could not assign fiscal position:', fiscalError);
+      }
+
+      // ============================================
+      // NUOVO: Limite Credito (5000 CHF default per aziende)
+      // ============================================
+      if (contactType === 'company') {
+        partnerData.credit_limit = 5000;
+        console.log('[Credit] Set credit limit to 5000 CHF');
+      }
+
+      // ============================================
+      // NUOVO: Settore/Industry (basato su businessActivity o webSearchData)
+      // ============================================
+      if (contactType === 'company' && (finalData.businessActivity || webSearchData?.businessTypes?.length)) {
+        try {
+          // Mappa attività comuni -> settori Odoo
+          const INDUSTRY_MAP: Record<string, string> = {
+            // Gastronomia
+            'restaurant': 'Food Services',
+            'ristorante': 'Food Services',
+            'gastronomia': 'Food Services',
+            'gastro': 'Food Services',
+            'bar': 'Food Services',
+            'café': 'Food Services',
+            'cafe': 'Food Services',
+            'pizzeria': 'Food Services',
+            'trattoria': 'Food Services',
+            'osteria': 'Food Services',
+            'hotel': 'Hotels',
+            'albergo': 'Hotels',
+            'catering': 'Food Services',
+            'pasticceria': 'Food Services',
+            'bakery': 'Food Services',
+            'panetteria': 'Food Services',
+            // Retail
+            'negozio': 'Retail',
+            'shop': 'Retail',
+            'store': 'Retail',
+            'supermarket': 'Retail',
+            'supermercato': 'Retail',
+            'alimentari': 'Retail',
+            // Altro
+            'import': 'Wholesale',
+            'export': 'Wholesale',
+            'distribuzione': 'Wholesale',
+            'distribution': 'Wholesale',
+            'grossista': 'Wholesale',
+          };
+
+          const activityLower = (finalData.businessActivity || '').toLowerCase();
+          const businessTypes = webSearchData?.businessTypes || [];
+          let matchedIndustry: string | null = null;
+
+          // Prima cerca nell'attività
+          for (const [keyword, industry] of Object.entries(INDUSTRY_MAP)) {
+            if (activityLower.includes(keyword)) {
+              matchedIndustry = industry;
+              break;
+            }
+          }
+
+          // Se non trovato, cerca nei businessTypes
+          if (!matchedIndustry && businessTypes.length > 0) {
+            for (const bType of businessTypes) {
+              const bTypeLower = bType.toLowerCase();
+              for (const [keyword, industry] of Object.entries(INDUSTRY_MAP)) {
+                if (bTypeLower.includes(keyword)) {
+                  matchedIndustry = industry;
+                  break;
+                }
+              }
+              if (matchedIndustry) break;
+            }
+          }
+
+          // Cerca il settore in Odoo
+          if (matchedIndustry) {
+            const industries = await searchReadOdoo('res.partner.industry', [
+              ['name', 'ilike', matchedIndustry]
+            ], ['id', 'name'], 1);
+
+            if (industries && industries.length > 0) {
+              partnerData.industry_id = industries[0].id;
+              console.log(`[Industry] Assigned industry: ${industries[0].name}`);
+            } else {
+              console.log(`[Industry] Industry "${matchedIndustry}" not found in Odoo, skipping`);
+            }
+          }
+        } catch (industryError) {
+          console.warn('[Industry] Could not assign industry:', industryError);
+        }
+      }
+
       // Aggiungi note con info enrichment
       const notes: string[] = [];
       if (finalData.companyType) notes.push(`Tipo: ${finalData.companyType}`);
@@ -589,12 +733,13 @@ Rispondi con JSON:
       // ============================================
       // STEP 3.1: CREATE DELIVERY & INVOICE ADDRESSES (solo per aziende)
       // ============================================
+      let deliveryAddressId: number | null = null;
+      let invoiceAddressId: number | null = null;
+
       if (contactType === 'company' && partnerId) {
         console.log('[Step 3.1] Creating delivery and invoice addresses for company...');
 
         try {
-          const addressesToCreate = [];
-
           // Get company name for address labels
           const companyName = partnerData.name || finalData.name || 'Azienda';
 
@@ -613,7 +758,8 @@ Rispondi con JSON:
             if (partnerData.state_id) {
               deliveryAddress.state_id = partnerData.state_id;
             }
-            addressesToCreate.push(createOdoo('res.partner', deliveryAddress));
+            deliveryAddressId = await createOdoo('res.partner', deliveryAddress);
+            console.log(`[Step 3.1] ✓ Created delivery address ID: ${deliveryAddressId}`);
           }
 
           // Indirizzo di fatturazione (invoice)
@@ -631,14 +777,11 @@ Rispondi con JSON:
             if (partnerData.state_id) {
               invoiceAddress.state_id = partnerData.state_id;
             }
-            addressesToCreate.push(createOdoo('res.partner', invoiceAddress));
+            invoiceAddressId = await createOdoo('res.partner', invoiceAddress);
+            console.log(`[Step 3.1] ✓ Created invoice address ID: ${invoiceAddressId}`);
           }
 
-          // Crea gli indirizzi in parallelo
-          if (addressesToCreate.length > 0) {
-            const createdAddressIds = await Promise.all(addressesToCreate);
-            console.log(`[Step 3.1] ✓ Created ${createdAddressIds.length} addresses:`, createdAddressIds);
-          } else {
+          if (!deliveryAddressId && !invoiceAddressId) {
             console.log('[Step 3.1] ⊘ No address data available, skipping address creation');
           }
 
@@ -646,6 +789,203 @@ Rispondi con JSON:
           // Non bloccare il flusso se la creazione degli indirizzi fallisce
           console.warn('[Step 3.1] ⚠ Address creation error (non-blocking):', addressError.message);
           warnings.push(`Creazione indirizzi fallita: ${addressError.message}`);
+        }
+      }
+
+      // ============================================
+      // STEP 3.2: METODO DI CONSEGNA (GIRO basato su zona geografica)
+      // ============================================
+      if (contactType === 'company' && partnerId) {
+        console.log('[Step 3.2] Assigning delivery method based on geographic zone...');
+
+        try {
+          const { writeOdoo } = await import('@/lib/odoo/odoo-helper');
+
+          // Mappa CAP/Città/Cantone -> GIRO di consegna
+          // Basata sui GIRO esistenti nel sistema
+          const DELIVERY_ZONES: Record<string, { keywords: string[], zipRanges?: [number, number][] }> = {
+            'GIRO ZURIGO CENTRO': {
+              keywords: ['zürich', 'zurich', 'zuerich'],
+              zipRanges: [[8000, 8099]]
+            },
+            'GIRO ZURIGO EST': {
+              keywords: ['dübendorf', 'wallisellen', 'dietlikon', 'uster', 'wetzikon'],
+              zipRanges: [[8600, 8699], [8610, 8620]]
+            },
+            'GIRO LAGO SUD': {
+              keywords: ['thalwil', 'horgen', 'wädenswil', 'richterswil', 'lachen', 'rapperswil', 'jona'],
+              zipRanges: [[8800, 8899], [8640, 8645], [8853, 8858]]
+            },
+            'GIRO TURGOVIA-SANGALLO': {
+              keywords: ['winterthur', 'frauenfeld', 'st. gallen', 'st.gallen', 'san gallo', 'wil', 'kreuzlingen'],
+              zipRanges: [[8400, 8499], [8500, 8599], [9000, 9099], [9200, 9299]]
+            },
+            'GIRO ARGOVIA': {
+              keywords: ['baden', 'aarau', 'brugg', 'lenzburg', 'zofingen', 'wohlen'],
+              zipRanges: [[5000, 5099], [5200, 5299], [5400, 5499], [5600, 5699]]
+            },
+            'GIRO GINEVRA': {
+              keywords: ['genève', 'geneva', 'genf', 'carouge', 'vernier', 'lancy'],
+              zipRanges: [[1200, 1299]]
+            },
+            'GIRO LOSANNA': {
+              keywords: ['lausanne', 'vevey', 'montreux', 'nyon', 'morges', 'renens'],
+              zipRanges: [[1000, 1199], [1800, 1899]]
+            },
+            'GIRO LUCERNA': {
+              keywords: ['luzern', 'lucerne', 'lucerna', 'zug', 'emmen', 'kriens'],
+              zipRanges: [[6000, 6099], [6300, 6399]]
+            },
+            'GIRO BASILEA': {
+              keywords: ['basel', 'basilea', 'bâle', 'riehen', 'allschwil', 'muttenz'],
+              zipRanges: [[4000, 4099], [4100, 4199]]
+            },
+            'GIRO GLARUS': {
+              keywords: ['glarus', 'glarona', 'näfels', 'mollis'],
+              zipRanges: [[8750, 8779]]
+            },
+            'GIRO TICINO': {
+              keywords: ['lugano', 'bellinzona', 'locarno', 'mendrisio', 'chiasso', 'ascona', 'ticino'],
+              zipRanges: [[6500, 6999]]
+            }
+          };
+
+          const cityLower = (finalData.city || '').toLowerCase();
+          const zip = parseInt(finalData.zip || '0', 10);
+          let matchedGiro: string | null = null;
+
+          // Prima cerca per keyword (città)
+          for (const [giroName, config] of Object.entries(DELIVERY_ZONES)) {
+            if (config.keywords.some(kw => cityLower.includes(kw))) {
+              matchedGiro = giroName;
+              break;
+            }
+          }
+
+          // Se non trovato, cerca per range CAP
+          if (!matchedGiro && zip > 0) {
+            for (const [giroName, config] of Object.entries(DELIVERY_ZONES)) {
+              if (config.zipRanges) {
+                for (const [min, max] of config.zipRanges) {
+                  if (zip >= min && zip <= max) {
+                    matchedGiro = giroName;
+                    break;
+                  }
+                }
+              }
+              if (matchedGiro) break;
+            }
+          }
+
+          // Se trovato un GIRO, cerca l'ID del delivery.carrier in Odoo
+          if (matchedGiro) {
+            const carriers = await searchReadOdoo('delivery.carrier', [
+              ['name', 'ilike', matchedGiro]
+            ], ['id', 'name'], 1);
+
+            if (carriers && carriers.length > 0) {
+              // Aggiorna il partner con il metodo di consegna
+              await writeOdoo('res.partner', [partnerId], {
+                property_delivery_carrier_id: carriers[0].id
+              });
+              console.log(`[Step 3.2] ✓ Assigned delivery method: ${carriers[0].name} (ID: ${carriers[0].id})`);
+            } else {
+              console.warn(`[Step 3.2] ⚠ Delivery carrier "${matchedGiro}" not found in Odoo`);
+              warnings.push(`Metodo consegna "${matchedGiro}" non trovato`);
+            }
+          } else {
+            console.log('[Step 3.2] ⊘ No matching delivery zone for address');
+          }
+        } catch (deliveryError: any) {
+          console.warn('[Step 3.2] ⚠ Delivery method assignment error:', deliveryError.message);
+          warnings.push(`Assegnazione metodo consegna fallita: ${deliveryError.message}`);
+        }
+      }
+
+      // ============================================
+      // STEP 3.3: GEOLOCALIZZAZIONE (attiva coordinate)
+      // ============================================
+      if (partnerId) {
+        console.log('[Step 3.3] Activating geolocation for partner...');
+
+        try {
+          const { callOdoo } = await import('@/lib/odoo/odoo-helper');
+
+          // Chiama il metodo geo_localize di Odoo che calcola lat/lng dall'indirizzo
+          await callOdoo('res.partner', 'geo_localize', [[partnerId]]);
+          console.log('[Step 3.3] ✓ Geolocation activated for partner');
+        } catch (geoError: any) {
+          console.warn('[Step 3.3] ⚠ Geolocation activation error:', geoError.message);
+          warnings.push(`Attivazione geolocalizzazione fallita: ${geoError.message}`);
+        }
+      }
+
+      // ============================================
+      // STEP 3.4: ETICHETTE PARTNER (category_id)
+      // ============================================
+      if (partnerId) {
+        console.log('[Step 3.4] Adding partner tags...');
+
+        try {
+          const { writeOdoo } = await import('@/lib/odoo/odoo-helper');
+
+          // Helper per cercare o creare un tag
+          const getOrCreateTag = async (tagName: string): Promise<number | null> => {
+            const existingTags = await searchReadOdoo('res.partner.category', [
+              ['name', '=', tagName]
+            ], ['id'], 1);
+
+            if (existingTags && existingTags.length > 0) {
+              return existingTags[0].id;
+            } else {
+              try {
+                const newTagId = await createOdoo('res.partner.category', {
+                  name: tagName,
+                  active: true
+                });
+                console.log(`[Step 3.4] Created new tag: ${tagName} (ID: ${newTagId})`);
+                return newTagId;
+              } catch (createTagError) {
+                console.warn(`[Step 3.4] Could not create tag ${tagName}:`, createTagError);
+                return null;
+              }
+            }
+          };
+
+          // 1. Etichetta "Cliente" per il partner principale
+          const clienteTagId = await getOrCreateTag('Cliente');
+          if (clienteTagId) {
+            await writeOdoo('res.partner', [partnerId], {
+              category_id: [[6, 0, [clienteTagId]]]
+            });
+            console.log(`[Step 3.4] ✓ Assigned "Cliente" tag to main partner`);
+          }
+
+          // 2. Etichetta "Indirizzo di consegna" per l'indirizzo consegna
+          if (deliveryAddressId) {
+            const consegnaTagId = await getOrCreateTag('Indirizzo di consegna');
+            if (consegnaTagId) {
+              await writeOdoo('res.partner', [deliveryAddressId], {
+                category_id: [[6, 0, [consegnaTagId]]]
+              });
+              console.log(`[Step 3.4] ✓ Assigned "Indirizzo di consegna" tag to delivery address`);
+            }
+          }
+
+          // 3. Etichetta "Indirizzo di fatturazione" per l'indirizzo fatturazione
+          if (invoiceAddressId) {
+            const fatturazioneTagId = await getOrCreateTag('Indirizzo di fatturazione');
+            if (fatturazioneTagId) {
+              await writeOdoo('res.partner', [invoiceAddressId], {
+                category_id: [[6, 0, [fatturazioneTagId]]]
+              });
+              console.log(`[Step 3.4] ✓ Assigned "Indirizzo di fatturazione" tag to invoice address`);
+            }
+          }
+
+        } catch (tagError: any) {
+          console.warn('[Step 3.4] ⚠ Tag assignment error:', tagError.message);
+          warnings.push(`Assegnazione etichette fallita: ${tagError.message}`);
         }
       }
 
