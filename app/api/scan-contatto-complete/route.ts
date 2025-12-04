@@ -1155,14 +1155,50 @@ Rispondi con JSON:
             pricelistId = existingPricelist[0].id;
             console.log(`[Step 3.46] Found existing pricelist: ${existingPricelist[0].name} (ID: ${pricelistId})`);
           } else {
+            // Prima cerca la valuta CHF
+            const chfCurrency = await searchReadOdoo('res.currency', [
+              ['name', '=', 'CHF']
+            ], ['id'], 1);
+
+            const currencyId = chfCurrency && chfCurrency.length > 0 ? chfCurrency[0].id : 6; // Fallback ID 6 per CHF
+
+            // Cerca il listino base "Listino 5m-10m (CHF)" per usarlo come base della formula
+            const basePricelist = await searchReadOdoo('product.pricelist', [
+              '|',
+              ['name', 'ilike', '5m-10m'],
+              ['name', 'ilike', 'Listino 5m-10m']
+            ], ['id', 'name'], 1);
+
             // Crea un nuovo listino con il nome dell'azienda
-            // Usa CHF come valuta di default (ID 3 per CHF in Odoo standard)
             pricelistId = await createOdoo('product.pricelist', {
               name: companyName,
-              currency_id: 3, // CHF
+              currency_id: currencyId,
               active: true
             });
             console.log(`[Step 3.46] Created new pricelist: ${companyName} (ID: ${pricelistId})`);
+
+            // Se trovato il listino base, crea una regola formula che si basa su di esso
+            if (basePricelist && basePricelist.length > 0) {
+              const basePricelistId = basePricelist[0].id;
+
+              // Crea la regola del listino (product.pricelist.item)
+              // compute_price = 'formula' significa che usa formula
+              // base = 'pricelist' significa che si basa su un altro listino
+              // base_pricelist_id = ID del listino base
+              await createOdoo('product.pricelist.item', {
+                pricelist_id: pricelistId,
+                applied_on: '3_global', // Tutti i prodotti
+                compute_price: 'formula',
+                base: 'pricelist',
+                base_pricelist_id: basePricelistId,
+                price_discount: 0, // 0% sconto
+                price_surcharge: 0, // 0 sovrapprezzo
+                min_quantity: 0
+              });
+              console.log(`[Step 3.46] Created formula rule based on: ${basePricelist[0].name} (ID: ${basePricelistId})`);
+            } else {
+              console.log('[Step 3.46] Base pricelist "5m-10m" not found, skipping formula rule');
+            }
           }
 
           // Assegna il listino al partner
