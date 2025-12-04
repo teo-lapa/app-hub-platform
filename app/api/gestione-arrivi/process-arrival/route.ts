@@ -342,8 +342,14 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
             qty_done: match.quantity
           };
 
+          // Usa il lotto se presente, altrimenti usa la data di scadenza come lotto
+          // (Odoo richiede un lotto per prodotti tracciati, la scadenza può servire come identificatore)
           if (match.lot_number) {
             updateData.lot_name = match.lot_number;
+          } else if (match.expiry_date) {
+            // Se non c'è lotto ma c'è scadenza, usa la scadenza come lotto (formato YYYY-MM-DD)
+            updateData.lot_name = match.expiry_date;
+            console.log(`⚠️ Lotto mancante, uso scadenza come lotto: ${match.expiry_date}`);
           }
 
           if (match.expiry_date) {
@@ -403,8 +409,13 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
             qty_done: match.quantity,
           };
 
+          // Usa il lotto se presente, altrimenti usa la data di scadenza come lotto
           if (match.lot_number) {
             newLineData.lot_name = match.lot_number;
+          } else if (match.expiry_date) {
+            // Se non c'è lotto ma c'è scadenza, usa la scadenza come lotto
+            newLineData.lot_name = match.expiry_date;
+            console.log(`⚠️ Nuova riga: lotto mancante, uso scadenza come lotto: ${match.expiry_date}`);
           }
 
           if (match.expiry_date) {
