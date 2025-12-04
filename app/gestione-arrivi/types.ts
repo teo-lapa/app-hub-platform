@@ -13,6 +13,7 @@ export interface Arrival {
   purchase_order_id: number | null;
   purchase_order_name: string | null;
   attachments_count: number;
+  attachments?: ArrivalAttachment[];
   products_count: number;
   has_purchase_order: boolean;
   has_attachments: boolean;

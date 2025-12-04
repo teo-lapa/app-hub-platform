@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
     let parsingSkill;
     try {
       parsingSkill = loadSkill('document-processing/invoice-parsing');
-      console.log(`✅ Skill caricata: ${parsingSkill.name} v${parsingSkill.version}`);
+      console.log(`✅ Skill caricata: ${parsingSkill.metadata.name} v${parsingSkill.metadata.version}`);
     } catch (e) {
       console.warn('⚠️ Skill non trovata, uso prompt generico');
     }
