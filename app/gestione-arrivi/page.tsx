@@ -141,9 +141,16 @@ export default function GestioneArriviPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           picking_id: arrival.id,
-          extracted_lines: readData.combined_lines,
+          // Usa parsed_products nel formato arrivo-merce (Gemini output)
+          parsed_products: readData.parsed_products || readData.combined_lines?.map((line: any) => ({
+            article_code: line.product_code,
+            description: line.description,
+            quantity: line.quantity,
+            unit: line.unit,
+            lot_number: line.lot_number,
+            expiry_date: line.expiry_date
+          })),
           attachment_ids: arrival.attachments?.map((a: any) => a.id) || [],
-          transcription_json: transcriptionJson,
           skip_validation: false,
           skip_invoice: false
         })
@@ -165,13 +172,13 @@ export default function GestioneArriviPage() {
         invoice_created: processData.invoice_created,
         invoice_id: processData.invoice_id,
         invoice_name: processData.invoice_name,
-        documents_attached: processData.documents_attached,
-        lines_updated: processData.lines_updated,
-        lines_created: 0,
-        lines_set_to_zero: processData.lines_set_to_zero,
-        unmatched_products: processData.unmatched_products?.length || 0,
-        errors: processData.errors || [],
-        warnings: processData.warnings || []
+        documents_attached: processData.results?.details?.filter((d: any) => d.action === 'attached')?.length || 0,
+        lines_updated: processData.results?.updated || 0,
+        lines_created: processData.results?.created || 0,
+        lines_set_to_zero: processData.results?.set_to_zero || 0,
+        unmatched_products: processData.results?.no_match || 0,
+        errors: processData.results?.errors || [],
+        warnings: processData.results?.warnings || []
       };
 
       setProcessingArrival({ ...state });
