@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import Anthropic from '@anthropic-ai/sdk';
-import { loadSkill } from '@/lib/ai/skills-loader';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { buildGeminiPrompt } from '@/lib/arrivo-merce/gemini-prompt';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minuti per documenti multipli
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // MIME types supportati
 const SUPPORTED_MIMETYPES = [
@@ -52,9 +50,9 @@ interface ExtractedDocument {
 }
 
 /**
- * READ DOCUMENTS
+ * READ DOCUMENTS - USANDO GEMINI (come arrivo-merce)
  *
- * Legge TUTTI gli allegati di un picking usando Claude Vision
+ * Legge TUTTI gli allegati di un picking usando Gemini 2.5 Flash
  * Estrae dati strutturati da PDF e immagini
  */
 export async function POST(request: NextRequest) {
@@ -134,49 +132,142 @@ export async function POST(request: NextRequest) {
 
     console.log(`📎 Trovati ${attachments.length} allegati da processare`);
 
-    // Carica la skill di parsing
-    let parsingSkill;
-    try {
-      parsingSkill = loadSkill('document-processing/invoice-parsing');
-      console.log(`✅ Skill caricata: ${parsingSkill.metadata.name} v${parsingSkill.metadata.version}`);
-    } catch (e) {
-      console.warn('⚠️ Skill non trovata, uso prompt generico');
+    // Valida dimensione totale
+    const totalSize = attachments.reduce((sum: number, a: any) => sum + (a.file_size || 0), 0);
+    const maxSize = 20 * 1024 * 1024; // 20 MB totale
+
+    if (totalSize > maxSize) {
+      return NextResponse.json({
+        success: false,
+        error: `File troppo grandi (${(totalSize / 1024 / 1024).toFixed(2)} MB totale). Dimensione massima: 20 MB.`
+      }, { status: 400 });
     }
 
-    // Processa ogni allegato
-    const extractedDocuments: ExtractedDocument[] = [];
-    const errors: string[] = [];
+    // Prepara array di parti per Gemini
+    const parts: any[] = [];
 
     for (const attachment of attachments) {
-      console.log(`📄 Processing: ${attachment.name} (${attachment.mimetype})`);
+      const base64 = attachment.datas;
 
-      try {
-        const extracted = await processDocument(
-          attachment,
-          parsingSkill?.content
-        );
-        extractedDocuments.push(extracted);
-        console.log(`✅ ${attachment.name}: ${extracted.lines.length} righe estratte`);
-      } catch (error: any) {
-        console.error(`❌ Errore ${attachment.name}:`, error.message);
-        errors.push(`${attachment.name}: ${error.message}`);
+      if (!base64) {
+        console.warn(`⚠️ Allegato ${attachment.name} senza contenuto, skip`);
+        continue;
       }
+
+      // Determina media type
+      let mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | 'application/pdf';
+
+      if (attachment.mimetype === 'application/pdf') {
+        mediaType = 'application/pdf';
+      } else if (attachment.mimetype === 'image/jpeg' || attachment.mimetype === 'image/jpg') {
+        mediaType = 'image/jpeg';
+      } else if (attachment.mimetype === 'image/png') {
+        mediaType = 'image/png';
+      } else if (attachment.mimetype === 'image/gif') {
+        mediaType = 'image/gif';
+      } else if (attachment.mimetype === 'image/webp') {
+        mediaType = 'image/webp';
+      } else {
+        console.warn(`⚠️ Formato non supportato: ${attachment.mimetype}, skip`);
+        continue;
+      }
+
+      // Aggiungi documento all'array
+      parts.push({
+        inlineData: {
+          mimeType: mediaType,
+          data: base64
+        }
+      });
+
+      console.log(`📦 Aggiunto ${attachment.name} (${mediaType})`);
     }
 
-    // Combina i risultati
-    const combinedResult = combineDocuments(extractedDocuments);
+    if (parts.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'Nessun allegato valido da processare'
+      }, { status: 400 });
+    }
+
+    console.log(`🤖 Chiamata Gemini 2.5 Flash con ${parts.length} documenti...`);
+
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash-preview-05-20',
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: 'application/json'
+      }
+    });
+
+    // Usa il prompt condiviso (passa il numero di documenti)
+    const prompt = buildGeminiPrompt(parts.length);
+
+    // Aggiungi il prompt alla fine
+    parts.push(prompt);
+
+    const result = await model.generateContent(parts);
+
+    const text = result.response.text();
+    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const json = JSON.parse(cleaned);
+
+    console.log(`✅ Gemini: completato - ${json.products?.length || 0} prodotti estratti da ${parts.length - 1} documenti`);
+
+    // Mappa i prodotti al formato ExtractedLine
+    const lines: ExtractedLine[] = (json.products || []).map((p: any) => ({
+      description: p.description || '',
+      product_code: p.article_code || null,
+      quantity: parseFloat(p.quantity) || 0,
+      unit: p.unit || 'NR',
+      unit_price: p.unit_price || null,
+      subtotal: p.subtotal || null,
+      tax_rate: p.tax_rate || null,
+      lot_number: p.lot_number || null,
+      expiry_date: p.expiry_date || null,
+      discount: p.discount || null,
+    }));
+
+    // Costruisci risposta nel formato atteso
+    const extractedDocuments: ExtractedDocument[] = [{
+      attachment_id: attachments[0]?.id || 0,
+      filename: attachments.map(a => a.name).join(', '),
+      document_type: detectDocumentType(attachments[0]?.name || ''),
+      supplier: {
+        name: json.supplier_name || 'Sconosciuto',
+        vat: json.supplier_vat || null,
+      },
+      document_info: {
+        number: json.document_number || '',
+        date: json.document_date || '',
+        total: json.total_amount || null,
+        subtotal: json.subtotal_amount || null,
+        tax: json.tax_amount || null,
+      },
+      lines,
+      raw_response: text,
+    }];
+
     const processingTime = Date.now() - startTime;
 
     console.log(`✅ [READ-DOCS] Completato in ${processingTime}ms`);
-    console.log(`📊 Totale: ${combinedResult.combined_lines.length} righe da ${extractedDocuments.length} documenti`);
+    console.log(`📊 Totale: ${lines.length} righe estratte`);
 
     return NextResponse.json({
       success: true,
       documents: extractedDocuments,
-      combined_lines: combinedResult.combined_lines,
-      supplier: combinedResult.supplier,
-      invoice_info: combinedResult.invoice_info,
-      errors: errors.length > 0 ? errors : undefined,
+      combined_lines: lines,
+      supplier: {
+        name: json.supplier_name || 'Sconosciuto',
+        vat: json.supplier_vat || null,
+      },
+      invoice_info: {
+        number: json.document_number || '',
+        date: json.document_date || '',
+        total: json.total_amount || null,
+      },
+      // Aggiungi parsed_products per compatibilità con process-reception
+      parsed_products: json.products || [],
       processing_time_ms: processingTime
     });
 
@@ -187,101 +278,6 @@ export async function POST(request: NextRequest) {
       error: error.message || 'Errore durante la lettura dei documenti'
     }, { status: 500 });
   }
-}
-
-/**
- * Processa un singolo documento con Claude Vision
- */
-async function processDocument(
-  attachment: any,
-  skillPrompt?: string
-): Promise<ExtractedDocument> {
-  const { id, name, mimetype, datas } = attachment;
-
-  if (!datas) {
-    throw new Error('Contenuto allegato non disponibile');
-  }
-
-  // Determina il tipo di content block
-  const isImage = mimetype.startsWith('image/');
-  const contentType = isImage ? 'image' : 'document';
-
-  // Prepara il prompt
-  const prompt = skillPrompt || getDefaultPrompt();
-
-  // Chiama Claude Vision
-  const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5-20250929',
-    max_tokens: 8192,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: contentType as any,
-            source: {
-              type: 'base64',
-              media_type: mimetype,
-              data: datas,
-            },
-          },
-          { type: 'text', text: prompt }
-        ]
-      }
-    ]
-  });
-
-  // Estrai JSON dalla risposta
-  const responseText = message.content[0]?.type === 'text' ? message.content[0].text : '';
-
-  // Trova il JSON nella risposta
-  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error('Nessun JSON valido nella risposta AI');
-  }
-
-  let parsed;
-  try {
-    parsed = JSON.parse(jsonMatch[0]);
-  } catch (e) {
-    throw new Error('JSON non valido nella risposta AI');
-  }
-
-  // Determina il tipo di documento dal nome
-  const documentType = detectDocumentType(name);
-
-  // Mappa i dati estratti
-  const lines: ExtractedLine[] = (parsed.products || []).map((p: any) => ({
-    description: p.description || '',
-    product_code: p.article_code || null,
-    quantity: parseFloat(p.quantity) || 0,
-    unit: p.unit || 'NR',
-    unit_price: p.unit_price || null,
-    subtotal: p.subtotal || null,
-    tax_rate: p.tax_rate || null,
-    lot_number: p.lot_number || null,
-    expiry_date: p.expiry_date || null,
-    discount: p.discount || null,
-  }));
-
-  return {
-    attachment_id: id,
-    filename: name,
-    document_type: documentType,
-    supplier: {
-      name: parsed.supplier_name || 'Sconosciuto',
-      vat: parsed.supplier_vat || null,
-    },
-    document_info: {
-      number: parsed.document_number || '',
-      date: parsed.document_date || '',
-      total: parsed.total_amount || null,
-      subtotal: parsed.subtotal_amount || null,
-      tax: parsed.tax_amount || null,
-    },
-    lines,
-    raw_response: responseText,
-  };
 }
 
 /**
@@ -301,87 +297,4 @@ function detectDocumentType(filename: string): 'invoice' | 'ddt' | 'order' | 'ot
   }
 
   return 'other';
-}
-
-/**
- * Combina i risultati di più documenti
- */
-function combineDocuments(documents: ExtractedDocument[]) {
-  // Prendi il fornitore dalla fattura o dal primo documento
-  const invoiceDoc = documents.find(d => d.document_type === 'invoice');
-  const primaryDoc = invoiceDoc || documents[0];
-
-  const supplier = primaryDoc?.supplier || { name: 'Sconosciuto' };
-  const invoice_info = primaryDoc?.document_info || { number: '', date: '' };
-
-  // Combina tutte le righe (preferendo quelle dalla fattura)
-  const allLines: ExtractedLine[] = [];
-  const seenKeys = new Set<string>();
-
-  // Prima aggiungi righe dalla fattura
-  for (const doc of documents) {
-    for (const line of doc.lines) {
-      // Crea chiave unica per deduplicazione
-      const key = `${line.product_code || ''}-${line.description}-${line.lot_number || ''}`;
-
-      if (!seenKeys.has(key)) {
-        seenKeys.add(key);
-        allLines.push(line);
-      } else if (doc.document_type === 'invoice') {
-        // Se è dalla fattura, sovrascrivi (ha più info come prezzi)
-        const idx = allLines.findIndex(l =>
-          `${l.product_code || ''}-${l.description}-${l.lot_number || ''}` === key
-        );
-        if (idx >= 0) {
-          allLines[idx] = { ...allLines[idx], ...line };
-        }
-      }
-    }
-  }
-
-  return {
-    combined_lines: allLines,
-    supplier,
-    invoice_info,
-  };
-}
-
-/**
- * Prompt di default se la skill non è disponibile
- */
-function getDefaultPrompt(): string {
-  return `Analizza questo documento (fattura, DDT o ordine) ed estrai i dati in formato JSON.
-
-ESTRAI:
-1. Fornitore: nome e P.IVA
-2. Numero e data documento
-3. Lista prodotti con: descrizione, codice, quantità, unità, prezzo, lotto, scadenza
-
-FORMATO OUTPUT (JSON valido):
-{
-  "supplier_name": "Nome Fornitore",
-  "supplier_vat": "12345678901",
-  "document_number": "FAT/2025/001",
-  "document_date": "2025-12-04",
-  "total_amount": 1250.50,
-  "products": [
-    {
-      "article_code": "COD123",
-      "description": "Nome Prodotto",
-      "quantity": 10.0,
-      "unit": "KG",
-      "unit_price": 5.50,
-      "lot_number": "L12345",
-      "expiry_date": "2025-06-30"
-    }
-  ]
-}
-
-REGOLE:
-- Quantità: usa peso NETTO, non lordo
-- Date: formato YYYY-MM-DD
-- Numeri: usa punto decimale (5.5 non 5,5)
-- Se manca un dato, usa null
-
-Rispondi SOLO con JSON valido.`;
 }
