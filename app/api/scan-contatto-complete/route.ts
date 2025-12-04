@@ -554,6 +554,193 @@ Rispondi con JSON:
         partnerData.user_id = currentUserId;
       }
 
+      // ============================================
+      // NUOVO: Team di Vendita (basato sul venditore)
+      // ============================================
+      if (currentUserId) {
+        try {
+          // Mappa user_id -> team_id (stessa logica di dashboard-venditori)
+          const USER_TO_TEAM: Record<number, number> = {
+            407: 1,   // Domingos Ferreira → I Maestri del Sapore
+            14: 12,   // Mihai Nita → I Custodi della Tradizione
+            121: 9,   // Alessandro Motta → I Campioni del Gusto
+            7: 5,     // Paul Teodorescu → Team Ticino (default)
+            8: 5,     // Laura Teodorescu → Team Ticino (default)
+            249: 5,   // Gregorio Buccolieri → Team Ticino (default)
+            1: 5,     // LapaBot → Team Ticino (default)
+          };
+
+          // Se l'utente ha un team mappato, usa quello
+          if (USER_TO_TEAM[currentUserId]) {
+            partnerData.team_id = USER_TO_TEAM[currentUserId];
+            console.log(`[Team] Assigned team ${USER_TO_TEAM[currentUserId]} for user ${currentUserId}`);
+          } else {
+            // Altrimenti cerca il team dell'utente in Odoo
+            const userTeams = await searchReadOdoo('crm.team', [
+              ['member_ids', 'in', [currentUserId]]
+            ], ['id', 'name'], 1);
+
+            if (userTeams && userTeams.length > 0) {
+              partnerData.team_id = userTeams[0].id;
+              console.log(`[Team] Found team ${userTeams[0].name} (ID: ${userTeams[0].id}) for user ${currentUserId}`);
+            }
+          }
+        } catch (teamError) {
+          console.warn('[Team] Could not assign team:', teamError);
+        }
+      }
+
+      // ============================================
+      // NUOVO: Posizione Fiscale (Svizzera/Liechtenstein)
+      // ============================================
+      try {
+        // Cerca posizione fiscale "Svizzera" o "Switzerland" o "Liechtenstein"
+        // Prima prova con nome specifico
+        let fiscalPositions = await searchReadOdoo('account.fiscal.position', [
+          '|', '|', '|',
+          ['name', 'ilike', 'svizzera'],
+          ['name', 'ilike', 'switzerland'],
+          ['name', 'ilike', 'schweiz'],
+          ['name', 'ilike', 'liechtenstein']
+        ], ['id', 'name'], 1);
+
+        // Se non trova, prova a cercare quella di default o la prima attiva
+        if (!fiscalPositions || fiscalPositions.length === 0) {
+          fiscalPositions = await searchReadOdoo('account.fiscal.position', [
+            ['active', '=', true]
+          ], ['id', 'name'], 1);
+        }
+
+        if (fiscalPositions && fiscalPositions.length > 0) {
+          partnerData.property_account_position_id = fiscalPositions[0].id;
+          console.log(`[Fiscal] Assigned fiscal position: ${fiscalPositions[0].name} (ID: ${fiscalPositions[0].id})`);
+        } else {
+          console.log('[Fiscal] No fiscal position found');
+        }
+      } catch (fiscalError) {
+        console.warn('[Fiscal] Could not assign fiscal position:', fiscalError);
+      }
+
+      // ============================================
+      // NUOVO: Limite Credito (5000 CHF default per aziende)
+      // ============================================
+      if (contactType === 'company') {
+        partnerData.credit_limit = 5000;
+        console.log('[Credit] Set credit limit to 5000 CHF');
+      }
+
+      // ============================================
+      // NUOVO: Settore/Industry (basato su businessActivity o webSearchData)
+      // ============================================
+      if (contactType === 'company' && (finalData.businessActivity || webSearchData?.businessTypes?.length)) {
+        try {
+          // Mappa attività comuni -> settori Odoo
+          const INDUSTRY_MAP: Record<string, string> = {
+            // Gastronomia
+            'restaurant': 'Food Services',
+            'ristorante': 'Food Services',
+            'gastronomia': 'Food Services',
+            'gastro': 'Food Services',
+            'bar': 'Food Services',
+            'café': 'Food Services',
+            'cafe': 'Food Services',
+            'pizzeria': 'Food Services',
+            'trattoria': 'Food Services',
+            'osteria': 'Food Services',
+            'hotel': 'Hotels',
+            'albergo': 'Hotels',
+            'catering': 'Food Services',
+            'pasticceria': 'Food Services',
+            'bakery': 'Food Services',
+            'panetteria': 'Food Services',
+            // Retail
+            'negozio': 'Retail',
+            'shop': 'Retail',
+            'store': 'Retail',
+            'supermarket': 'Retail',
+            'supermercato': 'Retail',
+            'alimentari': 'Retail',
+            // Altro
+            'import': 'Wholesale',
+            'export': 'Wholesale',
+            'distribuzione': 'Wholesale',
+            'distribution': 'Wholesale',
+            'grossista': 'Wholesale',
+          };
+
+          const activityLower = (finalData.businessActivity || '').toLowerCase();
+          const businessTypes = webSearchData?.businessTypes || [];
+          let matchedIndustry: string | null = null;
+
+          // Prima cerca nell'attività
+          for (const [keyword, industry] of Object.entries(INDUSTRY_MAP)) {
+            if (activityLower.includes(keyword)) {
+              matchedIndustry = industry;
+              break;
+            }
+          }
+
+          // Se non trovato, cerca nei businessTypes
+          if (!matchedIndustry && businessTypes.length > 0) {
+            for (const bType of businessTypes) {
+              const bTypeLower = bType.toLowerCase();
+              for (const [keyword, industry] of Object.entries(INDUSTRY_MAP)) {
+                if (bTypeLower.includes(keyword)) {
+                  matchedIndustry = industry;
+                  break;
+                }
+              }
+              if (matchedIndustry) break;
+            }
+          }
+
+          // Cerca il settore in Odoo
+          if (matchedIndustry) {
+            // Cerca con nome esatto o simile
+            let industries = await searchReadOdoo('res.partner.industry', [
+              ['name', 'ilike', matchedIndustry]
+            ], ['id', 'name'], 1);
+
+            // Se non trova, prova a cercare parole chiave più generiche
+            if (!industries || industries.length === 0) {
+              const genericTerms: Record<string, string[]> = {
+                'Food Services': ['food', 'restaurant', 'gastro', 'catering', 'horeca'],
+                'Hotels': ['hotel', 'hospitality', 'lodging'],
+                'Retail': ['retail', 'commerce', 'trade', 'shop'],
+                'Wholesale': ['wholesale', 'distribution', 'import', 'export']
+              };
+
+              const terms = genericTerms[matchedIndustry] || [];
+              for (const term of terms) {
+                industries = await searchReadOdoo('res.partner.industry', [
+                  ['name', 'ilike', term]
+                ], ['id', 'name'], 1);
+                if (industries && industries.length > 0) break;
+              }
+            }
+
+            if (industries && industries.length > 0) {
+              partnerData.industry_id = industries[0].id;
+              console.log(`[Industry] Assigned industry: ${industries[0].name} (ID: ${industries[0].id})`);
+            } else {
+              // Prova a creare il settore se non esiste
+              try {
+                const newIndustryId = await createOdoo('res.partner.industry', {
+                  name: matchedIndustry,
+                  active: true
+                });
+                partnerData.industry_id = newIndustryId;
+                console.log(`[Industry] Created new industry: ${matchedIndustry} (ID: ${newIndustryId})`);
+              } catch (createError) {
+                console.log(`[Industry] Industry "${matchedIndustry}" not found and could not create`);
+              }
+            }
+          }
+        } catch (industryError) {
+          console.warn('[Industry] Could not assign industry:', industryError);
+        }
+      }
+
       // Aggiungi note con info enrichment
       const notes: string[] = [];
       if (finalData.companyType) notes.push(`Tipo: ${finalData.companyType}`);
@@ -589,18 +776,19 @@ Rispondi con JSON:
       // ============================================
       // STEP 3.1: CREATE DELIVERY & INVOICE ADDRESSES (solo per aziende)
       // ============================================
+      let deliveryAddressId: number | null = null;
+      let invoiceAddressId: number | null = null;
+
       if (contactType === 'company' && partnerId) {
         console.log('[Step 3.1] Creating delivery and invoice addresses for company...');
 
         try {
-          const addressesToCreate = [];
-
           // Get company name for address labels
           const companyName = partnerData.name || finalData.name || 'Azienda';
 
           // Indirizzo di consegna (delivery)
           if (partnerData.street || partnerData.city || partnerData.zip) {
-            const deliveryAddress = {
+            const deliveryAddress: Record<string, any> = {
               parent_id: partnerId,
               type: 'delivery',
               name: `${companyName} - Indirizzo di consegna`,
@@ -609,12 +797,17 @@ Rispondi con JSON:
               zip: partnerData.zip || '',
               country_id: partnerData.country_id || 43 // Default Switzerland
             };
-            addressesToCreate.push(createOdoo('res.partner', deliveryAddress));
+            // Aggiungi provincia se presente
+            if (partnerData.state_id) {
+              deliveryAddress.state_id = partnerData.state_id;
+            }
+            deliveryAddressId = await createOdoo('res.partner', deliveryAddress);
+            console.log(`[Step 3.1] ✓ Created delivery address ID: ${deliveryAddressId}`);
           }
 
           // Indirizzo di fatturazione (invoice)
           if (partnerData.street || partnerData.city || partnerData.zip) {
-            const invoiceAddress = {
+            const invoiceAddress: Record<string, any> = {
               parent_id: partnerId,
               type: 'invoice',
               name: `${companyName} - Indirizzo di fatturazione`,
@@ -623,14 +816,15 @@ Rispondi con JSON:
               zip: partnerData.zip || '',
               country_id: partnerData.country_id || 43 // Default Switzerland
             };
-            addressesToCreate.push(createOdoo('res.partner', invoiceAddress));
+            // Aggiungi provincia se presente
+            if (partnerData.state_id) {
+              invoiceAddress.state_id = partnerData.state_id;
+            }
+            invoiceAddressId = await createOdoo('res.partner', invoiceAddress);
+            console.log(`[Step 3.1] ✓ Created invoice address ID: ${invoiceAddressId}`);
           }
 
-          // Crea gli indirizzi in parallelo
-          if (addressesToCreate.length > 0) {
-            const createdAddressIds = await Promise.all(addressesToCreate);
-            console.log(`[Step 3.1] ✓ Created ${createdAddressIds.length} addresses:`, createdAddressIds);
-          } else {
+          if (!deliveryAddressId && !invoiceAddressId) {
             console.log('[Step 3.1] ⊘ No address data available, skipping address creation');
           }
 
@@ -638,6 +832,384 @@ Rispondi con JSON:
           // Non bloccare il flusso se la creazione degli indirizzi fallisce
           console.warn('[Step 3.1] ⚠ Address creation error (non-blocking):', addressError.message);
           warnings.push(`Creazione indirizzi fallita: ${addressError.message}`);
+        }
+      }
+
+      // ============================================
+      // STEP 3.2: METODO DI CONSEGNA (GIRO basato su zona geografica)
+      // ============================================
+      if (contactType === 'company' && partnerId) {
+        console.log('[Step 3.2] Assigning delivery method based on geographic zone...');
+
+        try {
+          const { writeOdoo } = await import('@/lib/odoo/odoo-helper');
+
+          // Mappa CAP/Città/Cantone -> GIRO di consegna
+          // Basata sui GIRO esistenti nel sistema
+          const DELIVERY_ZONES: Record<string, { keywords: string[], zipRanges?: [number, number][] }> = {
+            'GIRO ZURIGO CENTRO': {
+              keywords: ['zürich', 'zurich', 'zuerich', 'opfikon', 'kloten', 'bachenbülach', 'bülach', 'regensdorf', 'rümlang', 'embrach', 'niederglatt'],
+              zipRanges: [[8000, 8099], [8152, 8197], [8180, 8189]] // Include Zurigo e dintorni nord
+            },
+            'GIRO ZURIGO EST': {
+              keywords: ['dübendorf', 'wallisellen', 'dietlikon', 'uster', 'wetzikon', 'volketswil', 'fällanden'],
+              zipRanges: [[8600, 8699], [8117, 8135]] // Zurigo est
+            },
+            'GIRO LAGO SUD': {
+              keywords: ['thalwil', 'horgen', 'wädenswil', 'richterswil', 'lachen', 'rapperswil', 'jona', 'meilen', 'küsnacht', 'zollikon'],
+              zipRanges: [[8700, 8799], [8800, 8899], [8640, 8645], [8853, 8858]]
+            },
+            'GIRO TURGOVIA-SANGALLO': {
+              keywords: ['winterthur', 'frauenfeld', 'st. gallen', 'st.gallen', 'san gallo', 'wil', 'kreuzlingen', 'arbon', 'romanshorn'],
+              zipRanges: [[8400, 8499], [8500, 8599], [9000, 9499]] // Turgovia e San Gallo
+            },
+            'GIRO ARGOVIA': {
+              keywords: ['baden', 'aarau', 'brugg', 'lenzburg', 'zofingen', 'wohlen', 'spreitenbach', 'wettingen'],
+              zipRanges: [[5000, 5099], [5200, 5499], [5600, 5699], [8953, 8957]] // Argovia completa
+            },
+            'GIRO GINEVRA': {
+              keywords: ['genève', 'geneva', 'genf', 'carouge', 'vernier', 'lancy', 'meyrin', 'onex'],
+              zipRanges: [[1200, 1299]]
+            },
+            'GIRO LOSANNA': {
+              keywords: ['lausanne', 'vevey', 'montreux', 'nyon', 'morges', 'renens', 'pully', 'lutry'],
+              zipRanges: [[1000, 1199], [1800, 1899]]
+            },
+            'GIRO LUCERNA': {
+              keywords: ['luzern', 'lucerne', 'lucerna', 'zug', 'emmen', 'kriens', 'baar', 'cham', 'rotkreuz'],
+              zipRanges: [[6000, 6499]] // Lucerna e Zugo completi
+            },
+            'GIRO BASILEA': {
+              keywords: ['basel', 'basilea', 'bâle', 'riehen', 'allschwil', 'muttenz', 'pratteln', 'liestal'],
+              zipRanges: [[4000, 4199], [4410, 4499]] // Basilea città e campagna
+            },
+            'GIRO GLARUS': {
+              keywords: ['glarus', 'glarona', 'näfels', 'mollis', 'netstal'],
+              zipRanges: [[8750, 8779]]
+            },
+            'GIRO TICINO': {
+              keywords: ['lugano', 'bellinzona', 'locarno', 'mendrisio', 'chiasso', 'ascona', 'ticino', 'giubiasco', 'minusio'],
+              zipRanges: [[6500, 6999]]
+            }
+          };
+
+          const cityLower = (finalData.city || '').toLowerCase();
+          const zip = parseInt(finalData.zip || '0', 10);
+          let matchedGiro: string | null = null;
+
+          // Prima cerca per keyword (città)
+          for (const [giroName, config] of Object.entries(DELIVERY_ZONES)) {
+            if (config.keywords.some(kw => cityLower.includes(kw))) {
+              matchedGiro = giroName;
+              break;
+            }
+          }
+
+          // Se non trovato, cerca per range CAP
+          if (!matchedGiro && zip > 0) {
+            for (const [giroName, config] of Object.entries(DELIVERY_ZONES)) {
+              if (config.zipRanges) {
+                for (const [min, max] of config.zipRanges) {
+                  if (zip >= min && zip <= max) {
+                    matchedGiro = giroName;
+                    break;
+                  }
+                }
+              }
+              if (matchedGiro) break;
+            }
+          }
+
+          // Se trovato un GIRO, cerca l'ID del delivery.carrier in Odoo
+          if (matchedGiro) {
+            const carriers = await searchReadOdoo('delivery.carrier', [
+              ['name', 'ilike', matchedGiro]
+            ], ['id', 'name'], 1);
+
+            if (carriers && carriers.length > 0) {
+              // Aggiorna il partner con il metodo di consegna
+              await writeOdoo('res.partner', [partnerId], {
+                property_delivery_carrier_id: carriers[0].id
+              });
+              console.log(`[Step 3.2] ✓ Assigned delivery method: ${carriers[0].name} (ID: ${carriers[0].id})`);
+            } else {
+              console.warn(`[Step 3.2] ⚠ Delivery carrier "${matchedGiro}" not found in Odoo`);
+              warnings.push(`Metodo consegna "${matchedGiro}" non trovato`);
+            }
+          } else {
+            console.log('[Step 3.2] ⊘ No matching delivery zone for address');
+          }
+        } catch (deliveryError: any) {
+          console.warn('[Step 3.2] ⚠ Delivery method assignment error:', deliveryError.message);
+          warnings.push(`Assegnazione metodo consegna fallita: ${deliveryError.message}`);
+        }
+      }
+
+      // ============================================
+      // STEP 3.3: GEOLOCALIZZAZIONE (attiva coordinate per TUTTI i contatti)
+      // ============================================
+      if (partnerId) {
+        console.log('[Step 3.3] Activating geolocation for all partners...');
+
+        try {
+          const { callOdoo } = await import('@/lib/odoo/odoo-helper');
+
+          // Raccogli tutti gli ID da geolocalizzare
+          const idsToGeolocalize: number[] = [partnerId];
+          if (deliveryAddressId) idsToGeolocalize.push(deliveryAddressId);
+          if (invoiceAddressId) idsToGeolocalize.push(invoiceAddressId);
+
+          // Chiama il metodo geo_localize di Odoo che calcola lat/lng dall'indirizzo
+          // Passa tutti gli ID insieme per efficienza
+          await callOdoo('res.partner', 'geo_localize', [idsToGeolocalize]);
+          console.log(`[Step 3.3] ✓ Geolocation activated for ${idsToGeolocalize.length} partners: ${idsToGeolocalize.join(', ')}`);
+        } catch (geoError: any) {
+          console.warn('[Step 3.3] ⚠ Geolocation activation error:', geoError.message);
+          warnings.push(`Attivazione geolocalizzazione fallita: ${geoError.message}`);
+        }
+      }
+
+      // ============================================
+      // STEP 3.4: ETICHETTE PARTNER (category_id)
+      // ============================================
+      if (partnerId) {
+        console.log('[Step 3.4] Adding partner tags...');
+
+        try {
+          const { writeOdoo } = await import('@/lib/odoo/odoo-helper');
+
+          // Helper per cercare o creare un tag
+          const getOrCreateTag = async (tagName: string): Promise<number | null> => {
+            const existingTags = await searchReadOdoo('res.partner.category', [
+              ['name', '=', tagName]
+            ], ['id'], 1);
+
+            if (existingTags && existingTags.length > 0) {
+              return existingTags[0].id;
+            } else {
+              try {
+                const newTagId = await createOdoo('res.partner.category', {
+                  name: tagName,
+                  active: true
+                });
+                console.log(`[Step 3.4] Created new tag: ${tagName} (ID: ${newTagId})`);
+                return newTagId;
+              } catch (createTagError) {
+                console.warn(`[Step 3.4] Could not create tag ${tagName}:`, createTagError);
+                return null;
+              }
+            }
+          };
+
+          // 1. Etichetta "Cliente" per il partner principale
+          const clienteTagId = await getOrCreateTag('Cliente');
+          if (clienteTagId) {
+            await writeOdoo('res.partner', [partnerId], {
+              category_id: [[6, 0, [clienteTagId]]]
+            });
+            console.log(`[Step 3.4] ✓ Assigned "Cliente" tag to main partner`);
+          }
+
+          // 2. Etichetta "Indirizzo di consegna" per l'indirizzo consegna
+          if (deliveryAddressId) {
+            const consegnaTagId = await getOrCreateTag('Indirizzo di consegna');
+            if (consegnaTagId) {
+              await writeOdoo('res.partner', [deliveryAddressId], {
+                category_id: [[6, 0, [consegnaTagId]]]
+              });
+              console.log(`[Step 3.4] ✓ Assigned "Indirizzo di consegna" tag to delivery address`);
+            }
+          }
+
+          // 3. Etichetta "Indirizzo di fatturazione" per l'indirizzo fatturazione
+          if (invoiceAddressId) {
+            const fatturazioneTagId = await getOrCreateTag('Indirizzo di fatturazione');
+            if (fatturazioneTagId) {
+              await writeOdoo('res.partner', [invoiceAddressId], {
+                category_id: [[6, 0, [fatturazioneTagId]]]
+              });
+              console.log(`[Step 3.4] ✓ Assigned "Indirizzo di fatturazione" tag to invoice address`);
+            }
+          }
+
+        } catch (tagError: any) {
+          console.warn('[Step 3.4] ⚠ Tag assignment error:', tagError.message);
+          warnings.push(`Assegnazione etichette fallita: ${tagError.message}`);
+        }
+      }
+
+      // ============================================
+      // STEP 3.45: LOGO AZIENDALE (scarica dal sito web)
+      // ============================================
+      if (partnerId && contactType === 'company') {
+        const websiteUrl = finalData.website || webSearchData?.website;
+
+        if (websiteUrl) {
+          console.log(`[Step 3.45] Fetching company logo from: ${websiteUrl}`);
+
+          try {
+            const { writeOdoo } = await import('@/lib/odoo/odoo-helper');
+
+            // Normalizza URL
+            let normalizedUrl = websiteUrl.trim();
+            if (!normalizedUrl.startsWith('http')) {
+              normalizedUrl = 'https://' + normalizedUrl;
+            }
+
+            const baseUrl = new URL(normalizedUrl);
+            const domain = baseUrl.hostname;
+            const protocol = baseUrl.protocol;
+
+            // Pattern comuni per i logo
+            const logoPatterns = [
+              // Favicon (più affidabile)
+              `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+              // Logo diretti
+              `${protocol}//${domain}/logo.png`,
+              `${protocol}//${domain}/logo.jpg`,
+              `${protocol}//${domain}/logo.svg`,
+              `${protocol}//${domain}/images/logo.png`,
+              `${protocol}//${domain}/assets/logo.png`,
+              `${protocol}//${domain}/img/logo.png`,
+              `${protocol}//${domain}/static/logo.png`,
+              // Favicon locale
+              `${protocol}//${domain}/favicon.ico`,
+              `${protocol}//${domain}/favicon.png`,
+            ];
+
+            let logoBase64: string | null = null;
+
+            for (const logoUrl of logoPatterns) {
+              try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 5000);
+
+                const response = await fetch(logoUrl, {
+                  signal: controller.signal,
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; LapaBot/1.0)'
+                  }
+                });
+                clearTimeout(timeout);
+
+                if (response.ok) {
+                  const contentType = response.headers.get('content-type') || '';
+
+                  // Verifica che sia un'immagine
+                  if (contentType.includes('image') || logoUrl.includes('favicon')) {
+                    const buffer = await response.arrayBuffer();
+
+                    // Verifica dimensione (max 500KB)
+                    if (buffer.byteLength > 0 && buffer.byteLength < 500 * 1024) {
+                      logoBase64 = Buffer.from(buffer).toString('base64');
+                      console.log(`[Step 3.45] ✓ Found logo at: ${logoUrl} (${buffer.byteLength} bytes)`);
+                      break;
+                    }
+                  }
+                }
+              } catch (fetchError) {
+                // Continua con il prossimo pattern
+                continue;
+              }
+            }
+
+            // Se trovato un logo, caricalo su Odoo
+            if (logoBase64) {
+              await writeOdoo('res.partner', [partnerId], {
+                image_1920: logoBase64
+              });
+              console.log('[Step 3.45] ✓ Logo uploaded to partner');
+            } else {
+              console.log('[Step 3.45] ⊘ No logo found, skipping');
+            }
+
+          } catch (logoError: any) {
+            console.warn('[Step 3.45] ⚠ Logo fetch error:', logoError.message);
+            // Non aggiungere warning - il logo è opzionale
+          }
+        } else {
+          console.log('[Step 3.45] ⊘ No website URL available for logo fetch');
+        }
+      }
+
+      // ============================================
+      // STEP 3.46: LISTINO PREZZI PERSONALIZZATO
+      // ============================================
+      if (partnerId && contactType === 'company') {
+        console.log('[Step 3.46] Creating personalized pricelist for company...');
+
+        try {
+          const { writeOdoo } = await import('@/lib/odoo/odoo-helper');
+
+          const companyName = partnerData.name || finalData.name || finalData.companyName || 'Azienda';
+
+          // Verifica se esiste già un listino con questo nome
+          const existingPricelist = await searchReadOdoo('product.pricelist', [
+            ['name', '=', companyName]
+          ], ['id', 'name'], 1);
+
+          let pricelistId: number;
+
+          if (existingPricelist && existingPricelist.length > 0) {
+            // Usa il listino esistente
+            pricelistId = existingPricelist[0].id;
+            console.log(`[Step 3.46] Found existing pricelist: ${existingPricelist[0].name} (ID: ${pricelistId})`);
+          } else {
+            // Prima cerca la valuta CHF
+            const chfCurrency = await searchReadOdoo('res.currency', [
+              ['name', '=', 'CHF']
+            ], ['id'], 1);
+
+            const currencyId = chfCurrency && chfCurrency.length > 0 ? chfCurrency[0].id : 6; // Fallback ID 6 per CHF
+
+            // Cerca il listino base "Listino 5m-10m (CHF)" per usarlo come base della formula
+            const basePricelist = await searchReadOdoo('product.pricelist', [
+              '|',
+              ['name', 'ilike', '5m-10m'],
+              ['name', 'ilike', 'Listino 5m-10m']
+            ], ['id', 'name'], 1);
+
+            // Crea un nuovo listino con il nome dell'azienda
+            pricelistId = await createOdoo('product.pricelist', {
+              name: companyName,
+              currency_id: currencyId,
+              active: true
+            });
+            console.log(`[Step 3.46] Created new pricelist: ${companyName} (ID: ${pricelistId})`);
+
+            // Se trovato il listino base, crea una regola formula che si basa su di esso
+            if (basePricelist && basePricelist.length > 0) {
+              const basePricelistId = basePricelist[0].id;
+
+              // Crea la regola del listino (product.pricelist.item)
+              // compute_price = 'formula' significa che usa formula
+              // base = 'pricelist' significa che si basa su un altro listino
+              // base_pricelist_id = ID del listino base
+              await createOdoo('product.pricelist.item', {
+                pricelist_id: pricelistId,
+                applied_on: '3_global', // Tutti i prodotti
+                compute_price: 'formula',
+                base: 'pricelist',
+                base_pricelist_id: basePricelistId,
+                price_discount: 0, // 0% sconto
+                price_surcharge: 0, // 0 sovrapprezzo
+                min_quantity: 0
+              });
+              console.log(`[Step 3.46] Created formula rule based on: ${basePricelist[0].name} (ID: ${basePricelistId})`);
+            } else {
+              console.log('[Step 3.46] Base pricelist "5m-10m" not found, skipping formula rule');
+            }
+          }
+
+          // Assegna il listino al partner
+          await writeOdoo('res.partner', [partnerId], {
+            property_product_pricelist: pricelistId
+          });
+          console.log(`[Step 3.46] ✓ Assigned pricelist ${pricelistId} to partner ${partnerId}`);
+
+        } catch (pricelistError: any) {
+          console.warn('[Step 3.46] ⚠ Pricelist creation error:', pricelistError.message);
+          warnings.push(`Creazione listino prezzi fallita: ${pricelistError.message}`);
         }
       }
 

@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Aumentato per gestire batch queries
+export const maxDuration = 60;
 
 /**
- * LIST TODAY ARRIVALS
+ * LIST TODAY ARRIVALS (Gestione Arrivi)
  *
  * Recupera tutti gli arrivi (stock.picking incoming) previsti per OGGI
+ * ESCLUDE i resi (WH/RET) - vogliamo solo arrivi fornitori
  * Include informazioni su purchase order e conteggio allegati
  */
 export async function GET(request: NextRequest) {
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
     }
 
-    console.log('📅 [LIST-TODAY] Recupero arrivi di oggi...');
+    console.log('📅 [GESTIONE-ARRIVI] Recupero arrivi di oggi...');
 
     // Calcola range di oggi (00:00:00 - 23:59:59)
     const today = new Date();
@@ -32,14 +33,13 @@ export async function GET(request: NextRequest) {
     console.log(`📅 Range: ${todayStartISO} → ${todayEndISO}`);
 
     // Cerca stock.picking di tipo "incoming" per oggi
-    // Include anche 'done' per mostrare quelli già completati con badge
-    // Escludi i resi (WH/RET) - vogliamo solo arrivi fornitori (WH/IN)
+    // ESCLUDI i resi (WH/RET) - vogliamo solo arrivi fornitori (WH/IN)
     const domain = [
       ['picking_type_code', '=', 'incoming'],
       ['scheduled_date', '>=', todayStartISO],
       ['scheduled_date', '<=', todayEndISO],
       ['state', 'in', ['assigned', 'confirmed', 'waiting', 'done']],
-      ['name', 'not ilike', '%RET%']
+      ['name', 'not ilike', '%RET%']  // Escludi resi
     ];
 
     const pickings = await callOdoo(cookies, 'stock.picking', 'search_read', [
@@ -50,12 +50,12 @@ export async function GET(request: NextRequest) {
         'partner_id',
         'scheduled_date',
         'state',
-        'origin', // Es: "PO00123"
+        'origin',
         'move_ids_without_package'
       ]
     ]);
 
-    console.log(`📦 Trovati ${pickings.length} arrivi per oggi`);
+    console.log(`📦 Trovati ${pickings.length} arrivi per oggi (esclusi resi)`);
 
     // OTTIMIZZAZIONE: Batch query per Purchase Orders
     const origins = pickings.map((p: any) => p.origin).filter(Boolean);
@@ -89,15 +89,16 @@ export async function GET(request: NextRequest) {
             ['res_id', 'in', poIds],
             ['mimetype', 'in', ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']]
           ],
-          ['id', 'name', 'res_id']
+          ['id', 'name', 'res_id', 'mimetype', 'file_size']
         ]);
 
         console.log(`✅ Trovati ${attachments.length} attachments in batch`);
 
-        // Crea mappa res_id -> count
+        // Crea mappa res_id -> attachments array
         attachments.forEach((att: any) => {
-          const count = attachmentsMap.get(att.res_id) || 0;
-          attachmentsMap.set(att.res_id, count + 1);
+          const existing = attachmentsMap.get(att.res_id) || [];
+          existing.push(att);
+          attachmentsMap.set(att.res_id, existing);
         });
       }
     }
@@ -107,13 +108,15 @@ export async function GET(request: NextRequest) {
       let purchaseOrderId = null;
       let purchaseOrderName = null;
       let attachmentsCount = 0;
+      let attachmentsList: any[] = [];
 
       // Lookup da mappa invece di query
       if (picking.origin && purchaseOrdersMap.has(picking.origin)) {
         const po = purchaseOrdersMap.get(picking.origin);
         purchaseOrderId = po.id;
         purchaseOrderName = po.name;
-        attachmentsCount = attachmentsMap.get(po.id) || 0;
+        attachmentsList = attachmentsMap.get(po.id) || [];
+        attachmentsCount = attachmentsList.length;
       }
 
       // Conta prodotti nel picking
@@ -131,6 +134,7 @@ export async function GET(request: NextRequest) {
         purchase_order_id: purchaseOrderId,
         purchase_order_name: purchaseOrderName,
         attachments_count: attachmentsCount,
+        attachments: attachmentsList, // Include dettagli allegati per il processing
         products_count: productsCount,
         // Flag per UI
         has_purchase_order: !!purchaseOrderId,
@@ -141,10 +145,14 @@ export async function GET(request: NextRequest) {
     });
 
     // Ordina per:
-    // 1. Prima quelli pronti (con P.O. e allegati)
+    // 1. Prima quelli pronti (con P.O. e allegati) e NON completati
     // 2. Poi per orario scheduled_date
     enrichedPickings.sort((a: any, b: any) => {
-      // Prima i "ready"
+      // Completati alla fine
+      if (a.is_completed && !b.is_completed) return 1;
+      if (!a.is_completed && b.is_completed) return -1;
+
+      // Poi i "ready" prima
       if (a.is_ready && !b.is_ready) return -1;
       if (!a.is_ready && b.is_ready) return 1;
 
@@ -152,7 +160,7 @@ export async function GET(request: NextRequest) {
       return new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime();
     });
 
-    console.log(`✅ [LIST-TODAY] ${enrichedPickings.length} arrivi arricchiti e ordinati`);
+    console.log(`✅ [GESTIONE-ARRIVI] ${enrichedPickings.length} arrivi arricchiti e ordinati`);
 
     return NextResponse.json({
       success: true,
@@ -162,7 +170,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ [LIST-TODAY] Error:', error);
+    console.error('❌ [GESTIONE-ARRIVI] Error:', error);
     return NextResponse.json({
       error: error.message || 'Errore durante il recupero degli arrivi',
       details: error.toString()

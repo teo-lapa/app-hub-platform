@@ -1,0 +1,602 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import Anthropic from '@anthropic-ai/sdk';
+import { loadSkill, logSkillInfo } from '@/lib/ai/skills-loader';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 180; // 3 minuti
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+interface ParsedProduct {
+  article_code?: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  lot_number?: string;
+  expiry_date?: string;
+  variant?: string;
+}
+
+interface OdooMoveLine {
+  id: number;
+  product_id: number[];
+  product_name: string;
+  product_code: string;
+  product_uom_qty: number;
+  qty_done: number;
+  lot_id: any;
+  lot_name: string | false;
+  expiry_date: string | false;
+  move_id: number[];
+  variant_ids: number[];
+}
+
+/**
+ * PROCESS ARRIVAL - Flusso Completo con AI Matching
+ *
+ * COPIA della logica di arrivo-merce/process-reception che FUNZIONA
+ *
+ * 1. Carica le move lines del picking
+ * 2. Arricchisce con info UoM
+ * 3. Usa Claude AI con skill product-matching
+ * 4. Aggiorna qty_done sulle move lines
+ * 5. Mette a zero le righe non matchate
+ * 6. (Opzionale) Valida il picking
+ * 7. (Opzionale) Crea la fattura bozza
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const cookieHeader = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
+
+    if (!uid) {
+      return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const {
+      picking_id,
+      parsed_products,      // Prodotti estratti da Gemini (formato arrivo-merce)
+      skip_validation,      // Se true, non validare il picking
+      skip_invoice,         // Se true, non creare la fattura
+      attachment_ids,       // IDs degli allegati da collegare alla fattura
+    } = body;
+
+    if (!picking_id) {
+      return NextResponse.json({
+        error: 'picking_id richiesto'
+      }, { status: 400 });
+    }
+
+    if (!parsed_products || parsed_products.length === 0) {
+      return NextResponse.json({
+        error: 'parsed_products richiesto'
+      }, { status: 400 });
+    }
+
+    console.log('🔄 [PROCESS-ARRIVAL] Inizio processamento picking ID:', picking_id);
+    console.log('📦 Prodotti da fattura:', parsed_products.length);
+
+    // ===== STEP 1: Carica dati picking =====
+    const pickings = await callOdoo(cookies, 'stock.picking', 'read', [
+      [picking_id],
+      ['name', 'partner_id', 'origin', 'state', 'move_line_ids_without_package']
+    ]);
+
+    if (!pickings || pickings.length === 0) {
+      throw new Error('Picking non trovato');
+    }
+
+    const picking = pickings[0];
+    const supplierId = picking.partner_id?.[0];
+    console.log(`📋 Picking: ${picking.name}, Stato: ${picking.state}, Fornitore ID: ${supplierId}`);
+
+    // Se già completato, salta
+    if (picking.state === 'done') {
+      return NextResponse.json({
+        success: true,
+        picking_id,
+        picking_name: picking.name,
+        message: 'Picking già completato',
+        results: {
+          updated: 0,
+          created: 0,
+          no_match: 0,
+          set_to_zero: 0,
+          errors: [],
+          warnings: ['Picking già completato']
+        }
+      });
+    }
+
+    // ===== STEP 2: Carica move lines =====
+    const moveLineIds = picking.move_line_ids_without_package || [];
+    if (moveLineIds.length === 0) {
+      throw new Error('Nessuna riga nel picking');
+    }
+
+    const moveLines = await callOdoo(cookies, 'stock.move.line', 'read', [
+      moveLineIds,
+      ['id', 'product_id', 'qty_done', 'lot_id', 'lot_name', 'expiration_date', 'move_id', 'product_uom_id', 'location_id', 'location_dest_id']
+    ]);
+
+    console.log('📋 Righe Odoo:', moveLines.length);
+
+    // ===== STEP 3: Arricchisci con info prodotto e UoM =====
+    console.log('📏 Carico informazioni prodotto e UoM...');
+    const enrichedMoveLines = await Promise.all(
+      moveLines.map(async (line: any) => {
+        try {
+          // Leggi il prodotto
+          const productData = await callOdoo(cookies, 'product.product', 'read', [
+            [line.product_id[0]],
+            ['name', 'default_code', 'uom_id', 'uom_po_id', 'product_tmpl_id']
+          ]);
+
+          if (!productData || productData.length === 0) {
+            return {
+              ...line,
+              product_name: line.product_id[1] || 'Prodotto sconosciuto',
+              product_code: '',
+            };
+          }
+
+          const product = productData[0];
+          const uomId = product.uom_id?.[0];
+          const uomPoId = product.uom_po_id?.[0];
+
+          // Leggi le informazioni dettagliate dell'UoM
+          let uomInfo = null;
+          if (uomId) {
+            const uomData = await callOdoo(cookies, 'uom.uom', 'read', [
+              [uomId],
+              ['name', 'category_id', 'factor', 'factor_inv', 'uom_type', 'rounding']
+            ]);
+            uomInfo = uomData?.[0];
+          }
+
+          // Se esiste UoM acquisto diversa, leggi anche quella
+          let uomPoInfo = null;
+          if (uomPoId && uomPoId !== uomId) {
+            const uomPoData = await callOdoo(cookies, 'uom.uom', 'read', [
+              [uomPoId],
+              ['name', 'category_id', 'factor', 'factor_inv', 'uom_type', 'rounding']
+            ]);
+            uomPoInfo = uomPoData?.[0];
+          }
+
+          return {
+            ...line,
+            product_name: product.name,
+            product_code: product.default_code || '',
+            product_tmpl_id: product.product_tmpl_id,
+            uom_info: uomInfo,
+            uom_po_info: uomPoInfo
+          };
+        } catch (error: any) {
+          console.error(`⚠️ Errore caricamento prodotto ${line.product_id[0]}:`, error.message);
+          return {
+            ...line,
+            product_name: line.product_id[1] || 'Prodotto sconosciuto',
+            product_code: '',
+          };
+        }
+      })
+    );
+
+    console.log(`✅ Info prodotto caricate per ${enrichedMoveLines.length} righe`);
+
+    // ===== STEP 4: AI Matching con Claude =====
+    const skill = loadSkill('inventory-management/product-matching');
+    logSkillInfo('inventory-management/product-matching');
+    console.log(`📚 Usando skill: ${skill.metadata.name} v${skill.metadata.version}`);
+
+    const matchingData = `
+PRODOTTI DALLA FATTURA:
+${JSON.stringify(parsed_products, null, 2)}
+
+RIGHE DEL SISTEMA ODOO (CON UoM):
+${JSON.stringify(enrichedMoveLines, null, 2)}
+
+Esegui il matching seguendo le regole sopra.
+
+IMPORTANTE: Quando calcoli la quantità, DEVI fare la conversione usando le UoM di Odoo.
+Esempio: se la fattura dice "3 x 10ST" e l'UoM di Odoo è KG con factor 0.1 (1 unità = 10 KG),
+allora la quantità finale deve essere 30.0 KG (non 3.0).
+`;
+
+    console.log('🤖 Invio a Claude per matching intelligente...');
+
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 8000,
+      temperature: 0,
+      messages: [
+        {
+          role: 'user',
+          content: `${skill.content}\n\n---\n\n${matchingData}`,
+        },
+      ],
+    });
+
+    const firstContent = message.content[0];
+    const responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
+    console.log('📥 Risposta Claude matching:', responseText.substring(0, 300) + '...');
+
+    let matches;
+    try {
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        matches = JSON.parse(jsonMatch[0]);
+      } else {
+        matches = JSON.parse(responseText);
+      }
+    } catch (parseError) {
+      console.error('❌ Errore parsing matching:', parseError);
+      return NextResponse.json({
+        error: 'Errore nel parsing del matching AI',
+        details: responseText
+      }, { status: 500 });
+    }
+
+    console.log('✅ Matches trovati:', matches.length);
+
+    // ===== STEP 5: Processa i matches =====
+    const usedMoveLineIds = new Set<number>();
+    const matchedProducts = matches.filter((m: any) => m.action !== 'no_match');
+    const unmatchedProducts = matches.filter((m: any) => m.action === 'no_match');
+
+    console.log(`✅ Prodotti matchati: ${matchedProducts.length}`);
+    console.log(`⚠️ Prodotti NON matchati: ${unmatchedProducts.length}`);
+
+    const results = {
+      updated: 0,
+      created: 0,
+      no_match: unmatchedProducts.length,
+      set_to_zero: 0,
+      supplier_info_updated: 0,
+      errors: [] as string[],
+      warnings: [] as string[],
+      details: [] as any[],
+      unmatched_products: unmatchedProducts.map((m: any) => ({
+        invoice_product: parsed_products[m.invoice_product_index],
+        reason: m.match_reason,
+        confidence: m.match_confidence
+      }))
+    };
+
+    // Processa solo i prodotti matchati
+    for (const match of matchedProducts) {
+      try {
+        if (match.action === 'update') {
+          usedMoveLineIds.add(match.move_line_id);
+
+          const updateData: any = {
+            qty_done: match.quantity
+          };
+
+          if (match.lot_number) {
+            updateData.lot_name = match.lot_number;
+          }
+
+          if (match.expiry_date) {
+            updateData.expiration_date = `${match.expiry_date} 00:00:00`;
+          }
+
+          await callOdoo(cookies, 'stock.move.line', 'write', [
+            [match.move_line_id],
+            updateData
+          ]);
+
+          const moveLine = enrichedMoveLines.find((ml: any) => ml.id === match.move_line_id);
+          const productName = moveLine ? moveLine.product_name : `Riga ${match.move_line_id}`;
+
+          results.updated++;
+          results.details.push({
+            action: 'updated',
+            move_line_id: match.move_line_id,
+            product_name: productName,
+            quantity: match.quantity,
+            lot: match.lot_number || 'N/A',
+            expiry: match.expiry_date || 'N/A'
+          });
+
+          console.log(`✅ Aggiornata riga ${match.move_line_id}: qty=${match.quantity}, lotto=${match.lot_number}`);
+
+          // Aggiorna listino fornitore
+          if (supplierId && moveLine?.product_tmpl_id) {
+            await updateSupplierInfo(
+              cookies,
+              supplierId,
+              moveLine.product_tmpl_id[0],
+              parsed_products[match.invoice_product_index]
+            );
+            results.supplier_info_updated++;
+          }
+
+        } else if (match.action === 'create_new_line') {
+          if (match.move_line_id) {
+            usedMoveLineIds.add(match.move_line_id);
+          }
+
+          const originalLine = enrichedMoveLines.find((ml: any) => ml.id === match.move_line_id);
+
+          if (!originalLine) {
+            results.errors.push(`Riga originale ${match.move_line_id} non trovata`);
+            continue;
+          }
+
+          const newLineData: any = {
+            picking_id: picking_id,
+            product_id: originalLine.product_id[0],
+            product_uom_id: originalLine.product_uom_id ? originalLine.product_uom_id[0] : false,
+            location_id: originalLine.location_id ? originalLine.location_id[0] : false,
+            location_dest_id: originalLine.location_dest_id ? originalLine.location_dest_id[0] : false,
+            move_id: originalLine.move_id[0],
+            qty_done: match.quantity,
+          };
+
+          if (match.lot_number) {
+            newLineData.lot_name = match.lot_number;
+          }
+
+          if (match.expiry_date) {
+            newLineData.expiration_date = `${match.expiry_date} 00:00:00`;
+          }
+
+          const newLineId = await callOdoo(cookies, 'stock.move.line', 'create', [newLineData]);
+
+          results.created++;
+          results.details.push({
+            action: 'created',
+            move_line_id: newLineId,
+            product_name: originalLine.product_name,
+            quantity: match.quantity,
+            lot: match.lot_number || 'N/A',
+            expiry: match.expiry_date || 'N/A'
+          });
+
+          console.log(`✅ Creata nuova riga ${newLineId}: qty=${match.quantity}, lotto=${match.lot_number}`);
+
+          // Aggiorna listino fornitore
+          if (supplierId && originalLine?.product_tmpl_id) {
+            await updateSupplierInfo(
+              cookies,
+              supplierId,
+              originalLine.product_tmpl_id[0],
+              parsed_products[match.invoice_product_index]
+            );
+            results.supplier_info_updated++;
+          }
+        }
+
+      } catch (error: any) {
+        console.error('❌ Errore processamento match:', error);
+        results.errors.push(`Errore su riga: ${error.message}`);
+      }
+    }
+
+    // ===== STEP 6: Metti a ZERO le righe non usate =====
+    console.log('🔍 Verifico righe Odoo non utilizzate...');
+    for (const moveLine of enrichedMoveLines) {
+      if (!usedMoveLineIds.has(moveLine.id)) {
+        try {
+          await callOdoo(cookies, 'stock.move.line', 'write', [
+            [moveLine.id],
+            { qty_done: 0 }
+          ]);
+
+          results.set_to_zero++;
+          results.details.push({
+            action: 'set_to_zero',
+            move_line_id: moveLine.id,
+            product_name: moveLine.product_name,
+            quantity: 0,
+            lot: 'N/A',
+            expiry: 'N/A',
+            reason: 'Riga non trovata nella fattura, impostata a zero'
+          });
+
+          console.log(`⚠️ Riga ${moveLine.id} (${moveLine.product_name}) impostata a qty_done=0`);
+        } catch (error: any) {
+          console.error(`❌ Errore impostazione a zero riga ${moveLine.id}:`, error);
+          results.errors.push(`Errore impostazione a zero riga ${moveLine.id}: ${error.message}`);
+        }
+      }
+    }
+
+    // ===== STEP 7: Valida il picking (opzionale) =====
+    let pickingValidated = false;
+    if (!skip_validation) {
+      console.log('🔐 Validazione picking...');
+
+      try {
+        const validateResult = await callOdoo(
+          cookies,
+          'stock.picking',
+          'button_validate',
+          [[picking_id]]
+        );
+
+        if (validateResult && typeof validateResult === 'object' && validateResult.res_model) {
+          console.log('⚠️ Wizard richiesto:', validateResult.res_model);
+
+          if (validateResult.res_model === 'stock.immediate.transfer') {
+            await callOdoo(
+              cookies,
+              'stock.immediate.transfer',
+              'process',
+              [[validateResult.res_id]]
+            );
+            pickingValidated = true;
+          } else if (validateResult.res_model === 'stock.backorder.confirmation') {
+            await callOdoo(
+              cookies,
+              'stock.backorder.confirmation',
+              'process_cancel_backorder',
+              [[validateResult.res_id]]
+            );
+            pickingValidated = true;
+          } else {
+            results.warnings.push(`Wizard non gestito: ${validateResult.res_model}`);
+          }
+        } else {
+          pickingValidated = true;
+        }
+
+        console.log('✅ Picking validato');
+      } catch (e: any) {
+        results.errors.push(`Errore validazione: ${e.message}`);
+        console.error('❌ Errore validazione:', e.message);
+      }
+    }
+
+    // ===== STEP 8: Crea fattura bozza (opzionale) =====
+    let invoiceId = null;
+    let invoiceName = null;
+
+    if (!skip_invoice && supplierId) {
+      console.log('📄 Creazione fattura bozza...');
+
+      try {
+        const existingInvoices = await callOdoo(cookies, 'account.move', 'search_read', [
+          [
+            ['invoice_origin', 'ilike', picking.origin || picking.name],
+            ['move_type', '=', 'in_invoice'],
+            ['state', '=', 'draft']
+          ],
+          ['id', 'name']
+        ], { limit: 1 });
+
+        if (existingInvoices && existingInvoices.length > 0) {
+          invoiceId = existingInvoices[0].id;
+          invoiceName = existingInvoices[0].name;
+          results.warnings.push('Fattura bozza già esistente');
+          console.log(`⚠️ Fattura già esistente: ${existingInvoices[0].name}`);
+        } else {
+          const invoiceData: any = {
+            move_type: 'in_invoice',
+            partner_id: supplierId,
+            invoice_origin: picking.origin || picking.name,
+          };
+
+          invoiceId = await callOdoo(
+            cookies,
+            'account.move',
+            'create',
+            [invoiceData]
+          );
+
+          const createdInvoice = await callOdoo(cookies, 'account.move', 'read', [
+            [invoiceId],
+            ['name']
+          ]);
+          invoiceName = createdInvoice[0]?.name;
+
+          console.log(`✅ Fattura creata: ${invoiceName}`);
+        }
+
+        // Allega i documenti alla fattura
+        if (invoiceId && attachment_ids && attachment_ids.length > 0) {
+          console.log(`📎 Allegando ${attachment_ids.length} documenti...`);
+
+          for (const attId of attachment_ids) {
+            try {
+              const attachment = await callOdoo(cookies, 'ir.attachment', 'read', [
+                [attId],
+                ['name', 'datas', 'mimetype']
+              ]);
+
+              if (attachment && attachment.length > 0) {
+                await callOdoo(cookies, 'ir.attachment', 'create', [{
+                  name: attachment[0].name,
+                  datas: attachment[0].datas,
+                  mimetype: attachment[0].mimetype,
+                  res_model: 'account.move',
+                  res_id: invoiceId,
+                }]);
+              }
+            } catch (e: any) {
+              results.warnings.push(`Errore allegato ${attId}: ${e.message}`);
+            }
+          }
+        }
+      } catch (e: any) {
+        results.errors.push(`Errore creazione fattura: ${e.message}`);
+        console.error('❌ Errore creazione fattura:', e.message);
+      }
+    }
+
+    console.log('📊 [PROCESS-ARRIVAL] Risultati:', results);
+
+    return NextResponse.json({
+      success: true,
+      picking_id,
+      picking_name: picking.name,
+      picking_validated: pickingValidated,
+      invoice_created: invoiceId !== null,
+      invoice_id: invoiceId,
+      invoice_name: invoiceName,
+      results,
+      tokens_used: message.usage
+    });
+
+  } catch (error: any) {
+    console.error('❌ [PROCESS-ARRIVAL] Error:', error);
+    return NextResponse.json({
+      success: false,
+      error: error.message || 'Errore durante il processamento'
+    }, { status: 500 });
+  }
+}
+
+/**
+ * Aggiorna il listino fornitore con codice e nome dalla fattura
+ */
+async function updateSupplierInfo(
+  cookies: string,
+  supplierId: number,
+  productTmplId: number,
+  invoiceProduct: ParsedProduct
+) {
+  try {
+    const existingSupplierInfo = await callOdoo(cookies, 'product.supplierinfo', 'search_read', [
+      [
+        ['product_tmpl_id', '=', productTmplId],
+        ['partner_id', '=', supplierId]
+      ],
+      ['id', 'product_name', 'product_code']
+    ]);
+
+    if (existingSupplierInfo && existingSupplierInfo.length > 0) {
+      const supplierInfo = existingSupplierInfo[0];
+      const updateData: any = {};
+      let needsUpdate = false;
+
+      if (invoiceProduct.article_code && supplierInfo.product_code !== invoiceProduct.article_code) {
+        updateData.product_code = invoiceProduct.article_code;
+        needsUpdate = true;
+        console.log(`  📝 Codice fornitore: "${supplierInfo.product_code}" → "${invoiceProduct.article_code}"`);
+      }
+
+      if (invoiceProduct.description && supplierInfo.product_name !== invoiceProduct.description) {
+        updateData.product_name = invoiceProduct.description;
+        needsUpdate = true;
+        console.log(`  📝 Nome fornitore: "${supplierInfo.product_name}" → "${invoiceProduct.description}"`);
+      }
+
+      if (needsUpdate) {
+        await callOdoo(cookies, 'product.supplierinfo', 'write', [
+          [supplierInfo.id],
+          updateData
+        ]);
+        console.log(`  ✅ Listino fornitore aggiornato per supplierinfo ID ${supplierInfo.id}`);
+      }
+    }
+  } catch (error: any) {
+    console.error(`  ❌ Errore aggiornamento listino fornitore:`, error.message);
+  }
+}

@@ -755,27 +755,6 @@ export default function PickResiduiPage() {
     }
   };
 
-  const getPrice = async (order: SaleOrder, productId: number, qty: number): Promise<number | null> => {
-    try {
-      const pl = order.pricelist_id ? order.pricelist_id[0] : null;
-      if (!pl) return null;
-
-      try {
-        const price = await callKw<number>(
-          'product.pricelist',
-          '_get_product_price',
-          [[pl], productId, qty, order.partner_id ? order.partner_id[0] : false],
-          {}
-        );
-        if (typeof price === 'number') return price;
-      } catch (_) {}
-
-      return null;
-    } catch (_) {
-      return null;
-    }
-  };
-
   const handleConfirmAdd = async () => {
     if (!selectedProduct || !modalOrder) {
       showToastMessage('Seleziona un prodotto');
@@ -787,23 +766,35 @@ export default function PickResiduiPage() {
       const pdet = await searchRead<Product>(
         'product.product',
         [['id', '=', selectedProduct.id]],
-        ['id', 'name', 'uom_id', 'lst_price', 'product_tmpl_id'],
+        ['id', 'name', 'uom_id', 'product_tmpl_id'],
         1
       );
       const uomId = pdet.length && pdet[0].uom_id ? pdet[0].uom_id[0] : null;
-      let price = await getPrice(modalOrder, selectedProduct.id, searchQty);
-      if (price == null) price = pdet.length ? Number(pdet[0].lst_price) || 0 : 0;
 
+      // Creiamo la riga SOLO con order_id, product_id e quantità
+      // Odoo deve calcolare il prezzo dal listino dell'ordine
       const vals: any = {
         order_id: modalOrder.id,
         product_id: selectedProduct.id,
         product_uom_qty: searchQty,
-        name: selectedProduct.name || selectedProduct.display_name,
-        price_unit: price,
       };
       if (uomId) vals.product_uom = uomId;
 
-      await callKw('sale.order.line', 'create', [vals], {});
+      const newLineId = await callKw<number>('sale.order.line', 'create', [vals], {});
+
+      // Forza il ricalcolo del prezzo usando _compute_price_unit
+      // Questo metodo legge il listino dall'ordine e calcola il prezzo corretto
+      try {
+        await callKw('sale.order.line', '_compute_price_unit', [[newLineId]]);
+      } catch (e) {
+        // Se _compute_price_unit non esiste, proviamo con product_uom_change
+        try {
+          await callKw('sale.order.line', 'product_uom_change', [[newLineId]]);
+        } catch (e2) {
+          console.log('Fallback: price will be computed by Odoo on save');
+        }
+      }
+
       showToastMessage(`Aggiunto ${selectedProduct.display_name || selectedProduct.name} × ${searchQty} a ${modalOrder.name}`);
       setShowModal(false);
     } catch (error: any) {
