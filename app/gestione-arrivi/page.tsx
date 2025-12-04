@@ -151,6 +151,14 @@ export default function GestioneArriviPage() {
             expiry_date: line.expiry_date
           })),
           attachment_ids: arrival.attachments?.map((a: any) => a.id) || [],
+          // Passa la risposta grezza di Gemini per salvarla sul P.O.
+          raw_gemini_response: readData.documents?.[0]?.raw_response || null,
+          // Dati fattura estratti da Gemini
+          invoice_info: {
+            number: readData.invoice_info?.number || readData.documents?.[0]?.document_info?.number || null,
+            date: readData.invoice_info?.date || readData.documents?.[0]?.document_info?.date || null,
+            supplier_name: readData.supplier?.name || readData.documents?.[0]?.supplier?.name || null,
+          },
           skip_validation: false,
           skip_invoice: false
         })
@@ -491,32 +499,61 @@ export default function GestioneArriviPage() {
                       transition={{ delay: index * 0.05 }}
                       className={`
                         bg-gray-50 rounded-xl border-2 p-4 transition-all
-                        ${arrival.is_completed
-                          ? 'opacity-60 border-green-300 bg-green-50'
-                          : arrival.is_ready
-                            ? 'border-indigo-200 hover:border-indigo-400 cursor-pointer hover:shadow-md'
-                            : 'opacity-75 border-gray-200'
+                        ${arrival.is_processed
+                          ? 'border-green-400 bg-green-50 opacity-70'
+                          : arrival.is_completed
+                            ? 'border-yellow-400 bg-yellow-50 hover:border-yellow-500 cursor-pointer hover:shadow-md'
+                            : arrival.is_ready
+                              ? 'border-indigo-200 hover:border-indigo-400 cursor-pointer hover:shadow-md'
+                              : 'opacity-75 border-gray-200'
                         }
                       `}
                       onClick={() => {
-                        if (!arrival.is_completed && arrival.is_ready && !batchState.is_running) {
+                        // Permetti click solo se:
+                        // 1. Arrivo pronto e NON completato (normale processing)
+                        // 2. Arrivo completato MA senza fattura (riprocessa per creare fattura)
+                        // NON permettere riprocessamento se già PROCESSATO (con fattura)
+                        const canProcess = arrival.is_ready && !batchState.is_running && !arrival.is_processed;
+                        if (canProcess) {
                           processArrival(arrival);
                         }
                       }}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          {/* Header */}
+                          {/* Header con link cliccabili */}
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <span className="font-bold text-indigo-600 text-lg">
+                            {/* Link all'arrivo in Odoo */}
+                            <a
+                              href={`https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com/web#id=${arrival.id}&model=stock.picking&view_type=form`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-bold text-indigo-600 text-lg hover:underline hover:text-indigo-800"
+                            >
                               {arrival.name}
-                            </span>
+                            </a>
 
-                            {arrival.is_completed && (
+                            {/* Badge PROCESSATO (verde) - già completato, non riprocessabile */}
+                            {arrival.is_processed && (
                               <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-600 text-white flex items-center gap-1">
                                 <CheckCircle size={12} />
-                                COMPLETATO
+                                PROCESSATO
                               </span>
+                            )}
+
+                            {/* Badge COMPLETATO (solo arrivo fatto, no fattura) + pulsante riprocessa */}
+                            {arrival.is_completed && !arrival.is_processed && (
+                              <>
+                                <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-500 text-white flex items-center gap-1">
+                                  <CheckCircle size={12} />
+                                  ARRIVO OK
+                                </span>
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-200 text-orange-800 flex items-center gap-1 hover:bg-orange-300 cursor-pointer">
+                                  <RotateCcw size={12} />
+                                  Riprocessa
+                                </span>
+                              </>
                             )}
 
                             {!arrival.is_completed && arrival.is_ready && (
@@ -538,7 +575,7 @@ export default function GestioneArriviPage() {
                             <span className="font-medium">{arrival.partner_name}</span>
                           </div>
 
-                          {/* Dettagli */}
+                          {/* Dettagli con link cliccabili */}
                           <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                             <div className="flex items-center gap-1">
                               <Clock size={14} className="text-purple-600" />
@@ -550,11 +587,18 @@ export default function GestioneArriviPage() {
                               <span>{arrival.products_count} prodotti</span>
                             </div>
 
+                            {/* Link al P.O. */}
                             {arrival.has_purchase_order && (
-                              <div className="flex items-center gap-1">
-                                <FileText size={14} className="text-orange-600" />
+                              <a
+                                href={`https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com/web#id=${arrival.purchase_order_id}&model=purchase.order&view_type=form`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1 text-orange-600 hover:text-orange-800 hover:underline"
+                              >
+                                <FileText size={14} />
                                 <span>{arrival.purchase_order_name}</span>
-                              </div>
+                              </a>
                             )}
 
                             {arrival.has_attachments && (
@@ -563,11 +607,33 @@ export default function GestioneArriviPage() {
                                 <span>{arrival.attachments_count} allegati</span>
                               </div>
                             )}
+
+                            {/* Link alla fattura se esiste */}
+                            {arrival.has_invoice && arrival.invoice && (
+                              <a
+                                href={`https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com/web#id=${arrival.invoice.id}&model=account.move&view_type=form`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                <Receipt size={14} />
+                                <span>{arrival.invoice.name}</span>
+                                {arrival.invoice.state === 'draft' && (
+                                  <span className="text-xs bg-gray-200 px-1 rounded">bozza</span>
+                                )}
+                              </a>
+                            )}
                           </div>
                         </div>
 
                         {/* Right side */}
                         <div className="flex items-center gap-2">
+                          {arrival.is_processed && (
+                            <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                              <CheckCircle size={12} className="text-white" />
+                            </div>
+                          )}
                           {arrival.is_ready && !arrival.is_completed && (
                             <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
                           )}

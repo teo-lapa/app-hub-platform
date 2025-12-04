@@ -46,6 +46,7 @@ interface OdooMoveLine {
  * 5. Mette a zero le righe non matchate
  * 6. (Opzionale) Valida il picking
  * 7. (Opzionale) Crea la fattura bozza
+ * 8. Salva JSON trascrizione sul Purchase Order
  */
 export async function POST(request: NextRequest) {
   try {
@@ -63,6 +64,8 @@ export async function POST(request: NextRequest) {
       skip_validation,      // Se true, non validare il picking
       skip_invoice,         // Se true, non creare la fattura
       attachment_ids,       // IDs degli allegati da collegare alla fattura
+      raw_gemini_response,  // JSON grezzo da Gemini (per salvare sul P.O.)
+      invoice_info,         // Info fattura: { number, date, supplier_name }
     } = body;
 
     if (!picking_id) {
@@ -94,22 +97,72 @@ export async function POST(request: NextRequest) {
     const supplierId = picking.partner_id?.[0];
     console.log(`📋 Picking: ${picking.name}, Stato: ${picking.state}, Fornitore ID: ${supplierId}`);
 
-    // Se già completato, salta
-    if (picking.state === 'done') {
-      return NextResponse.json({
-        success: true,
-        picking_id,
+    // ===== Trova il Purchase Order ID dal picking.origin =====
+    let purchaseOrderId: number | null = null;
+    let purchaseOrderName: string | null = null;
+
+    if (picking.origin) {
+      const pos = await callOdoo(cookies, 'purchase.order', 'search_read', [
+        [['name', '=', picking.origin]],
+        ['id', 'name']
+      ]);
+
+      if (pos && pos.length > 0) {
+        purchaseOrderId = pos[0].id;
+        purchaseOrderName = pos[0].name;
+        console.log(`📦 Purchase Order trovato: ${purchaseOrderName} (ID: ${purchaseOrderId})`);
+      }
+    }
+
+    // ===== Aggiorna riferimento fornitore sul Purchase Order =====
+    if (purchaseOrderId && invoice_info?.number) {
+      console.log(`📝 Aggiornando riferimento fornitore sul P.O.: ${invoice_info.number}`);
+      try {
+        await callOdoo(cookies, 'purchase.order', 'write', [
+          [purchaseOrderId],
+          { partner_ref: invoice_info.number }
+        ]);
+        console.log(`✅ Riferimento fornitore aggiornato sul P.O.`);
+      } catch (refError: any) {
+        console.warn(`⚠️ Impossibile aggiornare riferimento fornitore: ${refError.message}`);
+      }
+    }
+
+    // ===== Salva JSON trascrizione sul Purchase Order =====
+    if (purchaseOrderId && raw_gemini_response) {
+      console.log('💾 Salvando JSON trascrizione sul P.O....');
+
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[:.]/g, '-').substring(0, 19);
+      const jsonFilename = `trascrizione_documenti_${timestamp}.json`;
+
+      const jsonContent = JSON.stringify({
+        timestamp: now.toISOString(),
+        picking_id: picking_id,
         picking_name: picking.name,
-        message: 'Picking già completato',
-        results: {
-          updated: 0,
-          created: 0,
-          no_match: 0,
-          set_to_zero: 0,
-          errors: [],
-          warnings: ['Picking già completato']
-        }
-      });
+        purchase_order: purchaseOrderName,
+        parsed_products: parsed_products,
+        raw_response: raw_gemini_response
+      }, null, 2);
+
+      const base64Json = Buffer.from(jsonContent).toString('base64');
+
+      await callOdoo(cookies, 'ir.attachment', 'create', [{
+        name: jsonFilename,
+        datas: base64Json,
+        mimetype: 'application/json',
+        res_model: 'purchase.order',
+        res_id: purchaseOrderId,
+      }]);
+
+      console.log(`✅ JSON trascrizione salvato: ${jsonFilename}`);
+    }
+
+    // Flag per indicare se il picking è già completato (riprocessamento)
+    const isReprocessing = picking.state === 'done';
+
+    if (isReprocessing) {
+      console.log('🔄 RIPROCESSAMENTO: Picking già completato, salto aggiornamento righe e validazione');
     }
 
     // ===== STEP 2: Carica move lines =====
@@ -268,8 +321,15 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
       }))
     };
 
-    // Processa solo i prodotti matchati
+    // Se è riprocessamento, salta l'aggiornamento delle move lines
+    if (isReprocessing) {
+      console.log('🔄 Riprocessamento: salto aggiornamento move lines');
+      results.warnings.push('Riprocessamento: picking già completato, aggiornamento righe saltato');
+    }
+
+    // Processa solo i prodotti matchati (solo se NON è riprocessamento)
     for (const match of matchedProducts) {
+      if (isReprocessing) continue; // Salta se riprocessamento
       try {
         if (match.action === 'update') {
           usedMoveLineIds.add(match.move_line_id);
@@ -278,8 +338,14 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
             qty_done: match.quantity
           };
 
+          // Usa il lotto se presente, altrimenti usa la data di scadenza come lotto
+          // (Odoo richiede un lotto per prodotti tracciati, la scadenza può servire come identificatore)
           if (match.lot_number) {
             updateData.lot_name = match.lot_number;
+          } else if (match.expiry_date) {
+            // Se non c'è lotto ma c'è scadenza, usa la scadenza come lotto (formato YYYY-MM-DD)
+            updateData.lot_name = match.expiry_date;
+            console.log(`⚠️ Lotto mancante, uso scadenza come lotto: ${match.expiry_date}`);
           }
 
           if (match.expiry_date) {
@@ -339,8 +405,13 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
             qty_done: match.quantity,
           };
 
+          // Usa il lotto se presente, altrimenti usa la data di scadenza come lotto
           if (match.lot_number) {
             newLineData.lot_name = match.lot_number;
+          } else if (match.expiry_date) {
+            // Se non c'è lotto ma c'è scadenza, usa la scadenza come lotto
+            newLineData.lot_name = match.expiry_date;
+            console.log(`⚠️ Nuova riga: lotto mancante, uso scadenza come lotto: ${match.expiry_date}`);
           }
 
           if (match.expiry_date) {
@@ -379,38 +450,40 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
       }
     }
 
-    // ===== STEP 6: Metti a ZERO le righe non usate =====
-    console.log('🔍 Verifico righe Odoo non utilizzate...');
-    for (const moveLine of enrichedMoveLines) {
-      if (!usedMoveLineIds.has(moveLine.id)) {
-        try {
-          await callOdoo(cookies, 'stock.move.line', 'write', [
-            [moveLine.id],
-            { qty_done: 0 }
-          ]);
+    // ===== STEP 6: Metti a ZERO le righe non usate (salta se riprocessamento) =====
+    if (!isReprocessing) {
+      console.log('🔍 Verifico righe Odoo non utilizzate...');
+      for (const moveLine of enrichedMoveLines) {
+        if (!usedMoveLineIds.has(moveLine.id)) {
+          try {
+            await callOdoo(cookies, 'stock.move.line', 'write', [
+              [moveLine.id],
+              { qty_done: 0 }
+            ]);
 
-          results.set_to_zero++;
-          results.details.push({
-            action: 'set_to_zero',
-            move_line_id: moveLine.id,
-            product_name: moveLine.product_name,
-            quantity: 0,
-            lot: 'N/A',
-            expiry: 'N/A',
-            reason: 'Riga non trovata nella fattura, impostata a zero'
-          });
+            results.set_to_zero++;
+            results.details.push({
+              action: 'set_to_zero',
+              move_line_id: moveLine.id,
+              product_name: moveLine.product_name,
+              quantity: 0,
+              lot: 'N/A',
+              expiry: 'N/A',
+              reason: 'Riga non trovata nella fattura, impostata a zero'
+            });
 
-          console.log(`⚠️ Riga ${moveLine.id} (${moveLine.product_name}) impostata a qty_done=0`);
-        } catch (error: any) {
-          console.error(`❌ Errore impostazione a zero riga ${moveLine.id}:`, error);
-          results.errors.push(`Errore impostazione a zero riga ${moveLine.id}: ${error.message}`);
+            console.log(`⚠️ Riga ${moveLine.id} (${moveLine.product_name}) impostata a qty_done=0`);
+          } catch (error: any) {
+            console.error(`❌ Errore impostazione a zero riga ${moveLine.id}:`, error);
+            results.errors.push(`Errore impostazione a zero riga ${moveLine.id}: ${error.message}`);
+          }
         }
       }
     }
 
-    // ===== STEP 7: Valida il picking (opzionale) =====
-    let pickingValidated = false;
-    if (!skip_validation) {
+    // ===== STEP 7: Valida il picking (opzionale, salta se riprocessamento) =====
+    let pickingValidated = isReprocessing; // Se riprocessamento, è già validato
+    if (!skip_validation && !isReprocessing) {
       console.log('🔐 Validazione picking...');
 
       try {
@@ -477,11 +550,24 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
           results.warnings.push('Fattura bozza già esistente');
           console.log(`⚠️ Fattura già esistente: ${existingInvoices[0].name}`);
         } else {
+          // Crea fattura collegata al Purchase Order con tutti i dati
           const invoiceData: any = {
             move_type: 'in_invoice',
             partner_id: supplierId,
             invoice_origin: picking.origin || picking.name,
           };
+
+          // Aggiungi riferimento fornitore (numero fattura del fornitore)
+          if (invoice_info?.number) {
+            invoiceData.ref = invoice_info.number;
+            console.log(`📝 Riferimento fornitore: ${invoice_info.number}`);
+          }
+
+          // Aggiungi data fattura
+          if (invoice_info?.date) {
+            invoiceData.invoice_date = invoice_info.date;
+            console.log(`📅 Data fattura: ${invoice_info.date}`);
+          }
 
           invoiceId = await callOdoo(
             cookies,
@@ -497,30 +583,72 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
           invoiceName = createdInvoice[0]?.name;
 
           console.log(`✅ Fattura creata: ${invoiceName}`);
+
+          // Collega la fattura al Purchase Order tramite il campo purchase_id se esiste
+          if (purchaseOrderId) {
+            try {
+              // In Odoo 16+, le fatture fornitore si collegano tramite le righe
+              // Ma possiamo anche usare il messaggio per tracciare il collegamento
+              await callOdoo(cookies, 'account.move', 'message_post', [
+                [invoiceId]
+              ], {
+                body: `Fattura creata automaticamente da arrivo merce. Collegata a <a href="/web#id=${purchaseOrderId}&model=purchase.order">${purchaseOrderName}</a>`,
+                message_type: 'comment'
+              });
+              console.log(`🔗 Fattura collegata al P.O. ${purchaseOrderName}`);
+            } catch (linkError: any) {
+              console.warn(`⚠️ Impossibile aggiungere messaggio di collegamento: ${linkError.message}`);
+            }
+          }
         }
 
-        // Allega i documenti alla fattura
+        // Allega SOLO i documenti che sono fatture (non DDT o altri allegati)
         if (invoiceId && attachment_ids && attachment_ids.length > 0) {
-          console.log(`📎 Allegando ${attachment_ids.length} documenti...`);
+          console.log(`📎 Cercando fatture tra ${attachment_ids.length} allegati...`);
 
-          for (const attId of attachment_ids) {
+          // Leggi tutti gli allegati per filtrare solo le fatture
+          const allAttachments = await callOdoo(cookies, 'ir.attachment', 'read', [
+            attachment_ids,
+            ['id', 'name', 'datas', 'mimetype']
+          ]);
+
+          // Filtra solo i file che sembrano fatture (per nome)
+          const invoiceAttachments = allAttachments.filter((att: any) => {
+            const lowerName = att.name.toLowerCase();
+            return lowerName.includes('fattura') ||
+                   lowerName.includes('fatt') ||
+                   lowerName.includes('invoice') ||
+                   lowerName.includes('inv_') ||
+                   lowerName.includes('inv-') ||
+                   // Se c'è solo un PDF, è probabilmente la fattura
+                   (allAttachments.length === 1 && att.mimetype === 'application/pdf');
+          });
+
+          if (invoiceAttachments.length === 0 && allAttachments.length > 0) {
+            // Se non troviamo fatture per nome, cerca PDF (più probabile che sia fattura)
+            const pdfAttachments = allAttachments.filter((att: any) =>
+              att.mimetype === 'application/pdf'
+            );
+            if (pdfAttachments.length > 0) {
+              invoiceAttachments.push(pdfAttachments[0]); // Prendi solo il primo PDF
+              console.log(`📄 Nessun file "fattura" trovato, uso primo PDF: ${pdfAttachments[0].name}`);
+            }
+          }
+
+          console.log(`📄 Fatture da allegare: ${invoiceAttachments.length} su ${allAttachments.length} totali`);
+
+          for (const attachment of invoiceAttachments) {
             try {
-              const attachment = await callOdoo(cookies, 'ir.attachment', 'read', [
-                [attId],
-                ['name', 'datas', 'mimetype']
-              ]);
-
-              if (attachment && attachment.length > 0) {
-                await callOdoo(cookies, 'ir.attachment', 'create', [{
-                  name: attachment[0].name,
-                  datas: attachment[0].datas,
-                  mimetype: attachment[0].mimetype,
-                  res_model: 'account.move',
-                  res_id: invoiceId,
-                }]);
-              }
+              await callOdoo(cookies, 'ir.attachment', 'create', [{
+                name: attachment.name,
+                datas: attachment.datas,
+                mimetype: attachment.mimetype,
+                res_model: 'account.move',
+                res_id: invoiceId,
+              }]);
+              console.log(`  ✅ Allegato: ${attachment.name}`);
             } catch (e: any) {
-              results.warnings.push(`Errore allegato ${attId}: ${e.message}`);
+              results.warnings.push(`Errore allegato ${attachment.name}: ${e.message}`);
             }
           }
         }

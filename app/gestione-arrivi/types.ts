@@ -2,6 +2,14 @@
 
 // === ARRIVI ===
 
+export interface ArrivalInvoice {
+  id: number;
+  name: string;
+  state: string;
+  ref: string | null;
+  invoice_date: string | null;
+}
+
 export interface Arrival {
   id: number;
   name: string;
@@ -15,10 +23,15 @@ export interface Arrival {
   attachments_count: number;
   attachments?: ArrivalAttachment[];
   products_count: number;
+  // Fattura collegata
+  invoice: ArrivalInvoice | null;
+  has_invoice: boolean;
+  // Flags
   has_purchase_order: boolean;
   has_attachments: boolean;
   is_ready: boolean;
   is_completed: boolean;
+  is_processed: boolean; // Completato + fattura = verde
 }
 
 export interface ArrivalAttachment {

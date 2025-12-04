@@ -59,8 +59,10 @@ export async function GET(request: NextRequest) {
 
     // OTTIMIZZAZIONE: Batch query per Purchase Orders
     const origins = pickings.map((p: any) => p.origin).filter(Boolean);
+    const pickingNames = pickings.map((p: any) => p.name);
     let purchaseOrdersMap = new Map();
     let attachmentsMap = new Map();
+    let invoicesMap = new Map(); // Mappa origin -> fattura
 
     if (origins.length > 0) {
       console.log(`🔍 Batch query per ${origins.length} P.O. origins`);
@@ -101,6 +103,24 @@ export async function GET(request: NextRequest) {
           attachmentsMap.set(att.res_id, existing);
         });
       }
+
+      // Batch query per le fatture collegate (cercando per invoice_origin)
+      console.log(`📄 Batch query per fatture collegate...`);
+      const invoices = await callOdoo(cookies, 'account.move', 'search_read', [
+        [
+          ['move_type', '=', 'in_invoice'],
+          ['invoice_origin', 'in', origins],
+          ['state', 'in', ['draft', 'posted']]
+        ],
+        ['id', 'name', 'invoice_origin', 'state', 'ref', 'invoice_date']
+      ]);
+
+      console.log(`✅ Trovate ${invoices.length} fatture collegate in batch`);
+
+      // Crea mappa origin -> fattura
+      invoices.forEach((inv: any) => {
+        invoicesMap.set(inv.invoice_origin, inv);
+      });
     }
 
     // Arricchisci ogni picking con info pre-caricate
@@ -109,6 +129,7 @@ export async function GET(request: NextRequest) {
       let purchaseOrderName = null;
       let attachmentsCount = 0;
       let attachmentsList: any[] = [];
+      let invoiceData: any = null;
 
       // Lookup da mappa invece di query
       if (picking.origin && purchaseOrdersMap.has(picking.origin)) {
@@ -117,11 +138,26 @@ export async function GET(request: NextRequest) {
         purchaseOrderName = po.name;
         attachmentsList = attachmentsMap.get(po.id) || [];
         attachmentsCount = attachmentsList.length;
+
+        // Cerca fattura collegata
+        if (invoicesMap.has(picking.origin)) {
+          const inv = invoicesMap.get(picking.origin);
+          invoiceData = {
+            id: inv.id,
+            name: inv.name,
+            state: inv.state,
+            ref: inv.ref,
+            invoice_date: inv.invoice_date
+          };
+        }
       }
 
       // Conta prodotti nel picking
       const moveIds = picking.move_ids_without_package || [];
       const productsCount = moveIds.length;
+
+      // Determina se è processato (arrivo fatto + fattura creata)
+      const isProcessed = picking.state === 'done' && invoiceData !== null;
 
       return {
         id: picking.id,
@@ -136,11 +172,15 @@ export async function GET(request: NextRequest) {
         attachments_count: attachmentsCount,
         attachments: attachmentsList, // Include dettagli allegati per il processing
         products_count: productsCount,
+        // Fattura collegata
+        invoice: invoiceData,
+        has_invoice: invoiceData !== null,
         // Flag per UI
         has_purchase_order: !!purchaseOrderId,
         has_attachments: attachmentsCount > 0,
         is_ready: attachmentsCount > 0 && !!purchaseOrderId,
-        is_completed: picking.state === 'done'
+        is_completed: picking.state === 'done',
+        is_processed: isProcessed  // Verde = completato + fattura
       };
     });
 
