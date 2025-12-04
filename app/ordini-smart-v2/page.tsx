@@ -1871,6 +1871,39 @@ export default function SmartOrderingV2() {
                   </button>
                   <button
                     onClick={async () => {
+                      if (!confirm(`ELIMINARE il pre-ordine per ${selectedPreOrder.supplierName}?\n\nQuesta azione eliminerà tutte le ${selectedPreOrder.totalQuantity} assegnazioni senza creare ordini.\n\nSei sicuro?`)) {
+                        return;
+                      }
+
+                      try {
+                        const productIds = selectedPreOrder.products.map((p: any) => p.productId);
+                        const response = await fetch('/api/smart-ordering-v2/delete-preorder-assignments', {
+                          method: 'DELETE',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ productIds })
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok && result.success) {
+                          const supplierIdToRemove = selectedPreOrder.supplierId;
+                          setSelectedPreOrder(null);
+                          setPreOrderSuppliers(prev => prev.filter(s => s.supplierId !== supplierIdToRemove));
+                          alert(`Pre-ordine eliminato!\n\n${result.deletedCount} assegnazioni rimosse.`);
+                        } else {
+                          alert(`Errore: ${result.error || 'Impossibile eliminare'}`);
+                        }
+                      } catch (error) {
+                        console.error('Errore eliminazione:', error);
+                        alert('Errore durante eliminazione');
+                      }
+                    }}
+                    className="px-6 py-3 bg-red-500/20 text-red-300 border border-red-500/30 rounded-xl hover:bg-red-500/30 transition-all"
+                  >
+                    Elimina Pre-Ordine
+                  </button>
+                  <button
+                    onClick={async () => {
                       if (!confirm(`Creare ordini per ${selectedPreOrder.supplierName}?\n\n${selectedPreOrder.totalProducts} prodotti\n${selectedPreOrder.totalCustomers} clienti\nQuantità totale: ${selectedPreOrder.totalQuantity}`)) {
                         return;
                       }

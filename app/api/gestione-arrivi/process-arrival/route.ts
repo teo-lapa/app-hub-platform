@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
       skip_invoice,         // Se true, non creare la fattura
       attachment_ids,       // IDs degli allegati da collegare alla fattura
       raw_gemini_response,  // JSON grezzo da Gemini (per salvare sul P.O.)
+      invoice_info,         // Info fattura: { number, date, supplier_name }
     } = body;
 
     if (!picking_id) {
@@ -526,16 +527,24 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
           results.warnings.push('Fattura bozza già esistente');
           console.log(`⚠️ Fattura già esistente: ${existingInvoices[0].name}`);
         } else {
-          // Crea fattura collegata al Purchase Order
+          // Crea fattura collegata al Purchase Order con tutti i dati
           const invoiceData: any = {
             move_type: 'in_invoice',
             partner_id: supplierId,
             invoice_origin: picking.origin || picking.name,
           };
 
-          // Se abbiamo il P.O. ID, colleghiamo la fattura direttamente
-          // Nota: In Odoo, la fattura fornitore si collega al P.O. tramite invoice_origin
-          // e le righe si collegano tramite purchase_line_id sulle account.move.line
+          // Aggiungi riferimento fornitore (numero fattura del fornitore)
+          if (invoice_info?.number) {
+            invoiceData.ref = invoice_info.number;
+            console.log(`📝 Riferimento fornitore: ${invoice_info.number}`);
+          }
+
+          // Aggiungi data fattura
+          if (invoice_info?.date) {
+            invoiceData.invoice_date = invoice_info.date;
+            console.log(`📅 Data fattura: ${invoice_info.date}`);
+          }
 
           invoiceId = await callOdoo(
             cookies,
@@ -551,6 +560,23 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
           invoiceName = createdInvoice[0]?.name;
 
           console.log(`✅ Fattura creata: ${invoiceName}`);
+
+          // Collega la fattura al Purchase Order tramite il campo purchase_id se esiste
+          if (purchaseOrderId) {
+            try {
+              // In Odoo 16+, le fatture fornitore si collegano tramite le righe
+              // Ma possiamo anche usare il messaggio per tracciare il collegamento
+              await callOdoo(cookies, 'account.move', 'message_post', [
+                [invoiceId]
+              ], {
+                body: `Fattura creata automaticamente da arrivo merce. Collegata a <a href="/web#id=${purchaseOrderId}&model=purchase.order">${purchaseOrderName}</a>`,
+                message_type: 'comment'
+              });
+              console.log(`🔗 Fattura collegata al P.O. ${purchaseOrderName}`);
+            } catch (linkError: any) {
+              console.warn(`⚠️ Impossibile aggiungere messaggio di collegamento: ${linkError.message}`);
+            }
+          }
         }
 
         // Allega SOLO i documenti che sono fatture (non DDT o altri allegati)

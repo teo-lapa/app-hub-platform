@@ -153,6 +153,12 @@ export default function GestioneArriviPage() {
           attachment_ids: arrival.attachments?.map((a: any) => a.id) || [],
           // Passa la risposta grezza di Gemini per salvarla sul P.O.
           raw_gemini_response: readData.documents?.[0]?.raw_response || null,
+          // Dati fattura estratti da Gemini
+          invoice_info: {
+            number: readData.invoice_info?.number || readData.documents?.[0]?.document_info?.number || null,
+            date: readData.invoice_info?.date || readData.documents?.[0]?.document_info?.date || null,
+            supplier_name: readData.supplier?.name || readData.documents?.[0]?.supplier?.name || null,
+          },
           skip_validation: false,
           skip_invoice: false
         })
