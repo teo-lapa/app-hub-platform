@@ -600,7 +600,7 @@ Rispondi con JSON:
 
           // Indirizzo di consegna (delivery)
           if (partnerData.street || partnerData.city || partnerData.zip) {
-            const deliveryAddress = {
+            const deliveryAddress: Record<string, any> = {
               parent_id: partnerId,
               type: 'delivery',
               name: `${companyName} - Indirizzo di consegna`,
@@ -609,12 +609,16 @@ Rispondi con JSON:
               zip: partnerData.zip || '',
               country_id: partnerData.country_id || 43 // Default Switzerland
             };
+            // Aggiungi provincia se presente
+            if (partnerData.state_id) {
+              deliveryAddress.state_id = partnerData.state_id;
+            }
             addressesToCreate.push(createOdoo('res.partner', deliveryAddress));
           }
 
           // Indirizzo di fatturazione (invoice)
           if (partnerData.street || partnerData.city || partnerData.zip) {
-            const invoiceAddress = {
+            const invoiceAddress: Record<string, any> = {
               parent_id: partnerId,
               type: 'invoice',
               name: `${companyName} - Indirizzo di fatturazione`,
@@ -623,6 +627,10 @@ Rispondi con JSON:
               zip: partnerData.zip || '',
               country_id: partnerData.country_id || 43 // Default Switzerland
             };
+            // Aggiungi provincia se presente
+            if (partnerData.state_id) {
+              invoiceAddress.state_id = partnerData.state_id;
+            }
             addressesToCreate.push(createOdoo('res.partner', invoiceAddress));
           }
 
