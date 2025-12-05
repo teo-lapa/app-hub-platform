@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooClient } from '@/lib/odoo-client';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -8,17 +8,19 @@ export const maxDuration = 60;
  * POST /api/social-ai/publish-to-odoo
  *
  * Pubblica un post generato dall'AI Studio direttamente su Odoo Social Marketing.
- * Il post verrà distribuito su tutti i canali social collegati in Odoo.
+ * IMPORTANTE: Usa la sessione dell'utente loggato nell'app (non l'utente admin generico).
  *
- * Body:
- * - caption: string - Testo del post
- * - hashtags: string[] - Array di hashtag
- * - cta: string - Call to action
- * - imageUrl?: string - URL dell'immagine generata
- * - videoUrl?: string - URL del video generato
- * - platform: 'instagram' | 'facebook' | 'tiktok' | 'linkedin'
- * - accountIds?: number[] - ID degli account Odoo su cui pubblicare (opzionale, default: tutti)
- * - scheduledDate?: string - Data/ora di pubblicazione programmata (ISO 8601)
+ * Account disponibili in Odoo:
+ * - [2] Facebook - LAPA - finest italian food
+ * - [4] Instagram - lapa_finest_italian_food
+ * - [6] LinkedIn - LAPA - finest italian food GmbH
+ * - [7] YouTube - lapa-zero-pensieri
+ * - [13] Twitter - FoodLapa
+ *
+ * Campi REQUIRED per social.post:
+ * - post_method: "now" | "scheduled"
+ * - message: testo del post
+ * - account_ids: array di ID account social
  */
 
 interface PublishToOdooRequest {
@@ -32,18 +34,44 @@ interface PublishToOdooRequest {
   scheduledDate?: string;
 }
 
-interface OdooAccount {
-  id: number;
-  name: string;
-  media_type: string;
-  is_media_disconnected: boolean;
-}
+// Account social fissi disponibili in Odoo LAPA
+const ODOO_SOCIAL_ACCOUNTS = {
+  facebook: { id: 2, name: 'LAPA - finest italian food' },
+  instagram: { id: 4, name: 'lapa_finest_italian_food' },
+  linkedin: { id: 6, name: 'LAPA - finest italian food GmbH' },
+  youtube: { id: 7, name: 'lapa-zero-pensieri' },
+  twitter: { id: 13, name: 'FoodLapa' }
+};
+
+// Account da pubblicare di default (Facebook, Instagram, LinkedIn)
+const DEFAULT_ACCOUNT_IDS = [2, 4, 6];
 
 export async function POST(req: NextRequest) {
   try {
-    const body: PublishToOdooRequest = await req.json();
+    // IMPORTANTE: Prendi i cookies dalla request per usare la sessione dell'utente loggato
+    const userCookies = req.headers.get('cookie');
 
-    const { caption, hashtags, cta, imageUrl, videoUrl, platform, accountIds, scheduledDate } = body;
+    if (!userCookies) {
+      return NextResponse.json({
+        success: false,
+        error: 'Devi essere loggato per pubblicare su Odoo. Effettua il login.'
+      }, { status: 401 });
+    }
+
+    // Ottieni la sessione Odoo dell'utente loggato
+    const { cookies: odooCookies, uid } = await getOdooSession(userCookies);
+
+    if (!odooCookies) {
+      return NextResponse.json({
+        success: false,
+        error: 'Sessione Odoo non valida. Effettua nuovamente il login.'
+      }, { status: 401 });
+    }
+
+    console.log(`📝 [PUBLISH-ODOO] Utente UID: ${uid} sta pubblicando un post`);
+
+    const body: PublishToOdooRequest = await req.json();
+    const { caption, hashtags, cta, imageUrl, scheduledDate } = body;
 
     // Validazione
     if (!caption) {
@@ -53,148 +81,161 @@ export async function POST(req: NextRequest) {
     // Costruisci il testo completo del post
     const fullPostText = `${caption}\n\n${hashtags.join(' ')}\n\n${cta}`;
 
-    // Ottieni client Odoo
-    const odoo = await getOdooClient();
+    // Usa gli account specificati oppure quelli di default (Facebook, Instagram, LinkedIn)
+    const accountIds = body.accountIds && body.accountIds.length > 0
+      ? body.accountIds
+      : DEFAULT_ACCOUNT_IDS;
 
-    // Mappa piattaforma ai media_type di Odoo
-    const platformToMediaType: Record<string, string> = {
-      instagram: 'instagram',
-      facebook: 'facebook',
-      tiktok: 'tiktok',
-      linkedin: 'linkedin'
-    };
-
-    // Cerca gli account social disponibili per questa piattaforma
-    let accounts: OdooAccount[];
-
-    if (accountIds && accountIds.length > 0) {
-      // Usa gli account specificati
-      accounts = await odoo.searchRead(
-        'social.account',
-        [['id', 'in', accountIds], ['is_media_disconnected', '=', false]],
-        ['id', 'name', 'media_type']
-      );
-    } else {
-      // Trova tutti gli account connessi per questa piattaforma
-      accounts = await odoo.searchRead(
-        'social.account',
-        [
-          ['media_type', '=', platformToMediaType[platform]],
-          ['is_media_disconnected', '=', false]
-        ],
-        ['id', 'name', 'media_type']
-      );
-    }
-
-    if (accounts.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: `Nessun account ${platform} connesso in Odoo. Collega prima un account in Odoo > Marketing Social > Configurazione.`
-      }, { status: 400 });
-    }
+    console.log(`📱 [PUBLISH-ODOO] Account selezionati: ${accountIds.join(', ')}`);
 
     // Prepara i valori per social.post
     const postValues: Record<string, any> = {
       message: fullPostText,
-      account_ids: [[6, 0, accounts.map(a => a.id)]], // Comando Many2many: sostituisci con questi ID
+      account_ids: [[6, 0, accountIds]], // Comando Many2many: set con questi ID
+      post_method: scheduledDate ? 'scheduled' : 'now',
     };
-
-    // Aggiungi immagine se presente
-    if (imageUrl) {
-      try {
-        // Scarica l'immagine e convertila in base64
-        const imageResponse = await fetch(imageUrl);
-        const imageBuffer = await imageResponse.arrayBuffer();
-        const imageBase64 = Buffer.from(imageBuffer).toString('base64');
-
-        // Crea attachment in Odoo
-        const attachmentIds = await odoo.create('ir.attachment', [{
-          name: `social-ai-image-${Date.now()}.png`,
-          type: 'binary',
-          datas: imageBase64,
-          mimetype: 'image/png',
-          res_model: 'social.post',
-        }]);
-
-        if (attachmentIds && attachmentIds.length > 0) {
-          postValues.image_ids = [[6, 0, [attachmentIds[0]]]];
-        }
-      } catch (imgError) {
-        console.error('Errore upload immagine:', imgError);
-        // Continua senza immagine
-      }
-    }
 
     // Aggiungi data programmata se presente
     if (scheduledDate) {
       postValues.scheduled_date = scheduledDate;
-      postValues.post_method = 'scheduled';
-    } else {
-      postValues.post_method = 'now'; // Pubblica immediatamente
     }
 
-    // Crea il post in Odoo
-    const postIds = await odoo.create('social.post', [postValues]);
+    // Aggiungi immagine se presente
+    let attachmentId: number | null = null;
+    if (imageUrl) {
+      try {
+        console.log(`🖼️ [PUBLISH-ODOO] Caricamento immagine...`);
 
-    if (!postIds || postIds.length === 0) {
+        // Scarica l'immagine e convertila in base64
+        const imageResponse = await fetch(imageUrl);
+        if (!imageResponse.ok) {
+          throw new Error(`HTTP ${imageResponse.status}`);
+        }
+
+        const imageBuffer = await imageResponse.arrayBuffer();
+        const imageBase64 = Buffer.from(imageBuffer).toString('base64');
+
+        // Determina il tipo MIME
+        const contentType = imageResponse.headers.get('content-type') || 'image/png';
+        const extension = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : 'png';
+
+        // Crea attachment in Odoo
+        const attachmentResult = await callOdoo(
+          odooCookies,
+          'ir.attachment',
+          'create',
+          [{
+            name: `social-ai-${Date.now()}.${extension}`,
+            type: 'binary',
+            datas: imageBase64,
+            mimetype: contentType,
+          }]
+        );
+
+        if (attachmentResult) {
+          attachmentId = attachmentResult;
+          postValues.image_ids = [[6, 0, [attachmentId]]];
+          console.log(`✅ [PUBLISH-ODOO] Immagine caricata: attachment ID ${attachmentId}`);
+        }
+      } catch (imgError: any) {
+        console.error('⚠️ [PUBLISH-ODOO] Errore upload immagine:', imgError.message);
+        // Continua senza immagine ma avvisa l'utente
+      }
+    }
+
+    console.log(`📤 [PUBLISH-ODOO] Creazione post con valori:`, {
+      message: fullPostText.substring(0, 50) + '...',
+      account_ids: accountIds,
+      post_method: postValues.post_method,
+      has_image: !!attachmentId
+    });
+
+    // Crea il post in Odoo
+    const postId = await callOdoo(
+      odooCookies,
+      'social.post',
+      'create',
+      [postValues]
+    );
+
+    if (!postId) {
       return NextResponse.json({
         success: false,
         error: 'Errore durante la creazione del post in Odoo'
       }, { status: 500 });
     }
 
-    const postId = postIds[0];
+    console.log(`✅ [PUBLISH-ODOO] Post creato con ID: ${postId}`);
 
     // Se pubblicazione immediata, avvia il post
     if (!scheduledDate) {
       try {
-        await odoo.call('social.post', 'action_post', [[postId]]);
-      } catch (postError) {
-        console.error('Errore pubblicazione immediata:', postError);
-        // Il post è stato creato ma potrebbe essere in stato draft
+        console.log(`🚀 [PUBLISH-ODOO] Avvio pubblicazione immediata...`);
+        await callOdoo(
+          odooCookies,
+          'social.post',
+          'action_post',
+          [[postId]]
+        );
+        console.log(`✅ [PUBLISH-ODOO] Pubblicazione avviata!`);
+      } catch (postError: any) {
+        console.error('⚠️ [PUBLISH-ODOO] Errore action_post:', postError.message);
+        // Il post è stato creato, potrebbe essere in draft
       }
     }
 
     // Recupera il post creato per conferma
-    const createdPosts = await odoo.searchRead(
+    const createdPosts = await callOdoo(
+      odooCookies,
       'social.post',
-      [['id', '=', postId]],
-      ['id', 'message', 'state', 'scheduled_date', 'account_ids']
+      'search_read',
+      [[['id', '=', postId]]],
+      {
+        fields: ['id', 'message', 'state', 'scheduled_date', 'account_ids', 'image_ids', 'create_uid']
+      }
     );
 
-    const createdPost = createdPosts[0];
+    const createdPost = createdPosts?.[0];
+
+    // Mappa account IDs a nomi
+    const accountNames = accountIds.map(id => {
+      const account = Object.values(ODOO_SOCIAL_ACCOUNTS).find(a => a.id === id);
+      return account?.name || `Account ${id}`;
+    });
 
     return NextResponse.json({
       success: true,
       message: scheduledDate
-        ? `Post programmato per ${scheduledDate} su ${accounts.length} account`
-        : `Post pubblicato su ${accounts.length} account`,
+        ? `Post programmato per ${scheduledDate}`
+        : `Post pubblicato su ${accountNames.join(', ')}`,
       odooPostId: postId,
       post: {
         id: createdPost?.id,
         message: createdPost?.message?.substring(0, 100) + '...',
         state: createdPost?.state,
         scheduledDate: createdPost?.scheduled_date,
-        accounts: accounts.map(a => ({ id: a.id, name: a.name }))
+        hasImage: createdPost?.image_ids?.length > 0,
+        createdBy: createdPost?.create_uid?.[1] || 'Unknown',
+        accounts: accountNames
       }
     });
 
   } catch (error: any) {
-    console.error('Errore publish-to-odoo:', error);
+    console.error('❌ [PUBLISH-ODOO] Errore:', error);
 
     // Gestisci errori specifici di Odoo
     if (error.message?.includes('Access Denied') || error.message?.includes('access')) {
       return NextResponse.json({
         success: false,
-        error: 'Permessi insufficienti. Verifica che l\'utente Odoo abbia accesso al modulo Social Marketing.'
+        error: 'Permessi insufficienti. Verifica che il tuo utente Odoo abbia accesso al modulo Social Marketing.'
       }, { status: 403 });
     }
 
-    if (error.message?.includes('social.post') && error.message?.includes('not found')) {
+    if (error.message?.includes('Session') || error.message?.includes('session')) {
       return NextResponse.json({
         success: false,
-        error: 'Modulo Social Marketing non installato in Odoo. Installa il modulo "Social Marketing" da App.'
-      }, { status: 400 });
+        error: 'Sessione scaduta. Effettua nuovamente il login.'
+      }, { status: 401 });
     }
 
     return NextResponse.json({
@@ -211,23 +252,18 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const platform = searchParams.get('platform');
-
-    const odoo = await getOdooClient();
-
-    // Costruisci il domain per la ricerca
-    const domain: any[] = [['is_media_disconnected', '=', false]];
-
-    if (platform) {
-      domain.push(['media_type', '=', platform]);
-    }
+    const userCookies = req.headers.get('cookie');
+    const { cookies: odooCookies } = await getOdooSession(userCookies || undefined);
 
     // Cerca tutti gli account social connessi
-    const accounts = await odoo.searchRead(
+    const accounts = await callOdoo(
+      odooCookies,
       'social.account',
-      domain,
-      ['id', 'name', 'media_type', 'social_account_handle', 'is_media_disconnected']
+      'search_read',
+      [[['is_media_disconnected', '=', false]]],
+      {
+        fields: ['id', 'name', 'media_type', 'social_account_handle', 'is_media_disconnected']
+      }
     );
 
     // Raggruppa per piattaforma
@@ -249,11 +285,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       accounts: accountsByPlatform,
-      totalAccounts: accounts.length
+      totalAccounts: accounts.length,
+      defaultAccountIds: DEFAULT_ACCOUNT_IDS
     });
 
   } catch (error: any) {
-    console.error('Errore get accounts:', error);
+    console.error('❌ [PUBLISH-ODOO] Errore get accounts:', error);
 
     return NextResponse.json({
       success: false,
