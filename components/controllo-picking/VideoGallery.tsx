@@ -1,21 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { Video, Play, Download, User, Clock, HardDrive, Loader2 } from 'lucide-react';
+import { Video, Play, Download, User, Clock, HardDrive, Loader2, Sparkles, MapPin } from 'lucide-react';
 
-interface VideoGalleryProps {
-  videos: Array<{
-    url: string;
-    durata: string;
-    operatore: string;
-    data: Date;
-    dimensioneMB: number;
-    zona?: string;
-  }>;
-  batchName?: string;
+interface VideoData {
+  url: string;
+  durata: string;
+  operatore: string;
+  data: Date;
+  dimensioneMB: number;
+  zona?: string;
 }
 
-export default function VideoGallery({ videos, batchName }: VideoGalleryProps) {
+interface VideoGalleryProps {
+  videos: VideoData[];
+  batchName?: string;
+  onAnalyzeVideo?: (video: VideoData) => void;
+  analyzingVideoUrl?: string | null;
+}
+
+export default function VideoGallery({ videos, batchName, onAnalyzeVideo, analyzingVideoUrl }: VideoGalleryProps) {
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
 
   const handleVideoClick = (url: string) => {
@@ -110,6 +114,14 @@ export default function VideoGallery({ videos, batchName }: VideoGalleryProps) {
           {/* Video Info */}
           <div className="p-4">
             <div className="space-y-2">
+              {/* Zone */}
+              {video.zona && (
+                <div className="flex items-center gap-2 text-sm text-purple-700 font-medium">
+                  <MapPin className="w-4 h-4 text-purple-500" />
+                  <span>{video.zona}</span>
+                </div>
+              )}
+
               {/* Operator */}
               <div className="flex items-center gap-2 text-sm text-gray-700">
                 <User className="w-4 h-4 text-gray-500" />
@@ -152,6 +164,23 @@ export default function VideoGallery({ videos, batchName }: VideoGalleryProps) {
                   <Download className="w-4 h-4" />
                 )}
               </button>
+              {onAnalyzeVideo && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAnalyzeVideo(video);
+                  }}
+                  disabled={analyzingVideoUrl === video.url}
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 py-2 rounded-md text-sm font-medium hover:from-indigo-600 hover:to-purple-600 transition-colors disabled:opacity-50"
+                  title="Analizza video con AI"
+                >
+                  {analyzingVideoUrl === video.url ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>

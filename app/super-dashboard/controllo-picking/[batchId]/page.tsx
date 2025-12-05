@@ -19,6 +19,7 @@ import {
 import ZoneTimeline from '@/components/controllo-picking/ZoneTimeline';
 import VideoGallery from '@/components/controllo-picking/VideoGallery';
 import ProblemiList from '@/components/controllo-picking/ProblemiList';
+import VideoAnalysisResult from '@/components/controllo-picking/VideoAnalysisResult';
 
 type TabType = 'riepilogo' | 'prelievi' | 'controlli' | 'video' | 'problemi';
 
@@ -104,6 +105,11 @@ export default function BatchDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Video analysis state
+  const [analyzingVideoUrl, setAnalyzingVideoUrl] = useState<string | null>(null);
+  const [videoAnalysis, setVideoAnalysis] = useState<any | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
   const fetchBatchData = async () => {
     try {
       setLoading(true);
@@ -126,6 +132,74 @@ export default function BatchDetailPage() {
   useEffect(() => {
     fetchBatchData();
   }, [batchId]);
+
+  // Handler for video analysis
+  const handleAnalyzeVideo = async (video: { url: string; zona?: string }) => {
+    if (!data) return;
+
+    setAnalyzingVideoUrl(video.url);
+    setVideoAnalysis(null);
+    setAnalysisError(null);
+
+    try {
+      // Build product list from controlli data for the video's zone
+      // We use the products that were controlled in this zone
+      const controllo = data.messages.controlli.find(c =>
+        c.zona.toLowerCase() === (video.zona || '').toLowerCase()
+      );
+
+      // Build expected products list from prodottiOkList
+      const products = (controllo?.prodottiOkList || []).map((name, i) => ({
+        productId: i,
+        productName: name,
+        quantity: 1,
+        unit: 'PZ',
+        customers: [],
+      }));
+
+      // Add products from errors too
+      (controllo?.errori || []).forEach((err, i) => {
+        products.push({
+          productId: products.length + i,
+          productName: err.prodotto,
+          quantity: 1,
+          unit: 'PZ',
+          customers: [],
+        });
+      });
+
+      if (products.length === 0) {
+        setAnalysisError('Nessun prodotto trovato per questa zona. Impossibile analizzare il video.');
+        setAnalyzingVideoUrl(null);
+        return;
+      }
+
+      console.log(`[VideoAnalysis] Analyzing video for zone ${video.zona} with ${products.length} products`);
+
+      const response = await fetch('/api/controllo-picking/analyze-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoUrl: video.url,
+          zoneName: video.zona || 'Non specificata',
+          products,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Errore durante l\'analisi');
+      }
+
+      setVideoAnalysis(result.analysis);
+    } catch (err) {
+      console.error('[VideoAnalysis] Error:', err);
+      setAnalysisError(err instanceof Error ? err.message : 'Errore sconosciuto');
+    } finally {
+      setAnalyzingVideoUrl(null);
+    }
+  };
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '--';
@@ -511,15 +585,62 @@ export default function BatchDetailPage() {
         )}
 
         {activeTab === 'video' && (
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Video Registrati</h2>
-            {messages.video.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <Video className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                <p>Nessun video registrato</p>
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Video Registrati</h2>
+              {messages.video.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Video className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                  <p>Nessun video registrato</p>
+                </div>
+              ) : (
+                <VideoGallery
+                  videos={videosForGallery}
+                  batchName={batch.name}
+                  onAnalyzeVideo={handleAnalyzeVideo}
+                  analyzingVideoUrl={analyzingVideoUrl}
+                />
+              )}
+            </div>
+
+            {/* Analysis Error */}
+            {analysisError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-red-700">
+                  <AlertTriangle className="w-5 h-5" />
+                  <span className="font-medium">Errore Analisi</span>
+                </div>
+                <p className="text-red-600 mt-2">{analysisError}</p>
+                <button
+                  onClick={() => setAnalysisError(null)}
+                  className="mt-3 text-sm text-red-600 hover:text-red-800 underline"
+                >
+                  Chiudi
+                </button>
               </div>
-            ) : (
-              <VideoGallery videos={videosForGallery} batchName={batch.name} />
+            )}
+
+            {/* Analysis in Progress */}
+            {analyzingVideoUrl && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-6 h-6 text-purple-600 animate-spin" />
+                  <div>
+                    <p className="font-medium text-purple-900">Analisi AI in corso...</p>
+                    <p className="text-sm text-purple-700 mt-1">
+                      Gemini sta analizzando il video per identificare i prodotti. Questo potrebbe richiedere 1-2 minuti.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Analysis Results */}
+            {videoAnalysis && (
+              <VideoAnalysisResult
+                analysis={videoAnalysis}
+                onClose={() => setVideoAnalysis(null)}
+              />
             )}
           </div>
         )}
