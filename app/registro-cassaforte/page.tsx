@@ -151,7 +151,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: mode === 'face' ? 'user' : 'environment',
+            facingMode: 'user',
             width: { ideal: 1280 },
             height: { ideal: 720 },
           },
@@ -458,6 +458,35 @@ export default function RegistroCassafortePage() {
       setCurrentTime(new Date());
     }, 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Unlock screen orientation for this page only (allow rotation)
+  useEffect(() => {
+    const unlockOrientation = async () => {
+      try {
+        // @ts-ignore - screen.orientation.unlock() is not in all TS definitions
+        if (screen.orientation && screen.orientation.unlock) {
+          await screen.orientation.unlock();
+        }
+      } catch (error) {
+        // Orientation API not supported or permission denied - ignore silently
+        console.log('Screen orientation unlock not supported');
+      }
+    };
+
+    unlockOrientation();
+
+    // Cleanup: lock back to portrait when leaving the page
+    return () => {
+      try {
+        // @ts-ignore - Screen Orientation API not fully typed
+        if (screen.orientation && (screen.orientation as any).lock) {
+          (screen.orientation as any).lock('portrait-primary').catch(() => {});
+        }
+      } catch (error) {
+        // Ignore errors
+      }
+    };
   }, []);
 
   // Auto-return to idle after success

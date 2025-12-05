@@ -65,7 +65,7 @@ export function useVideoRecorder(options: UseVideoRecorderOptions): UseVideoReco
       setError(null);
       setPermissionDenied(false);
 
-      // Request camera access
+      // Request camera and microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: facingMode,
@@ -73,7 +73,7 @@ export function useVideoRecorder(options: UseVideoRecorderOptions): UseVideoReco
           height: { ideal: 480, max: 720 },
           frameRate: { ideal: 15, max: 24 }
         },
-        audio: false // No audio needed for control video
+        audio: true // Include audio in control video
       });
 
       streamRef.current = stream;

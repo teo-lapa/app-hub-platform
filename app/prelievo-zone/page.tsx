@@ -953,55 +953,39 @@ export default function PrelievoZonePage() {
       const avgTimePerLocation = locationsCount > 0 ? zoneTime / locationsCount : 0;
       const pickingSpeed = zoneTime > 0 ? (totalProducts / (zoneTime / 60)).toFixed(1) : '0';
 
-      // Genera report HTML per chatter
-      let reportHtml = `
-<div style="font-family: Arial, sans-serif; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-  <h3 style="color: #2c3e50; margin-top: 0;">📦 REPORT PRELIEVO - ${currentZone.displayName.toUpperCase()}</h3>
+      // Genera report in formato testo plain per chatter (no HTML)
+      let reportText = `📦 REPORT PRELIEVO - ${currentZone.displayName.toUpperCase()}
+👤 Operatore: ${user.name || 'Operatore'}
+📅 Data: ${dateStr}
+⏱️ Tempo totale: ${zoneTimeStr}
 
-  <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-    <p style="margin: 5px 0;"><strong>👤 Operatore:</strong> ${user.name || 'Operatore'}</p>
-    <p style="margin: 5px 0;"><strong>📅 Data:</strong> ${dateStr}</p>
-    <p style="margin: 5px 0;"><strong>⏱️ Tempo totale:</strong> ${zoneTimeStr}</p>
-  </div>
+📊 STATISTICHE GENERALI
+• Prodotti prelevati: ${totalProducts} articoli
+• Quantità totale: ${totalQuantity} pz
+• Ubicazioni visitate: ${locationsCount}
+• Tempo medio per ubicazione: ${formatTime(Math.floor(avgTimePerLocation))}
+• Velocità picking: ${pickingSpeed} articoli/min
 
-  <div style="background: #e8f5e9; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-    <h4 style="color: #2e7d32; margin-top: 0;">📊 STATISTICHE GENERALI</h4>
-    <p style="margin: 5px 0;">• Prodotti prelevati: <strong>${totalProducts} articoli</strong></p>
-    <p style="margin: 5px 0;">• Quantità totale: <strong>${totalQuantity} pz</strong></p>
-    <p style="margin: 5px 0;">• Ubicazioni visitate: <strong>${locationsCount}</strong></p>
-    <p style="margin: 5px 0;">• Tempo medio per ubicazione: <strong>${formatTime(Math.floor(avgTimePerLocation))}</strong></p>
-    <p style="margin: 5px 0;">• Velocità picking: <strong>${pickingSpeed} articoli/min</strong></p>
-  </div>
-
-  <div style="background: white; padding: 12px; border-radius: 6px;">
-    <h4 style="color: #2c3e50; margin-top: 0;">📍 DETTAGLIO PER UBICAZIONE</h4>`;
+📍 DETTAGLIO PER UBICAZIONE`;
 
       // Aggiungi dettaglio per ogni ubicazione
       Array.from(productsByLocation.entries())
         .sort((a, b) => a[0].localeCompare(b[0]))
         .forEach(([locationName, data]) => {
           const locationTimeStr = data.time ? formatTime(data.time) : '0s';
-          reportHtml += `
-    <div style="margin: 10px 0; padding: 10px; background: #f5f5f5; border-left: 3px solid #2196F3; border-radius: 4px;">
-      <p style="margin: 0 0 5px 0;"><strong>${locationName}</strong></p>
-      <p style="margin: 5px 0; font-size: 12px; color: #666;">
-        ${data.products.length} prodotti • ${data.qty} pz totali • ⏱️ ${locationTimeStr}
-      </p>
-      <ul style="margin: 5px 0 0 20px; padding: 0; font-size: 12px;">
-        ${data.products.map(p => {
-          const durationStr = p.duration ? ` (⏱️ ${formatTime(p.duration)})` : '';
-          return `<li>${p.name} (${p.code || 'N/A'}) - ${p.qty} ${p.uom}${durationStr}</li>`;
-        }).join('')}
-      </ul>
-    </div>`;
+          reportText += `
+
+📍 ${locationName}
+   ${data.products.length} prodotti • ${data.qty} pz totali • ⏱️ ${locationTimeStr}`;
+          data.products.forEach(p => {
+            const durationStr = p.duration ? ` (⏱️ ${formatTime(p.duration)})` : '';
+            reportText += `
+   • ${p.name} (${p.code || 'N/A'}) - ${p.qty} ${p.uom}${durationStr}`;
+          });
         });
 
-      reportHtml += `
-  </div>
-</div>`;
-
-      // Invia nel chatter invece di creare file TXT
-      const saved = await pickingClient.postBatchChatterMessage(currentBatch.id, reportHtml);
+      // Invia nel chatter
+      const saved = await pickingClient.postBatchChatterMessage(currentBatch.id, reportText);
 
       if (saved) {
         toast.success('✅ Report salvato nel chatter del batch!');

@@ -361,7 +361,7 @@ export default function ControlloDirettoPage() {
   }
 
   // Upload video using client-side Vercel Blob upload (bypasses 4.5MB limit)
-  async function uploadVideo(videoBlob: Blob) {
+  async function uploadVideo(videoBlob: Blob, zoneName?: string) {
     if (!currentBatch || !videoBlob) return;
 
     setIsUploadingVideo(true);
@@ -394,7 +394,8 @@ export default function ControlloDirettoPage() {
           batchId: currentBatch.id,
           duration: videoRecordingTime,
           operatorName: user?.name || 'Operatore',
-          sizeMb: (videoBlob.size / 1024 / 1024).toFixed(2)
+          sizeMb: (videoBlob.size / 1024 / 1024).toFixed(2),
+          zoneName: zoneName || currentZone?.name || ''
         })
       });
 
@@ -468,9 +469,21 @@ export default function ControlloDirettoPage() {
         message += `Controllato da: ${user.name}\n`;
         message += `Data: ${new Date().toLocaleString('it-IT')}\n\n`;
         message += `✅ OK: ${okCount} prodotti\n`;
+        message += `⚠️ ERRORI: ${errorCount} prodotti\n`;
+
+        // Include all products with OK status
+        const okProducts = controls.filter(c => c.status === 'ok');
+        if (okProducts.length > 0) {
+          message += `\nPRODOTTI OK:\n`;
+          okProducts.forEach(ctrl => {
+            const product = productGroups.find(p => p.productId === ctrl.productId);
+            message += `• ${product?.productName || 'Prodotto'}\n`;
+          });
+        }
+
+        // Include error details
         if (errorCount > 0) {
-          message += `⚠️ ERRORI: ${errorCount} prodotti\n\n`;
-          message += `DETTAGLIO ERRORI:\n`;
+          message += `\nDETTAGLIO ERRORI:\n`;
           errors.forEach(ctrl => {
             const product = productGroups.find(p => p.productId === ctrl.productId);
             const statusLabel: Record<ControlStatus, string> = {
@@ -500,8 +513,8 @@ export default function ControlloDirettoPage() {
 
       // Upload video if available
       if (videoBlob && videoBlob.size > 0) {
-        console.log(`📤 [finishControl] Uploading video: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
-        await uploadVideo(videoBlob);
+        console.log(`📤 [finishControl] Uploading video: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB for zone: ${currentZone.name}`);
+        await uploadVideo(videoBlob, currentZone.name);
       } else if (wasRecording) {
         // We tried to record but got no blob
         console.error('❌ [finishControl] Video non disponibile per upload (blob nullo o vuoto)');

@@ -64,7 +64,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
     }
 
-    const { blobUrl, batchId, duration, operatorName, sizeMb } = await request.json();
+    const { blobUrl, batchId, duration, operatorName, sizeMb, zoneName } = await request.json();
 
     if (!blobUrl || !batchId) {
       return NextResponse.json({ error: 'Dati mancanti' }, { status: 400 });
@@ -86,17 +86,14 @@ export async function PUT(request: NextRequest) {
       minute: '2-digit'
     });
 
-    // Use simple HTML that Odoo will render correctly
-    const messageHtml = `
-<p><strong>📹 VIDEO CONTROLLO DIRETTO</strong></p>
-<ul>
-<li><strong>Durata:</strong> ${durationFormatted}</li>
-<li><strong>Data:</strong> ${dateFormatted}</li>
-${operatorName ? `<li><strong>Operatore:</strong> ${operatorName}</li>` : ''}
-<li><strong>Dimensione:</strong> ${sizeMb || '?'} MB</li>
-</ul>
-<p>👉 <a href="${blobUrl}" target="_blank">Clicca qui per guardare il video</a></p>
-    `;
+    // Use plain text format for easier parsing (with link still in HTML for Odoo to render)
+    const messagePlain = `📹 VIDEO CONTROLLO DIRETTO${zoneName ? ` - ${zoneName}` : ''}
+Durata: ${durationFormatted}
+Data: ${dateFormatted}
+${operatorName ? `Operatore: ${operatorName}` : ''}
+${zoneName ? `Zona: ${zoneName}` : ''}
+Dimensione: ${sizeMb || '?'} MB
+👉 <a href="${blobUrl}" target="_blank">Clicca qui per guardare il video</a>`;
 
     // Post message to batch chatter
     try {
@@ -106,7 +103,7 @@ ${operatorName ? `<li><strong>Operatore:</strong> ${operatorName}</li>` : ''}
         'message_post',
         [[parseInt(batchId)]],
         {
-          body: messageHtml,
+          body: messagePlain,
           message_type: 'comment',
           subtype_xmlid: 'mail.mt_note'
         }

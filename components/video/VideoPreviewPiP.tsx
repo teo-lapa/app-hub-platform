@@ -35,8 +35,21 @@ export function VideoPreviewPiP({
       videoRef.current.srcObject = stream;
       videoRef.current.onloadedmetadata = () => {
         setIsVideoReady(true);
+        // Explicitly play the video to ensure it starts
+        videoRef.current?.play().catch(err => {
+          console.warn('[VideoPreviewPiP] Could not autoplay video:', err);
+        });
       };
+      // Also try to play immediately
+      videoRef.current.play().catch(() => {
+        // Ignore - will play after metadata loads
+      });
     }
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
   }, [stream]);
 
   if (!stream || !isRecording) {
