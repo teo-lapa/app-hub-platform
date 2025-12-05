@@ -13,7 +13,7 @@ import { AlertsSection } from '@/components/super-dashboard/AlertsSection';
 import { AIInsightsSection } from '@/components/super-dashboard/AIInsightsSection';
 import { QuickActionsSection } from '@/components/super-dashboard/QuickActionsSection';
 import { SalesOrdersTimelineSection } from '@/components/super-dashboard/SalesOrdersTimelineSection';
-import { RefreshCw, Settings, Download, Calendar, Home, Server, ClipboardCheck } from 'lucide-react';
+import { RefreshCw, Settings, Download, Calendar, Home, Server } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SuperDashboardPage() {
@@ -91,18 +91,6 @@ export default function SuperDashboardPage() {
                 >
                   <Server className="w-5 h-5" />
                   <span>Jetson</span>
-                </motion.button>
-              </Link>
-
-              {/* Pulsante Controllo Picking */}
-              <Link href="/super-dashboard/controllo-picking">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-semibold shadow-lg transition-all"
-                >
-                  <ClipboardCheck className="w-5 h-5" />
-                  <span>Picking</span>
                 </motion.button>
               </Link>
 

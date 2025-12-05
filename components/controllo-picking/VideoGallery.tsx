@@ -1,6 +1,7 @@
 'use client';
 
-import { Video, Play, Download, User, Clock, HardDrive } from 'lucide-react';
+import { useState } from 'react';
+import { Video, Play, Download, User, Clock, HardDrive, Loader2 } from 'lucide-react';
 
 interface VideoGalleryProps {
   videos: Array<{
@@ -13,18 +14,47 @@ interface VideoGalleryProps {
 }
 
 export default function VideoGallery({ videos }: VideoGalleryProps) {
+  const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
+
   const handleVideoClick = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleDownload = (url: string, e: React.MouseEvent) => {
+  const handleDownload = async (url: string, index: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = url.split('/').pop() || 'video.mp4';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    if (!url) {
+      alert('URL video non disponibile');
+      return;
+    }
+
+    setDownloadingIndex(index);
+
+    try {
+      // Fetch the video as blob to bypass cross-origin restrictions
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Download failed');
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Create download link
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = url.split('/').pop() || 'video.webm';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Cleanup blob URL
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download error:', error);
+      // Fallback: open in new tab
+      window.open(url, '_blank');
+    } finally {
+      setDownloadingIndex(null);
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -100,11 +130,16 @@ export default function VideoGallery({ videos }: VideoGalleryProps) {
                 Riproduci
               </button>
               <button
-                onClick={(e) => handleDownload(video.url, e)}
-                className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                onClick={(e) => handleDownload(video.url, index, e)}
+                disabled={downloadingIndex === index}
+                className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
                 title="Scarica video"
               >
-                <Download className="w-4 h-4" />
+                {downloadingIndex === index ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
               </button>
             </div>
           </div>

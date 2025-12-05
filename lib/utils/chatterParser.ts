@@ -183,28 +183,47 @@ function parseControllo(text: string, html: string): ParsedControllo | null {
  * Parses a Video Controllo message
  */
 function parseVideo(text: string, html: string): ParsedVideo | null {
-  // Check if this is a video message
-  if (!text.includes('VIDEO CONTROLLO')) return null;
+  // Check if this is a video message - be more flexible with emoji variations
+  if (!text.includes('VIDEO CONTROLLO') && !html.includes('VIDEO CONTROLLO')) return null;
 
-  // Extract durata
-  const durataMatch = text.match(/Durata:\s*([^\n]+?)(?:\s+Data:|$)/);
-  const durata = durataMatch ? durataMatch[1].trim() : '';
+  // Extract durata - handle both spaces and list item formats
+  let durata = '';
+  const durataMatch = text.match(/Durata[:\s]+([0-9:]+)/i);
+  if (durataMatch) {
+    durata = durataMatch[1].trim();
+  }
 
-  // Extract data
-  const dataMatch = text.match(/Data:\s*([^\n]+?)(?:\s+Operatore:|$)/);
-  const dataStr = dataMatch ? dataMatch[1].trim() : '';
+  // Extract data - handle various formats
+  let dataStr = '';
+  const dataMatch = text.match(/Data[:\s]+(\d{1,2}\/\d{1,2}\/\d{4}[,\s]+\d{1,2}:\d{2})/i);
+  if (dataMatch) {
+    dataStr = dataMatch[1].trim();
+  }
   const data = parseItalianDate(dataStr) || new Date();
 
   // Extract operatore
-  const operatoreMatch = text.match(/Operatore:\s*([^\n]+?)(?:\s+Dimensione:|$)/);
-  const operatore = operatoreMatch ? operatoreMatch[1].trim() : '';
+  let operatore = '';
+  const operatoreMatch = text.match(/Operatore[:\s]+([A-Za-zÀ-ÿ\s]+?)(?:\s+Dimensione|$)/i);
+  if (operatoreMatch) {
+    operatore = operatoreMatch[1].trim();
+  }
 
   // Extract dimensione
-  const dimensioneMatch = text.match(/Dimensione:\s*([0-9.]+)\s*MB/);
-  const dimensioneMB = dimensioneMatch ? parseFloat(dimensioneMatch[1]) : 0;
+  let dimensioneMB = 0;
+  const dimensioneMatch = text.match(/Dimensione[:\s]+([0-9.]+)\s*MB/i);
+  if (dimensioneMatch) {
+    dimensioneMB = parseFloat(dimensioneMatch[1]);
+  }
 
-  // Extract URL from HTML
-  const url = extractUrl(html);
+  // Extract URL from HTML - look for webm/mp4 links
+  let url = '';
+  const urlMatch = html.match(/href=["']([^"']+\.(?:webm|mp4)[^"']*)["']/i);
+  if (urlMatch) {
+    url = urlMatch[1];
+  } else {
+    // Fallback to any href
+    url = extractUrl(html);
+  }
 
   return {
     type: 'video',

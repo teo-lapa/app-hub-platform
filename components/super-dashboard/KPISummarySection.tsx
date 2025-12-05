@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent, BarChart, Building2, Activity, RefreshCcw, X, ChevronDown, ChevronUp, Radar, Calculator, Lock } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent, BarChart, Building2, Activity, RefreshCcw, X, ChevronDown, ChevronUp, Radar, Calculator, Lock, ClipboardCheck } from 'lucide-react';
 import Link from 'next/link';
 
 interface KPICardProps {
@@ -680,6 +680,50 @@ export function KPISummarySection({ period }: KPISummarySectionProps) {
                 <svg viewBox="0 0 100 50" className="w-full h-full">
                   <polyline
                     points="0,30 25,25 50,35 75,15 100,20"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="2"
+                    className="animate-pulse"
+                  />
+                </svg>
+              </div>
+            </div>
+          </motion.div>
+        </Link>
+
+        {/* Controllo Picking Card - Link to dedicated page */}
+        <Link href="/super-dashboard/controllo-picking">
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: (kpis.length + 2) * 0.1, duration: 0.5 }}
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="relative group cursor-pointer"
+          >
+            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl p-6 shadow-2xl border border-white/10 overflow-hidden h-full">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.1),transparent)]" />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+                    <ClipboardCheck className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+                <h3 className="text-white/80 text-sm font-medium mb-1">
+                  Controllo Picking
+                </h3>
+                <div className="text-2xl font-bold text-white mb-1">
+                  Analizza
+                </div>
+                <p className="text-white/60 text-xs">
+                  Prelievi, controlli, video e problemi
+                </p>
+              </div>
+              <div className="absolute bottom-0 right-0 w-24 h-12 opacity-20">
+                <svg viewBox="0 0 100 50" className="w-full h-full">
+                  <polyline
+                    points="0,40 25,30 50,35 75,20 100,25"
                     fill="none"
                     stroke="white"
                     strokeWidth="2"
