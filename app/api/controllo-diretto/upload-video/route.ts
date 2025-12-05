@@ -86,35 +86,16 @@ export async function PUT(request: NextRequest) {
       minute: '2-digit'
     });
 
+    // Use simple HTML that Odoo will render correctly
     const messageHtml = `
-      <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; border-left: 4px solid #0ea5e9;">
-        <h3 style="margin: 0 0 12px 0; color: #0369a1;">📹 VIDEO CONTROLLO DIRETTO</h3>
-        <table style="font-size: 14px; line-height: 1.6;">
-          <tr>
-            <td style="padding-right: 16px; color: #64748b;">Durata:</td>
-            <td style="font-weight: 600;">${durationFormatted}</td>
-          </tr>
-          <tr>
-            <td style="padding-right: 16px; color: #64748b;">Data:</td>
-            <td>${dateFormatted}</td>
-          </tr>
-          ${operatorName ? `
-          <tr>
-            <td style="padding-right: 16px; color: #64748b;">Operatore:</td>
-            <td>${operatorName}</td>
-          </tr>
-          ` : ''}
-          <tr>
-            <td style="padding-right: 16px; color: #64748b;">Dimensione:</td>
-            <td>${sizeMb || '?'} MB</td>
-          </tr>
-        </table>
-        <p style="margin: 16px 0 0 0;">
-          <a href="${blobUrl}" target="_blank" style="display: inline-block; background: #0ea5e9; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-            ▶️ Guarda Video
-          </a>
-        </p>
-      </div>
+<p><strong>📹 VIDEO CONTROLLO DIRETTO</strong></p>
+<ul>
+<li><strong>Durata:</strong> ${durationFormatted}</li>
+<li><strong>Data:</strong> ${dateFormatted}</li>
+${operatorName ? `<li><strong>Operatore:</strong> ${operatorName}</li>` : ''}
+<li><strong>Dimensione:</strong> ${sizeMb || '?'} MB</li>
+</ul>
+<p>👉 <a href="${blobUrl}" target="_blank">Clicca qui per guardare il video</a></p>
     `;
 
     // Post message to batch chatter
