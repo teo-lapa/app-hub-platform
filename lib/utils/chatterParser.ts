@@ -87,6 +87,18 @@ function stripHtml(html: string): string {
 }
 
 /**
+ * Clean a parsed field value by removing any leftover HTML fragments
+ */
+function cleanParsedValue(value: string): string {
+  if (!value) return '';
+  // Remove any HTML tag fragments like </strong>, </li>, etc.
+  let cleaned = value.replace(/<\/?[a-z][^>]*>/gi, '');
+  // Remove leading/trailing punctuation and whitespace
+  cleaned = cleaned.replace(/^[\s<>/]+|[\s<>/]+$/g, '').trim();
+  return cleaned;
+}
+
+/**
  * Extracts URL from HTML anchor tag
  */
 function extractUrl(html: string): string {
@@ -258,13 +270,13 @@ function parseVideo(text: string, html: string): ParsedVideo | null {
   let zona = '';
   const zonaInTitleMatch = text.match(/VIDEO CONTROLLO(?:\s+DIRETTO)?\s*-\s*([^\n]+)/i);
   if (zonaInTitleMatch) {
-    zona = zonaInTitleMatch[1].trim();
+    zona = cleanParsedValue(zonaInTitleMatch[1]);
   }
   // Also try explicit "Zona:" field
   if (!zona) {
     const zonaFieldMatch = text.match(/Zona[:\s]*([^\n]+)/i);
     if (zonaFieldMatch) {
-      zona = zonaFieldMatch[1].trim();
+      zona = cleanParsedValue(zonaFieldMatch[1]);
     }
   }
 
@@ -284,11 +296,11 @@ function parseVideo(text: string, html: string): ParsedVideo | null {
   }
   const data = parseItalianDate(dataStr) || new Date();
 
-  // Extract operatore - capture until newline
+  // Extract operatore - capture until newline, clean HTML fragments
   let operatore = '';
   const operatoreMatch = text.match(/Operatore[:\s]*([^\n]+)/i);
   if (operatoreMatch) {
-    operatore = operatoreMatch[1].trim();
+    operatore = cleanParsedValue(operatoreMatch[1]);
   }
 
   // Extract dimensione - handle various formats including "?" placeholder
@@ -320,7 +332,7 @@ function parseVideo(text: string, html: string): ParsedVideo | null {
     type: 'video',
     durata,
     data,
-    operatore,
+    operatore: operatore || 'Operatore',
     dimensioneMB,
     url,
     zona,

@@ -142,46 +142,87 @@ export default function BatchDetailPage() {
     setAnalysisError(null);
 
     try {
-      // Build product list from controlli data for the video's zone
-      // We use the products that were controlled in this zone
-      const controllo = data.messages.controlli.find(c =>
-        c.zona.toLowerCase() === (video.zona || '').toLowerCase()
-      );
+      // Build product list from controlli data
+      const products: Array<{ productId: number; productName: string; quantity: number; unit: string; customers: string[] }> = [];
+      let zoneName = video.zona || '';
 
-      // Build expected products list from prodottiOkList
-      const products = (controllo?.prodottiOkList || []).map((name, i) => ({
-        productId: i,
-        productName: name,
-        quantity: 1,
-        unit: 'PZ',
-        customers: [],
-      }));
+      if (zoneName) {
+        // If video has a zone, find matching controllo
+        const controllo = data.messages.controlli.find(c =>
+          c.zona.toLowerCase().includes(zoneName.toLowerCase()) ||
+          zoneName.toLowerCase().includes(c.zona.toLowerCase())
+        );
 
-      // Add products from errors too
-      (controllo?.errori || []).forEach((err, i) => {
-        products.push({
-          productId: products.length + i,
-          productName: err.prodotto,
-          quantity: 1,
-          unit: 'PZ',
-          customers: [],
+        if (controllo) {
+          // Add OK products
+          (controllo.prodottiOkList || []).forEach((name, i) => {
+            products.push({
+              productId: i,
+              productName: name,
+              quantity: 1,
+              unit: 'PZ',
+              customers: [],
+            });
+          });
+          // Add error products
+          (controllo.errori || []).forEach((err, i) => {
+            products.push({
+              productId: products.length + i,
+              productName: err.prodotto,
+              quantity: 1,
+              unit: 'PZ',
+              customers: [],
+            });
+          });
+        }
+      }
+
+      // If no zone or no products found, use ALL products from ALL controlli
+      if (products.length === 0) {
+        zoneName = 'Tutti i controlli';
+        data.messages.controlli.forEach((controllo, cIdx) => {
+          // Add OK products
+          (controllo.prodottiOkList || []).forEach((name, i) => {
+            // Avoid duplicates
+            if (!products.find(p => p.productName === name)) {
+              products.push({
+                productId: products.length,
+                productName: name,
+                quantity: 1,
+                unit: 'PZ',
+                customers: [],
+              });
+            }
+          });
+          // Add error products
+          (controllo.errori || []).forEach((err) => {
+            if (!products.find(p => p.productName === err.prodotto)) {
+              products.push({
+                productId: products.length,
+                productName: err.prodotto,
+                quantity: 1,
+                unit: 'PZ',
+                customers: [],
+              });
+            }
+          });
         });
-      });
+      }
 
       if (products.length === 0) {
-        setAnalysisError('Nessun prodotto trovato per questa zona. Impossibile analizzare il video.');
+        setAnalysisError('Nessun prodotto trovato nei controlli. Impossibile analizzare il video.');
         setAnalyzingVideoUrl(null);
         return;
       }
 
-      console.log(`[VideoAnalysis] Analyzing video for zone ${video.zona} with ${products.length} products`);
+      console.log(`[VideoAnalysis] Analyzing video for zone "${zoneName}" with ${products.length} products`);
 
       const response = await fetch('/api/controllo-picking/analyze-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           videoUrl: video.url,
-          zoneName: video.zona || 'Non specificata',
+          zoneName,
           products,
         }),
       });
