@@ -360,7 +360,7 @@ export default function ControlloDirettoPage() {
     }
   }
 
-  // Upload video to server
+  // Upload video using client-side Vercel Blob upload (bypasses 4.5MB limit)
   async function uploadVideo(videoBlob: Blob) {
     if (!currentBatch || !videoBlob) return;
 
@@ -368,29 +368,47 @@ export default function ControlloDirettoPage() {
     const uploadToast = toast.loading('📹 Caricamento video...');
 
     try {
-      const formData = new FormData();
-      formData.append('video', videoBlob, `controllo_${currentBatch.id}.webm`);
-      formData.append('batch_id', currentBatch.id.toString());
-      formData.append('batch_name', currentBatch.name);
-      formData.append('duration', videoRecordingTime.toString());
-      formData.append('operator_name', user?.name || 'Operatore');
+      // Import upload function dynamically to avoid SSR issues
+      const { upload } = await import('@vercel/blob/client');
 
-      const response = await fetch('/api/controllo-diretto/upload-video', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `controllo-diretto/batch-${currentBatch.id}/${timestamp}.webm`;
+
+      console.log(`📤 [uploadVideo] Starting client-side upload: ${filename}, size: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+
+      // Upload directly to Vercel Blob (client-side, no size limit)
+      const blob = await upload(filename, videoBlob, {
+        access: 'public',
+        handleUploadUrl: '/api/controllo-diretto/upload-video',
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      console.log(`✅ [uploadVideo] Upload completed: ${blob.url}`);
+
+      // Notify server to post to Odoo chatter
+      const notifyResponse = await fetch('/api/controllo-diretto/upload-video', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          blobUrl: blob.url,
+          batchId: currentBatch.id,
+          duration: videoRecordingTime,
+          operatorName: user?.name || 'Operatore',
+          sizeMb: (videoBlob.size / 1024 / 1024).toFixed(2)
+        })
+      });
+
+      if (notifyResponse.ok) {
+        const result = await notifyResponse.json();
         toast.success(`✅ Video salvato (${result.duration})`, { id: uploadToast });
 
         // Clear video database after successful upload
         const db = getControlloVideoDB();
         await db.deleteRecording(currentBatch.id);
       } else {
-        const error = await response.json();
-        throw new Error(error.error || 'Upload failed');
+        const error = await notifyResponse.json();
+        console.warn('⚠️ [uploadVideo] Video caricato ma errore notifica Odoo:', error);
+        toast.success('✅ Video caricato (Odoo non notificato)', { id: uploadToast });
       }
     } catch (error: any) {
       console.error('❌ Errore upload video:', error);

@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 
-// Maximum duration for serverless function (video uploads can take time)
+// Maximum duration for serverless function
 export const maxDuration = 60;
 
+/**
+ * This endpoint handles client-side uploads to Vercel Blob.
+ * The client uploads directly to Vercel Blob, bypassing the 4.5MB serverless limit.
+ */
 export async function POST(request: NextRequest) {
   try {
     // Get user session
@@ -17,35 +21,60 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
     }
 
-    // Parse form data
-    const formData = await request.formData();
-    const videoFile = formData.get('video') as File;
-    const batchId = formData.get('batch_id') as string;
-    const batchName = formData.get('batch_name') as string;
-    const duration = formData.get('duration') as string;
-    const operatorName = formData.get('operator_name') as string;
+    const body = await request.json() as HandleUploadBody;
 
-    if (!videoFile || !batchId) {
-      return NextResponse.json({ error: 'Dati mancanti (video o batch_id)' }, { status: 400 });
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async (pathname) => {
+        // Validate the upload request
+        console.log(`📹 [UPLOAD-VIDEO] Generating token for: ${pathname}`);
+        return {
+          allowedContentTypes: ['video/webm', 'video/mp4', 'video/quicktime'],
+          maximumSizeInBytes: 500 * 1024 * 1024, // 500MB max
+        };
+      },
+      onUploadCompleted: async ({ blob, tokenPayload }) => {
+        // This is called after the upload is complete
+        console.log(`✅ [UPLOAD-VIDEO] Upload completato: ${blob.url}`);
+      },
+    });
+
+    return NextResponse.json(jsonResponse);
+  } catch (error: any) {
+    console.error('❌ [UPLOAD-VIDEO] Errore:', error);
+    return NextResponse.json(
+      { error: error.message || 'Errore upload video' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Endpoint to notify the server after a successful client-side upload.
+ * This posts the video link to the Odoo chatter.
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    // Get user session
+    const userCookies = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(userCookies || undefined);
+
+    if (!uid) {
+      return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
     }
 
-    console.log(`📹 [UPLOAD-VIDEO] Inizio upload per batch ${batchId}, size: ${(videoFile.size / 1024 / 1024).toFixed(2)} MB`);
+    const { blobUrl, batchId, duration, operatorName, sizeMb } = await request.json();
+
+    if (!blobUrl || !batchId) {
+      return NextResponse.json({ error: 'Dati mancanti' }, { status: 400 });
+    }
+
+    console.log(`📹 [UPLOAD-VIDEO] Notifica upload per batch ${batchId}, URL: ${blobUrl}`);
 
     // Format duration for display
     const durationSecs = parseInt(duration) || 0;
     const durationFormatted = `${Math.floor(durationSecs / 60)}:${(durationSecs % 60).toString().padStart(2, '0')}`;
-
-    // Generate filename
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `controllo-diretto/batch-${batchId}/${timestamp}.webm`;
-
-    // Upload to Vercel Blob
-    const blob = await put(filename, videoFile, {
-      access: 'public',
-      contentType: videoFile.type || 'video/webm'
-    });
-
-    console.log(`✅ [UPLOAD-VIDEO] Video caricato su Vercel Blob: ${blob.url}`);
 
     // Create message for Odoo chatter
     const now = new Date();
@@ -77,11 +106,11 @@ export async function POST(request: NextRequest) {
           ` : ''}
           <tr>
             <td style="padding-right: 16px; color: #64748b;">Dimensione:</td>
-            <td>${(videoFile.size / 1024 / 1024).toFixed(2)} MB</td>
+            <td>${sizeMb || '?'} MB</td>
           </tr>
         </table>
         <p style="margin: 16px 0 0 0;">
-          <a href="${blob.url}" target="_blank" style="display: inline-block; background: #0ea5e9; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+          <a href="${blobUrl}" target="_blank" style="display: inline-block; background: #0ea5e9; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600;">
             ▶️ Guarda Video
           </a>
         </p>
@@ -104,21 +133,21 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ [UPLOAD-VIDEO] Messaggio postato nel chatter del batch ${batchId}`);
     } catch (chatterError: any) {
-      console.error('⚠️ [UPLOAD-VIDEO] Errore post chatter (video comunque salvato):', chatterError.message);
-      // Video is saved even if chatter post fails
+      console.error('⚠️ [UPLOAD-VIDEO] Errore post chatter:', chatterError.message);
+      // Return error since this is the main purpose of this endpoint
+      return NextResponse.json({ error: 'Errore salvataggio su Odoo' }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      blob_url: blob.url,
-      duration: durationFormatted,
-      size_mb: (videoFile.size / 1024 / 1024).toFixed(2)
+      blob_url: blobUrl,
+      duration: durationFormatted
     });
 
   } catch (error: any) {
     console.error('❌ [UPLOAD-VIDEO] Errore:', error);
     return NextResponse.json(
-      { error: error.message || 'Errore upload video' },
+      { error: error.message || 'Errore notifica upload' },
       { status: 500 }
     );
   }
