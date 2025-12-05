@@ -92,8 +92,47 @@ const ODOO_SOCIAL_ACCOUNTS = {
   twitter: { id: 13, name: 'FoodLapa' }
 };
 
-// Account da pubblicare di default (Facebook, Instagram, LinkedIn)
-const DEFAULT_ACCOUNT_IDS = [2, 4, 6];
+// Account da pubblicare di default (Facebook, Instagram, LinkedIn, Twitter)
+const DEFAULT_ACCOUNT_IDS = [2, 4, 6, 13];
+
+// Twitter ha limite di 280 caratteri - ID account Twitter
+const TWITTER_ACCOUNT_ID = 13;
+const TWITTER_MAX_CHARS = 280;
+
+/**
+ * Crea un messaggio abbreviato per Twitter (max 280 caratteri)
+ * Priorità: caption corta + hashtags principali + link
+ */
+function createTwitterMessage(caption: string, hashtags: string[], cta: string): string {
+  const link = 'lapa.ch';
+
+  // Prendi solo i primi 3-4 hashtags più corti
+  const shortHashtags = hashtags
+    .filter(h => h.length <= 20)
+    .slice(0, 4)
+    .join(' ');
+
+  // Calcola spazio disponibile per la caption
+  // Riserva spazio per: hashtags + link + spazi
+  const reservedSpace = shortHashtags.length + link.length + 10;
+  const captionMaxLength = TWITTER_MAX_CHARS - reservedSpace;
+
+  // Tronca la caption se necessario
+  let shortCaption = caption;
+  if (shortCaption.length > captionMaxLength) {
+    shortCaption = shortCaption.substring(0, captionMaxLength - 3) + '...';
+  }
+
+  // Componi il messaggio Twitter
+  const twitterMessage = `${shortCaption}\n\n${shortHashtags}\n\n${link}`;
+
+  // Verifica finale e tronca se ancora troppo lungo
+  if (twitterMessage.length > TWITTER_MAX_CHARS) {
+    return twitterMessage.substring(0, TWITTER_MAX_CHARS - 3) + '...';
+  }
+
+  return twitterMessage;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -127,27 +166,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Caption è richiesto' }, { status: 400 });
     }
 
-    // Costruisci il testo completo del post
+    // Costruisci il testo completo del post (per Facebook, Instagram, LinkedIn)
     const fullPostText = `${caption}\n\n${hashtags.join(' ')}\n\n${cta}`;
 
-    // Usa gli account specificati oppure quelli di default (Facebook, Instagram, LinkedIn)
-    const accountIds = body.accountIds && body.accountIds.length > 0
+    // Costruisci il messaggio abbreviato per Twitter (max 280 caratteri)
+    const twitterPostText = createTwitterMessage(caption, hashtags, cta);
+
+    console.log(`📝 [PUBLISH-ODOO] Messaggio completo: ${fullPostText.length} caratteri`);
+    console.log(`🐦 [PUBLISH-ODOO] Messaggio Twitter: ${twitterPostText.length} caratteri`);
+
+    // Usa gli account specificati oppure quelli di default
+    const requestedAccountIds = body.accountIds && body.accountIds.length > 0
       ? body.accountIds
       : DEFAULT_ACCOUNT_IDS;
 
-    console.log(`📱 [PUBLISH-ODOO] Account selezionati: ${accountIds.join(', ')}`);
+    // Separa gli account: Twitter vs Altri (Facebook, Instagram, LinkedIn)
+    const hasTwitter = requestedAccountIds.includes(TWITTER_ACCOUNT_ID);
+    const otherAccountIds = requestedAccountIds.filter(id => id !== TWITTER_ACCOUNT_ID);
 
-    // Prepara i valori per social.post
-    const postValues: Record<string, any> = {
-      message: fullPostText,
-      account_ids: [[6, 0, accountIds]], // Comando Many2many: set con questi ID
-      post_method: scheduledDate ? 'scheduled' : 'now',
-    };
+    console.log(`📱 [PUBLISH-ODOO] Account altri: ${otherAccountIds.join(', ')}`);
+    console.log(`🐦 [PUBLISH-ODOO] Twitter incluso: ${hasTwitter}`);
 
-    // Aggiungi data programmata se presente
-    if (scheduledDate) {
-      postValues.scheduled_date = scheduledDate;
-    }
+    // Array per tracciare i post creati
+    const createdPostIds: number[] = [];
+    const allAccountNames: string[] = [];
 
     // Aggiungi immagine se presente - IMPORTANTE: Instagram richiede JPEG!
     let attachmentId: number | null = null;
@@ -184,7 +226,6 @@ export async function POST(req: NextRequest) {
 
         if (attachmentResult) {
           attachmentId = attachmentResult;
-          postValues.image_ids = [[6, 0, [attachmentId]]];
           console.log(`✅ [PUBLISH-ODOO] Immagine caricata: attachment ID ${attachmentId}`);
         }
       } catch (imgError: any) {
@@ -193,80 +234,118 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log(`📤 [PUBLISH-ODOO] Creazione post con valori:`, {
-      message: fullPostText.substring(0, 50) + '...',
-      account_ids: accountIds,
-      post_method: postValues.post_method,
-      has_image: !!attachmentId
-    });
+    // ========================================
+    // POST 1: Facebook, Instagram, LinkedIn (messaggio completo)
+    // ========================================
+    if (otherAccountIds.length > 0) {
+      console.log(`📤 [PUBLISH-ODOO] Creazione post per Facebook/Instagram/LinkedIn...`);
 
-    // Crea il post in Odoo
-    const postId = await callOdoo(
-      odooCookies,
-      'social.post',
-      'create',
-      [postValues]
-    );
+      const postValues: Record<string, any> = {
+        message: fullPostText,
+        account_ids: [[6, 0, otherAccountIds]],
+        post_method: scheduledDate ? 'scheduled' : 'now',
+      };
 
-    if (!postId) {
+      if (scheduledDate) {
+        postValues.scheduled_date = scheduledDate;
+      }
+
+      if (attachmentId) {
+        postValues.image_ids = [[6, 0, [attachmentId]]];
+      }
+
+      const postId = await callOdoo(
+        odooCookies,
+        'social.post',
+        'create',
+        [postValues]
+      );
+
+      if (postId) {
+        createdPostIds.push(postId);
+        otherAccountIds.forEach(id => {
+          const account = Object.values(ODOO_SOCIAL_ACCOUNTS).find(a => a.id === id);
+          if (account) allAccountNames.push(account.name);
+        });
+
+        // Pubblica immediatamente se non programmato
+        if (!scheduledDate) {
+          try {
+            await callOdoo(odooCookies, 'social.post', 'action_post', [[postId]]);
+            console.log(`✅ [PUBLISH-ODOO] Post ${postId} pubblicato (FB/IG/LI)`);
+          } catch (e: any) {
+            console.warn(`⚠️ [PUBLISH-ODOO] action_post fallito per ${postId}:`, e.message);
+          }
+        }
+      }
+    }
+
+    // ========================================
+    // POST 2: Twitter (messaggio abbreviato max 280 char)
+    // ========================================
+    if (hasTwitter) {
+      console.log(`🐦 [PUBLISH-ODOO] Creazione post per Twitter (${twitterPostText.length} caratteri)...`);
+
+      const twitterPostValues: Record<string, any> = {
+        message: twitterPostText,
+        account_ids: [[6, 0, [TWITTER_ACCOUNT_ID]]],
+        post_method: scheduledDate ? 'scheduled' : 'now',
+      };
+
+      if (scheduledDate) {
+        twitterPostValues.scheduled_date = scheduledDate;
+      }
+
+      // Twitter supporta anche immagini
+      if (attachmentId) {
+        twitterPostValues.image_ids = [[6, 0, [attachmentId]]];
+      }
+
+      const twitterPostId = await callOdoo(
+        odooCookies,
+        'social.post',
+        'create',
+        [twitterPostValues]
+      );
+
+      if (twitterPostId) {
+        createdPostIds.push(twitterPostId);
+        allAccountNames.push(ODOO_SOCIAL_ACCOUNTS.twitter.name);
+
+        // Pubblica immediatamente se non programmato
+        if (!scheduledDate) {
+          try {
+            await callOdoo(odooCookies, 'social.post', 'action_post', [[twitterPostId]]);
+            console.log(`✅ [PUBLISH-ODOO] Post ${twitterPostId} pubblicato (Twitter)`);
+          } catch (e: any) {
+            console.warn(`⚠️ [PUBLISH-ODOO] action_post fallito per Twitter:`, e.message);
+          }
+        }
+      }
+    }
+
+    // Verifica che almeno un post sia stato creato
+    if (createdPostIds.length === 0) {
       return NextResponse.json({
         success: false,
-        error: 'Errore durante la creazione del post in Odoo'
+        error: 'Errore durante la creazione dei post in Odoo'
       }, { status: 500 });
     }
 
-    console.log(`✅ [PUBLISH-ODOO] Post creato con ID: ${postId}`);
-
-    // Se pubblicazione immediata, avvia il post
-    if (!scheduledDate) {
-      try {
-        console.log(`🚀 [PUBLISH-ODOO] Avvio pubblicazione immediata...`);
-        await callOdoo(
-          odooCookies,
-          'social.post',
-          'action_post',
-          [[postId]]
-        );
-        console.log(`✅ [PUBLISH-ODOO] Pubblicazione avviata!`);
-      } catch (postError: any) {
-        console.error('⚠️ [PUBLISH-ODOO] Errore action_post:', postError.message);
-        // Il post è stato creato, potrebbe essere in draft
-      }
-    }
-
-    // Recupera il post creato per conferma
-    const createdPosts = await callOdoo(
-      odooCookies,
-      'social.post',
-      'search_read',
-      [[['id', '=', postId]]],
-      {
-        fields: ['id', 'message', 'state', 'scheduled_date', 'account_ids', 'image_ids', 'create_uid']
-      }
-    );
-
-    const createdPost = createdPosts?.[0];
-
-    // Mappa account IDs a nomi
-    const accountNames = accountIds.map(id => {
-      const account = Object.values(ODOO_SOCIAL_ACCOUNTS).find(a => a.id === id);
-      return account?.name || `Account ${id}`;
-    });
+    console.log(`✅ [PUBLISH-ODOO] ${createdPostIds.length} post creati: ${createdPostIds.join(', ')}`);
+    console.log(`✅ [PUBLISH-ODOO] Account: ${allAccountNames.join(', ')}`);
 
     return NextResponse.json({
       success: true,
       message: scheduledDate
-        ? `Post programmato per ${scheduledDate}`
-        : `Post pubblicato su ${accountNames.join(', ')}`,
-      odooPostId: postId,
+        ? `Post programmati per ${scheduledDate} su ${allAccountNames.length} account`
+        : `Post pubblicati su ${allAccountNames.join(', ')}`,
+      odooPostIds: createdPostIds,
       post: {
-        id: createdPost?.id,
-        message: createdPost?.message?.substring(0, 100) + '...',
-        state: createdPost?.state,
-        scheduledDate: createdPost?.scheduled_date,
-        hasImage: createdPost?.image_ids?.length > 0,
-        createdBy: createdPost?.create_uid?.[1] || 'Unknown',
-        accounts: accountNames
+        ids: createdPostIds,
+        hasImage: !!attachmentId,
+        accounts: allAccountNames,
+        twitterMessageLength: hasTwitter ? twitterPostText.length : null
       }
     });
 
