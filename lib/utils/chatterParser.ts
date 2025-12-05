@@ -14,6 +14,12 @@ export interface ParsedPrelievo {
   ubicazioniVisitate: number;
 }
 
+export interface ControlloErrore {
+  prodotto: string;
+  tipo: string;  // 'Mancante', 'Errore Quantità', etc.
+  nota: string;
+}
+
 export interface ParsedControllo {
   type: 'controllo';
   zona: string;
@@ -21,6 +27,7 @@ export interface ParsedControllo {
   data: Date;
   prodottiOk: number;
   prodottiErrore: number;
+  errori: ControlloErrore[];  // Detailed errors extracted from the message
 }
 
 export interface ParsedVideo {
@@ -149,15 +156,15 @@ function parseControllo(text: string, html: string): ParsedControllo | null {
   if (!text.includes('CONTROLLO COMPLETATO')) return null;
 
   // Extract zona
-  const zonaMatch = text.match(/CONTROLLO COMPLETATO\s*-\s*([^\n]+?)(?:\s+Controllato|$)/);
+  const zonaMatch = text.match(/CONTROLLO COMPLETATO\s*-\s*([^\s]+)/);
   const zona = zonaMatch ? zonaMatch[1].trim() : '';
 
   // Extract operatore
-  const operatoreMatch = text.match(/Controllato da:\s*([^\n]+?)(?:\s+Data:|$)/);
+  const operatoreMatch = text.match(/Controllato da:\s*([A-Za-zÀ-ÿ\s]+?)(?:\s+Data:|$)/i);
   const operatore = operatoreMatch ? operatoreMatch[1].trim() : '';
 
   // Extract data
-  const dataMatch = text.match(/Data:\s*([^\n✅❌]+)/);
+  const dataMatch = text.match(/Data:\s*(\d{1,2}\/\d{1,2}\/\d{4}[,\s]+\d{1,2}:\d{2}(?::\d{2})?)/i);
   const dataStr = dataMatch ? dataMatch[1].trim() : '';
   const data = parseItalianDate(dataStr) || new Date();
 
@@ -165,9 +172,32 @@ function parseControllo(text: string, html: string): ParsedControllo | null {
   const okMatch = text.match(/OK:\s*(\d+)/);
   const prodottiOk = okMatch ? parseInt(okMatch[1]) : 0;
 
-  // Extract prodotti errore
-  const erroriMatch = text.match(/Errori:\s*(\d+)/);
+  // Extract prodotti errore (look for both "ERRORI:" and "Errori:")
+  const erroriMatch = text.match(/ERRORI:\s*(\d+)/i);
   const prodottiErrore = erroriMatch ? parseInt(erroriMatch[1]) : 0;
+
+  // Extract individual error details
+  // Format: • PRODUCT_NAME - ❌ Mancante: Note
+  // or: • PRODUCT_NAME - ⚠️ Errore Quantità: Note
+  const errori: ControlloErrore[] = [];
+
+  // Find the DETTAGLIO ERRORI section
+  const dettaglioIndex = text.indexOf('DETTAGLIO ERRORI');
+  if (dettaglioIndex !== -1) {
+    const erroriSection = text.substring(dettaglioIndex);
+
+    // Match each error line: • PRODUCT - TYPE: NOTE
+    const errorRegex = /•\s*([^-]+)\s*-\s*(?:❌|⚠️|🔧|📅|📍)?\s*([^:]+):\s*([^•]+)/g;
+    let match;
+
+    while ((match = errorRegex.exec(erroriSection)) !== null) {
+      errori.push({
+        prodotto: match[1].trim(),
+        tipo: match[2].trim(),
+        nota: match[3].trim(),
+      });
+    }
+  }
 
   return {
     type: 'controllo',
@@ -176,6 +206,7 @@ function parseControllo(text: string, html: string): ParsedControllo | null {
     data,
     prodottiOk,
     prodottiErrore,
+    errori,
   };
 }
 
