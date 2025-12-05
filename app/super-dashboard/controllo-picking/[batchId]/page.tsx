@@ -180,12 +180,18 @@ export default function BatchDetailPage() {
     };
   };
 
+  // Calculate total problems count (from both problemi messages and control errors)
+  const problemiCount = data
+    ? (data.messages.problemi.length +
+       data.messages.controlli.reduce((acc, c) => acc + (c.errori?.length || 0), 0))
+    : 0;
+
   const tabs: Array<{ key: TabType; label: string; count?: number }> = [
     { key: 'riepilogo', label: 'Riepilogo' },
     { key: 'prelievi', label: 'Prelievi', count: data?.messages.prelievi.length },
     { key: 'controlli', label: 'Controlli', count: data?.messages.controlli.length },
     { key: 'video', label: 'Video', count: data?.messages.video.length },
-    { key: 'problemi', label: 'Problemi', count: data?.messages.problemi.length },
+    { key: 'problemi', label: 'Problemi', count: problemiCount },
   ];
 
   if (loading) {
@@ -240,6 +246,26 @@ export default function BatchDetailPage() {
     dimensioneMB: v.dimensioneMB,
     zona: v.zona || '',
   }));
+
+  // Combine problemi from dedicated messages AND errors extracted from controlli
+  const allProblemi = [
+    // Original problemi messages
+    ...messages.problemi.map(p => ({
+      tipoProblema: p.tipoProblema,
+      prodotto: p.prodotto,
+      zona: p.zona,
+      nota: p.nota,
+    })),
+    // Errors extracted from controlli
+    ...messages.controlli.flatMap(c =>
+      (c.errori || []).map(err => ({
+        tipoProblema: err.tipo,
+        prodotto: err.prodotto,
+        zona: c.zona,
+        nota: err.nota,
+      }))
+    ),
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -500,7 +526,7 @@ export default function BatchDetailPage() {
 
         {activeTab === 'problemi' && (
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <ProblemiList problemi={messages.problemi} />
+            <ProblemiList problemi={allProblemi} />
           </div>
         )}
       </div>
