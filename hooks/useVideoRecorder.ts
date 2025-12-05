@@ -242,13 +242,19 @@ export function useVideoRecorder(options: UseVideoRecorderOptions): UseVideoReco
 
             console.log(`✅ [VideoRecorder] Blob combinato: ${(combinedBlob.size / 1024 / 1024).toFixed(2)} MB`);
 
-            // Update recording metadata
-            await db.updateRecording(currentBatchId, {
-              endTime: Date.now(),
-              duration: currentRecordingTime,
-              uploadStatus: 'pending',
-              chunksCount: chunkIndexRef.current
-            });
+            // Update recording metadata - but don't fail if this errors
+            try {
+              await db.updateRecording(currentBatchId, {
+                endTime: Date.now(),
+                duration: currentRecordingTime,
+                uploadStatus: 'pending',
+                chunksCount: chunkIndexRef.current
+              });
+              console.log(`✅ [VideoRecorder] Metadata aggiornato`);
+            } catch (metadataErr) {
+              console.warn('⚠️ [VideoRecorder] Errore aggiornamento metadata (non bloccante):', metadataErr);
+              // Continue anyway - the blob is valid
+            }
 
             console.log(`🎬 [VideoRecorder] Registrazione fermata, ${chunkIndexRef.current} chunks, ${(combinedBlob.size / 1024 / 1024).toFixed(2)} MB`);
             resolve(combinedBlob);

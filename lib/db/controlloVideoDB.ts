@@ -225,10 +225,18 @@ class ControlloVideoDB {
    */
   async updateRecording(batchId: number, updates: Partial<VideoRecording>): Promise<void> {
     const db = await this.ensureDB();
+
+    // Use a single transaction for both read and write
     const tx = db.transaction([STORES.RECORDINGS], 'readwrite');
     const store = tx.objectStore(STORES.RECORDINGS);
 
-    const existing = await this.getRecording(batchId);
+    // Get existing record within the same transaction
+    const existing: VideoRecording | undefined = await new Promise((resolve, reject) => {
+      const request = store.get(batchId);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+
     if (!existing) {
       throw new Error(`Registrazione ${batchId} non trovata`);
     }
