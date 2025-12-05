@@ -46,9 +46,14 @@ export async function GET(request: NextRequest) {
     console.log(`[CONTROLLO-PICKING] Fetching batches for date: ${date}`);
 
     // Search for batches scheduled on the given date
+    // Only show 'done' (completed) and 'in_progress' (being worked on) batches
+    // Exclude 'draft', 'cancel' and other states
     const batches = await client.searchRead(
       'stock.picking.batch',
-      [['scheduled_date', '=', date]],
+      [
+        ['scheduled_date', '=', date],
+        ['state', 'in', ['done', 'in_progress']]
+      ],
       ['id', 'name', 'state', 'scheduled_date', 'picking_ids', 'move_line_ids'],
       0,
       'name asc'
