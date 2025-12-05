@@ -15,7 +15,8 @@ import {
   Hash,
   Truck,
   ArrowLeft,
-  Home
+  Home,
+  Zap
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import UnmatchedProductsHandler from '@/components/arrivo-merce/UnmatchedProductsHandler';
@@ -425,14 +426,24 @@ export default function ArrivoMercePage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          {/* Back to Dashboard Button */}
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="mb-4 flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg shadow-sm border border-gray-200 transition-colors"
-          >
-            <ArrowLeft size={20} />
-            <span>Torna al Dashboard</span>
-          </button>
+          {/* Navigation Buttons */}
+          <div className="mb-4 flex items-center gap-3">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg shadow-sm border border-gray-200 transition-colors"
+            >
+              <ArrowLeft size={20} />
+              <span>Torna al Dashboard</span>
+            </button>
+
+            <button
+              onClick={() => router.push('/gestione-arrivi')}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg shadow-sm transition-colors"
+            >
+              <Zap size={20} />
+              <span>Gestione Arrivi Automatica</span>
+            </button>
+          </div>
 
           <div className="text-center">
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
