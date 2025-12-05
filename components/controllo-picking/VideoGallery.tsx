@@ -38,10 +38,13 @@ export default function VideoGallery({ videos }: VideoGalleryProps) {
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
 
-      // Create download link
+      // Create download link with .mp4 extension
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = url.split('/').pop() || 'video.webm';
+      // Get filename and change extension to .mp4
+      let filename = url.split('/').pop() || 'video';
+      filename = filename.replace(/\.(webm|mov|avi)$/i, '') + '.mp4';
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

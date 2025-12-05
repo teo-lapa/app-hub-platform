@@ -218,42 +218,51 @@ function parseVideo(text: string, html: string): ParsedVideo | null {
   if (!text.includes('VIDEO CONTROLLO') && !html.includes('VIDEO CONTROLLO')) return null;
 
   // Extract durata - handle both spaces and list item formats
+  // Formats: "Durata: 0:24" or "Durata 0:24" or with newlines
   let durata = '';
-  const durataMatch = text.match(/Durata[:\s]+([0-9:]+)/i);
+  const durataMatch = text.match(/Durata[:\s]*([0-9]+:[0-9]+)/i);
   if (durataMatch) {
     durata = durataMatch[1].trim();
   }
 
   // Extract data - handle various formats
   let dataStr = '';
-  const dataMatch = text.match(/Data[:\s]+(\d{1,2}\/\d{1,2}\/\d{4}[,\s]+\d{1,2}:\d{2})/i);
+  const dataMatch = text.match(/Data[:\s]*(\d{1,2}\/\d{1,2}\/\d{4}[,\s]*\d{1,2}:\d{2})/i);
   if (dataMatch) {
     dataStr = dataMatch[1].trim();
   }
   const data = parseItalianDate(dataStr) || new Date();
 
-  // Extract operatore
+  // Extract operatore - stop at Dimensione, newline, or end
   let operatore = '';
-  const operatoreMatch = text.match(/Operatore[:\s]+([A-Za-zÀ-ÿ\s]+?)(?:\s+Dimensione|$)/i);
+  const operatoreMatch = text.match(/Operatore[:\s]*([A-Za-zÀ-ÿ\s]+?)(?=\s*Dimensione|\s*👉|\n|$)/i);
   if (operatoreMatch) {
     operatore = operatoreMatch[1].trim();
   }
 
-  // Extract dimensione
+  // Extract dimensione - handle various formats including "?" placeholder
+  // Formats: "Dimensione: 15.5 MB" or "Dimensione: ? MB"
   let dimensioneMB = 0;
-  const dimensioneMatch = text.match(/Dimensione[:\s]+([0-9.]+)\s*MB/i);
+  const dimensioneMatch = text.match(/Dimensione[:\s]*([0-9.]+)\s*MB/i);
   if (dimensioneMatch) {
     dimensioneMB = parseFloat(dimensioneMatch[1]);
   }
 
-  // Extract URL from HTML - look for webm/mp4 links
+  // Extract URL from HTML - look for webm/mp4 links or blob URLs
   let url = '';
+  // Try specific video extensions first
   const urlMatch = html.match(/href=["']([^"']+\.(?:webm|mp4)[^"']*)["']/i);
   if (urlMatch) {
     url = urlMatch[1];
   } else {
-    // Fallback to any href
-    url = extractUrl(html);
+    // Try vercel blob URLs
+    const blobMatch = html.match(/href=["'](https:\/\/[^"']*vercel[^"']*blob[^"']*)["']/i);
+    if (blobMatch) {
+      url = blobMatch[1];
+    } else {
+      // Fallback to any href
+      url = extractUrl(html);
+    }
   }
 
   return {
