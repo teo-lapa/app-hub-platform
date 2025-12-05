@@ -737,9 +737,9 @@ export default function ControlloDirettoPage() {
                     disabled={isLoading || isUploadingVideo}
                     className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    {isVideoRecording ? '📹' : '📋'} Termina Controllo e Salva
+                    📋 Termina Controllo e Salva su Odoo
                     {productControls.size > 0 && ` (${productControls.size} controllati)`}
-                    {isVideoRecording && ' + Video'}
+                    {isVideoRecording && ' 📹'}
                   </button>
                 )}
               </div>
