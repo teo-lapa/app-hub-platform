@@ -162,15 +162,45 @@ export function useVideoRecorder(options: UseVideoRecorderOptions): UseVideoReco
 
   const stopRecording = useCallback(async (): Promise<Blob | null> => {
     return new Promise(async (resolve) => {
+      console.log('🛑 [VideoRecorder] stopRecording chiamato, isRecording:', isRecording);
+
       if (!mediaRecorderRef.current || !isRecording) {
+        console.warn('⚠️ [VideoRecorder] Nessuna registrazione attiva da fermare');
         resolve(null);
         return;
       }
 
       const currentBatchId = batchIdRef.current;
+      const currentChunkIndex = chunkIndexRef.current;
+      const currentRecordingTime = recordingTime;
+
+      console.log(`🛑 [VideoRecorder] Fermando registrazione batch ${currentBatchId}, chunks: ${currentChunkIndex}`);
+
+      // Track if we've received the final dataavailable event
+      let finalChunkReceived = false;
+      const originalOnDataAvailable = mediaRecorderRef.current.ondataavailable;
+
+      // Override ondataavailable to track the final chunk
+      mediaRecorderRef.current.ondataavailable = async (event) => {
+        console.log(`📦 [VideoRecorder] ondataavailable durante stop, size: ${event.data.size}`);
+        if (event.data.size > 0 && currentBatchId) {
+          try {
+            const db = getControlloVideoDB();
+            await db.saveChunk(currentBatchId, chunkIndexRef.current, event.data);
+            chunkIndexRef.current++;
+            setChunksCount(chunkIndexRef.current);
+            console.log(`✅ [VideoRecorder] Chunk finale salvato: ${chunkIndexRef.current}`);
+          } catch (err) {
+            console.error('❌ [VideoRecorder] Errore salvataggio chunk finale:', err);
+          }
+        }
+        finalChunkReceived = true;
+      };
 
       // Set up onstop handler before stopping
       mediaRecorderRef.current.onstop = async () => {
+        console.log('🏁 [VideoRecorder] onstop triggered, finalChunkReceived:', finalChunkReceived);
+
         // Stop timer
         if (timerRef.current) {
           clearInterval(timerRef.current);
@@ -184,27 +214,50 @@ export function useVideoRecorder(options: UseVideoRecorderOptions): UseVideoReco
         }
         setPreviewStream(null);
 
+        // Small delay to ensure the final chunk is saved
+        await new Promise(r => setTimeout(r, 200));
+
         // Combine all chunks
         if (currentBatchId) {
           try {
             const db = getControlloVideoDB();
+
+            // Check how many chunks we have
+            const chunksCount = await db.countChunks(currentBatchId);
+            console.log(`📊 [VideoRecorder] Chunks in DB: ${chunksCount}`);
+
+            if (chunksCount === 0) {
+              console.error('❌ [VideoRecorder] Nessun chunk salvato!');
+              resolve(null);
+              return;
+            }
+
             const combinedBlob = await db.combineChunks(currentBatchId);
+
+            if (!combinedBlob || combinedBlob.size === 0) {
+              console.error('❌ [VideoRecorder] Blob combinato vuoto!');
+              resolve(null);
+              return;
+            }
+
+            console.log(`✅ [VideoRecorder] Blob combinato: ${(combinedBlob.size / 1024 / 1024).toFixed(2)} MB`);
 
             // Update recording metadata
             await db.updateRecording(currentBatchId, {
               endTime: Date.now(),
-              duration: recordingTime,
+              duration: currentRecordingTime,
               uploadStatus: 'pending',
               chunksCount: chunkIndexRef.current
             });
 
-            console.log(`🎬 [VideoRecorder] Registrazione fermata, ${chunkIndexRef.current} chunks`);
+            console.log(`🎬 [VideoRecorder] Registrazione fermata, ${chunkIndexRef.current} chunks, ${(combinedBlob.size / 1024 / 1024).toFixed(2)} MB`);
             resolve(combinedBlob);
           } catch (err) {
             console.error('❌ [VideoRecorder] Errore combinazione chunks:', err);
             resolve(null);
           }
         } else {
+          console.error('❌ [VideoRecorder] currentBatchId è null!');
           resolve(null);
         }
       };

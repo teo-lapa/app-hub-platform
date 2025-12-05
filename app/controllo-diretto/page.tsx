@@ -409,9 +409,11 @@ export default function ControlloDirettoPage() {
 
     // Check if there's anything to save (controls or video)
     const hasControls = productControls.size > 0;
-    const hasVideo = isVideoRecording;
+    const wasRecording = isVideoRecording; // Save state before it changes
 
-    if (!hasControls && !hasVideo) {
+    console.log(`📋 [finishControl] hasControls: ${hasControls}, wasRecording: ${wasRecording}`);
+
+    if (!hasControls && !wasRecording) {
       toast.error('Nessun controllo o video da salvare');
       return;
     }
@@ -420,10 +422,19 @@ export default function ControlloDirettoPage() {
     try {
       // Stop video recording and get blob
       let videoBlob: Blob | null = null;
-      if (isVideoRecording) {
+      if (wasRecording) {
+        console.log('🎬 [finishControl] Fermando video recording...');
         toast.loading('🎬 Finalizzazione video...', { id: 'video-stop' });
         videoBlob = await stopVideoRecording();
         toast.dismiss('video-stop');
+
+        if (videoBlob) {
+          console.log(`✅ [finishControl] Video blob ricevuto: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+        } else {
+          console.error('❌ [finishControl] Video blob è null!');
+        }
+      } else {
+        console.log('ℹ️ [finishControl] Nessuna registrazione video attiva');
       }
 
       // Save controls to Odoo chatter if any
@@ -471,7 +482,12 @@ export default function ControlloDirettoPage() {
 
       // Upload video if available
       if (videoBlob && videoBlob.size > 0) {
+        console.log(`📤 [finishControl] Uploading video: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
         await uploadVideo(videoBlob);
+      } else if (wasRecording) {
+        // We tried to record but got no blob
+        console.error('❌ [finishControl] Video non disponibile per upload (blob nullo o vuoto)');
+        toast.error('Video non salvato (nessun dato registrato)');
       }
 
       // Pulisci localStorage
@@ -730,17 +746,46 @@ export default function ControlloDirettoPage() {
                   </div>
                 </div>
 
-                {/* Pulsante Termina Controllo - mostra se ci sono controlli O se sta registrando video */}
-                {(productControls.size > 0 || isVideoRecording) && (
-                  <button
-                    onClick={finishControlAndSaveToOdoo}
-                    disabled={isLoading || isUploadingVideo}
-                    className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    📋 Termina Controllo e Salva su Odoo
-                    {productControls.size > 0 && ` (${productControls.size} controllati)`}
-                    {isVideoRecording && ' 📹'}
-                  </button>
+                {/* Pulsante Termina Controllo - mostra SOLO quando TUTTI i prodotti sono controllati */}
+                {productGroups.length > 0 && (
+                  <>
+                    {/* Progress bar controlli */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="text-gray-600">Progresso controllo</span>
+                        <span className="font-semibold">
+                          {productControls.size} / {productGroups.length} prodotti
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            productControls.size === productGroups.length
+                              ? 'bg-green-500'
+                              : 'bg-blue-500'
+                          }`}
+                          style={{ width: `${(productControls.size / productGroups.length) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Pulsante - abilitato solo quando tutti controllati */}
+                    {productControls.size === productGroups.length ? (
+                      <button
+                        onClick={finishControlAndSaveToOdoo}
+                        disabled={isLoading || isUploadingVideo}
+                        className="w-full py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        ✅ Termina Controllo e Salva su Odoo
+                        {isVideoRecording && ' 📹'}
+                      </button>
+                    ) : (
+                      <div className="w-full py-3 bg-gray-300 text-gray-600 rounded-xl font-bold text-center">
+                        ⏳ Controlla tutti i prodotti ({productGroups.length - productControls.size} rimanenti)
+                        {isVideoRecording && ' 📹'}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
