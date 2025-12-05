@@ -10,6 +10,9 @@ import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
 import { ZONES, Zone, Batch } from '@/lib/types/picking';
 import { getPickingClient } from '@/lib/odoo/pickingClient';
 import toast from 'react-hot-toast';
+import { useVideoRecorder } from '@/hooks/useVideoRecorder';
+import { VideoPreviewPiP, CameraErrorBanner } from '@/components/video/VideoPreviewPiP';
+import { getControlloVideoDB } from '@/lib/db/controlloVideoDB';
 
 interface ProductGroup {
   productId: number;
@@ -83,6 +86,27 @@ export default function ControlloDirettoPage() {
   const [errorType, setErrorType] = useState<ControlStatus | null>(null);
   const [errorNote, setErrorNote] = useState<string>('');
 
+  // Video recording state
+  const [videoMinimized, setVideoMinimized] = useState(false);
+  const [showCameraError, setShowCameraError] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+
+  // Video recorder hook
+  const {
+    isRecording: isVideoRecording,
+    recordingTime: videoRecordingTime,
+    previewStream,
+    startRecording: startVideoRecording,
+    stopRecording: stopVideoRecording,
+    error: videoError,
+    permissionDenied: cameraPermissionDenied,
+    chunksCount
+  } = useVideoRecorder({
+    batchId: currentBatch?.id || null,
+    chunkIntervalMs: 30000, // 30 seconds chunks
+    facingMode: 'environment' // Rear camera to see products
+  });
+
   // Client Odoo
   const pickingClient = getPickingClient();
 
@@ -97,6 +121,27 @@ export default function ControlloDirettoPage() {
       loadFromLocalStorage();
     }
   }, [currentBatch, currentZone]);
+
+  // Show camera error banner when permission denied
+  useEffect(() => {
+    if (cameraPermissionDenied || videoError) {
+      setShowCameraError(true);
+    }
+  }, [cameraPermissionDenied, videoError]);
+
+  // Warning when leaving page during recording
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isVideoRecording) {
+        e.preventDefault();
+        e.returnValue = 'Registrazione video in corso. Sei sicuro di voler uscire?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isVideoRecording]);
 
   
 
@@ -193,6 +238,19 @@ export default function ControlloDirettoPage() {
     // Reset dello stato dei prodotti controllati quando cambi zona
     setProductControls(new Map());
     setExpandedProducts(new Set());
+
+    // Start video recording if not already recording (one video per batch)
+    if (!isVideoRecording) {
+      try {
+        const started = await startVideoRecording();
+        if (started) {
+          toast.success('📹 Registrazione video avviata', { duration: 2000 });
+        }
+      } catch (err) {
+        console.warn('⚠️ Video recording not available:', err);
+        // Continue without video - non-blocking
+      }
+    }
 
     try {
       const products = await pickingClient.getProductGroupedOperations(currentBatch.id, zone.id);
@@ -302,6 +360,47 @@ export default function ControlloDirettoPage() {
     }
   }
 
+  // Upload video to server
+  async function uploadVideo(videoBlob: Blob) {
+    if (!currentBatch || !videoBlob) return;
+
+    setIsUploadingVideo(true);
+    const uploadToast = toast.loading('📹 Caricamento video...');
+
+    try {
+      const formData = new FormData();
+      formData.append('video', videoBlob, `controllo_${currentBatch.id}.webm`);
+      formData.append('batch_id', currentBatch.id.toString());
+      formData.append('batch_name', currentBatch.name);
+      formData.append('duration', videoRecordingTime.toString());
+      formData.append('operator_name', user?.name || 'Operatore');
+
+      const response = await fetch('/api/controllo-diretto/upload-video', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(`✅ Video salvato (${result.duration})`, { id: uploadToast });
+
+        // Clear video database after successful upload
+        const db = getControlloVideoDB();
+        await db.deleteRecording(currentBatch.id);
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
+    } catch (error: any) {
+      console.error('❌ Errore upload video:', error);
+      toast.error('Errore caricamento video (salvato localmente)', { id: uploadToast });
+      // Video remains in IndexedDB for later retry
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  }
+
   async function finishControlAndSaveToOdoo() {
     if (!currentBatch || !currentZone || !user || productControls.size === 0) {
       toast.error('Nessun controllo da salvare');
@@ -310,6 +409,14 @@ export default function ControlloDirettoPage() {
 
     setIsLoading(true);
     try {
+      // Stop video recording and get blob
+      let videoBlob: Blob | null = null;
+      if (isVideoRecording) {
+        toast.loading('🎬 Finalizzazione video...', { id: 'video-stop' });
+        videoBlob = await stopVideoRecording();
+        toast.dismiss('video-stop');
+      }
+
       // Prepara riepilogo
       const controls = Array.from(productControls.values());
       const okCount = controls.filter(c => c.status === 'ok').length;
@@ -348,6 +455,11 @@ export default function ControlloDirettoPage() {
 
       if (!saved) {
         throw new Error('Errore salvataggio Odoo');
+      }
+
+      // Upload video if available
+      if (videoBlob && videoBlob.size > 0) {
+        await uploadVideo(videoBlob);
       }
 
       // Pulisci localStorage
@@ -421,7 +533,18 @@ export default function ControlloDirettoPage() {
     }
   }
 
-  function resetSelection() {
+  async function resetSelection() {
+    // Stop and discard video if recording (user is abandoning the batch)
+    if (isVideoRecording && currentBatch) {
+      const confirmReset = window.confirm('Registrazione video in corso. Vuoi interrompere e scartare il video?');
+      if (!confirmReset) return;
+
+      await stopVideoRecording();
+      // Clear video data for this batch
+      const db = getControlloVideoDB();
+      await db.deleteRecording(currentBatch.id);
+    }
+
     setCurrentBatch(null);
     setCurrentZone(null);
     setProductGroups([]);
@@ -429,6 +552,7 @@ export default function ControlloDirettoPage() {
     setShowZoneSelector(false);
     setShowProductList(false);
     setExpandedProducts(new Set());
+    setProductControls(new Map());
   }
 
   return (
@@ -1003,7 +1127,25 @@ export default function ControlloDirettoPage() {
         )}
       </AnimatePresence>
 
-      
+      {/* Video Preview PiP */}
+      <VideoPreviewPiP
+        stream={previewStream}
+        recordingTime={videoRecordingTime}
+        isRecording={isVideoRecording}
+        chunksCount={chunksCount}
+        minimized={videoMinimized}
+        onMinimize={() => setVideoMinimized(!videoMinimized)}
+      />
+
+      {/* Camera Error Banner */}
+      <AnimatePresence>
+        {showCameraError && (cameraPermissionDenied || videoError) && (
+          <CameraErrorBanner
+            error={videoError || 'Permesso fotocamera negato'}
+            onDismiss={() => setShowCameraError(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <MobileHomeButton />
     </div>
