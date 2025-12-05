@@ -105,7 +105,7 @@ export default function ZoneTimeline({ timeline }: ZoneTimelineProps) {
             {/* Event Details */}
             <div className={`flex-1 pb-6 border-l-2 ${getTypeBorderColor(item.type)} pl-4`}>
               <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                <div className="font-medium text-gray-900 mb-1">{item.event}</div>
+                <div className="font-medium text-gray-900 mb-1 whitespace-pre-line">{item.event}</div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <span className="inline-flex items-center gap-1">
                     👤 {item.user}

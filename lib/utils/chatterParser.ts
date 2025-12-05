@@ -50,13 +50,19 @@ export interface ParsedProblema {
 export type ParsedMessage = ParsedPrelievo | ParsedControllo | ParsedVideo | ParsedProblema;
 
 /**
- * Strips HTML tags from a string
+ * Strips HTML tags from a string, preserving line breaks
  */
 function stripHtml(html: string): string {
   if (!html) return '';
 
-  // Remove HTML tags
-  let text = html.replace(/<[^>]*>/g, ' ');
+  // Convert <br>, <br/>, <br /> to newlines FIRST
+  let text = html.replace(/<br\s*\/?>/gi, '\n');
+
+  // Convert </p>, </div>, </li> to newlines (block elements)
+  text = text.replace(/<\/(p|div|li|h[1-6])>/gi, '\n');
+
+  // Remove remaining HTML tags
+  text = text.replace(/<[^>]*>/g, ' ');
 
   // Decode common HTML entities
   text = text
@@ -68,8 +74,12 @@ function stripHtml(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'");
 
-  // Normalize whitespace
-  text = text.replace(/\s+/g, ' ').trim();
+  // Normalize multiple spaces (but keep newlines)
+  text = text.replace(/[ \t]+/g, ' ');
+  // Normalize multiple newlines to single newline
+  text = text.replace(/\n\s*\n/g, '\n');
+  // Trim each line
+  text = text.split('\n').map(line => line.trim()).join('\n').trim();
 
   return text;
 }

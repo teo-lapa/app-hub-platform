@@ -82,24 +82,40 @@ export async function GET(
       date: Date;
     }> = [];
 
-    // Add prelievi to timeline
+    // Add prelievi to timeline - include full details
     parsedMessages.prelievi.forEach((prelievo) => {
       const time = formatTime(prelievo.data);
+      // Build detailed event text
+      let eventText = `Prelievo ${prelievo.zona}`;
+      if (prelievo.prodottiPrelevati > 0) {
+        eventText += ` - ${prelievo.prodottiPrelevati} prodotti, ${prelievo.quantitaTotale} pz`;
+      }
+      if (prelievo.tempoTotale) {
+        eventText += ` (${prelievo.tempoTotale})`;
+      }
       timeline.push({
         time,
-        event: `Prelievo ${prelievo.zona}`,
+        event: eventText,
         user: prelievo.operatore,
         type: 'prelievo',
         date: prelievo.data,
       });
     });
 
-    // Add controlli to timeline
+    // Add controlli to timeline - include full details
     parsedMessages.controlli.forEach((controllo) => {
       const time = formatTime(controllo.data);
+      // Build detailed event text
+      let eventText = `Controllo ${controllo.zona}`;
+      if (controllo.prodottiOk > 0 || controllo.prodottiErrore > 0) {
+        eventText += ` - OK: ${controllo.prodottiOk}, Errori: ${controllo.prodottiErrore}`;
+      }
+      if (controllo.errori && controllo.errori.length > 0) {
+        eventText += '\n' + controllo.errori.map(e => `• ${e.prodotto}: ${e.tipo}`).join('\n');
+      }
       timeline.push({
         time,
-        event: `Controllo ${controllo.zona}`,
+        event: eventText,
         user: controllo.operatore,
         type: 'controllo',
         date: controllo.data,
