@@ -115,6 +115,12 @@ export async function GET(request: NextRequest) {
             }
           });
 
+          // Calculate total problems (from problemi messages + errors in controlli)
+          const problemi_from_controlli = parsedMessages.controlli.reduce(
+            (acc, c) => acc + (c.errori?.length || 0), 0
+          );
+          const problemi_count = parsedMessages.problemi.length + problemi_from_controlli;
+
           return {
             id: batch.id,
             name: batch.name,
@@ -126,7 +132,7 @@ export async function GET(request: NextRequest) {
               prelievi_count: parsedMessages.prelievi.length,
               controlli_count: parsedMessages.controlli.length,
               video_count: parsedMessages.video.length,
-              problemi_count: parsedMessages.problemi.length,
+              problemi_count,
               operatori,
               tempo_totale_minuti,
             },
