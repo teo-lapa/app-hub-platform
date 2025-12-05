@@ -235,14 +235,23 @@ export async function POST(req: NextRequest) {
     }
 
     // ========================================
-    // POST 1: Facebook, Instagram, LinkedIn (messaggio completo)
+    // PUBBLICAZIONE SEPARATA PER OGNI PIATTAFORMA
+    // Creiamo un post separato per ogni account e lo pubblichiamo individualmente
+    // Questo evita conflitti tra le API diverse (es. Instagram vs Facebook)
     // ========================================
-    if (otherAccountIds.length > 0) {
-      console.log(`📤 [PUBLISH-ODOO] Creazione post per Facebook/Instagram/LinkedIn...`);
+
+    // Helper per pubblicare un singolo account con retry
+    const publishSingleAccount = async (
+      accountId: number,
+      accountName: string,
+      message: string,
+      platformLabel: string
+    ): Promise<{ success: boolean; postId?: number }> => {
+      console.log(`📤 [PUBLISH-ODOO] Creazione post per ${platformLabel} (account ${accountId})...`);
 
       const postValues: Record<string, any> = {
-        message: fullPostText,
-        account_ids: [[6, 0, otherAccountIds]],
+        message: message,
+        account_ids: [[6, 0, [accountId]]],
         post_method: scheduledDate ? 'scheduled' : 'now',
       };
 
@@ -254,74 +263,101 @@ export async function POST(req: NextRequest) {
         postValues.image_ids = [[6, 0, [attachmentId]]];
       }
 
-      const postId = await callOdoo(
-        odooCookies,
-        'social.post',
-        'create',
-        [postValues]
-      );
+      try {
+        const postId = await callOdoo(
+          odooCookies,
+          'social.post',
+          'create',
+          [postValues]
+        );
 
-      if (postId) {
+        if (!postId) {
+          console.error(`❌ [PUBLISH-ODOO] Creazione post fallita per ${platformLabel}`);
+          return { success: false };
+        }
+
         createdPostIds.push(postId);
-        otherAccountIds.forEach(id => {
-          const account = Object.values(ODOO_SOCIAL_ACCOUNTS).find(a => a.id === id);
-          if (account) allAccountNames.push(account.name);
-        });
+        allAccountNames.push(accountName);
 
         // Pubblica immediatamente se non programmato
         if (!scheduledDate) {
-          try {
-            await callOdoo(odooCookies, 'social.post', 'action_post', [[postId]]);
-            console.log(`✅ [PUBLISH-ODOO] Post ${postId} pubblicato (FB/IG/LI)`);
-          } catch (e: any) {
-            console.warn(`⚠️ [PUBLISH-ODOO] action_post fallito per ${postId}:`, e.message);
+          // Riprova fino a 3 volte con pausa tra i tentativi
+          let published = false;
+          for (let attempt = 1; attempt <= 3 && !published; attempt++) {
+            try {
+              console.log(`🔄 [PUBLISH-ODOO] ${platformLabel}: Tentativo ${attempt}/3 per post ${postId}...`);
+              await callOdoo(odooCookies, 'social.post', 'action_post', [[postId]]);
+              console.log(`✅ [PUBLISH-ODOO] Post ${postId} pubblicato su ${platformLabel}`);
+              published = true;
+            } catch (e: any) {
+              console.warn(`⚠️ [PUBLISH-ODOO] ${platformLabel} tentativo ${attempt} fallito:`, e.message);
+              if (attempt < 3) {
+                // Aspetta 2 secondi prima di riprovare
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              }
+            }
           }
         }
+
+        return { success: true, postId };
+      } catch (e: any) {
+        console.error(`❌ [PUBLISH-ODOO] Errore ${platformLabel}:`, e.message);
+        return { success: false };
       }
+    };
+
+    // ========================================
+    // 1. FACEBOOK (messaggio completo)
+    // ========================================
+    if (otherAccountIds.includes(ODOO_SOCIAL_ACCOUNTS.facebook.id)) {
+      await publishSingleAccount(
+        ODOO_SOCIAL_ACCOUNTS.facebook.id,
+        ODOO_SOCIAL_ACCOUNTS.facebook.name,
+        fullPostText,
+        'Facebook'
+      );
+      // Piccola pausa tra le piattaforme
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     // ========================================
-    // POST 2: Twitter (messaggio abbreviato max 280 char)
+    // 2. INSTAGRAM (messaggio completo) - Pubblicato separatamente!
+    // ========================================
+    if (otherAccountIds.includes(ODOO_SOCIAL_ACCOUNTS.instagram.id)) {
+      await publishSingleAccount(
+        ODOO_SOCIAL_ACCOUNTS.instagram.id,
+        ODOO_SOCIAL_ACCOUNTS.instagram.name,
+        fullPostText,
+        'Instagram'
+      );
+      // Piccola pausa tra le piattaforme
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    // ========================================
+    // 3. LINKEDIN (messaggio completo)
+    // ========================================
+    if (otherAccountIds.includes(ODOO_SOCIAL_ACCOUNTS.linkedin.id)) {
+      await publishSingleAccount(
+        ODOO_SOCIAL_ACCOUNTS.linkedin.id,
+        ODOO_SOCIAL_ACCOUNTS.linkedin.name,
+        fullPostText,
+        'LinkedIn'
+      );
+      // Piccola pausa tra le piattaforme
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    // ========================================
+    // 4. TWITTER (messaggio abbreviato max 280 char)
     // ========================================
     if (hasTwitter) {
-      console.log(`🐦 [PUBLISH-ODOO] Creazione post per Twitter (${twitterPostText.length} caratteri)...`);
-
-      const twitterPostValues: Record<string, any> = {
-        message: twitterPostText,
-        account_ids: [[6, 0, [TWITTER_ACCOUNT_ID]]],
-        post_method: scheduledDate ? 'scheduled' : 'now',
-      };
-
-      if (scheduledDate) {
-        twitterPostValues.scheduled_date = scheduledDate;
-      }
-
-      // Twitter supporta anche immagini
-      if (attachmentId) {
-        twitterPostValues.image_ids = [[6, 0, [attachmentId]]];
-      }
-
-      const twitterPostId = await callOdoo(
-        odooCookies,
-        'social.post',
-        'create',
-        [twitterPostValues]
+      await publishSingleAccount(
+        TWITTER_ACCOUNT_ID,
+        ODOO_SOCIAL_ACCOUNTS.twitter.name,
+        twitterPostText,
+        'Twitter'
       );
-
-      if (twitterPostId) {
-        createdPostIds.push(twitterPostId);
-        allAccountNames.push(ODOO_SOCIAL_ACCOUNTS.twitter.name);
-
-        // Pubblica immediatamente se non programmato
-        if (!scheduledDate) {
-          try {
-            await callOdoo(odooCookies, 'social.post', 'action_post', [[twitterPostId]]);
-            console.log(`✅ [PUBLISH-ODOO] Post ${twitterPostId} pubblicato (Twitter)`);
-          } catch (e: any) {
-            console.warn(`⚠️ [PUBLISH-ODOO] action_post fallito per Twitter:`, e.message);
-          }
-        }
-      }
     }
 
     // Verifica che almeno un post sia stato creato
