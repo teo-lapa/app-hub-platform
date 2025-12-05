@@ -13,6 +13,8 @@ import {
   AlertTriangle,
   Loader2,
   Video,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import ZoneTimeline from '@/components/controllo-picking/ZoneTimeline';
 import VideoGallery from '@/components/controllo-picking/VideoGallery';
@@ -32,6 +34,12 @@ interface ParsedPrelievo {
   ubicazioniVisitate: number;
 }
 
+interface ControlloErrore {
+  prodotto: string;
+  tipo: string;
+  nota: string;
+}
+
 interface ParsedControllo {
   type: 'controllo';
   zona: string;
@@ -39,6 +47,8 @@ interface ParsedControllo {
   data: string;
   prodottiOk: number;
   prodottiErrore: number;
+  prodottiOkList?: string[];
+  errori?: ControlloErrore[];
 }
 
 interface ParsedVideo {

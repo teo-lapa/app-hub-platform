@@ -468,9 +468,21 @@ export default function ControlloDirettoPage() {
         message += `Controllato da: ${user.name}\n`;
         message += `Data: ${new Date().toLocaleString('it-IT')}\n\n`;
         message += `✅ OK: ${okCount} prodotti\n`;
+        message += `⚠️ ERRORI: ${errorCount} prodotti\n`;
+
+        // Include all products with OK status
+        const okProducts = controls.filter(c => c.status === 'ok');
+        if (okProducts.length > 0) {
+          message += `\nPRODOTTI OK:\n`;
+          okProducts.forEach(ctrl => {
+            const product = productGroups.find(p => p.productId === ctrl.productId);
+            message += `• ${product?.productName || 'Prodotto'}\n`;
+          });
+        }
+
+        // Include error details
         if (errorCount > 0) {
-          message += `⚠️ ERRORI: ${errorCount} prodotti\n\n`;
-          message += `DETTAGLIO ERRORI:\n`;
+          message += `\nDETTAGLIO ERRORI:\n`;
           errors.forEach(ctrl => {
             const product = productGroups.find(p => p.productId === ctrl.productId);
             const statusLabel: Record<ControlStatus, string> = {

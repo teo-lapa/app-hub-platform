@@ -27,6 +27,7 @@ export interface ParsedControllo {
   data: Date;
   prodottiOk: number;
   prodottiErrore: number;
+  prodottiOkList: string[];  // List of OK product names
   errori: ControlloErrore[];  // Detailed errors extracted from the message
 }
 
@@ -169,9 +170,12 @@ function parseControllo(text: string, html: string): ParsedControllo | null {
   const zonaMatch = text.match(/CONTROLLO COMPLETATO\s*-\s*([^\s]+)/);
   const zona = zonaMatch ? zonaMatch[1].trim() : '';
 
-  // Extract operatore
-  const operatoreMatch = text.match(/Controllato da:\s*([A-Za-zÀ-ÿ\s]+?)(?:\s+Data:|$)/i);
-  const operatore = operatoreMatch ? operatoreMatch[1].trim() : '';
+  // Extract operatore - handle newlines and various formats
+  let operatore = '';
+  const operatoreMatch = text.match(/Controllato da:\s*([^\n]+)/i);
+  if (operatoreMatch) {
+    operatore = operatoreMatch[1].trim();
+  }
 
   // Extract data
   const dataMatch = text.match(/Data:\s*(\d{1,2}\/\d{1,2}\/\d{4}[,\s]+\d{1,2}:\d{2}(?::\d{2})?)/i);
@@ -186,6 +190,27 @@ function parseControllo(text: string, html: string): ParsedControllo | null {
   const erroriMatch = text.match(/ERRORI:\s*(\d+)/i);
   const prodottiErrore = erroriMatch ? parseInt(erroriMatch[1]) : 0;
 
+  // Extract OK products list
+  const prodottiOkList: string[] = [];
+  const okSectionIndex = text.indexOf('PRODOTTI OK:');
+  if (okSectionIndex !== -1) {
+    // Find the section between "PRODOTTI OK:" and "DETTAGLIO ERRORI:" or end
+    const erroriSectionStart = text.indexOf('DETTAGLIO ERRORI');
+    const okSectionEnd = erroriSectionStart !== -1 ? erroriSectionStart : text.length;
+    const okSection = text.substring(okSectionIndex, okSectionEnd);
+
+    // Match each product line: • PRODUCT_NAME
+    const okProductRegex = /•\s*([^\n•]+)/g;
+    let okMatch;
+    while ((okMatch = okProductRegex.exec(okSection)) !== null) {
+      const productName = okMatch[1].trim();
+      // Exclude lines that have "-" (those are error lines with status)
+      if (productName && !productName.includes(' - ')) {
+        prodottiOkList.push(productName);
+      }
+    }
+  }
+
   // Extract individual error details
   // Format: • PRODUCT_NAME - ❌ Mancante: Note
   // or: • PRODUCT_NAME - ⚠️ Errore Quantità: Note
@@ -197,7 +222,7 @@ function parseControllo(text: string, html: string): ParsedControllo | null {
     const erroriSection = text.substring(dettaglioIndex);
 
     // Match each error line: • PRODUCT - TYPE: NOTE
-    const errorRegex = /•\s*([^-]+)\s*-\s*(?:❌|⚠️|🔧|📅|📍)?\s*([^:]+):\s*([^•]+)/g;
+    const errorRegex = /•\s*([^-]+)\s*-\s*(?:❌|⚠️|🔧|📅|📍)?\s*([^:]+):\s*([^•\n]+)/g;
     let match;
 
     while ((match = errorRegex.exec(erroriSection)) !== null) {
@@ -216,6 +241,7 @@ function parseControllo(text: string, html: string): ParsedControllo | null {
     data,
     prodottiOk,
     prodottiErrore,
+    prodottiOkList,
     errori,
   };
 }
