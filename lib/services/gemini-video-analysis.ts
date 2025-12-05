@@ -116,8 +116,8 @@ export async function analyzeControlVideo(
   console.log(`[Gemini Video] Analyzing video for zone ${zoneName}, ${expectedProducts.length} expected products`);
 
   try {
-    // Use gemini-1.5-flash for video analysis (supports video input)
-    const model = getGenAI().getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Use gemini-2.0-flash for video analysis (supports video input)
+    const model = getGenAI().getGenerativeModel({ model: "gemini-2.0-flash" });
 
     // Fetch video and convert to base64
     console.log(`[Gemini Video] Fetching video from: ${videoUrl}`);
@@ -227,7 +227,7 @@ export async function analyzeControlVideoFromBlob(
   console.log(`[Gemini Video] Analyzing video blob for zone ${zoneName}`);
 
   try {
-    const model = getGenAI().getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = getGenAI().getGenerativeModel({ model: "gemini-2.0-flash" });
 
     // Convert blob to base64
     const arrayBuffer = await videoBlob.arrayBuffer();
