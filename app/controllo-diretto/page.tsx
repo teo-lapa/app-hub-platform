@@ -361,7 +361,7 @@ export default function ControlloDirettoPage() {
   }
 
   // Upload video using client-side Vercel Blob upload (bypasses 4.5MB limit)
-  async function uploadVideo(videoBlob: Blob) {
+  async function uploadVideo(videoBlob: Blob, zoneName?: string) {
     if (!currentBatch || !videoBlob) return;
 
     setIsUploadingVideo(true);
@@ -395,7 +395,7 @@ export default function ControlloDirettoPage() {
           duration: videoRecordingTime,
           operatorName: user?.name || 'Operatore',
           sizeMb: (videoBlob.size / 1024 / 1024).toFixed(2),
-          zoneName: currentZone?.name || ''
+          zoneName: zoneName || currentZone?.name || ''
         })
       });
 
@@ -513,8 +513,8 @@ export default function ControlloDirettoPage() {
 
       // Upload video if available
       if (videoBlob && videoBlob.size > 0) {
-        console.log(`📤 [finishControl] Uploading video: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
-        await uploadVideo(videoBlob);
+        console.log(`📤 [finishControl] Uploading video: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB for zone: ${currentZone.name}`);
+        await uploadVideo(videoBlob, currentZone.name);
       } else if (wasRecording) {
         // We tried to record but got no blob
         console.error('❌ [finishControl] Video non disponibile per upload (blob nullo o vuoto)');
