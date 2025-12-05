@@ -432,5 +432,54 @@ export function parseAllChatterMessages(
     }
   }
 
-  return { prelievi, controlli, video, problemi };
+  // Associate videos with nearest controllo if video has no zone
+  const videosWithZone = associateVideosWithControlli(video, controlli);
+
+  return { prelievi, controlli, video: videosWithZone, problemi };
+}
+
+/**
+ * Associates videos with the nearest controllo based on timestamp
+ * If a video has no zone, find the closest controllo and use its zone
+ */
+function associateVideosWithControlli(
+  videos: ParsedVideo[],
+  controlli: ParsedControllo[]
+): ParsedVideo[] {
+  if (controlli.length === 0) return videos;
+
+  return videos.map(video => {
+    // If video already has a zone, keep it
+    if (video.zona && video.zona.trim() !== '') {
+      return video;
+    }
+
+    // Find the closest controllo by timestamp
+    let closestControllo: ParsedControllo | null = null;
+    let smallestDiff = Infinity;
+
+    const videoTime = video.data.getTime();
+
+    for (const controllo of controlli) {
+      const controlloTime = controllo.data.getTime();
+      const diff = Math.abs(videoTime - controlloTime);
+
+      if (diff < smallestDiff) {
+        smallestDiff = diff;
+        closestControllo = controllo;
+      }
+    }
+
+    // Only associate if the controllo is within 2 hours of the video
+    // (videos are often recorded before or during the controllo)
+    const twoHours = 2 * 60 * 60 * 1000;
+    if (closestControllo && smallestDiff <= twoHours) {
+      return {
+        ...video,
+        zona: closestControllo.zona,
+      };
+    }
+
+    return video;
+  });
 }
