@@ -380,41 +380,49 @@ ${productDetailsHtml}
 
     console.log(`\n✅ Created ${createdPurchaseOrders.length} purchase orders`);
 
-    // 8. DELETE PROCESSED ASSIGNMENTS FROM DATABASE
-    let deletionSucceeded = false;
-    let deletionError: string | null = null;
+    // 8. MARK ASSIGNMENTS AS ORDERED (instead of deleting them)
+    let markingSucceeded = false;
+    let markingError: string | null = null;
 
     try {
       const productIds = productAssignments.map(pa => pa.productId);
 
       if (productIds.length > 0) {
-        console.log(`\n🗑️ Deleting assignments for ${productIds.length} products from database...`);
+        console.log(`\n✅ Marking assignments for ${productIds.length} products as ordered...`);
 
-        let totalDeleted = 0;
+        let totalMarked = 0;
         for (const productId of productIds) {
+          // Find the corresponding sale and purchase order IDs for this product
+          const saleOrderId = createdSaleOrders.length > 0 ? createdSaleOrders[0].orderId : null;
+          const purchaseOrderId = createdPurchaseOrders.length > 0 ? createdPurchaseOrders[0].orderId : null;
+
           const result = await sql`
-            DELETE FROM preorder_customer_assignments
+            UPDATE preorder_customer_assignments
+            SET is_ordered = TRUE,
+                ordered_at = NOW(),
+                sale_order_id = ${saleOrderId},
+                purchase_order_id = ${purchaseOrderId}
             WHERE product_id = ${productId}
+            AND (is_ordered = FALSE OR is_ordered IS NULL)
           `;
-          totalDeleted += result.rowCount || 0;
+          totalMarked += result.rowCount || 0;
         }
 
-        console.log(`✅ Successfully deleted ${totalDeleted} assignment records`);
-        deletionSucceeded = true;
+        console.log(`✅ Successfully marked ${totalMarked} assignment records as ordered`);
+        markingSucceeded = true;
       } else {
-        deletionSucceeded = true; // No products to delete, consider it success
+        markingSucceeded = true; // No products to mark, consider it success
       }
     } catch (dbError: any) {
-      console.error('❌ CRITICAL: Failed to delete assignments from database:', dbError);
-      deletionError = dbError.message || 'Database deletion failed';
-      // IMPORTANT: We now track this as a failure instead of silently continuing
+      console.error('❌ CRITICAL: Failed to mark assignments as ordered:', dbError);
+      markingError = dbError.message || 'Database update failed';
     }
 
-    // 9. Return summary with deletion status
+    // 9. Return summary with marking status
     const summary = {
       success: true,
-      deletionSucceeded, // ← NEW: Track if database cleanup worked
-      deletionError,     // ← NEW: Include error details if deletion failed
+      markingSucceeded, // Track if marking as ordered worked
+      markingError,     // Include error details if marking failed
       customerQuotesCreated: createdSaleOrders.length,
       supplierQuotesCreated: createdPurchaseOrders.length,
       created: {

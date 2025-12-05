@@ -284,6 +284,22 @@ export async function GET(request: NextRequest) {
     });
     console.log(`✅ ${supplierCadences.size} cadenze caricate dal database`);
 
+    // 4.6. Carica prodotti con assegnazioni pre-ordine attive (per mostrare come "favoriti")
+    console.log('⭐ Caricamento prodotti con pre-ordini attivi...');
+    let productsWithActivePreorders = new Set<number>();
+    try {
+      const preorderAssignments = await sql`
+        SELECT DISTINCT product_id
+        FROM preorder_customer_assignments
+        WHERE (is_ordered = FALSE OR is_ordered IS NULL)
+        AND quantity > 0
+      `;
+      productsWithActivePreorders = new Set(preorderAssignments.rows.map(r => r.product_id));
+      console.log(`⭐ ${productsWithActivePreorders.size} prodotti con pre-ordini attivi`);
+    } catch (error) {
+      console.warn('⚠️ Errore caricamento pre-ordini attivi:', error);
+    }
+
     // Aggiorna supplierMap con le cadenze e usa lead time DB solo come FALLBACK
     supplierMap.forEach((supplier: any, templateId: any) => {
       const cadence = supplierCadences.get(supplier.id);
@@ -460,6 +476,7 @@ export async function GET(request: NextRequest) {
         uom: p.uom,
         avgPrice: p.listPrice,
         isPreOrder: false, // Prodotti caricati qui NON sono PRE-ORDINE (già filtrati)
+        hasActivePreorder: productsWithActivePreorders.has(p.id), // ⭐ Flag per prodotti con pre-ordini attivi
         supplier: {
           name: p.supplier.name,
           leadTime: p.supplier.leadTime
