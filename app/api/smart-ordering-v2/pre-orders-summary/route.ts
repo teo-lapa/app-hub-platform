@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     const rpc = createOdooRPCClient(sessionId);
 
-    // 1. Carica tutte le assegnazioni dal database
+    // 1. Carica tutte le assegnazioni dal database (escludendo quelle già ordinate)
     let assignmentsResult;
     try {
       assignmentsResult = await sql`
@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
           notes,
           created_at
         FROM preorder_customer_assignments
+        WHERE is_ordered = FALSE OR is_ordered IS NULL
         ORDER BY product_id, customer_id
       `;
     } catch (error) {

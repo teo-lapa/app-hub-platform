@@ -170,6 +170,7 @@ export async function GET(request: NextRequest) {
               notes
             FROM preorder_customer_assignments
             WHERE product_id IN (${placeholders})
+            AND (is_ordered = FALSE OR is_ordered IS NULL)
             ORDER BY created_at DESC
           `;
 

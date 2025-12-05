@@ -23,6 +23,8 @@ interface Product {
   totalSold3Months?: number
   avgDailySales?: number
   daysOfStock?: number
+  // ⭐ Flag per prodotti con pre-ordini attivi (da mostrare come preferiti)
+  hasActivePreorder?: boolean
   // ✨ NUOVO: Supporto varianti
   hasVariants?: boolean
   variantCount?: number
@@ -182,7 +184,8 @@ export default function ProdottiPreordinePage() {
               assignedCustomers: [],
               totalSold3Months: product.totalSold3Months,
               avgDailySales: product.avgDailySales,
-              daysOfStock: product.daysOfStock
+              daysOfStock: product.daysOfStock,
+              hasActivePreorder: product.hasActivePreorder || false // ⭐ Flag per pre-ordini attivi
             })
           })
         })
@@ -703,6 +706,13 @@ export default function ProdottiPreordinePage() {
       return p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
     })
+    // ⭐ Ordina: prodotti con pre-ordini attivi in alto
+    .sort((a, b) => {
+      // Prima i prodotti con pre-ordini attivi (hasActivePreorder)
+      const aHasPreorder = a.hasActivePreorder ? 1 : 0
+      const bHasPreorder = b.hasActivePreorder ? 1 : 0
+      return bHasPreorder - aHasPreorder
+    })
 
   // ✅ USA RISULTATI RICERCA LIVE (già filtrati dal server)
   const filteredCustomers = searchedCustomers
@@ -887,6 +897,10 @@ export default function ProdottiPreordinePage() {
                       {/* Product Name */}
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2">
+                          {/* ⭐ Indicatore pre-ordine attivo */}
+                          {product.hasActivePreorder && (
+                            <span className="text-yellow-400 text-lg" title="Ha pre-ordini attivi">⭐</span>
+                          )}
                           <div className="text-white font-medium">{product.name}</div>
                           {product.hasVariants && (
                             <button
@@ -1099,7 +1113,13 @@ export default function ProdottiPreordinePage() {
 
                       {/* Product Info */}
                       <div className="flex-1 min-w-0">
-                        <div className="text-white font-medium text-base mb-2 break-words">{product.name}</div>
+                        <div className="text-white font-medium text-base mb-2 break-words">
+                          {/* ⭐ Indicatore pre-ordine attivo */}
+                          {product.hasActivePreorder && (
+                            <span className="text-yellow-400 mr-1" title="Ha pre-ordini attivi">⭐</span>
+                          )}
+                          {product.name}
+                        </div>
                         {product.hasVariants && (
                           <button
                             onClick={() => setExpandedVariants(prev =>
