@@ -1,12 +1,16 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { RefreshCw, Download, Settings, Mail, Bell, Target, Users, FileText, Lock, Activity } from 'lucide-react';
+import { RefreshCw, Download, Settings, Mail, Bell, Target, Users, FileText, Lock, Activity, ClipboardCheck } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 import { mockSystemStatus } from '@/lib/super-dashboard/mockData';
 
 export function QuickActionsSection() {
+  const router = useRouter();
+
   const actions = [
+    { icon: ClipboardCheck, label: 'CONTROLLO PICKING', description: 'Analizza prelievi, controlli e video', color: 'from-purple-600 to-indigo-600', onClick: () => router.push('/super-dashboard/controllo-picking') },
     { icon: RefreshCw, label: 'SYNC ODOO NOW', color: 'from-blue-600 to-cyan-600' },
     { icon: Download, label: 'EXPORT REPORT', color: 'from-green-600 to-emerald-600' },
     { icon: Settings, label: 'SETTINGS', color: 'from-purple-600 to-pink-600' },
@@ -72,10 +76,16 @@ export function QuickActionsSection() {
               transition={{ delay: index * 0.05 }}
               whileHover={{ scale: 1.02, x: 4 }}
               whileTap={{ scale: 0.98 }}
+              onClick={action.onClick}
               className={`bg-gradient-to-r ${action.color} text-white rounded-lg p-3 flex items-center gap-3 font-semibold text-sm shadow-lg hover:shadow-xl transition-all group`}
             >
               <action.icon className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-              {action.label}
+              <div className="flex flex-col items-start">
+                <span>{action.label}</span>
+                {action.description && (
+                  <span className="text-xs text-white/80 font-normal">{action.description}</span>
+                )}
+              </div>
             </motion.button>
           ))}
         </div>
