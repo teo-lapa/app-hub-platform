@@ -11,30 +11,31 @@ import {
   Calendar,
   Loader2
 } from 'lucide-react';
-import { BatchCard } from '@/components/controllo-picking/BatchCard';
+import BatchCard from '@/components/controllo-picking/BatchCard';
 
-interface KPIData {
-  batchCount: number;
-  prelieviCount: number;
-  controlliCount: number;
-  videoCount: number;
-  problemiCount: number;
+interface BatchStats {
+  prelievi_count: number;
+  controlli_count: number;
+  video_count: number;
+  problemi_count: number;
+  operatori: string[];
+  tempo_totale_minuti: number;
 }
 
 interface Batch {
-  id: string;
-  batchNumber: string;
-  createdAt: string;
-  status: string;
-  prelieviCount: number;
-  controlliCount: number;
-  videoCount: number;
-  problemiCount: number;
+  id: number;
+  name: string;
+  state: string;
+  scheduled_date: string;
+  picking_count: number;
+  move_line_count: number;
+  stats: BatchStats;
 }
 
 interface BatchesResponse {
+  success: boolean;
   batches: Batch[];
-  kpis: KPIData;
+  error?: string;
 }
 
 export default function ControlloPickingPage() {
@@ -42,7 +43,7 @@ export default function ControlloPickingPage() {
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  const [data, setData] = useState<BatchesResponse | null>(null);
+  const [batches, setBatches] = useState<Batch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,15 +53,16 @@ export default function ControlloPickingPage() {
       setError(null);
 
       const response = await fetch(`/api/controllo-picking/batches?date=${date}`);
+      const result: BatchesResponse = await response.json();
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch batches');
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch batches');
       }
 
-      const result = await response.json();
-      setData(result);
+      setBatches(result.batches || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      setBatches([]);
     } finally {
       setIsLoading(false);
     }
@@ -70,11 +72,20 @@ export default function ControlloPickingPage() {
     fetchBatches(selectedDate);
   }, [selectedDate]);
 
+  // Calculate KPIs from batches
+  const kpis = {
+    batchCount: batches.length,
+    prelieviCount: batches.reduce((sum, b) => sum + b.stats.prelievi_count, 0),
+    controlliCount: batches.reduce((sum, b) => sum + b.stats.controlli_count, 0),
+    videoCount: batches.reduce((sum, b) => sum + b.stats.video_count, 0),
+    problemiCount: batches.reduce((sum, b) => sum + b.stats.problemi_count, 0),
+  };
+
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedDate(e.target.value);
   };
 
-  const handleBatchClick = (batchId: string) => {
+  const handleBatchClick = (batchId: number) => {
     router.push(`/super-dashboard/controllo-picking/${batchId}`);
   };
 
@@ -153,7 +164,7 @@ export default function ControlloPickingPage() {
         )}
 
         {/* Success State */}
-        {!isLoading && !error && data && (
+        {!isLoading && !error && (
           <>
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
@@ -163,7 +174,7 @@ export default function ControlloPickingPage() {
                   <Package className="w-5 h-5 text-blue-500" />
                 </div>
                 <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {data.kpis.batchCount}
+                  {kpis.batchCount}
                 </div>
                 <div className="text-sm text-gray-600">Batch</div>
               </div>
@@ -174,7 +185,7 @@ export default function ControlloPickingPage() {
                   <ClipboardCheck className="w-5 h-5 text-green-500" />
                 </div>
                 <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {data.kpis.prelieviCount}
+                  {kpis.prelieviCount}
                 </div>
                 <div className="text-sm text-gray-600">Prelievi</div>
               </div>
@@ -185,7 +196,7 @@ export default function ControlloPickingPage() {
                   <ClipboardCheck className="w-5 h-5 text-purple-500" />
                 </div>
                 <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {data.kpis.controlliCount}
+                  {kpis.controlliCount}
                 </div>
                 <div className="text-sm text-gray-600">Controlli</div>
               </div>
@@ -196,7 +207,7 @@ export default function ControlloPickingPage() {
                   <Video className="w-5 h-5 text-indigo-500" />
                 </div>
                 <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {data.kpis.videoCount}
+                  {kpis.videoCount}
                 </div>
                 <div className="text-sm text-gray-600">Video</div>
               </div>
@@ -207,14 +218,14 @@ export default function ControlloPickingPage() {
                   <AlertTriangle className="w-5 h-5 text-red-500" />
                 </div>
                 <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {data.kpis.problemiCount}
+                  {kpis.problemiCount}
                 </div>
                 <div className="text-sm text-gray-600">Problemi</div>
               </div>
             </div>
 
             {/* Empty State */}
-            {data.batches.length === 0 && (
+            {batches.length === 0 && (
               <div className="flex items-center justify-center py-20">
                 <div className="text-center">
                   <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -229,13 +240,13 @@ export default function ControlloPickingPage() {
             )}
 
             {/* Batch List */}
-            {data.batches.length > 0 && (
+            {batches.length > 0 && (
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  Lista Batch ({data.batches.length})
+                  Lista Batch ({batches.length})
                 </h2>
                 <div className="space-y-4">
-                  {data.batches.map((batch) => (
+                  {batches.map((batch) => (
                     <BatchCard
                       key={batch.id}
                       batch={batch}
