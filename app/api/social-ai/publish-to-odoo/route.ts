@@ -1,6 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import sharp from 'sharp';
+import { PNG } from 'pngjs';
+import * as jpeg from 'jpeg-js';
+
+// Funzione per convertire PNG a JPEG (compatibile con Vercel - no binari nativi)
+async function convertToJpeg(imageBuffer: ArrayBuffer): Promise<{ buffer: Buffer; mimetype: string; extension: string }> {
+  const buffer = Buffer.from(imageBuffer);
+
+  // Verifica se è già JPEG controllando i magic bytes (FF D8 FF)
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+    console.log('✅ [PUBLISH-ODOO] Immagine già in formato JPEG');
+    return { buffer, mimetype: 'image/jpeg', extension: 'jpg' };
+  }
+
+  // Verifica se è PNG controllando i magic bytes (89 50 4E 47)
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+    console.log('🔄 [PUBLISH-ODOO] Conversione PNG -> JPEG...');
+
+    try {
+      // Decodifica PNG
+      const png = PNG.sync.read(buffer);
+
+      // Prepara i dati RGBA per jpeg-js
+      const rawImageData = {
+        data: png.data,
+        width: png.width,
+        height: png.height
+      };
+
+      // Codifica in JPEG (qualità 90%)
+      const jpegImageData = jpeg.encode(rawImageData, 90);
+
+      console.log(`✅ [PUBLISH-ODOO] Convertito in JPEG: ${png.width}x${png.height} (${Math.round(jpegImageData.data.length / 1024)}KB)`);
+
+      return {
+        buffer: jpegImageData.data,
+        mimetype: 'image/jpeg',
+        extension: 'jpg'
+      };
+    } catch (conversionError: any) {
+      console.error('⚠️ [PUBLISH-ODOO] Errore conversione PNG->JPEG:', conversionError.message);
+      // Fallback: usa PNG originale (Instagram potrebbe rifiutarlo)
+      return { buffer, mimetype: 'image/png', extension: 'png' };
+    }
+  }
+
+  // Per altri formati, restituisci come-è
+  console.warn('⚠️ [PUBLISH-ODOO] Formato immagine non riconosciuto, uso originale');
+  return { buffer, mimetype: 'image/png', extension: 'png' };
+}
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -115,28 +163,22 @@ export async function POST(req: NextRequest) {
 
         const imageBuffer = await imageResponse.arrayBuffer();
 
-        // IMPORTANTE: Converti SEMPRE in JPEG per compatibilità Instagram
-        // Instagram accetta solo .jpg/.jpeg
-        console.log(`🔄 [PUBLISH-ODOO] Conversione immagine in JPEG per Instagram...`);
+        // IMPORTANTE: Converti in JPEG per compatibilità Instagram
+        const { buffer: finalBuffer, mimetype, extension } = await convertToJpeg(imageBuffer);
+        const imageBase64 = finalBuffer.toString('base64');
 
-        const jpegBuffer = await sharp(Buffer.from(imageBuffer))
-          .jpeg({ quality: 90 }) // Alta qualità JPEG
-          .toBuffer();
+        console.log(`📦 [PUBLISH-ODOO] Immagine pronta: ${mimetype} (${Math.round(finalBuffer.length / 1024)}KB)`);
 
-        const imageBase64 = jpegBuffer.toString('base64');
-
-        console.log(`✅ [PUBLISH-ODOO] Immagine convertita in JPEG (${Math.round(jpegBuffer.length / 1024)}KB)`);
-
-        // Crea attachment in Odoo come JPEG
+        // Crea attachment in Odoo
         const attachmentResult = await callOdoo(
           odooCookies,
           'ir.attachment',
           'create',
           [{
-            name: `social-ai-${Date.now()}.jpg`,
+            name: `social-ai-${Date.now()}.${extension}`,
             type: 'binary',
             datas: imageBase64,
-            mimetype: 'image/jpeg',
+            mimetype: mimetype,
           }]
         );
 
