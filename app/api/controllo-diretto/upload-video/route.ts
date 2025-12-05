@@ -4,12 +4,8 @@ import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 
-// Increase body size limit for video uploads (500MB max on Vercel Pro)
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Maximum duration for serverless function (video uploads can take time)
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
