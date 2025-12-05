@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import sharp from 'sharp';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -100,35 +101,42 @@ export async function POST(req: NextRequest) {
       postValues.scheduled_date = scheduledDate;
     }
 
-    // Aggiungi immagine se presente
+    // Aggiungi immagine se presente - IMPORTANTE: Instagram richiede JPEG!
     let attachmentId: number | null = null;
     if (imageUrl) {
       try {
         console.log(`🖼️ [PUBLISH-ODOO] Caricamento immagine...`);
 
-        // Scarica l'immagine e convertila in base64
+        // Scarica l'immagine
         const imageResponse = await fetch(imageUrl);
         if (!imageResponse.ok) {
           throw new Error(`HTTP ${imageResponse.status}`);
         }
 
         const imageBuffer = await imageResponse.arrayBuffer();
-        const imageBase64 = Buffer.from(imageBuffer).toString('base64');
 
-        // Determina il tipo MIME
-        const contentType = imageResponse.headers.get('content-type') || 'image/png';
-        const extension = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : 'png';
+        // IMPORTANTE: Converti SEMPRE in JPEG per compatibilità Instagram
+        // Instagram accetta solo .jpg/.jpeg
+        console.log(`🔄 [PUBLISH-ODOO] Conversione immagine in JPEG per Instagram...`);
 
-        // Crea attachment in Odoo
+        const jpegBuffer = await sharp(Buffer.from(imageBuffer))
+          .jpeg({ quality: 90 }) // Alta qualità JPEG
+          .toBuffer();
+
+        const imageBase64 = jpegBuffer.toString('base64');
+
+        console.log(`✅ [PUBLISH-ODOO] Immagine convertita in JPEG (${Math.round(jpegBuffer.length / 1024)}KB)`);
+
+        // Crea attachment in Odoo come JPEG
         const attachmentResult = await callOdoo(
           odooCookies,
           'ir.attachment',
           'create',
           [{
-            name: `social-ai-${Date.now()}.${extension}`,
+            name: `social-ai-${Date.now()}.jpg`,
             type: 'binary',
             datas: imageBase64,
-            mimetype: contentType,
+            mimetype: 'image/jpeg',
           }]
         );
 
