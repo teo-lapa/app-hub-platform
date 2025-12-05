@@ -10,6 +10,9 @@ import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
 import { ZONES, Zone, Batch } from '@/lib/types/picking';
 import { getPickingClient } from '@/lib/odoo/pickingClient';
 import toast from 'react-hot-toast';
+import { useVideoRecorder } from '@/hooks/useVideoRecorder';
+import { VideoPreviewPiP, CameraErrorBanner } from '@/components/video/VideoPreviewPiP';
+import { getControlloVideoDB } from '@/lib/db/controlloVideoDB';
 
 interface ProductGroup {
   productId: number;
@@ -83,6 +86,27 @@ export default function ControlloDirettoPage() {
   const [errorType, setErrorType] = useState<ControlStatus | null>(null);
   const [errorNote, setErrorNote] = useState<string>('');
 
+  // Video recording state
+  const [videoMinimized, setVideoMinimized] = useState(false);
+  const [showCameraError, setShowCameraError] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+
+  // Video recorder hook
+  const {
+    isRecording: isVideoRecording,
+    recordingTime: videoRecordingTime,
+    previewStream,
+    startRecording: startVideoRecording,
+    stopRecording: stopVideoRecording,
+    error: videoError,
+    permissionDenied: cameraPermissionDenied,
+    chunksCount
+  } = useVideoRecorder({
+    batchId: currentBatch?.id || null,
+    chunkIntervalMs: 30000, // 30 seconds chunks
+    facingMode: 'environment' // Rear camera to see products
+  });
+
   // Client Odoo
   const pickingClient = getPickingClient();
 
@@ -97,6 +121,27 @@ export default function ControlloDirettoPage() {
       loadFromLocalStorage();
     }
   }, [currentBatch, currentZone]);
+
+  // Show camera error banner when permission denied
+  useEffect(() => {
+    if (cameraPermissionDenied || videoError) {
+      setShowCameraError(true);
+    }
+  }, [cameraPermissionDenied, videoError]);
+
+  // Warning when leaving page during recording
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isVideoRecording) {
+        e.preventDefault();
+        e.returnValue = 'Registrazione video in corso. Sei sicuro di voler uscire?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isVideoRecording]);
 
   
 
@@ -193,6 +238,19 @@ export default function ControlloDirettoPage() {
     // Reset dello stato dei prodotti controllati quando cambi zona
     setProductControls(new Map());
     setExpandedProducts(new Set());
+
+    // Start video recording if not already recording (one video per batch)
+    if (!isVideoRecording) {
+      try {
+        const started = await startVideoRecording();
+        if (started) {
+          toast.success('📹 Registrazione video avviata', { duration: 2000 });
+        }
+      } catch (err) {
+        console.warn('⚠️ Video recording not available:', err);
+        // Continue without video - non-blocking
+      }
+    }
 
     try {
       const products = await pickingClient.getProductGroupedOperations(currentBatch.id, zone.id);
@@ -302,62 +360,162 @@ export default function ControlloDirettoPage() {
     }
   }
 
+  // Upload video using client-side Vercel Blob upload (bypasses 4.5MB limit)
+  async function uploadVideo(videoBlob: Blob) {
+    if (!currentBatch || !videoBlob) return;
+
+    setIsUploadingVideo(true);
+    const uploadToast = toast.loading('📹 Caricamento video...');
+
+    try {
+      // Import upload function dynamically to avoid SSR issues
+      const { upload } = await import('@vercel/blob/client');
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `controllo-diretto/batch-${currentBatch.id}/${timestamp}.webm`;
+
+      console.log(`📤 [uploadVideo] Starting client-side upload: ${filename}, size: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+
+      // Upload directly to Vercel Blob (client-side, no size limit)
+      const blob = await upload(filename, videoBlob, {
+        access: 'public',
+        handleUploadUrl: '/api/controllo-diretto/upload-video',
+      });
+
+      console.log(`✅ [uploadVideo] Upload completed: ${blob.url}`);
+
+      // Notify server to post to Odoo chatter
+      const notifyResponse = await fetch('/api/controllo-diretto/upload-video', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          blobUrl: blob.url,
+          batchId: currentBatch.id,
+          duration: videoRecordingTime,
+          operatorName: user?.name || 'Operatore',
+          sizeMb: (videoBlob.size / 1024 / 1024).toFixed(2)
+        })
+      });
+
+      if (notifyResponse.ok) {
+        const result = await notifyResponse.json();
+        toast.success(`✅ Video salvato (${result.duration})`, { id: uploadToast });
+
+        // Clear video database after successful upload
+        const db = getControlloVideoDB();
+        await db.deleteRecording(currentBatch.id);
+      } else {
+        const error = await notifyResponse.json();
+        console.warn('⚠️ [uploadVideo] Video caricato ma errore notifica Odoo:', error);
+        toast.success('✅ Video caricato (Odoo non notificato)', { id: uploadToast });
+      }
+    } catch (error: any) {
+      console.error('❌ Errore upload video:', error);
+      toast.error('Errore caricamento video (salvato localmente)', { id: uploadToast });
+      // Video remains in IndexedDB for later retry
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  }
+
   async function finishControlAndSaveToOdoo() {
-    if (!currentBatch || !currentZone || !user || productControls.size === 0) {
-      toast.error('Nessun controllo da salvare');
+    if (!currentBatch || !currentZone || !user) {
+      toast.error('Dati mancanti');
+      return;
+    }
+
+    // Check if there's anything to save (controls or video)
+    const hasControls = productControls.size > 0;
+    const wasRecording = isVideoRecording; // Save state before it changes
+
+    console.log(`📋 [finishControl] hasControls: ${hasControls}, wasRecording: ${wasRecording}`);
+
+    if (!hasControls && !wasRecording) {
+      toast.error('Nessun controllo o video da salvare');
       return;
     }
 
     setIsLoading(true);
     try {
-      // Prepara riepilogo
-      const controls = Array.from(productControls.values());
-      const okCount = controls.filter(c => c.status === 'ok').length;
-      const errorCount = controls.filter(c => c.status !== 'ok').length;
+      // Stop video recording and get blob
+      let videoBlob: Blob | null = null;
+      if (wasRecording) {
+        console.log('🎬 [finishControl] Fermando video recording...');
+        toast.loading('🎬 Finalizzazione video...', { id: 'video-stop' });
+        videoBlob = await stopVideoRecording();
+        toast.dismiss('video-stop');
 
-      const errors = controls.filter(c => c.status !== 'ok');
-
-      let message = `📋 CONTROLLO COMPLETATO - ${currentZone.name}\n`;
-      message += `Controllato da: ${user.name}\n`;
-      message += `Data: ${new Date().toLocaleString('it-IT')}\n\n`;
-      message += `✅ OK: ${okCount} prodotti\n`;
-      if (errorCount > 0) {
-        message += `⚠️ ERRORI: ${errorCount} prodotti\n\n`;
-        message += `DETTAGLIO ERRORI:\n`;
-        errors.forEach(ctrl => {
-          const product = productGroups.find(p => p.productId === ctrl.productId);
-          const statusLabel: Record<ControlStatus, string> = {
-            'ok': '✅ OK',
-            'error_qty': '⚠️ Errore Quantità',
-            'missing': '❌ Mancante',
-            'damaged': '🔧 Danneggiato',
-            'lot_error': '📅 Lotto Errato',
-            'location_error': '📍 Ubicazione Errata',
-            'note': '📝 Nota'
-          };
-          const label = statusLabel[ctrl.status] || ctrl.status;
-
-          message += `• ${product?.productName || 'Prodotto'} - ${label}`;
-          if (ctrl.note) message += `: ${ctrl.note}`;
-          message += `\n`;
-        });
+        if (videoBlob) {
+          console.log(`✅ [finishControl] Video blob ricevuto: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+        } else {
+          console.error('❌ [finishControl] Video blob è null!');
+        }
+      } else {
+        console.log('ℹ️ [finishControl] Nessuna registrazione video attiva');
       }
 
-      // Salva nel Chatter Odoo usando pickingClient (come prelievo-zone)
-      const saved = await pickingClient.postBatchChatterMessage(currentBatch.id, message);
+      // Save controls to Odoo chatter if any
+      if (hasControls) {
+        // Prepara riepilogo
+        const controls = Array.from(productControls.values());
+        const okCount = controls.filter(c => c.status === 'ok').length;
+        const errorCount = controls.filter(c => c.status !== 'ok').length;
 
-      if (!saved) {
-        throw new Error('Errore salvataggio Odoo');
+        const errors = controls.filter(c => c.status !== 'ok');
+
+        let message = `📋 CONTROLLO COMPLETATO - ${currentZone.name}\n`;
+        message += `Controllato da: ${user.name}\n`;
+        message += `Data: ${new Date().toLocaleString('it-IT')}\n\n`;
+        message += `✅ OK: ${okCount} prodotti\n`;
+        if (errorCount > 0) {
+          message += `⚠️ ERRORI: ${errorCount} prodotti\n\n`;
+          message += `DETTAGLIO ERRORI:\n`;
+          errors.forEach(ctrl => {
+            const product = productGroups.find(p => p.productId === ctrl.productId);
+            const statusLabel: Record<ControlStatus, string> = {
+              'ok': '✅ OK',
+              'error_qty': '⚠️ Errore Quantità',
+              'missing': '❌ Mancante',
+              'damaged': '🔧 Danneggiato',
+              'lot_error': '📅 Lotto Errato',
+              'location_error': '📍 Ubicazione Errata',
+              'note': '📝 Nota'
+            };
+            const label = statusLabel[ctrl.status] || ctrl.status;
+
+            message += `• ${product?.productName || 'Prodotto'} - ${label}`;
+            if (ctrl.note) message += `: ${ctrl.note}`;
+            message += `\n`;
+          });
+        }
+
+        // Salva nel Chatter Odoo usando pickingClient (come prelievo-zone)
+        const saved = await pickingClient.postBatchChatterMessage(currentBatch.id, message);
+
+        if (!saved) {
+          throw new Error('Errore salvataggio Odoo');
+        }
+      }
+
+      // Upload video if available
+      if (videoBlob && videoBlob.size > 0) {
+        console.log(`📤 [finishControl] Uploading video: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+        await uploadVideo(videoBlob);
+      } else if (wasRecording) {
+        // We tried to record but got no blob
+        console.error('❌ [finishControl] Video non disponibile per upload (blob nullo o vuoto)');
+        toast.error('Video non salvato (nessun dato registrato)');
       }
 
       // Pulisci localStorage
       clearLocalStorage();
       setProductControls(new Map());
 
-      toast.success('✅ Controllo salvato nel chatter del batch!');
+      toast.success(hasControls ? '✅ Controllo salvato!' : '✅ Video salvato!');
     } catch (error) {
-      console.error('❌ Errore salvataggio Odoo:', error);
-      toast.error('Errore salvataggio su Odoo');
+      console.error('❌ Errore salvataggio:', error);
+      toast.error('Errore salvataggio');
     } finally {
       setIsLoading(false);
     }
@@ -421,7 +579,18 @@ export default function ControlloDirettoPage() {
     }
   }
 
-  function resetSelection() {
+  async function resetSelection() {
+    // Stop and discard video if recording (user is abandoning the batch)
+    if (isVideoRecording && currentBatch) {
+      const confirmReset = window.confirm('Registrazione video in corso. Vuoi interrompere e scartare il video?');
+      if (!confirmReset) return;
+
+      await stopVideoRecording();
+      // Clear video data for this batch
+      const db = getControlloVideoDB();
+      await db.deleteRecording(currentBatch.id);
+    }
+
     setCurrentBatch(null);
     setCurrentZone(null);
     setProductGroups([]);
@@ -429,6 +598,7 @@ export default function ControlloDirettoPage() {
     setShowZoneSelector(false);
     setShowProductList(false);
     setExpandedProducts(new Set());
+    setProductControls(new Map());
   }
 
   return (
@@ -594,15 +764,46 @@ export default function ControlloDirettoPage() {
                   </div>
                 </div>
 
-                {/* Pulsante Termina Controllo */}
-                {productControls.size > 0 && (
-                  <button
-                    onClick={finishControlAndSaveToOdoo}
-                    disabled={isLoading}
-                    className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    📋 Termina Controllo e Salva su Odoo ({productControls.size} controllati)
-                  </button>
+                {/* Pulsante Termina Controllo - mostra SOLO quando TUTTI i prodotti sono controllati */}
+                {productGroups.length > 0 && (
+                  <>
+                    {/* Progress bar controlli */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="text-gray-600">Progresso controllo</span>
+                        <span className="font-semibold">
+                          {productControls.size} / {productGroups.length} prodotti
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            productControls.size === productGroups.length
+                              ? 'bg-green-500'
+                              : 'bg-blue-500'
+                          }`}
+                          style={{ width: `${(productControls.size / productGroups.length) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Pulsante - abilitato solo quando tutti controllati */}
+                    {productControls.size === productGroups.length ? (
+                      <button
+                        onClick={finishControlAndSaveToOdoo}
+                        disabled={isLoading || isUploadingVideo}
+                        className="w-full py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        ✅ Termina Controllo e Salva su Odoo
+                        {isVideoRecording && ' 📹'}
+                      </button>
+                    ) : (
+                      <div className="w-full py-3 bg-gray-300 text-gray-600 rounded-xl font-bold text-center">
+                        ⏳ Controlla tutti i prodotti ({productGroups.length - productControls.size} rimanenti)
+                        {isVideoRecording && ' 📹'}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -1003,7 +1204,25 @@ export default function ControlloDirettoPage() {
         )}
       </AnimatePresence>
 
-      
+      {/* Video Preview PiP */}
+      <VideoPreviewPiP
+        stream={previewStream}
+        recordingTime={videoRecordingTime}
+        isRecording={isVideoRecording}
+        chunksCount={chunksCount}
+        minimized={videoMinimized}
+        onMinimize={() => setVideoMinimized(!videoMinimized)}
+      />
+
+      {/* Camera Error Banner */}
+      <AnimatePresence>
+        {showCameraError && (cameraPermissionDenied || videoError) && (
+          <CameraErrorBanner
+            error={videoError || 'Permesso fotocamera negato'}
+            onDismiss={() => setShowCameraError(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <MobileHomeButton />
     </div>
