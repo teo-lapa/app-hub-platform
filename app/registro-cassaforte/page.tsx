@@ -479,9 +479,9 @@ export default function RegistroCassafortePage() {
     // Cleanup: lock back to portrait when leaving the page
     return () => {
       try {
-        // @ts-ignore
-        if (screen.orientation && screen.orientation.lock) {
-          screen.orientation.lock('portrait-primary').catch(() => {});
+        // @ts-ignore - Screen Orientation API not fully typed
+        if (screen.orientation && (screen.orientation as any).lock) {
+          (screen.orientation as any).lock('portrait-primary').catch(() => {});
         }
       } catch (error) {
         // Ignore errors
