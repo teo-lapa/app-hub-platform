@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import {
   Share2, Instagram, Facebook, Linkedin, MessageCircle,
-  Music, Copy, Download, X, CheckCircle2, Loader2
+  Music, Copy, Download, X, CheckCircle2, Loader2, Send, Building2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -58,6 +58,7 @@ export default function ShareMenu({
   platform
 }: ShareMenuProps) {
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
+  const [isPublishingToOdoo, setIsPublishingToOdoo] = useState(false);
 
   if (!isOpen) return null;
 
@@ -180,6 +181,43 @@ export default function ShareMenu({
     const waUrl = `https://wa.me/?text=${waText}&app_absent=1`;
     window.open(waUrl, '_blank', 'noopener,noreferrer');
     setTimeout(onClose, 1000);
+  };
+
+  // Pubblica direttamente su Odoo Social Marketing
+  const handlePublishToOdoo = async () => {
+    setIsPublishingToOdoo(true);
+
+    try {
+      const response = await fetch('/api/social-ai/publish-to-odoo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          caption,
+          hashtags,
+          cta,
+          imageUrl,
+          videoUrl,
+          platform
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(
+          `Post pubblicato su Odoo! ${data.post?.accounts?.length || 0} account collegati.`,
+          { duration: 5000 }
+        );
+        setTimeout(onClose, 2000);
+      } else {
+        toast.error(data.error || 'Errore durante la pubblicazione su Odoo', { duration: 6000 });
+      }
+    } catch (error) {
+      console.error('Errore pubblicazione Odoo:', error);
+      toast.error('Errore di connessione con Odoo. Riprova.', { duration: 5000 });
+    } finally {
+      setIsPublishingToOdoo(false);
+    }
   };
 
   const handleWebShare = async () => {
@@ -340,10 +378,39 @@ export default function ShareMenu({
             </div>
           </div>
 
+          {/* Pubblica su Odoo - Azione Principale */}
+          <div className="space-y-2">
+            <div className="text-xs text-purple-400 font-medium mb-3">
+              Pubblica Automaticamente
+            </div>
+            <button
+              onClick={handlePublishToOdoo}
+              disabled={isPublishingToOdoo}
+              className="w-full flex items-center space-x-3 p-4 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 border border-teal-400/30 rounded-xl transition-all group shadow-lg shadow-teal-500/20"
+            >
+              <div className="p-2 bg-white/20 rounded-lg">
+                {isPublishingToOdoo ? (
+                  <Loader2 className="h-5 w-5 text-white animate-spin" />
+                ) : (
+                  <Building2 className="h-5 w-5 text-white" />
+                )}
+              </div>
+              <div className="flex-1 text-left">
+                <div className="text-white font-semibold">
+                  {isPublishingToOdoo ? 'Pubblicazione in corso...' : 'Pubblica su Odoo'}
+                </div>
+                <div className="text-xs text-teal-100">
+                  Pubblica automaticamente su tutti i social collegati
+                </div>
+              </div>
+              <Send className="h-5 w-5 text-white opacity-70 group-hover:opacity-100 transition-opacity" />
+            </button>
+          </div>
+
           {/* Platform Buttons */}
           <div className="space-y-2">
             <div className="text-xs text-purple-400 font-medium mb-3">
-              Piattaforme Social
+              Condivisione Manuale
             </div>
             {platformButtons.map((btn) => {
               const Icon = btn.icon;
