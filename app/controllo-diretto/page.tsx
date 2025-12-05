@@ -402,8 +402,17 @@ export default function ControlloDirettoPage() {
   }
 
   async function finishControlAndSaveToOdoo() {
-    if (!currentBatch || !currentZone || !user || productControls.size === 0) {
-      toast.error('Nessun controllo da salvare');
+    if (!currentBatch || !currentZone || !user) {
+      toast.error('Dati mancanti');
+      return;
+    }
+
+    // Check if there's anything to save (controls or video)
+    const hasControls = productControls.size > 0;
+    const hasVideo = isVideoRecording;
+
+    if (!hasControls && !hasVideo) {
+      toast.error('Nessun controllo o video da salvare');
       return;
     }
 
@@ -417,44 +426,47 @@ export default function ControlloDirettoPage() {
         toast.dismiss('video-stop');
       }
 
-      // Prepara riepilogo
-      const controls = Array.from(productControls.values());
-      const okCount = controls.filter(c => c.status === 'ok').length;
-      const errorCount = controls.filter(c => c.status !== 'ok').length;
+      // Save controls to Odoo chatter if any
+      if (hasControls) {
+        // Prepara riepilogo
+        const controls = Array.from(productControls.values());
+        const okCount = controls.filter(c => c.status === 'ok').length;
+        const errorCount = controls.filter(c => c.status !== 'ok').length;
 
-      const errors = controls.filter(c => c.status !== 'ok');
+        const errors = controls.filter(c => c.status !== 'ok');
 
-      let message = `📋 CONTROLLO COMPLETATO - ${currentZone.name}\n`;
-      message += `Controllato da: ${user.name}\n`;
-      message += `Data: ${new Date().toLocaleString('it-IT')}\n\n`;
-      message += `✅ OK: ${okCount} prodotti\n`;
-      if (errorCount > 0) {
-        message += `⚠️ ERRORI: ${errorCount} prodotti\n\n`;
-        message += `DETTAGLIO ERRORI:\n`;
-        errors.forEach(ctrl => {
-          const product = productGroups.find(p => p.productId === ctrl.productId);
-          const statusLabel: Record<ControlStatus, string> = {
-            'ok': '✅ OK',
-            'error_qty': '⚠️ Errore Quantità',
-            'missing': '❌ Mancante',
-            'damaged': '🔧 Danneggiato',
-            'lot_error': '📅 Lotto Errato',
-            'location_error': '📍 Ubicazione Errata',
-            'note': '📝 Nota'
-          };
-          const label = statusLabel[ctrl.status] || ctrl.status;
+        let message = `📋 CONTROLLO COMPLETATO - ${currentZone.name}\n`;
+        message += `Controllato da: ${user.name}\n`;
+        message += `Data: ${new Date().toLocaleString('it-IT')}\n\n`;
+        message += `✅ OK: ${okCount} prodotti\n`;
+        if (errorCount > 0) {
+          message += `⚠️ ERRORI: ${errorCount} prodotti\n\n`;
+          message += `DETTAGLIO ERRORI:\n`;
+          errors.forEach(ctrl => {
+            const product = productGroups.find(p => p.productId === ctrl.productId);
+            const statusLabel: Record<ControlStatus, string> = {
+              'ok': '✅ OK',
+              'error_qty': '⚠️ Errore Quantità',
+              'missing': '❌ Mancante',
+              'damaged': '🔧 Danneggiato',
+              'lot_error': '📅 Lotto Errato',
+              'location_error': '📍 Ubicazione Errata',
+              'note': '📝 Nota'
+            };
+            const label = statusLabel[ctrl.status] || ctrl.status;
 
-          message += `• ${product?.productName || 'Prodotto'} - ${label}`;
-          if (ctrl.note) message += `: ${ctrl.note}`;
-          message += `\n`;
-        });
-      }
+            message += `• ${product?.productName || 'Prodotto'} - ${label}`;
+            if (ctrl.note) message += `: ${ctrl.note}`;
+            message += `\n`;
+          });
+        }
 
-      // Salva nel Chatter Odoo usando pickingClient (come prelievo-zone)
-      const saved = await pickingClient.postBatchChatterMessage(currentBatch.id, message);
+        // Salva nel Chatter Odoo usando pickingClient (come prelievo-zone)
+        const saved = await pickingClient.postBatchChatterMessage(currentBatch.id, message);
 
-      if (!saved) {
-        throw new Error('Errore salvataggio Odoo');
+        if (!saved) {
+          throw new Error('Errore salvataggio Odoo');
+        }
       }
 
       // Upload video if available
@@ -466,10 +478,10 @@ export default function ControlloDirettoPage() {
       clearLocalStorage();
       setProductControls(new Map());
 
-      toast.success('✅ Controllo salvato nel chatter del batch!');
+      toast.success(hasControls ? '✅ Controllo salvato!' : '✅ Video salvato!');
     } catch (error) {
-      console.error('❌ Errore salvataggio Odoo:', error);
-      toast.error('Errore salvataggio su Odoo');
+      console.error('❌ Errore salvataggio:', error);
+      toast.error('Errore salvataggio');
     } finally {
       setIsLoading(false);
     }
@@ -718,14 +730,16 @@ export default function ControlloDirettoPage() {
                   </div>
                 </div>
 
-                {/* Pulsante Termina Controllo */}
-                {productControls.size > 0 && (
+                {/* Pulsante Termina Controllo - mostra se ci sono controlli O se sta registrando video */}
+                {(productControls.size > 0 || isVideoRecording) && (
                   <button
                     onClick={finishControlAndSaveToOdoo}
-                    disabled={isLoading}
+                    disabled={isLoading || isUploadingVideo}
                     className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    📋 Termina Controllo e Salva su Odoo ({productControls.size} controllati)
+                    {isVideoRecording ? '📹' : '📋'} Termina Controllo e Salva
+                    {productControls.size > 0 && ` (${productControls.size} controllati)`}
+                    {isVideoRecording && ' + Video'}
                   </button>
                 )}
               </div>
