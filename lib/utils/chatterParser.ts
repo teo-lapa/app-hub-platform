@@ -269,9 +269,9 @@ function parseVideo(text: string, html: string): ParsedVideo | null {
   }
   const data = parseItalianDate(dataStr) || new Date();
 
-  // Extract operatore - stop at Dimensione, newline, or end
+  // Extract operatore - capture until newline
   let operatore = '';
-  const operatoreMatch = text.match(/Operatore[:\s]*([A-Za-zÀ-ÿ\s]+?)(?=\s*Dimensione|\s*👉|\n|$)/i);
+  const operatoreMatch = text.match(/Operatore[:\s]*([^\n]+)/i);
   if (operatoreMatch) {
     operatore = operatoreMatch[1].trim();
   }

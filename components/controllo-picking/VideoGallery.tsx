@@ -109,7 +109,7 @@ export default function VideoGallery({ videos, batchName }: VideoGalleryProps) {
               {/* Operator */}
               <div className="flex items-center gap-2 text-sm text-gray-700">
                 <User className="w-4 h-4 text-gray-500" />
-                <span className="font-medium">{video.operatore}</span>
+                <span className="font-medium">{video.operatore || 'Operatore non specificato'}</span>
               </div>
 
               {/* Date */}
