@@ -58,6 +58,7 @@ interface ParsedVideo {
   operatore: string;
   dimensioneMB: number;
   url: string;
+  zona?: string;
 }
 
 interface ParsedProblema {
@@ -237,6 +238,7 @@ export default function BatchDetailPage() {
     operatore: v.operatore,
     data: new Date(v.data),
     dimensioneMB: v.dimensioneMB,
+    zona: v.zona || '',
   }));
 
   return (

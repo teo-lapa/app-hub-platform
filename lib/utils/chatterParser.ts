@@ -38,6 +38,7 @@ export interface ParsedVideo {
   operatore: string;
   dimensioneMB: number;
   url: string;
+  zona: string;
 }
 
 export interface ParsedProblema {
@@ -253,6 +254,20 @@ function parseVideo(text: string, html: string): ParsedVideo | null {
   // Check if this is a video message - be more flexible with emoji variations
   if (!text.includes('VIDEO CONTROLLO') && !html.includes('VIDEO CONTROLLO')) return null;
 
+  // Extract zona from title (e.g., "VIDEO CONTROLLO DIRETTO - Secco")
+  let zona = '';
+  const zonaInTitleMatch = text.match(/VIDEO CONTROLLO(?:\s+DIRETTO)?\s*-\s*([^\n]+)/i);
+  if (zonaInTitleMatch) {
+    zona = zonaInTitleMatch[1].trim();
+  }
+  // Also try explicit "Zona:" field
+  if (!zona) {
+    const zonaFieldMatch = text.match(/Zona[:\s]*([^\n]+)/i);
+    if (zonaFieldMatch) {
+      zona = zonaFieldMatch[1].trim();
+    }
+  }
+
   // Extract durata - handle both spaces and list item formats
   // Formats: "Durata: 0:24" or "Durata 0:24" or with newlines
   let durata = '';
@@ -308,6 +323,7 @@ function parseVideo(text: string, html: string): ParsedVideo | null {
     operatore,
     dimensioneMB,
     url,
+    zona,
   };
 }
 

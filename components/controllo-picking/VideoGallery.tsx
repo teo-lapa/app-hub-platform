@@ -10,6 +10,7 @@ interface VideoGalleryProps {
     operatore: string;
     data: Date;
     dimensioneMB: number;
+    zona?: string;
   }>;
   batchName?: string;
 }
@@ -43,11 +44,14 @@ export default function VideoGallery({ videos, batchName }: VideoGalleryProps) {
       const link = document.createElement('a');
       link.href = blobUrl;
 
-      // Build descriptive filename: BatchName_Operatore_Data.mp4
+      // Build descriptive filename: BatchName_Zona_Operatore_Data.mp4
       const dateStr = new Date(video.data).toISOString().split('T')[0]; // YYYY-MM-DD
       const sanitizedBatch = (batchName || 'Video').replace(/[^a-zA-Z0-9]/g, '_');
+      const sanitizedZona = video.zona ? video.zona.replace(/[^a-zA-Z0-9À-ÿ]/g, '_') : '';
       const sanitizedOperatore = (video.operatore || 'Operatore').replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
-      const filename = `${sanitizedBatch}_${sanitizedOperatore}_${dateStr}.mp4`;
+      const filename = sanitizedZona
+        ? `${sanitizedBatch}_${sanitizedZona}_${sanitizedOperatore}_${dateStr}.mp4`
+        : `${sanitizedBatch}_${sanitizedOperatore}_${dateStr}.mp4`;
       link.download = filename;
       document.body.appendChild(link);
       link.click();

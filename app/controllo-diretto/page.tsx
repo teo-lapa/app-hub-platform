@@ -394,7 +394,8 @@ export default function ControlloDirettoPage() {
           batchId: currentBatch.id,
           duration: videoRecordingTime,
           operatorName: user?.name || 'Operatore',
-          sizeMb: (videoBlob.size / 1024 / 1024).toFixed(2)
+          sizeMb: (videoBlob.size / 1024 / 1024).toFixed(2),
+          zoneName: currentZone?.name || ''
         })
       });
 
