@@ -11,16 +11,17 @@ interface VideoGalleryProps {
     data: Date;
     dimensioneMB: number;
   }>;
+  batchName?: string;
 }
 
-export default function VideoGallery({ videos }: VideoGalleryProps) {
+export default function VideoGallery({ videos, batchName }: VideoGalleryProps) {
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
 
   const handleVideoClick = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleDownload = async (url: string, index: number, e: React.MouseEvent) => {
+  const handleDownload = async (url: string, index: number, video: typeof videos[0], e: React.MouseEvent) => {
     e.stopPropagation();
 
     if (!url) {
@@ -38,12 +39,15 @@ export default function VideoGallery({ videos }: VideoGalleryProps) {
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
 
-      // Create download link with .mp4 extension
+      // Create download link with descriptive filename
       const link = document.createElement('a');
       link.href = blobUrl;
-      // Get filename and change extension to .mp4
-      let filename = url.split('/').pop() || 'video';
-      filename = filename.replace(/\.(webm|mov|avi)$/i, '') + '.mp4';
+
+      // Build descriptive filename: BatchName_Operatore_Data.mp4
+      const dateStr = new Date(video.data).toISOString().split('T')[0]; // YYYY-MM-DD
+      const sanitizedBatch = (batchName || 'Video').replace(/[^a-zA-Z0-9]/g, '_');
+      const sanitizedOperatore = (video.operatore || 'Operatore').replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
+      const filename = `${sanitizedBatch}_${sanitizedOperatore}_${dateStr}.mp4`;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
@@ -133,7 +137,7 @@ export default function VideoGallery({ videos }: VideoGalleryProps) {
                 Riproduci
               </button>
               <button
-                onClick={(e) => handleDownload(video.url, index, e)}
+                onClick={(e) => handleDownload(video.url, index, video, e)}
                 disabled={downloadingIndex === index}
                 className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
                 title="Scarica video"

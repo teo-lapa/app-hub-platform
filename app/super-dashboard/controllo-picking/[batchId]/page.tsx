@@ -481,7 +481,7 @@ export default function BatchDetailPage() {
                 <p>Nessun video registrato</p>
               </div>
             ) : (
-              <VideoGallery videos={videosForGallery} />
+              <VideoGallery videos={videosForGallery} batchName={batch.name} />
             )}
           </div>
         )}
