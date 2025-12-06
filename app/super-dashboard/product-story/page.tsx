@@ -7,7 +7,8 @@ import {
   Search, Package, ArrowLeft, Calendar, RefreshCw,
   Truck, Users, ShoppingCart, AlertTriangle, TrendingUp,
   Clock, MapPin, DollarSign, Percent, Gift, Scale,
-  ChevronDown, ChevronUp, ExternalLink, Box
+  ChevronDown, ChevronUp, ExternalLink, Box, Eye, Fingerprint,
+  ArrowDownCircle, ArrowUpCircle, RotateCcw, Trash2, Shuffle, HelpCircle, User
 } from 'lucide-react';
 
 // Types
@@ -102,6 +103,78 @@ interface ProductStoryData {
   }>;
 }
 
+// Detective Mode Types
+interface DetectiveData {
+  product: {
+    id: number;
+    name: string;
+    currentStock: number;
+    virtualStock: number;
+    incoming: number;
+    outgoing: number;
+  };
+  summary: {
+    totalMovements: number;
+    entries: {
+      total: number;
+      purchases: number;
+      adjustments: number;
+      customerReturns: number;
+      unknown: number;
+    };
+    exits: {
+      total: number;
+      sales: number;
+      gifts: number;
+      adjustments: number;
+      supplierReturns: number;
+      scraps: number;
+      unknown: number;
+    };
+    internal: number;
+    theoreticalStock: number;
+    realStock: number;
+    discrepancy: number;
+    docsComparison: {
+      purchasedFromDocs: number;
+      purchasedFromMoves: number;
+      soldFromDocs: number;
+      soldFromMoves: number;
+      giftsFromDocs: number;
+      giftsFromMoves: number;
+    };
+  };
+  findings: Array<{
+    severity: 'info' | 'warning' | 'error';
+    message: string;
+    details?: string;
+  }>;
+  recentAdjustments: Array<{
+    type: string;
+    date: string;
+    quantity: number;
+    direction: string;
+    description: string;
+    reference: string | null;
+    from: string;
+    to: string;
+    user: string | null;
+    impact: number;
+  }>;
+  timeline: Array<{
+    type: string;
+    date: string;
+    quantity: number;
+    direction: string;
+    description: string;
+    reference: string | null;
+    from: string;
+    to: string;
+    user: string | null;
+    impact: number;
+  }>;
+}
+
 // Period options
 const PERIOD_OPTIONS = [
   { value: 'all', label: 'Tutto' },
@@ -160,6 +233,11 @@ export default function ProductStoryPage() {
 
   const [period, setPeriod] = useState('all');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['inventory']));
+
+  // Detective Mode state
+  const [detectiveMode, setDetectiveMode] = useState(false);
+  const [detectiveData, setDetectiveData] = useState<DetectiveData | null>(null);
+  const [isLoadingDetective, setIsLoadingDetective] = useState(false);
 
   // Search products
   const searchProducts = useCallback(async (query: string) => {
@@ -242,6 +320,33 @@ export default function ProductStoryPage() {
       newExpanded.add(section);
     }
     setExpandedSections(newExpanded);
+  };
+
+  // Load Detective Mode data
+  const loadDetectiveData = useCallback(async (productId: number) => {
+    setIsLoadingDetective(true);
+    try {
+      const res = await fetch(`/api/super-dashboard/product-story/detective?productId=${productId}`);
+      const data = await res.json();
+      if (data.success) {
+        setDetectiveData(data);
+      }
+    } catch (error) {
+      console.error('Detective mode error:', error);
+    } finally {
+      setIsLoadingDetective(false);
+    }
+  }, []);
+
+  // Toggle Detective Mode
+  const toggleDetectiveMode = () => {
+    if (!detectiveMode && selectedProduct && !detectiveData) {
+      loadDetectiveData(selectedProduct.id);
+    }
+    setDetectiveMode(!detectiveMode);
+    if (!detectiveMode) {
+      setExpandedSections(new Set(['detective']));
+    }
   };
 
   return (
@@ -431,7 +536,51 @@ export default function ProductStoryPage() {
                   <div className="text-sm text-slate-400">Virtuale</div>
                 </div>
               </div>
+
+              {/* Detective Mode Button */}
+              <div className="mt-6 pt-6 border-t border-slate-700/50">
+                <button
+                  onClick={toggleDetectiveMode}
+                  className={`w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl font-semibold transition-all ${
+                    detectiveMode
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-orange-500/25'
+                      : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white'
+                  }`}
+                >
+                  <Fingerprint className="w-6 h-6" />
+                  <span className="text-lg">
+                    {detectiveMode ? 'Detective Mode ATTIVO' : 'Attiva Detective Mode'}
+                  </span>
+                  <span className="text-sm opacity-75">
+                    - Analisi approfondita movimenti
+                  </span>
+                </button>
+              </div>
             </div>
+
+            {/* Detective Mode Section */}
+            {detectiveMode && (
+              <SectionCard
+                title="Detective Mode - Analisi Completa"
+                icon={<Fingerprint className="w-5 h-5" />}
+                gradient="from-amber-500 to-orange-500"
+                expanded={expandedSections.has('detective')}
+                onToggle={() => toggleSection('detective')}
+              >
+                {isLoadingDetective ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw className="w-8 h-8 text-orange-400 animate-spin" />
+                    <span className="ml-3 text-slate-400">Analizzando tutti i movimenti...</span>
+                  </div>
+                ) : detectiveData ? (
+                  <DetectiveModeSection data={detectiveData} />
+                ) : (
+                  <div className="text-center py-8 text-slate-400">
+                    Impossibile caricare i dati del Detective Mode
+                  </div>
+                )}
+              </SectionCard>
+            )}
 
             {/* Inventory Check - Most Important! */}
             <SectionCard
@@ -1028,6 +1177,317 @@ function LotsSection({ data }: { data: ProductStoryData['lots'] }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Detective Mode Section
+function DetectiveModeSection({ data }: { data: DetectiveData }) {
+  const [activeTab, setActiveTab] = useState<'summary' | 'findings' | 'adjustments' | 'timeline'>('summary');
+
+  const typeIcons: Record<string, { icon: React.ReactNode; color: string; bg: string; label: string }> = {
+    purchase: { icon: <ArrowDownCircle className="w-4 h-4" />, color: 'text-green-400', bg: 'bg-green-500/20', label: 'Acquisto' },
+    sale: { icon: <ArrowUpCircle className="w-4 h-4" />, color: 'text-blue-400', bg: 'bg-blue-500/20', label: 'Vendita' },
+    gift: { icon: <Gift className="w-4 h-4" />, color: 'text-pink-400', bg: 'bg-pink-500/20', label: 'Omaggio' },
+    adjustment_in: { icon: <TrendingUp className="w-4 h-4" />, color: 'text-emerald-400', bg: 'bg-emerald-500/20', label: 'Rettifica +' },
+    adjustment_out: { icon: <AlertTriangle className="w-4 h-4" />, color: 'text-orange-400', bg: 'bg-orange-500/20', label: 'Rettifica -' },
+    scrap: { icon: <Trash2 className="w-4 h-4" />, color: 'text-red-400', bg: 'bg-red-500/20', label: 'Scarto' },
+    internal: { icon: <Shuffle className="w-4 h-4" />, color: 'text-slate-400', bg: 'bg-slate-500/20', label: 'Interno' },
+    return_supplier: { icon: <RotateCcw className="w-4 h-4" />, color: 'text-yellow-400', bg: 'bg-yellow-500/20', label: 'Reso Fornitore' },
+    return_customer: { icon: <RotateCcw className="w-4 h-4" />, color: 'text-cyan-400', bg: 'bg-cyan-500/20', label: 'Reso Cliente' },
+    unknown: { icon: <HelpCircle className="w-4 h-4" />, color: 'text-purple-400', bg: 'bg-purple-500/20', label: 'Sconosciuto' },
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Tabs */}
+      <div className="flex gap-2 flex-wrap border-b border-slate-700 pb-4">
+        {[
+          { id: 'summary', label: 'Riepilogo', icon: <Eye className="w-4 h-4" /> },
+          { id: 'findings', label: `Risultati (${data.findings.length})`, icon: <AlertTriangle className="w-4 h-4" /> },
+          { id: 'adjustments', label: 'Rettifiche', icon: <Scale className="w-4 h-4" /> },
+          { id: 'timeline', label: 'Timeline', icon: <Clock className="w-4 h-4" /> },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === tab.id
+                ? 'bg-orange-500 text-white'
+                : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Summary Tab */}
+      {activeTab === 'summary' && (
+        <div className="space-y-6">
+          {/* Stock Calculation */}
+          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl p-6 border border-slate-600">
+            <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Fingerprint className="w-5 h-5 text-orange-400" />
+              Calcolo Giacenza da Movimenti
+            </h4>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-slate-900/50 rounded-lg p-4">
+                <div className="text-sm text-slate-400 mb-1">Totale Entrate</div>
+                <div className="text-2xl font-bold text-green-400">+{data.summary.entries.total}</div>
+              </div>
+              <div className="bg-slate-900/50 rounded-lg p-4">
+                <div className="text-sm text-slate-400 mb-1">Totale Uscite</div>
+                <div className="text-2xl font-bold text-red-400">-{data.summary.exits.total}</div>
+              </div>
+              <div className="bg-slate-900/50 rounded-lg p-4">
+                <div className="text-sm text-slate-400 mb-1">Giacenza Teorica</div>
+                <div className="text-2xl font-bold text-white">{data.summary.theoreticalStock.toFixed(1)}</div>
+              </div>
+              <div className="bg-slate-900/50 rounded-lg p-4">
+                <div className="text-sm text-slate-400 mb-1">Giacenza Reale</div>
+                <div className="text-2xl font-bold text-violet-400">{data.summary.realStock}</div>
+              </div>
+            </div>
+
+            {/* Discrepancy */}
+            {Math.abs(data.summary.discrepancy) > 0.5 && (
+              <div className={`p-4 rounded-lg border-2 ${
+                data.summary.discrepancy > 0 ? 'bg-yellow-500/10 border-yellow-500/50' : 'bg-red-500/10 border-red-500/50'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className={`w-5 h-5 ${data.summary.discrepancy > 0 ? 'text-yellow-400' : 'text-red-400'}`} />
+                  <span className={`font-semibold ${data.summary.discrepancy > 0 ? 'text-yellow-400' : 'text-red-400'}`}>
+                    Discrepanza: {data.summary.discrepancy > 0 ? '+' : ''}{data.summary.discrepancy.toFixed(1)} unita
+                  </span>
+                </div>
+                <p className="text-sm text-slate-400 mt-2">
+                  {data.summary.discrepancy > 0
+                    ? 'La giacenza reale è superiore a quella calcolata dai movimenti.'
+                    : 'La giacenza reale è inferiore a quella calcolata dai movimenti.'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Movement Breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Entries */}
+            <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+              <h4 className="text-md font-semibold text-green-400 mb-4 flex items-center gap-2">
+                <ArrowDownCircle className="w-5 h-5" />
+                Dettaglio Entrate (+{data.summary.entries.total})
+              </h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center py-2 border-b border-slate-700/50">
+                  <span className="text-slate-300">Acquisti da fornitori</span>
+                  <span className="text-green-400 font-semibold">+{data.summary.entries.purchases}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-700/50">
+                  <span className="text-slate-300">Rettifiche positive</span>
+                  <span className="text-emerald-400 font-semibold">+{data.summary.entries.adjustments}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-700/50">
+                  <span className="text-slate-300">Resi da clienti</span>
+                  <span className="text-cyan-400 font-semibold">+{data.summary.entries.customerReturns}</span>
+                </div>
+                {data.summary.entries.unknown > 0 && (
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-slate-300">Non classificati</span>
+                    <span className="text-purple-400 font-semibold">+{data.summary.entries.unknown}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Exits */}
+            <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+              <h4 className="text-md font-semibold text-red-400 mb-4 flex items-center gap-2">
+                <ArrowUpCircle className="w-5 h-5" />
+                Dettaglio Uscite (-{data.summary.exits.total})
+              </h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center py-2 border-b border-slate-700/50">
+                  <span className="text-slate-300">Vendite a clienti</span>
+                  <span className="text-blue-400 font-semibold">-{data.summary.exits.sales}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-700/50">
+                  <span className="text-slate-300">Omaggi</span>
+                  <span className="text-pink-400 font-semibold">-{data.summary.exits.gifts}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-700/50">
+                  <span className="text-slate-300">Rettifiche negative</span>
+                  <span className="text-orange-400 font-semibold">-{data.summary.exits.adjustments}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-700/50">
+                  <span className="text-slate-300">Resi a fornitori</span>
+                  <span className="text-yellow-400 font-semibold">-{data.summary.exits.supplierReturns}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-700/50">
+                  <span className="text-slate-300">Scarti</span>
+                  <span className="text-red-400 font-semibold">-{data.summary.exits.scraps}</span>
+                </div>
+                {data.summary.exits.unknown > 0 && (
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-slate-300">Non classificati</span>
+                    <span className="text-purple-400 font-semibold">-{data.summary.exits.unknown}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Internal Transfers Note */}
+          <div className="bg-slate-700/30 rounded-lg p-4 flex items-center gap-3">
+            <Shuffle className="w-5 h-5 text-slate-400" />
+            <span className="text-slate-300">
+              <strong>{data.summary.internal}</strong> unita movimentate internamente (non influenzano la giacenza)
+            </span>
+          </div>
+
+          {/* Total Movements */}
+          <div className="text-center text-slate-400">
+            Analizzati <strong className="text-white">{data.summary.totalMovements}</strong> movimenti totali
+          </div>
+        </div>
+      )}
+
+      {/* Findings Tab */}
+      {activeTab === 'findings' && (
+        <div className="space-y-4">
+          {data.findings.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">
+              <TrendingUp className="w-12 h-12 mx-auto mb-3 text-green-400" />
+              <p className="text-lg font-medium text-green-400">Tutto in ordine!</p>
+              <p>Non sono stati rilevati problemi o anomalie.</p>
+            </div>
+          ) : (
+            data.findings.map((finding, i) => (
+              <div
+                key={i}
+                className={`p-4 rounded-lg border-l-4 ${
+                  finding.severity === 'error' ? 'bg-red-500/10 border-red-500' :
+                  finding.severity === 'warning' ? 'bg-yellow-500/10 border-yellow-500' :
+                  'bg-blue-500/10 border-blue-500'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {finding.severity === 'error' ? (
+                    <AlertTriangle className="w-5 h-5 text-red-400" />
+                  ) : finding.severity === 'warning' ? (
+                    <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                  ) : (
+                    <Eye className="w-5 h-5 text-blue-400" />
+                  )}
+                  <span className={`font-semibold ${
+                    finding.severity === 'error' ? 'text-red-400' :
+                    finding.severity === 'warning' ? 'text-yellow-400' :
+                    'text-blue-400'
+                  }`}>
+                    {finding.message}
+                  </span>
+                </div>
+                {finding.details && (
+                  <p className="text-sm text-slate-400 mt-2 ml-7">{finding.details}</p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Adjustments Tab */}
+      {activeTab === 'adjustments' && (
+        <div className="space-y-4">
+          <p className="text-slate-400 text-sm mb-4">
+            Le rettifiche inventario sono modifiche manuali alla giacenza. Qui puoi vedere chi ha fatto quale modifica e quando.
+          </p>
+
+          {data.recentAdjustments.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">
+              <Scale className="w-12 h-12 mx-auto mb-3 text-slate-500" />
+              <p>Nessuna rettifica inventario trovata per questo prodotto.</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {data.recentAdjustments.map((adj, i) => {
+                const typeStyle = typeIcons[adj.type] || typeIcons.unknown;
+                return (
+                  <div key={i} className="flex items-center gap-4 bg-slate-700/20 rounded-lg px-4 py-3">
+                    <div className={`p-2 rounded-lg ${typeStyle.bg} ${typeStyle.color}`}>
+                      {typeStyle.icon}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-medium ${adj.impact >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {adj.impact >= 0 ? '+' : ''}{adj.quantity} unita
+                        </span>
+                        <span className="text-slate-400 text-sm">({typeStyle.label})</span>
+                      </div>
+                      <div className="text-sm text-slate-400">
+                        {adj.from} → {adj.to}
+                      </div>
+                      {adj.reference && (
+                        <div className="text-xs text-slate-500 mt-1">
+                          Rif: {adj.reference}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-slate-300">{formatDate(adj.date)}</div>
+                      {adj.user && (
+                        <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                          <User className="w-3 h-3" />
+                          {adj.user}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Timeline Tab */}
+      {activeTab === 'timeline' && (
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {data.timeline.map((move, i) => {
+            const typeStyle = typeIcons[move.type] || typeIcons.unknown;
+            return (
+              <div key={i} className="flex items-center gap-4 bg-slate-700/20 rounded-lg px-4 py-3">
+                <div className={`p-2 rounded-lg ${typeStyle.bg} ${typeStyle.color}`}>
+                  {typeStyle.icon}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-medium ${
+                      move.direction === 'in' ? 'text-green-400' :
+                      move.direction === 'out' ? 'text-red-400' :
+                      'text-slate-300'
+                    }`}>
+                      {move.direction === 'in' ? '+' : move.direction === 'out' ? '-' : ''}{move.quantity}
+                    </span>
+                    <span className="text-sm text-slate-400">{move.description}</span>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {move.from} → {move.to}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-slate-300">{formatDate(move.date)}</div>
+                  {move.reference && (
+                    <div className="text-xs text-slate-500">{move.reference}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
